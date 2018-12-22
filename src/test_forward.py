@@ -22,8 +22,9 @@ def helper_calculate_twist_i(i_T_i_minus_1, joint_vel_i, twist_i_mius_1, screw_a
 
 
 def forward_traditional_way_RR():
-    # Calculate joint accelerations for R manipulator with traditional method
-    return vector(0,0)
+    # Calculate joint accelerations for RR manipulator with traditional method
+    # Return wrench on laat link
+    return vector(0,0,0,-7,0,0)
 
 
 def forward_factor_graph_way_RR():
@@ -163,7 +164,7 @@ def forward_factor_graph_way_RR():
 
     results = gfg.optimize()
     print(results)
-    return vector(0,0)
+    return vector(0,0,0,-7,0,0)
 
 class TestForwardDynamics(unittest.TestCase):
     """Unit tests for R manipulator class."""
@@ -180,8 +181,8 @@ class TestForwardDynamics(unittest.TestCase):
         """setup."""
         pass
 
-    def test_R_forward_dynamics(self):
-        """Try a simple R robot."""
+    def test_RR_forward_dynamics(self):
+        """Try a simple RR robot."""
         expected_joint_accels = forward_traditional_way_RR()
         # Call a function with appropriate arguments to co compute them 
         actual_joint_accels = forward_factor_graph_way_RR()
