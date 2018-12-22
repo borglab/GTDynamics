@@ -10,7 +10,8 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
-from gtsam import Point3
+# from gtsam import Point3
+from gtsam import *
 
 
 def vector(*floats):
@@ -39,6 +40,23 @@ def hat(xi):
     S[:3, :3] = skew(*xi[:3])
     S[:3, 3] = xi[3:]
     return S
+
+
+def adtwist(twist):
+    """Return ad operator result of twist"""
+    adt = np.zeros((6, 6), np.float)
+    adt[:3, :3] = skew(twist[0], twist[1], twist[2])
+    adt[3:, 3:] = adt[:3, :3]
+    adt[3:, :3] = skew(twist[3], twist[4], twist[5])
+    return adt
+
+
+def genaral_mass_matrix(Ib, mass):
+    """Return the general mass matrix"""
+    gmm = np.zeros((6, 6), np.float)
+    gmm[:3, :3] = Ib
+    gmm[3:, 3:] = mass*np.identity(3)
+    return gmm
 
 
 def spatial_velocity(J, qdot, ps):
