@@ -10,8 +10,7 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
-# from gtsam import Point3
-from gtsam import *
+from gtsam import Point3
 
 
 def vector(*floats):

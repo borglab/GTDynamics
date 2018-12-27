@@ -10,11 +10,11 @@ from __future__ import print_function
 
 import math
 import unittest
-
 import numpy as np
-# from gtsam import Point3, Pose3, Rot3
-from gtsam import *                                      
-from utils import *
+from gtsam import Point3, Pose3, Rot3, GaussianFactorGraph, noiseModel_Diagonal
+
+import utils
+from utils import vector
 
 def helper_calculate_twist_i(i_T_i_minus_1, joint_vel_i, twist_i_mius_1, screw_axis_i):
     twist_i = np.dot(i_T_i_minus_1.AdjointMap(), twist_i_mius_1) + screw_axis_i*joint_vel_i
@@ -50,11 +50,11 @@ def forward_factor_graph_way_RR():
     joint_vel = np.array([0.0, 1.0, 1.0])
 
     # screw axis for joint 0 expressed in link frame 0
-    screw_axis_0 = unit_twist(vector(0,0,0), vector(0,0,0))
+    screw_axis_0 = utils.unit_twist(vector(0,0,0), vector(0,0,0))
     # screw axis for joint 1 expressed in link frame 1
-    screw_axis_1 = unit_twist(vector(0,0,1), vector(-1,0,0))
+    screw_axis_1 = utils.unit_twist(vector(0,0,1), vector(-1,0,0))
     # screw axis for joint 2 expressed in link frame 2
-    screw_axis_2 = unit_twist(vector(0,0,1), vector(-1,0,0))
+    screw_axis_2 = utils.unit_twist(vector(0,0,1), vector(-1,0,0))
     screw_axis = np.array([screw_axis_0, screw_axis_1, screw_axis_2])
 
     # inertial matrix of link i expressed in link frame i
@@ -81,7 +81,7 @@ def forward_factor_graph_way_RR():
     for i in range(1, num+1):
 
         # configuration of link frame i-1 relative to link frame i for joint i angle 0 
-        i_T_i_minus_1 = compose(link_config[i].inverse(), link_config[i-1])
+        i_T_i_minus_1 = utils.compose(link_config[i].inverse(), link_config[i-1])
         twist_i = helper_calculate_twist_i(i_T_i_minus_1, joint_vel[i], twist_i_mius_1, screw_axis[i])
 
         if i is not 1:
@@ -103,7 +103,7 @@ def forward_factor_graph_way_RR():
                                      [screw_axis[i][4]],
                                      [screw_axis[i][5]]])
         # RHS of acceleration equation 
-        b_accel = np.dot(adtwist(twist_i), screw_axis[i]*joint_vel[i])
+        b_accel = np.dot(utils.adtwist(twist_i), screw_axis[i]*joint_vel[i])
 
         sigmas = np.zeros(6)
         model = noiseModel_Diagonal.Sigmas(sigmas)
@@ -113,15 +113,15 @@ def forward_factor_graph_way_RR():
                                  b_accel, model)
         
         # configuration of link frame i relative to link frame i+1 for joint i+1 angle 0 
-        i_plus_1_T_i = compose(link_config[i+1].inverse(), link_config[i])
+        i_plus_1_T_i = utils.compose(link_config[i+1].inverse(), link_config[i])
 
         ## factor 2
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -genaral_mass_matrix(I[i], m[i])
+        J_twist_accel_i = -utils.genaral_mass_matrix(I[i], m[i])
         # RHS of wrench equation
-        b_wrench = -np.dot(np.dot(adtwist(twist_i).transpose(), genaral_mass_matrix(I[i], m[i])), twist_i)
+        b_wrench = -np.dot(np.dot(utils.adtwist(twist_i).transpose(), utils.genaral_mass_matrix(I[i], m[i])), twist_i)
 
         sigmas = np.zeros(6)
         model = noiseModel_Diagonal.Sigmas(sigmas)
