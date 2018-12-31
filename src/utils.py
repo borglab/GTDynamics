@@ -79,7 +79,7 @@ def point3_of_vector(v):
     return Point3(v[0], v[1], v[2])
 
 
-class FetchTestCase(unittest.TestCase):
+class GtsamTestCase(unittest.TestCase):
     """Base class with GTSAM assert utils."""
 
     def gtsamAssertEquals(self, actual, expected, tol=1e-2):
