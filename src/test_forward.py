@@ -100,12 +100,8 @@ def forward_factor_graph_way_RR():
         # LHS of acceleration equation
         J_twist_accel_i = np.identity(6)
         J_twist_accel_i_mius_1 = -i_T_i_minus_1.AdjointMap()
-        J_joint_accel_i = -np.array([[screw_axis[i][0]],
-                                     [screw_axis[i][1]],
-                                     [screw_axis[i][2]],
-                                     [screw_axis[i][3]],
-                                     [screw_axis[i][4]],
-                                     [screw_axis[i][5]]])
+        J_joint_accel_i = -np.reshape(screw_axis[i], (6, 1))
+
         # RHS of acceleration equation
         b_accel = np.dot(utils.adtwist(twist_i), screw_axis[i]*joint_vel[i])
 
