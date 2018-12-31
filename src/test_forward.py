@@ -17,22 +17,27 @@ from utils import vector, GtsamTestCase
 
 
 def helper_calculate_twist_i(i_T_i_minus_1, joint_vel_i, twist_i_mius_1, screw_axis_i):
-    """TODO(Mandy): docstring"""
+    """
+    Calculate twist on the ith link based on the dynamic equation
+    """
     twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
                      twist_i_mius_1) + screw_axis_i*joint_vel_i
     return twist_i
 
 
 def forward_traditional_way_RR():
-    # Calculate joint accelerations for RR manipulator with traditional method
-    # Return wrench on last link
+    """
+    Calculate joint accelerations for RR manipulator with traditional method
+    Return wrench on last link
+    """
     return vector(0, 0, 0, -7, 0, 0)
 
 
 def forward_factor_graph_way_RR():
-    # Setup factor graph
-    # Optimize it
-    # return joint accelerations
+    """
+    Calculate joint accelerations for RR manipulator with factor graph method
+    Return wrench on last link
+    """
 
     # number of revolute joint
     num = 2
@@ -42,7 +47,7 @@ def forward_factor_graph_way_RR():
     pose3_0 = Pose3(Rot3(np.identity(3)), Point3(0, 0, 0))
     # configuration of link 1 frame in space frame 0
     pose3_1 = Pose3(Rot3(np.identity(3)), Point3(1, 0, 0))
-    # configuration of link 1 frame in space frame 0
+    # configuration of link 2 frame in space frame 0
     pose3_2 = Pose3(Rot3(np.identity(3)), Point3(3, 0, 0))
     # configuration of end effector frame in space frame 0
     pose3_eef = Pose3(Rot3(np.identity(3)), Point3(4, 0, 0))
@@ -70,6 +75,7 @@ def forward_factor_graph_way_RR():
     m2 = 1
     m = np.array([m0, m1, m2])
 
+    # Setup factor graph
     # Gaussian Factor Graph
     gfg = GaussianFactorGraph()
 
