@@ -163,8 +163,7 @@ def forward_factor_graph_way_RR():
         key_wrench_i = key_wrench_i_plus_1
 
     results = gfg.optimize()
-    print(results)
-    return vector(0,0,0,-7,0,0)
+    return results.at(4)
 
 class TestForwardDynamics(unittest.TestCase):
     """Unit tests for R manipulator class."""
