@@ -42,18 +42,18 @@ def forward_factor_graph_way_RR():
     # number of revolute joint
     num = 2
 
-    twist_i_mius_1 = vector(0., 0., 0., 0., 0., 0.)
+    twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
     # configuration of link 0 frame in space frame 0
-    pose3_0 = Pose3(Rot3(np.identity(3)), Point3(0, 0, 0))
+    pose3_0 = Pose3(Rot3(), Point3(0, 0, 0))
     # configuration of link 1 frame in space frame 0
-    pose3_1 = Pose3(Rot3(np.identity(3)), Point3(1, 0, 0))
+    pose3_1 = Pose3(Rot3(), Point3(1, 0, 0))
     # configuration of link 2 frame in space frame 0
-    pose3_2 = Pose3(Rot3(np.identity(3)), Point3(3, 0, 0))
+    pose3_2 = Pose3(Rot3(), Point3(3, 0, 0))
     # configuration of end effector frame in space frame 0
-    pose3_eef = Pose3(Rot3(np.identity(3)), Point3(4, 0, 0))
+    pose3_eef = Pose3(Rot3(), Point3(4, 0, 0))
     link_config = np.array([pose3_0, pose3_1, pose3_2, pose3_eef])
 
-    # joint velocity of link 1
+    # joint velocities
     joint_vel = np.array([0.0, 1.0, 1.0])
 
     # screw axis for joint 0 expressed in link frame 0
