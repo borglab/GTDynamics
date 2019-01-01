@@ -89,8 +89,7 @@ def forward_factor_graph_way_RR():
         key_wrench_i_plus_1 = symbol(ord('w'), i + 1)
 
         # configuration of link frame i-1 relative to link frame i for joint i angle 0
-        i_T_i_minus_1 = utils.compose(
-            link_config[i].inverse(), link_config[i-1])
+        i_T_i_minus_1 = link_config[i].between(link_config[i-1])
         twist_i = helper_calculate_twist_i(
             i_T_i_minus_1, joint_vel[i], twist_i_mius_1, screw_axis[i])
 
@@ -114,8 +113,7 @@ def forward_factor_graph_way_RR():
                 b_accel, model)
 
         # configuration of link frame i relative to link frame i+1 for joint i+1 angle 0
-        i_plus_1_T_i = utils.compose(
-            link_config[i+1].inverse(), link_config[i])
+        i_plus_1_T_i = link_config[i+1].between(link_config[i])
 
         # factor 2
         # LHS of wrench equation
