@@ -11,7 +11,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, symbol, \
-                    GaussianFactorGraph, noiseModel_Diagonal
+                    GaussianFactorGraph, noiseModel_Diagonal, noiseModel_Constrained
 
 import utils
 from utils import vector, GtsamTestCase
@@ -87,8 +87,7 @@ class forward_factor_graph_way_RR():
         # RHS of acceleration equation
         b_accel = np.dot(utils.adtwist(self.twist_i), self.screw_axis[i]*self.joint_vel[i])
 
-        sigmas = np.zeros(6)
-        model = noiseModel_Diagonal.Sigmas(sigmas)
+        model = noiseModel_Constrained.All(6)
         self.gfg.add(self.key_twist_accel_i_minus_1, J_twist_accel_i_mius_1,
                     self.key_twist_accel_i, J_twist_accel_i,
                     self.key_joint_accel_i, J_joint_accel_i,
@@ -103,8 +102,7 @@ class forward_factor_graph_way_RR():
         b_wrench = -np.dot(np.dot(utils.adtwist(self.twist_i).transpose(),
                                 utils.genaral_mass_matrix(self.I[i], self.m[i])), self.twist_i)
 
-        sigmas = np.zeros(6)
-        model = noiseModel_Diagonal.Sigmas(sigmas)
+        model = noiseModel_Constrained.All(6)
         self.gfg.add(self.key_wrench_i, J_wrench_i,
                     self.key_wrench_i_plus_1, J_wrench_i_plus_1,
                     self.key_twist_accel_i, J_twist_accel_i,
@@ -123,8 +121,7 @@ class forward_factor_graph_way_RR():
         J_twist_accel_i_mius_1 = np.identity(6)
         # RHS
         b_twist_accel = np.zeros(6)
-        sigmas = np.zeros(6)
-        model = noiseModel_Diagonal.Sigmas(sigmas)
+        model = noiseModel_Constrained.All(6)
         self.gfg.add(self.key_twist_accel_i_minus_1,
                     J_twist_accel_i_mius_1, b_twist_accel, model)
 
@@ -133,8 +130,7 @@ class forward_factor_graph_way_RR():
         J_wrench_i_plus_1 = np.identity(6)
         # RHS
         b_wrench = np.zeros(6)
-        sigmas = np.zeros(6)
-        model = noiseModel_Diagonal.Sigmas(sigmas)
+        model = noiseModel_Constrained.All(6)
         self.gfg.add(self.key_wrench_i_plus_1, J_wrench_i_plus_1, b_wrench, model)
 
     def forward_factor_graph(self):
