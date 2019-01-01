@@ -16,16 +16,6 @@ from gtsam import Point3, Pose3, Rot3, symbol, \
 import utils
 from utils import vector, GtsamTestCase
 
-
-def helper_calculate_twist_i(i_T_i_minus_1, joint_vel_i, twist_i_mius_1, screw_axis_i):
-    """
-    Calculate twist on the ith link based on the dynamic equation
-    """
-    twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                     twist_i_mius_1) + screw_axis_i*joint_vel_i
-    return twist_i
-
-
 def forward_traditional_way_RR():
     """
     Calculate joint accelerations for RR manipulator with traditional method
@@ -133,6 +123,15 @@ class forward_factor_graph_way_RR():
         model = noiseModel_Constrained.All(6)
         self.gfg.add(self.key_wrench_i_plus_1, J_wrench_i_plus_1, b_wrench, model)
 
+    def calculate_twist_i(self, i_T_i_minus_1, i):
+        """
+        Calculate twist on the ith link based on the dynamic equation
+        """
+        twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
+                        self.twist_i_mius_1) + self.screw_axis[i]*self.joint_vel[i]
+        return twist_i
+
+
     def forward_factor_graph(self):
         """
         Calculate joint accelerations for RR manipulator with factor graph method
@@ -152,8 +151,7 @@ class forward_factor_graph_way_RR():
             # configuration of link frame i relative to link frame i+1 for joint i+1 angle 0
             i_plus_1_T_i = self.link_config[i+1].between(self.link_config[i])
 
-            self.twist_i = helper_calculate_twist_i(
-                i_T_i_minus_1, self.joint_vel[i], self.twist_i_mius_1, self.screw_axis[i])
+            self.twist_i = self.calculate_twist_i(i_T_i_minus_1, i)
 
             # factor 1
             self.twist_accel_factor(i_T_i_minus_1, i)
