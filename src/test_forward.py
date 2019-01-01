@@ -10,7 +10,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from gtsam import Point3, Pose3, Rot3, GaussianFactorGraph, noiseModel_Diagonal
+from gtsam import Point3, Pose3, Rot3, symbol, \
+                    GaussianFactorGraph, noiseModel_Diagonal
 
 import utils
 from utils import vector, GtsamTestCase
@@ -28,7 +29,7 @@ def helper_calculate_twist_i(i_T_i_minus_1, joint_vel_i, twist_i_mius_1, screw_a
 def forward_traditional_way_RR():
     """
     Calculate joint accelerations for RR manipulator with traditional method
-    Return wrench on last link
+    Return wrench on first link
     """
     return vector(0, 0, 0, -7, 0, 0)
 
@@ -36,7 +37,7 @@ def forward_traditional_way_RR():
 def forward_factor_graph_way_RR():
     """
     Calculate joint accelerations for RR manipulator with factor graph method
-    Return wrench on last link
+    Return wrench on first link
     """
 
     # number of revolute joint
@@ -79,25 +80,19 @@ def forward_factor_graph_way_RR():
     # Gaussian Factor Graph
     gfg = GaussianFactorGraph()
 
-    # factor graph keys
-    key_twist_accel_i_minus_1 = 1
-    key_twist_accel_i = 2
-    key_joint_accel_i = 3
-    key_wrench_i = 4
-    key_wrench_i_plus_1 = 5
-
     for i in range(1, num+1):
+        # factor graph keys
+        key_twist_accel_i_minus_1 = symbol(ord('t'), i - 1)
+        key_twist_accel_i = symbol(ord('t'), i)
+        key_joint_accel_i = symbol(ord('j'), i)
+        key_wrench_i = symbol(ord('w'), i)
+        key_wrench_i_plus_1 = symbol(ord('w'), i + 1)
 
         # configuration of link frame i-1 relative to link frame i for joint i angle 0
         i_T_i_minus_1 = utils.compose(
             link_config[i].inverse(), link_config[i-1])
         twist_i = helper_calculate_twist_i(
             i_T_i_minus_1, joint_vel[i], twist_i_mius_1, screw_axis[i])
-
-        if i is not 1:
-            key_twist_accel_i = key_wrench_i + 1
-            key_joint_accel_i = key_wrench_i + 2
-            key_wrench_i_plus_1 = key_wrench_i + 3
 
         print(key_twist_accel_i_minus_1, key_twist_accel_i,
               key_joint_accel_i, key_wrench_i, key_wrench_i_plus_1)
@@ -168,11 +163,9 @@ def forward_factor_graph_way_RR():
             gfg.add(key_wrench_i_plus_1, J_wrench_i_plus_1, b_wrench, model)
 
         twist_i_mius_1 = twist_i
-        key_twist_accel_i_minus_1 = key_twist_accel_i
-        key_wrench_i = key_wrench_i_plus_1
 
     results = gfg.optimize()
-    return results.at(4)
+    return results.at(symbol(ord('w'), 1))
 
 
 class TestForwardDynamics(GtsamTestCase):
