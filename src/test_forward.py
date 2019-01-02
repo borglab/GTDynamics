@@ -83,8 +83,10 @@ class forward_factor_graph_way_RR():
         J_twist_accel_i_mius_1 = -i_T_i_minus_1.AdjointMap()
         J_joint_accel_i = -np.reshape(self.screw_axis[i], (6, 1))
 
+        pose3 = Pose3(Rot3(), Point3(1, 0, 0))
+
         # RHS of acceleration equation
-        b_accel = np.dot(utils.adtwist(self.twist_i), self.screw_axis[i]*self.joint_vel[i])
+        b_accel = np.dot(Pose3.adjointMap(self.twist_i), self.screw_axis[i]*self.joint_vel[i])
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_mius_1,
@@ -109,7 +111,7 @@ class forward_factor_graph_way_RR():
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
         J_twist_accel_i = -utils.genaral_mass_matrix(self.I[i], self.m[i])
         # RHS of wrench equation
-        b_wrench = -np.dot(np.dot(utils.adtwist(self.twist_i).transpose(),
+        b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
                                 utils.genaral_mass_matrix(self.I[i], self.m[i])), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
