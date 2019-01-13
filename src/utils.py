@@ -41,6 +41,23 @@ def hat(xi):
     return S
 
 
+def adtwist(twist):
+    """Return ad operator result of twist"""
+    adt = np.zeros((6, 6), np.float)
+    adt[:3, :3] = skew(twist[0], twist[1], twist[2])
+    adt[3:, 3:] = adt[:3, :3]
+    adt[3:, :3] = skew(twist[3], twist[4], twist[5])
+    return adt
+
+
+def genaral_mass_matrix(Ib, mass):
+    """Return the general mass matrix"""
+    gmm = np.zeros((6, 6), np.float)
+    gmm[:3, :3] = Ib
+    gmm[3:, 3:] = mass*np.identity(3)
+    return gmm
+
+
 def spatial_velocity(J, qdot, ps):
     """ Calculate the spatial velocity of a point ps.
         Keyword arguments:
@@ -62,7 +79,7 @@ def point3_of_vector(v):
     return Point3(v[0], v[1], v[2])
 
 
-class FetchTestCase(unittest.TestCase):
+class GtsamTestCase(unittest.TestCase):
     """Base class with GTSAM assert utils."""
 
     def gtsamAssertEquals(self, actual, expected, tol=1e-2):
