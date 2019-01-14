@@ -24,8 +24,10 @@ class DenavitHartenberg(object):
 
         for i in range(1, self.num_of_links+1):
             # link i joint frame expressed in link i-1 joint frame
-            joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(self.link_parameters[i-1].twist_angle), Point3(self.link_parameters[i-1].joint_normal, 0, 0)),
-                                            Pose3(Rot3.Yaw(self.link_parameters[i].joint_angle), Point3(0, 0, self.link_parameters[i].joint_offset)))
+            joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(self.link_parameters[i-1].twist_angle), 
+                                                                Point3(self.link_parameters[i-1].joint_normal, 0, 0)),
+                                                          Pose3(Rot3.Yaw(self.link_parameters[i].joint_angle), 
+                                                                Point3(0, 0, self.link_parameters[i].joint_offset)))
             # link i joint frame expressed in space frame s
             frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
             # update link i-1 joint frame in space frame s for next iteration
@@ -55,9 +57,9 @@ class DenavitHartenberg(object):
         for i in range(1, self.num_of_links+1):
             # screw axis for joint i expressed in link frame i
             screw_axis = np.append(screw_axis, [utils.unit_twist(vector(0, 0, 1),
-                                                                vector(-self.link_parameters[i].center_of_mass[0],
-                                                                       -self.link_parameters[i].center_of_mass[1], 
-                                                                       -self.link_parameters[i].center_of_mass[2]))], axis=0)    
+                                                    vector(-self.link_parameters[i].center_of_mass[0],
+                                                           -self.link_parameters[i].center_of_mass[1], 
+                                                           -self.link_parameters[i].center_of_mass[2]))], axis=0)    
         return screw_axis
 
 class LinkParameters(object):
