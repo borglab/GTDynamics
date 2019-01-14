@@ -41,7 +41,7 @@ class forward_factor_graph_way():
         # screw axis for each joints expressed in itfrom math import pilink frame 
         self._screw_axis = calibration.screw_axis()
         # twist of link 0
-        self._twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
+        self._twist_i_minus_1 = vector(0, 0, 0, 0, 0, 0)
 
     def twist_accel_factor(self, i_T_i_minus_1, i):
         """
@@ -54,7 +54,7 @@ class forward_factor_graph_way():
 
         # LHS of acceleration equation
         J_twist_accel_i = np.identity(6)
-        J_twist_accel_i_mius_1 = -i_T_i_minus_1.AdjointMap()
+        J_twist_accel_i_minus_1 = -i_T_i_minus_1.AdjointMap()
         J_joint_accel_i = -np.reshape(self._screw_axis[i], (6, 1))
 
         # RHS of acceleration equation
@@ -62,7 +62,7 @@ class forward_factor_graph_way():
                     self._screw_axis[i]*self._calibration._link_parameters[i].joint_vel)
 
         model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_mius_1,
+        return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_minus_1,
                                     key_twist_accel_i, J_twist_accel_i,
                                     key_joint_accel_i, J_joint_accel_i,
                                     b_accel, model)
@@ -82,12 +82,12 @@ class forward_factor_graph_way():
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -utils.inertia_matrix(self._calibration._link_parameters[i].inertia, 
-                                                self._calibration._link_parameters[i].mass)
+        J_twist_accel_i = -utils.inertia_matrix(self._calibration.link_inertia(i), 
+                                                self._calibration.link_mass(i))
         # RHS of wrench equation
         b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                        utils.inertia_matrix(self._calibration._link_parameters[i].inertia, 
-                                            self._calibration._link_parameters[i].mass)), self.twist_i)
+                        utils.inertia_matrix(self._calibration.link_inertia(i), 
+                                            self._calibration.link_mass(i))), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,
@@ -116,12 +116,12 @@ class forward_factor_graph_way():
         angular and gravity accelration for linear 
         """
         # LHS
-        J_twist_accel_i_mius_1 = np.identity(6)
+        J_twist_accel_i_minus_1 = np.identity(6)
         # RHS
         b_twist_accel = np.array([0, 0, 0, 0, 0, 9.8])
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(symbol(ord('t'), 0),
-                                    J_twist_accel_i_mius_1, b_twist_accel, model)
+                                    J_twist_accel_i_minus_1, b_twist_accel, model)
 
     def prior_factor_eef(self):
         """
@@ -133,7 +133,7 @@ class forward_factor_graph_way():
         # RHS
         b_wrench = np.zeros(6)
         model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(symbol(ord('w'), self._calibration._num_of_links + 1),
+        return gtsam.JacobianFactor(symbol(ord('w'), self._calibration.num_of_links() + 1),
                                     J_wrench_i_plus_1, b_wrench, model)
 
     def calculate_twist_i(self, i_T_i_minus_1, i):
@@ -142,7 +142,7 @@ class forward_factor_graph_way():
         Return twist on the ith link
         """
         twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                        self._twist_i_mius_1) + self._screw_axis[i]*self._calibration._link_parameters[i].joint_vel
+                        self._twist_i_minus_1) + self._screw_axis[i]*self._calibration._link_parameters[i].joint_vel
         return twist_i
 
 
@@ -158,7 +158,7 @@ class forward_factor_graph_way():
         # prior factor, link 0 twist acceleration = 0
         gfg.add(self.prior_factor_base())
 
-        for i in range(1, self._calibration._num_of_links + 1):
+        for i in range(1, self._calibration.num_of_links() + 1):
             # configuration of link frame i-1 relative to link frame i for joint i angle 0
             i_T_i_minus_1 = self._link_config[i].between(self._link_config[i-1])
 
@@ -173,7 +173,7 @@ class forward_factor_graph_way():
             # factor 3
             gfg.add(self.wrench_factor(i))
 
-            self._twist_i_mius_1 = self.twist_i
+            self._twist_i_minus_1 = self.twist_i
 
         # prior factor, end effector wrench = 0
         gfg.add(self.prior_factor_eef())
@@ -187,7 +187,7 @@ class forward_factor_graph_way():
         """
         gfg = self.forward_factor_graph()
         results = gfg.optimize()
-        return joint_accel_result(self._calibration._num_of_links, results)
+        return joint_accel_result(self._calibration.num_of_links(), results)
 
 
 class TestForwardDynamics(GtsamTestCase):

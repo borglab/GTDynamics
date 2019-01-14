@@ -81,6 +81,22 @@ class DenavitHartenberg(object):
         return screw axis of each joints expressed in its own link frame
         """
         return [screw_axis_for_one_link(link) for link in self._link_parameters]
+    
+    def num_of_links(self):
+        """return number of links, take link index as input"""
+        return self._num_of_links
+
+    def link_inertia(self, i):
+        """return link inertia, take link index as input"""
+        return self._link_parameters[i].inertia
+    
+    def link_mass(self, i):
+        """return link mass, take link index as input"""
+        return self._link_parameters[i].mass
+
+    def link_center_of_mass(self, i):
+        """return link center of mass, take link index as input"""
+        return self._link_parameters[i].center_of_mass
 
 class LinkParameters(object):
     """
