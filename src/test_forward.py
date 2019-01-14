@@ -16,58 +16,99 @@ from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector, GtsamTestCase
 
-def forward_traditional_way_RR():
-    """
-    Calculate joint accelerations for RR manipulator with traditional method
-    Return wrench on first link
-    """
-    return vector(0, 0, 0, -7, 0, 0)
+import manipulator_paras
 
-class forward_factor_graph_way_RR():
+def forward_traditional_way(manipulator_type):
     """
-        Calculate forward dynamics for RR manipulator using factor graph method
+    Calculate joint accelerations for manipulator (Puma robot arm)
+    with 6 revolute joints using traditional method 
+    Return joint accelerations
+    arguments: manipulator_type:
+               puma manipulator or RR link manipulator
     """
-    def __init__(self, num_of_links):
+    if manipulator_type == 'RR':
+        return manipulator_paras.RR_paras['dh_tdd'][1:-1]
+    else:
+        return manipulator_paras.puma_paras['dh_tdd'][1:-1] 
+
+def get_link_configuration(num_of_links, paras):
+    """
+    return each link frame (origined at center of mass) 
+    expressed in space frame
+    """
+    link_config = np.array(Pose3(Rot3(), Point3(0, 0, 0)))
+    # link i-1 joint frame expressed in space frame s
+    frame_joint_i_minus_1 = Pose3(Rot3(), Point3(0, 0, 0))
+
+    for i in range(1, num_of_links+1):
+        # link i joint frame expressed in link i-1 joint frame
+        joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(paras['dh_f'][i-1]), Point3(paras['dh_a'][i-1], 0, 0)),
+                                           Pose3(Rot3.Yaw(paras['dh_t'][i]), Point3(0, 0, paras['dh_d'][i])))
+        # link i joint frame expressed in space frame s
+        frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
+        # update link i-1 joint frame in space frame s for next iteration
+        frame_joint_i_minus_1 = frame_joint_i
+        # link i com frame expressed in space frame s 
+        frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(paras['dh_com'][0, i],
+                                                                    paras['dh_com'][1, i], 
+                                                                    paras['dh_com'][2, i])))
+        link_config = np.append(link_config, frame_i)
+
+    # configuration of link eef frame expressed in space frame num_of_links
+    # eef frame expressed in last link joint frame
+    joint_last_frame_eef = utils.compose(Pose3(Rot3.Roll(paras['dh_f'][num_of_links]), Point3(paras['dh_a'][num_of_links], 0, 0)),
+                                              Pose3(Rot3.Yaw(paras['dh_t'][num_of_links+1]), Point3(0, 0, paras['dh_d'][num_of_links+1])))
+    # eef frame expressed in space frame s
+    frame_eef = utils.compose(frame_joint_i_minus_1, joint_last_frame_eef)
+    link_config = np.append(link_config, frame_eef)
+    return link_config
+
+def get_screw_axis(num_of_links, paras):
+    """
+    return screw axis of each joints expressed in its own link frame
+    """
+    screw_axis = np.array([utils.unit_twist(vector(0, 0, 0), vector(0, 0, 0))])
+    for i in range(1, num_of_links+1):
+        # screw axis for joint i expressed in link frame i
+        screw_axis = np.append(screw_axis, [utils.unit_twist(vector(0, 0, 1),
+                                                            vector(-paras['dh_com'][0, i],
+                                                                   -paras['dh_com'][1, i], 
+                                                                   -paras['dh_com'][2, i]))], axis=0)    
+    return screw_axis
+
+class forward_factor_graph_way():
+    """
+        Calculate forward dynamics for manipulator (Puma robot arm)
+        with 6 revolute joints using factor graph method
+    """
+    def __init__(self, manipulator_type):
         """
-        Constructor that initializes forward factor graph for RR manipulator dynamics
-        Arguments: 
-            number_of_links: number of links of RR manipulator
+        Constructor that initializes forward factor graph
+        for dynamics of manipulator (Puma robot arm or RR)
+        with only revolute joints
+        arguments: manipulator_type:
+                   puma manipulator or RR link manipulator
         """
+        if manipulator_type == 'RR':
+            paras = manipulator_paras.RR_paras
+        else:
+            paras = manipulator_paras.puma_paras
         # number of revolute joint
-        self.num_of_links = num_of_links
-
-        self.twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
-        # configuration of link 0 frame in space frame 0
-        pose3_0 = Pose3(Rot3(), Point3(0, 0, 0))
-        # configuration of link 1 frame in space frame 0
-        pose3_1 = Pose3(Rot3(), Point3(1, 0, 0))
-        # configuration of link 2 frame in space frame 0
-        pose3_2 = Pose3(Rot3(), Point3(3, 0, 0))
-        # configuration of end effector frame in space frame 0
-        pose3_eef = Pose3(Rot3(), Point3(4, 0, 0))
-        self.link_config = np.array([pose3_0, pose3_1, pose3_2, pose3_eef])
-
-        # joint velocities
-        self.joint_vel = np.array([0.0, 1.0, 1.0])
-
+        self.num_of_links = paras['dh_d'].size - 2
+        # configuration of base com frame in space frame s
+        self.link_config = get_link_configuration(self.num_of_links, paras)
         # screw axis for joint 0 expressed in link frame 0
-        screw_axis_0 = utils.unit_twist(vector(0, 0, 0), vector(0, 0, 0))
-        # screw axis for joint 1 expressed in link frame 1
-        screw_axis_1 = utils.unit_twist(vector(0, 0, 1), vector(-1, 0, 0))
-        # screw axis for joint 2 expressed in link frame 2
-        screw_axis_2 = utils.unit_twist(vector(0, 0, 1), vector(-1, 0, 0))
-        self.screw_axis = np.array([screw_axis_0, screw_axis_1, screw_axis_2])
-
+        self.screw_axis = get_screw_axis(self.num_of_links, paras)
+        # joint velocities (1 rad/s) of joint between link i-1 and link i
+        self.joint_vel = paras['dh_td'][:-1]
+        # mass of each link
+        self.m = paras['dh_m'][:-1]
         # inertial matrix of link i expressed in link frame i
-        I0 = np.zeros((3, 3))
-        I1 = np.diag([0, 1/6., 1/6.])
-        I2 = np.diag([0, 1/6., 1/6.])
-        self.I = np.array([I0, I1, I2])
-        # mass of link i
-        m0 = 0
-        m1 = 1
-        m2 = 1
-        self.m = np.array([m0, m1, m2])
+        self.I = paras['dh_pI'][:, :-1]
+        # twist of link 0
+        self.twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
+        # torque applied to each link
+        self.torque = paras['dh_tq']
 
     def twist_accel_factor(self, i_T_i_minus_1, i):
         """
@@ -82,8 +123,6 @@ class forward_factor_graph_way_RR():
         J_twist_accel_i = np.identity(6)
         J_twist_accel_i_mius_1 = -i_T_i_minus_1.AdjointMap()
         J_joint_accel_i = -np.reshape(self.screw_axis[i], (6, 1))
-
-        pose3 = Pose3(Rot3(), Point3(1, 0, 0))
 
         # RHS of acceleration equation
         b_accel = np.dot(Pose3.adjointMap(self.twist_i), self.screw_axis[i]*self.joint_vel[i])
@@ -109,10 +148,10 @@ class forward_factor_graph_way_RR():
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -utils.genaral_mass_matrix(self.I[i], self.m[i])
+        J_twist_accel_i = -utils.genaral_mass_matrix(self.I[:,i], self.m[i])
         # RHS of wrench equation
         b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                                utils.genaral_mass_matrix(self.I[i], self.m[i])), self.twist_i)
+                                utils.genaral_mass_matrix(self.I[:,i], self.m[i])), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,
@@ -130,19 +169,20 @@ class forward_factor_graph_way_RR():
         # LHS of torque equation
         J_wrench_i = np.array([self.screw_axis[i]])
         # RHS of torque equation
-        b_torque = np.array([0])
+        b_torque = np.array([self.torque[i]])
         model = gtsam.noiseModel_Diagonal.Sigmas(np.array([0.0]))
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i, b_torque, model)
 
     def prior_factor_base(self):
         """
         Return prior factor that twist acceleration 
-        on base link is assumed to be zero
+        on base link is assumed to be zero for 
+        angular and gravity accelration for linear 
         """
         # LHS
         J_twist_accel_i_mius_1 = np.identity(6)
         # RHS
-        b_twist_accel = np.zeros(6)
+        b_twist_accel = np.array([0, 0, 0, 0, 0, 9.8])
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(symbol(ord('t'), 0),
                                     J_twist_accel_i_mius_1, b_twist_accel, model)
@@ -205,12 +245,18 @@ class forward_factor_graph_way_RR():
 
     def factor_graph_optimization(self):
         """
-        optimize factor graph for RR manipulator forward dynamics
+        optimize factor graph for manipulator forward dynamics
         Return wrench on first link
+        Return joint accelerations
         """
         gfg = self.forward_factor_graph()
         results = gfg.optimize()
-        return results.at(symbol(ord('w'), 1))
+        return np.array([results.at(symbol(ord('j'), 1)), 
+                         results.at(symbol(ord('j'), 2)),
+                         results.at(symbol(ord('j'), 3)),
+                         results.at(symbol(ord('j'), 4)),
+                         results.at(symbol(ord('j'), 5)),
+                         results.at(symbol(ord('j'), 6))])
 
 
 class TestForwardDynamics(GtsamTestCase):
@@ -222,10 +268,10 @@ class TestForwardDynamics(GtsamTestCase):
 
     def test_RR_forward_dynamics(self):
         """Try a simple RR robot."""
-        expected_joint_accels = forward_traditional_way_RR()
+        expected_joint_accels = forward_traditional_way('puma')
         # Call a function with appropriate arguments to co compute them
-        ffg_way_RR = forward_factor_graph_way_RR(2)
-        actual_joint_accels = ffg_way_RR.factor_graph_optimization()
+        ffg_way = forward_factor_graph_way('puma')
+        actual_joint_accels = ffg_way.factor_graph_optimization()
         np.testing.assert_array_almost_equal(
             actual_joint_accels, expected_joint_accels)
 
