@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import numpy as np
-from math import pi
 from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector
@@ -130,26 +129,6 @@ class LinkParameters(object):
 #                     -0.0122426673731905,	0.166693973271978,	7.20736555357164e-05, 0])
 # #========================================================================================
 
-# Denavit-Hartenberg parameters and input values for PUMA manipulator
-puma_link_parameters = [
-    LinkParameters( 0, 0, 0, 0, 'B', 0, 0, 0,     
-                   [0, 0, 0], [0, 0, 0], 0),
-    LinkParameters( 1, 1*5*pi/180., 0, -90*pi/180., 'R', 1*(-5)*pi/180., 1*(10)*pi/180., 0,     
-                   [0, 0, 0], [0, 0, 0.35], 0.626950752326773),
-    LinkParameters( 0.2435, 2*5*pi/180., 0.4318, 0, 'R', 2*(-5)*pi/180., 2*(10)*pi/180., 17.40, 
-                   [0.068, 0.006, -0.016], [0.130, 0.524, 0.539], -34.8262338725151),
-    LinkParameters(-0.0934, 3*5*pi/180., 0.0203, -90*pi/180., 'R', 3*(-5)*pi/180., 3*(10)*pi/180., 4.80,  
-                   [0, -0.070, 0.014], [0.066, 0.0125, 0.086], 1.02920598714973),
-    LinkParameters( 0.4331, 4*5*pi/180., 0, 90*pi/180., 'R', 4*(-5)*pi/180., 4*(10)*pi/180., 0.82,  
-                   [0, 0, -0.019], [0.0018, 0.0018, 0.00130], -0.0122426673731905),
-    LinkParameters( 0, 5*5*pi/180., 0, -90*pi/180., 'R', 5*(-5)*pi/180., 5*(10)*pi/180., 0.34,  
-                   [0, 0, 0], [0.00030, 0.00030, 0.00040], 0.166693973271978),
-    LinkParameters( 0.2000, 6*5*pi/180., 0, 90*pi/180., 'R', 6*(-5)*pi/180., 6*(10)*pi/180., 0.09,  
-                   [0, 0, 0.032], [0.00015, 0.00015, 0.00004], 7.20736555357164e-05),
-    LinkParameters( 0, 90*pi/180., 0, 0, 'G', 0, 0, 0,     
-                   [0, 0, 0], [0, 0, 0], 0),
-]
-
 # #========================================================================================
 # #RR manipulator Kinematic Parameters and Inputs
 # #joint offsets       0...n+1 (first element ignored)
@@ -182,11 +161,3 @@ puma_link_parameters = [
 # # torque applied on each joints (frist and last elements ignored)
 # dh_tq = np.array([0, 0, 0, 0])    
 # #========================================================================================
-
-# Denavit-Hartenberg parameters and input values for RR manipulator
-rr_link_parameters = [
-    LinkParameters( 0, 0, 0, 0, 'B', 0, 0, 0, [0, 0, 0], [0, 0, 0], 0),
-    LinkParameters( 0, 0, 2, 0, 'R', 1, 0, 1, [1, 0, 0], [0, 1/6., 1/6.], 0),
-    LinkParameters( 0, 0, 2, 0, 'R', 1, 0, 1, [1, 0, 0], [0, 1/6., 1/6.], 0),
-    LinkParameters( 0, 90 *pi/180., 0, 0, 'G', 0, 0, 0, [0, 0, 0], [0, 0, 0], 0)
-]
