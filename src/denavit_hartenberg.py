@@ -88,10 +88,6 @@ class DenavitHartenberg(object):
         """return link mass, take link index as input"""
         return self._link_parameters[i].mass
 
-    def link_center_of_mass(self, i):
-        """return link center of mass, take link index as input"""
-        return self._link_parameters[i].center_of_mass
-
 class LinkParameters(object):
     """
     parameters for a single link

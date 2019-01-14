@@ -205,38 +205,38 @@ class TestForwardDynamics(GtsamTestCase):
         """setup."""
         pass
 
-    # def test_RR_forward_dynamics(self):
-    #     """Try a simple RR robot."""
-    #     # Denavit-Hartenberg parameters for RR manipulator
-    #     rr_link_parameters = [
-    #         LinkParameters( 0, 0, 0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
-    #         LinkParameters( 0, 0, 2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-    #         LinkParameters( 0, 0, 2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-    #         LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
-    #     ]
+    def test_RR_forward_dynamics(self):
+        """Try a simple RR robot."""
+        # Denavit-Hartenberg parameters for RR manipulator
+        rr_link_parameters = [
+            LinkParameters( 0, 0,  0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
+            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+            LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
+        ]
 
-    #     RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
-    #     expected_joint_accels = vector(0, 0) # frome MATLAB
-    #     # Call a function with appropriate arguments to co compute them
-    #     joint_velocity = [0, 1, 1, 0]
-    #     joint_torque = [0, 0, 0, 0]
-    #     factor_graph = forward_factor_graph_way(RR_calibration, joint_velocity, joint_torque)
-    #     actual_joint_accels = factor_graph.factor_graph_optimization()
-    #     np.testing.assert_array_almost_equal(
-    #         actual_joint_accels, expected_joint_accels)
+        RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
+        expected_joint_accels = vector(0, 0) # frome MATLAB
+        # Call a function with appropriate arguments to co compute them
+        joint_velocity = [0, 1, 1, 0]
+        joint_torque = [0, 0, 0, 0]
+        factor_graph = forward_factor_graph_way(RR_calibration, joint_velocity, joint_torque)
+        actual_joint_accels = factor_graph.factor_graph_optimization()
+        np.testing.assert_array_almost_equal(
+            actual_joint_accels, expected_joint_accels)
 
     def test_PUMA_forward_dynamics(self):
         """Try a PUMA robot."""
         # Denavit-Hartenberg parameters for PUMA manipulator
         puma_link_parameters = [
-            LinkParameters(0, 0, 0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
-            LinkParameters(1, 1*5, 0, -90, 'R', 0, [0, 0, 0], [0, 0, 0.35]),
-            LinkParameters(0.2435, 2*5, 0.4318, 0, 'R', 17.40, [0.068, 0.006, -0.016], [0.130, 0.524, 0.539]),
-            LinkParameters(-0.0934, 3*5, 0.0203, -90, 'R', 4.80, [0, -0.070, 0.014], [0.066, 0.0125, 0.086]),
-            LinkParameters(0.4331, 4*5, 0, 90, 'R', 0.82, [0, 0, -0.019], [0.0018, 0.0018, 0.00130]),
-            LinkParameters(0, 5*5, 0, -90, 'R', 0.34, [0, 0, 0], [0.00030, 0.00030, 0.00040]),
-            LinkParameters(0.2000, 6*5, 0, 90, 'R', 0.09, [0, 0, 0.032], [0.00015, 0.00015, 0.00004]),
-            LinkParameters(0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0]),
+            LinkParameters( 0,      0,  0,       0,  'B', 0,     [0, 0, 0],              [0, 0, 0]),
+            LinkParameters( 1,      5,  0,      -90, 'R', 0,     [0, 0, 0],              [0, 0, 0.35]),
+            LinkParameters( 0.2435, 10, 0.4318,  0,  'R', 17.40, [0.068, 0.006, -0.016], [0.130, 0.524, 0.539]),
+            LinkParameters(-0.0934, 15, 0.0203, -90, 'R', 4.80,  [0, -0.070, 0.014],     [0.066, 0.0125, 0.086]),
+            LinkParameters( 0.4331, 20, 0,       90, 'R', 0.82,  [0, 0, -0.019],         [0.0018, 0.0018, 0.00130]),
+            LinkParameters( 0,      25, 0,      -90, 'R', 0.34,  [0, 0, 0],              [0.00030, 0.00030, 0.00040]),
+            LinkParameters( 0.2000, 30, 0,       90, 'R', 0.09,  [0, 0, 0.032],          [0.00015, 0.00015, 0.00004]),
+            LinkParameters( 0,      90, 0,       0,  'G', 0,     [0, 0, 0],              [0, 0, 0]),
         ]
 
         PUMA_calibration = DenavitHartenberg(puma_link_parameters, 6)
