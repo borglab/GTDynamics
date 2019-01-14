@@ -80,6 +80,12 @@ def get_screw_axis(num_of_links, paras):
                                                                    -paras.dh_com[2, i]))], axis=0)    
     return screw_axis
 
+def joint_accel_result(num_of_links, results):
+    joint_accel_result = np.array([])
+    for i in range(1, num_of_links+1):
+        joint_accel_result = np.append(joint_accel_result, results.at(symbol(ord('j'), i)))
+    return joint_accel_result
+
 class forward_factor_graph_way():
     """
         Calculate forward dynamics for manipulator (Puma robot arm)
@@ -252,10 +258,7 @@ class forward_factor_graph_way():
         """
         gfg = self.forward_factor_graph()
         results = gfg.optimize()
-        joint_accel_result = np.array([])
-        for i in range(1, self.num_of_links+1):
-            joint_accel_result = np.append(joint_accel_result, results.at(symbol(ord('j'), i)))
-        return joint_accel_result
+        return joint_accel_result(self.num_of_links, results)
 
 
 class TestForwardDynamics(GtsamTestCase):
