@@ -251,12 +251,10 @@ class forward_factor_graph_way():
         """
         gfg = self.forward_factor_graph()
         results = gfg.optimize()
-        return np.array([results.at(symbol(ord('j'), 1)), 
-                         results.at(symbol(ord('j'), 2)),
-                         results.at(symbol(ord('j'), 3)),
-                         results.at(symbol(ord('j'), 4)),
-                         results.at(symbol(ord('j'), 5)),
-                         results.at(symbol(ord('j'), 6))])
+        joint_accel_result = np.array([])
+        for i in range(1, self.num_of_links+1):
+            joint_accel_result = np.append(joint_accel_result, results.at(symbol(ord('j'), i)))
+        return joint_accel_result
 
 
 class TestForwardDynamics(GtsamTestCase):
