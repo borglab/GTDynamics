@@ -79,27 +79,27 @@ class DenavitHartenberg(object):
 
 class LinkParameters(object):
     """
-    parameters for a signle link
+    parameters for a single link
     """
     def __init__(self, joint_offset, joint_angle, joint_normal, twist_angle,
                 joint_type, joint_vel, joint_accel, mass, center_of_mass,
                 inertia, torque):
         """
-        arguments:
-        joint_offset: distance between two joints along joint axis
-        joint_angle: initial angle of joint
-        joint_normal: distance between two joints along common 
-                      normal of two joint axises
-        twist_angle: angle between joint axises
-        joint_type: R:revolute
-                    P:prismatic
-        joint_vel: joint velocity
-        joint_accel: joint acceleration
-        mass: mass of link
-        center_of_mass: center of mass location expressed 
-                        in link frame
-        inertia: principal inertias 
-        torque: torque applied to joint
+        Construct from arguments:
+            joint_offset (float)  : distance between two joints along joint axis
+            joint_angle (float)   : initial angle of joint
+            joint_normal (float)  : distance between two joints along common 
+                                    normal of two joint axises
+            twist_angle (float)   : angle between joint axises
+            joint_type (float)    : R:revolute
+                                    P:prismatic
+            joint_vel (float)     : joint velocity
+            joint_accel (float)   : joint acceleration
+            mass (float)          : mass of link
+            center_of_mass (float): center of mass location expressed 
+                                    in link frame
+            inertia (float)       : principal inertias 
+            torque (float)        : torque applied to joint
         """
         self.joint_offset = joint_offset
         self.joint_angle = joint_angle
@@ -112,69 +112,3 @@ class LinkParameters(object):
         self.center_of_mass = center_of_mass
         self.inertia = inertia
         self.torque = torque
-
-# #========================================================================================
-# #Puma Kinematic Parameters and Inputs
-# #joint offsets       0...n+1 (first element ignored)
-# dh_d = np.array([0, 1, 0.2435, -0.0934, 0.4331, 0, 0.2000, 0])        
-# #joint angles        0...n+1 (first element ignored) 
-# dh_t = np.array([0, 1, 2, 3, 4, 5, 6, 90/5.])*( 5)*pi/180.
-# #link common normals 0...n+1 (last  element ignored)
-# dh_a = np.array([0, 0, 0.4318, 0.0203, 0, 0, 0, 0])           
-# #link twist angles   0...n+1 (last  element ignored)
-# dh_f = np.array([0, -90, 0, -90, 90, -90, 90, 0])*pi/180.  
-# #{R/P/G/B/N} = {Revolute/Prismatic/Gripper/Base/None} joint type
-# dh_j = np.array(['B', 'R', 'R', 'R', 'R', 'R', 'R', 'G'])      
-# #joint velocities    0...n+1 (first element ignored)
-# dh_td = np.array([0, 1, 2, 3, 4, 5, 6, 0])*(-5)*pi/180.
-# #joint accelerations 0...n+1 (first element ignored)
-# dh_tdd = np.array([0, 1, 2, 3, 4, 5, 6, 0])*(10)*pi/180.
-
-# #Puma Dynamics Parameters
-# #link masses (first and last element are ignored)
-# dh_m = np.array([0, 0, 17.40, 4.80, 0.82, 0.34, 0.09, 0])
-# #ith center-of-mass location in frame i 0...n+1 (first and last elements ignored)
-# dh_com = np.array([[0, 0, 0.068, 0, 0, 0, 0, 0],         
-#                    [0, 0, 0.006, -0.070, 0, 0, 0, 0], 
-#                    [0, 0, -0.016, 0.014, -0.019, 0, 0.032, 0]])
-# #ith principal inertias i 0...n+1 (first and last elements ignored)
-# dh_pI = np.array([[0, 0, 0.130, 0.066, 0.0018, 0.00030, 0.00015, 0],              
-#                   [0, 0, 0.524, 0.0125, 0.00180, 0.00030, 0.00015, 0],
-#                   [0, 0.35, 0.539, 0.086, 0.00130, 0.00040, 0.00004, 0]])
-# # torque applied on each joints (frist and last elements ignored)
-# dh_tq = np.array([0, 0.626950752326773,	-34.8262338725151,	1.02920598714973,
-#                     -0.0122426673731905,	0.166693973271978,	7.20736555357164e-05, 0])
-# #========================================================================================
-
-# #========================================================================================
-# #RR manipulator Kinematic Parameters and Inputs
-# #joint offsets       0...n+1 (first element ignored)
-# dh_d = np.array([0, 0, 0, 0])          
-# #joint angles        0...n+1 (first element ignored) 
-# dh_t = np.array([0, 0, 0, 0])
-# #link common normals 0...n+1 (last  element ignored)
-# dh_a = np.array([0, 2, 2, 0])         
-# #link twist angles   0...n+1 (last  element ignored)
-# dh_f = np.array([0, 0, 0, 0])
-# #{R/P/G/B/N} = {Revolute/Prismatic/Gripper/Base/None} joint type
-# dh_j = np.array(['B', 'R', 'R', 'G'])      
-
-# #joint velocities    0...n+1 (first element ignored)
-# dh_td = np.array([0, 1, 1, 0])
-# #joint accelerations 0...n+1 (first element ignored)
-# dh_tdd = np.array([0, 0, 0, 0])
-
-# #Puma Dynamics Parameters
-# #link masses (first and last element are ignored)
-# dh_m = np.array([0, 1, 1, 1, 1, 1, 1, 0])
-# #ith center-of-mass location in frame i 0...n+1 (first and last elements ignored)
-# dh_com = np.array([[0, 1, 1, 0],         
-#                    [0, 0, 0, 0], 
-#                    [0, 0, 0, 0]])
-# #ith principal inertias i 0...n+1 (first and last elements ignored)
-# dh_pI = np.array([[0, 0, 0, 0],              
-#                   [0, 1/6., 1/6., 0],
-#                   [0, 1/6., 1/6., 0]])
-# # torque applied on each joints (frist and last elements ignored)
-# dh_tq = np.array([0, 0, 0, 0])    
-# #========================================================================================
