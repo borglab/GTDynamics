@@ -152,10 +152,10 @@ class forward_factor_graph_way():
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -utils.genaral_mass_matrix(self.I[:,i], self.m[i])
+        J_twist_accel_i = -utils.inertia_matrix(self.I[:,i], self.m[i])
         # RHS of wrench equation
         b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                                utils.genaral_mass_matrix(self.I[:,i], self.m[i])), self.twist_i)
+                                utils.inertia_matrix(self.I[:,i], self.m[i])), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,

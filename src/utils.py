@@ -50,7 +50,7 @@ def adtwist(twist):
     return adt
 
 
-def genaral_mass_matrix(Ib, mass):
+def inertia_matrix(Ib, mass):
     """Return the general mass matrix"""
     gmm = np.zeros((6, 6), np.float)
     gmm[:3, :3] = np.diag(Ib)
