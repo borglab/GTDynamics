@@ -20,8 +20,7 @@ import link_parameters
 
 def forward_traditional_way(paras):
     """
-    Calculate joint accelerations for manipulator (Puma robot arm)
-    with 6 revolute joints using traditional method 
+    Calculate joint accelerations for manipulator using traditional method 
     Return joint accelerations
     arguments: paras:
                Denavit-Hartenberg parameters and
@@ -31,7 +30,7 @@ def forward_traditional_way(paras):
 
 def get_link_configuration(num_of_links, paras):
     """
-    return each link frame (origined at center of mass) 
+    return each link frame (origin at center of mass) 
     expressed in space frame
     arguments: paras:
                Denavit-Hartenberg parameters and
@@ -88,14 +87,12 @@ def joint_accel_result(num_of_links, results):
 
 class forward_factor_graph_way():
     """
-        Calculate forward dynamics for manipulator (Puma robot arm)
-        with 6 revolute joints using factor graph method
+        Calculate forward dynamics for manipulator using factor graph method
     """
     def __init__(self, paras):
         """
         Constructor that initializes forward factor graph
         for dynamics of manipulator (Puma robot arm or RR)
-        with only revolute joints
         arguments: paras:
                    Denavit-Hartenberg parameters and
                    input values for PUMA manipulator
