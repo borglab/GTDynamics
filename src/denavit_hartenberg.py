@@ -1,13 +1,8 @@
 #!/usr/bin/env python
-from math import pi
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector
-
-def degrees_to_radians(degrees):
-    """convert degrees to radians"""
-    return degrees * pi / 180. 
 
 def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
                     joint_normal, joint_angle, joint_offset, center_of_mass):
@@ -39,8 +34,7 @@ def screw_axis_for_one_link(link):
 
 class DenavitHartenberg(object):
     """
-    Denavit-Hartenberg labeling parameters
-    and input values for manipulators
+    Denavit-Hartenberg labeling parameters for manipulators
     """
     def __init__(self, link_parameters, num_of_links):
         self._link_parameters = link_parameters
@@ -103,8 +97,7 @@ class LinkParameters(object):
     parameters for a single link
     """
     def __init__(self, joint_offset, joint_angle, joint_normal, twist_angle,
-                joint_type, joint_vel, joint_accel, mass, center_of_mass,
-                inertia, torque):
+                joint_type,  mass, center_of_mass, inertia):
         """
         Construct from arguments:
             joint_offset (float)  : distance between two joints along joint axis
@@ -114,22 +107,16 @@ class LinkParameters(object):
             twist_angle (float)   : angle between joint axises
             joint_type (char)     : R:revolute
                                     P:prismatic
-            joint_vel (float)     : joint velocity
-            joint_accel (float)   : joint acceleration
             mass (float)          : mass of link
             center_of_mass (float): center of mass location expressed 
                                     in link frame
             inertia (float)       : principal inertias 
-            torque (float)        : torque applied to joint
         """
         self.joint_offset = joint_offset
-        self.joint_angle = degrees_to_radians(joint_angle) 
+        self.joint_angle = utils.degrees_to_radians(joint_angle) 
         self.joint_normal = joint_normal
-        self.twist_angle = degrees_to_radians(twist_angle)
+        self.twist_angle = utils.degrees_to_radians(twist_angle)
         self.joint_type = joint_type
-        self.joint_vel = degrees_to_radians(joint_vel)
-        self.joint_accel = degrees_to_radians(joint_accel)
         self.mass = mass
         self.center_of_mass = center_of_mass
         self.inertia = inertia
-        self.torque = torque

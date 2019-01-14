@@ -6,11 +6,16 @@ Author: Frank Dellaert
 # pylint: disable=C0103, E1101, E0401
 
 from __future__ import print_function
+from math import pi
 
 import unittest
 
 import numpy as np
 from gtsam import Point3
+
+def degrees_to_radians(degrees):
+    """convert degrees to radians"""
+    return degrees * pi / 180. 
 
 
 def vector(*floats):
