@@ -1,8 +1,13 @@
 #!/usr/bin/env python
+from math import pi
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector
+
+def degrees_to_radians(degrees):
+    """convert degrees to radians"""
+    return degrees * pi / 180. 
 
 def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
                     joint_normal, joint_angle, joint_offset, center_of_mass):
@@ -91,7 +96,7 @@ class LinkParameters(object):
             joint_normal (float)  : distance between two joints along common 
                                     normal of two joint axises
             twist_angle (float)   : angle between joint axises
-            joint_type (float)    : R:revolute
+            joint_type (char)     : R:revolute
                                     P:prismatic
             joint_vel (float)     : joint velocity
             joint_accel (float)   : joint acceleration
@@ -102,12 +107,12 @@ class LinkParameters(object):
             torque (float)        : torque applied to joint
         """
         self.joint_offset = joint_offset
-        self.joint_angle = joint_angle
+        self.joint_angle = degrees_to_radians(joint_angle) 
         self.joint_normal = joint_normal
-        self.twist_angle = twist_angle
+        self.twist_angle = degrees_to_radians(twist_angle)
         self.joint_type = joint_type
-        self.joint_vel = joint_vel
-        self.joint_accel = joint_accel
+        self.joint_vel = degrees_to_radians(joint_vel)
+        self.joint_accel = degrees_to_radians(joint_accel)
         self.mass = mass
         self.center_of_mass = center_of_mass
         self.inertia = inertia

@@ -7,7 +7,6 @@ Author: Frank Dellaert and Mandy Xie
 # pylint: disable=C0103, E1101, E0401
 
 from __future__ import print_function
-from math import pi
 
 import unittest
 import numpy as np
@@ -40,9 +39,9 @@ class forward_factor_graph_way():
         """
         # number of revolute joint
         self.calibration = calibration
-        # configuration of base com frame in space frame s
+        # configuration of base com frame in space ffrom math import pime s
         self.link_config = calibration.link_configuration()
-        # screw axis for each joints expressed in its link frame 
+        # screw axis for each joints expressed in itfrom math import pilink frame 
         self.screw_axis = calibration.screw_axis()
         # twist of link 0
         self.twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
@@ -208,7 +207,7 @@ class TestForwardDynamics(GtsamTestCase):
             LinkParameters( 0, 0, 0, 0, 'B', 0, 0, 0, [0, 0, 0], [0, 0, 0], 0),
             LinkParameters( 0, 0, 2, 0, 'R', 1, 0, 1, [1, 0, 0], [0, 1/6., 1/6.], 0),
             LinkParameters( 0, 0, 2, 0, 'R', 1, 0, 1, [1, 0, 0], [0, 1/6., 1/6.], 0),
-            LinkParameters( 0, 90 *pi/180., 0, 0, 'G', 0, 0, 0, [0, 0, 0], [0, 0, 0], 0)
+            LinkParameters( 0, 90, 0, 0, 'G', 0, 0, 0, [0, 0, 0], [0, 0, 0], 0)
         ]
 
         RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
@@ -225,24 +224,24 @@ class TestForwardDynamics(GtsamTestCase):
         puma_link_parameters = [
             LinkParameters( 0, 0, 0, 0, 'B', 0, 0, 0,     
                         [0, 0, 0], [0, 0, 0], 0),
-            LinkParameters( 1, 1*5*pi/180., 0, -90*pi/180., 'R', 1*(-5)*pi/180., 1*(10)*pi/180., 0,     
+            LinkParameters( 1, 1*5, 0, -90, 'R', 1*(-5), 1*(10), 0,     
                         [0, 0, 0], [0, 0, 0.35], 0.626950752326773),
-            LinkParameters( 0.2435, 2*5*pi/180., 0.4318, 0, 'R', 2*(-5)*pi/180., 2*(10)*pi/180., 17.40, 
+            LinkParameters( 0.2435, 2*5, 0.4318, 0, 'R', 2*(-5), 2*10, 17.40, 
                         [0.068, 0.006, -0.016], [0.130, 0.524, 0.539], -34.8262338725151),
-            LinkParameters(-0.0934, 3*5*pi/180., 0.0203, -90*pi/180., 'R', 3*(-5)*pi/180., 3*(10)*pi/180., 4.80,  
+            LinkParameters(-0.0934, 3*5, 0.0203, -90, 'R', 3*(-5), 3*10, 4.80,  
                         [0, -0.070, 0.014], [0.066, 0.0125, 0.086], 1.02920598714973),
-            LinkParameters( 0.4331, 4*5*pi/180., 0, 90*pi/180., 'R', 4*(-5)*pi/180., 4*(10)*pi/180., 0.82,  
+            LinkParameters( 0.4331, 4*5, 0, 90, 'R', 4*(-5), 4*10, 0.82,  
                         [0, 0, -0.019], [0.0018, 0.0018, 0.00130], -0.0122426673731905),
-            LinkParameters( 0, 5*5*pi/180., 0, -90*pi/180., 'R', 5*(-5)*pi/180., 5*(10)*pi/180., 0.34,  
+            LinkParameters( 0, 5*5, 0, -90, 'R', 5*(-5), 5*10, 0.34,  
                         [0, 0, 0], [0.00030, 0.00030, 0.00040], 0.166693973271978),
-            LinkParameters( 0.2000, 6*5*pi/180., 0, 90*pi/180., 'R', 6*(-5)*pi/180., 6*(10)*pi/180., 0.09,  
+            LinkParameters( 0.2000, 6*5, 0, 90, 'R', 6*(-5), 6*10, 0.09,  
                         [0, 0, 0.032], [0.00015, 0.00015, 0.00004], 7.20736555357164e-05),
-            LinkParameters( 0, 90*pi/180., 0, 0, 'G', 0, 0, 0,     
+            LinkParameters( 0, 90, 0, 0, 'G', 0, 0, 0,     
                         [0, 0, 0], [0, 0, 0], 0),
             ]
 
         PUMA_calibration = DenavitHartenberg(puma_link_parameters, 6)
-        expected_joint_accels = np.array([1, 2, 3, 4, 5, 6])*(10)*pi/180.
+        expected_joint_accels = np.array([ 0.174533,  0.349066,  0.523599,  0.698132,  0.872665,  1.047198])
         # Call a function with appropriate arguments to co compute them
         ffg_way = forward_factor_graph_way(PUMA_calibration)
         actual_joint_accels = ffg_way.factor_graph_optimization()
