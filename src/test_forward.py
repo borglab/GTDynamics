@@ -40,9 +40,9 @@ class forward_factor_graph_way():
         """
         # number of revolute joint
         self._calibration = calibration
-        # configuration of base com frame in space ffrom math import pime s
+        # configuration of base com frame in base frame
         self._link_config = calibration.link_configuration()
-        # screw axis for each joints expressed in itfrom math import pilink frame 
+        # screw axis for each joints expressed in its link frame 
         self._screw_axis = calibration.screw_axis()
         # twist of link 0
         self._twist_i_minus_1 = vector(0, 0, 0, 0, 0, 0)
@@ -77,6 +77,10 @@ class forward_factor_graph_way():
         """
         Return factor based on joint acceleration equation of the ith link
         """
+        # get inertia of link i
+        inertia = self._calibration.link_inertia(i)
+        # get mass of link i
+        mass = self._calibration.link_mass(i)
         # factor graph keys
         key_twist_accel_i = symbol(ord('t'), i)
         key_wrench_i = symbol(ord('w'), i)
@@ -88,12 +92,10 @@ class forward_factor_graph_way():
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -utils.inertia_matrix(self._calibration.link_inertia(i), 
-                                                self._calibration.link_mass(i))
+        J_twist_accel_i = -utils.inertia_matrix(inertia, mass)
         # RHS of wrench equation
         b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                        utils.inertia_matrix(self._calibration.link_inertia(i), 
-                                            self._calibration.link_mass(i))), self.twist_i)
+                        utils.inertia_matrix(inertia, mass)), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,
