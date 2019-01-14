@@ -43,7 +43,7 @@ class forward_factor_graph_way():
         # configuration of base com frame in space frame s
         self.link_config = calibration.link_configuration()
         # screw axis for each joints expressed in its link frame 
-        self.screw_axis = calibration.get_screw_axis()
+        self.screw_axis = calibration.screw_axis()
         # twist of link 0
         self.twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
 

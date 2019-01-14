@@ -7,8 +7,10 @@ from utils import vector
 def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
                     joint_normal, joint_angle, joint_offset, center_of_mass):
     """
-    return link i joint frame expressed base frame,
-    takes previous joint frame and denavit_hartenberg parameters as inputs 
+    Return link i joint frame expressed base frame and 
+    link i com frame expressed in space frame s 
+    Takes previous joint frame and 
+    denavit_hartenberg parameters as inputs 
     """
     # link i joint frame expressed in link i-1 joint frame
     joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(twist_angle), Point3(joint_normal, 0, 0)),
@@ -20,6 +22,15 @@ def calculate_frame_i(frame_joint_i_minus_1, twist_angle,
                                                                 center_of_mass[1], 
                                                                 center_of_mass[2])))
     return (frame_joint_i, frame_i)
+
+def screw_axis_for_one_link(link):
+    """
+    return screw axis expressed in link frame
+    take link parameter as input
+    """
+    return utils.unit_twist(vector(0, 0, 1), vector(-link.center_of_mass[0],
+                                                    -link.center_of_mass[1], 
+                                                    -link.center_of_mass[2]))    
 
 class DenavitHartenberg(object):
     """
@@ -60,18 +71,11 @@ class DenavitHartenberg(object):
         frame_joint_0 = Pose3()
         return [frame_0] + self._link_configuration_from(1, frame_joint_0)
 
-    def get_screw_axis(self):
+    def screw_axis(self):
         """
         return screw axis of each joints expressed in its own link frame
         """
-        screw_axis = np.array([utils.unit_twist(vector(0, 0, 0), vector(0, 0, 0))])
-        for i in range(1, self._num_of_links+1):
-            # screw axis for joint i expressed in link frame i
-            screw_axis = np.append(screw_axis, [utils.unit_twist(vector(0, 0, 1),
-                                                    vector(-self._link_parameters[i].center_of_mass[0],
-                                                           -self._link_parameters[i].center_of_mass[1], 
-                                                           -self._link_parameters[i].center_of_mass[2]))], axis=0)    
-        return screw_axis
+        return [screw_axis_for_one_link(link) for link in self._link_parameters]
 
 class LinkParameters(object):
     """
