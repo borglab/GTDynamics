@@ -4,62 +4,73 @@ from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector
 
+def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
+                    joint_normal, joint_angle, joint_offset, center_of_mass):
+    """
+    return link i joint frame expressed base frame,
+    takes previous joint frame and denavit_hartenberg parameters as inputs 
+    """
+    # link i joint frame expressed in link i-1 joint frame
+    joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(twist_angle), Point3(joint_normal, 0, 0)),
+                                                Pose3(Rot3.Yaw(joint_angle), Point3(0, 0, joint_offset)))
+    # link i joint frame expressed in space frame s
+    frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
+    # link i com frame expressed in space frame s 
+    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(center_of_mass[0],
+                                                                center_of_mass[1], 
+                                                                center_of_mass[2])))
+    return (frame_joint_i, frame_i)
+
 class DenavitHartenberg(object):
     """
     Denavit-Hartenberg labeling parameters
     and input values for manipulators
     """
     def __init__(self, link_parameters, num_of_links):
-        self.link_parameters = link_parameters
-        self.num_of_links = num_of_links
+        self._link_parameters = link_parameters
+        self._num_of_links = num_of_links
         
-    def get_link_configuration(self):
+    def _link_configuration_from(self, i, frame_joint_i_minus_1):
+        """
+        return all frames starting from joint i>0, 
+        takes previous frame as input.
+        """
+        if i > self._num_of_links + 1:
+            return []
+        else: 
+            # link i joint frame expressed in space frame s and 
+            # link i com frame expressed in space frame s 
+            frame_joint_i, frame_i = calculate_frame_i(frame_joint_i_minus_1, 
+                                                self._link_parameters[i-1].twist_angle,
+                                                self._link_parameters[i-1].joint_normal,
+                                                self._link_parameters[i].joint_angle,
+                                                self._link_parameters[i].joint_offset,
+                                                self._link_parameters[i].center_of_mass)
+            return [frame_i] + self._link_configuration_from(i+1, frame_joint_i)
+        
+
+    def link_configuration(self):
         """
         return each link frame (origin at center of mass) 
-        expressed in space frame
-        """
-        link_config = np.array(Pose3(Rot3(), Point3(0, 0, 0)))
-        # link i-1 joint frame expressed in space frame s
-        frame_joint_i_minus_1 = Pose3(Rot3(), Point3(0, 0, 0))
-
-        for i in range(1, self.num_of_links+1):
-            # link i joint frame expressed in link i-1 joint frame
-            joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(self.link_parameters[i-1].twist_angle), 
-                                                                Point3(self.link_parameters[i-1].joint_normal, 0, 0)),
-                                                          Pose3(Rot3.Yaw(self.link_parameters[i].joint_angle), 
-                                                                Point3(0, 0, self.link_parameters[i].joint_offset)))
-            # link i joint frame expressed in space frame s
-            frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
-            # update link i-1 joint frame in space frame s for next iteration
-            frame_joint_i_minus_1 = frame_joint_i
-            # link i com frame expressed in space frame s 
-            frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(self.link_parameters[i].center_of_mass[0],
-                                                                        self.link_parameters[i].center_of_mass[1], 
-                                                                        self.link_parameters[i].center_of_mass[2])))
-            link_config = np.append(link_config, frame_i)
-
-        # configuration of link eef frame expressed in space frame num_of_links
-        # eef frame expressed in last link joint frame
-        joint_last_frame_eef = utils.compose(Pose3(Rot3.Roll(self.link_parameters[self.num_of_links].twist_angle), 
-                                                   Point3(self.link_parameters[self.num_of_links].joint_normal, 0, 0)),
-                                             Pose3(Rot3.Yaw(self.link_parameters[self.num_of_links+1].joint_angle), 
-                                                   Point3(0, 0, self.link_parameters[self.num_of_links+1].joint_offset)))
-        # eef frame expressed in space frame s
-        frame_eef = utils.compose(frame_joint_i_minus_1, joint_last_frame_eef)
-        link_config = np.append(link_config, frame_eef)
-        return link_config
+        expressed in base frame
+        """ 
+        # link 0 com frame expressed in base frame
+        frame_0 = Pose3()
+        # link 0 joint frame expressed in base frame
+        frame_joint_0 = Pose3()
+        return [frame_0] + self._link_configuration_from(1, frame_joint_0)
 
     def get_screw_axis(self):
         """
         return screw axis of each joints expressed in its own link frame
         """
         screw_axis = np.array([utils.unit_twist(vector(0, 0, 0), vector(0, 0, 0))])
-        for i in range(1, self.num_of_links+1):
+        for i in range(1, self._num_of_links+1):
             # screw axis for joint i expressed in link frame i
             screw_axis = np.append(screw_axis, [utils.unit_twist(vector(0, 0, 1),
-                                                    vector(-self.link_parameters[i].center_of_mass[0],
-                                                           -self.link_parameters[i].center_of_mass[1], 
-                                                           -self.link_parameters[i].center_of_mass[2]))], axis=0)    
+                                                    vector(-self._link_parameters[i].center_of_mass[0],
+                                                           -self._link_parameters[i].center_of_mass[1], 
+                                                           -self._link_parameters[i].center_of_mass[2]))], axis=0)    
         return screw_axis
 
 class LinkParameters(object):

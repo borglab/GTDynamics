@@ -19,20 +19,6 @@ from utils import vector, GtsamTestCase
 
 from denavit_hartenberg import DenavitHartenberg, LinkParameters
 
-def forward_traditional_way(calibration):
-    """
-    Calculate joint accelerations for manipulator using traditional method 
-    Return joint accelerations
-    arguments: calibration:
-               Denavit-Hartenberg parameters and
-               input values for PUMA manipulator
-    """
-    joint_accel_result = np.array([])
-    for i in range(1, calibration.num_of_links+1):
-        joint_accel_result = np.append(joint_accel_result, 
-                                    calibration.link_parameters[i].joint_accel)
-    return joint_accel_result
-
 def joint_accel_result(num_of_links, results):
     joint_accel_result = np.array([])
     for i in range(1, num_of_links+1):
@@ -55,7 +41,7 @@ class forward_factor_graph_way():
         # number of revolute joint
         self.calibration = calibration
         # configuration of base com frame in space frame s
-        self.link_config = calibration.get_link_configuration()
+        self.link_config = calibration.link_configuration()
         # screw axis for each joints expressed in its link frame 
         self.screw_axis = calibration.get_screw_axis()
         # twist of link 0
@@ -77,7 +63,7 @@ class forward_factor_graph_way():
 
         # RHS of acceleration equation
         b_accel = np.dot(Pose3.adjointMap(self.twist_i), 
-                    self.screw_axis[i]*self.calibration.link_parameters[i].joint_vel)
+                    self.screw_axis[i]*self.calibration._link_parameters[i].joint_vel)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_mius_1,
@@ -100,12 +86,12 @@ class forward_factor_graph_way():
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
-        J_twist_accel_i = -utils.inertia_matrix(self.calibration.link_parameters[i].inertia, 
-                                                self.calibration.link_parameters[i].mass)
+        J_twist_accel_i = -utils.inertia_matrix(self.calibration._link_parameters[i].inertia, 
+                                                self.calibration._link_parameters[i].mass)
         # RHS of wrench equation
         b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                        utils.inertia_matrix(self.calibration.link_parameters[i].inertia, 
-                                            self.calibration.link_parameters[i].mass)), self.twist_i)
+                        utils.inertia_matrix(self.calibration._link_parameters[i].inertia, 
+                                            self.calibration._link_parameters[i].mass)), self.twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,
@@ -123,7 +109,7 @@ class forward_factor_graph_way():
         # LHS of torque equation
         J_wrench_i = np.array([self.screw_axis[i]])
         # RHS of torque equation
-        b_torque = np.array([self.calibration.link_parameters[i].torque])
+        b_torque = np.array([self.calibration._link_parameters[i].torque])
         model = gtsam.noiseModel_Diagonal.Sigmas(np.array([0.0]))
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i, b_torque, model)
 
@@ -151,7 +137,7 @@ class forward_factor_graph_way():
         # RHS
         b_wrench = np.zeros(6)
         model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(symbol(ord('w'), self.calibration.num_of_links + 1),
+        return gtsam.JacobianFactor(symbol(ord('w'), self.calibration._num_of_links + 1),
                                     J_wrench_i_plus_1, b_wrench, model)
 
     def calculate_twist_i(self, i_T_i_minus_1, i):
@@ -160,8 +146,7 @@ class forward_factor_graph_way():
         Return twist on the ith link
         """
         twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                        self.twist_i_mius_1) + 
-                        self.screw_axis[i]*self.calibration.link_parameters[i].joint_vel
+                        self.twist_i_mius_1) + self.screw_axis[i]*self.calibration._link_parameters[i].joint_vel
         return twist_i
 
 
@@ -177,7 +162,7 @@ class forward_factor_graph_way():
         # prior factor, link 0 twist acceleration = 0
         gfg.add(self.prior_factor_base())
 
-        for i in range(1, self.calibration.num_of_links + 1):
+        for i in range(1, self.calibration._num_of_links + 1):
             # configuration of link frame i-1 relative to link frame i for joint i angle 0
             i_T_i_minus_1 = self.link_config[i].between(self.link_config[i-1])
 
@@ -206,7 +191,7 @@ class forward_factor_graph_way():
         """
         gfg = self.forward_factor_graph()
         results = gfg.optimize()
-        return joint_accel_result(self.calibration.num_of_links, results)
+        return joint_accel_result(self.calibration._num_of_links, results)
 
 
 class TestForwardDynamics(GtsamTestCase):
@@ -227,7 +212,7 @@ class TestForwardDynamics(GtsamTestCase):
         ]
 
         RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
-        expected_joint_accels = forward_traditional_way(RR_calibration)
+        expected_joint_accels = [0, 0]
         # Call a function with appropriate arguments to co compute them
         ffg_way = forward_factor_graph_way(RR_calibration)
         actual_joint_accels = ffg_way.factor_graph_optimization()
@@ -257,7 +242,7 @@ class TestForwardDynamics(GtsamTestCase):
             ]
 
         PUMA_calibration = DenavitHartenberg(puma_link_parameters, 6)
-        expected_joint_accels = forward_traditional_way(PUMA_calibration)
+        expected_joint_accels = np.array([1, 2, 3, 4, 5, 6])*(10)*pi/180.
         # Call a function with appropriate arguments to co compute them
         ffg_way = forward_factor_graph_way(PUMA_calibration)
         actual_joint_accels = ffg_way.factor_graph_optimization()
