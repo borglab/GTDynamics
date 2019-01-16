@@ -50,7 +50,8 @@ class forward_factor_graph_way():
         take joint angles as input
         """
         return [Pose3()] + [utils.compose(self._link_config_home[i].between(self._link_config_home[i-1]), 
-                Pose3(Rot3.Yaw(joint_angles[i]), Point3())) for i in range(1, self._calibration.num_of_links()+2)]
+                Pose3(Rot3.Yaw(utils.degrees_to_radians(joint_angles[i])), Point3())) 
+                for i in range(1, self._calibration.num_of_links()+2)]
 
 
     def link_twist_i(self, i_T_i_minus_1, twist_i_mius_1, joint_vel_i, screw_axis_i):
@@ -184,11 +185,11 @@ class forward_factor_graph_way():
         for i in range(1, self._calibration.num_of_links() + 1):
             # ith link twist
             twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, 
-                joint_velocities[i], screw_axis[i])
+                utils.degrees_to_radians(joint_velocities[i]), screw_axis[i])
 
             # factor 1
             gfg.add(self.twist_accel_factor(link_config[i], twist_i, 
-                joint_velocities[i], screw_axis[i], i))
+                utils.degrees_to_radians(joint_velocities[i]), screw_axis[i], i))
 
             # factor 2
             gfg.add(self.joint_accel_factor(link_config[i+1], twist_i, i))
