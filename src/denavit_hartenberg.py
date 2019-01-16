@@ -46,7 +46,8 @@ class DenavitHartenberg(object):
     def __init__(self, link_parameters, num_of_links):
         self._link_parameters = link_parameters
         self._num_of_links = num_of_links
-        
+    
+    #TODO: modify this function 
     def _link_configuration_from(self, i, frame_joint_i_minus_1):
         """
         recursively call this function to get all link configurations
