@@ -174,7 +174,7 @@ class forward_factor_graph_way():
         gfg.add(self.prior_factor_base())
 
         # screw axis for each joints expressed in its link frame 
-        screw_axis = self._calibration.screw_axis()
+        screw_axes = self._calibration.screw_axes()
 
         # configuration of link frame i-1 relative to link frame i for arbitrary joint angle
         link_config = self.link_configuration(joint_angles)
@@ -184,16 +184,16 @@ class forward_factor_graph_way():
 
         for i in range(1, self._calibration.num_of_links() + 1):
             # ith link twist
-            twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, joint_velocities[i], screw_axis[i])
+            twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, joint_velocities[i], screw_axes[i])
 
             # factor 1
-            gfg.add(self.twist_accel_factor(link_config[i], twist_i, joint_velocities[i], screw_axis[i], i))
+            gfg.add(self.twist_accel_factor(link_config[i], twist_i, joint_velocities[i], screw_axes[i], i))
 
             # factor 2
             gfg.add(self.joint_accel_factor(link_config[i+1], twist_i, i))
 
             # factor 3
-            gfg.add(self.wrench_factor(joint_torques[i], screw_axis[i], i))
+            gfg.add(self.wrench_factor(joint_torques[i], screw_axes[i], i))
 
             # update link i-1 twist for the next iteration
             twist_i_mius_1 = twist_i

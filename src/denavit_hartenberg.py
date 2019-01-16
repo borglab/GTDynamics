@@ -4,34 +4,6 @@ from gtsam import Point3, Pose3, Rot3, symbol
 import utils
 from utils import vector
 
-def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
-                    joint_normal, joint_angle, joint_offset, center_of_mass):
-    """
-    Return link i joint frame expressed base frame and 
-    link i com frame expressed in space frame s 
-    Takes previous joint frame and 
-    denavit_hartenberg parameters as inputs 
-    """
-    # link i joint frame expressed in link i-1 joint frame
-    joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(twist_angle), Point3(joint_normal, 0, 0)),
-                                                Pose3(Rot3.Yaw(joint_angle), Point3(0, 0, joint_offset)))
-    # link i joint frame expressed in space frame s
-    frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
-    # link i com frame expressed in space frame s 
-    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(center_of_mass[0],
-                                                                center_of_mass[1], 
-                                                                center_of_mass[2])))
-    return (frame_joint_i, frame_i)
-
-def screw_axis_for_one_link(link):
-    """
-    return screw axis expressed in link frame
-    take link parameter as input
-    """
-    return utils.unit_twist(vector(0, 0, 1), vector(-link.center_of_mass[0],
-                                                    -link.center_of_mass[1], 
-                                                    -link.center_of_mass[2]))    
-
 class DenavitHartenberg(object):
     """
     Denavit-Hartenberg labeling parameters for manipulators
@@ -70,11 +42,11 @@ class DenavitHartenberg(object):
         frame_joint_0 = Pose3()
         return [frame_0] + self._link_configuration_from(1, frame_joint_0)
 
-    def screw_axis(self):
+    def screw_axes(self):
         """
         return screw axis of each joints expressed in its own link frame
         """
-        return [screw_axis_for_one_link(link) for link in self._link_parameters]
+        return [link.screw_axis() for link in self._link_parameters]
     
     def num_of_links(self):
         """return number of links, take link index as input"""
@@ -87,6 +59,25 @@ class DenavitHartenberg(object):
     def link_mass(self, i):
         """return link mass, take link index as input"""
         return self._link_parameters[i].mass
+
+def calculate_frame_i(frame_joint_i_minus_1, twist_angle, 
+                    joint_normal, joint_angle, joint_offset, center_of_mass):
+    """
+    Return link i joint frame expressed base frame and 
+    link i com frame expressed in space frame s 
+    Takes previous joint frame and 
+    denavit_hartenberg parameters as inputs 
+    """
+    # link i joint frame expressed in link i-1 joint frame
+    joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(twist_angle), Point3(joint_normal, 0, 0)),
+                                                Pose3(Rot3.Yaw(joint_angle), Point3(0, 0, joint_offset)))
+    # link i joint frame expressed in space frame s
+    frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
+    # link i com frame expressed in space frame s 
+    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(center_of_mass[0],
+                                                                center_of_mass[1], 
+                                                                center_of_mass[2])))
+    return (frame_joint_i, frame_i)
 
 class LinkParameters(object):
     """
@@ -116,3 +107,12 @@ class LinkParameters(object):
         self.mass = mass
         self.center_of_mass = center_of_mass
         self.inertia = inertia
+
+    def screw_axis(self):
+        """
+        return screw axis expressed in link frame
+        """
+        return utils.unit_twist(vector(0, 0, 1), vector(-self.center_of_mass[0],
+                                                        -self.center_of_mass[1], 
+                                                        -self.center_of_mass[2])) 
+   
