@@ -25,7 +25,7 @@ def joint_accel_result(num_of_links, results):
     """
     return [results.at(symbol(ord('j'), i+1)) for i in range(num_of_links)]
 
-class forward_factor_graph_way():
+class ForwardDynamicsFactorGraph():
     """
         Calculate forward dynamics for manipulator using factor graph method
     """
@@ -233,7 +233,7 @@ class TestForwardDynamics(GtsamTestCase):
         joint_angles = [0, 0, 0, 0]
         joint_velocities = [0, 1, 1, 0]
         joint_torques = [0, 0, 0, 0]
-        factor_graph_method = forward_factor_graph_way(RR_calibration)
+        factor_graph_method = ForwardDynamicsFactorGraph(RR_calibration)
         factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
         actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
         np.testing.assert_array_almost_equal(
@@ -260,7 +260,7 @@ class TestForwardDynamics(GtsamTestCase):
         joint_velocities = [0, -5, -10, -15, -20, -25, -30, 0]
         joint_torques = [0, 0.626950752326773, -34.8262338725151, 1.02920598714973, 
                         -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05, 0]
-        factor_graph_method = forward_factor_graph_way(PUMA_calibration)
+        factor_graph_method = ForwardDynamicsFactorGraph(PUMA_calibration)
         factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
         actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
         np.testing.assert_array_almost_equal(
