@@ -62,7 +62,7 @@ class forward_factor_graph_way():
         link i-1 twist, link i joint velocity, ith screw axis
         """
         twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                        twist_i_mius_1) + screw_axis_i*joint_vel_i
+                        twist_i_mius_1) + screw_axis_i * utils.degrees_to_radians(joint_vel_i)
         return twist_i
 
 
@@ -184,12 +184,10 @@ class forward_factor_graph_way():
 
         for i in range(1, self._calibration.num_of_links() + 1):
             # ith link twist
-            twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, 
-                utils.degrees_to_radians(joint_velocities[i]), screw_axis[i])
+            twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, joint_velocities[i], screw_axis[i])
 
             # factor 1
-            gfg.add(self.twist_accel_factor(link_config[i], twist_i, 
-                utils.degrees_to_radians(joint_velocities[i]), screw_axis[i], i))
+            gfg.add(self.twist_accel_factor(link_config[i], twist_i, joint_velocities[i], screw_axis[i], i))
 
             # factor 2
             gfg.add(self.joint_accel_factor(link_config[i+1], twist_i, i))
@@ -221,27 +219,27 @@ class TestForwardDynamics(GtsamTestCase):
         """setup."""
         pass
 
-    # def test_RR_forward_dynamics(self):
-    #     """Try a simple RR robot."""
-    #     # Denavit-Hartenberg parameters for RR manipulator
-    #     rr_link_parameters = [
-    #         LinkParameters( 0, 0,  0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
-    #         LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-    #         LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-    #         LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
-    #     ]
+    def test_RR_forward_dynamics(self):
+        """Try a simple RR robot."""
+        # Denavit-Hartenberg parameters for RR manipulator
+        rr_link_parameters = [
+            LinkParameters( 0, 0,  0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
+            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+            LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
+        ]
 
-    #     RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
-    #     expected_joint_accels = vector(0, 0) # frome MATLAB
-    #     # Call a function with appropriate arguments to co compute them
-    #     joint_angles = [0, 0, 0, 0]
-    #     joint_velocities = [0, 1, 1, 0]
-    #     joint_torques = [0, 0, 0, 0]
-    #     factor_graph_method = forward_factor_graph_way(RR_calibration)
-    #     factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
-    #     actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
-    #     np.testing.assert_array_almost_equal(
-    #         actual_joint_accels, expected_joint_accels)
+        RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
+        expected_joint_accels = vector(0, 0) # frome MATLAB
+        # Call a function with appropriate arguments to co compute them
+        joint_angles = [0, 0, 0, 0]
+        joint_velocities = [0, 1, 1, 0]
+        joint_torques = [0, 0, 0, 0]
+        factor_graph_method = forward_factor_graph_way(RR_calibration)
+        factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
+        actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
+        np.testing.assert_array_almost_equal(
+            actual_joint_accels, expected_joint_accels)
 
     def test_PUMA_forward_dynamics(self):
         """Try a PUMA robot."""
