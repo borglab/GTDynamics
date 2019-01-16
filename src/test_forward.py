@@ -95,10 +95,8 @@ class forward_factor_graph_way():
         """
         Return factor based on joint acceleration equation of the ith link
         """
-        # get inertia of link i
-        inertia = self._calibration.link_inertia(i)
-        # get mass of link i
-        mass = self._calibration.link_mass(i)
+        # get mass and inertia of link i
+        (mass, inertia) = self._calibration.link_properties(i)
         # factor graph keys
         key_twist_accel_i = symbol(ord('t'), i)
         key_wrench_i = symbol(ord('w'), i)
