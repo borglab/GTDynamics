@@ -74,9 +74,7 @@ def calculate_frame_i(frame_joint_i_minus_1, twist_angle,
     # link i joint frame expressed in space frame s
     frame_joint_i = utils.compose(frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
     # link i com frame expressed in space frame s 
-    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), Point3(center_of_mass[0],
-                                                                center_of_mass[1], 
-                                                                center_of_mass[2])))
+    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), center_of_mass))
     return (frame_joint_i, frame_i)
 
 class LinkParameters(object):
@@ -87,17 +85,17 @@ class LinkParameters(object):
                 joint_type,  mass, center_of_mass, inertia):
         """
         Construct from arguments:
-            joint_offset (float)  : distance between two joints along joint axis
-            joint_angle (float)   : initial angle of joint
-            joint_normal (float)  : distance between two joints along common 
-                                    normal of two joint axises
-            twist_angle (float)   : angle between joint axises
-            joint_type (char)     : R:revolute
-                                    P:prismatic
-            mass (float)          : mass of link
-            center_of_mass (float): center of mass location expressed 
-                                    in link frame
-            inertia (float)       : principal inertias 
+            joint_offset (float)   : distance between two joints along joint axis
+            joint_angle (float)    : initial angle of joint
+            joint_normal (float)   : distance between two joints along common 
+                                     normal of two joint axises
+            twist_angle (float)    : angle between joint axises
+            joint_type (char)      : R:revolute
+                                     P:prismatic
+            mass (float)           : mass of link
+            center_of_mass (Point3): center of mass location expressed 
+                                     in link frame
+            inertia (vector)       : principal inertias 
         """
         self.joint_offset = joint_offset
         self.joint_angle = utils.degrees_to_radians(joint_angle) 
@@ -112,7 +110,5 @@ class LinkParameters(object):
         """
         return screw axis expressed in link frame
         """
-        return utils.unit_twist(vector(0, 0, 1), vector(-self.center_of_mass[0],
-                                                        -self.center_of_mass[1], 
-                                                        -self.center_of_mass[2])) 
+        return utils.unit_twist(vector(0, 0, 1), -utils.vector_of_point3(self.center_of_mass))
    
