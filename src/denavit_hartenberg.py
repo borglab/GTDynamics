@@ -59,10 +59,10 @@ class DenavitHartenberg(object):
             return [frame_i] + self._link_configuration_from(i+1, frame_joint_i)
         
 
-    def link_configuration(self):
+    def link_configuration_home(self):
         """
-        return each link frame (origin at center of mass) 
-        expressed in base frame
+        return each link frame (origin at center of mass) at home position
+        expressed in base
         """ 
         # link 0 com frame expressed in base frame
         frame_0 = Pose3()

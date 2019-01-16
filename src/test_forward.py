@@ -29,7 +29,7 @@ class forward_factor_graph_way():
     """
         Calculate forward dynamics for manipulator using factor graph method
     """
-    def __init__(self, calibration, joint_vel, torque):
+    def __init__(self, calibration):
         """
         Constructor that initializes factor graph
         for forward dynamics of manipulator
@@ -40,16 +40,33 @@ class forward_factor_graph_way():
         """
         # number of revolute joint
         self._calibration = calibration
-        # configuration of base com frame in base frame
-        self._link_config = calibration.link_configuration()
-        # screw axis for each joints expressed in its link frame 
-        self._screw_axis = calibration.screw_axis()
-        # twist of link 0
-        self._twist_i_minus_1 = vector(0, 0, 0, 0, 0, 0)
-        self._joint_vel = joint_vel
-        self._torque = torque
+        # configuration of link frame in base frame at home position
+        self._link_config_home = calibration.link_configuration_home()
 
-    def twist_accel_factor(self, i_T_i_minus_1, i):
+
+    def link_configuration(self, joint_angles):
+        """
+        calculate link configurations expessed in its previous link frame
+        take joint angles as input
+        """
+        return [Pose3()] + [utils.compose(self._link_config_home[i].between(self._link_config_home[i-1]), 
+                Pose3(Rot3.Yaw(joint_angles[i]), Point3())) for i in range(1, self._calibration.num_of_links()+2)]
+
+
+    def link_twist_i(self, i_T_i_minus_1, twist_i_mius_1, joint_vel_i, screw_axis_i):
+        """
+        Calculate twist on the ith link based on the dynamic equation
+        Return twist on the ith link
+        take link i configuration expressed in link i-1 frame, 
+        link i-1 twist, link i joint velocity, ith screw axis
+        """
+        twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
+                        twist_i_mius_1) + screw_axis_i*joint_vel_i
+        return twist_i
+
+
+
+    def twist_accel_factor(self, i_T_i_minus_1, twist_i, joint_vel_i, screw_axis_i, i):
         """
         Return factor based on twist acceleration equation of the ith link
         """
@@ -61,11 +78,11 @@ class forward_factor_graph_way():
         # LHS of acceleration equation
         J_twist_accel_i = np.identity(6)
         J_twist_accel_i_minus_1 = -i_T_i_minus_1.AdjointMap()
-        J_joint_accel_i = -np.reshape(self._screw_axis[i], (6, 1))
+        J_joint_accel_i = -np.reshape(screw_axis_i, (6, 1))
 
         # RHS of acceleration equation
-        b_accel = np.dot(Pose3.adjointMap(self.twist_i), 
-                    self._screw_axis[i]*utils.degrees_to_radians(self._joint_vel[i]))
+        b_accel = np.dot(Pose3.adjointMap(twist_i), 
+                    screw_axis_i*utils.degrees_to_radians(joint_vel_i))
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_minus_1,
@@ -73,7 +90,7 @@ class forward_factor_graph_way():
                                     key_joint_accel_i, J_joint_accel_i,
                                     b_accel, model)
 
-    def joint_accel_factor(self, i):
+    def joint_accel_factor(self, i_plus_1_T_i, twist_i, i):
         """
         Return factor based on joint acceleration equation of the ith link
         """
@@ -86,16 +103,13 @@ class forward_factor_graph_way():
         key_wrench_i = symbol(ord('w'), i)
         key_wrench_i_plus_1 = symbol(ord('w'), i + 1)
 
-        # configuration of link frame i relative to link frame i+1 for joint i+1 angle 0
-        i_plus_1_T_i = self._link_config[i+1].between(self._link_config[i])
-
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
         J_twist_accel_i = -utils.inertia_matrix(inertia, mass)
         # RHS of wrench equation
-        b_wrench = -np.dot(np.dot(Pose3.adjointMap(self.twist_i).transpose(),
-                        utils.inertia_matrix(inertia, mass)), self.twist_i)
+        b_wrench = -np.dot(np.dot(Pose3.adjointMap(twist_i).transpose(),
+                        utils.inertia_matrix(inertia, mass)), twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i,
@@ -103,7 +117,7 @@ class forward_factor_graph_way():
                                     key_twist_accel_i, J_twist_accel_i,
                                     b_wrench, model)
 
-    def wrench_factor(self, i):
+    def wrench_factor(self, torque_i, screw_axis_i, i):
         """
         Return factor based on wrench equation of the ith link
         """
@@ -111,9 +125,9 @@ class forward_factor_graph_way():
         key_wrench_i = symbol(ord('w'), i)
 
         # LHS of torque equation
-        J_wrench_i = np.array([self._screw_axis[i]])
+        J_wrench_i = np.array([screw_axis_i])
         # RHS of torque equation
-        b_torque = np.array([self._torque[i]])
+        b_torque = np.array([torque_i])
         model = gtsam.noiseModel_Diagonal.Sigmas(np.array([0.0]))
         return gtsam.JacobianFactor(key_wrench_i, J_wrench_i, b_torque, model)
 
@@ -144,20 +158,12 @@ class forward_factor_graph_way():
         return gtsam.JacobianFactor(symbol(ord('w'), self._calibration.num_of_links() + 1),
                                     J_wrench_i_plus_1, b_wrench, model)
 
-    def calculate_twist_i(self, i_T_i_minus_1, i):
-        """
-        Calculate twist on the ith link based on the dynamic equation
-        Return twist on the ith link
-        """
-        twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                        self._twist_i_minus_1) + self._screw_axis[i] * utils.degrees_to_radians(self._joint_vel[i])
-        return twist_i
 
-
-    def forward_factor_graph(self):
+    def forward_factor_graph(self, joint_angles, joint_velocities, joint_torques):
         """
         build factor graph for RR manipulator forward dynamics
         Return Gaussian factor graph
+        take joint angles, joint velocities and torques as input
         """
         # Setup factor graph
         # Gaussian Factor Graph
@@ -166,35 +172,44 @@ class forward_factor_graph_way():
         # prior factor, link 0 twist acceleration = 0
         gfg.add(self.prior_factor_base())
 
-        for i in range(1, self._calibration.num_of_links() + 1):
-            # configuration of link frame i-1 relative to link frame i for joint i angle 0
-            i_T_i_minus_1 = self._link_config[i].between(self._link_config[i-1])
+        # screw axis for each joints expressed in its link frame 
+        screw_axis = self._calibration.screw_axis()
 
-            self.twist_i = self.calculate_twist_i(i_T_i_minus_1, i)
+        # configuration of link frame i-1 relative to link frame i for arbitrary joint angle
+        link_config = self.link_configuration(joint_angles)
+
+        # link i-1 (base for the first iteration) twist
+        twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
+
+        for i in range(1, self._calibration.num_of_links() + 1):
+            # ith link twist
+            twist_i = self.link_twist_i(link_config[i], twist_i_mius_1, 
+                joint_velocities[i], screw_axis[i])
 
             # factor 1
-            gfg.add(self.twist_accel_factor(i_T_i_minus_1, i))
+            gfg.add(self.twist_accel_factor(link_config[i], twist_i, 
+                joint_velocities[i], screw_axis[i], i))
 
             # factor 2
-            gfg.add(self.joint_accel_factor(i))
+            gfg.add(self.joint_accel_factor(link_config[i+1], twist_i, i))
 
             # factor 3
-            gfg.add(self.wrench_factor(i))
+            gfg.add(self.wrench_factor(joint_torques[i], screw_axis[i], i))
 
-            self._twist_i_minus_1 = self.twist_i
+            # update link i-1 twist for the next iteration
+            twist_i_mius_1 = twist_i
 
         # prior factor, end effector wrench = 0
         gfg.add(self.prior_factor_eef())
         return gfg
 
-    def factor_graph_optimization(self):
+    def factor_graph_optimization(self, forward_factor_graph):
         """
         optimize factor graph for manipulator forward dynamics
-        Return wrench on first link
         Return joint accelerations
+        take factor graph for forward dynamics as input
         """
-        gfg = self.forward_factor_graph()
-        results = gfg.optimize()
+        results = forward_factor_graph.optimize()
         return joint_accel_result(self._calibration.num_of_links(), results)
 
 
@@ -205,25 +220,27 @@ class TestForwardDynamics(GtsamTestCase):
         """setup."""
         pass
 
-    def test_RR_forward_dynamics(self):
-        """Try a simple RR robot."""
-        # Denavit-Hartenberg parameters for RR manipulator
-        rr_link_parameters = [
-            LinkParameters( 0, 0,  0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
-            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-            LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
-            LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
-        ]
+    # def test_RR_forward_dynamics(self):
+    #     """Try a simple RR robot."""
+    #     # Denavit-Hartenberg parameters for RR manipulator
+    #     rr_link_parameters = [
+    #         LinkParameters( 0, 0,  0, 0, 'B', 0, [0, 0, 0], [0, 0, 0]),
+    #         LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+    #         LinkParameters( 0, 0,  2, 0, 'R', 1, [1, 0, 0], [0, 1/6., 1/6.]),
+    #         LinkParameters( 0, 90, 0, 0, 'G', 0, [0, 0, 0], [0, 0, 0])
+    #     ]
 
-        RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
-        expected_joint_accels = vector(0, 0) # frome MATLAB
-        # Call a function with appropriate arguments to co compute them
-        joint_velocity = [0, 1, 1, 0]
-        joint_torque = [0, 0, 0, 0]
-        factor_graph = forward_factor_graph_way(RR_calibration, joint_velocity, joint_torque)
-        actual_joint_accels = factor_graph.factor_graph_optimization()
-        np.testing.assert_array_almost_equal(
-            actual_joint_accels, expected_joint_accels)
+    #     RR_calibration = DenavitHartenberg(rr_link_parameters, 2)
+    #     expected_joint_accels = vector(0, 0) # frome MATLAB
+    #     # Call a function with appropriate arguments to co compute them
+    #     joint_angles = [0, 0, 0, 0]
+    #     joint_velocities = [0, 1, 1, 0]
+    #     joint_torques = [0, 0, 0, 0]
+    #     factor_graph_method = forward_factor_graph_way(RR_calibration)
+    #     factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
+    #     actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
+    #     np.testing.assert_array_almost_equal(
+    #         actual_joint_accels, expected_joint_accels)
 
     def test_PUMA_forward_dynamics(self):
         """Try a PUMA robot."""
@@ -242,13 +259,15 @@ class TestForwardDynamics(GtsamTestCase):
         PUMA_calibration = DenavitHartenberg(puma_link_parameters, 6)
         expected_joint_accels = vector(0.174533,  0.349066,  0.523599,  0.698132,  0.872665,  1.047198) # from MATLAB
         # Call a function with appropriate arguments to co compute them
-        joint_velocity = [0, -5, -10, -15, -20, -25, -30, 0]
-        joint_torque = [0, 0.626950752326773, -34.8262338725151, 1.02920598714973, 
+        joint_angles = [0, 0, 0, 0, 0, 0, 0, 0]
+        joint_velocities = [0, -5, -10, -15, -20, -25, -30, 0]
+        joint_torques = [0, 0.626950752326773, -34.8262338725151, 1.02920598714973, 
                         -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05, 0]
-        factor_graph = forward_factor_graph_way(PUMA_calibration, joint_velocity, joint_torque)
-        actual_joint_accels = factor_graph.factor_graph_optimization()
+        factor_graph_method = forward_factor_graph_way(PUMA_calibration)
+        factor_graph = factor_graph_method.forward_factor_graph(joint_angles, joint_velocities, joint_torques)
+        actual_joint_accels = factor_graph_method.factor_graph_optimization(factor_graph)
         np.testing.assert_array_almost_equal(
-            actual_joint_accels, expected_joint_accels)
+        actual_joint_accels, expected_joint_accels)
 
 if __name__ == "__main__":
     unittest.main()
