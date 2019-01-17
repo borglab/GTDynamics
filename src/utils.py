@@ -6,11 +6,16 @@ Author: Frank Dellaert
 # pylint: disable=C0103, E1101, E0401
 
 from __future__ import print_function
+from math import pi
 
 import unittest
 
 import numpy as np
 from gtsam import Point3
+
+def degrees_to_radians(degrees):
+    """convert degrees to radians"""
+    return degrees * pi / 180. 
 
 
 def vector(*floats):
@@ -50,10 +55,10 @@ def adtwist(twist):
     return adt
 
 
-def genaral_mass_matrix(Ib, mass):
+def inertia_matrix(Ib, mass):
     """Return the general mass matrix"""
     gmm = np.zeros((6, 6), np.float)
-    gmm[:3, :3] = Ib
+    gmm[:3, :3] = np.diag(Ib)
     gmm[3:, 3:] = mass*np.identity(3)
     return gmm
 
