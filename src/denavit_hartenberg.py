@@ -49,7 +49,7 @@ class DenavitHartenberg(object):
     """
 
     def __init__(self, link_parameters):
-        """Constructor."""
+        """Construct from list of LinkParameters, 2 more than # joints"""
         self._links = link_parameters
 
     # TODO: modify this function
@@ -59,7 +59,7 @@ class DenavitHartenberg(object):
         return all link configurations starting from joint i>0, 
         takes previous frame as input.
         """
-        if i > len(self._links) + 1:
+        if i > self.num_of_links():
             return []
         else:
             # link i joint frame expressed in space frame s and
@@ -92,8 +92,8 @@ class DenavitHartenberg(object):
         return [link.screw_axis() for link in self._links]
 
     def num_of_links(self):
-        """return number of links, take link index as input"""
-        return len(self._links)
+        """return number of *moving* links."""
+        return len(self._links) - 2
 
     def link_properties(self, i):
         """return link mass and inertia, take link index as input"""

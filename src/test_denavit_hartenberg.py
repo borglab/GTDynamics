@@ -32,17 +32,17 @@ class TestLinkParameters(GtsamTestCase):
 class TestRR(GtsamTestCase):
     """Unit tests for DH RR."""
 
-    def test_some_method(self):
+    def test_link_configuration_home(self):
         """TODO."""
-        pass
+        link_config_home = RR_calibration.link_configuration_home()
 
 
 class TestPuma(GtsamTestCase):
     """Unit tests for DH Puma."""
 
-    def test_some_method(self):
+    def test_link_configuration_home(self):
         """TODO."""
-        pass
+        link_config_home = PUMA_calibration.link_configuration_home()
 
 
 if __name__ == "__main__":
