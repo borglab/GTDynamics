@@ -95,12 +95,17 @@ class DenavitHartenberg(object):
         return [Tj] + self._link_frames_from(j+1, Tj)
 
     def link_frames(self):
-        """
-        Return each link frame (origin at center of mass) at home position
-        expressed in base frame 0. Note that frame Tj is aligned with the
-        joint axis of joint j+1 for Denavit-Hartenberg convention.
+        """ Return each link frame at home position expressed in base frame 0.
+            Note that frame Tj is aligned with the joint axis of joint j+1 
+            according to the Denavit-Hartenberg convention.
         """
         return self._link_frames_from(1, Pose3())
+
+    def com_frames(self):
+        """ Return each link frame (origin at center of mass) at home position
+            expressed in base frame 0.
+        """
+        return []  # TODO(Frank): fix
 
     def screw_axes(self):
         """
