@@ -93,5 +93,24 @@ class TestPuma(GtsamTestCase):
     #         actual_joint_accels, expected_joint_accels)
 
 
+class TestPumaPlus(GtsamTestCase):
+    """Unit tests for Puma, with base and tool transforms."""
+
+    def setUp(self):
+        """Create Puma robot."""
+        self.robot = SerialLink(
+            PUMA_calibration,
+            base=Pose3(Rot3.Rx(math.pi), Point3(0, 0, 3)),
+            tool=Pose3(Rot3(), Point3(0, 0, 0.2)))
+
+    def test_fkine(self):
+        """Try forward kinematics, second example from Corke 2017 page 204."""
+        qz = vector(0, 0, 0, 0, 0, 0)
+        T = self.robot.fkine(qz)
+        self.assertIsInstance(T, Pose3)
+        self.gtsamAssertEquals(
+            T, Pose3(Rot3.Rx(math.pi), Point3(0.4521, 0.15, 2.3682)), tol=1e-4)
+
+
 if __name__ == "__main__":
     unittest.main()
