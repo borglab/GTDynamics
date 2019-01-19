@@ -42,7 +42,7 @@ def joint_accel_result(num_of_links, results):
     return [results.at(J(i+1)) for i in range(num_of_links)]
 
 
-class Manipulator(object):
+class SerialLink(object):
     """
         Calculate forward dynamics for manipulator using factor graph method
     """
@@ -59,7 +59,11 @@ class Manipulator(object):
         # number of revolute joint
         self._calibration = calibration
         # configuration of link frame in base frame at home position
-        self._link_config_home = calibration.link_configuration_home()
+        self._link_config_home = calibration.com_frames()
+
+    def fkine(self, joint_angles):
+        """Forward kinematics."""
+        return gtsam.Pose3()
 
     def link_configuration(self, joint_angles):
         """Calculate link configurations expessed in its previous link frame take joint angles as input."""
