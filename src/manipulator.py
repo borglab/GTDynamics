@@ -7,15 +7,31 @@ Author: Frank Dellaert and Mandy Xie
 
 from __future__ import print_function
 
-import unittest
-
-import numpy as np
+import math
 
 import gtsam
+import numpy as np
 import utils
-from denavit_hartenberg import DenavitHartenberg, LinkParameters
-from gtsam import Point3, Pose3, Rot3, symbol
-from utils import GtsamTestCase, vector
+
+
+def symbol(char, index):
+    """Shorthand for gtsam symbol."""
+    return gtsam.symbol(ord(char), index)
+
+
+def J(index):
+    """Shorthand for j_index."""
+    return symbol('j', index)
+
+
+def T(index):
+    """Shorthand for j_index."""
+    return symbol('t', index)
+
+
+def W(index):
+    """Shorthand for j_index."""
+    return symbol('w', index)
 
 
 def joint_accel_result(num_of_links, results):
@@ -23,10 +39,10 @@ def joint_accel_result(num_of_links, results):
     returns joint accelerations for all joints,
     take number of links and results from factor graph as input
     """
-    return [results.at(symbol(ord('j'), i+1)) for i in range(num_of_links)]
+    return [results.at(J(i+1)) for i in range(num_of_links)]
 
 
-class Manipulator():
+class Manipulator(object):
     """
         Calculate forward dynamics for manipulator using factor graph method
     """
@@ -46,23 +62,27 @@ class Manipulator():
         self._link_config_home = calibration.link_configuration_home()
 
     def link_configuration(self, joint_angles):
-        """
-        calculate link configurations expessed in its previous link frame
-        take joint angles as input
-        """
-        return [Pose3()] + [utils.compose(self._link_config_home[i].between(self._link_config_home[i-1]),
-                                          Pose3(Rot3.Yaw(utils.degrees_to_radians(joint_angles[i])), Point3()))
-                            for i in range(1, self._calibration.num_of_links()+2)]
+        """Calculate link configurations expessed in its previous link frame take joint angles as input."""
+        def iTi_1(i):
+            """Transform from i-1 to i."""
+            return self._link_config_home[i].between(self._link_config_home[i-1])
+
+        def yaw(i):
+            """Rotate by joint_angles[i]."""
+            return gtsam.Pose3(gtsam.Rot3.Yaw(math.radians(joint_angles[i])), gtsam.gtsam.Point3())
+
+        return [utils.compose(iTi_1(i), yaw(i))
+                for i in range(1, self._calibration.num_of_links())]
 
     def link_twist_i(self, i_T_i_minus_1, twist_i_mius_1, joint_vel_i, screw_axis_i):
         """
         Calculate twist on the ith link based on the dynamic equation
         Return twist on the ith link
-        take link i configuration expressed in link i-1 frame, 
+        take link i configuration expressed in link i-1 frame,
         link i-1 twist, link i joint velocity, ith screw axis
         """
         twist_i = np.dot(i_T_i_minus_1.AdjointMap(),
-                         twist_i_mius_1) + screw_axis_i * utils.degrees_to_radians(joint_vel_i)
+                         twist_i_mius_1) + screw_axis_i * math.radians(joint_vel_i)
         return twist_i
 
     def twist_accel_factor(self, i_T_i_minus_1, twist_i, joint_vel_i, screw_axis_i, i):
@@ -70,9 +90,9 @@ class Manipulator():
         Return factor based on twist acceleration equation of the ith link
         """
         # factor graph keys
-        key_twist_accel_i_minus_1 = symbol(ord('t'), i - 1)
-        key_twist_accel_i = symbol(ord('t'), i)
-        key_joint_accel_i = symbol(ord('j'), i)
+        key_twist_accel_i_minus_1 = T(i - 1)
+        key_twist_accel_i = T(i)
+        key_joint_accel_i = J(i)
 
         # LHS of acceleration equation
         J_twist_accel_i = np.identity(6)
@@ -80,8 +100,8 @@ class Manipulator():
         J_joint_accel_i = -np.reshape(screw_axis_i, (6, 1))
 
         # RHS of acceleration equation
-        b_accel = np.dot(Pose3.adjointMap(twist_i),
-                         screw_axis_i*utils.degrees_to_radians(joint_vel_i))
+        b_accel = np.dot(gtsam.Pose3.adjointMap(twist_i),
+                         screw_axis_i*math.radians(joint_vel_i))
 
         model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(key_twist_accel_i_minus_1, J_twist_accel_i_minus_1,
@@ -96,16 +116,16 @@ class Manipulator():
         # get mass and inertia of link i
         (mass, inertia) = self._calibration.link_properties(i)
         # factor graph keys
-        key_twist_accel_i = symbol(ord('t'), i)
-        key_wrench_i = symbol(ord('w'), i)
-        key_wrench_i_plus_1 = symbol(ord('w'), i + 1)
+        key_twist_accel_i = T(i)
+        key_wrench_i = W(i)
+        key_wrench_i_plus_1 = W(i + 1)
 
         # LHS of wrench equation
         J_wrench_i = np.identity(6)
         J_wrench_i_plus_1 = -i_plus_1_T_i.AdjointMap().transpose()
         J_twist_accel_i = -utils.inertia_matrix(inertia, mass)
         # RHS of wrench equation
-        b_wrench = -np.dot(np.dot(Pose3.adjointMap(twist_i).transpose(),
+        b_wrench = -np.dot(np.dot(gtsam.Pose3.adjointMap(twist_i).transpose(),
                                   utils.inertia_matrix(inertia, mass)), twist_i)
 
         model = gtsam.noiseModel_Constrained.All(6)
@@ -119,7 +139,7 @@ class Manipulator():
         Return factor based on wrench equation of the ith link
         """
         # factor graph keys
-        key_wrench_i = symbol(ord('w'), i)
+        key_wrench_i = W(i)
 
         # LHS of torque equation
         J_wrench_i = np.array([screw_axis_i])
@@ -130,16 +150,16 @@ class Manipulator():
 
     def prior_factor_base(self):
         """
-        Return prior factor that twist acceleration 
-        on base link is assumed to be zero for 
-        angular and gravity accelration for linear 
+        Return prior factor that twist acceleration
+        on base link is assumed to be zero for
+        angular and gravity accelration for linear
         """
         # LHS
         J_twist_accel_i_minus_1 = np.identity(6)
         # RHS
         b_twist_accel = np.array([0, 0, 0, 0, 0, 9.8])
         model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(symbol(ord('t'), 0),
+        return gtsam.JacobianFactor(T(0),
                                     J_twist_accel_i_minus_1, b_twist_accel, model)
 
     def prior_factor_eef(self):
@@ -152,7 +172,7 @@ class Manipulator():
         # RHS
         b_wrench = np.zeros(6)
         model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(symbol(ord('w'), self._calibration.num_of_links() + 1),
+        return gtsam.JacobianFactor(W(self._calibration.num_of_links() + 1),
                                     J_wrench_i_plus_1, b_wrench, model)
 
     def forward_factor_graph(self, joint_angles, joint_velocities, joint_torques):
@@ -175,7 +195,7 @@ class Manipulator():
         link_config = self.link_configuration(joint_angles)
 
         # link i-1 (base for the first iteration) twist
-        twist_i_mius_1 = vector(0, 0, 0, 0, 0, 0)
+        twist_i_mius_1 = utils.vector(0, 0, 0, 0, 0, 0)
 
         for i in range(1, self._calibration.num_of_links() + 1):
             # ith link twist
