@@ -38,19 +38,19 @@ class TestRR(GtsamTestCase):
         self.gtsamAssertEquals(
             configuration[1], Pose3(Rot3(), Point3(4, 0, 0)))
 
-    # def test_RR_forward_dynamics(self):
-    #     """Try a simple RR robot."""
-    #     expected_joint_accels = vector(0, 0)  # frome MATLAB
-    #     # Call a function with appropriate arguments to co compute them
-    #     joint_angles = [0, 0]
-    #     joint_velocities = [1, 1]
-    #     joint_torques = [0, 0]
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques)
-    #     actual_joint_accels = self.robot.factor_graph_optimization(
-    #         factor_graph)
-    #     np.testing.assert_array_almost_equal(
-    #         actual_joint_accels, expected_joint_accels)
+    def test_RR_forward_dynamics(self):
+        """Try a simple RR robot."""
+        expected_joint_accels = vector(0, 0)  # frome MATLAB
+        # Call a function with appropriate arguments to co compute them
+        joint_angles = [0, 0]
+        joint_velocities = [1, 1]
+        joint_torques = [0, 0]
+        factor_graph = self.robot.forward_factor_graph(
+            joint_angles, joint_velocities, joint_torques)
+        actual_joint_accels = self.robot.factor_graph_optimization(
+            factor_graph)
+        np.testing.assert_array_almost_equal(
+            actual_joint_accels, expected_joint_accels)
 
 
 class TestPuma(GtsamTestCase):

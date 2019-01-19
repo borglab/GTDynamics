@@ -53,7 +53,7 @@ class Link(object):
     def screw_axis(self):
         """Return screw axis expressed in link frame."""
         return utils.unit_twist(utils.vector(0, 0, 1),
-                                -utils.vector_of_point3(self.center_of_mass))
+                                -utils.vector_of_point3(self._center_of_mass))
 
     def properties(self):
         """Return link mass and inertia."""
