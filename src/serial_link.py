@@ -66,36 +66,6 @@ class SerialLink(object):
         self._tool = tool
         self._link_config_home = self.com_frames()
 
-    def _link_frames_from(self, j, Ti):
-        """
-        Return all joint frames from joint j onwards.
-        Keyword arguments:
-            j -- joint index in [1..N]
-            Ti -- joint frame j-1.
-        """
-        N = self.num_links()
-        assert j > 0 and j <= N
-
-        iTj = self._links[j-1].A()
-        Tj = Ti.compose(iTj)
-        if j == N:
-            return [Tj]
-
-        return [Tj] + self._link_frames_from(j+1, Tj)
-
-    def link_frames(self):
-        """ Return each link frame at home position expressed in base frame 0.
-            Note that frame Tj is aligned with the joint axis of joint j+1
-            according to the Denavit-Hartenberg convention.
-        """
-        return self._link_frames_from(1, gtsam.Pose3())
-
-    def com_frames(self):
-        """ Return each link frame (origin at center of mass) at home position
-            expressed in base frame 0.
-        """
-        return []  # TODO(Frank): fix
-
     def screw_axes(self):
         """
         return screw axis of each joints expressed in its own link frame
@@ -110,6 +80,13 @@ class SerialLink(object):
         """return link mass and inertia, take link index as input."""
         return self._links[j].properties()
 
+    def link_transforms(self, q):
+        """ Calculate link transforms for all links.
+            Keyword arguments:
+                q (numpy array) -- optional joint_angles (default all zero).
+        """
+        return [link.A(0 if q is None else q[i]) for i, link in enumerate(self._links)]
+
     def fkine(self, q):
         """ Forward kinematics.
             Keyword arguments:
@@ -117,22 +94,32 @@ class SerialLink(object):
             Returns tool frame in world frame.
         """
         t = self._base
-        for i in range(self.num_links()):  # i == j-1
-            t = t.compose(self._links[i].A(q[i]))
+        A = self.link_transforms(q)
+        for A in self.link_transforms(q):
+            t = t.compose(A)
         return t.compose(self._tool)
 
-    def link_configuration(self, joint_angles):
-        """Calculate link configurations expessed in its previous link frame take joint angles as input."""
-        def iTi_1(i):
-            """Transform from i-1 to i."""
-            return self._link_config_home[i].between(self._link_config_home[i-1])
+    def link_frames(self, q=None):
+        """ Return each link frame for given joint angles.
+            Note that frame Tj is aligned with the joint axis of joint j+1
+            according to the Denavit-Hartenberg convention.
+            Keyword arguments:
+                q (numpy array) -- optional joint_angles (default all zero).
+            Returns tool frame in world frame.
+        """
+        frames = []
+        t = self._base
+        A = self.link_transforms(q)
+        for A in self.link_transforms(q):
+            t = t.compose(A)
+            frames.append(t)
+        return frames
 
-        def yaw(i):
-            """Rotate by joint_angles[i]."""
-            return gtsam.Pose3(gtsam.Rot3.Yaw(math.radians(joint_angles[i])), gtsam.gtsam.Point3())
-
-        return [utils.compose(iTi_1(i), yaw(i))
-                for i in range(1, self.num_links())]
+    def com_frames(self):
+        """ Return each link frame (origin at center of mass) at home position
+            expressed in base frame 0.
+        """
+        return []  # TODO(Frank): fix
 
     def link_twist_i(self, i_T_i_minus_1, twist_i_mius_1, joint_vel_i, screw_axis_i):
         """
@@ -252,7 +239,7 @@ class SerialLink(object):
         screw_axes = self.screw_axes()
 
         # configuration of link frame i-1 relative to link frame i for arbitrary joint angle
-        link_config = self.link_configuration(joint_angles)
+        link_config = self.link_transforms(joint_angles)
 
         # link i-1 (base for the first iteration) twist
         twist_i_mius_1 = utils.vector(0, 0, 0, 0, 0, 0)
