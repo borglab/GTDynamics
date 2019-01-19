@@ -1,6 +1,13 @@
 """
 Denavit Hartenberg parameters.
 Author: Frank Dellaert and Mandy Xie
+
+We follow Lynch & Park 2017 conventions, but using j to index joints, as in Corke 2017: 
+    - j=0 is base
+    - j \in 1...N index joints
+    - Mj is COM pose of link j in base frame 0.
+    - Tj is the link frame j, aligned with joint j+1, expressed in base frame 0.
+    - we use i to denote the previous link/joint with index j-1
 """
 
 # pylint: disable=C0103, E1101, E0401
@@ -11,85 +18,89 @@ import utils
 from gtsam import Point3, Pose3, Rot3
 
 
-class LinkParameters(object):
+class Link(object):
     """
     parameters for a single link
     """
 
-    def __init__(self, joint_offset, joint_angle, joint_normal, twist_angle,
-                 joint_type, mass, center_of_mass, inertia):
+    def __init__(self, theta, d, a, alpha, joint_type, mass, center_of_mass, inertia):
+        """ Constructor.
+            Keyword arguments:
+                d (float)               -- link offset, i.e., distance between two joints along joint axis
+                theta (float)           -- angle between two joint frame x-axes (theta)
+                a (float)               -- link length. i.e., distance between two joints
+                alpha (float)           -- link twist, i.e., angle between joint axes
+                joint_type (char)       -- 'R': revolute,  'P' prismatic
+                mass (float)            -- mass of link
+                center_of_mass (Point3) -- center of mass location expressed in link frame
+                inertia (vector)        -- principal inertias
         """
-        Construct from arguments:
-            joint_offset (float)   : distance between two joints along joint axis
-            joint_angle (float)    : initial angle of joint
-            joint_normal (float)   : distance between two joints along common
-                                     normal of two joint axises
-            twist_angle (float)    : angle between joint axises
-            joint_type (char)      : 'R': revolute
-                                     'P': prismatic
-            mass (float)           : mass of link
-            center_of_mass (Point3): center of mass location expressed
-                                     in link frame
-            inertia (vector)       : principal inertias
+        self._d = d
+        self._theta = math.radians(theta)
+        self._a = a
+        self._alpha = math.radians(alpha)
+        self._joint_type = joint_type
+        self._mass = mass
+        self._center_of_mass = center_of_mass
+        self._inertia = inertia
+
+    def A(self, q=0):
+        """ Return Link transform.
+            Keyword arguments:
+                q -- optional generalized joint angle (default 0)
         """
-        self.joint_offset = joint_offset
-        self.joint_angle = math.radians(joint_angle)
-        self.joint_normal = joint_normal
-        self.twist_angle = math.radians(twist_angle)
-        self.joint_type = joint_type
-        self.mass = mass
-        self.center_of_mass = center_of_mass
-        self.inertia = inertia
+        theta = q if self._joint_type == 'R' else self._theta
+        d = q if self._joint_type == 'P' else self._d
+        return utils.compose(
+            Pose3(Rot3.Yaw(theta), Point3(0, 0, d)),
+            Pose3(Rot3.Roll(self._alpha), Point3(self._a, 0, 0))
+        )
 
     def screw_axis(self):
-        """
-        return screw axis expressed in link frame
-        """
+        """Return screw axis expressed in link frame."""
         return utils.unit_twist(utils.vector(0, 0, 1),
                                 -utils.vector_of_point3(self.center_of_mass))
+
+    def properties(self):
+        """Return link mass and inertia."""
+        return self._mass, self._inertia
 
 
 class DenavitHartenberg(object):
     """
-    Denavit-Hartenberg labeling parameters for manipulators
+    Denavit-Hartenberg labeling parameters for manipulators.
     """
 
-    def __init__(self, link_parameters):
-        """Construct from list of LinkParameters, 2 more than # joints"""
+    def __init__(self, link_parameters, base=Pose3(), tool=Pose3()):
+        """Construct from list of Link, 2 more than # joints"""
         self._links = link_parameters
+        self._base = base
+        self._tool = tool
 
-    # TODO: modify this function
-    def _link_configuration_from(self, i, frame_joint_i_minus_1):
+    def _link_frames_from(self, j, Ti):
         """
-        recursively call this function to get all link configurations
-        return all link configurations starting from joint i>0,
-        takes previous frame as input.
+        Return all joint frames from joint j onwards.
+        Keyword arguments:
+            j -- joint index in [1..N]
+            Ti -- joint frame j-1.
         """
-        if i > self.num_of_links():
-            return []
+        N = self.num_of_links()
+        assert j > 0 and j <= N
 
-        # link i joint frame expressed in space frame s and
-        # link i com frame expressed in space frame s
-        frame_joint_i, frame_i = calculate_frame_i(frame_joint_i_minus_1,
-                                                   self._links[i -
-                                                               1].twist_angle,
-                                                   self._links[i -
-                                                               1].joint_normal,
-                                                   self._links[i].joint_angle,
-                                                   self._links[i].joint_offset,
-                                                   self._links[i].center_of_mass)
-        return [frame_i] + self._link_configuration_from(i+1, frame_joint_i)
+        iTj = self._links[j-1].A()
+        Tj = Ti.compose(iTj)
+        if j == N:
+            return [Tj]
 
-    def link_configuration_home(self):
+        return [Tj] + self._link_frames_from(j+1, Tj)
+
+    def link_frames(self):
         """
-        return each link frame (origin at center of mass) at home position
-        expressed in base
+        Return each link frame (origin at center of mass) at home position
+        expressed in base frame 0. Note that frame Tj is aligned with the
+        joint axis of joint j+1 for Denavit-Hartenberg convention.
         """
-        # link 0 (base) frame expressed in base frame
-        frame_0 = Pose3()
-        # link 0 (base) joint frame expressed in base frame
-        frame_joint_0 = Pose3()
-        return [frame_0] + self._link_configuration_from(1, frame_joint_0)
+        return self._link_frames_from(1, Pose3())
 
     def screw_axes(self):
         """
@@ -99,27 +110,8 @@ class DenavitHartenberg(object):
 
     def num_of_links(self):
         """return number of *moving* links."""
-        return len(self._links) - 2
+        return len(self._links)
 
-    def link_properties(self, i):
-        """return link mass and inertia, take link index as input"""
-        return (self._links[i].mass, self._links[i].inertia)
-
-
-def calculate_frame_i(frame_joint_i_minus_1, twist_angle,
-                      joint_normal, joint_angle, joint_offset, center_of_mass):
-    """
-    Return link i joint frame expressed base frame and
-    link i com frame expressed in space frame s
-    Takes previous joint frame and
-    denavit_hartenberg parameters as inputs
-    """
-    # link i joint frame expressed in link i-1 joint frame
-    joint_i_minus_1_frame_joint_i = utils.compose(Pose3(Rot3.Roll(twist_angle), Point3(joint_normal, 0, 0)),
-                                                  Pose3(Rot3.Yaw(joint_angle), Point3(0, 0, joint_offset)))
-    # link i joint frame expressed in space frame s
-    frame_joint_i = utils.compose(
-        frame_joint_i_minus_1, joint_i_minus_1_frame_joint_i)
-    # link i com frame expressed in space frame s
-    frame_i = utils.compose(frame_joint_i, Pose3(Rot3(), center_of_mass))
-    return (frame_joint_i, frame_i)
+    def link_properties(self, j):
+        """return link mass and inertia, take link index as input."""
+        return self._links[j].properties()

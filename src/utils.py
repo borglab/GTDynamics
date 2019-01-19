@@ -13,11 +13,6 @@ import unittest
 import numpy as np
 from gtsam import Point3
 
-def degrees_to_radians(degrees):
-    """convert degrees to radians"""
-    return degrees * pi / 180. 
-
-
 def vector(*floats):
     """Create 3D double numpy array."""
     return np.array(floats, dtype=np.float)
