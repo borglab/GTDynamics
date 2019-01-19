@@ -12,23 +12,31 @@ import math
 import unittest
 
 import numpy as np
-from dh_parameters import PUMA_calibration, RR_calibration
+from dh_parameters import RR_calibration, PUMA_calibration
 from gtsam import Point3, Pose3, Rot3
 from serial_link import SerialLink
 from utils import GtsamTestCase, vector
 
 
-class TestSerialLink(GtsamTestCase):
-    """Unit tests for different manipulators class."""
+class TestRR(GtsamTestCase):
+    """Unit tests for DH RR."""
 
-    def test_fkine(self):
-        """Try forward kinematics."""
-        qz = vector(0, 0, 0, 0, 0, 0)
-        robot = SerialLink(PUMA_calibration)
-        T = robot.fkine(qz)
-        self.assertIsInstance(T, Pose3)
+    def setUp(self):
+        """Create RR robot."""
+        self.robot = SerialLink(
+            RR_calibration,
+            tool=Pose3(Rot3.Ry(math.radians(90)), Point3(0, 0, 0))
+        )
+
+    def test_link_frames(self):
+        """Try link_frames."""
+        configuration = self.robot.link_frames()
+        self.assertIsInstance(configuration, list)
+        self.assertEquals(len(configuration), 2)
         self.gtsamAssertEquals(
-            T, Pose3(Rot3.Rx(math.radians(90)), Point3(0, 0, 0)))
+            configuration[0], Pose3(Rot3(), Point3(2, 0, 0)))
+        self.gtsamAssertEquals(
+            configuration[1], Pose3(Rot3(), Point3(4, 0, 0)))
 
     # def test_RR_forward_dynamics(self):
     #     """Try a simple RR robot."""
@@ -37,13 +45,36 @@ class TestSerialLink(GtsamTestCase):
     #     joint_angles = [0, 0]
     #     joint_velocities = [1, 1]
     #     joint_torques = [0, 0]
-    #     manipulator = SerialLink(RR_calibration)
-    #     factor_graph = manipulator.forward_factor_graph(
+    #     factor_graph = self.robot.forward_factor_graph(
     #         joint_angles, joint_velocities, joint_torques)
-    #     actual_joint_accels = manipulator.factor_graph_optimization(
+    #     actual_joint_accels = self.robot.factor_graph_optimization(
     #         factor_graph)
     #     np.testing.assert_array_almost_equal(
     #         actual_joint_accels, expected_joint_accels)
+
+
+class TestPuma(GtsamTestCase):
+    """Unit tests for DH Puma."""
+
+    def setUp(self):
+        """Create Puma robot."""
+        self.robot = SerialLink(PUMA_calibration)
+
+    def test_fkine(self):
+        """Try forward kinematics, example from Corke 2017 page 203."""
+        qz = vector(0, 0, 0, 0, 0, 0)
+        T = self.robot.fkine(qz)
+        self.assertIsInstance(T, Pose3)
+        self.gtsamAssertEquals(
+            T, Pose3(Rot3(), Point3(0.4521, -0.15, 0.4318)), tol=1e-4)
+
+    def test_link_frames(self):
+        """Try link_frames."""
+        configuration = self.robot.link_frames()
+        self.assertIsInstance(configuration, list)
+        self.assertEquals(len(configuration), 6)
+        self.gtsamAssertEquals(
+            configuration[0], Pose3(Rot3.Rx(math.radians(90)), Point3(0, 0, 0)))
 
     # def test_PUMA_forward_dynamics(self):
     #     """Try a PUMA robot."""
@@ -54,10 +85,9 @@ class TestSerialLink(GtsamTestCase):
     #     joint_velocities = [-5, -10, -15, -20, -25, -30]
     #     joint_torques = [0.626950752326773, -34.8262338725151, 1.02920598714973,
     #                      -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05]
-    #     manipulator = SerialLink(PUMA_calibration)
-    #     factor_graph = manipulator.forward_factor_graph(
+    #     factor_graph = self.robot.forward_factor_graph(
     #         joint_angles, joint_velocities, joint_torques)
-    #     actual_joint_accels = manipulator.factor_graph_optimization(
+    #     actual_joint_accels = self.robot.factor_graph_optimization(
     #         factor_graph)
     #     np.testing.assert_array_almost_equal(
     #         actual_joint_accels, expected_joint_accels)
