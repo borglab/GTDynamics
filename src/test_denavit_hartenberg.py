@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test forward dynamics using factor graphs.
+Test Denavit Hartenberg parameters.
 Author: Frank Dellaert and Mandy Xie
 """
 
@@ -10,23 +10,19 @@ from __future__ import print_function
 
 import unittest
 
-import numpy as np
-
-import gtsam
-import utils
-from denavit_hartenberg import DenavitHartenberg, LinkParameters
+from denavit_hartenberg import LinkParameters
 from dh_parameters import PUMA_calibration, RR_calibration
-from gtsam import Point3, Pose3, Rot3, symbol
-from utils import GtsamTestCase, vector
+from gtsam import Point3
+from utils import GtsamTestCase
 
 
 class TestLinkParameters(GtsamTestCase):
     """Unit tests for DH RR."""
 
     def test_constructor(self):
-        link_parameters = LinkParameters(
-            0, 0, 0, 0, 'B', 0, Point3(0, 0, 0), [0, 0, 0])
-        # TODO
+        """Test constructor."""
+        link = LinkParameters(0, 0, 0, 0, 'B', 0, Point3(0, 0, 0), [0, 0, 0])
+        self.assertIsInstance(link, LinkParameters)
 
 
 class TestRR(GtsamTestCase):
@@ -35,6 +31,7 @@ class TestRR(GtsamTestCase):
     def test_link_configuration_home(self):
         """TODO."""
         link_config_home = RR_calibration.link_configuration_home()
+        self.assertIsInstance(link_config_home, list)
 
 
 class TestPuma(GtsamTestCase):
@@ -43,6 +40,7 @@ class TestPuma(GtsamTestCase):
     def test_link_configuration_home(self):
         """TODO."""
         link_config_home = PUMA_calibration.link_configuration_home()
+        self.assertIsInstance(link_config_home, list)
 
 
 if __name__ == "__main__":
