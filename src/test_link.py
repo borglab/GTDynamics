@@ -39,13 +39,14 @@ class TestLink(GtsamTestCase):
         # Create stationary state
         v2 = 0
         twist_2 = ZERO6
+        torque_2 = 0
 
         # Create all factors
         jTi = Pose3(Rot3(), Point3(-2, 0, 0))
         kTj = Pose3(Rot3(), Point3(-2, 0, 0))
-        factors = self.link.forward_factors(2, jTi, v2, twist_2, kTj)
+        factors = self.link.forward_factors(2, jTi, v2, twist_2, torque_2, kTj)
         self.assertIsInstance(factors, GaussianFactorGraph)
-        self.assertEqual(factors.size(), 2)
+        self.assertEqual(factors.size(), 3)
 
         # Create ground truth values
         ground_truth = VectorValues()
