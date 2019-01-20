@@ -10,10 +10,10 @@ from __future__ import print_function
 
 import math
 import unittest
-import utils
 
 import numpy as np
-from dh_parameters import RR_calibration, PUMA_calibration
+import utils
+from dh_parameters import PUMA_calibration, RR_calibration
 from gtsam import Point3, Pose3, Rot3
 from serial_link import SerialLink
 
@@ -37,7 +37,7 @@ class TestRR(utils.GtsamTestCase):
         """Create RR robot."""
         self.robot = SerialLink(
             RR_calibration,
-            tool=Pose3(Rot3.Ry(HALF_PI), Point3(0, 0, 0))
+            tool=Pose3(Rot3.Rz(HALF_PI), Point3(1.5, 0, 0))
         )
 
     @staticmethod
@@ -115,20 +115,32 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint angles
         jTi_list = self.robot.jTi_list(self.QZ)
         self.assertIsInstance(jTi_list, list)
-        self.assertEquals(len(jTi_list), 1)
-        self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-2, 0, 0)))
+        self.assertEquals(len(jTi_list), 3)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
 
         # Check vertical configuration
         frames = self.robot.com_frames(self.Q1)
-        expected = frames[1].between(frames[0])
         jTi_list = self.robot.jTi_list(self.Q1)
-        self.gtsamAssertEquals(jTi_list[0], expected)
+        bT0 = self.robot.base.between(frames[0])
+        self.gtsamAssertEquals(jTi_list[0], bT0.inverse())
+        expected = frames[1].between(frames[0])
+        self.gtsamAssertEquals(jTi_list[1], expected)
+        wTt = self.robot.fkine(self.Q1)
+        expected = wTt.between(frames[-1])
+        self.gtsamAssertEquals(jTi_list[2], expected)
 
         # Check doubled back configuration
         frames = self.robot.com_frames(self.Q2)
-        expected = frames[1].between(frames[0])
         jTi_list = self.robot.jTi_list(self.Q2)
-        self.gtsamAssertEquals(jTi_list[0], expected)
+        bT0 = self.robot.base.between(frames[0])
+        self.gtsamAssertEquals(jTi_list[0], bT0.inverse())
+        expected = frames[1].between(frames[0])
+        self.gtsamAssertEquals(jTi_list[1], expected)
+        wTt = self.robot.fkine(self.Q2)
+        expected = wTt.between(frames[-1])
+        self.gtsamAssertEquals(jTi_list[2], expected)
 
     def test_twists(self):
         """Test twists."""
@@ -179,11 +191,12 @@ class TestRR(utils.GtsamTestCase):
     #     """Test a simple RR robot."""
     #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
     #     # Call a function with appropriate arguments to co compute them
-    #     joint_angles = [0, 0]
-    #     joint_velocities = [1, 1]
-    #     joint_torques = [0, 0]
+    #     joint_angles = utils.vector(0, 0)
+    #     joint_velocities = utils.vector(1, 1)
+    #     joint_torques = utils.vector(0, 0)
     #     factor_graph = self.robot.forward_factor_graph(
     #         joint_angles, joint_velocities, joint_torques)
+    #     print(factor_graph)
     #     actual_joint_accels = self.robot.factor_graph_optimization(
     #         factor_graph)
     #     np.testing.assert_array_almost_equal(

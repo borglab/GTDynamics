@@ -112,6 +112,19 @@ class Link(object):
         gmm[3:, 3:] = self.mass * np.identity(3)
         return gmm
 
+    @staticmethod
+    def base_factor(base_twist_accel=ZERO6):
+        """ Factor enforcing base acceleration.
+            Keyword argument:
+                base_twist_accel (np.array) -- optional acceleration for base
+            Example: if you wish to model gravity forces, use
+                base_twist_accel = vector(0, 0, 0, 0, 0, -9.8)
+            which imparts upwards acceleration on the base, which then will be
+            propagated to all links, forcing wrenches and torques to generate
+            upward forces consistent with gravity compensation.
+        """
+        return gtsam.JacobianFactor(T(0), I6, base_twist_accel, ALL_6_CONSTRAINED)
+
     def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
