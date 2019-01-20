@@ -54,8 +54,12 @@ class Link(object):
 
     def screw_axis(self):
         """Return screw axis expressed in link frame."""
+        # COM expressed in the link frame, which is aligned with the *next* joint in 
+        # the DH convention. Hence, we need to translate back to *our* joint:
         com = utils.vector_of_point3(self._center_of_mass)
-        return utils.unit_twist(utils.vector(0, 0, 1), - com)
+        joint = utils.vector(-self._a, 0, 0)
+        p = joint - com
+        return utils.unit_twist(utils.vector(0, 0, 1), p)
 
     @property
     def mass(self):

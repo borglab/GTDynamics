@@ -10,24 +10,28 @@ from __future__ import print_function
 
 import math
 import unittest
+import utils
 
 import numpy as np
 from dh_parameters import RR_calibration, PUMA_calibration
 from gtsam import Point3, Pose3, Rot3
 from serial_link import SerialLink
-from utils import GtsamTestCase, vector
 
 HALF_PI = math.pi/2
 R90 = Rot3.Rz(HALF_PI)
 R180 = Rot3.Rz(math.pi)
+ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
 
 
-class TestRR(GtsamTestCase):
+class TestRR(utils.GtsamTestCase):
     """Unit tests for DH RR."""
 
-    QZ = vector(0.00, 0.00)  # at rest
-    Q1 = vector(HALF_PI, 0)  # vertical
-    Q2 = vector(0, math.pi)  # doubled back
+    QZ = utils.vector(0.00, 0.00)  # at rest
+    Q1 = utils.vector(HALF_PI, 0)  # vertical
+    Q2 = utils.vector(0, math.pi)  # doubled back
+
+    # The joint screw axis, in the COM frame, is the same for both joints
+    AXIS = utils.unit_twist([0, 0, 1], [-1, 0, 0])
 
     def setUp(self):
         """Create RR robot."""
@@ -103,10 +107,8 @@ class TestRR(GtsamTestCase):
         screw_axes = self.robot.screw_axes()
         self.assertIsInstance(screw_axes, list)
         self.assertEquals(len(screw_axes), 2)
-        np.testing.assert_array_almost_equal(
-            screw_axes[0], vector(0, 0, 1, 0, -1, 0))
-        np.testing.assert_array_almost_equal(
-            screw_axes[1], vector(0, 0, 1, 0, -1, 0))
+        np.testing.assert_array_almost_equal(screw_axes[0], self.AXIS)
+        np.testing.assert_array_almost_equal(screw_axes[1], self.AXIS)
 
     def test_jTi_list(self):
         """Test jTi_list."""
@@ -127,10 +129,55 @@ class TestRR(GtsamTestCase):
         expected = frames[1].between(frames[0])
         jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], expected)
+        
+    def test_twists(self):
+        """Test twists."""
+        # Check zero joint angles
+        Ts = self.robot.com_frames()
+
+        # Check zero joint velocities
+        twists = self.robot.twists(Ts, utils.vector(0, 0))
+        self.assertIsInstance(twists, list)
+        self.assertEquals(len(twists), 2)
+        np.testing.assert_array_almost_equal(twists[0], ZERO6)
+        np.testing.assert_array_almost_equal(twists[1], ZERO6)
+
+        # Check rotating joint 1
+        twists = self.robot.twists(Ts, utils.vector(3, 0))
+        np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
+        # second joint is also rotating around point (0,0,0), which is (-3,0,0) in COM frame 2
+        expected = utils.unit_twist([0, 0, 3], [-3, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
+
+        # Check rotating joint 2
+        twists = self.robot.twists(Ts, utils.vector(0, 2))
+        np.testing.assert_array_almost_equal(twists[0], ZERO6)
+        # second joint rotating around point (2,0,0), which is (-2,0,0) in COM frame 2
+        expected = utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
+
+        # Check both rotating, should be linear combination
+        twists = self.robot.twists(Ts, utils.vector(3, 2))
+        np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
+        expected = utils.unit_twist(
+            [0, 0, 3], [-3, 0, 0]) + utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
+
+        # Check doubled back configuration
+        Ts = self.robot.com_frames(self.Q2)
+
+        # Check zero joint velocities
+        twists = self.robot.twists(Ts, utils.vector(3, 2))
+        self.assertIsInstance(twists, list)
+        self.assertEquals(len(twists), 2)
+        np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
+        expected = utils.unit_twist(
+            [0, 0, 3], [1, 0, 0]) + utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
 
     # def test_RR_forward_dynamics(self):
     #     """Test a simple RR robot."""
-    #     expected_joint_accels = vector(0, 0)  # from MATLAB
+    #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
     #     # Call a function with appropriate arguments to co compute them
     #     joint_angles = [0, 0]
     #     joint_velocities = [1, 1]
@@ -143,7 +190,7 @@ class TestRR(GtsamTestCase):
     #         actual_joint_accels, expected_joint_accels)
 
 
-class TestPuma(GtsamTestCase):
+class TestPuma(utils.GtsamTestCase):
     """Unit tests for DH Puma."""
 
     def setUp(self):
@@ -152,7 +199,7 @@ class TestPuma(GtsamTestCase):
 
     def test_fkine(self):
         """Test forward kinematics, example from Corke 2017 page 203."""
-        qz = vector(0, 0, 0, 0, 0, 0)
+        qz = ZERO6
         T = self.robot.fkine(qz)
         self.assertIsInstance(T, Pose3)
         self.gtsamAssertEquals(
@@ -168,7 +215,7 @@ class TestPuma(GtsamTestCase):
 
     # def test_PUMA_forward_dynamics(self):
     #     """Test a PUMA robot."""
-    #     expected_joint_accels = vector(
+    #     expected_joint_accels = utils.vector(
     #         0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
     #     # Call a function with appropriate arguments to co compute them
     #     joint_angles = [0, 0, 0, 0, 0, 0]
@@ -183,7 +230,7 @@ class TestPuma(GtsamTestCase):
     #         actual_joint_accels, expected_joint_accels)
 
 
-class TestPumaPlus(GtsamTestCase):
+class TestPumaPlus(utils.GtsamTestCase):
     """Unit tests for Puma, with base and tool transforms."""
 
     def setUp(self):
@@ -195,7 +242,7 @@ class TestPumaPlus(GtsamTestCase):
 
     def test_fkine(self):
         """Test forward kinematics, second example from Corke 2017 page 204."""
-        qz = vector(0, 0, 0, 0, 0, 0)
+        qz = ZERO6
         T = self.robot.fkine(qz)
         self.assertIsInstance(T, Pose3)
         self.gtsamAssertEquals(
