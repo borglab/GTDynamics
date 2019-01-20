@@ -215,8 +215,7 @@ class SerialLink(object):
         return gtsam.JacobianFactor(W(self.num_links() + 1),
                                     I6, rhs, ALL_6_CONSTRAINED)
 
-    @staticmethod
-    def jTi_list(Ms, screw_axes, joint_angles):
+    def jTi_list(self, Ms, screw_axes, joint_angles):
         """ Calculate list of transforms from COM frame j-1 relative to COM j.
             Keyword arguments:
                 Ms (Pose3 list) -- COM frames at rest
@@ -226,10 +225,12 @@ class SerialLink(object):
         """
         # TODO(Frank): I don't like these inverses, wished we could do with forward.
         # configuration of link frame j-1 relative to link frame j at rest
-        jMi_list = [M_j.between(M_i) for (M_i, M_j) in zip(Ms[:-1], Ms[1:])]
-
-        return [gtsam.Pose3.Expmap(- A_j * q_j).compose(jMi)
-                for A_j, q_j, jMi in zip(screw_axes, joint_angles, jMi_list)]
+        # jMi_list = [M_j.between(M_i) for M_i, M_j in zip(Ms[:-1], Ms[1:])]
+        # return [utils.compose(gtsam.Pose3.Expmap(- A_j * q_j), jMi)
+        #         for A_j, q_j, jMi in zip(screw_axes[:-1], joint_angles[:-1], jMi_list)]
+        # TODO(Frank): decide why we would want to do it above way (which is broken)
+        Ts = self.com_frames(joint_angles)
+        return [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])]
 
     def forward_factor_graph(self, joint_angles, joint_velocities, torques):
         """ Build factor graph for RR manipulator forward dynamics.
