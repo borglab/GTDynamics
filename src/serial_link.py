@@ -137,12 +137,16 @@ class SerialLink(object):
         tTnc = nTt.between(nTc)
         return [bT1] + [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])] + [tTnc]
 
-    def forward_factor_graph(self, q, joint_velocities, torques):
+    def forward_factor_graph(self, q, joint_velocities, torques,
+                             base_twist_accel=ZERO6, external_wrench=ZERO6):
         """ Build factor graph for RR manipulator forward dynamics.
             Keyword arguments:
                 q (np.array, in rad) - joint angles
                 joint velocities (np.array, in rad/s)
                 torques (np.array, in Nm)
+                base_twist_accel (np.array) -- optional acceleration for base
+                external_wrench (np.array) -- optional external wrench
+            Note: see Link.base_factor on use of base_twist_accel
             Returns Gaussian factor graph
         """
         # TODO(Frank): take triples instead?
@@ -161,7 +165,7 @@ class SerialLink(object):
         gfg = gtsam.GaussianFactorGraph()
 
         # Add factor to enforce base acceleration
-        gfg.add(Link.base_factor())
+        gfg.add(Link.base_factor(base_twist_accel))
 
         # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
         jTis = self.jTi_list(q)
@@ -173,19 +177,30 @@ class SerialLink(object):
             gfg.push_back(factors)
 
         # Add factor to enforce external wrench at tool
-        gfg.add(Link.tool_factor(self.num_links))
+        gfg.add(Link.tool_factor(self.num_links, external_wrench))
 
         return gfg
 
-    def joint_accel_result(self, results):
+    def extract_joint_accelerations(self, result):
         """Extract joint accelerations for all joints from VectorValues."""
-        return [results.at(a(j)) for j in range(1, self.num_links+1)]
+        return [result.at(a(j)) for j in range(1, self.num_links+1)]
 
     def factor_graph_optimization(self, forward_factor_graph):
+        """ Optimize factor graph for manipulator forward dynamics.
+            Keyword arguments: 
+                forward_factor_graph -- factor graph for forward dynamics.
+            Returns VectorValues with all unknowns:
+                - N+1 twist accelerations (base + links)
+                - N+1 torques (links + tool)
+                - N joint accelerations.
+            Note: use extract_joint_accelerations to filter out jojt accelerations.
         """
-        optimize factor graph for manipulator forward dynamics
-        Return joint accelerations
-        take factor graph for forward dynamics as input
+        return forward_factor_graph.optimize()
+
+    def forward_dynamics(self, *args, **kwargs):
+        """ Calculate joint accelerations from manipulator state and torques.
+            See forward_factor_graph for input arguments.
         """
-        results = forward_factor_graph.optimize()
-        return self.joint_accel_result(results)
+        factor_graph = self.forward_factor_graph(*args, **kwargs)
+        result = factor_graph.optimize()
+        return self.extract_joint_accelerations(result)
