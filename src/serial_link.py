@@ -127,14 +127,15 @@ class SerialLink(object):
                 q (np.array, in rad) - joint angles
             Returns list of transforms, 2 more than number of links:
                 - first transform is bT1, i.e. base expressed in link 1
-                - last transform is tTn, i.e., link N expressed in tool frame
+                - last transform is tTnc, i.e., link N COM frame expressed in tool frame
         """
         # TODO(Frank): I don't like these inverses, wished we could do with forward.
         Ts = self.com_frames(q)
         bT1 = Ts[0].between(self._base)
-        wTt = self.fkine(q)
-        tTn = wTt.between(Ts[-1])
-        return [bT1] + [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])] + [tTn]
+        nTt = self.tool
+        nTc = Pose3(Rot3(), self._links[-1].center_of_mass)
+        tTnc = nTt.between(nTc)
+        return [bT1] + [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])] + [tTnc]
 
     def forward_factor_graph(self, q, joint_velocities, torques):
         """ Build factor graph for RR manipulator forward dynamics.

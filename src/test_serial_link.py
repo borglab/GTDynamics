@@ -121,26 +121,16 @@ class TestRR(utils.GtsamTestCase):
         self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
 
         # Check vertical configuration
-        frames = self.robot.com_frames(self.Q1)
         jTi_list = self.robot.jTi_list(self.Q1)
-        bT0 = self.robot.base.between(frames[0])
-        self.gtsamAssertEquals(jTi_list[0], bT0.inverse())
-        expected = frames[1].between(frames[0])
-        self.gtsamAssertEquals(jTi_list[1], expected)
-        wTt = self.robot.fkine(self.Q1)
-        expected = wTt.between(frames[-1])
-        self.gtsamAssertEquals(jTi_list[2], expected)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(R90.inverse(), Point3(-1, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
 
         # Check doubled back configuration
-        frames = self.robot.com_frames(self.Q2)
         jTi_list = self.robot.jTi_list(self.Q2)
-        bT0 = self.robot.base.between(frames[0])
-        self.gtsamAssertEquals(jTi_list[0], bT0.inverse())
-        expected = frames[1].between(frames[0])
-        self.gtsamAssertEquals(jTi_list[1], expected)
-        wTt = self.robot.fkine(self.Q2)
-        expected = wTt.between(frames[-1])
-        self.gtsamAssertEquals(jTi_list[2], expected)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
 
     def test_twists(self):
         """Test twists."""
