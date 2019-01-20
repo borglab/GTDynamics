@@ -7,18 +7,19 @@ We follow Lynch & Park 2017 conventions, but using j to index joints, as in Cork
     - j in 1...N index joints
     - Mj is COM pose of link j in base frame 0.
     - Tj is the link frame j, aligned with joint j+1, expressed in base frame 0.
-    - we use i to denote the previous link/joint with index j-1
+    - we use shorthand i==j-1 and k==j+1
 """
 
 # pylint: disable=C0103, E1101, E0401
 
 from __future__ import print_function
 
-import math
-
 import gtsam
 import numpy as np
 import utils
+
+I6 = np.identity(6)
+ALL_6_CONSTRAINED = gtsam.noiseModel_Constrained.All(6)
 
 
 def symbol(char, index):
@@ -102,19 +103,19 @@ class SerialLink(object):
             frames.append(t)
         return frames
 
-    def com_frames(self):
+    def com_frames(self, q=None):
         """ Return each link's center of mass frame at rest, in the world frame."""
         t = self._base
         frames = []
-        for i, A in enumerate(self.link_transforms()):
-            iTcom = gtsam.Pose3(gtsam.Rot3(), self._links[i].center_of_mass)
-            frames.append(t.compose(iTcom))
+        for i, A in enumerate(self.link_transforms(q)):
             t = t.compose(A)
+            iTcom = gtsam.Pose3(gtsam.Rot3(), self._links[i].center_of_mass)
+            frames.append(utils.compose(t, iTcom))
         return frames
 
-    def link_properties(self, j):
-        """return link mass and inertia, take link index as input."""
-        return self._links[j].properties()
+    def screw_axes(self):
+        """ Return screw axes of each joint expressed in its own link frame."""
+        return [link.screw_axis() for link in self._links]
 
     @staticmethod
     def link_twist_j(jTi, twist_i, joint_vel_j, screw_axis_j):
@@ -122,12 +123,12 @@ class SerialLink(object):
             Keyword arguments:
                 jTi -- link j-1 configuration expressed in link j frame
                 twist_i -- twist of link j-1
-                joint_vel_j (deg/s) -- link j joint velocity
+                joint_vel_j (rad/s) -- link j joint velocity
                 screw_axis_j -- j^th screw axis
             Return twist of the j^th link.
         """
         # Equation 8.45 in MR, page 292
-        return np.dot(jTi.AdjointMap(), twist_i) + screw_axis_j * math.radians(joint_vel_j)
+        return np.dot(jTi.AdjointMap(), twist_i) + screw_axis_j * joint_vel_j
 
     @staticmethod
     def twist_accel_factor(jTi, twist_j, joint_vel_j, screw_axis_j, j):
@@ -142,45 +143,39 @@ class SerialLink(object):
         # Equation 8.47 in MR, page 293
 
         # LHS of acceleration equation
-        J_twist_accel_j = np.identity(6)
         J_twist_accel_i = -jTi.AdjointMap()
         J_joint_accel_j = -np.reshape(screw_axis_j, (6, 1))
 
         # RHS of acceleration equation
-        b_accel = np.dot(gtsam.Pose3.adjointMap(twist_j),
-                         screw_axis_j * math.radians(joint_vel_j))
+        b_accel = np.dot(gtsam.Pose3.adjointMap(
+            twist_j), screw_axis_j * joint_vel_j)
 
-        model = gtsam.noiseModel_Constrained.All(6)
         return gtsam.JacobianFactor(T(j - 1), J_twist_accel_i,
-                                    T(j), J_twist_accel_j,
+                                    T(j), I6,
                                     J(j), J_joint_accel_j,
-                                    b_accel, model)
+                                    b_accel, ALL_6_CONSTRAINED)
 
-    def joint_accel_factor(self, j_plus_1_T_j, twist_j, j):
+    def joint_accel_factor(self, kTj, twist_j, j):
         """ Return factor based on joint acceleration equation of the j^th link.
             Keyword arguments:
-                j_plus_1_T_j -- link j+1 configuration expressed in link j frame
+                kTj -- link j+1 configuration expressed in link j frame
                 twist_j -- twist of the j^th link
                 j -- link index, in 1..N
         """
-        # Equation 8.48 in MR, page 293
+        G_j = self._links[j-1].inertia_matrix()
+        ad = gtsam.Pose3.adjointMap(twist_j).transpose()
+        b = - np.dot(ad, np.dot(G_j, twist_j))
+        jAk = kTj.AdjointMap().transpose()
 
-        # get mass and inertia of link j
-        mass, inertia = self.link_properties(j)
+        # Given the above, Equation 8.48 in MR, page 293 can be written as
+        # G_j * T(j) + b == W(j) - jAk * W(j + 1)
+        # OR
+        # W(j) - jAk * W(j + 1) - G_j * T(j) == b
 
-        # LHS of wrench equation
-        J_wrenchj = np.identity(6)
-        J_wrenchj_plus_1 = -j_plus_1_T_j.AdjointMap().transpose()
-        J_twist_accel_j = -utils.inertia_matrix(inertia, mass)
-        # RHS of wrench equation
-        b_wrench = -np.dot(np.dot(gtsam.Pose3.adjointMap(twist_j).transpose(),
-                                  utils.inertia_matrix(inertia, mass)), twist_j)
-
-        model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(W(j), J_wrenchj,
-                                    W(j + 1), J_wrenchj_plus_1,
-                                    T(j), J_twist_accel_j,
-                                    b_wrench, model)
+        return gtsam.JacobianFactor(W(j), I6,
+                                    W(j + 1), -jAk,
+                                    T(j),  -G_j,
+                                    b, ALL_6_CONSTRAINED)
 
     @staticmethod
     def wrench_factor(torque_j, screw_axis_j, j):
@@ -193,11 +188,11 @@ class SerialLink(object):
         # Equation 8.49 in MR, page 293
 
         # LHS of torque equation
-        J_wrenchj = np.array([screw_axis_j])
+        J_wrench_j = np.array([screw_axis_j])
         # RHS of torque equation
         b_torque = np.array([torque_j])
         model = gtsam.noiseModel_Diagonal.Sigmas(np.array([0.0]))
-        return gtsam.JacobianFactor(W(j), J_wrenchj, b_torque, model)
+        return gtsam.JacobianFactor(W(j), J_wrench_j, b_torque, model)
 
     @staticmethod
     def prior_factor_base():
@@ -206,35 +201,50 @@ class SerialLink(object):
         on base link is assumed to be zero for
         angular and gravity accelration for linear
         """
-        # LHS
-        J_twist_accel_i = np.identity(6)
         # RHS
         b_twist_accel = np.array([0, 0, 0, 0, 0, 9.8])
-        model = gtsam.noiseModel_Constrained.All(6)
-        return gtsam.JacobianFactor(T(0),
-                                    J_twist_accel_i, b_twist_accel, model)
+        return gtsam.JacobianFactor(T(0), I6, b_twist_accel, ALL_6_CONSTRAINED)
 
     def prior_factor_eef(self):
         """
         Return prior factor that wrench
         on end effector is assumed to be zero
         """
-        # LHS
-        J_wrenchj_plus_1 = np.identity(6)
         # RHS
-        b_wrench = np.zeros(6)
-        model = gtsam.noiseModel_Constrained.All(6)
+        rhs = np.zeros(6)
         return gtsam.JacobianFactor(W(self.num_links() + 1),
-                                    J_wrenchj_plus_1, b_wrench, model)
+                                    I6, rhs, ALL_6_CONSTRAINED)
+
+    @staticmethod
+    def jTi_list(Ms, screw_axes, joint_angles):
+        """ Calculate list of transforms from COM frame j-1 relative to COM j.
+            Keyword arguments:
+                Ms (Pose3 list) -- COM frames at rest
+                screw_axes (np.array list) -- screw axis in COM frames
+                joint angles (np.array, in rad) - joint angles
+            Returns list of Pose3.
+        """
+        # TODO(Frank): I don't like these inverses, wished we could do with forward.
+        # configuration of link frame j-1 relative to link frame j at rest
+        jMi_list = [M_j.between(M_i) for (M_i, M_j) in zip(Ms[:-1], Ms[1:])]
+
+        return [gtsam.Pose3.Expmap(- A_j * q_j).compose(jMi)
+                for A_j, q_j, jMi in zip(screw_axes, joint_angles, jMi_list)]
 
     def forward_factor_graph(self, joint_angles, joint_velocities, torques):
         """ Build factor graph for RR manipulator forward dynamics.
             Keyword arguments:
-                joint angles
-                joint velocities
-                torques
+                joint angles (np.array, in rad) - joint angles
+                joint velocities (np.array, in rad/s)
+                torques (np.array, in Nm)
             Returns Gaussian factor graph
         """
+        # TODO(Frank): take triples instead?
+        N = self.num_links()
+        assert len(joint_angles) == N
+        assert len(joint_velocities) == N
+        assert len(torques) == N
+
         # Set up Gaussian Factor Graph
         gfg = gtsam.GaussianFactorGraph()
 
@@ -244,16 +254,11 @@ class SerialLink(object):
         # COM frame for all links, at rest.
         Ms = self.com_frames()
 
-        # configuration of link frame j-1 relative to link frame j at rest
-        jMi_list = [M_j.between(M_i)
-                    for (M_i, M_j) in enumerate(Ms[:-1], Ms[1:])]
-
         # screw axis of each joint expressed in its own link frame.
-        As = [link.screw_axis() for link in self._links]
+        As = self.screw_axes()
 
         # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
-        jTi_list = [Pose3.Expmap(- A_j * q_j).compose(jMi)
-                    for i, (A_j, q_j, jMi) in enumerate(As, joint_angles, jMi_list)]
+        jTi_list = self.jTi_list(Ms, As, joint_angles)
 
         # link j-1 (base for the first iteration) twist
         twist_i = utils.vector(0, 0, 0, 0, 0, 0)
@@ -261,20 +266,24 @@ class SerialLink(object):
         for i, (joint_velocity_j, torque_j, screw_axis_j) \
                 in enumerate(zip(joint_velocities, torques, As)):
 
-            j = i+1
+            j = i + 1
 
-            # j^th link twist
+            # Calculate j^th link twist, Eq. 8.45
+            # TODO(Frank): why is this not a factor?
             twist_j = self.link_twist_j(
                 jTi_list[i], twist_i, joint_velocity_j, screw_axis_j)
 
-            # factor 1
+            # Constrain twist acceleration, Eq. 8.47
             gfg.add(self.twist_accel_factor(
                 jTi_list[i], twist_j, joint_velocity_j, screw_axis_j, j))
 
-            # factor 2
-            gfg.add(self.joint_accel_factor(jTi_list[j], twist_j, j))
+            # Constraint joint accelerations, Eq. 8.48
+            if j < N:
+                gfg.add(self.joint_accel_factor(jTi_list[i+1], twist_j, j))
+            else:
+                gfg.add(self.joint_accel_factor(jTi_list[i+1], twist_j, j))
 
-            # factor 3
+            # Constraint wrench given torque, Eq. 8.49
             gfg.add(self.wrench_factor(torque_j, screw_axis_j, j))
 
             # update link j-1 twist for the next iteration
