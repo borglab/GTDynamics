@@ -111,26 +111,40 @@ class Link(object):
         gmm[3:, 3:] = self.mass * np.identity(3)
         return gmm
 
-    def forward_factors(self, j, joint_vel_j, twist_j, jTi):
+    def forward_factors(self, j, jTi, joint_vel_j, twist_j, kTj):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
                 j -- index for this joint
+                jTi -- previous COM frame, expressed in this link's COM frame
                 joint_vel_j -- joint velocity for this link
                 twist_j -- velocity twist for this link, in COM frame
-                jTi -- previous COM frame, expresse din this joint
+                kTj -- this COM frame, expressed in next link's COM frame
             Will create several factors corresponding to Lynch & Park book:
                 - twist acceleration, Equation 8.47, page 293
+                - wrench balance, Equation 8.48, page 293
         """
         factors = GaussianFactorGraph()
 
         A_j = self._screw_axis  # joint axis expressed in COM frame
+        ad_j = Pose3.adjointMap(twist_j)
 
-        # Twist acceleration, Equation 8.47, page 293
-        # T(j) = A_j * a(j) + jTi.AdjointMap() * T(j-1) + adjointMap(twist_j) * A_j * joint_vel_j
-        rhs = np.dot(Pose3.adjointMap(twist_j), A_j * joint_vel_j)
+        # Given the above Equation 8.47 can be written as
+        # T(j) = A_j * a(j) + jTi.AdjointMap() * T(j-1) + ad_j * A_j * joint_vel_j
+        rhs = np.dot(ad_j, A_j * joint_vel_j)
         factors.add(T(j), I6,
                     a(j), -np.reshape(A_j, (6, 1)),
                     T(j - 1), -jTi.AdjointMap(),
                     rhs, ALL_6_CONSTRAINED)
+
+        G_j = self.inertia_matrix()
+        coriolis_j = np.dot(ad_j.transpose(), np.dot(G_j, twist_j))
+        jAk = kTj.AdjointMap().transpose()
+        
+        # Given the above Equation 8.48 can be written as
+        # G_j * T(j) - coriolis_j == F(j) - jAk * F(j + 1)
+        factors.add(T(j), G_j,
+                    F(j), -I6,
+                    F(j + 1), jAk,
+                    coriolis_j, ALL_6_CONSTRAINED)
 
         return factors
