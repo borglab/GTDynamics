@@ -50,7 +50,7 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint angles
         frames = self.robot.link_transforms()
         self.assertIsInstance(frames, list)
-        self.assertEquals(len(frames), 2)
+        self.assertEqual(len(frames), 2)
         self.gtsamAssertEquals(frames[0], self.transform(0))
         self.gtsamAssertEquals(frames[1], self.transform(0))
 
@@ -69,7 +69,7 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint angles
         frames = self.robot.link_frames()
         self.assertIsInstance(frames, list)
-        self.assertEquals(len(frames), 2)
+        self.assertEqual(len(frames), 2)
         self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
         self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(4, 0, 0)))
 
@@ -88,7 +88,7 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint angles
         Ts = self.robot.com_frames()
         self.assertIsInstance(Ts, list)
-        self.assertEquals(len(Ts), 2)
+        self.assertEqual(len(Ts), 2)
         self.gtsamAssertEquals(Ts[0], Pose3(Rot3(), Point3(1, 0, 0)))
         self.gtsamAssertEquals(Ts[1], Pose3(Rot3(), Point3(3, 0, 0)))
 
@@ -106,7 +106,7 @@ class TestRR(utils.GtsamTestCase):
         """Test screw_axes."""
         screw_axes = self.robot.screw_axes()
         self.assertIsInstance(screw_axes, list)
-        self.assertEquals(len(screw_axes), 2)
+        self.assertEqual(len(screw_axes), 2)
         np.testing.assert_array_almost_equal(screw_axes[0], self.AXIS)
         np.testing.assert_array_almost_equal(screw_axes[1], self.AXIS)
 
@@ -115,22 +115,26 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint angles
         jTi_list = self.robot.jTi_list(self.QZ)
         self.assertIsInstance(jTi_list, list)
-        self.assertEquals(len(jTi_list), 3)
+        self.assertEqual(len(jTi_list), 3)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(
+            R90.inverse(), Point3(0, 2.5, 0)))
 
         # Check vertical configuration
         jTi_list = self.robot.jTi_list(self.Q1)
-        self.gtsamAssertEquals(jTi_list[0], Pose3(R90.inverse(), Point3(-1, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[0], Pose3(
+            R90.inverse(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(
+            R90.inverse(), Point3(0, 2.5, 0)))
 
         # Check doubled back configuration
         jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(
+            R90.inverse(), Point3(0, 2.5, 0)))
 
     def test_twists(self):
         """Test twists."""
@@ -140,7 +144,7 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint velocities
         twists = self.robot.twists(Ts, utils.vector(0, 0))
         self.assertIsInstance(twists, list)
-        self.assertEquals(len(twists), 2)
+        self.assertEqual(len(twists), 2)
         np.testing.assert_array_almost_equal(twists[0], ZERO6)
         np.testing.assert_array_almost_equal(twists[1], ZERO6)
 
@@ -171,26 +175,26 @@ class TestRR(utils.GtsamTestCase):
         # Check zero joint velocities
         twists = self.robot.twists(Ts, utils.vector(3, 2))
         self.assertIsInstance(twists, list)
-        self.assertEquals(len(twists), 2)
+        self.assertEqual(len(twists), 2)
         np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
         expected = utils.unit_twist(
             [0, 0, 3], [1, 0, 0]) + utils.unit_twist([0, 0, 2], [-1, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
-    # def test_RR_forward_dynamics(self):
-    #     """Test a simple RR robot."""
-    #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-    #     # Call a function with appropriate arguments to co compute them
-    #     joint_angles = utils.vector(0, 0)
-    #     joint_velocities = utils.vector(1, 1)
-    #     joint_torques = utils.vector(0, 0)
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques)
-    #     print(factor_graph)
-    #     actual_joint_accels = self.robot.factor_graph_optimization(
-    #         factor_graph)
-    #     np.testing.assert_array_almost_equal(
-    #         actual_joint_accels, expected_joint_accels)
+    def test_RR_forward_dynamics(self):
+        """Test stationary case."""
+        joint_angles = utils.vector(0, 0)
+        joint_velocities = utils.vector(0, 0)
+        joint_torques = utils.vector(0, 0)
+        factor_graph = self.robot.forward_factor_graph(
+            joint_angles, joint_velocities, joint_torques)
+        self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
+        actual_joint_accels = self.robot.factor_graph_optimization(
+            factor_graph)
+
+        expected_joint_accels = utils.vector(0, 0)  # from MATLAB
+        np.testing.assert_array_almost_equal(
+            actual_joint_accels, expected_joint_accels)
 
 
 class TestPuma(utils.GtsamTestCase):
@@ -212,7 +216,7 @@ class TestPuma(utils.GtsamTestCase):
         """Test link_frames."""
         frames = self.robot.link_frames()
         self.assertIsInstance(frames, list)
-        self.assertEquals(len(frames), 6)
+        self.assertEqual(len(frames), 6)
         self.gtsamAssertEquals(
             frames[0], Pose3(Rot3.Rx(HALF_PI), Point3(0, 0, 0)))
 

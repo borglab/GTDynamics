@@ -125,6 +125,15 @@ class Link(object):
         """
         return gtsam.JacobianFactor(T(0), I6, base_twist_accel, ALL_6_CONSTRAINED)
 
+    @staticmethod
+    def tool_factor(N, external_wrench=ZERO6):
+        """ Factor enforcing external wrench at tool frame.
+            Keyword argument:
+                N -- number of links, used to create wrench index
+                external_wrench (np.array) -- optional external wrench 
+        """
+        return gtsam.JacobianFactor(F(N+1), I6, external_wrench, ALL_6_CONSTRAINED)
+
     def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:

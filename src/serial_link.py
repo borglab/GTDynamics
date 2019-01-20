@@ -168,12 +168,12 @@ class SerialLink(object):
 
         for i, (link, jTi, v_j, twist_j, torque_j, kTj) \
                 in enumerate(zip(self._links, jTis, joint_velocities, twists, torques, jTis[1:])):
-
             j = i + 1
-
             factors = link.forward_factors(j, jTi, v_j, twist_j, torque_j, kTj)
-            print(j, factors)
-            gfg.add(factors)
+            gfg.push_back(factors)
+
+        # Add factor to enforce external wrench at tool
+        gfg.add(Link.tool_factor(self.num_links))
 
         return gfg
 
