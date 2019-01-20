@@ -1,5 +1,5 @@
 """
-Denavit Hartenberg parameters.
+Link class taking Denavit Hartenberg parameters.
 Author: Frank Dellaert and Mandy Xie
 """
 
@@ -22,19 +22,14 @@ def symbol(char, j):
     return gtsam.symbol(ord(char), j)
 
 
+def T(j):
+    """Shorthand for T_j, for twist accelerations."""
+    return symbol('T', j)
+
+
 def a(j):
     """Shorthand for a_j, for joint accelerations."""
     return symbol('a', j)
-
-
-def V(j):
-    """Shorthand for V_j, for velocity twists."""
-    return symbol('V', j)
-
-
-def A(j):
-    """Shorthand for A_j, for twist accelerations."""
-    return symbol('A', j)
 
 
 def F(j):
@@ -116,21 +111,26 @@ class Link(object):
         gmm[3:, 3:] = self.mass * np.identity(3)
         return gmm
 
-    def forward_factors(self, j, jTi, joint_vel_j):
+    def forward_factors(self, j, joint_vel_j, twist_j, jTi):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
                 j -- index for this joint
-                jTi -- previous COM frame, expresse din this joint
                 joint_vel_j -- joint velocity for this link
+                twist_j -- velocity twist for this link, in COM frame
+                jTi -- previous COM frame, expresse din this joint
             Will create several factors corresponding to Lynch & Park book:
-                - twist factor, Equation 8.45, page 292
+                - twist acceleration, Equation 8.47, page 293
         """
         factors = GaussianFactorGraph()
 
         A_j = self._screw_axis  # joint axis expressed in COM frame
 
-        # twist_j - jTi.AdjointMap() * twist_i = A_j * joint_vel_j
-        factors.add(V(j), I6, V(j-1), - jTi.AdjointMap(),
-                    A_j * joint_vel_j, ALL_6_CONSTRAINED)
+        # Twist acceleration, Equation 8.47, page 293
+        # T(j) = A_j * a(j) + jTi.AdjointMap() * T(j-1) + adjointMap(twist_j) * A_j * joint_vel_j
+        rhs = np.dot(Pose3.adjointMap(twist_j), A_j * joint_vel_j)
+        factors.add(T(j), I6,
+                    a(j), -np.reshape(A_j, (6, 1)),
+                    T(j - 1), -jTi.AdjointMap(),
+                    rhs, ALL_6_CONSTRAINED)
 
         return factors

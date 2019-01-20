@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test Denavit Hartenberg parameters.
+Test Link with Denavit Hartenberg parameters.
 Author: Frank Dellaert and Mandy Xie
 """
 
@@ -12,8 +12,11 @@ import unittest
 
 import utils
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
-from link import Link, V
+from link import Link, T, a
 from utils import GtsamTestCase
+
+ZERO1 = utils.vector(0)
+ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
 
 
 class TestLink(GtsamTestCase):
@@ -31,22 +34,25 @@ class TestLink(GtsamTestCase):
         self.assertIsInstance(self.link, Link)
 
     def test_forward_factors(self):
-        """Test factors for forward dynamics, middle link of RRR example."""
+        """Test factors for forward dynamics, middle link of stationary RRR example."""
 
-        # Create ground truth situation for RRR
-        v1, v2, v3 = 3, 2, 4
+        # Create stationary state
+        v1, v2, v3 = 0, 0, 0
+        twist_1 = ZERO6
+        twist_2 = ZERO6
 
         # Create all factors
         jTi = Pose3(Rot3(), Point3(-2, 0, 0))
-        factors = self.link.forward_factors(2, jTi, v2)
+        factors = self.link.forward_factors(2, v2, twist_2, jTi)
         self.assertIsInstance(factors, GaussianFactorGraph)
         self.assertEqual(factors.size(), 1)
 
-        # Create ground truth Values
+        # Create ground truth values
         ground_truth = VectorValues()
-        ground_truth.insert(V(1), v1 * self.AXIS)
-        ground_truth.insert(V(2),  utils.unit_twist(
-            [0, 0, v1], [-3, 0, 0]) + utils.unit_twist([0, 0, v2], [-1, 0, 0]))
+        ground_truth.insert(a(1), ZERO1)
+        ground_truth.insert(a(2), ZERO1)
+        ground_truth.insert(T(1), ZERO6)
+        ground_truth.insert(T(2), ZERO6)
 
         # Assert that error is zero for ground-truth
         self.assertAlmostEqual(factors.error(ground_truth), 0)
