@@ -55,6 +55,17 @@ class Link(object):
         return utils.unit_twist(utils.vector(0, 0, 1),
                                 -utils.vector_of_point3(self._center_of_mass))
 
-    def properties(self):
-        """Return link mass and inertia."""
-        return self._mass, self._inertia
+    @property
+    def mass(self):
+        """Return link mass."""
+        return self._mass
+
+    @property
+    def center_of_mass(self):
+        """Return center of mass (Point3)."""
+        return self._center_of_mass
+
+    @property
+    def inertia(self):
+        """Return link moments of inertia."""
+        return self._inertia
