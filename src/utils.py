@@ -50,14 +50,6 @@ def adtwist(twist):
     return adt
 
 
-def inertia_matrix(Ib, mass):
-    """Return the general mass matrix"""
-    gmm = np.zeros((6, 6), np.float)
-    gmm[:3, :3] = np.diag(Ib)
-    gmm[3:, 3:] = mass*np.identity(3)
-    return gmm
-
-
 def spatial_velocity(J, qdot, ps):
     """ Calculate the spatial velocity of a point ps.
         Keyword arguments:
