@@ -11,12 +11,12 @@ from __future__ import print_function
 import math
 
 from link import Link
-from gtsam import Point3, Pose3, Rot3
+from gtsam import Point3
 
 # Denavit-Hartenberg parameters for RR manipulator
 RR_calibration = [
-    Link(0, 0, 2, 0, 'R', 1, Point3(1, 0, 0), [0, 1/6., 1/6.]),
-    Link(0, 0, 2, 0, 'R', 1, Point3(1, 0, 0), [0, 1/6., 1/6.])
+    Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), [0, 1/6., 1/6.]),
+    Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), [0, 1/6., 1/6.])
 ]
 
 # Denavit-Hartenberg parameters for PUMA manipulator
