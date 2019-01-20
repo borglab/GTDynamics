@@ -110,11 +110,8 @@ class TestRR(GtsamTestCase):
 
     def test_jTi_list(self):
         """Test jTi_list."""
-        Ms = self.robot.com_frames()
-        screw_axes = self.robot.screw_axes()
-
         # Check zero joint angles
-        jTi_list = self.robot.jTi_list(Ms, screw_axes, self.QZ)
+        jTi_list = self.robot.jTi_list(self.QZ)
         self.assertIsInstance(jTi_list, list)
         self.assertEquals(len(jTi_list), 1)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-2, 0, 0)))
@@ -122,13 +119,13 @@ class TestRR(GtsamTestCase):
         # Check vertical configuration
         frames = self.robot.com_frames(self.Q1)
         expected = frames[1].between(frames[0])
-        jTi_list = self.robot.jTi_list(Ms, screw_axes, self.Q1)
+        jTi_list = self.robot.jTi_list(self.Q1)
         self.gtsamAssertEquals(jTi_list[0], expected)
 
         # Check doubled back configuration
         frames = self.robot.com_frames(self.Q2)
         expected = frames[1].between(frames[0])
-        jTi_list = self.robot.jTi_list(Ms, screw_axes, self.Q2)
+        jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], expected)
 
     # def test_RR_forward_dynamics(self):

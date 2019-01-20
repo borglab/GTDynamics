@@ -215,20 +215,13 @@ class SerialLink(object):
         return gtsam.JacobianFactor(W(self.num_links() + 1),
                                     I6, rhs, ALL_6_CONSTRAINED)
 
-    def jTi_list(self, Ms, screw_axes, joint_angles):
+    def jTi_list(self, joint_angles):
         """ Calculate list of transforms from COM frame j-1 relative to COM j.
             Keyword arguments:
-                Ms (Pose3 list) -- COM frames at rest
-                screw_axes (np.array list) -- screw axis in COM frames
                 joint angles (np.array, in rad) - joint angles
             Returns list of Pose3.
         """
         # TODO(Frank): I don't like these inverses, wished we could do with forward.
-        # configuration of link frame j-1 relative to link frame j at rest
-        # jMi_list = [M_j.between(M_i) for M_i, M_j in zip(Ms[:-1], Ms[1:])]
-        # return [utils.compose(gtsam.Pose3.Expmap(- A_j * q_j), jMi)
-        #         for A_j, q_j, jMi in zip(screw_axes[:-1], joint_angles[:-1], jMi_list)]
-        # TODO(Frank): decide why we would want to do it above way (which is broken)
         Ts = self.com_frames(joint_angles)
         return [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])]
 
@@ -252,14 +245,11 @@ class SerialLink(object):
         # Add prior factor, link 0 twist acceleration = 0
         gfg.add(self.prior_factor_base())
 
-        # COM frame for all links, at rest.
-        Ms = self.com_frames()
-
         # screw axis of each joint expressed in its own link frame.
         As = self.screw_axes()
 
         # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
-        jTi_list = self.jTi_list(Ms, As, joint_angles)
+        jTi_list = self.jTi_list(joint_angles)
 
         # link j-1 (base for the first iteration) twist
         twist_i = utils.vector(0, 0, 0, 0, 0, 0)
