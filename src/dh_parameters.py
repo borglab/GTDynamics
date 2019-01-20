@@ -15,7 +15,7 @@ from gtsam import Point3
 
 # Denavit-Hartenberg parameters for RR manipulator
 RR_calibration = 2 * \
-    [Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), [0, 1/6., 1/6.])]
+    [Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), [0, 0, 0])]
 
 # Denavit-Hartenberg parameters for PUMA manipulator
 PUMA_calibration = [
