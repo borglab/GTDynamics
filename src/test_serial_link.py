@@ -129,7 +129,7 @@ class TestRR(utils.GtsamTestCase):
         expected = frames[1].between(frames[0])
         jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], expected)
-        
+
     def test_twists(self):
         """Test twists."""
         # Check zero joint angles

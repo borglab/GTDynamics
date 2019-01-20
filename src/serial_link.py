@@ -10,13 +10,14 @@ We follow Lynch & Park 2017 conventions, but using j to index joints, as in Cork
     - we use shorthand i==j-1 and k==j+1
 """
 
-# pylint: disable=C0103, E1101, E0401
+# pylint: disable=C0103, E1101, E0401, C0412
 
 from __future__ import print_function
 
 import gtsam
 import numpy as np
 import utils
+from gtsam import Pose3, Rot3
 
 I6 = np.identity(6)
 ALL_6_CONSTRAINED = gtsam.noiseModel_Constrained.All(6)
@@ -56,7 +57,7 @@ class SerialLink(object):
         Calculate forward dynamics for manipulator using factor graph method
     """
 
-    def __init__(self, calibration, base=gtsam.Pose3(), tool=gtsam.Pose3()):
+    def __init__(self, calibration, base=Pose3(), tool=Pose3()):
         """ Constructor serial link manipulator from list of Link instances.
             Keyword arguments:
                 calibration -- Link list
@@ -68,7 +69,7 @@ class SerialLink(object):
         self._tool = tool
 
         # Calculate screw axes for all joints, expressed in their COM frame.
-        self._screw_axes = [link.screw_axis() for link in self._links]
+        self._screw_axes = [link.screw_axis for link in self._links]
 
     def num_links(self):
         """return number of *moving* links."""
@@ -113,7 +114,7 @@ class SerialLink(object):
         frames = []
         for i, A in enumerate(self.link_transforms(q)):
             t = t.compose(A)
-            iTcom = gtsam.Pose3(gtsam.Rot3(), self._links[i].center_of_mass)
+            iTcom = Pose3(Rot3(), self._links[i].center_of_mass)
             frames.append(utils.compose(t, iTcom))
         return frames
 
@@ -155,7 +156,7 @@ class SerialLink(object):
         J_joint_accel_j = -np.reshape(screw_axis_j, (6, 1))
 
         # RHS of acceleration equation
-        b_accel = np.dot(gtsam.Pose3.adjointMap(
+        b_accel = np.dot(Pose3.adjointMap(
             twist_j), screw_axis_j * joint_vel_j)
 
         return gtsam.JacobianFactor(T(j - 1), J_twist_accel_i,
@@ -171,7 +172,7 @@ class SerialLink(object):
                 j -- link index, in 1..N
         """
         G_j = self._links[j].inertia_matrix()
-        ad = gtsam.Pose3.adjointMap(twist_j).transpose()
+        ad = Pose3.adjointMap(twist_j).transpose()
         b = - np.dot(ad, np.dot(G_j, twist_j))
         jAk = kTj.AdjointMap().transpose()
 
@@ -193,7 +194,7 @@ class SerialLink(object):
         """
         N = self.num_links()
         G_N = self._links[N].inertia_matrix()
-        ad = gtsam.Pose3.adjointMap(twist_N).transpose()
+        ad = Pose3.adjointMap(twist_N).transpose()
         b = - np.dot(ad, np.dot(G_N, twist_N))
         Ad = self._tool.AdjointMap().transpose()
 
@@ -258,7 +259,7 @@ class SerialLink(object):
         assert len(joint_velocities) == N
         assert len(torques) == N
 
-        # # configuration of COM link frames
+        # configuration of COM link frames
         Ts = self.com_frames(joint_angles)
 
         # Calculate all twists
