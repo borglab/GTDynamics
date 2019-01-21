@@ -12,18 +12,50 @@ import math
 import unittest
 
 import numpy as np
-import utils
 from dh_parameters import PUMA_calibration, RR_calibration
 from gtsam import Point3, Pose3, Rot3
 from serial_link import SerialLink
+from utils import GtsamTestCase, unit_twist, vector
 
 HALF_PI = math.pi/2
 R90 = Rot3.Rz(HALF_PI)
 R180 = Rot3.Rz(math.pi)
-ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
+ZERO6 = vector(0, 0, 0, 0, 0, 0)
 
 
-class TestR(utils.GtsamTestCase):
+class BaseTestCase(GtsamTestCase):
+    """Unit tests for single link, use same link properties as RR."""
+
+    def check_forward_dynamics(self, joint_angles=None, joint_velocities=None,
+                               joint_torques=None, expected_joint_accels=None,
+                               base_twist_accel=ZERO6, external_wrench=ZERO6, debug=False):
+        """Test forward dynamics."""
+        N = self.robot.num_links
+        zeros = np.zeros((N,), np.float)
+
+        if joint_angles is None:
+            joint_angles = zeros
+        if joint_velocities is None:
+            joint_velocities = zeros
+        if joint_torques is None:
+            joint_torques = zeros
+
+        factor_graph = self.robot.forward_factor_graph(
+            joint_angles, joint_velocities, joint_torques,
+            base_twist_accel=base_twist_accel, external_wrench=external_wrench)
+        self.assertEqual(factor_graph.size(), 1 + N*3 + 1)
+
+        result = self.robot.factor_graph_optimization(factor_graph)
+        if debug:
+            print(result)
+
+        if expected_joint_accels is None:
+            expected_joint_accels = zeros
+        np.testing.assert_array_almost_equal(
+            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+
+
+class TestR(BaseTestCase):
     """Unit tests for single link, use same link properties as RR."""
 
     def setUp(self):
@@ -32,61 +64,34 @@ class TestR(utils.GtsamTestCase):
 
     def test_forward_dynamics_stationary(self):
         """Test stationary case."""
-        joint_angles = utils.vector(0)
-        joint_velocities = utils.vector(0)
-        joint_torques = utils.vector(0)
-        factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques)
-        self.assertEqual(factor_graph.size(), 1 + 3 + 1)
-        result = self.robot.factor_graph_optimization(factor_graph)
-
-        expected_joint_accels = utils.vector(0)  # common-sense
-        np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        self.check_forward_dynamics()
 
     def test_forward_external_wrench(self):
         """Test case when an external downward (-Y) force is applied."""
-        joint_angles = utils.vector(0)
-        joint_velocities = utils.vector(0)
-        joint_torques = utils.vector(5)
-        factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques,
-            external_wrench=utils.vector(0, 0, 0, 0, -2.5, 0))
-        result = self.robot.factor_graph_optimization(factor_graph)
-
-        # zero acceleration as torque cancels the external wrench
-        expected_joint_accels = utils.vector(0)
-        np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        # zero acceleration expected as torque cancels the external wrench
+        self.check_forward_dynamics(joint_torques=vector(5),
+                                    external_wrench=vector(
+                                        0, 0, 0, 0, -2.5, 0),
+                                    expected_joint_accels=vector(0)
+                                    )
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
-        joint_angles = utils.vector(0)
-        joint_velocities = utils.vector(0)
-        joint_torques = utils.vector(0)
-
         # gravity = -9.8, we force based to have negative gravity acceleration
-        factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques,
-            base_twist_accel=utils.vector(0, 0, 0, 0, 9.8, 0))
-        self.assertEqual(factor_graph.size(), 1 + 3 + 1)
-        result = self.robot.factor_graph_optimization(factor_graph)
-        
-        # The joint is accelerating downward because gravity
-        expected_joint_accels = utils.vector(-9.8)
-        np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        self.check_forward_dynamics(
+            base_twist_accel=vector(0, 0, 0, 0, 9.8, 0),
+            expected_joint_accels=vector(-9.8))
 
 
-class TestRR(utils.GtsamTestCase):
+class TestRR(BaseTestCase):
     """Unit tests for DH RR."""
 
-    QZ = utils.vector(0.00, 0.00)  # at rest
-    Q1 = utils.vector(HALF_PI, 0)  # vertical
-    Q2 = utils.vector(0, math.pi)  # doubled back
+    QZ = vector(0.00, 0.00)  # at rest
+    Q1 = vector(HALF_PI, 0)  # vertical
+    Q2 = vector(0, math.pi)  # doubled back
 
     # The joint screw axis, in the COM frame, is the same for both joints
-    AXIS = utils.unit_twist([0, 0, 1], [-1, 0, 0])
+    AXIS = unit_twist([0, 0, 1], [-1, 0, 0])
 
     def setUp(self):
         """Create RR robot."""
@@ -197,92 +202,66 @@ class TestRR(utils.GtsamTestCase):
         Ts = self.robot.com_frames()
 
         # Check zero joint velocities
-        twists = self.robot.twists(Ts, utils.vector(0, 0))
+        twists = self.robot.twists(Ts, vector(0, 0))
         self.assertIsInstance(twists, list)
         self.assertEqual(len(twists), 2)
         np.testing.assert_array_almost_equal(twists[0], ZERO6)
         np.testing.assert_array_almost_equal(twists[1], ZERO6)
 
         # Check rotating joint 1
-        twists = self.robot.twists(Ts, utils.vector(3, 0))
+        twists = self.robot.twists(Ts, vector(3, 0))
         np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
         # second joint is also rotating around point (0,0,0), which is (-3,0,0) in COM frame 2
-        expected = utils.unit_twist([0, 0, 3], [-3, 0, 0])
+        expected = unit_twist([0, 0, 3], [-3, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
         # Check rotating joint 2
-        twists = self.robot.twists(Ts, utils.vector(0, 2))
+        twists = self.robot.twists(Ts, vector(0, 2))
         np.testing.assert_array_almost_equal(twists[0], ZERO6)
         # second joint rotating around point (2,0,0), which is (-2,0,0) in COM frame 2
-        expected = utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        expected = unit_twist([0, 0, 2], [-1, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
         # Check both rotating, should be linear combination
-        twists = self.robot.twists(Ts, utils.vector(3, 2))
+        twists = self.robot.twists(Ts, vector(3, 2))
         np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
-        expected = utils.unit_twist(
-            [0, 0, 3], [-3, 0, 0]) + utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        expected = unit_twist(
+            [0, 0, 3], [-3, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
         # Check doubled back configuration
         Ts = self.robot.com_frames(self.Q2)
 
         # Check zero joint velocities
-        twists = self.robot.twists(Ts, utils.vector(3, 2))
+        twists = self.robot.twists(Ts, vector(3, 2))
         self.assertIsInstance(twists, list)
         self.assertEqual(len(twists), 2)
         np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
-        expected = utils.unit_twist(
-            [0, 0, 3], [1, 0, 0]) + utils.unit_twist([0, 0, 2], [-1, 0, 0])
+        expected = unit_twist(
+            [0, 0, 3], [1, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
     def test_forward_dynamics_stationary(self):
         """Test stationary case."""
-        joint_angles = utils.vector(0, 0)
-        joint_velocities = utils.vector(0, 0)
-        joint_torques = utils.vector(0, 0)
-        factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques)
-        self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
-        result = self.robot.factor_graph_optimization(factor_graph)
+        self.check_forward_dynamics()
 
-        expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-        np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
-
-    # def test_forward_external_wrench(self):
-    #     """Test case when an external wrench is applied."""
-    #     joint_angles = utils.vector(0, 0)
-    #     joint_velocities = utils.vector(0, 0)
-    #     joint_torques = utils.vector(0, 0)
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques,
-    #         external_wrench=utils.vector(0, 0, 0, 0, -2.5, 0))
-    #     self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
-    #     result = self.robot.factor_graph_optimization(factor_graph)
-    #     print(result)
-    #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-    #     np.testing.assert_array_almost_equal(
-    #         self.robot.extract_joint_accelerations(result), expected_joint_accels)
+    def test_forward_external_wrench(self):
+        """Test case when an external wrench is applied."""
+        self.check_forward_dynamics(
+            external_wrench=vector(0, 0, 0, 0, -2.5, 0),
+            # Wrong, but definitely not zero:
+            expected_joint_accels=vector(1, 2)
+        )
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
-        joint_angles = utils.vector(0, 0)
-        joint_velocities = utils.vector(0, 0)
-        joint_torques = utils.vector(0, 0)
-
-        factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques, 
-            base_twist_accel=utils.vector(0, 0, 0, 0, 10, 0))
-        self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
-        result = self.robot.factor_graph_optimization(factor_graph)
-
-        expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-        np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        self.check_forward_dynamics(
+            base_twist_accel=vector(0, 0, 0, 0, 10, 0),
+            expected_joint_accels=vector(0, 0)
+        )
 
 
-class TestPuma(utils.GtsamTestCase):
+class TestPuma(BaseTestCase):
     """Unit tests for DH Puma."""
 
     def setUp(self):
@@ -305,23 +284,22 @@ class TestPuma(utils.GtsamTestCase):
         self.gtsamAssertEquals(
             frames[0], Pose3(Rot3.Rx(HALF_PI), Point3(0, 0, 0)))
 
-    # def test_PUMA_forward_dynamics(self):
-    #     """Test a PUMA robot."""
-    #     expected_joint_accels = utils.vector(
-    #         0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
-    #     # Call a function with appropriate arguments to co compute them
-    #     joint_angles = [0, 0, 0, 0, 0, 0]
-    #     joint_velocities = [-5, -10, -15, -20, -25, -30]
-    #     joint_torques = [0.626950752326773, -34.8262338725151, 1.02920598714973,
-    #                      -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05]
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques)
-    #     result = self.robot.factor_graph_optimization(factor_graph)
-    #     np.testing.assert_array_almost_equal(
-    #         result, expected_joint_accels)
+    def test_PUMA_forward_dynamics_stationary(self):
+        """Test forward dynamics, stationary case."""
+        self.check_forward_dynamics()
+
+    def test_PUMA_forward_dynamics_matlab(self):
+        """Test forward dynamics, Mandy's MATLAB example."""
+        self.check_forward_dynamics(
+            joint_velocities=np.radians(vector(-5, -10, -15, -20, -25, -30)),
+            joint_torques=vector(0.626950752326773, -34.8262338725151, 1.02920598714973,
+                                 -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05),
+            expected_joint_accels=vector(
+                0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
+        )
 
 
-class TestPumaPlus(utils.GtsamTestCase):
+class TestPumaPlus(BaseTestCase):
     """Unit tests for Puma, with base and tool transforms."""
 
     def setUp(self):

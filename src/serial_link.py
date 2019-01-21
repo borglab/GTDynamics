@@ -151,9 +151,9 @@ class SerialLink(object):
         """
         # TODO(Frank): take triples instead?
         N = self.num_links
-        assert len(q) == N
-        assert len(joint_velocities) == N
-        assert len(torques) == N
+        assert q.shape == (N,)
+        assert joint_velocities.shape == (N,)
+        assert torques.shape == (N,)
 
         # configuration of COM link frames
         Ts = self.com_frames(q)
