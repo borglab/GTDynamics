@@ -132,7 +132,11 @@ class Link(object):
                 N -- number of links, used to create wrench index
                 external_wrench (np.array) -- optional external wrench 
         """
-        return gtsam.JacobianFactor(F(N+1), I6, external_wrench, ALL_6_CONSTRAINED)
+        # Note: F(N+1) is the negative of the external wrench applied to the tool.
+        # The reason is the negative sign in Formula 8.48, which is correct when a 
+        # link provides a reaction wrench to the next link, but should be positive
+        # for an external wrench applied to the same link.
+        return gtsam.JacobianFactor(F(N+1), I6, -external_wrench, ALL_6_CONSTRAINED)
 
     def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj):
         """ Create all factors linking this links dynamics with previous and next link.

@@ -48,30 +48,34 @@ class TestR(utils.GtsamTestCase):
         """Test case when an external downward (-Y) force is applied."""
         joint_angles = utils.vector(0)
         joint_velocities = utils.vector(0)
-        joint_torques = utils.vector(0)
+        joint_torques = utils.vector(5)
         factor_graph = self.robot.forward_factor_graph(
             joint_angles, joint_velocities, joint_torques,
             external_wrench=utils.vector(0, 0, 0, 0, -2.5, 0))
         result = self.robot.factor_graph_optimization(factor_graph)
-        print(result)
-        expected_joint_accels = utils.vector(0)  # from MATLAB
+
+        # zero acceleration as torque cancels the external wrench
+        expected_joint_accels = utils.vector(0)
         np.testing.assert_array_almost_equal(
             self.robot.extract_joint_accelerations(result), expected_joint_accels)
 
-    # def test_forward_dynamics_gravity(self):
-    #     """Test gravity compensation case: assume Y-axis is up."""
-    #     joint_angles = utils.vector(0, 0)
-    #     joint_velocities = utils.vector(0, 0)
-    #     joint_torques = utils.vector(0, 0)
+    def test_forward_dynamics_gravity(self):
+        """Test gravity compensation case: assume Y-axis is up."""
+        joint_angles = utils.vector(0)
+        joint_velocities = utils.vector(0)
+        joint_torques = utils.vector(0)
 
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques, base_twist_accel=utils.vector(0, 0, 0, 0, -9.8, 0))
-    #     self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
-    #     result = self.robot.factor_graph_optimization(factor_graph)
-
-    #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-        # np.testing.assert_array_almost_equal(
-        #     self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        # gravity = -9.8, we force based to have negative gravity acceleration
+        factor_graph = self.robot.forward_factor_graph(
+            joint_angles, joint_velocities, joint_torques,
+            base_twist_accel=utils.vector(0, 0, 0, 0, 9.8, 0))
+        self.assertEqual(factor_graph.size(), 1 + 3 + 1)
+        result = self.robot.factor_graph_optimization(factor_graph)
+        
+        # The joint is accelerating downward because gravity
+        expected_joint_accels = utils.vector(-9.8)
+        np.testing.assert_array_almost_equal(
+            self.robot.extract_joint_accelerations(result), expected_joint_accels)
 
 
 class TestRR(utils.GtsamTestCase):
@@ -253,7 +257,7 @@ class TestRR(utils.GtsamTestCase):
     #     joint_torques = utils.vector(0, 0)
     #     factor_graph = self.robot.forward_factor_graph(
     #         joint_angles, joint_velocities, joint_torques,
-    #         external_wrench=utils.vector(0, 0, -5, 0, 0, 0))
+    #         external_wrench=utils.vector(0, 0, 0, 0, -2.5, 0))
     #     self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
     #     result = self.robot.factor_graph_optimization(factor_graph)
     #     print(result)
@@ -261,20 +265,21 @@ class TestRR(utils.GtsamTestCase):
     #     np.testing.assert_array_almost_equal(
     #         self.robot.extract_joint_accelerations(result), expected_joint_accels)
 
-    # def test_forward_dynamics_gravity(self):
-    #     """Test gravity compensation case: assume Y-axis is up."""
-    #     joint_angles = utils.vector(0, 0)
-    #     joint_velocities = utils.vector(0, 0)
-    #     joint_torques = utils.vector(0, 0)
+    def test_forward_dynamics_gravity(self):
+        """Test gravity compensation case: assume Y-axis is up."""
+        joint_angles = utils.vector(0, 0)
+        joint_velocities = utils.vector(0, 0)
+        joint_torques = utils.vector(0, 0)
 
-    #     factor_graph = self.robot.forward_factor_graph(
-    #         joint_angles, joint_velocities, joint_torques, base_twist_accel=utils.vector(0, 0, 0, 0, -9.8, 0))
-    #     self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
-    #     result = self.robot.factor_graph_optimization(factor_graph)
+        factor_graph = self.robot.forward_factor_graph(
+            joint_angles, joint_velocities, joint_torques, 
+            base_twist_accel=utils.vector(0, 0, 0, 0, 10, 0))
+        self.assertEqual(factor_graph.size(), 1 + 2*3 + 1)
+        result = self.robot.factor_graph_optimization(factor_graph)
 
-    #     expected_joint_accels = utils.vector(0, 0)  # from MATLAB
-        # np.testing.assert_array_almost_equal(
-        #     self.robot.extract_joint_accelerations(result), expected_joint_accels)
+        expected_joint_accels = utils.vector(0, 0)  # from MATLAB
+        np.testing.assert_array_almost_equal(
+            self.robot.extract_joint_accelerations(result), expected_joint_accels)
 
 
 class TestPuma(utils.GtsamTestCase):
