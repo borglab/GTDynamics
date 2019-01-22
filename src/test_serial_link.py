@@ -97,7 +97,7 @@ class TestRR(BaseTestCase):
         """Create RR robot."""
         self.robot = SerialLink(
             RR_calibration,
-            tool=Pose3(Rot3.Rz(HALF_PI), Point3(1.5, 0, 0))
+            tool=Pose3()
         )
 
     @staticmethod
@@ -178,23 +178,22 @@ class TestRR(BaseTestCase):
         self.assertEqual(len(jTi_list), 3)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(
-            R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
 
         # Check vertical configuration
         jTi_list = self.robot.jTi_list(self.Q1)
         self.gtsamAssertEquals(jTi_list[0], Pose3(
             R90.inverse(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(
-            R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
+
 
         # Check doubled back configuration
         jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
-        self.gtsamAssertEquals(jTi_list[2], Pose3(
-            R90.inverse(), Point3(0, 2.5, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
+
 
     def test_twists(self):
         """Test twists."""
@@ -245,13 +244,11 @@ class TestRR(BaseTestCase):
         """Test stationary case."""
         self.check_forward_dynamics()
 
-    @unittest.skip("External wrench should generate accelerations.")
     def test_forward_external_wrench(self):
         """Test case when an external wrench is applied."""
         self.check_forward_dynamics(
             external_wrench=vector(0, 0, 0, 0, -2.5, 0),
-            # Wrong, but definitely not zero:
-            expected_joint_accels=vector(1, 2)
+            expected_joint_accels=vector(5, -20)
         )
 
     @unittest.skip("Accelerations obtained do not make sense.")
