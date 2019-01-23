@@ -187,13 +187,11 @@ class TestRR(BaseTestCase):
         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
         self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
 
-
         # Check doubled back configuration
         jTi_list = self.robot.jTi_list(self.Q2)
         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0)))
         self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
         self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
-
 
     def test_twists(self):
         """Test twists."""
@@ -293,8 +291,8 @@ class TestPuma(BaseTestCase):
         """Test forward dynamics, Mandy's MATLAB example."""
         self.check_forward_dynamics(
             joint_velocities=np.radians(vector(-5, -10, -15, -20, -25, -30)),
-            joint_torques=vector(0.626950752326773, -34.8262338725151, 1.02920598714973,
-                                 -0.0122426673731905, 0.166693973271978, 7.20736555357164e-05),
+            joint_torques=vector(2.34853527092267, -47.4289308101242, 3.89597516275938, -
+                                 0.582995766943385, -0.0205988067713663, 7.68216420389942e-05,),
             expected_joint_accels=vector(
                 0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
         )
@@ -309,7 +307,7 @@ class TestPumaPlus(BaseTestCase):
             PUMA_calibration,
             base=Pose3(Rot3.Rx(math.pi), Point3(0, 0, 3)),
             tool=Pose3(Rot3(), Point3(0, 0, 0.2)))
-    
+
     @unittest.skip("Wrong result after change to classic DH")
     def test_fkine(self):
         """Test forward kinematics, second example from Corke 2017 page 204."""
