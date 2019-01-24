@@ -13,11 +13,6 @@ import unittest
 import numpy as np
 from gtsam import Point3
 
-def degrees_to_radians(degrees):
-    """convert degrees to radians"""
-    return degrees * pi / 180. 
-
-
 def vector(*floats):
     """Create 3D double numpy array."""
     return np.array(floats, dtype=np.float)
@@ -53,14 +48,6 @@ def adtwist(twist):
     adt[3:, 3:] = adt[:3, :3]
     adt[3:, :3] = skew(twist[3], twist[4], twist[5])
     return adt
-
-
-def inertia_matrix(Ib, mass):
-    """Return the general mass matrix"""
-    gmm = np.zeros((6, 6), np.float)
-    gmm[:3, :3] = np.diag(Ib)
-    gmm[3:, 3:] = mass*np.identity(3)
-    return gmm
 
 
 def spatial_velocity(J, qdot, ps):
