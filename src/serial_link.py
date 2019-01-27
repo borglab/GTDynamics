@@ -18,7 +18,7 @@ import gtsam
 import numpy as np
 import utils
 from gtsam import Pose3, Rot3
-from link import Link, a
+from link import Link, a, V
 
 ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
 
@@ -105,7 +105,12 @@ class SerialLink(object):
         return self._screw_axes
 
     def twists(self, Ts, joint_velocities):
-        """Return velocity twists for all joints, expressed in their COM frame."""
+        """ Return velocity twists for all joints, expressed in their COM frame.
+            Keyword arguments:
+                Ts -- com frames
+                joint velocities (np.array, in rad/s)
+        """
+        # TODO(Frank): take jTi list instead, or better: do jTi with exp
         # The first link's twist is just from the joint
         twists = [self._screw_axes[0] * joint_velocities[0]]
 
@@ -120,6 +125,25 @@ class SerialLink(object):
             twists.append(twist_j)
 
         return twists
+
+    def twists_gtsam(self, q, joint_velocities):
+        """ Return velocity twists for all joints, expressed in their COM frame.
+            This version uses GTSAM, mainly used to test twist factors.
+            Keyword arguments:
+                q (np.array, in rad) - joint angles
+                joint velocities (np.array, in rad/s)
+        """
+        # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
+        jTis = self.jTi_list(q)
+
+        gfg = gtsam.GaussianFactorGraph()
+
+        # Add factor for each joint
+        for i, (link, jTi, joint_vel_j) in enumerate(zip(self._links, jTis, joint_velocities)):
+            gfg.add(link.twist_factor(i+1, jTi, joint_vel_j))
+
+        result = gfg.optimize()
+        return [result.at(V(j)) for j in range(1, self.num_links+1)]
 
     def jTi_list(self, q):
         """ Calculate list of transforms from COM frame j-1 relative to COM j.

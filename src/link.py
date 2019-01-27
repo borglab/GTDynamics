@@ -23,6 +23,11 @@ def symbol(char, j):
     return gtsam.symbol(ord(char), j)
 
 
+def V(j):
+    """Shorthand for V_j, for 6D link twist vectors."""
+    return symbol('V', j)
+
+
 def T(j):
     """Shorthand for T_j, for twist accelerations."""
     return symbol('T', j)
@@ -132,6 +137,23 @@ class Link(object):
         # link provides a reaction wrench to the next link, but should be positive
         # for an external wrench applied to the same link.
         return gtsam.JacobianFactor(F(N+1), I6, -external_wrench, ALL_6_CONSTRAINED)
+
+    def twist_factor(self, j, jTi, joint_vel_j):
+        """ Create single factor relating this link's twist with previous one.
+            Keyword arguments:
+                j -- index for this joint
+                jTi -- previous COM frame, expressed in this link's COM frame
+                joint_vel_j -- joint velocity for this link
+        """
+        A_j = self._screw_axis
+        joint_twist = A_j * joint_vel_j
+
+        if j==1:
+            return gtsam.JacobianFactor(V(j), I6, joint_twist, ALL_6_CONSTRAINED)
+        else:
+            # Equation 8.45 in MR, page 292
+            # V(j) - np.dot(jTi.AdjointMap(), V(j-1)) == joint_twist
+            return gtsam.JacobianFactor(V(j), I6, V(j-1), -jTi.AdjointMap(), joint_twist, ALL_6_CONSTRAINED)
 
     def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj, gravity_vector=None):
         """ Create all factors linking this links dynamics with previous and next link.

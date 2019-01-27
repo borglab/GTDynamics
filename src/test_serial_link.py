@@ -229,13 +229,20 @@ class TestRR(BaseTestCase):
         # Check doubled back configuration
         Ts = self.robot.com_frames(self.Q2)
 
-        # Check zero joint velocities
+        # Check both rotating, should be linear combination
         twists = self.robot.twists(Ts, vector(3, 2))
         self.assertIsInstance(twists, list)
         self.assertEqual(len(twists), 2)
         np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
         expected = unit_twist(
             [0, 0, 3], [1, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
+
+        # Check that we get exactly the same answer when using factor graph
+        twists = self.robot.twists_gtsam(self.Q2, vector(3, 2))
+        self.assertIsInstance(twists, list)
+        self.assertEqual(len(twists), 2)
+        np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
         np.testing.assert_array_almost_equal(twists[1], expected)
 
     def test_forward_dynamics_stationary(self):
