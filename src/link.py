@@ -117,11 +117,6 @@ class Link(object):
         """ Factor enforcing base acceleration.
             Keyword argument:
                 base_twist_accel (np.array) -- optional acceleration for base
-            Example: if you wish to model gravity forces, use
-                base_twist_accel = vector(0, 0, 0, 0, 0, -9.8)
-            which imparts upwards acceleration on the base, which then will be
-            propagated to all links, forcing wrenches and torques to generate
-            upward forces consistent with gravity compensation.
         """
         return gtsam.JacobianFactor(T(0), I6, base_twist_accel, ALL_6_CONSTRAINED)
 
@@ -138,7 +133,7 @@ class Link(object):
         # for an external wrench applied to the same link.
         return gtsam.JacobianFactor(F(N+1), I6, -external_wrench, ALL_6_CONSTRAINED)
 
-    def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj):
+    def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj, gravity_vector=None):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
                 j -- index for this joint
@@ -147,6 +142,7 @@ class Link(object):
                 twist_j -- velocity twist for this link, in COM frame
                 torque_j - torque at this link's joint
                 kTj -- this COM frame, expressed in next link's COM frame
+                gravity_vector (np.array) -- if given, will create gravity force
             Will create several factors corresponding to Lynch & Park book:
                 - twist acceleration, Equation 8.47, page 293
                 - wrench balance, Equation 8.48, page 293
@@ -154,28 +150,33 @@ class Link(object):
         """
         factors = GaussianFactorGraph()
 
-        A_j = self._screw_axis  # joint axis expressed in COM frame
+        # Twist acceleration in this link as a function of previous and joint accel.
+        # We need to know our screw axis, and an adjoint map:
+        A_j = self._screw_axis
         ad_j = Pose3.adjointMap(twist_j)
-
         # Given the above Equation 8.47 can be written as
-        # T(j) == A_j * a(j) + jTi.AdjointMap() * T(j-1) + ad_j * A_j * joint_vel_j
+        # T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
         rhs = np.dot(ad_j, A_j * joint_vel_j)
         factors.add(T(j), I6,
                     a(j), -np.reshape(A_j, (6, 1)),
                     T(j - 1), -jTi.AdjointMap(),
                     rhs, ALL_6_CONSTRAINED)
 
+        # Wrench on this link is due to acceleration and reaction to next link.
+        # We need inertia, coriolis forces, and an Adjoint map:
         G_j = self.inertia_matrix()
-        coriolis_j = np.dot(ad_j.transpose(), np.dot(G_j, twist_j))
+        rhs = np.dot(ad_j.transpose(), np.dot(G_j, twist_j)) # coriolis
+        if gravity_vector is not None:
+            rhs[3:] = gravity_vector * self.mass
         jAk = kTj.AdjointMap().transpose()
-
         # Given the above Equation 8.48 can be written as
-        # G_j * T(j) - coriolis_j == F(j) - jAk * F(j + 1)
+        # G_j * T(j) - F(j) + jAk * F(j + 1) == coriolis_j [+ gravity]
         factors.add(T(j), G_j,
                     F(j), -I6,
                     F(j + 1), jAk,
-                    coriolis_j, ALL_6_CONSTRAINED)
+                    rhs, ALL_6_CONSTRAINED)
 
+        # Torque is always wrench projected on screw axis.
         # Equation 8.49 can be written as
         # A_j.transpose() * F(j).transpose() == torque_j
         tau_j = utils.vector(torque_j)

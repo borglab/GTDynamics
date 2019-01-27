@@ -138,15 +138,15 @@ class SerialLink(object):
         return [bT1] + [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])] + [tTnc]
 
     def forward_factor_graph(self, q, joint_velocities, torques,
-                             base_twist_accel=ZERO6, external_wrench=ZERO6):
+                             gravity_vector=None, base_twist_accel=ZERO6, external_wrench=ZERO6):
         """ Build factor graph for RR manipulator forward dynamics.
             Keyword arguments:
                 q (np.array, in rad) - joint angles
                 joint velocities (np.array, in rad/s)
                 torques (np.array, in Nm)
-                base_twist_accel (np.array) -- optional acceleration for base
+                gravity_vector (np.array) -- if given, will create gravity forces
+                base_twist_accel (np.array) -- optional acceleration to force at base
                 external_wrench (np.array) -- optional external wrench
-            Note: see Link.base_factor on use of base_twist_accel
             Returns Gaussian factor graph
         """
         # TODO(Frank): take triples instead?
@@ -164,7 +164,7 @@ class SerialLink(object):
         # Set up Gaussian Factor Graph
         gfg = gtsam.GaussianFactorGraph()
 
-        # Add factor to enforce base acceleration
+        # Add factor to enforce base acceleration equal to zero
         gfg.add(Link.base_factor(base_twist_accel))
 
         # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
@@ -173,7 +173,7 @@ class SerialLink(object):
         for i, (link, jTi, v_j, twist_j, torque_j, kTj) \
                 in enumerate(zip(self._links, jTis, joint_velocities, twists, torques, jTis[1:])):
             j = i + 1
-            factors = link.forward_factors(j, jTi, v_j, twist_j, torque_j, kTj)
+            factors = link.forward_factors(j, jTi, v_j, twist_j, torque_j, kTj, gravity_vector)
             gfg.push_back(factors)
 
         # Add factor to enforce external wrench at tool

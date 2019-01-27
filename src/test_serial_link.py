@@ -28,7 +28,7 @@ class BaseTestCase(GtsamTestCase):
 
     def check_forward_dynamics(self, joint_angles=None, joint_velocities=None,
                                joint_torques=None, expected_joint_accels=None,
-                               base_twist_accel=ZERO6, external_wrench=ZERO6, debug=False):
+                               gravity_vector=None, external_wrench=ZERO6, debug=False):
         """Test forward dynamics."""
         N = self.robot.num_links
         zeros = np.zeros((N,), np.float)
@@ -42,7 +42,7 @@ class BaseTestCase(GtsamTestCase):
 
         factor_graph = self.robot.forward_factor_graph(
             joint_angles, joint_velocities, joint_torques,
-            base_twist_accel=base_twist_accel, external_wrench=external_wrench)
+            gravity_vector=gravity_vector, external_wrench=external_wrench)
         self.assertEqual(factor_graph.size(), 1 + N*3 + 1)
 
         result = self.robot.factor_graph_optimization(factor_graph)
@@ -77,9 +77,9 @@ class TestR(BaseTestCase):
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
-        # gravity = -9.8, we force based to have negative gravity acceleration
+        # Acceleration due to gravity = -9.8, in negative Y direction
         self.check_forward_dynamics(
-            base_twist_accel=vector(0, 0, 0, 0, 9.8, 0),
+            gravity_vector=vector(0, -9.8, 0),
             expected_joint_accels=vector(-9.8))
 
 
@@ -251,8 +251,9 @@ class TestRR(BaseTestCase):
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
+        # Acceleration due to gravity = -9.8, in negative Y direction
         self.check_forward_dynamics(
-            base_twist_accel=vector(0, 0, 0, 0, 9.8, 0),
+            gravity_vector=vector(0, -9.8, 0),
             expected_joint_accels=vector(-9.8, 19.6)
         )
 
