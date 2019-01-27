@@ -54,6 +54,33 @@ class BaseTestCase(GtsamTestCase):
         np.testing.assert_array_almost_equal(
             self.robot.extract_joint_accelerations(result), expected_joint_accels)
 
+    def check_inverse_dynamics(self, joint_angles=None, joint_velocities=None,
+                               joint_accelerations=None, expected_torques=None,
+                               base_twist_accel=ZERO6, external_wrench=ZERO6, debug=False):
+        """Test inverse dynamics."""
+        N = self.robot.num_links
+        zeros = np.zeros((N,), np.float)
+
+        if joint_angles is None:
+            joint_angles = zeros
+        if joint_velocities is None:
+            joint_velocities = zeros
+        if joint_accelerations is None:
+            joint_accelerations = zeros
+
+        factor_graph = self.robot.inverse_factor_graph(
+            joint_angles, joint_velocities, joint_accelerations,
+            base_twist_accel=base_twist_accel, external_wrench=external_wrench)
+        self.assertEqual(factor_graph.size(), 1 + N*3 + 1)
+
+        result = self.robot.factor_graph_optimization(factor_graph)
+        if debug:
+            print(result)
+
+        if expected_torques is None:
+            expected_torques = zeros
+        np.testing.assert_array_almost_equal(
+            self.robot.extract_torques(result), expected_torques)
 
 class TestR(BaseTestCase):
     """Unit tests for single link, use same link properties as RR."""
@@ -65,6 +92,10 @@ class TestR(BaseTestCase):
     def test_forward_dynamics_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
+
+    def test_inverse_dynamics_stationary(self):
+        """Test stationary case."""
+        self.check_inverse_dynamics()
 
     def test_forward_external_wrench(self):
         """Test case when an external downward (-Y) force is applied."""
@@ -248,6 +279,10 @@ class TestRR(BaseTestCase):
     def test_forward_dynamics_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
+
+    def test_inverse_dynamics_stationary(self):
+        """Test stationary case."""
+        self.check_inverse_dynamics()
 
     def test_forward_external_wrench(self):
         """Test case when an external wrench is applied."""

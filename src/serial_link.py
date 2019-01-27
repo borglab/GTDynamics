@@ -163,7 +163,7 @@ class SerialLink(object):
 
     def forward_factor_graph(self, q, joint_velocities, torques,
                              gravity_vector=None, base_twist_accel=ZERO6, external_wrench=ZERO6):
-        """ Build factor graph for RR manipulator forward dynamics.
+        """ Build factor graph for solving forward dynamics.
             Keyword arguments:
                 q (np.array, in rad) - joint angles
                 joint velocities (np.array, in rad/s)
@@ -205,6 +205,23 @@ class SerialLink(object):
 
         return gfg
 
+    def inverse_factor_graph(self, q, joint_velocities, joint_accelerations,
+                             base_twist_accel=ZERO6, external_wrench=ZERO6):
+        """ Build factor graph for solving inverse dynamics.
+            Keyword arguments:
+                q (np.array, in rad) - joint angles
+                joint velocities (np.array, in rad/s)
+                joint_accelerations (np.array, in rad/s^2)
+                base_twist_accel (np.array) -- optional acceleration for base
+                external_wrench (np.array) -- optional external wrench
+            Note: see Link.base_factor on use of base_twist_accel
+            Returns Gaussian factor graph
+        """
+        # Set up Gaussian Factor Graph
+        gfg = gtsam.GaussianFactorGraph()
+
+        return gfg
+    
     def extract_joint_accelerations(self, result):
         """Extract joint accelerations for all joints from VectorValues."""
         return [result.at(a(j)) for j in range(1, self.num_links+1)]
