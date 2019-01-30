@@ -12,7 +12,7 @@ import unittest
 
 import utils
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
-from link import F, Link, T, a
+from link import F, Link, T, a, t
 from utils import GtsamTestCase
 
 ZERO1 = utils.vector(0)
@@ -59,6 +59,31 @@ class TestLink(GtsamTestCase):
         # Assert that error is zero for ground-truth
         self.assertAlmostEqual(factors.error(ground_truth), 0)
 
+    def test_inverse_factors(self):
+        """Test factors for inverse dynamics, middle link of stationary RRR example."""
+
+        # Create stationary state
+        v2 = 0
+        twist_2 = ZERO6
+        acceleration_2 = 0
+
+        # Create all factors
+        jTi = Pose3(Rot3(), Point3(-2, 0, 0))
+        kTj = Pose3(Rot3(), Point3(-2, 0, 0))
+        factors = self.link.inverse_factors(2, jTi, v2, twist_2, acceleration_2, kTj)
+        self.assertIsInstance(factors, GaussianFactorGraph)
+        self.assertEqual(factors.size(), 1)
+
+        # Create ground truth values
+        ground_truth = VectorValues()
+        ground_truth.insert(t(2), ZERO1)
+        ground_truth.insert(T(1), ZERO6)
+        ground_truth.insert(T(2), ZERO6)
+        ground_truth.insert(F(2), ZERO6)
+        ground_truth.insert(F(3), ZERO6)
+
+        # Assert that error is zero for ground-truth
+        self.assertAlmostEqual(factors.error(ground_truth), 0)
 
 if __name__ == "__main__":
     unittest.main()

@@ -34,6 +34,11 @@ def T(j):
 
 
 def a(j):
+    """Shorthand for t_j, for torque."""
+    return symbol('t', j)
+
+
+def t(j):
     """Shorthand for a_j, for joint accelerations."""
     return symbol('a', j)
 
@@ -203,5 +208,36 @@ class Link(object):
         # A_j.transpose() * F(j).transpose() == torque_j
         tau_j = utils.vector(torque_j)
         factors.add(F(j), np.reshape(A_j, (1, 6)), tau_j, ONE_CONSTRAINED)
+
+        return factors
+
+    def inverse_factors(self, j, jTi, joint_vel_j, twist_j, acceleration_j, kTj, gravity_vector=None):
+        """ Create all factors linking this links dynamics with previous and next link.
+            Keyword arguments:
+                j -- index for this joint
+                jTi -- previous COM frame, expressed in this link's COM frame
+                joint_vel_j -- joint velocity for this link
+                twist_j -- velocity twist for this link, in COM frame
+                acceleration_j - acceleration at this link's joint
+                kTj -- this COM frame, expressed in next link's COM frame
+                gravity_vector (np.array) -- if given, will create gravity force
+            Will create several factors corresponding to Lynch & Park book:
+                - twist acceleration, Equation 8.47, page 293
+                - wrench balance, Equation 8.48, page 293
+                - torque-wrench relationship, Equation 8.49, page 293
+        """
+        factors = GaussianFactorGraph()
+
+        # Twist acceleration in this link as a function of previous and joint accel.
+        # We need to know our screw axis, and an adjoint map:
+        A_j = self._screw_axis
+        ad_j = Pose3.adjointMap(twist_j)
+        # Given the above Equation 8.47 can be written as
+        # T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j * acceleration_j 
+        rhs = np.dot(ad_j, A_j * joint_vel_j) +  A_j * acceleration_j 
+        factors.add(T(j), I6,
+                    T(j - 1), -jTi.AdjointMap(),
+                    rhs, ALL_6_CONSTRAINED)
+
 
         return factors

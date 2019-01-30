@@ -173,7 +173,6 @@ class SerialLink(object):
                 external_wrench (np.array) -- optional external wrench
             Returns Gaussian factor graph
         """
-        # TODO(Frank): take triples instead?
         N = self.num_links
         assert q.shape == (N,)
         assert joint_velocities.shape == (N,)
@@ -206,19 +205,40 @@ class SerialLink(object):
         return gfg
 
     def inverse_factor_graph(self, q, joint_velocities, joint_accelerations,
-                             base_twist_accel=ZERO6, external_wrench=ZERO6):
+                             gravity_vector=None, base_twist_accel=ZERO6, external_wrench=ZERO6):
         """ Build factor graph for solving inverse dynamics.
             Keyword arguments:
                 q (np.array, in rad) - joint angles
                 joint velocities (np.array, in rad/s)
                 joint_accelerations (np.array, in rad/s^2)
+                gravity_vector (np.array) -- if given, will create gravity forces
                 base_twist_accel (np.array) -- optional acceleration for base
                 external_wrench (np.array) -- optional external wrench
             Note: see Link.base_factor on use of base_twist_accel
             Returns Gaussian factor graph
         """
+        N = self.num_links
+        assert q.shape == (N,)
+        assert joint_velocities.shape == (N,)
+        assert joint_accelerations.shape == (N,)
+
+        # configuration of COM link frames
+        Ts = self.com_frames(q)
+
+        # Calculate all twists
+        twists = self.twists(Ts, joint_velocities)
+
         # Set up Gaussian Factor Graph
         gfg = gtsam.GaussianFactorGraph()
+
+        # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
+        jTis = self.jTi_list(q)
+
+        for i, (link, jTi, v_j, twist_j, acceleration_j, kTj) \
+                in enumerate(zip(self._links, jTis, joint_velocities, twists, joint_accelerations, jTis[1:])):
+            j = i + 1
+            factors = link.inverse_factors(j, jTi, v_j, twist_j, acceleration_j, kTj, gravity_vector)
+            gfg.push_back(factors)
 
         return gfg
     
