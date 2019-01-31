@@ -72,7 +72,7 @@ class TestLink(GtsamTestCase):
         kTj = Pose3(Rot3(), Point3(-2, 0, 0))
         factors = self.link.inverse_factors(2, jTi, v2, twist_2, acceleration_2, kTj)
         self.assertIsInstance(factors, GaussianFactorGraph)
-        self.assertEqual(factors.size(), 1)
+        self.assertEqual(factors.size(), 2)
 
         # Create ground truth values
         ground_truth = VectorValues()

@@ -138,7 +138,7 @@ class Link(object):
                 external_wrench (np.array) -- optional external wrench 
         """
         # Note: F(N+1) is the negative of the external wrench applied to the tool.
-        # The reason is the negative sign in Formula 8.48, which is correct when a 
+        # The reason is the negative sign in Formula 8.48, which is correct when a
         # link provides a reaction wrench to the next link, but should be positive
         # for an external wrench applied to the same link.
         return gtsam.JacobianFactor(F(N+1), I6, -external_wrench, ALL_6_CONSTRAINED)
@@ -153,12 +153,35 @@ class Link(object):
         A_j = self._screw_axis
         joint_twist = A_j * joint_vel_j
 
-        if j==1:
+        if j == 1:
             return gtsam.JacobianFactor(V(j), I6, joint_twist, ALL_6_CONSTRAINED)
         else:
             # Equation 8.45 in MR, page 292
             # V(j) - np.dot(jTi.AdjointMap(), V(j-1)) == joint_twist
             return gtsam.JacobianFactor(V(j), I6, V(j-1), -jTi.AdjointMap(), joint_twist, ALL_6_CONSTRAINED)
+
+    def wrench_factor(self, j, twist_j, kTj, gravity_vector=None):
+        """ Create wrench balance factor, common between forward and inverse dynamics.
+            Keyword arguments:
+                j -- index for this joint
+                twist_j -- velocity twist for this link, in COM frame
+                kTj -- this COM frame, expressed in next link's COM frame
+                gravity_vector (np.array) -- if given, will create gravity force
+        """
+        # Wrench on this link is due to acceleration and reaction to next link.
+        # We need inertia, coriolis forces, and an Adjoint map:
+        ad_j = Pose3.adjointMap(twist_j)
+        G_j = self.inertia_matrix()
+        rhs = np.dot(ad_j.transpose(), np.dot(G_j, twist_j))  # coriolis
+        if gravity_vector is not None:
+            rhs[3:] = gravity_vector * self.mass
+        jAk = kTj.AdjointMap().transpose()
+        # Given the above Equation 8.48 can be written as
+        # G_j * T(j) - F(j) + jAk * F(j + 1) == coriolis_j [+ gravity]
+        return gtsam.JacobianFactor(T(j), G_j,
+                                    F(j), -I6,
+                                    F(j + 1), jAk,
+                                    rhs, ALL_6_CONSTRAINED)
 
     def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj, gravity_vector=None):
         """ Create all factors linking this links dynamics with previous and next link.
@@ -190,18 +213,7 @@ class Link(object):
                     rhs, ALL_6_CONSTRAINED)
 
         # Wrench on this link is due to acceleration and reaction to next link.
-        # We need inertia, coriolis forces, and an Adjoint map:
-        G_j = self.inertia_matrix()
-        rhs = np.dot(ad_j.transpose(), np.dot(G_j, twist_j)) # coriolis
-        if gravity_vector is not None:
-            rhs[3:] = gravity_vector * self.mass
-        jAk = kTj.AdjointMap().transpose()
-        # Given the above Equation 8.48 can be written as
-        # G_j * T(j) - F(j) + jAk * F(j + 1) == coriolis_j [+ gravity]
-        factors.add(T(j), G_j,
-                    F(j), -I6,
-                    F(j + 1), jAk,
-                    rhs, ALL_6_CONSTRAINED)
+        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity_vector))
 
         # Torque is always wrench projected on screw axis.
         # Equation 8.49 can be written as
@@ -233,11 +245,13 @@ class Link(object):
         A_j = self._screw_axis
         ad_j = Pose3.adjointMap(twist_j)
         # Given the above Equation 8.47 can be written as
-        # T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j * acceleration_j 
-        rhs = np.dot(ad_j, A_j * joint_vel_j) +  A_j * acceleration_j 
+        # T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j * acceleration_j
+        rhs = np.dot(ad_j, A_j * joint_vel_j) + A_j * acceleration_j
         factors.add(T(j), I6,
                     T(j - 1), -jTi.AdjointMap(),
                     rhs, ALL_6_CONSTRAINED)
 
+        # Wrench on this link is due to acceleration and reaction to next link.
+        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity_vector))
 
         return factors
