@@ -27,7 +27,7 @@ class BaseTestCase(GtsamTestCase):
     """Unit tests for single link, use same link properties as RR."""
 
     def check_forward_dynamics(self, joint_angles=None, joint_velocities=None,
-                               joint_torques=None, expected_joint_accels=None,
+                               torques=None, accelerations=None,
                                gravity_vector=None, external_wrench=ZERO6, debug=False):
         """Test forward dynamics."""
         N = self.robot.num_links
@@ -37,11 +37,11 @@ class BaseTestCase(GtsamTestCase):
             joint_angles = zeros
         if joint_velocities is None:
             joint_velocities = zeros
-        if joint_torques is None:
-            joint_torques = zeros
+        if torques is None:
+            torques = zeros
 
         factor_graph = self.robot.forward_factor_graph(
-            joint_angles, joint_velocities, joint_torques,
+            joint_angles, joint_velocities, torques,
             gravity_vector=gravity_vector, external_wrench=external_wrench)
         self.assertEqual(factor_graph.size(), N*3 + 2)
 
@@ -49,14 +49,14 @@ class BaseTestCase(GtsamTestCase):
         if debug:
             print(result)
 
-        if expected_joint_accels is None:
-            expected_joint_accels = zeros
+        if accelerations is None:
+            accelerations = zeros
         np.testing.assert_array_almost_equal(
-            self.robot.extract_joint_accelerations(result), expected_joint_accels)
+            self.robot.extract_joint_accelerations(result), accelerations)
 
     def check_inverse_dynamics(self, joint_angles=None, joint_velocities=None,
-                               joint_accelerations=None, expected_torques=None,
-                               base_twist_accel=ZERO6, external_wrench=ZERO6, debug=False):
+                               accelerations=None, torques=None,
+                               gravity_vector=None, external_wrench=ZERO6, debug=False):
         """Test inverse dynamics."""
         N = self.robot.num_links
         zeros = np.zeros((N,), np.float)
@@ -65,22 +65,22 @@ class BaseTestCase(GtsamTestCase):
             joint_angles = zeros
         if joint_velocities is None:
             joint_velocities = zeros
-        if joint_accelerations is None:
-            joint_accelerations = zeros
+        if accelerations is None:
+            accelerations = zeros
 
         factor_graph = self.robot.inverse_factor_graph(
-            joint_angles, joint_velocities, joint_accelerations,
-            base_twist_accel=base_twist_accel, external_wrench=external_wrench)
+            joint_angles, joint_velocities, accelerations,
+            gravity_vector=gravity_vector, external_wrench=external_wrench)
         self.assertEqual(factor_graph.size(), N*3 + 2)
 
         result = self.robot.factor_graph_optimization(factor_graph)
         if debug:
             print(result)
 
-        if expected_torques is None:
-            expected_torques = zeros
+        if torques is None:
+            torques = zeros
         np.testing.assert_array_almost_equal(
-            self.robot.extract_torques(result), expected_torques)
+            self.robot.extract_torques(result), torques)
 
 
 class TestR(BaseTestCase):
@@ -90,29 +90,28 @@ class TestR(BaseTestCase):
         """Create simple single-link robot."""
         self.robot = SerialLink(RR_calibration[:1])
 
-    def test_forward_dynamics_stationary(self):
+    def test_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
-
-    def test_inverse_dynamics_stationary(self):
-        """Test stationary case."""
         self.check_inverse_dynamics()
 
-    def test_forward_external_wrench(self):
+    def test_external_wrench(self):
         """Test case when an external downward (-Y) force is applied."""
         # zero acceleration expected as torque cancels the external wrench
-        self.check_forward_dynamics(joint_torques=vector(5),
-                                    external_wrench=vector(
-                                        0, 0, 0, 0, -2.5, 0),
-                                    expected_joint_accels=vector(0)
-                                    )
+        scenario = {"torques": vector(5),
+                    "accelerations": vector(0),
+                    "external_wrench": vector(0, 0, 0, 0, -2.5, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
-    def test_forward_dynamics_gravity(self):
+    def test_gravity_compensation(self):
         """Test gravity compensation case: assume Y-axis is up."""
         # Acceleration due to gravity = -9.8, in negative Y direction
-        self.check_forward_dynamics(
-            gravity_vector=vector(0, -9.8, 0),
-            expected_joint_accels=vector(-9.8))
+        scenario = {"torques": vector(0),
+                    "accelerations": vector(-9.8),
+                    "gravity_vector": vector(0, -9.8, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
 
 class TestRR(BaseTestCase):
@@ -277,28 +276,28 @@ class TestRR(BaseTestCase):
         np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
         np.testing.assert_array_almost_equal(twists[1], expected)
 
-    def test_forward_dynamics_stationary(self):
+    def test_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
-
-    def test_inverse_dynamics_stationary(self):
-        """Test stationary case."""
         self.check_inverse_dynamics()
 
-    def test_forward_external_wrench(self):
-        """Test case when an external wrench is applied."""
-        self.check_forward_dynamics(
-            external_wrench=vector(0, 0, 0, 0, -2.5, 0),
-            expected_joint_accels=vector(5, -20)
-        )
+    def test_external_wrench(self):
+        """Test case when an external downward (-Y) force is applied."""
+        # zero acceleration expected as torque cancels the external wrench
+        scenario = {"torques": vector(0, 0),
+                    "accelerations": vector(5, -20),
+                    "external_wrench": vector(0, 0, 0, 0, -2.5, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
         # Acceleration due to gravity = -9.8, in negative Y direction
-        self.check_forward_dynamics(
-            gravity_vector=vector(0, -9.8, 0),
-            expected_joint_accels=vector(-9.8, 19.6)
-        )
+        scenario = {"torques": vector(0, 0),
+                    "accelerations": vector(-9.8, 19.6),
+                    "gravity_vector": vector(0, -9.8, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
 
 class TestPuma(BaseTestCase):
@@ -335,9 +334,9 @@ class TestPuma(BaseTestCase):
         """Test forward dynamics, Mandy's MATLAB example."""
         self.check_forward_dynamics(
             joint_velocities=np.radians(vector(-5, -10, -15, -20, -25, -30)),
-            joint_torques=vector(2.34853527092267, -47.4289308101242, 3.89597516275938, -
-                                 0.582995766943385, -0.0205988067713663, 7.68216420389942e-05,),
-            expected_joint_accels=vector(
+            torques=vector(2.34853527092267, -47.4289308101242, 3.89597516275938, -
+                           0.582995766943385, -0.0205988067713663, 7.68216420389942e-05,),
+            accelerations=vector(
                 0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
         )
 
