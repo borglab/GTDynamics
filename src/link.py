@@ -12,9 +12,11 @@ import numpy as np
 import utils
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3
 
+I1 = np.identity(1)
 I6 = np.identity(6)
 ALL_6_CONSTRAINED = gtsam.noiseModel_Constrained.All(6)
 ONE_CONSTRAINED = gtsam.noiseModel_Constrained.All(1)
+ZERO = utils.vector(0)
 ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
 
 
@@ -253,5 +255,11 @@ class Link(object):
 
         # Wrench on this link is due to acceleration and reaction to next link.
         factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity_vector))
+
+        # Torque is always wrench projected on screw axis.
+        # Equation 8.49 can be written as
+        # A_j.transpose() * F(j).transpose() - t(j) == 0
+        factors.add(F(j), np.reshape(A_j, (1, 6)),
+                    t(j), -I1, ZERO, ONE_CONSTRAINED)
 
         return factors
