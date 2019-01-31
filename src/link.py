@@ -35,12 +35,12 @@ def T(j):
     return symbol('T', j)
 
 
-def a(j):
+def t(j):
     """Shorthand for t_j, for torque."""
     return symbol('t', j)
 
 
-def t(j):
+def a(j):
     """Shorthand for a_j, for joint accelerations."""
     return symbol('a', j)
 

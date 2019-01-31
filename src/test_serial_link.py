@@ -43,7 +43,7 @@ class BaseTestCase(GtsamTestCase):
         factor_graph = self.robot.forward_factor_graph(
             joint_angles, joint_velocities, joint_torques,
             gravity_vector=gravity_vector, external_wrench=external_wrench)
-        self.assertEqual(factor_graph.size(), 1 + N*3 + 1)
+        self.assertEqual(factor_graph.size(), N*3 + 2)
 
         result = self.robot.factor_graph_optimization(factor_graph)
         if debug:
@@ -71,7 +71,7 @@ class BaseTestCase(GtsamTestCase):
         factor_graph = self.robot.inverse_factor_graph(
             joint_angles, joint_velocities, joint_accelerations,
             base_twist_accel=base_twist_accel, external_wrench=external_wrench)
-        self.assertEqual(factor_graph.size(), 1 + N*3 + 1)
+        self.assertEqual(factor_graph.size(), N*3 + 2)
 
         result = self.robot.factor_graph_optimization(factor_graph)
         if debug:
@@ -81,6 +81,7 @@ class BaseTestCase(GtsamTestCase):
             expected_torques = zeros
         np.testing.assert_array_almost_equal(
             self.robot.extract_torques(result), expected_torques)
+
 
 class TestR(BaseTestCase):
     """Unit tests for single link, use same link properties as RR."""

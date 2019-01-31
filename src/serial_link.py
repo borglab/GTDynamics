@@ -14,11 +14,12 @@ We follow Lynch & Park 2017 conventions, but using j to index joints, as in Cork
 
 from __future__ import print_function
 
-import gtsam
 import numpy as np
+
+import gtsam
 import utils
 from gtsam import Pose3, Rot3
-from link import Link, a, V
+from link import Link, V, a, t
 
 ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
 
@@ -196,7 +197,8 @@ class SerialLink(object):
         for i, (link, jTi, v_j, twist_j, torque_j, kTj) \
                 in enumerate(zip(self._links, jTis, joint_velocities, twists, torques, jTis[1:])):
             j = i + 1
-            factors = link.forward_factors(j, jTi, v_j, twist_j, torque_j, kTj, gravity_vector)
+            factors = link.forward_factors(
+                j, jTi, v_j, twist_j, torque_j, kTj, gravity_vector)
             gfg.push_back(factors)
 
         # Add factor to enforce external wrench at tool
@@ -231,20 +233,31 @@ class SerialLink(object):
         # Set up Gaussian Factor Graph
         gfg = gtsam.GaussianFactorGraph()
 
+        # Add factor to enforce base acceleration equal to zero
+        gfg.add(Link.base_factor(base_twist_accel))
+
         # configuration of link frame j-1 relative to link frame j for arbitrary joint angle
         jTis = self.jTi_list(q)
 
         for i, (link, jTi, v_j, twist_j, acceleration_j, kTj) \
                 in enumerate(zip(self._links, jTis, joint_velocities, twists, joint_accelerations, jTis[1:])):
             j = i + 1
-            factors = link.inverse_factors(j, jTi, v_j, twist_j, acceleration_j, kTj, gravity_vector)
+            factors = link.inverse_factors(
+                j, jTi, v_j, twist_j, acceleration_j, kTj, gravity_vector)
             gfg.push_back(factors)
 
+        # Add factor to enforce external wrench at tool
+        gfg.add(Link.tool_factor(self.num_links, external_wrench))
+
         return gfg
-    
+
     def extract_joint_accelerations(self, result):
         """Extract joint accelerations for all joints from VectorValues."""
         return [result.at(a(j)) for j in range(1, self.num_links+1)]
+
+    def extract_torques(self, result):
+        """Extract torques for all joints from VectorValues."""
+        return [result.at(t(j)) for j in range(1, self.num_links+1)]
 
     def factor_graph_optimization(self, forward_factor_graph):
         """ Optimize factor graph for manipulator forward dynamics.
