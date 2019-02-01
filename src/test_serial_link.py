@@ -43,6 +43,8 @@ class BaseTestCase(GtsamTestCase):
         factor_graph = self.robot.forward_factor_graph(
             joint_angles, joint_velocities, torques,
             gravity_vector=gravity_vector, external_wrench=external_wrench)
+        if debug:
+            print(factor_graph)
         self.assertEqual(factor_graph.size(), N*3 + 2)
 
         result = self.robot.factor_graph_optimization(factor_graph)
@@ -71,6 +73,8 @@ class BaseTestCase(GtsamTestCase):
         factor_graph = self.robot.inverse_factor_graph(
             joint_angles, joint_velocities, accelerations,
             gravity_vector=gravity_vector, external_wrench=external_wrench)
+        if debug:
+            print(factor_graph)
         self.assertEqual(factor_graph.size(), N*3 + 2)
 
         result = self.robot.factor_graph_optimization(factor_graph)
@@ -325,9 +329,10 @@ class TestPuma(BaseTestCase):
             frames[0], Pose3(Rot3.Rx(HALF_PI), Point3(0, 0, 0)))
 
     @unittest.skip("Wrong result after change to classic DH")
-    def test_PUMA_forward_dynamics_stationary(self):
-        """Test forward dynamics, stationary case."""
-        self.check_forward_dynamics()
+    def test_stationary(self):
+        """Test stationary case."""
+        self.check_forward_dynamics(debug=True)
+        self.check_inverse_dynamics()
 
     @unittest.skip("MATLAB example needs to be re-done with regular DH.")
     def test_PUMA_forward_dynamics_matlab(self):
