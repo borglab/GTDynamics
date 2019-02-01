@@ -58,8 +58,8 @@ class Link(object):
     def __init__(self, theta, d, a, alpha, joint_type, mass, center_of_mass, inertia):
         """ Constructor.
             Keyword arguments:
-                d (m)                   -- link offset, i.e., distance between two joints
                 theta (degrees)         -- angle between two joint frame x-axes (theta)
+                d (m)                   -- link offset, i.e., distance between two joints
                 a (m)                   -- link length. i.e., distance between two joints
                 alpha (degrees)         -- link twist, i.e., angle between joint axes
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
@@ -68,8 +68,8 @@ class Link(object):
                 inertia (vector)        -- principal inertias
             Note: angles are given in degrees, but converted to radians internally.
         """
-        self._d = d
         self._theta = math.radians(theta)
+        self._d = d
         self._a = a
         self._alpha = math.radians(alpha)
         self._joint_type = joint_type
