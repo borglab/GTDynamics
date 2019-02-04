@@ -96,7 +96,7 @@ class SerialLink(object):
         frames = []
         for i, A in enumerate(self.link_transforms(q)):
             t = t.compose(A)
-            iTcom = Pose3(Rot3(), self._links[i].center_of_mass)
+            iTcom = self._links[i].center_of_mass
             frames.append(utils.compose(t, iTcom))
         return frames
 
@@ -133,7 +133,7 @@ class SerialLink(object):
         Ts = self.com_frames(q)
         bT1 = Ts[0].between(self._base)
         nTt = self.tool
-        nTc = Pose3(Rot3(), self._links[-1].center_of_mass)
+        nTc = self._links[-1].center_of_mass
         tTnc = nTt.between(nTc)
         return [bT1] + [Tj.between(Ti) for Ti, Tj in zip(Ts[:-1], Ts[1:])] + [tTnc]
 

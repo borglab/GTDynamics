@@ -43,48 +43,21 @@ class Link(object):
     parameters for a single link
     """
 
-    def __init__(self, theta, d, a, alpha, joint_type, mass, center_of_mass, inertia):
+    def __init__(self, joint_type, mass, center_of_mass, inertia, screw_axis):
         """ Constructor.
             Keyword arguments:
-                d (m)                   -- link offset, i.e., distance between two joints
-                theta (degrees)         -- angle between two joint frame x-axes (theta)
-                a (m)                   -- link length. i.e., distance between two joints
-                alpha (degrees)         -- link twist, i.e., angle between joint axes
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
                 center_of_mass (Point3) -- center of mass location expressed in link frame
                 inertia (vector)        -- principal inertias
             Note: angles are given in degrees, but converted to radians internally.
         """
-        self._d = d
-        self._theta = math.radians(theta)
-        self._a = a
-        self._alpha = math.radians(alpha)
         self._joint_type = joint_type
         self._mass = mass
         self._center_of_mass = center_of_mass
         self._inertia = inertia
-
-        # Calculate screw axis expressed in center of mass frame.
-        # COM is expressed in the link frame, which is aligned with the *next* joint in
-        # the DH convention. Hence, we need to translate back to *our* joint:
-        com = utils.vector_of_point3(self._center_of_mass)
-        joint = utils.vector(-self._a, 0, 0)
-        self._screw_axis = utils.unit_twist(utils.vector(0, 0, 1), joint - com)
-
-    def A(self, q=0):
-        """ Return Link transform.
-            Keyword arguments:
-                q -- optional generalized joint angle (default 0)
-        """
-        theta = q if self._joint_type == 'R' else self._theta
-        d = q if self._joint_type == 'P' else self._d
-        return utils.compose(
-            Pose3(Rot3.Yaw(theta), Point3(0, 0, d)),
-            Pose3(Rot3.Roll(self._alpha),
-                  Point3(self._a, 0, 0))
-        )
-
+        self._screw_axis = screw_axis
+        
     @property
     def screw_axis(self):
         """Return screw axis expressed in center of mass frame."""
@@ -97,7 +70,7 @@ class Link(object):
 
     @property
     def center_of_mass(self):
-        """Return center of mass (Point3)."""
+        """Return center of mass (Pose3)."""
         return self._center_of_mass
 
     @property
@@ -111,6 +84,10 @@ class Link(object):
         gmm[:3, :3] = np.diag(self.inertia)
         gmm[3:, 3:] = self.mass * np.identity(3)
         return gmm
+    
+    def A(self, q=0):
+        """ overwrite this method """
+        raise NotImplementedError
 
     @staticmethod
     def base_factor(base_twist_accel=ZERO6):
