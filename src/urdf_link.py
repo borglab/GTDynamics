@@ -22,7 +22,7 @@ class URDF_Link(Link):
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
                 center_of_mass (Pose3)  -- the position and orientation of the center of mass frame w.r.t.
-                                           joint frame
+                                           link frame
                 inertia (vector)        -- principal inertias
             Note: angles are given in degrees, but converted to radians internally.
         """
@@ -30,14 +30,15 @@ class URDF_Link(Link):
         self._axis = axis
 
         # Calculate screw axis expressed in center of mass frame.
-        center_of_mass_com = center_of_mass.inverse()
+        # link frame w.r.t. com frame
+        link_com = center_of_mass.inverse()
         # joint axis expressed in com frame
         # TODO: need to add operator*(const Unit3& p) const for cython
         joint_axis_com = utils.vector_of_point3(
-            center_of_mass_com.rotation().rotate(utils.point3_of_vector(axis)))
+            link_com.rotation().rotate(utils.point3_of_vector(axis)))
         # point on joint axis expressed in com frame
-        com = utils.vector_of_point3(center_of_mass_com.translation())
-        screw_axis = utils.unit_twist(joint_axis_com, com)
+        point_on_axis = utils.vector_of_point3(link_com.translation())
+        screw_axis = utils.unit_twist(joint_axis_com, point_on_axis)
 
         Link.__init__(self, joint_type, mass, center_of_mass, inertia, screw_axis)
 
