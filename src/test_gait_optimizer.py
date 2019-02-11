@@ -26,10 +26,17 @@ class DynamicsModel(object):
 class FourierCoefficients(object):
     """Set of Fourier coefficients."""
 
-    def __init__(self):
-        """Constructor."""
-        pass
+    def __init__(self, N):
+        """ Constructor.
+            Keyword arguments:
+                N -- number of weights to be evaluated
+        """
+        self._N = N
 
+    def calculateWeights(self):
+        """ Evaluate the real Fourier weights """
+        pass
+    
 
 class GaitOptimizer(object):
     """Class that optimizes gaits for a particular walking robot."""
@@ -56,12 +63,15 @@ class TestGaitOptimizer(GtsamTestCase):
     def setUp(self):
         """Create optimizer."""
         human = DynamicsModel()
+        fourierWeights = 5
         self.optimizer = GaitOptimizer(human)
+        self.coefficients = FourierCoefficients(fourierWeights)
 
     def test_run(self):
         """Test the whole enchilada."""
         desired_velocity = 3
         stance_fraction = .4
+        self.coefficients.calculateWeights()
         actual = self.optimizer.run(desired_velocity, stance_fraction)
         self.assertEqual(actual.shape, (7,))
 
