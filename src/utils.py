@@ -13,6 +13,7 @@ import unittest
 import numpy as np
 from gtsam import Point3
 
+
 def vector(*floats):
     """Create 3D double numpy array."""
     return np.array(floats, dtype=np.float)
@@ -69,6 +70,11 @@ def point3_of_vector(v):
     """Convert numpy array to Point3."""
     assert v.shape == (3,)
     return Point3(v[0], v[1], v[2])
+
+
+def rotate(rot3, v):
+    """Rotate vector with Rot3 object."""
+    return vector_of_point3(rot3.rotate(point3_of_vector(v)))
 
 
 class GtsamTestCase(unittest.TestCase):
