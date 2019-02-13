@@ -162,21 +162,21 @@ class Link(object):
             # V(j) - np.dot(jTi.AdjointMap(), V(j-1)) == joint_twist
             return gtsam.JacobianFactor(V(j), I6, V(j-1), -jTi.AdjointMap(), joint_twist, ALL_6_CONSTRAINED)
 
-    def wrench_factor(self, j, twist_j, kTj, gravity_vector=None):
+    def wrench_factor(self, j, twist_j, kTj, gravity=None):
         """ Create wrench balance factor, common between forward and inverse dynamics.
             Keyword arguments:
                 j -- index for this joint
                 twist_j -- velocity twist for this link, in COM frame
                 kTj -- this COM frame, expressed in next link's COM frame
-                gravity_vector (np.array) -- if given, will create gravity force
+                gravity (np.array) -- if given, will create gravity force. In link COM frame.
         """
         # Wrench on this link is due to acceleration and reaction to next link.
         # We need inertia, coriolis forces, and an Adjoint map:
-        ad_j = Pose3.adjointMap(twist_j)
+        ad_j = Pose3.adjointMap_(twist_j)
         G_j = self.inertia_matrix()
         rhs = np.dot(ad_j.transpose(), np.dot(G_j, twist_j))  # coriolis
-        if gravity_vector is not None:
-            rhs[3:] = gravity_vector * self.mass
+        if gravity is not None:
+            rhs[3:] += gravity * self.mass
         jAk = kTj.AdjointMap().transpose()
         # Given the above Equation 8.48 can be written as
         # G_j * T(j) - F(j) + jAk * F(j + 1) == coriolis_j [+ gravity]
@@ -185,7 +185,7 @@ class Link(object):
                                     F(j + 1), jAk,
                                     rhs, ALL_6_CONSTRAINED)
 
-    def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj, gravity_vector=None):
+    def forward_factors(self, j, jTi, joint_vel_j, twist_j, torque_j, kTj, gravity=None):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
                 j -- index for this joint
@@ -194,7 +194,7 @@ class Link(object):
                 twist_j -- velocity twist for this link, in COM frame
                 torque_j - torque at this link's joint
                 kTj -- this COM frame, expressed in next link's COM frame
-                gravity_vector (np.array) -- if given, will create gravity force
+                gravity (np.array) -- if given, will create gravity force. In link COM frame.
             Will create several factors corresponding to Lynch & Park book:
                 - twist acceleration, Equation 8.47, page 293
                 - wrench balance, Equation 8.48, page 293
@@ -205,7 +205,7 @@ class Link(object):
         # Twist acceleration in this link as a function of previous and joint accel.
         # We need to know our screw axis, and an adjoint map:
         A_j = self._screw_axis
-        ad_j = Pose3.adjointMap(twist_j)
+        ad_j = Pose3.adjointMap_(twist_j)
         # Given the above Equation 8.47 can be written as
         # T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
         rhs = np.dot(ad_j, A_j * joint_vel_j)
@@ -215,7 +215,7 @@ class Link(object):
                     rhs, ALL_6_CONSTRAINED)
 
         # Wrench on this link is due to acceleration and reaction to next link.
-        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity_vector))
+        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity))
 
         # Torque is always wrench projected on screw axis.
         # Equation 8.49 can be written as
@@ -225,7 +225,7 @@ class Link(object):
 
         return factors
 
-    def inverse_factors(self, j, jTi, joint_vel_j, twist_j, acceleration_j, kTj, gravity_vector=None):
+    def inverse_factors(self, j, jTi, joint_vel_j, twist_j, acceleration_j, kTj, gravity=None):
         """ Create all factors linking this links dynamics with previous and next link.
             Keyword arguments:
                 j -- index for this joint
@@ -234,7 +234,7 @@ class Link(object):
                 twist_j -- velocity twist for this link, in COM frame
                 acceleration_j - acceleration at this link's joint
                 kTj -- this COM frame, expressed in next link's COM frame
-                gravity_vector (np.array) -- if given, will create gravity force
+                gravity (np.array) -- if given, will create gravity force. In link COM frame.
             Will create several factors corresponding to Lynch & Park book:
                 - twist acceleration, Equation 8.47, page 293
                 - wrench balance, Equation 8.48, page 293
@@ -245,7 +245,7 @@ class Link(object):
         # Twist acceleration in this link as a function of previous and joint accel.
         # We need to know our screw axis, and an adjoint map:
         A_j = self._screw_axis
-        ad_j = Pose3.adjointMap(twist_j)
+        ad_j = Pose3.adjointMap_(twist_j)
         # Given the above Equation 8.47 can be written as
         # T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j * acceleration_j
         rhs = np.dot(ad_j, A_j * joint_vel_j) + A_j * acceleration_j
@@ -254,7 +254,7 @@ class Link(object):
                     rhs, ALL_6_CONSTRAINED)
 
         # Wrench on this link is due to acceleration and reaction to next link.
-        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity_vector))
+        factors.push_back(self.wrench_factor(j, twist_j, kTj, gravity))
 
         # Torque is always wrench projected on screw axis.
         # Equation 8.49 can be written as

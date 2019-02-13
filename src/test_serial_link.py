@@ -28,7 +28,7 @@ class BaseTestCase(GtsamTestCase):
 
     def check_forward_dynamics(self, joint_angles=None, joint_velocities=None,
                                torques=None, accelerations=None,
-                               gravity_vector=None, external_wrench=ZERO6, debug=False):
+                               gravity=None, external_wrench=ZERO6, debug=False):
         """Test forward dynamics."""
         N = self.robot.num_links
         zeros = np.zeros((N,), np.float)
@@ -42,7 +42,7 @@ class BaseTestCase(GtsamTestCase):
 
         factor_graph = self.robot.forward_factor_graph(
             joint_angles, joint_velocities, torques,
-            gravity_vector=gravity_vector, external_wrench=external_wrench)
+            gravity=gravity, external_wrench=external_wrench)
         if debug:
             print(factor_graph)
         self.assertEqual(factor_graph.size(), N*3 + 2)
@@ -58,7 +58,7 @@ class BaseTestCase(GtsamTestCase):
 
     def check_inverse_dynamics(self, joint_angles=None, joint_velocities=None,
                                accelerations=None, torques=None,
-                               gravity_vector=None, external_wrench=ZERO6, debug=False):
+                               gravity=None, external_wrench=ZERO6, debug=False):
         """Test inverse dynamics."""
         N = self.robot.num_links
         zeros = np.zeros((N,), np.float)
@@ -72,7 +72,7 @@ class BaseTestCase(GtsamTestCase):
 
         factor_graph = self.robot.inverse_factor_graph(
             joint_angles, joint_velocities, accelerations,
-            gravity_vector=gravity_vector, external_wrench=external_wrench)
+            gravity=gravity, external_wrench=external_wrench)
         if debug:
             print(factor_graph)
         self.assertEqual(factor_graph.size(), N*3 + 2)
@@ -94,6 +94,18 @@ class TestR(BaseTestCase):
         """Create simple single-link robot."""
         self.robot = SerialLink(RR_calibration[:1])
 
+    def test_link_frames(self):
+        """Test link_frames."""
+        # Check zero joint angles
+        frames = self.robot.link_frames()
+        self.assertIsInstance(frames, list)
+        self.assertEqual(len(frames), 1)
+        self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
+
+        # Check vertical configuration
+        frames = self.robot.link_frames(vector(math.radians(90)))
+        self.gtsamAssertEquals(frames[0], Pose3(R90, Point3(0, 2, 0)))
+
     def test_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
@@ -109,11 +121,21 @@ class TestR(BaseTestCase):
         self.check_inverse_dynamics(**scenario)
 
     def test_gravity_compensation(self):
-        """Test gravity compensation case: assume Y-axis is up."""
+        """Test gravity compensation for rest: assume Y-axis is up."""
         # Acceleration due to gravity = -9.8, in negative Y direction
         scenario = {"torques": vector(0),
                     "accelerations": vector(-9.8),
-                    "gravity_vector": vector(0, -9.8, 0)}
+                    "gravity": vector(0, -9.8, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
+
+    def test_gravity_compensation_vertical(self):
+        """Test gravity compensation for vertical case: assume Y-axis is up."""
+        # Acceleration due to gravity = -9.8, in negative Y direction
+        scenario = {"joint_angles": vector(math.radians(90)),
+                    "torques": vector(0),
+                    "accelerations": vector(0),
+                    "gravity": vector(0, -9.8, 0)}
         self.check_forward_dynamics(**scenario)
         self.check_inverse_dynamics(**scenario)
 
@@ -299,7 +321,7 @@ class TestRR(BaseTestCase):
         # Acceleration due to gravity = -9.8, in negative Y direction
         scenario = {"torques": vector(0, 0),
                     "accelerations": vector(-9.8, 19.6),
-                    "gravity_vector": vector(0, -9.8, 0)}
+                    "gravity": vector(0, -9.8, 0)}
         self.check_forward_dynamics(**scenario)
         self.check_inverse_dynamics(**scenario)
 
