@@ -524,13 +524,11 @@ class TestDH_Puma(BaseTestCase):
         self.gtsamAssertEquals(
             frames[0], Pose3(Rot3.Rx(HALF_PI), Point3(0, 0, 0)))
 
-    #@unittest.skip("Wrong result after change to classic DH")
     def test_PUMA_forward_dynamics_stationary(self):
         """Test forward dynamics, stationary case."""
         self.check_forward_dynamics()
         self.check_inverse_dynamics()
 
-    #@unittest.skip("MATLAB example needs to be re-done with regular DH.")
     def test_PUMA_forward_dynamics_matlab(self):
         """Test forward dynamics, Mandy's MATLAB example."""
         self.check_forward_dynamics(
