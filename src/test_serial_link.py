@@ -86,172 +86,173 @@ class BaseTestCase(GtsamTestCase):
         np.testing.assert_array_almost_equal(
             self.robot.extract_torques(result), torques)
 
-# class TestURDF_RR(BaseTestCase):
-#     """Unit tests for DH RR."""
+class TestURDF_RR(BaseTestCase):
+    """Unit tests for DH RR."""
 
-#     QZ = vector(0.00, 0.00)  # at rest
-#     Q1 = vector(HALF_PI, 0)  # vertical
-#     Q2 = vector(0, math.pi)  # doubled back
+    QZ = vector(0.00, 0.00)  # at rest
+    Q1 = vector(HALF_PI, 0)  # vertical
+    Q2 = vector(0, math.pi)  # doubled back
 
-#     # The joint screw axis, in the COM frame, is the same for both joints
-#     AXIS = unit_twist([0, 0, 1], [-1, 0, 0])
+    # The joint screw axis, in the COM frame, is the same for both joints
+    AXIS = unit_twist([0, 0, 1], [-1, 0, 0])
 
-#     def setUp(self):
-#         """Create RR robot."""
-#         self.robot = SerialLink(
-#             RR_calibration_urdf,
-#             tool=Pose3(Rot3(), Point3(2, 0, 0))
-#         )
+    def setUp(self):
+        """Create RR robot."""
+        self.robot = SerialLink(
+            RR_calibration_urdf,
+            tool=Pose3(Rot3(), Point3(2, 0, 0))
+        )
     
-#     def test_link_transforms(self):
-#         """Test link_transforms."""
-#         # Check zero joint angles
-#         frames = self.robot.link_transforms()
-#         self.assertIsInstance(frames, list)
-#         self.assertEqual(len(frames), 2)
-#         self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(2, 0, 0)))
+    def test_link_transforms(self):
+        """Test link_transforms."""
+        # Check zero joint angles
+        frames = self.robot.link_transforms()
+        self.assertIsInstance(frames, list)
+        self.assertEqual(len(frames), 2)
+        self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(2, 0, 0)))
 
-#         # Check vertical configuration
-#         frames = self.robot.link_transforms(self.Q1)
-#         self.gtsamAssertEquals(frames[0], Pose3(R90, Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(2, 0, 0)))
+        # Check vertical configuration
+        frames = self.robot.link_transforms(self.Q1)
+        self.gtsamAssertEquals(frames[0], Pose3(R90, Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(2, 0, 0)))
 
-#         # Check doubled back configuration
-#         frames = self.robot.link_transforms(self.Q2)
-#         self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(R180, Point3(2, 0, 0)))
+        # Check doubled back configuration
+        frames = self.robot.link_transforms(self.Q2)
+        self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(R180, Point3(2, 0, 0)))
 
-#     def test_link_frames(self):
-#         """Test link_frames."""
-#         # Check zero joint angles
-#         frames = self.robot.link_frames()
-#         self.assertIsInstance(frames, list)
-#         self.assertEqual(len(frames), 2)
-#         self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(4, 0, 0)))
+    def test_link_frames(self):
+        """Test link_frames."""
+        # Check zero joint angles
+        frames = self.robot.link_frames()
+        self.assertIsInstance(frames, list)
+        self.assertEqual(len(frames), 2)
+        self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(Rot3(), Point3(4, 0, 0)))
 
-#         # Check vertical configuration
-#         frames = self.robot.link_frames(self.Q1)
-#         self.gtsamAssertEquals(frames[0], Pose3(R90, Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(R90, Point3(2, 2, 0)))
+        # Check vertical configuration
+        frames = self.robot.link_frames(self.Q1)
+        self.gtsamAssertEquals(frames[0], Pose3(R90, Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(R90, Point3(2, 2, 0)))
 
-#         # Check doubled back configuration
-#         frames = self.robot.link_frames(self.Q2)
-#         self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
-#         self.gtsamAssertEquals(frames[1], Pose3(R180, Point3(4, 0, 0)))
+        # Check doubled back configuration
+        frames = self.robot.link_frames(self.Q2)
+        self.gtsamAssertEquals(frames[0], Pose3(Rot3(), Point3(2, 0, 0)))
+        self.gtsamAssertEquals(frames[1], Pose3(R180, Point3(4, 0, 0)))
 
-#     def test_com_frames(self):
-#         """Test com_frames."""
-#         # Check zero joint angles
-#         Ts = self.robot.com_frames()
-#         self.assertIsInstance(Ts, list)
-#         self.assertEqual(len(Ts), 2)
-#         self.gtsamAssertEquals(Ts[0], Pose3(Rot3(), Point3(3, 0, 0)))
-#         self.gtsamAssertEquals(Ts[1], Pose3(Rot3(), Point3(5, 0, 0)))
+    def test_com_frames(self):
+        """Test com_frames."""
+        # Check zero joint angles
+        Ts = self.robot.com_frames()
+        self.assertIsInstance(Ts, list)
+        self.assertEqual(len(Ts), 2)
+        self.gtsamAssertEquals(Ts[0], Pose3(Rot3(), Point3(3, 0, 0)))
+        self.gtsamAssertEquals(Ts[1], Pose3(Rot3(), Point3(5, 0, 0)))
 
-#         # Check vertical configuration
-#         Ts = self.robot.com_frames(self.Q1)
-#         self.gtsamAssertEquals(Ts[0], Pose3(R90, Point3(2, 1, 0)))
-#         self.gtsamAssertEquals(Ts[1], Pose3(R90, Point3(2, 3, 0)))
+        # Check vertical configuration
+        Ts = self.robot.com_frames(self.Q1)
+        self.gtsamAssertEquals(Ts[0], Pose3(R90, Point3(2, 1, 0)))
+        self.gtsamAssertEquals(Ts[1], Pose3(R90, Point3(2, 3, 0)))
 
-#         # Check doubled back configuration
-#         Ts = self.robot.com_frames(self.Q2)
-#         self.gtsamAssertEquals(Ts[0], Pose3(Rot3(), Point3(3, 0, 0)))
-#         self.gtsamAssertEquals(Ts[1], Pose3(R180, Point3(3, 0, 0)))
+        # Check doubled back configuration
+        Ts = self.robot.com_frames(self.Q2)
+        self.gtsamAssertEquals(Ts[0], Pose3(Rot3(), Point3(3, 0, 0)))
+        self.gtsamAssertEquals(Ts[1], Pose3(R180, Point3(3, 0, 0)))
 
-#     def test_screw_axes(self):
-#         """Test screw_axes."""
-#         screw_axes = self.robot.screw_axes()
-#         self.assertIsInstance(screw_axes, list)
-#         self.assertEqual(len(screw_axes), 2)
-#         np.testing.assert_array_almost_equal(screw_axes[0], self.AXIS)
-#         np.testing.assert_array_almost_equal(screw_axes[1], self.AXIS)
+    def test_screw_axes(self):
+        """Test screw_axes."""
+        screw_axes = self.robot.screw_axes()
+        self.assertIsInstance(screw_axes, list)
+        self.assertEqual(len(screw_axes), 2)
+        np.testing.assert_array_almost_equal(screw_axes[0], self.AXIS)
+        np.testing.assert_array_almost_equal(screw_axes[1], self.AXIS)
 
-#     def test_jTi_list(self):
-#         """Test jTi_list."""
-#         # Check zero joint angles
-#         jTi_list = self.robot.jTi_list(self.QZ)
-#         self.assertIsInstance(jTi_list, list)
-#         self.assertEqual(len(jTi_list), 3)
-#         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0)))
-#         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-#         self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
+    def test_jTi_list(self):
+        """Test jTi_list."""
+        # Check zero joint angles
+        jTi_list = self.robot.jTi_list(self.QZ)
+        self.assertIsInstance(jTi_list, list)
+        self.assertEqual(len(jTi_list), 3)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
 
-#         # Check vertical configuration
-#         jTi_list = self.robot.jTi_list(self.Q1)
-#         self.gtsamAssertEquals(jTi_list[0], Pose3(
-#             R90.inverse(), Point3(-1, 2, 0)))
-#         self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
-#         self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
+        # Check vertical configuration
+        jTi_list = self.robot.jTi_list(self.Q1)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(
+            R90.inverse(), Point3(-1, 2, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
 
-#         # Check doubled back configuration
-#         jTi_list = self.robot.jTi_list(self.Q2)
-#         self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0)))
-#         self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
-#         self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
+        # Check doubled back configuration
+        jTi_list = self.robot.jTi_list(self.Q2)
+        self.gtsamAssertEquals(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[1], Pose3(R180, Point3(0, 0, 0)))
+        self.gtsamAssertEquals(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0)))
 
-#     def test_twists(self):
-#         """Test twists."""
-#         # Check zero joint angles
-#         Ts = self.robot.com_frames()
+    def test_twists(self):
+        """Test twists."""
+        # Check zero joint angles
+        Ts = self.robot.com_frames()
 
-#         # Check zero joint velocities
-#         twists = self.robot.twists(Ts, vector(0, 0))
-#         self.assertIsInstance(twists, list)
-#         self.assertEqual(len(twists), 2)
-#         np.testing.assert_array_almost_equal(twists[0], ZERO6)
-#         np.testing.assert_array_almost_equal(twists[1], ZERO6)
+        # Check zero joint velocities
+        twists = self.robot.twists(Ts, vector(0, 0))
+        self.assertIsInstance(twists, list)
+        self.assertEqual(len(twists), 2)
+        np.testing.assert_array_almost_equal(twists[0], ZERO6)
+        np.testing.assert_array_almost_equal(twists[1], ZERO6)
 
-#         # Check rotating joint 1
-#         twists = self.robot.twists(Ts, vector(3, 0))
-#         np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
-#         # second joint is also rotating around point (0,0,0), which is (-3,0,0) in COM frame 2
-#         expected = unit_twist([0, 0, 3], [-3, 0, 0])
-#         np.testing.assert_array_almost_equal(twists[1], expected)
+        # Check rotating joint 1
+        twists = self.robot.twists(Ts, vector(3, 0))
+        np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
+        # second joint is also rotating around point (0,0,0), which is (-3,0,0) in COM frame 2
+        expected = unit_twist([0, 0, 3], [-3, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
 
-#         # Check rotating joint 2
-#         twists = self.robot.twists(Ts, vector(0, 2))
-#         np.testing.assert_array_almost_equal(twists[0], ZERO6)
-#         # second joint rotating around point (2,0,0), which is (-2,0,0) in COM frame 2
-#         expected = unit_twist([0, 0, 2], [-1, 0, 0])
-#         np.testing.assert_array_almost_equal(twists[1], expected)
+        # Check rotating joint 2
+        twists = self.robot.twists(Ts, vector(0, 2))
+        np.testing.assert_array_almost_equal(twists[0], ZERO6)
+        # second joint rotating around point (2,0,0), which is (-2,0,0) in COM frame 2
+        expected = unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
 
-#         # Check both rotating, should be linear combination
-#         twists = self.robot.twists(Ts, vector(3, 2))
-#         np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
-#         expected = unit_twist(
-#             [0, 0, 3], [-3, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
-#         np.testing.assert_array_almost_equal(twists[1], expected)
+        # Check both rotating, should be linear combination
+        twists = self.robot.twists(Ts, vector(3, 2))
+        np.testing.assert_array_almost_equal(twists[0], 3 * self.AXIS)
+        expected = unit_twist(
+            [0, 0, 3], [-3, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
 
-#         # Check doubled back configuration
-#         Ts = self.robot.com_frames(self.Q2)
+        # Check doubled back configuration
+        Ts = self.robot.com_frames(self.Q2)
 
-#         # Check zero joint velocities
-#         twists = self.robot.twists(Ts, vector(3, 2))
-#         self.assertIsInstance(twists, list)
-#         self.assertEqual(len(twists), 2)
-#         np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
-#         expected = unit_twist(
-#             [0, 0, 3], [1, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
-#         np.testing.assert_array_almost_equal(twists[1], expected)
+        # Check zero joint velocities
+        twists = self.robot.twists(Ts, vector(3, 2))
+        self.assertIsInstance(twists, list)
+        self.assertEqual(len(twists), 2)
+        np.testing.assert_array_almost_equal(twists[0], 3*self.AXIS)
+        expected = unit_twist(
+            [0, 0, 3], [1, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
+        np.testing.assert_array_almost_equal(twists[1], expected)
 
-#     def test_forward_dynamics_stationary(self):
-#         """Test stationary case."""
-#         self.check_forward_dynamics()
+    def test_forward_dynamics_stationary(self):
+        """Test stationary case."""
+        self.check_forward_dynamics()
 
-#     def test_forward_external_wrench(self):
-#         """Test case when an external wrench is applied."""
-#         self.check_forward_dynamics(
-#             external_wrench=vector(0, 0, 0, 0, -2.5, 0),
-#             accelerations=vector(5, -20)
-#         )
+    def test_forward_external_wrench(self):
+        """Test case when an external wrench is applied."""
+        self.check_forward_dynamics(
+            external_wrench=vector(0, 0, 0, 0, -2.5, 0),
+            accelerations=vector(5, -20)
+        )
 
-#     def test_forward_dynamics_gravity(self):
-#         """Test gravity compensation case: assume Y-axis is up."""
-#         self.check_forward_dynamics(
-#             accelerations=vector(-9.8, 19.6)
-#         )
+    def test_forward_dynamics_gravity(self):
+        """Test gravity compensation case: assume Y-axis is up."""
+        self.check_forward_dynamics(
+            gravity = vector(0, -9.8, 0),
+            accelerations=vector(-9.8, 19.6)
+        )
 
 
 class TestDH_R(BaseTestCase):
