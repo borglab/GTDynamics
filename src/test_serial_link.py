@@ -440,7 +440,7 @@ class TestDH_Puma(BaseTestCase):
         T = self.robot.fkine(qz)
         self.assertIsInstance(T, Pose3)
         self.gtsamAssertEquals(
-            T, Pose3(Rot3(), Point3(0.58185, -0.4521, 2.76831e-17)), tol=1e-4)
+            T, Pose3(Rot3(), Point3(0.58185, -0.4521, 2.76831e-17)), tol=1e-4) # from Matlab
 
     def test_link_frames(self):
         """Test link_frames."""
