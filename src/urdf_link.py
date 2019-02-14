@@ -18,11 +18,10 @@ class URDF_Link(Link):
             Keyword arguments:
                 origin (Pose3)          -- the x-y-z and roll-pitch-yaw coords of link frame w.r.t.
                                            the former link frame 
-                axis (vecotr)           -- the x-y-z unit vector along the rotation axis in the link frame
+                axis (vector)           -- the x-y-z unit vector along the rotation axis in the link frame
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
-                center_of_mass (Pose3)  -- the position and orientation of the center of mass frame w.r.t.
-                                           link frame
+                center_of_mass (Pose3)  -- the center of mass frame w.r.t. link frame
                 inertia (vector)        -- principal inertias
             Note: angles are given in degrees, but converted to radians internally.
         """

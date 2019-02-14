@@ -48,8 +48,9 @@ class Link(object):
             Keyword arguments:
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
-                center_of_mass (Point3) -- center of mass location expressed in link frame
+                center_of_mass (Pose3)  -- the center of mass frame w.r.t. link frame
                 inertia (vector)        -- principal inertias
+                screw_axis (vector)     -- screw axis expressed in center of mass frame
             Note: angles are given in degrees, but converted to radians internally.
         """
         self._joint_type = joint_type
