@@ -69,25 +69,6 @@ class DynamicsModel(object):
         pass
 
 
-class FourierCoefficients(object):
-    """Set of Fourier coefficients."""
-
-    def __init__(self, N):
-        """ Constructor.
-            Keyword arguments:
-                N -- number of weights to be evaluated
-        """
-        self._N = N
-
-    def calculateWeights(self, x):
-        """ Evaluate the real Fourier weights """
-        weights = []
-        weights.append(1)
-        for n in range(1, self._N / 2 + 1):
-            weights.append(sin(n * x))
-            weights.append(cos(n * x))
-        return np.array(weights)
-    
 
 class GaitOptimizer(object):
     """Class that optimizes gaits for a particular walking robot."""
