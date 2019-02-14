@@ -16,7 +16,7 @@ import numpy as np
 from utils import GtsamTestCase
 
 
-class Basis(object):
+'''class Basis(object):
     """Caller for basis decompositions"""
     
     def __init__(self):
@@ -58,7 +58,7 @@ class FourierBasis(Basis):
         def __call__(self, parameters):
             """Do Fourier synthesis at a given x"""
             return self._weights * parameters
-
+'''
 
 
 class DynamicsModel(object):
@@ -79,9 +79,14 @@ class FourierCoefficients(object):
         """
         self._N = N
 
-    def calculateWeights(self):
+    def calculateWeights(self, x):
         """ Evaluate the real Fourier weights """
-        pass
+        weights = []
+        weights.append(1)
+        for n in range(1, self._N / 2 + 1):
+            weights.append(sin(n * x))
+            weights.append(cos(n * x))
+        return np.array(weights)
     
 
 class GaitOptimizer(object):
@@ -115,20 +120,15 @@ class TestGaitOptimizer(GtsamTestCase):
 
     def test_run(self):
         """Test the whole enchilada."""
+        fourierEvaluationPoint = 1
         desired_velocity = 3
         stance_fraction = .4
-        self.coefficients.calculateWeights()
+        computedFourierWeights = self.coefficients.calculateWeights(fourierEvaluationPoint)
+        print(computedFourierWeights)
         actual = self.optimizer.run(desired_velocity, stance_fraction)
         self.assertEqual(actual.shape, (7,))
 
-    def test_functors(self):
-        """Testing to make sure the functor system works as expected"""
-        numberOfParameters = 7
-        x = 1
-        basis = FourierBasis.EvaluationFunctor(numberOfParameters, x)
-        self.assertIsNotNone(basis)
-        val = basis(np.array([1, 2, 3]))
-        print(val)
+
         
 
 if __name__ == "__main__":
