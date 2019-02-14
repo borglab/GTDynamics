@@ -236,23 +236,28 @@ class TestURDF_RR(BaseTestCase):
             [0, 0, 3], [1, 0, 0]) + unit_twist([0, 0, 2], [-1, 0, 0])
         np.testing.assert_array_almost_equal(twists[1], expected)
 
-    def test_forward_dynamics_stationary(self):
+    def test_stationary(self):
         """Test stationary case."""
         self.check_forward_dynamics()
+        self.check_inverse_dynamics()
 
-    def test_forward_external_wrench(self):
-        """Test case when an external wrench is applied."""
-        self.check_forward_dynamics(
-            external_wrench=vector(0, 0, 0, 0, -2.5, 0),
-            accelerations=vector(5, -20)
-        )
+    def test_external_wrench(self):
+        """Test case when an external downward (-Y) force is applied."""
+        # zero acceleration expected as torque cancels the external wrench
+        scenario = {"torques": vector(0, 0),
+                    "accelerations": vector(5, -20),
+                    "external_wrench": vector(0, 0, 0, 0, -2.5, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
     def test_forward_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
-        self.check_forward_dynamics(
-            gravity = vector(0, -9.8, 0),
-            accelerations=vector(-9.8, 19.6)
-        )
+        # Acceleration due to gravity = -9.8, in negative Y direction
+        scenario = {"torques": vector(0, 0),
+                    "accelerations": vector(-9.8, 19.6),
+                    "gravity": vector(0, -9.8, 0)}
+        self.check_forward_dynamics(**scenario)
+        self.check_inverse_dynamics(**scenario)
 
 
 class TestDH_R(BaseTestCase):
