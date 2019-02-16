@@ -12,6 +12,7 @@ import unittest
 
 import utils
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
+from dh_link import DH_Link
 from link import F, Link, T, a, t
 from utils import GtsamTestCase
 
@@ -26,12 +27,12 @@ class TestLink(GtsamTestCase):
     AXIS = utils.unit_twist([0, 0, 1], [-1, 0, 0])
 
     def setUp(self):
-        self.link = Link(0, 0, 2, 0, 'R', 1,
+        self.link = DH_Link(0, 0, 2, 0, 'R', 1,
                          Point3(-1, 0, 0), [0, 1/6., 1/6.])
 
     def test_constructor(self):
         """Test constructor."""
-        self.assertIsInstance(self.link, Link)
+        self.assertIsInstance(self.link, DH_Link)
 
     def test_forward_factors(self):
         """Test factors for forward dynamics, middle link of stationary RRR example."""
