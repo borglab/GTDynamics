@@ -8,57 +8,14 @@ Author: Frank Dellaert and Stephen Eick
 
 from __future__ import print_function
 
-from math import sin, cos
+import math
 import unittest
 
 import numpy as np
 
+import gtsam
+from test_fourier import FitFourier
 from utils import GtsamTestCase
-
-
-'''class Basis(object):
-    """Caller for basis decompositions"""
-    
-    def __init__(self):
-        """Constructor"""
-        pass
-
-    def weightMatrix(self, x):
-        """Calculate the weight matrix for a given basis"""
-        return self.calculateWeights(x)
-
-
-class FourierBasis(Basis):
-    """ Class for Fourier analysis """
-
-    def __init__(self, N):
-        """ Constructor
-            Keyword arguments:
-                N -- number of values to evaluate
-        """
-        Basis.__init__(self)
-        self._N = N
-    
-    def calculateWeights(self, x):
-        """Evaluate Fourier weights at a given x"""
-        weights = []
-        weights.append(1)
-        for n in range(1, self._N / 2 + 1):
-            weights.append(sin(n * x))
-            weights.append(cos(n * x))
-        return np.array(weights)
-
-    class EvaluationFunctor(object):
-        
-        def __init__(self, N, x):
-            """Constructor"""
-            FourierBasis.__init__(N)
-            self._weights = self.weightMatrix(x)
-            
-        def __call__(self, parameters):
-            """Do Fourier synthesis at a given x"""
-            return self._weights * parameters
-'''
 
 
 class DynamicsModel(object):
@@ -67,8 +24,7 @@ class DynamicsModel(object):
     def __init__(self):
         """Constructor."""
         pass
-
-
+    
 
 class GaitOptimizer(object):
     """Class that optimizes gaits for a particular walking robot."""
@@ -95,19 +51,30 @@ class TestGaitOptimizer(GtsamTestCase):
     def setUp(self):
         """Create optimizer."""
         human = DynamicsModel()
-        fourierWeights = 5
         self.optimizer = GaitOptimizer(human)
-        self.coefficients = FourierCoefficients(fourierWeights)
 
+    def test_fourier(self):
+        """Test the Fourier decomposition."""
+        fourierWeights = 7
+        
+        # Create example sequence
+        sequence = {}
+        for i in range(16):
+            x = i * math.pi / 8
+            y = math.exp(math.sin(x) + math.cos(x))
+            sequence[x] = y
+
+        # Do Fourier Decomposition
+        model = gtsam.noiseModel_Unit.Create(1)
+        ff = FitFourier(fourierWeights, sequence, model)
+        self.assertEqual(ff.parameters().shape, (fourierWeights,))
+        
     def test_run(self):
         """Test the whole enchilada."""
-        fourierEvaluationPoint = 1
+        
         desired_velocity = 3
         stance_fraction = .4
-        computedFourierWeights = self.coefficients.calculateWeights(fourierEvaluationPoint)
-        print(computedFourierWeights)
         actual = self.optimizer.run(desired_velocity, stance_fraction)
-        self.assertEqual(actual.shape, (7,))
 
 
         
