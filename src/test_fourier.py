@@ -72,6 +72,7 @@ class FitFourier(object):
             gfg.add(PARAMETERS_KEY, weights_x, utils.vector(y), model)
         return gfg
 
+    @property
     def parameters(self):
         """Return Fourier coefficients."""
         return self._parameters
@@ -94,7 +95,7 @@ class TestFourier(GtsamTestCase):
 
         # Check
         expected = utils.vector(1.5661, 1.2717, 1.2717)
-        np.testing.assert_array_almost_equal(expected, actual.parameters(), decimal=4)
+        np.testing.assert_array_almost_equal(expected, actual.parameters, decimal=4)
 
 
 if __name__ == "__main__":
