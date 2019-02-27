@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+"""
+Test Fourier Decomposition class.
+Author: Frank Dellaert and Stephen Eick
+"""
+
+# pylint: disable=C0103, E1101, E0401
+
 import math
 import unittest
 
