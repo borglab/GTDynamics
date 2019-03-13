@@ -250,7 +250,7 @@ class TestURDF_RR(BaseTestCase):
         self.check_forward_dynamics(**scenario)
         self.check_inverse_dynamics(**scenario)
 
-    def test_forward_dynamics_gravity(self):
+    def test_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
         # Acceleration due to gravity = -9.8, in negative Y direction
         scenario = {"torques": vector(0, 0),
