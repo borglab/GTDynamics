@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Test Gait Optimizer class.
-Author: Frank Dellaert and Stephen Eick
-"""
+    Test Gait Optimizer class.
+    Author: Frank Dellaert and Stephen Eick
+    """
 
 # pylint: disable=C0103, E1101, E0401
 
@@ -14,7 +14,8 @@ import unittest
 import numpy as np
 
 import gtsam
-from test_fourier import FitFourier
+
+import utils
 from utils import GtsamTestCase
 
 
@@ -24,60 +25,65 @@ class DynamicsModel(object):
     def __init__(self):
         """Constructor."""
         pass
-    
+
+
+class FourierDecomposition(object):
+    """Obtain Fourier coefficients for the given model."""
+
+    def __init__(self):
+        """Constructor."""
+        pass
+
+    def get_coefficients(self, model):
+        """ Obtain the Fourier coefficients for the model.
+            Keyword arguments:
+                model - the model for which Fourier coefficients will be found
+            Returns a list of Fourier coefficients.
+        """
+        return []
+
 
 class GaitOptimizer(object):
     """Class that optimizes gaits for a particular walking robot."""
 
-    def __init__(self, model):
+    def __init__(self):
         """Constructor."""
         pass
 
-    def run(self, desired_velocity, stance_fraction):
-        """ Compute coefficients for optimal joint trajectories.
+    def evaluate(self, model, fourier_coefficients):
+        """ Evaluate the Fourier coefficients on the given model.
             Keyword arguments:
-                desired_velocity (m/s) -- the velocity which is desired
-                stance_fraction (%) -- fraction of interval for which foot is in stance
+                model - the model whose gait is being optimized
+                fourier_coefficients - list of Fourier coefficients describing a gait
+            Returns a value indicating how good the gait is.
         """
-        # Build factor graph
-        # optimize
-        # return result
-        pass
+        return 0
 
 
 class TestGaitOptimizer(GtsamTestCase):
     """Unit tests for GaitOptimizer."""
 
     def setUp(self):
-        """Create optimizer."""
-        human = DynamicsModel()
-        self.optimizer = GaitOptimizer(human)
+        pass
 
-    def test_fourier(self):
-        """Test the Fourier decomposition."""
-        fourierWeights = 7
-        
-        # Create example sequence
-        sequence = {}
-        for i in range(16):
-            x = i * math.pi / 8
-            y = math.exp(math.sin(x) + math.cos(x))
-            sequence[x] = y
+    def test_fourier_coefficients(self):
+        """Test getting the Fourier coefficients from a model."""
+        model = DynamicsModel()
+        fourier = FourierDecomposition()
 
-        # Do Fourier Decomposition
-        model = gtsam.noiseModel_Unit.Create(1)
-        ff = FitFourier(fourierWeights, sequence, model)
-        self.assertEqual(ff.parameters().shape, (fourierWeights,))
-        
-    def test_run(self):
-        """Test the whole enchilada."""
-        
-        desired_velocity = 3
-        stance_fraction = .4
-        actual = self.optimizer.run(desired_velocity, stance_fraction)
+        coefficients = fourier.get_coefficients(model)
 
+        self.assertIsInstance(coefficients, list)
 
-        
+    def test_optimizer(self):
+        """Test the gait optimization using the Fourier coefficients."""
+        model = DynamicsModel()
+        fourier = FourierDecomposition()
+        optimizer = GaitOptimizer()
 
-if __name__ == "__main__":
-    unittest.main()
+        coefficients = fourier.get_coefficients(model)
+        coefficient_goodness = optimizer.evaluate(model, coefficients)
+        self.assertIsInstance(coefficient_goodness, int)
+
+    if __name__ == "__main__":
+        unittest.main()
