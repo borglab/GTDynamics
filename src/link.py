@@ -61,7 +61,7 @@ class Link(object):
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
                 center_of_mass (Pose3)  -- the center of mass frame w.r.t. link frame
-                inertia (vector)        -- principal inertias
+                inertia (matrix)        -- general inertias
                 screw_axis (vector)     -- screw axis expressed in center of mass frame
             Note: angles are given in degrees, but converted to radians internally.
         """
@@ -94,7 +94,7 @@ class Link(object):
     def inertia_matrix(self):
         """Return the general mass matrix"""
         gmm = np.zeros((6, 6), np.float)
-        gmm[:3, :3] = np.diag(self.inertia)
+        gmm[:3, :3] = self.inertia
         gmm[3:, 3:] = self.mass * np.identity(3)
         return gmm
     

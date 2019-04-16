@@ -10,9 +10,11 @@ from __future__ import print_function
 
 import unittest
 
+import numpy as np
+
 import utils
-from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
 from dh_link import DH_Link
+from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
 from link import F, Link, T, a, t
 from utils import GtsamTestCase
 
@@ -28,7 +30,7 @@ class TestLink(GtsamTestCase):
 
     def setUp(self):
         self.link = DH_Link(0, 0, 2, 0, 'R', 1,
-                         Point3(-1, 0, 0), [0, 1/6., 1/6.])
+                         Point3(-1, 0, 0), np.diag([0, 1/6., 1/6.]))
 
     def test_constructor(self):
         """Test constructor."""

@@ -10,6 +10,8 @@ from __future__ import print_function
 
 import unittest
 
+import numpy as np
+
 import utils
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
 from urdf_link import URDF_Link
@@ -31,7 +33,7 @@ class TestURDFLink(GtsamTestCase):
         axis = utils.vector(0, 0, 1)
         center_of_mass = Pose3(Rot3(), Point3(1, 0, 0))
         self.link = URDF_Link(origin, axis, 'R', 1,
-                         center_of_mass, [0, 1/6., 1/6.])
+                         center_of_mass, np.diag([0, 1/6., 1/6.]))
 
     def test_constructor(self):
         """Test constructor."""

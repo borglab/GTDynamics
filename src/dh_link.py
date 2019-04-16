@@ -20,7 +20,7 @@ class DH_Link(Link):
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
                 center_of_mass (Point3) -- center of mass location expressed in link frame
-                inertia (vector)        -- principal inertias
+                inertia (matrix)        -- general inertias
             Note: angles are given in degrees, but converted to radians internally.
         """
         self._d = d
