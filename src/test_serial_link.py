@@ -12,8 +12,10 @@ import math
 import unittest
 
 import numpy as np
-from link_parameters import PUMA_calibration_dh, RR_calibration_dh, RR_calibration_urdf
 from gtsam import Point3, Pose3, Rot3
+
+from link_parameters import (PUMA_calibration_dh, RR_calibration_dh,
+                             RR_calibration_urdf)
 from serial_link import SerialLink
 from utils import GtsamTestCase, unit_twist, vector
 
