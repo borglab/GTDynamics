@@ -150,7 +150,7 @@ class Link(object):
         """
         # Wrench on this link is due to acceleration and reaction to next link.
         # We need inertia, coriolis forces, and an Adjoint map:
-        ad_j = Pose3.adjointMap_(twist_j)
+        ad_j = Pose3.adjointMap(twist_j)
         G_j = self.inertia_matrix()
         rhs = np.dot(ad_j.transpose(), np.dot(G_j, twist_j))  # coriolis
         if gravity is not None:
@@ -183,7 +183,7 @@ class Link(object):
         # Twist acceleration in this link as a function of previous and joint accel.
         # We need to know our screw axis, and an adjoint map:
         A_j = self._screw_axis
-        ad_j = Pose3.adjointMap_(twist_j)
+        ad_j = Pose3.adjointMap(twist_j)
         # Given the above Equation 8.47 can be written as
         # T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
         rhs = np.dot(ad_j, A_j * joint_vel_j)
@@ -223,7 +223,7 @@ class Link(object):
         # Twist acceleration in this link as a function of previous and joint accel.
         # We need to know our screw axis, and an adjoint map:
         A_j = self._screw_axis
-        ad_j = Pose3.adjointMap_(twist_j)
+        ad_j = Pose3.adjointMap(twist_j)
         # Given the above Equation 8.47 can be written as
         # T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j * acceleration_j
         rhs = np.dot(ad_j, A_j * joint_vel_j) + A_j * acceleration_j
