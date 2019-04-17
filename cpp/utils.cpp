@@ -17,8 +17,6 @@ Vector6 unit_twist(const Vector3 &w, const Vector3 &p) {
   return unit_twist;
 }
 
-/** convert angle to radians
- */
 double radians(double degree) { return degree * M_PI / 180; }
 
 Vector radians(const Vector &degree) {

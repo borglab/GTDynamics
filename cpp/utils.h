@@ -12,10 +12,10 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <string>
-#include <cmath>
-#include <vector>
 #include <boost/optional.hpp>
+#include <cmath>
+#include <string>
+#include <vector>
 
 namespace manipulator {
 
@@ -30,6 +30,7 @@ gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p);
 /* convert angle to radians */
 double radians(double degree);
 
+/* convert a vector of angles to radians */
 gtsam::Vector radians(const gtsam::Vector &degree);
 
 /** calculate Gaussian Process system transition matrix
