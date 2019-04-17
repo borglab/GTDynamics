@@ -41,14 +41,6 @@ class TestURDFLink(GtsamTestCase):
         self.assertIsInstance(self.link, URDF_Link)
 
 
-def compose_pose(rpy, xyz):
-    # TODO: check if the rotation is correct
-    # rotation = Rot3.rpy(rpy[0], rpy[1], rpy[2])
-    rotation = Rot3()
-    point = Point3(xyz[0], xyz[1], xyz[2])
-    return Pose3(rotation, point)
-
-
 class TestURDFFetch(GtsamTestCase):
     """Unit tests for urdf link of the fetch robot."""
 
@@ -64,6 +56,7 @@ class TestURDFFetch(GtsamTestCase):
         self.assertEqual(self.link_dict["r_gripper_finger_link"][1], "gripper_link")
         for name, (link, parent_name) in self.link_dict.items():
             self.assertIsInstance(link, URDF_Link)
+        # TODO: add more tests here
 
 
 if __name__ == "__main__":
