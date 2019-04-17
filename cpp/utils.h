@@ -27,22 +27,28 @@ namespace manipulator {
 */
 gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p);
 
-/** convert angle to radians
- */
+/* convert angle to radians */
 double radians(double degree);
 
 gtsam::Vector radians(const gtsam::Vector &degree);
 
-/// calculate Phi
+/** calculate Gaussian Process system transition matrix
+    Keyword argument:
+        tau -- timestep
+*/
 inline gtsam::Matrix calcPhi(double tau) {
   return (gtsam::Matrix(3, 3) << 1, tau, 0.5 * tau * tau, 0, 1, tau, 0, 0, 1)
       .finished();
 }
 
-/// get Qc covariance matrix from noise model
+// get Qc covariance matrix from noise model
 gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model);
 
-/// calculate Q
+/** calculate Gaussian Process covaraince
+    Keyword argument:
+        Qc -- covariance matrix
+        tau -- timestep
+*/
 inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
   assert(Qc.rows() == Qc.cols());
   return (gtsam::Matrix(3 * Qc.rows(), 3 * Qc.rows())
