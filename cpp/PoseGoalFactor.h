@@ -58,7 +58,6 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
     auto end_effector_pose =
         forwardKinematics_(joint_coordinates, jacobian).back();
     if (H) {
-      // TODO:
       *H = jacobian.back();
     }
     return goalPose_.logmap(end_effector_pose);

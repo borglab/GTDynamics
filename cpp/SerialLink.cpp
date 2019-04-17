@@ -13,9 +13,6 @@ using namespace gtsam;
 
 namespace manipulator {
 
-/* Shorthand for J_j, for all joint positions j. */
-Key J(int j) { return Symbol('J', j); }
-
 template <typename T>
 SerialLink<T>::SerialLink(const std::vector<T> &links, const Pose3 &base,
                           const Pose3 &tool)

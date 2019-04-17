@@ -37,6 +37,10 @@ class URDF_Link : public Link {
          joint_limit_threshold (degrees)   -- joint angle limit threshold
          velocityLimit -- joint velocity limit
          velocityLimitThreshold -- velocity limit threshold
+         accelerationLimit       -- joint acceleration limit
+         accelerationLimitThreshold -- joint acceleration limit threshold
+         torqueLimit                -- joint torque limit
+         torqueLimitThreshold       -- joint torque limit threshold
   * Note: angles are given in degrees, but converted to radians internally.
   */
   URDF_Link(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,

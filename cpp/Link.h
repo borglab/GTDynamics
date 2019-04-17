@@ -14,18 +14,24 @@
 #include <boost/optional.hpp>
 
 namespace manipulator {
-
+/* Shorthand symbol for linear factors */
+/* Shorthand for T_j, for twist accelerations on the j-th link. */
 extern gtsam::Symbol T(int j);
+/* Shorthand for a_j, for joint accelerations on the j-th link. */
 extern gtsam::Symbol a(int j);
+/* Shorthand for F_j, for wrenches on the j-th link. */
 extern gtsam::Symbol F(int j);
+/* Shorthand for t_j, for torque on the j-th link. */
 extern gtsam::Symbol t(int j);
+/* Shorthand for V_j, for 6D link twist vector on the j-th link. */
 extern gtsam::Symbol V(int j);
+/* Shorthand for J_j, for all joint positions j. */
+extern gtsam::Symbol J(int j);
 
 class Link {
  protected:
   char jointType_;
 
-  // TODO: Not good, should not do this
   /* set screw axis. */
   void setScrewAxis(const gtsam::Vector6 &screw_axis) {
     screwAxis_ = screw_axis;
@@ -42,9 +48,9 @@ class Link {
   double velocityLimit_;
   double velocityLimitThreshold_;
   double accelerationLimit_;
-  double accelerationLimitThreshold_; 
+  double accelerationLimitThreshold_;
   double torqueLimit_;
-  double torqueLimitThreshold_; 
+  double torqueLimitThreshold_;
 
  public:
   /**
@@ -53,25 +59,26 @@ class Link {
       joint_type (char)       -- 'R': revolute,  'P' prismatic
       mass (double)            -- mass of link
       center_of_mass (gtsam::Pose3) -- center of mass location expressed in link
-      frame inertia (gtsam::Vector)        -- principal inertias 
-      screw_axis -- joint axis expressed in COM frame 
-      joint_lower_limit       -- joint angle lower limit 
+      frame inertia (gtsam::Vector) -- principal inertias
+      screw_axis -- joint axis expressed in COM frame
+      joint_lower_limit       -- joint angle lower limit
       joint_upper_limit       -- joint angle upper limit
       joint_limit_threshold   -- joint angle limit threshold
-      velocityLimit -- joint velocity limit
-      velocityLimitThreshold -- velocity limit threshold
-      accelerationLimit -- joint acceleration limit
-      accelerationLimitThreshold -- acceleration limit threshold
-      torqueLimit -- joint torque limit
-      torqueLimitThreshold -- torque limit threshold
-    * Note: angles are given in degrees, but converted to radians internally.
+      velocityLimit           -- joint velocity limit
+      velocityLimitThreshold  -- joint velocity limit threshold
+      accelerationLimit       -- joint acceleration limit
+      accelerationLimitThreshold -- joint acceleration limit threshold
+      torqueLimit                -- joint torque limit
+      torqueLimitThreshold       -- joint torque limit threshold
+    * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
        const gtsam::Vector3 &inertia, double joint_lower_limit = -M_PI,
        double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
        double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
-       double acceleration_limit = 10000, double acceleration_limit_threshold = 0.0,
-       double torque_limit = 10000, double torque_limit_threshold = 0.0)
+       double acceleration_limit = 10000,
+       double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
+       double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
         mass_(mass),
         centerOfMass_(center_of_mass),
@@ -89,25 +96,30 @@ class Link {
   /**
    * Construct from joint_type, mass, center_of_mass, and inertia
    * Keyword arguments:
-   * joint_type (char)       -- 'R': revolute,  'P' prismatic
-   * mass (double)            -- mass of link
-   * center_of_mass (gtsam::Point3) -- center of mass location expressed in link frame 
-   * inertia (gtsam::Vector)        -- principal inertias 
-   * screw_axis -- joint axis expressed in COM frame
-   * velocityLimit -- joint velocity limit
-   * velocityLimitThreshold -- velocity limit threshold
-   * accelerationLimit -- joint acceleration limit
-   * accelerationLimitThreshold -- acceleration limit threshold
-   * torqueLimit -- joint torque limit
-   * torqueLimitThreshold -- torque limit threshold
-   * Note: angles are given in degrees, but converted to radians internally.
+   * joint_type (char)              -- 'R': revolute,  'P' prismatic
+   * mass (double)                  -- mass of link
+   * center_of_mass (gtsam::Point3) -- center of mass location expressed in
+   *                                   link frame
+   * inertia (gtsam::Vector)        -- principal inertias
+   * screw_axis                     -- joint axis expressed in COM frame
+   * joint_lower_limit              -- joint angle lower limit
+   * joint_upper_limit              -- joint angle upper limit
+   * joint_limit_threshold          -- joint angle limit threshold
+   * velocityLimit                  -- joint velocity limit
+   * velocityLimitThreshold         -- joint velocity limit threshold
+   * accelerationLimit              -- joint acceleration limit
+   * accelerationLimitThreshold     -- joint acceleration limit threshold
+   * torqueLimit                    -- joint torque limit
+   * torqueLimitThreshold           -- joint torque limit threshold
+   * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
        const gtsam::Vector3 &inertia, double joint_lower_limit = -M_PI,
        double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
        double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
-       double acceleration_limit = 10000, double acceleration_limit_threshold = 0.0,
-       double torque_limit = 10000, double torque_limit_threshold = 0.0)
+       double acceleration_limit = 10000,
+       double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
+       double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
         mass_(mass),
         centerOfMass_(gtsam::Pose3(gtsam::Rot3(), center_of_mass)),
@@ -120,7 +132,7 @@ class Link {
         accelerationLimit_(acceleration_limit),
         accelerationLimitThreshold_(acceleration_limit_threshold),
         torqueLimit_(torque_limit),
-        torqueLimitThreshold_(torque_limit_threshold)  {}
+        torqueLimitThreshold_(torque_limit_threshold) {}
 
   /* Copy constructor */
   Link(const Link &link)
@@ -136,7 +148,7 @@ class Link {
         accelerationLimit_(link.accelerationLimit_),
         accelerationLimitThreshold_(link.accelerationLimitThreshold_),
         torqueLimit_(link.torqueLimit_),
-        torqueLimitThreshold_(link.torqueLimitThreshold_)  {}
+        torqueLimitThreshold_(link.torqueLimitThreshold_) {}
 
   /* Return screw axis. */
   gtsam::Vector6 screwAxis() const { return screwAxis_; }
@@ -177,7 +189,9 @@ class Link {
   double accelerationLimit() const { return accelerationLimit_; }
 
   /* Return joint acceleration limit threshold. */
-  double accelerationLimitThreshold() const { return accelerationLimitThreshold_; }
+  double accelerationLimitThreshold() const {
+    return accelerationLimitThreshold_;
+  }
 
   /* Return joint torque limit. */
   double torqueLimit() const { return torqueLimit_; }
@@ -195,10 +209,11 @@ class Link {
    *  Keyword argument:
           base_twist_accel (np.array) -- optional acceleration for base
       Example: if you wish to model gravity forces, use
-          base_twist_accel = gtsam::Vector(0, 0, 0, 0, 0, -9.8)
+      base_twist_accel = gtsam::Vector(0, 0, 0, 0, 0, -9.8)
       which imparts upwards acceleration on the base, which then will be
       propagated to all links, forcing wrenches and torques to generate
       upward forces consistent with gravity compensation.
+      Note: we do not recommand using the way
    */
   static gtsam::JacobianFactor BaseTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel) {
@@ -233,7 +248,7 @@ class Link {
           j -- index for this joint
           twist_j -- velocity twist for this link, in COM frame
           kTj -- this COM frame, expressed in next link's COM frame
-          gravity (np.array) -- if given, will create gravity force. In link COM
+          gravity  -- if given, will create gravity force. In link COM
      frame.
    */
   gtsam::JacobianFactor wrenchFactor(
@@ -241,13 +256,16 @@ class Link {
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Create all factors linking this links dynamics with previous and next
-     link. Keyword arguments: j -- index for this joint jTi -- previous COM
-     frame, expressed in this link's COM frame joint_vel_j -- joint velocity for
-     this link twist_j -- velocity twist for this link, in COM frame torque_j -
-     torque at this link's joint kTj -- this COM frame, expressed in next link's
-     COM frame gravity (np.array) -- if given, will create gravity force. In
-     link COM frame. Will create several factors corresponding to Lynch & Park
-     book:
+     link.
+     Keyword arguments:
+        j -- index for this joint
+        jTi -- previous COM frame, expressed in this link's COM frame
+        joint_vel_j -- joint velocity for this link
+        twist_j -- velocity twist for this link, in COM frame
+        torque_j -- torque at this link's joint
+        kTj -- this COM frame, expressed in next link's COM frame
+        gravity -- if given, will create gravity force. In link COM frame.
+     Will create several factors corresponding to Lynch & Park book:
           - twist acceleration, Equation 8.47, page 293
           - wrench balance, Equation 8.48, page 293
           - torque-wrench relationship, Equation 8.49, page 293
@@ -258,13 +276,16 @@ class Link {
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Create all factors linking this links dynamics with previous and next
-     link. Keyword arguments: j -- index for this joint jTi -- previous COM
-     frame, expressed in this link's COM frame joint_vel_j -- joint velocity for
-     this link twist_j -- velocity twist for this link, in COM frame
-          acceleration_j - acceleration at this link's joint
-          kTj -- this COM frame, expressed in next link's COM frame
-          gravity (np.array) -- if given, will create gravity force. In link COM
-     frame. Will create several factors corresponding to Lynch & Park book:
+     link.
+     Keyword arguments:
+        j -- index for this joint jTi -- previous COM frame,
+                                         expressed in this link's COM frame
+        joint_vel_j -- joint velocity for this link
+        twist_j -- velocity twist for this link, in COM frame
+        acceleration_j - acceleration at this link's joint
+        kTj -- this COM frame, expressed in next link's COM frame
+        gravity  -- if given, will create gravity force. In link COM frame.
+        Will create several factors corresponding to Lynch & Park book:
           - twist acceleration, Equation 8.47, page 293
           - wrench balance, Equation 8.48, page 293
           - torque-wrench relationship, Equation 8.49, page 293

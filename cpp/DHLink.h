@@ -46,8 +46,8 @@ class DH_Link : public Link {
           double joint_upper_limit = 180, double joint_limit_threshold = 0.0,
           double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
           double acceleration_limit = 10000,
-          double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
-          double torque_limit_threshold = 0.0)
+          double acceleration_limit_threshold = 0.0,
+          double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,

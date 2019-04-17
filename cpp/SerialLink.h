@@ -15,8 +15,6 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
-extern gtsam::Key J(int j);
-
 namespace manipulator {
 
 template <typename T>
@@ -31,9 +29,9 @@ class SerialLink {
   /**
    * Construct serial link manipulator from list of Link instances
    * Keyword arguments:
-          calibration -- Link list
-          base        -- optional wT0 base frame in world frame
-          tool        -- optional tool frame in link N frame
+        links       -- a vector of links
+        base        -- optional wT0 base frame in world frame
+        tool        -- optional tool frame in link N frame
    */
   SerialLink(const std::vector<T> &links,
              const gtsam::Pose3 &base = gtsam::Pose3(),
@@ -69,15 +67,15 @@ class SerialLink {
 
   /** Calculate link transforms for all links
    * Keyword arguments:
-          q (gtsam::Vector) -- optional joint angles (default all zero).
+        q (gtsam::Vector) -- optional joint angles (default all zero).
    */
   std::vector<gtsam::Pose3> linkTransforms(
       const gtsam::Vector &q = gtsam::Vector::Zero(1)) const;
 
   /** Forward kinematics.
    * Keyword arguments:
-          q (gtsam::Vector) -- joint angles.
-          J (Matrix) -- Jacobian matrix
+        q (gtsam::Vector) -- joint angles.
+        J (Matrix) -- Jacobian matrix
      Returns tool frame in world frame.
    */
   std::vector<gtsam::Pose3> forwardKinematics(
@@ -88,23 +86,23 @@ class SerialLink {
    * Note that frame Tj is aligned with the joint axis of joint j+1
           according to the Denavit-Hartenberg convention.
    * Keyword arguments:
-          q (gtsam::Vector) -- optional joint angles (default all zero).
+        q (gtsam::Vector) -- optional joint angles (default all zero).
    */
   std::vector<gtsam::Pose3> linkFrames(
       const gtsam::Vector &q = gtsam::Vector::Zero(1)) const;
 
   /** Return each link's center of mass frame at rest, in the world frame.
    * Keyword arguments:
-          q (gtsam::Vector) -- optional joint angles (default all zero).
+        q (gtsam::Vector) -- optional joint angles (default all zero).
    */
   std::vector<gtsam::Pose3> comFrames(
       const gtsam::Vector &q = gtsam::Vector::Zero(1)) const;
 
   /** calculate the rigid body transformation which takes the joint frames
-   * from its reference configuration to the current configuration fo the
+   * from its reference configuration to the current configuration for the
    * manipulator. R. Murray's book, page 116 about manipulator jacobian
    * Keyword arguments:
-          q (gtsam::Vector) -- optional joint angles (default all zero).
+        q (gtsam::Vector) -- optional joint angles (default all zero).
    */
   std::vector<gtsam::Pose3> transformPOE(
       const gtsam::Vector &q = gtsam::Vector::Zero(1)) const;
@@ -119,24 +117,25 @@ class SerialLink {
 
   /** calculate spatial manipulator jacobian and joint poses
    * Keyword arguments:
-   *      q (gtsam::Vector)  -- angles for revolution joint, distances for
-   * prismatic joint
+   *   q (gtsam::Vector)  -- angles for revolution joint, distances for
+   *                         prismatic joint
    */
   std::vector<gtsam::Matrix> spatialManipulatorJacobian(
       const gtsam::Vector &q) const;
 
   /** calculate "body manipulator jacobian" and joint poses
    * Keyword arguments:
-   *      q (gtsam::Vector)  -- angles for revolution joint, distances for
-   * prismatic joint sTb (gtsam::Pose3) -- eef body frame expressed base frame
+   *  q (gtsam::Vector)  -- angles for revolution joint, distances for
+   *                            prismatic joint 
+   *  sTb (gtsam::Pose3) -- eef body frame expressed base frame
    */
   std::vector<gtsam::Matrix> bodyManipulatorJacobian(
       const gtsam::Vector &q, std::vector<gtsam::Pose3> &sTb) const;
 
   /** Calculate velocity twists for all joints, expressed in their COM frame.
    * Keyword arguments:
-   *      Ts -- link's center of mass frame expressed in the world frame
-   *      joint_vecocities -- joint angular velocities (in rad/s)
+   *   Ts -- link's center of mass frame expressed in the world frame
+   *   joint_vecocities -- joint angular velocities (in rad/s)
    */
   std::vector<gtsam::Vector6> twists(
       const std::vector<gtsam::Pose3> &Ts,
@@ -144,7 +143,7 @@ class SerialLink {
 
   /** Calculate list of transforms from COM frame j-1 relative to COM j.
    * Keyword arguments:
-   *      q (gtsam::Vector) -- joint angles (in rad).
+   *     q (gtsam::Vector) -- joint angles (in rad).
    *  Returns list of transforms, 2 more than number of links:
    *      - first transform is bT1, i.e. base expressed in link 1
    *      - last transform is tTnc, i.e., link N COM frame expressed in tool
@@ -154,12 +153,12 @@ class SerialLink {
 
   /** Build factor graph for RR manipulator forward dynamics.
    * Keyword arguments:
-   *      q (gtsam::Vector) -- joint angles (in rad).
-   *      joint_vecocities -- joint angular velocities (in rad/s)
-   *      torques (in Nm)
-   *      gravity (np.array) -- if given, will create gravity forces
-   *      base_twist_accel -- optional acceleration for base
-   *      external_wrench  -- optional external wrench
+   *   q (gtsam::Vector) -- joint angles (in rad).
+   *   joint_vecocities -- joint angular velocities (in rad/s)
+   *   torques (in Nm)
+   *   gravity (np.array) -- if given, will create gravity forces
+   *   base_twist_accel -- optional acceleration for base
+   *   external_wrench  -- optional external wrench
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -172,12 +171,12 @@ class SerialLink {
 
   /** Build factor graph for RR manipulator inverse dynamics.
    * Keyword arguments:
-   *      q (gtsam::Vector) -- joint angles (in rad).
-   *      joint_vecocities -- joint angular velocities (in rad/s)
-   *      joint_accelerations (np.array, in rad/s^2)
-   *      gravity (np.array) -- if given, will create gravity forces
-   *      base_twist_accel -- optional acceleration for base
-   *      external_wrench  -- optional external wrench
+   *   q (gtsam::Vector) -- joint angles (in rad).
+   *   joint_vecocities -- joint angular velocities (in rad/s)
+   *   joint_accelerations (np.array, in rad/s^2)
+   *   gravity (np.array) -- if given, will create gravity forces
+   *   base_twist_accel -- optional acceleration for base
+   *   external_wrench  -- optional external wrench
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
