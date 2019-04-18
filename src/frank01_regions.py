@@ -5,6 +5,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=W0611
 
 N = 60  # number of samples per joint angle
+L1, L2 = 3, 5  # Link lengths
 
 
 def torus(theta2, theta3):
@@ -20,8 +21,8 @@ def forward(theta1, theta2, theta3):
     """Forward kinematics."""
     # planar piece:
     theta23 = theta2 + theta3
-    r = 3*np.cos(theta2) + 5*np.cos(theta23)
-    z = 3*np.sin(theta2) + 5*np.sin(theta23)
+    r = L1*np.cos(theta2) + L2*np.cos(theta23)
+    z = L1*np.sin(theta2) + L2*np.sin(theta23)
     # rotate
     x = r*np.cos(theta1)
     y = r*np.sin(theta1)
@@ -43,10 +44,10 @@ class RegionsRRR():
             t2 = np.linspace(-np.radians(70), np.radians(87), N)
             t3 = np.linspace(-np.radians(129), np.radians(129), N)
         else:
-            t2 = np.linspace(-np.pi, np.pi, 60)
+            t2 = np.linspace(-np.pi, np.pi, N)
             t3 = t2
         self.theta2, self.theta3 = np.meshgrid(t2, t3)
-        acos = np.arccos(-np.cos(self.theta2)*3/5)
+        acos = np.arccos(-np.cos(self.theta2)*L1/L2)
         t23 = self.theta2 + self.theta3
 
         # Assign region colors
@@ -61,7 +62,7 @@ class RegionsRRR():
 
     def create_2d_figure(self):
         """ Create a figure showing regions in 2D joint space, 
-            corresponding to joints 2 and three. We don't care about joint 1
+            corresponding to joints 2 and 3. We don't care about joint 1
             for the sake of singularities.
         """
         fig, axes = plt.subplots()
@@ -91,7 +92,7 @@ class RegionsRRR():
         axes.set_zlim3d(-1, 1)
         axes.plot_surface(X, Y, Z, facecolors=self.colors,
                           alpha=0.1, rstride=1, cstride=1)
-        axes.set_title('Joint angles 2 and 3')
+        axes.set_title('Joint angles 2 and L1')
 
         # Zero
         theta3 = self.theta3[:, 0]
@@ -106,7 +107,7 @@ class RegionsRRR():
         axes.plot(x, y, z, 'cyan')
 
         # Shoulder singularity, positive arccos
-        acos = np.arccos(-np.cos(theta2)*3/5)
+        acos = np.arccos(-np.cos(theta2)*L1/L2)
         theta3 = acos-theta2
         if self.joint_limits:
             good = theta3 <= np.radians(129)
