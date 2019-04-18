@@ -13,6 +13,7 @@
 #include <gtsam/linear/NoiseModel.h>
 
 #include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace manipulator {
 /* Shorthand symbol for linear factors */
@@ -217,7 +218,7 @@ class Link {
       upward forces consistent with gravity compensation.
       Note: we do not recommand using the way
    */
-  static gtsam::JacobianFactor BaseTwistAccelFactor(
+  static boost::shared_ptr<gtsam::JacobianFactor> BaseTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel);
 
   /** Factor enforcing external wrench at tool frame.
@@ -225,7 +226,7 @@ class Link {
           N -- number of links, used to create wrench index
           external_wrench (np.array) -- optional external wrench
    */
-  static gtsam::JacobianFactor ToolWrenchFactor(
+  static boost::shared_ptr<gtsam::JacobianFactor> ToolWrenchFactor(
       int N, const gtsam::Vector6 &external_wrench);
 
   /** Create single factor relating this link's twist with previous one.
@@ -234,7 +235,7 @@ class Link {
           jTi -- previous COM frame, expressed in this link's COM frame
           joint_vel_j -- joint velocity for this link
    */
-  gtsam::JacobianFactor twistFactor(int j, const gtsam::Pose3 &jTi,
+  boost::shared_ptr<gtsam::JacobianFactor> twistFactor(int j, const gtsam::Pose3 &jTi,
                                     double joint_vel_j) const;
 
   /** Create wrench balance factor, common between forward and inverse dynamics.
@@ -245,7 +246,7 @@ class Link {
           gravity  -- if given, will create gravity force. In link COM
      frame.
    */
-  gtsam::JacobianFactor wrenchFactor(
+  boost::shared_ptr<gtsam::JacobianFactor> wrenchFactor(
       int j, const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
