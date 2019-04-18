@@ -11,6 +11,7 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
+
 #include <boost/optional.hpp>
 
 namespace manipulator {
@@ -28,6 +29,9 @@ extern gtsam::Symbol V(int j);
 /* Shorthand for J_j, for all joint positions j. */
 extern gtsam::Symbol J(int j);
 
+/**
+ * Link is the base class for links taking different format of parameters
+ */
 class Link {
  protected:
   char jointType_;
@@ -151,22 +155,22 @@ class Link {
         torqueLimitThreshold_(link.torqueLimitThreshold_) {}
 
   /* Return screw axis. */
-  gtsam::Vector6 screwAxis() const { return screwAxis_; }
+  const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
 
   /* Return link mass.*/
   double mass() const { return mass_; }
 
   /* Return center of mass (gtsam::Pose3) */
-  gtsam::Pose3 centerOfMass() const { return centerOfMass_; }
+  const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
   /* Return inertia. */
-  gtsam::Vector3 inertia() const { return inertia_; }
+  const gtsam::Vector3 &inertia() const { return inertia_; }
 
   /* Return general mass gtsam::Matrix */
   gtsam::Matrix6 inertiaMatrix() const {
     std::vector<gtsam::Matrix> gmm;
     gmm.push_back(inertia_.asDiagonal());
-    gmm.push_back(gtsam::Matrix::Identity(3, 3) * mass_);
+    gmm.push_back(gtsam::I_3x3 * mass_);
     return gtsam::diag(gmm);
   }
 
@@ -216,11 +220,7 @@ class Link {
       Note: we do not recommand using the way
    */
   static gtsam::JacobianFactor BaseTwistAccelFactor(
-      const gtsam::Vector6 &base_twist_accel) {
-    return gtsam::JacobianFactor(T(0), gtsam::Matrix::Identity(6, 6),
-                                 base_twist_accel,
-                                 gtsam::noiseModel::Constrained::All(6));
-  }
+      const gtsam::Vector6 &base_twist_accel);
 
   /** Factor enforcing external wrench at tool frame.
       Keyword argument:
@@ -228,11 +228,7 @@ class Link {
           external_wrench (np.array) -- optional external wrench
    */
   static gtsam::JacobianFactor ToolWrenchFactor(
-      int N, const gtsam::Vector6 &external_wrench) {
-    return gtsam::JacobianFactor(F(N + 1), gtsam::Matrix::Identity(6, 6),
-                                 -external_wrench,
-                                 gtsam::noiseModel::Constrained::All(6));
-  }
+      int N, const gtsam::Vector6 &external_wrench);
 
   /** Create single factor relating this link's twist with previous one.
       Keyword argument:

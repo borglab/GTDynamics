@@ -6,12 +6,13 @@
 #ifndef JOINTLIMITVECTORFACTOR_H
 #define JOINTLIMITVECTORFACTOR_H
 
-#include <gtsam/base/Matrix.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
 #include <boost/optional.hpp>
 #include <iostream>
 #include <vector>
+
+#include <gtsam/base/Matrix.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
 
 namespace manipulator {
 

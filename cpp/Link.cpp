@@ -12,16 +12,25 @@ using namespace gtsam;
 namespace manipulator {
 
 Symbol T(int j) { return Symbol('T', j); }
-
 Symbol a(int j) { return Symbol('a', j); }
-
 Symbol F(int j) { return Symbol('F', j); }
-
 Symbol t(int j) { return Symbol('t', j); }
-
 Symbol V(int j) { return Symbol('V', j); }
-
 Symbol J(int j) { return Symbol('J', j); }
+
+JacobianFactor Link::BaseTwistAccelFactor(
+    const gtsam::Vector6 &base_twist_accel) {
+  return gtsam::JacobianFactor(T(0), gtsam::Matrix::Identity(6, 6),
+                               base_twist_accel,
+                               gtsam::noiseModel::Constrained::All(6));
+}
+
+JacobianFactor Link::ToolWrenchFactor(
+    int N, const gtsam::Vector6 &external_wrench) {
+  return gtsam::JacobianFactor(F(N + 1), gtsam::Matrix::Identity(6, 6),
+                               -external_wrench,
+                               gtsam::noiseModel::Constrained::All(6));
+}
 
 JacobianFactor Link::twistFactor(int j, const Pose3 &jTi,
                                  double joint_vel_j) const {

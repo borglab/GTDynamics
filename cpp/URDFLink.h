@@ -8,12 +8,16 @@
 #ifndef URDFLINK_H
 #define URDFLINK_H
 
-#include <Link.h>
 #include <gtsam/geometry/Pose3.h>
+
+#include <Link.h>
 #include <utils.h>
 
 namespace manipulator {
 
+/**
+ * DH_Link is a link taking URDF parameters
+ */
 class URDF_Link : public Link {
  private:
   gtsam::Pose3 origin_;
@@ -89,7 +93,7 @@ class URDF_Link : public Link {
       q -- optional generalized joint angle (default 0)
   Return Link transform.
   */
-  gtsam::Pose3 A(double q = 0) const {
+  gtsam::Pose3 A(double q = 0) const override {
     if (jointType_ == 'R') {
       return origin_ *
              gtsam::Pose3(gtsam::Rot3::AxisAngle(axis_, q), gtsam::Point3());

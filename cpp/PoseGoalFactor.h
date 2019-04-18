@@ -10,11 +10,15 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+
 #include <iostream>
 #include <vector>
 
 namespace manipulator {
 
+/**
+ * PoseGoalFactor is a non-linear factor of manipulator end-effector pose goal
+ */
 class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
  private:
   typedef PoseGoalFactor This;
@@ -29,9 +33,9 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   /**
    * Construct from joint angle limits
    * Keyword arguments:
-      key                             --
-      cost_model (noiseModel::Base::shared_ptr)   --
-      goalPose (gtsam::Pose3)                -- end effector pose goal
+      key
+      cost_model  -- noise model
+      goalPose    -- end effector pose goal
    */
   PoseGoalFactor(
       gtsam::Key key, const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -47,8 +51,9 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
 
   /** error function
       Keyword argument:
-          jointCoordinates (gtsam::Vector)  -- angles for revolution joint,
-     distances for prismatic joint H (Matrix)                -- jacobian matrix
+          jointCoordinates      -- angles for revolution joint,
+                                    distances for prismatic joint
+          H                     -- jacobian matrix
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector &joint_coordinates,

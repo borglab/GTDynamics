@@ -1,17 +1,21 @@
 /**
  * @file  dh_link.h
- * @brief link taking denavit harternberg parameters
+ * @brief link taking Denavit-Harternberg parameters
  * @Author: Frank Dellaert and Mandy Xie
  */
 #ifndef DHLINK_H
 #define DHLINK_H
 
-#include <Link.h>
 #include <gtsam/geometry/Pose3.h>
+
+#include <Link.h>
 #include <utils.h>
 
 namespace manipulator {
 
+/**
+ * DH_Link is a link taking Denavit-Harternberg parameters
+ */
 class DH_Link : public Link {
  private:
   double theta_;
@@ -84,11 +88,11 @@ class DH_Link : public Link {
   }
 
   /** Calculate link transform
-  Keyword argument:
+   * Keyword argument:
       q -- optional generalized joint angle (default 0)
-  Return Link transform.
+   * Return Link transform.
   */
-  gtsam::Pose3 A(double q = 0) const {
+  gtsam::Pose3 A(double q = 0) const override {
     double theta = theta_;
     double d = d_;
     if (jointType_ == 'R') {

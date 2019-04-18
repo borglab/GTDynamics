@@ -6,7 +6,7 @@
 
 #include <DHLink.h>
 #include <PoseGoalFactor.h>
-#include <SerialLink.h>
+#include <Arm.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -29,9 +29,9 @@ namespace example {
 vector<DH_Link> dh_rr = {
     DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0), -5, 10, 2),
     DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0), -5, 10, 2)};
-auto robot = SerialLink<DH_Link>(dh_rr, Pose3());
+auto robot = Arm<DH_Link>(dh_rr, Pose3());
 auto jacobian =
-    boost::bind(&SerialLink<DH_Link>::forwardKinematics, robot, _1, _2);
+    boost::bind(&Arm<DH_Link>::forwardKinematics, robot, _1, _2);
 }  // namespace example
 
 /**
