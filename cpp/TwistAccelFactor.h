@@ -4,8 +4,8 @@
  * dynamics.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef TWISTACCELFACTOR_H
-#define TWISTACCELFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -166,4 +166,3 @@ class TwistAccelFactor
   }
 };
 }  // namespace manipulator
-#endif

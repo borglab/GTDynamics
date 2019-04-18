@@ -3,8 +3,8 @@
  * @brief Factor enforcing base acceleration.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef BASETWISTACCELFACTOR_H
-#define BASETWISTACCELFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -82,4 +82,3 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 };
 }  // namespace manipulator
-#endif

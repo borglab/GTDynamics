@@ -3,8 +3,8 @@
  * @brief toque factor, common between forward and inverse dynamics.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef TORQUEFACTOR_H
-#define TORQUEFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -86,4 +86,3 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector, double> {
   }
 };
 }  // namespace manipulator
-#endif

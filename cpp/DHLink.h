@@ -3,8 +3,8 @@
  * @brief link taking Denavit-Harternberg parameters
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef DHLINK_H
-#define DHLINK_H
+
+#pragma once
 
 #include <gtsam/geometry/Pose3.h>
 
@@ -99,4 +99,3 @@ class DH_Link : public Link {
   double length() { return sqrt(d_ * d_ + a_ * a_); }
 };
 }  // namespace manipulator
-#endif

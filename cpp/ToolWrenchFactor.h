@@ -3,8 +3,8 @@
  * @brief Factor enforcing external wrench at tool frame.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef ToolWrenchFactor_H
-#define ToolWrenchFactor_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -180,4 +180,3 @@ class ToolWrenchFactor
   }
 };
 }  // namespace manipulator
-#endif

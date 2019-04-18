@@ -4,8 +4,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <boost/optional.hpp>
 #include <cmath>
@@ -76,4 +75,3 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
 }
 
 }  // namespace manipulator
-#endif

@@ -3,8 +3,8 @@
  * @brief end effector pose goal factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef POSEGOALFACTOR_H
-#define POSEGOALFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -92,4 +92,3 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 };
 }  // namespace manipulator
-#endif

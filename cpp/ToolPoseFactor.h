@@ -3,8 +3,8 @@
  * @brief end effector pose factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef TOOLPOSEFACTOR_H
-#define TOOLPOSEFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -79,4 +79,3 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 };
 }  // namespace manipulator
-#endif

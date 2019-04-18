@@ -3,8 +3,8 @@
  * @brief Factor enforcing base twist.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef BASETWISTFACTOR_H
-#define BASETWISTFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -76,4 +76,3 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 };
 }  // namespace manipulator
-#endif

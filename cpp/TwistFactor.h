@@ -3,8 +3,8 @@
  * @brief twist factor.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef TWISTFACTOR_H
-#define TWISTFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -116,4 +116,3 @@ class TwistFactor
   }
 };
 }  // namespace manipulator
-#endif

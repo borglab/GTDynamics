@@ -3,8 +3,8 @@
  * @brief manipulator link
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef LINK_H
-#define LINK_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -294,4 +294,3 @@ class Link {
   virtual ~Link() = default;
 };
 }  // namespace manipulator
-#endif

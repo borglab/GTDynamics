@@ -3,8 +3,8 @@
  * @brief Factor enforcing base Pose.
  * @Author: Mandy Xie
  */
-#ifndef BASEPOSEFACTOR_H
-#define BASEPOSEFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -74,4 +74,3 @@ class BasePoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 };
 }  // namespace manipulator
-#endif

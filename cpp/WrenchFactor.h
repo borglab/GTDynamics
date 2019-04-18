@@ -3,8 +3,8 @@
  * @brief wrench balance factor, common between forward and inverse dynamics.
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef WRENCHFACTOR_H
-#define WRENCHFACTOR_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -209,5 +209,3 @@ class WrenchFactor
   }
 };
 }  // namespace manipulator
-#endif
-

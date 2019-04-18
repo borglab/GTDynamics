@@ -4,8 +4,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#ifndef ARM_H
-#define ARM_H
+#pragma once
 
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/VectorValues.h>
@@ -270,4 +269,3 @@ class Arm {
                                   const gtsam::Vector &init_q) const;
 };
 }  // namespace manipulator
-#endif

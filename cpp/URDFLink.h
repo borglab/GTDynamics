@@ -5,8 +5,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#ifndef URDFLINK_H
-#define URDFLINK_H
+#pragma once
 
 #include <gtsam/geometry/Pose3.h>
 
@@ -96,4 +95,3 @@ class URDF_Link : public Link {
   double linkLength() { return origin_.x(); }
 };
 }  // namespace manipulator
-#endif

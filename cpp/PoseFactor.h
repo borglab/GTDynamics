@@ -3,8 +3,8 @@
  * @brief forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef PoseFactor_H
-#define PoseFactor_H
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -129,4 +129,3 @@ class PoseFactor
   }
 };
 }  // namespace manipulator
-#endif
