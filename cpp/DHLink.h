@@ -53,6 +53,8 @@ class DH_Link : public Link {
           double acceleration_limit_threshold = 0.0,
           double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
+             unit_twist(gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
+                        gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
@@ -61,21 +63,12 @@ class DH_Link : public Link {
         theta_(radians(theta)),
         d_(d),
         a_(a),
-        alpha_(radians(alpha)) {
-    // Calculate screw axis expressed in center of mass frame.
-    // COM is expressed in the link frame, which is aligned with the *next*
-    // joint in the DH convention. Hence, we need to translate back to *our*
-    // joint:
-    gtsam::Vector3 com = center_of_mass.vector();
-    gtsam::Vector3 joint(-a_, 0, 0);
-    gtsam::Vector3 w(0, sin(alpha_), cos(alpha_));
-    Link::setScrewAxis(unit_twist(w, joint - com));
-  }
+        alpha_(radians(alpha)) {}
 
   /* Copy constructor */
   DH_Link(const DH_Link &dh_link)
       : Link(dh_link.jointType_, dh_link.mass(), dh_link.centerOfMass(),
-             dh_link.inertia(), dh_link.jointLowerLimit(),
+             dh_link.inertia(), dh_link.screwAxis(), dh_link.jointLowerLimit(),
              dh_link.jointUpperLimit(), dh_link.jointLimitThreshold(),
              dh_link.velocityLimit(), dh_link.velocityLimitThreshold(),
              dh_link.accelerationLimit(), dh_link.accelerationLimitThreshold(),
@@ -83,9 +76,7 @@ class DH_Link : public Link {
         theta_(dh_link.theta_),
         d_(dh_link.d_),
         a_(dh_link.a_),
-        alpha_(dh_link.alpha_) {
-    Link::setScrewAxis(dh_link.screwAxis());
-  }
+        alpha_(dh_link.alpha_) {}
 
   /** Calculate link transform
    * Keyword argument:

@@ -36,11 +36,6 @@ class Link {
  protected:
   char jointType_;
 
-  /* set screw axis. */
-  void setScrewAxis(const gtsam::Vector6 &screw_axis) {
-    screwAxis_ = screw_axis;
-  }
-
  private:
   double mass_;
   gtsam::Pose3 centerOfMass_;
@@ -77,16 +72,17 @@ class Link {
     * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
-       const gtsam::Vector3 &inertia, double joint_lower_limit = -M_PI,
-       double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
-       double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
-       double acceleration_limit = 10000,
+       const gtsam::Vector3 &inertia, const gtsam::Vector6 &screwAxis,
+       double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
+       double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+       double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
         mass_(mass),
         centerOfMass_(center_of_mass),
         inertia_(inertia),
+        screwAxis_(screwAxis),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -118,16 +114,17 @@ class Link {
    * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
-       const gtsam::Vector3 &inertia, double joint_lower_limit = -M_PI,
-       double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
-       double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
-       double acceleration_limit = 10000,
+       const gtsam::Vector3 &inertia, const gtsam::Vector6 &screwAxis,
+       double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
+       double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+       double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
         mass_(mass),
         centerOfMass_(gtsam::Pose3(gtsam::Rot3(), center_of_mass)),
         inertia_(inertia),
+        screwAxis_(screwAxis),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -144,6 +141,7 @@ class Link {
         mass_(link.mass_),
         centerOfMass_(link.centerOfMass_),
         inertia_(link.inertia_),
+        screwAxis_(link.screwAxis_),
         jointLowerLimit_(link.jointLowerLimit_),
         jointUpperLimit_(link.jointUpperLimit_),
         jointLimitThreshold_(link.jointLimitThreshold_),

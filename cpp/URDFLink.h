@@ -57,36 +57,27 @@ class URDF_Link : public Link {
             double acceleration_limit_threshold = 0.0,
             double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
+             unit_twist(center_of_mass.rotation().inverse() * axis,
+                        center_of_mass.inverse().translation().vector()),
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
              acceleration_limit_threshold, torque_limit,
              torque_limit_threshold),
         origin_(origin),
-        axis_(axis) {
-    // link frame w.r.t. com frame
-    gtsam::Pose3 link_com = center_of_mass.inverse();
-    // joint axis expressed in com frame
-    gtsam::Vector3 joint_axis_com = link_com.rotation() * axis;
-    // # point on joint axis expressed in com frame
-    gtsam::Vector3 point_on_axis = link_com.translation().vector();
-    // Calculate screw axis expressed in center of mass frame
-    Link::setScrewAxis(unit_twist(joint_axis_com, point_on_axis));
-  }
+        axis_(axis) {}
 
   /* Copy constructor */
   URDF_Link(const URDF_Link &urdf_link)
       : Link(urdf_link.jointType_, urdf_link.mass(), urdf_link.centerOfMass(),
-             urdf_link.inertia(), urdf_link.jointLowerLimit(),
-             urdf_link.jointUpperLimit(), urdf_link.jointLimitThreshold(),
-             urdf_link.velocityLimit(), urdf_link.velocityLimitThreshold(),
-             urdf_link.accelerationLimit(),
+             urdf_link.inertia(), urdf_link.screwAxis(),
+             urdf_link.jointLowerLimit(), urdf_link.jointUpperLimit(),
+             urdf_link.jointLimitThreshold(), urdf_link.velocityLimit(),
+             urdf_link.velocityLimitThreshold(), urdf_link.accelerationLimit(),
              urdf_link.accelerationLimitThreshold(), urdf_link.torqueLimit(),
              urdf_link.torqueLimitThreshold()),
         origin_(urdf_link.origin_),
-        axis_(urdf_link.axis_) {
-    Link::setScrewAxis(urdf_link.screwAxis());
-  }
+        axis_(urdf_link.axis_) {}
 
   /** Calculate link transform
   Keyword argument:
