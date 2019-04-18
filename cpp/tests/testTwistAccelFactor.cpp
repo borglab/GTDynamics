@@ -52,7 +52,7 @@ TEST(TwistAccelFactor, error) {
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twistAccel_i = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   twistAccel_j = (Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
       expected_H6;
@@ -117,7 +117,7 @@ TEST(TwistAccelFactor, error_1) {
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twistAccel_i = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
   twistAccel_j = (Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
       expected_H6;

@@ -28,7 +28,7 @@ namespace example
 // R link example
 DH_Link dh_r = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0), -180, 10, 180);
 // nosie model
-noiseModel::Gaussian::shared_ptr cost_model = noiseModel::Gaussian::Covariance(Matrix::Identity(6, 6));
+noiseModel::Gaussian::shared_ptr cost_model = noiseModel::Gaussian::Covariance(I_6x6);
 Key torque_key = Symbol('t', 1),
     wrench_key = Symbol('F', 1);
 } // namespace example
@@ -44,7 +44,7 @@ TEST(TorqueFactor, error)
     TorqueFactor factor(example::wrench_key, example::torque_key, example::cost_model, screw_axis);
     double torque = 20;
     Vector6 wrench = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-    Vector actual_errors, expected_errors;
+    Vector1 actual_errors, expected_errors;
     Matrix actual_H1, actual_H2, expected_H1, expected_H2;
 
     actual_errors = factor.evaluateError(wrench, torque,actual_H1, actual_H2);

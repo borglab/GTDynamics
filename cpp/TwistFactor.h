@@ -22,11 +22,11 @@ namespace manipulator {
 /** TwistFactor is a four-way nonlinear factor which enforces relation
  * between twist on previous link and this link*/
 class TwistFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector, gtsam::Vector, double,
+    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
                                       double> {
  private:
   typedef TwistFactor This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector, gtsam::Vector, double, double>
+  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double, double>
       Base;
   gtsam::Pose3 jMi_;
   gtsam::Vector6 screw_axis_;
@@ -49,8 +49,8 @@ class TwistFactor
 
  private:
   /* calculate jacobian of AdjointMap term w.r.t. joint coordinate q */
-  gtsam::Matrix qJacobian_(const double &q,
-                           const gtsam::Vector &twist_i) const {
+  gtsam::Matrix61 qJacobian_(const double &q,
+                           const gtsam::Vector6 &twist_i) const {
     auto H = AdjointMapJacobianQ(q, jMi_, screw_axis_);
     return H * twist_i;
   }
@@ -68,19 +68,18 @@ class TwistFactor
           H_qVel        -- jacobian matrix w.r.t. joint velocity
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &twist_i, const gtsam::Vector &twist_j,
+      const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
       const double &q, const double &qVel,
       boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const {
-    int size = twist_i.size();
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
     if (H_twist_i) {
       *H_twist_i = -jTi.AdjointMap();
     }
     if (H_twist_j) {
-      *H_twist_j = gtsam::Matrix::Identity(size, size);
+      *H_twist_j = gtsam::I_6x6;
     }
     if (H_q) {
       *H_q = -qJacobian_(q, twist_i);

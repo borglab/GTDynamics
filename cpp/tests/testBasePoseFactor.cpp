@@ -25,7 +25,7 @@ using namespace manipulator;
 namespace example {
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(Matrix::Identity(6, 6));
+    noiseModel::Gaussian::Covariance(I_6x6);
 Key pose_key = Symbol('p', 1);
 }  // namespace example
 
@@ -37,7 +37,7 @@ TEST(BasePoseFactor, error) {
   Pose3 base_pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
   BasePoseFactor factor(example::pose_key, example::cost_model, base_pose);
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H, expected_H;
 
   actual_errors = factor.evaluateError(pose, actual_H);

@@ -23,11 +23,11 @@ namespace manipulator {
 /** TwistAccelFactor is a six-way nonlinear factor which enforces relation
  * between acceleration on previous link and this link*/
 class TwistAccelFactor
-    : public gtsam::NoiseModelFactor6<gtsam::Vector, gtsam::Vector,
-                                      gtsam::Vector, double, double, double> {
+    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
+                                      gtsam::Vector6, double, double, double> {
  private:
   typedef TwistAccelFactor This;
-  typedef gtsam::NoiseModelFactor6<gtsam::Vector, gtsam::Vector, gtsam::Vector,
+  typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
                                    double, double, double>
       Base;
   gtsam::Pose3 jMi_;
@@ -54,14 +54,14 @@ class TwistAccelFactor
 
  private:
   /* calculate jacobian of adjointV term w.r.t. joint coordinate twist */
-  gtsam::Matrix twistJacobian_(const double &qVel) const {
-    gtsam::Matrix H_twist = -gtsam::Pose3::adjointMap(screw_axis_ * qVel);
+  gtsam::Matrix6 twistJacobian_(const double &qVel) const {
+    gtsam::Matrix6 H_twist = -gtsam::Pose3::adjointMap(screw_axis_ * qVel);
     return H_twist;
   }
 
   /* calculate jacobian of AdjointMap term w.r.t. joint coordinate q */
-  gtsam::Matrix qJacobian_(const double &q,
-                           const gtsam::Vector &twist_accel_i) const {
+  gtsam::Matrix61 qJacobian_(const double &q,
+                           const gtsam::Vector6 &twist_accel_i) const {
     auto H = AdjointMapJacobianQ(q, jMi_, screw_axis_);
     return H * twist_accel_i;
   }
@@ -83,8 +83,8 @@ class TwistAccelFactor
           H_qAccel              -- jacobian matrix w.r.t. joint acceleration
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &twist, const gtsam::Vector &twistAccel_i,
-      const gtsam::Vector &twistAccel_j, const double &q, const double &qVel,
+      const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel_i,
+      const gtsam::Vector6 &twistAccel_j, const double &q, const double &qVel,
       const double &qAccel,
       boost::optional<gtsam::Matrix &> H_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_i = boost::none,
@@ -92,10 +92,9 @@ class TwistAccelFactor
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const {
-    int size = twistAccel_i.size();
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
-    gtsam::Matrix H_adjoint;
-    gtsam::Vector error =
+    gtsam::Matrix6 H_adjoint;
+    gtsam::Vector6 error =
         twistAccel_j - jTi.AdjointMap() * twistAccel_i -
         gtsam::Pose3::adjoint(twist, screw_axis_ * qVel, H_adjoint) -
         screw_axis_ * qAccel;
@@ -106,7 +105,7 @@ class TwistAccelFactor
       *H_twistAccel_i = -jTi.AdjointMap();
     }
     if (H_twistAccel_j) {
-      *H_twistAccel_j = gtsam::Matrix::Identity(size, size);
+      *H_twistAccel_j = gtsam::I_6x6;
     }
     if (H_q) {
       *H_q = -qJacobian_(q, twistAccel_i);
@@ -131,9 +130,9 @@ class TwistAccelFactor
         qVel                  -- joint velocity
         qAccel                -- joint acceleration
 */
-  gtsam::Vector evaluateError(const gtsam::Vector &twist,
-                              const gtsam::Vector &twistAccel_i,
-                              const gtsam::Vector &twistAccel_j,
+  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
+                              const gtsam::Vector6 &twistAccel_i,
+                              const gtsam::Vector6 &twistAccel_j,
                               const double &q, const double &qVel,
                               const double &qAccel) const {
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;

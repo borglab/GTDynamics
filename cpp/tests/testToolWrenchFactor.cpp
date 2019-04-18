@@ -28,7 +28,7 @@ DH_Link dh_r = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0),
                        -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(Matrix::Identity(6, 6));
+    noiseModel::Gaussian::Covariance(I_6x6);
 Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
     wrench_j_key = Symbol('W', 1), pKey = Symbol('p', 1);
 }  // namespace example
@@ -51,7 +51,7 @@ TEST(ToolWrenchFactor, error_1) {
   twist_accel = (Vector(6) << 0, 0, 0, 0, 1, 0).finished();
   wrench_j = (Vector(6) << 0, 0, -2, -10, 1, 0).finished();
   Pose3 pose(Rot3(), Point3(1, 0, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, expected_H1, expected_H2,
       expected_H3, expected_H4;
 
@@ -106,7 +106,7 @@ TEST(ToolWrenchFactor, error_2) {
   twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   wrench_j = (Vector(6) << 0, 0, -2, 9.8, 0, 0).finished();
   Pose3 pose(Rot3::Rz(M_PI/2), Point3(0, 1, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, expected_H1, expected_H2,
       expected_H3, expected_H4;
 

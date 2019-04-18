@@ -47,7 +47,7 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
       const gtsam::Pose3 &pose,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const {
     auto pose_predict = tool_pose_ * tTn_;
-    gtsam::Vector error = pose.logmap(pose_predict);
+    gtsam::Vector6 error = pose.logmap(pose_predict);
     if (H_pose) {
       *H_pose = -gtsam::I_6x6;
     }

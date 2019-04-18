@@ -22,18 +22,18 @@ namespace manipulator {
 /** WrenchFactor is a six-way nonlinear factor which enforces relation
  * between wrenches on this link and the next link*/
 class WrenchFactor
-    : public gtsam::NoiseModelFactor6<gtsam::Vector, gtsam::Vector,
-                                      gtsam::Vector, gtsam::Vector,
+    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
+                                      gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Pose3, double> {
  private:
   typedef WrenchFactor This;
-  typedef gtsam::NoiseModelFactor6<gtsam::Vector, gtsam::Vector, gtsam::Vector,
-                                   gtsam::Vector, gtsam::Pose3, double>
+  typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                                   gtsam::Vector6, gtsam::Pose3, double>
       Base;
   gtsam::Pose3 kMj_;
-  gtsam::Matrix inertia_;
+  gtsam::Matrix6 inertia_;
   gtsam::Vector6 screw_axis_;
-  gtsam::Vector gravity_;
+  gtsam::Vector3 gravity_;
 
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
@@ -49,7 +49,7 @@ class WrenchFactor
                gtsam::Key wrench_key_j, gtsam::Key wrench_key_k,
                gtsam::Key pose_key, gtsam::Key q_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Pose3 &kMj, const gtsam::Matrix &inertia,
+               const gtsam::Pose3 &kMj, const gtsam::Matrix6 &inertia,
                const gtsam::Vector6 &screw_axis,
                boost::optional<gtsam::Vector3 &> gravity = boost::none)
       : Base(cost_model, twist_key, twistAccel_key, wrench_key_j, wrench_key_k,
@@ -66,12 +66,12 @@ class WrenchFactor
 
  private:
   /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
-  gtsam::Matrix twistJacobian_(const gtsam::Vector &twist) const {
+  gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
     auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
          v2 = twist(4), v3 = twist(5);
-    gtsam::Matrix H_twist =
+    gtsam::Matrix6 H_twist =
         (gtsam::Matrix(6, 6) << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,
          (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0, (g1 - g2) * w2,
          (g1 - g2) * w1, 0, 0, 0, 0, 0, -m * v3, m * v2, 0, m * w3, -m * w2,
@@ -82,7 +82,7 @@ class WrenchFactor
   }
 
   /* calculate joint coordinate q jacobian */
-  gtsam::Matrix qJacobian_(double q, const gtsam::Vector &wrench_k) const {
+  gtsam::Matrix61 qJacobian_(double q, const gtsam::Vector6 &wrench_k) const {
     auto H = AdjointMapJacobianQ(q, kMj_, screw_axis_);
     return H.transpose() * wrench_k;
   }
@@ -103,8 +103,8 @@ class WrenchFactor
           H_q           -- jacobian matrix w.r.t. joint angle
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &twist, const gtsam::Vector &twistAccel,
-      const gtsam::Vector &wrench_j, const gtsam::Vector &wrench_k,
+      const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
+      const gtsam::Vector6 &wrench_j, const gtsam::Vector6 &wrench_k,
       const gtsam::Pose3 &pose, const double &q,
       boost::optional<gtsam::Matrix &> H_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel = boost::none,
@@ -112,7 +112,6 @@ class WrenchFactor
       boost::optional<gtsam::Matrix &> H_wrench_k = boost::none,
       boost::optional<gtsam::Matrix &> H_pose = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
-    int size = wrench_j.size();
     gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis_ * q) * kMj_;
     // transform gravity from base frame to link COM frame,
     // to use unrotate function, have to convert gravity vector to a point
@@ -121,10 +120,10 @@ class WrenchFactor
     auto gravity =
         pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
     gtsam::Matrix63 mat;
-    mat << gtsam::Matrix3::Zero(), gtsam::Matrix::Identity(3, 3);
+    mat << gtsam::Matrix3::Zero(), gtsam::I_3x3;
     auto gravity_wrench = inertia_ * mat * gravity;
 
-    gtsam::Vector error =
+    gtsam::Vector6 error =
         inertia_ * twistAccel - wrench_j +
         kTj.AdjointMap().transpose() * wrench_k -
         gtsam::Pose3::adjointMap(twist).transpose() * inertia_ * twist -
@@ -137,7 +136,7 @@ class WrenchFactor
       *H_twistAccel = inertia_;
     }
     if (H_wrench_j) {
-      *H_wrench_j = -gtsam::Matrix::Identity(size, size);
+      *H_wrench_j = -gtsam::I_6x6;
     }
     if (H_wrench_k) {
       *H_wrench_k = kTj.AdjointMap().transpose();
@@ -162,10 +161,10 @@ class WrenchFactor
         pose          -- link COM pose expressed in base frame
         q             -- joint angle
 */
-  gtsam::Vector evaluateError(const gtsam::Vector &twist,
-                              const gtsam::Vector &twistAccel,
-                              const gtsam::Vector &wrench_j,
-                              const gtsam::Vector &wrench_k,
+  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
+                              const gtsam::Vector6 &twistAccel,
+                              const gtsam::Vector6 &wrench_j,
+                              const gtsam::Vector6 &wrench_k,
                               const gtsam::Pose3 pose, const double &q) const {
     gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis_ * q) * kMj_;
     // transform gravity from base frame to link COM frame,
@@ -173,7 +172,7 @@ class WrenchFactor
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     auto gravity = pose.rotation().unrotate(gravity_point).vector();
     gtsam::Matrix63 mat;
-    mat << gtsam::Matrix3::Zero(), gtsam::Matrix::Identity(3, 3);
+    mat << gtsam::Matrix3::Zero(), gtsam::I_3x3;
     auto gravity_wrench = inertia_ * mat * gravity;
 
     return inertia_ * twistAccel - wrench_j +

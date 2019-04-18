@@ -18,11 +18,11 @@ namespace manipulator {
 
 /** BaseTwistAccelFactor is a one-way nonlinear factor which enforces the
  * acceleration of the base*/
-class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
+class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
   typedef BaseTwistAccelFactor This;
-  typedef gtsam::NoiseModelFactor1<gtsam::Vector> Base;
-  gtsam::Vector base_twistAccel_;
+  typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
+  gtsam::Vector6 base_twistAccel_;
 
  public:
   /** Construct Factor enforcing base acceleration.
@@ -37,7 +37,7 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
    */
   BaseTwistAccelFactor(gtsam::Key twistAccel_key_0,
                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                       const gtsam::Vector &base_twistAccel)
+                       const gtsam::Vector6 &base_twistAccel)
       : Base(cost_model, twistAccel_key_0), base_twistAccel_(base_twistAccel) {}
 
   virtual ~BaseTwistAccelFactor() {}
@@ -49,11 +49,10 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
           H_twistAccel_0  -- jacobian matrix w.r.t. twist_0
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &twistAccel_0,
+      const gtsam::Vector6 &twistAccel_0,
       boost::optional<gtsam::Matrix &> H_twistAccel_0 = boost::none) const {
-    int size = twistAccel_0.size();
     if (H_twistAccel_0) {
-      *H_twistAccel_0 = gtsam::Matrix::Identity(size, size);
+      *H_twistAccel_0 = gtsam::I_6x6;
     }
     return twistAccel_0 - base_twistAccel_;
   }

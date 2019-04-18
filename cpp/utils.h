@@ -33,8 +33,6 @@ double radians(double degree);
 /* convert a vector of angles to radians */
 gtsam::Vector radians(const gtsam::Vector &degree);
 
-gtsam::Vector radians(const gtsam::Vector &degree);
-
 /** calculate AdjointMap jacobian w.r.t. joint coordinate q
  *  Keyword argument:
       q            -- joint angle
@@ -43,14 +41,14 @@ gtsam::Vector radians(const gtsam::Vector &degree);
       screw_axis   -- screw axis expressed in kth link's COM
                    frame                  
 */
-gtsam::Matrix AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
+gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
                                   const gtsam::Vector6 &screw_axis);
 
 /** calculate Gaussian Process system transition matrix
     Keyword argument:
         tau -- timestep
 */
-inline gtsam::Matrix calcPhi(double tau) {
+inline gtsam::Matrix3 calcPhi(double tau) {
   return (gtsam::Matrix(3, 3) << 1, tau, 0.5 * tau * tau, 0, 1, tau, 0, 0, 1)
       .finished();
 }

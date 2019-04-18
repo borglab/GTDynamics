@@ -33,7 +33,7 @@ TEST(BaseTwistFactor, error)
     base_twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
     BaseTwistFactor factor(0, cost_model, base_twist);
     Vector6 conf;
-    Vector actual_errors, expected_errors;
+    Vector6 actual_errors, expected_errors;
     Matrix actual_H, expected_H;
 
     conf = Vector6::Zero();

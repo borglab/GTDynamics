@@ -19,10 +19,10 @@ namespace manipulator {
 
 /** TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link*/
-class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector, double> {
+class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
  private:
   typedef TorqueFactor This;
-  typedef gtsam::NoiseModelFactor2<gtsam::Vector, double> Base;
+  typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
   gtsam::Vector6 screw_axis_;
 
  public:
@@ -49,14 +49,14 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector, double> {
           H_torque     -- jacobian matrix w.r.t. torque
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &wrench, const double &torque,
+      const gtsam::Vector6 &wrench, const double &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const {
     if (H_wrench) {
       *H_wrench = screw_axis_.transpose();
     }
     if (H_torque) {
-      *H_torque = -gtsam::Matrix::Identity(1, 1);
+      *H_torque = -gtsam::I_1x1;
     }
 
     return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);

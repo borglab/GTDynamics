@@ -52,7 +52,7 @@ class PoseFunctor {
     gtsam::Matrix6 pose_j_H_jTi;
     auto pose_j = pose_i.compose(jTi, H_pose_i, pose_j_H_jTi);
     if (H_q) {
-      *H_q = pose_j_H_jTi * Hexp * screw_axis_;
+      *H_q = pose_j_H_jTi * (Hexp * screw_axis_);
     }
 
     return pose_j;
@@ -98,7 +98,7 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
     auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
-    gtsam::Vector error = pose_j.logmap(pose_j_hat);
+    gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
     if (H_pose_j) {
       *H_pose_j = -gtsam::I_6x6;
     }

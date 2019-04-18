@@ -55,7 +55,7 @@ TEST(WrenchFactor, error_1) {
   wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
   wrench_k = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
       expected_H6;
@@ -123,7 +123,7 @@ TEST(WrenchFactor, error_2) {
   wrench_j = (Vector(6) << 0, 0, 4, -1, 2, 0).finished();
   wrench_k = (Vector(6) << 0, 0, 2, 0, 1, 0).finished();
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
       expected_H6;
@@ -195,7 +195,7 @@ TEST(WrenchFactor, error_3) {
                  .finished();
   wrench_k = (Vector(6) << 0, 0, -10, 0, 10, 0).finished();
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
       expected_H6;

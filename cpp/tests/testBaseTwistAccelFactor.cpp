@@ -34,7 +34,7 @@ TEST(BaseTwistAccelFactor, error) {
   BaseTwistAccelFactor factor(LabeledSymbol('G', '0', 0), cost_model,
                               base_acceleration);
   Vector6 conf;
-  Vector actual_errors, expected_errors;
+  Vector6 actual_errors, expected_errors;
   Matrix actual_H, expected_H;
 
   conf = Vector6::Zero();

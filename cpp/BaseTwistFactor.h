@@ -18,11 +18,11 @@ namespace manipulator {
 
 /** BaseTwistFactor is a one-way nonlinear factor which enforces the twist of
  * the base*/
-class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
+class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
   typedef BaseTwistFactor This;
-  typedef gtsam::NoiseModelFactor1<gtsam::Vector> Base;
-  gtsam::Vector base_twist_;
+  typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
+  gtsam::Vector6 base_twist_;
 
  public:
   /** Construct Factor enforcing base twist.
@@ -31,7 +31,7 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
    */
   BaseTwistFactor(gtsam::Key twist_key_0,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                  const gtsam::Vector &base_twist)
+                  const gtsam::Vector6 &base_twist)
       : Base(cost_model, twist_key_0), base_twist_(base_twist) {}
 
   virtual ~BaseTwistFactor() {}
@@ -43,11 +43,10 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
           H_twist_0  -- jacobian matrix w.r.t. twist_0
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector &twist_0,
+      const gtsam::Vector6 &twist_0,
       boost::optional<gtsam::Matrix &> H_twist_0 = boost::none) const {
-    int size = twist_0.size();
     if (H_twist_0) {
-      *H_twist_0 = gtsam::Matrix::Identity(size, size);
+      *H_twist_0 = gtsam::I_6x6;
     }
     return twist_0 - base_twist_;
   }
