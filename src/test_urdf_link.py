@@ -47,8 +47,8 @@ class TestURDFFetch(GtsamTestCase):
     def setUp(self):
         # load the urdf file
         file_name = "fetch.urdf"
-        self.link_dict = read_urdf(file_name, option="links")
-        self.serial_link = read_urdf(file_name, option="serial", leaf_link_name="r_gripper_finger_link")
+        self.link_dict = read_urdf(file_name,)
+        self.serial_link = SerialLink.from_urdf(self.link_dict, leaf_link_name="r_gripper_finger_link")
 
     def test_constructor(self):
         self.assertIsInstance(self.serial_link, SerialLink)
@@ -56,6 +56,7 @@ class TestURDFFetch(GtsamTestCase):
         self.assertEqual(self.link_dict["r_gripper_finger_link"][1], "gripper_link")
         for name, (link, parent_name) in self.link_dict.items():
             self.assertIsInstance(link, URDF_Link)
+        self.assertEqual(self.serial_link._links[0].mass, 70.1294)
         # TODO: add more tests here
 
 

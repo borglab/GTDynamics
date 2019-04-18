@@ -75,42 +75,27 @@ def compose_pose(rpy, xyz):
     return Pose3(rotation, point)
 
 
-def read_urdf(file_name, option="links", leaf_link_name=None):
+def read_urdf(file_name):
     """
-    option is one of ["links", "serial"],
-    when option = "links", the function will return a dictionary of {link_name: [URDF_Link, parent_link_name]}
-    when option = "serial", the function will return a SerialLink, connecting from the base_link to the leaf_link
+    :param file_name: path for the urdf file
+    :return: link_dict {link_name: [URDF_Link, parent_name}}
     """
-    assert option in ["links", "serial"]
-    robot = URDF.from_xml_file(file_name)
+
+    with open(file_name, "r") as f:
+        urdf_contents = f.read()
+        robot = URDF.from_xml_string(urdf_contents)
     link_dict = {link.name: link for link in robot.links}
     joint_dict = {joint.name: joint for joint in robot.joints}
 
-    # TODO: build the links in a tree structure
-    # The serial link class only supports serial connection (one child policy)
-    # However, there may be several children connected to the parent in the fetch robot, and the links form a tree structure
-    # Currently, I only choose one path in the tree structure, and build a serial link
-
-    if option == "links":
-        # sort the links in topological order
-        link_names = [link.name for link in robot.links]
-        ordered_link_names = [link_name for link_name in link_names if link_name not in robot.parent_map]
-        while len(ordered_link_names) < len(link_names):
-            for link_name in link_names:
-                if (link_name not in ordered_link_names) and robot.parent_map[link_name][1] in ordered_link_names:
-                    ordered_link_names.append(link_name)
-
-    elif option == "serial":
-        # find the links connecting leaf_link to base_link
-        link_name = leaf_link_name  # leaf link
-        link_names = [link_name]
-        while link_name in robot.parent_map:
-            parent_name = robot.parent_map[link_name][1]
-            link_names = [parent_name] + link_names
-            link_name = parent_name
+    link_names = [link.name for link in robot.links]
+    ordered_link_names = [link_name for link_name in link_names if link_name not in robot.parent_map]
+    while len(ordered_link_names) < len(link_names):
+        for link_name in link_names:
+            if (link_name not in ordered_link_names) and robot.parent_map[link_name][1] in ordered_link_names:
+                ordered_link_names.append(link_name)
 
     # create each link with the urdf specs
-    link_info_list = []
+    urdf_link_dict = {}
     for link_name in link_names:
         link = link_dict[link_name]
 
@@ -140,18 +125,7 @@ def read_urdf(file_name, option="links", leaf_link_name=None):
             origin = compose_pose([0, 0, 0], [0, 0, 0])
 
         # create the link
-        link_info_list.append([link_name, parent_name, URDF_Link(origin, axis, joint_type, mass, center_of_mass, inertia_matrix)])
+        urdf_link = URDF_Link(origin, axis, joint_type, mass, center_of_mass, inertia_matrix)
+        urdf_link_dict[link_name] = [urdf_link, parent_name]
 
-    if option == "serial":
-        calibration_urdf = []
-        for link_info in link_info_list:
-            link_name, parent_name, urdf_link = link_info
-            calibration_urdf.append(urdf_link)
-        return SerialLink(calibration_urdf)
-
-    elif option == "links":
-        link_dict = {}
-        for link_info in link_info_list:
-            link_name, parent_name, urdf_link = link_info
-            link_dict[link_name] = [urdf_link, parent_name]
-        return link_dict
+    return urdf_link_dict

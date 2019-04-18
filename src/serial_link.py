@@ -43,6 +43,25 @@ class SerialLink(object):
         # Calculate screw axes for all joints, expressed in their COM frame.
         self._screw_axes = [link.screw_axis for link in self._links]
 
+    @classmethod
+    def from_urdf(cls, urdf_link_dict, leaf_link_name):
+
+        # TODO: build the links in a tree structure
+        # The serial link class only supports serial connection (one child policy)
+        # However, there may be several children connected to the parent in the fetch robot, and the links form a tree structure
+        # Currently, I only choose one path in the tree structure, and build a serial link
+
+        link_name = leaf_link_name
+        link_names = [link_name]
+        urdf_links = []
+
+        # find the links connecting leaf_link to base_link
+        while link_name in urdf_link_dict:
+            urdf_link, parent_name = urdf_link_dict[link_name]
+            urdf_links = [urdf_link] + urdf_links
+            link_name = parent_name
+        return cls(urdf_links)
+
     @property
     def base(self):
         """Return base pose in world frame."""
@@ -116,12 +135,12 @@ class SerialLink(object):
         twists = [self._screw_axes[0] * joint_velocities[0]]
 
         # Loop over joints j>1
-        for j in range(2, self.num_links+1):
+        for j in range(2, self.num_links + 1):
             # Equation 8.45 in MR, page 292
             twist_i = twists[-1]
-            jTi = Ts[j-1].between(Ts[j-2])
-            Aj = self._screw_axes[j-1]
-            joint_vel_j = joint_velocities[j-1]
+            jTi = Ts[j - 1].between(Ts[j - 2])
+            Aj = self._screw_axes[j - 1]
+            joint_vel_j = joint_velocities[j - 1]
             twist_j = np.dot(jTi.AdjointMap(), twist_i) + Aj * joint_vel_j
             twists.append(twist_j)
 
@@ -141,10 +160,10 @@ class SerialLink(object):
 
         # Add factor for each joint
         for i, (link, jTi, joint_vel_j) in enumerate(zip(self._links, jTis, joint_velocities)):
-            gfg.add(link.twist_factor(i+1, jTi, joint_vel_j))
+            gfg.add(link.twist_factor(i + 1, jTi, joint_vel_j))
 
         result = gfg.optimize()
-        return [result.at(V(j)) for j in range(1, self.num_links+1)]
+        return [result.at(V(j)) for j in range(1, self.num_links + 1)]
 
     def jTi_list(self, q):
         """ Calculate list of transforms from COM frame j-1 relative to COM j.
@@ -257,11 +276,11 @@ class SerialLink(object):
 
     def extract_joint_accelerations(self, result):
         """Extract joint accelerations for all joints from VectorValues."""
-        return [result.at(a(j)) for j in range(1, self.num_links+1)]
+        return [result.at(a(j)) for j in range(1, self.num_links + 1)]
 
     def extract_torques(self, result):
         """Extract torques for all joints from VectorValues."""
-        return [result.at(t(j)) for j in range(1, self.num_links+1)]
+        return [result.at(t(j)) for j in range(1, self.num_links + 1)]
 
     def factor_graph_optimization(self, forward_factor_graph):
         """ Optimize factor graph for manipulator forward dynamics.
