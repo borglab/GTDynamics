@@ -44,15 +44,24 @@ class SerialLink(object):
         self._screw_axes = [link.screw_axis for link in self._links]
 
     @classmethod
-    def from_urdf(cls, urdf_link_dict, leaf_link_name):
+    def from_urdf(cls, urdf_link_dict: dict, leaf_link_name: str):
+        """ Construct from data structure produced by read_urdf.
 
-        # TODO: build the links in a tree structure
-        # The serial link class only supports serial connection (one child policy)
-        # However, there may be several children connected to the parent in the fetch robot, and the links form a tree structure
+        Arguments:
+            urdf_link_dict {dict} -- map from name -> [URDFLink, parent]
+            leaf_link_name {str} -- name for the leaf link.
+
+        Returns:
+            SerialLink -- instance of SerialLink with one chain
+        """
+
+        # TODO(yetong): build the links in a tree structure
+        # The serial link class only supports serial connection (one child policy).
+        # However, there may be several children connected to the parent in the fetch robot, 
+        # and the links form a tree structure.
         # Currently, I only choose one path in the tree structure, and build a serial link
 
         link_name = leaf_link_name
-        link_names = [link_name]
         urdf_links = []
 
         # find the links connecting leaf_link to base_link
