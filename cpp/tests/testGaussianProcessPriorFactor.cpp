@@ -25,7 +25,7 @@ using namespace manipulator;
 
 TEST(GaussianProcessPriorFactor, Factor) {
   const double delta_t = 0.1;
-  Matrix Qc = Matrix::Identity(1, 1);
+  Matrix Qc = I_1x1;
   noiseModel::Gaussian::shared_ptr Qc_model =
       noiseModel::Gaussian::Covariance(Qc);
   Key q_key_1 = Symbol('x', 1), q_key_2 = Symbol('x', 2);
@@ -42,7 +42,7 @@ TEST(GaussianProcessPriorFactor, Factor) {
   actual_errors =
       factor.evaluateError(q1, qVel1, qAccel1, q2, qVel2, qAccel2, actualH1,
                            actualH2, actualH3, actualH4, actualH5, actualH6);
-  expected_errors << 0, 0, 0;
+  expected_errors.setZero();
   expectH1 = numericalDerivative11(
       boost::function<Vector(const double &)>(
           boost::bind(&GaussianProcessPriorFactor::evaluateError, factor, _1,

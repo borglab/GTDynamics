@@ -25,7 +25,7 @@ using namespace manipulator;
 
 TEST(GaussianProcessPriorPose3Factor, Factor) {
   const double delta_t = 0.1;
-  Matrix Qc = Matrix::Identity(6, 6);
+  Matrix Qc = I_6x6;
   noiseModel::Gaussian::shared_ptr Qc_model =
       noiseModel::Gaussian::Covariance(Qc);
   Key p_key_1 = Symbol('p', 1), p_key_2 = Symbol('p', 2);
@@ -43,9 +43,7 @@ TEST(GaussianProcessPriorPose3Factor, Factor) {
   actual_errors =
       factor.evaluateError(p1, v1, a1, p2, v2, a2, actualH1, actualH2, actualH3,
                            actualH4, actualH5, actualH6);
-  expected_errors =
-      (Vector(3 * 6) << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-          .finished();
+  expected_errors = Vector(18).setZero();
   expectH1 =
       numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
                                 &GaussianProcessPriorPose3Factor::evaluateError,
