@@ -27,8 +27,9 @@ class WrenchFactor
                                       gtsam::Pose3, double> {
  private:
   typedef WrenchFactor This;
-  typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Pose3, double>
+  typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
+                                   gtsam::Vector6, gtsam::Vector6, gtsam::Pose3,
+                                   double>
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
@@ -71,13 +72,13 @@ class WrenchFactor
          m = inertia_(3, 3);
     auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
          v2 = twist(4), v3 = twist(5);
-    gtsam::Matrix6 H_twist =
-        (gtsam::Matrix(6, 6) << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,
-         (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0, (g1 - g2) * w2,
-         (g1 - g2) * w1, 0, 0, 0, 0, 0, -m * v3, m * v2, 0, m * w3, -m * w2,
-         m * v3, 0, -m * v1, -m * w3, 0, m * w1, -m * v2, m * v1, 0, m * w2,
-         -m * w1, 0)
-            .finished();
+    gtsam::Matrix6 H_twist;
+    H_twist << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
+         (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,                         //
+         (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,                         //
+         0, -m * v3, m * v2, 0, m * w3, -m * w2,                             //
+         m * v3, 0, -m * v1, -m * w3, 0, m * w1,                             //
+         -m * v2, m * v1, 0, m * w2, -m * w1, 0;
     return H_twist;
   }
 
@@ -119,9 +120,9 @@ class WrenchFactor
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
         pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
-    gtsam::Matrix63 mat;
-    mat << gtsam::Matrix3::Zero(), gtsam::I_3x3;
-    auto gravity_wrench = inertia_ * mat * gravity;
+    gtsam::Matrix63 intermediateMatrix;
+    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
+    auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
 
     gtsam::Vector6 error =
         inertia_ * twistAccel - wrench_j +
@@ -145,7 +146,7 @@ class WrenchFactor
       *H_q = qJacobian_(q, wrench_k);
     }
     if (H_pose) {
-      *H_pose = -inertia_ * mat * H_unrotate * H_rotation;
+      *H_pose = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
     }
 
     return error;
@@ -171,9 +172,9 @@ class WrenchFactor
     // to use unrotate function, have to convert gravity vector to a point
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     auto gravity = pose.rotation().unrotate(gravity_point).vector();
-    gtsam::Matrix63 mat;
-    mat << gtsam::Matrix3::Zero(), gtsam::I_3x3;
-    auto gravity_wrench = inertia_ * mat * gravity;
+    gtsam::Matrix63 intermediateMatrix;
+    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
+    auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
 
     return inertia_ * twistAccel - wrench_j +
            kTj.AdjointMap().transpose() * wrench_k -

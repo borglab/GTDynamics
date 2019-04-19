@@ -40,9 +40,11 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
 TEST(WrenchFactor, error_1) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
   auto inertia = example::dh_r.inertiaMatrix();
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 gravity;
+  gravity << 0, -9.8, 0;
 
   WrenchFactor factor(example::twist_key, example::twist_accel_key,
                       example::wrench_j_key, example::wrench_k_key,
@@ -50,10 +52,10 @@ TEST(WrenchFactor, error_1) {
                       inertia, screw_axis, gravity);
   double q = M_PI / 4;
   Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
-  wrench_k = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  twist << 0, 0, 0, 0, 0, 0;
+  twist_accel << 0, 0, 0, 0, 0, 0;
+  wrench_j << 0, 0, 0, 0, 9.8, 0;
+  wrench_k << 0, 0, 0, 0, 0, 0;
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
@@ -63,7 +65,7 @@ TEST(WrenchFactor, error_1) {
   actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
                                        pose, q, actual_H1, actual_H2, actual_H3,
                                        actual_H4, actual_H5, actual_H6);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors << 0, 0, 0, 0, 0, 0;
   expected_H1 = numericalDerivative11(
       boost::function<Vector(const Vector6 &)>(
           boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,
@@ -109,7 +111,8 @@ TEST(WrenchFactor, error_1) {
 TEST(WrenchFactor, error_2) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
   auto inertia = example::dh_r.inertiaMatrix();
 
   WrenchFactor factor(example::twist_key, example::twist_accel_key,
@@ -118,10 +121,10 @@ TEST(WrenchFactor, error_2) {
                       inertia, screw_axis);
   double q = 0;
   Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
-  twist_accel = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
-  wrench_j = (Vector(6) << 0, 0, 4, -1, 2, 0).finished();
-  wrench_k = (Vector(6) << 0, 0, 2, 0, 1, 0).finished();
+  twist << 0, 0, 1, 0, 1, 0;
+  twist_accel << 0, 0, 1, 0, 1, 0;
+  wrench_j << 0, 0, 4, -1, 2, 0;
+  wrench_k << 0, 0, 2, 0, 1, 0;
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
@@ -131,7 +134,7 @@ TEST(WrenchFactor, error_2) {
   actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
                                        pose, q, actual_H1, actual_H2, actual_H3,
                                        actual_H4, actual_H5, actual_H6);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors << 0, 0, 0, 0, 0, 0;
   expected_H1 = numericalDerivative11(
       boost::function<Vector(const Vector6 &)>(
           boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,
@@ -177,10 +180,12 @@ TEST(WrenchFactor, error_2) {
 TEST(WrenchFactor, error_3) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
   auto inertia = example::dh_r.inertiaMatrix();
 
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 gravity;
+  gravity << 0, -9.8, 0;
 
   WrenchFactor factor(example::twist_key, example::twist_accel_key,
                       example::wrench_j_key, example::wrench_k_key,
@@ -189,11 +194,10 @@ TEST(WrenchFactor, error_3) {
 
   double q = M_PI / 4;
   Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  wrench_j = (Vector(6) << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0)
-                 .finished();
-  wrench_k = (Vector(6) << 0, 0, -10, 0, 10, 0).finished();
+  twist << 0, 0, 10, 0, 10, 0;
+  twist_accel << 0, 0, 0, 0, 0, 0;
+  wrench_j << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0;
+  wrench_k << 0, 0, -10, 0, 10, 0;
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
@@ -203,7 +207,7 @@ TEST(WrenchFactor, error_3) {
   actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
                                        pose, q, actual_H1, actual_H2, actual_H3,
                                        actual_H4, actual_H5, actual_H6);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors << 0, 0, 0, 0, 0, 0;
   expected_H1 = numericalDerivative11(
       boost::function<Vector(const Vector6 &)>(
           boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,

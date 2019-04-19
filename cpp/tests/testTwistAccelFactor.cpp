@@ -41,7 +41,8 @@ Key qKey = Symbol('q', 0), qVelKey = Symbol('j', 0), qAccelKey = Symbol('a', 0),
 TEST(TwistAccelFactor, error) {
   // Create all factors
   Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
 
   TwistAccelFactor factor(example::twistKey, example::twistAccel_i_key,
                           example::twistAccel_j_key, example::qKey,
@@ -49,9 +50,9 @@ TEST(TwistAccelFactor, error) {
                           example::cost_model, jMi, screw_axis);
   double q = M_PI / 4, qVel = 10, qAccel = 10;
   Vector6 twist, twistAccel_i, twistAccel_j;
-  twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  twistAccel_i = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  twistAccel_j = (Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
+  twist << 0, 0, 0, 0, 0, 0;
+  twistAccel_i << 0, 0, 10, 0, 10, 0;
+  twistAccel_j << 0, 0, 20, 7.07106781, 27.0710678, 0;
   Vector6 actual_errors, expected_errors;
   Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
       expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
@@ -60,7 +61,7 @@ TEST(TwistAccelFactor, error) {
   actual_errors = factor.evaluateError(
       twist, twistAccel_i, twistAccel_j, q, qVel, qAccel, actual_H1, actual_H2,
       actual_H3, actual_H4, actual_H5, actual_H6);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors << 0, 0, 0, 0, 0, 0;
   expected_H1 = numericalDerivative11(
       boost::function<Vector(const Vector6 &)>(
           boost::bind(&TwistAccelFactor::evaluateError, factor, _1,

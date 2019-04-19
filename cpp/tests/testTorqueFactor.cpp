@@ -39,11 +39,13 @@ Key torque_key = Symbol('t', 1),
 TEST(TorqueFactor, error)
 {
     // Create all factors
-    Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+    Vector6 screw_axis;
+    screw_axis << 0, 0, 1, 0, 1, 0;
 
     TorqueFactor factor(example::wrench_key, example::torque_key, example::cost_model, screw_axis);
     double torque = 20;
-    Vector6 wrench = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
+    Vector6 wrench;
+    wrench << 0, 0, 10, 0, 10, 0;
     Vector1 actual_errors, expected_errors;
     Matrix actual_H1, actual_H2, expected_H1, expected_H2;
 

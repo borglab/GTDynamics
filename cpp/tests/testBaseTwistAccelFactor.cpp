@@ -30,7 +30,7 @@ TEST(BaseTwistAccelFactor, error) {
   noiseModel::Gaussian::shared_ptr cost_model =
       noiseModel::Isotropic::Sigma(6, 1.0);
   Vector6 base_acceleration;
-  base_acceleration = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
+  base_acceleration << 0, 0, 0, 0, 9.8, 0;
   BaseTwistAccelFactor factor(LabeledSymbol('G', '0', 0), cost_model,
                               base_acceleration);
   Vector6 conf;
@@ -39,9 +39,9 @@ TEST(BaseTwistAccelFactor, error) {
 
   conf = Vector6::Zero();
   actual_errors = factor.evaluateError(conf, actual_H);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, -9.8, 0).finished();
+  expected_errors << 0, 0, 0, 0, -9.8, 0;
   expected_H = numericalDerivative11(
-      boost::function<Vector6(const Vector6 &)>(boost::bind(
+      boost::function<Vector(const Vector6 &)>(boost::bind(
           &BaseTwistAccelFactor::evaluateError, factor, _1, boost::none)),
       conf, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
@@ -57,9 +57,8 @@ TEST(BaseTwistAccelFactor, optimaization) {
       noiseModel::Isotropic::Sigma(6, 1.0);
   Key aKey = LabeledSymbol('G', '0', 0);
   Vector6 base_acceleration;
-  base_acceleration = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
-  Vector base_acceleration_init;
-  base_acceleration_init = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  base_acceleration << 0, 0, 0, 0, 9.8, 0;
+  Vector base_acceleration_init = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
 
   NonlinearFactorGraph graph;
   graph.add(BaseTwistAccelFactor(aKey, cost_model, base_acceleration));

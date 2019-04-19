@@ -41,7 +41,7 @@ TEST(BasePoseFactor, error) {
   Matrix actual_H, expected_H;
 
   actual_errors = factor.evaluateError(pose, actual_H);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors << 0, 0, 0, 0, 0, 0;
   expected_H = numericalDerivative11(
       boost::function<Vector(const Pose3 &)>(
           boost::bind(&BasePoseFactor::evaluateError, factor, _1, boost::none)),

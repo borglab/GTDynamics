@@ -37,7 +37,8 @@ Key pose_i_key = Symbol('p', 1), pose_j_key = Symbol('p', 2),
 TEST(PoseFactor, error) {
   // create functor
   Pose3 jMi = Pose3(Rot3(), Point3(-2, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis<< 0, 0, 1, 0, 1, 0;
   PoseFunctor predictPose(jMi, screw_axis);
 
   // check prediction
@@ -79,7 +80,8 @@ TEST(PoseFactor, error) {
 TEST(PoseFactor, breaking) {
   // create functor
   Pose3 jMi = Pose3(Rot3(), Point3(-2, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
   PoseFunctor predictPose(jMi, screw_axis);
 
   double jointAngle;

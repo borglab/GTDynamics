@@ -31,10 +31,8 @@ Matrix6 AdjointMapJacobianQ(double q, const Pose3 &jMi,
                            const Vector6 &screw_axis) {
   // taking opposite value of screw_axis_ is because 
   // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
-  Vector3 w =
-      (Vector(3) << -screw_axis(0), -screw_axis(1), -screw_axis(2)).finished();
-  Vector3 v =
-      (Vector(3) << -screw_axis(3), -screw_axis(4), -screw_axis(5)).finished();
+  Vector3 w = -screw_axis.head<3>();
+  Vector3 v = -screw_axis.tail<3>();
   Pose3 kTj = Pose3::Expmap(-screw_axis * q) * jMi;
   auto w_skew = skewSymmetric(w);
   Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
@@ -43,7 +41,7 @@ Matrix6 AdjointMapJacobianQ(double q, const Pose3 &jMi,
                w * w.transpose() * v;
   Matrix3 H_TR = skewSymmetric(H_T) * kTj.rotation().matrix() +
                 skewSymmetric(kTj.translation().vector()) * H_R;
-  Matrix6 H = Matrix::Zero(6, 6);
+  Matrix6 H = Z_6x6;
   insertSub(H, H_R, 0, 0);
   insertSub(H, H_TR, 3, 0);
   insertSub(H, H_R, 3, 3);
