@@ -1,0 +1,181 @@
+/**
+ *  @file  GaussianProcessPriorPose3Factor.h
+ *  @brief Linear GP prior, see Barfoot14rss
+ *  @author Mandy Xie and Frank Dellaert
+ **/
+#pragma once
+
+#include <gtsam/base/Testable.h>
+#include <gtsam/geometry/concepts.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
+
+#include <utils.h>
+
+#include <boost/lexical_cast.hpp>
+
+namespace manipulator {
+
+/**
+ * 6-way factor for Gaussian Process prior factor, Pose3 version
+ */
+class GaussianProcessPriorPose3Factor
+    : public gtsam::NoiseModelFactor6<gtsam::Pose3, gtsam::Vector6,
+                                      gtsam::Vector6, gtsam::Pose3,
+                                      gtsam::Vector6, gtsam::Vector6> {
+ private:
+  double delta_t_;
+
+  typedef GaussianProcessPriorPose3Factor This;
+  typedef gtsam::NoiseModelFactor6<gtsam::Pose3, gtsam::Vector6, gtsam::Vector6,
+                                   gtsam::Pose3, gtsam::Vector6, gtsam::Vector6>
+      Base;
+
+ public:
+  GaussianProcessPriorPose3Factor() {
+  } /* Default constructor only for serialization */
+
+  /// Constructor
+  /// @param delta_t is the time between the two states
+  GaussianProcessPriorPose3Factor(
+      gtsam::Key p_key1, gtsam::Key v_key1, gtsam::Key a_key1,
+      gtsam::Key p_key2, gtsam::Key v_key2, gtsam::Key a_key2,
+      const gtsam::noiseModel::Gaussian::shared_ptr &Qc_model, double delta_t)
+      : Base(gtsam::noiseModel::Gaussian::Covariance(
+                 calcQ(getQc(Qc_model), delta_t)),
+             p_key1, v_key1, a_key1, p_key2, v_key2, a_key2),
+        delta_t_(delta_t) {}
+
+  virtual ~GaussianProcessPriorPose3Factor() {}
+
+  /** evaluate Gaussian process errors
+      Keyword argument:
+        p1         -- pose at time 1
+        v1         -- velocity at time 1
+        a1         -- acceleration at time 1
+        p2         -- pose at time 2
+        v2         -- velocity at time 2
+        a2         -- acceleration at time 2
+        H_p1       -- jacobian matrix w.r.t. pose at time 1
+        H_v1       -- jacobian matrix w.r.t. velocity at time 1
+        H_a1       -- jacobian matrix w.r.t. acceleration at time 1
+        H_p2       -- jacobian matrix w.r.t. pose at time 2
+        H_v2       -- jacobian matrix w.r.t. velocity at time 2
+        H_a2       -- jacobian matrix w.r.t. acceleration at time 2
+    */
+  gtsam::Vector evaluateError(
+      const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,
+      const gtsam::Vector6 &a1, const gtsam::Pose3 &p2,
+      const gtsam::Vector6 &v2, const gtsam::Vector6 &a2,
+      boost::optional<gtsam::Matrix &> H_p1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_v1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_a1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_p2 = boost::none,
+      boost::optional<gtsam::Matrix &> H_v2 = boost::none,
+      boost::optional<gtsam::Matrix &> H_a2 = boost::none) const {
+    gtsam::Matrix6 Hinv, Hcomp1, Hcomp2, Hlogmap;
+    gtsam::Vector6 r;
+    if (H_p1 || H_p2) {
+      r = gtsam::Pose3::Logmap(p1.inverse(Hinv).compose(p2, Hcomp1, Hcomp2),
+                               Hlogmap);
+    } else {
+      r = gtsam::Pose3::Logmap(p1.inverse() * p2);
+    }
+
+    if (H_p1)
+      *H_p1 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp1 * Hinv,
+               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Zero(6, 6))
+                  .finished();
+    if (H_v1)
+      *H_v1 =
+          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::Matrix::Identity(6, 6),
+           -gtsam::Matrix::Identity(6, 6))
+              .finished();
+    if (H_a1)
+      *H_a1 = (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_ * delta_t_ *
+                                              gtsam::Matrix::Identity(6, 6),
+               -delta_t_ * gtsam::Matrix::Identity(6, 6),
+               -gtsam::Matrix::Identity(6, 6))
+                  .finished();
+    if (H_p2)
+      *H_p2 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp2,
+               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Zero(6, 6))
+                  .finished();
+    if (H_v2)
+      *H_v2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Matrix::Zero(6, 6),
+               gtsam::Matrix::Identity(6, 6), gtsam::Matrix::Zero(6, 6))
+                  .finished();
+    if (H_a2)
+      *H_a2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Matrix::Zero(6, 6),
+               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Identity(6, 6))
+                  .finished();
+
+    return (gtsam::Vector(3 * 6)
+                << (r - v1 * delta_t_ - a1 * 0.5 * delta_t_ * delta_t_),
+            (v2 - v1 - a1 * delta_t_), a2 - a1)
+        .finished();
+  }
+
+  /** evaluate Gaussian process errors
+      Keyword argument:
+        p1      -- pose at time 1
+        v1      -- velocity at time 1
+        a1      -- acceleration at time 1
+        p2      -- pose at time 2
+        v2      -- velocity at time 2
+        a2      -- acceleration at time 2
+  */
+  gtsam::Vector evaluateError(const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,
+                              const gtsam::Vector6 &a1, const gtsam::Pose3 &p2,
+                              const gtsam::Vector6 &v2,
+                              const gtsam::Vector6 &a2) const {
+    gtsam::Vector6 r = gtsam::Pose3::Logmap(p1.inverse() * p2);
+    return (gtsam::Vector(3 * 6)
+                << (r - v1 * delta_t_ - a1 * 0.5 * delta_t_ * delta_t_),
+            (v2 - v1 - a1 * delta_t_), a2 - a1)
+        .finished();
+  }
+
+  // @return a deep copy of this factor
+  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /** number of variables attached to this factor */
+  size_t size() const { return 6; }
+
+  /** equals specialized to this factor */
+  virtual bool equals(const gtsam::NonlinearFactor &expected,
+                      double tol = 1e-9) const {
+    const This *e = dynamic_cast<const This *>(&expected);
+    return e != NULL && Base::equals(*e, tol) &&
+           fabs(this->delta_t_ - e->delta_t_) < tol;
+  }
+
+  /** print contents */
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const {
+    std::cout << s << "6-way Gaussian Process Factor Pose3" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Base);
+    ar &BOOST_SERIALIZATION_NVP(delta_t_);
+  }
+
+};  // GaussianProcessPriorPose3Factor
+
+}  // namespace manipulator
+
+/// traits
+namespace gtsam {
+template <>
+struct traits<manipulator::GaussianProcessPriorPose3Factor>
+    : public Testable<manipulator::GaussianProcessPriorPose3Factor> {};
+}  // namespace gtsam
