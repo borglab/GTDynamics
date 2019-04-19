@@ -68,6 +68,7 @@ class WrenchFactor
  private:
   /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
+    // TODO(Mandy): figure out if this can be done with vector math
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
     auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
