@@ -3,8 +3,8 @@
  * @brief apply joint limit
  * @Author: Frank Dellaert and Mandy Xie
  */
-#ifndef JOINTLIMITVECTORFACTOR_H
-#define JOINTLIMITVECTORFACTOR_H
+
+#pragma once
 
 #include <boost/optional.hpp>
 #include <iostream>
@@ -116,4 +116,3 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 };
 }  // namespace manipulator
-#endif

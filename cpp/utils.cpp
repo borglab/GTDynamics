@@ -27,6 +27,27 @@ Vector radians(const Vector &degree) {
   return radian;
 }
 
+Matrix6 AdjointMapJacobianQ(double q, const Pose3 &jMi,
+                           const Vector6 &screw_axis) {
+  // taking opposite value of screw_axis_ is because 
+  // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
+  Vector3 w = -screw_axis.head<3>();
+  Vector3 v = -screw_axis.tail<3>();
+  Pose3 kTj = Pose3::Expmap(-screw_axis * q) * jMi;
+  auto w_skew = skewSymmetric(w);
+  Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
+  Matrix3 H_R = H_expo * jMi.rotation().matrix();
+  Vector3 H_T = H_expo * (jMi.translation().vector() - w_skew * v) +
+               w * w.transpose() * v;
+  Matrix3 H_TR = skewSymmetric(H_T) * kTj.rotation().matrix() +
+                skewSymmetric(kTj.translation().vector()) * H_R;
+  Matrix6 H = Z_6x6;
+  insertSub(H, H_R, 0, 0);
+  insertSub(H, H_TR, 3, 0);
+  insertSub(H, H_R, 3, 3);
+  return H;
+}
+
 Matrix getQc(const SharedNoiseModel Qc_model) {
   noiseModel::Gaussian *Gassian_model =
       dynamic_cast<noiseModel::Gaussian *>(Qc_model.get());
