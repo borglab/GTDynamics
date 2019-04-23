@@ -68,7 +68,13 @@ class URDF_Link(Link):
 
 
 def compose_pose(rpy, xyz):
-    # TODO: construct the rotation using rpy values
+    """ Return Pose.
+        Keyword arguments:
+            rpy -- 3 dimensional vector representing rotation
+            xyz -- 3 dimensional vector representing position
+    """
+
+    # TODO(yetong): construct the rotation using rpy values
     # rotation = Rot3.rpy(rpy[0], rpy[1], rpy[2])
     rotation = Rot3()
     point = Point3(xyz[0], xyz[1], xyz[2])
@@ -76,9 +82,9 @@ def compose_pose(rpy, xyz):
 
 
 def read_urdf(file_name):
-    """
-    :param file_name: path for the urdf file
-    :return: link_dict {link_name: [URDF_Link, parent_name}}
+    """ Return a dictionary of {link_name: [URDFLink, parent_name]}
+        Keyword arguments:
+            file_name -- file path for the urdf file to read
     """
 
     with open(file_name, "r") as f:
@@ -115,7 +121,7 @@ def read_urdf(file_name):
             joint_name, parent_name = robot.parent_map[link_name]
             joint = joint_dict[joint_name]
             joint_type = 'R' if joint.joint_type in ['revolute', 'continuous'] else 'P'
-            # TODO: special case for fixed joint, combine both links as the same link, or set the joint angle to be fixed
+            # TODO(yetong): special case for fixed joint, combine both links as the same link, or set the joint angle to be fixed
             axis = utils.vector(0, 0, 1) if joint.axis is None else utils.vector(joint.axis[0], joint.axis[1], joint.axis[2])
             origin = compose_pose(joint.origin.rpy, joint.origin.xyz)
         else:  # base link

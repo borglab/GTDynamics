@@ -18,6 +18,7 @@ from urdf_link import URDF_Link, read_urdf
 from serial_link import SerialLink
 from link import F, Link, T, a
 from utils import GtsamTestCase
+import os
 
 ZERO1 = utils.vector(0)
 ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
@@ -46,18 +47,19 @@ class TestURDFFetch(GtsamTestCase):
 
     def setUp(self):
         # load the urdf file
-        file_name = "fetch.urdf"
-        self.link_dict = read_urdf(file_name,)
+        dir_name = os.path.dirname(os.path.realpath(__file__))
+        file_name = os.path.join(dir_name, "fetch.urdf")
+        self.link_dict = read_urdf(file_name)
         self.serial_link = SerialLink.from_urdf(self.link_dict, leaf_link_name="r_gripper_finger_link")
 
     def test_constructor(self):
         self.assertIsInstance(self.serial_link, SerialLink)
         self.assertEqual(len(self.link_dict), 21)
         self.assertEqual(self.link_dict["r_gripper_finger_link"][1], "gripper_link")
-        for name, (link, parent_name) in self.link_dict.items():
-            self.assertIsInstance(link, URDF_Link)
+        for link_info in self.link_dict.values():
+            self.assertIsInstance(link_info[0], URDF_Link)
         self.assertEqual(self.serial_link._links[0].mass, 70.1294)
-        # TODO: add more tests here
+        self.assertEqual(len(self.serial_link._links), 11)
 
 
 if __name__ == "__main__":
