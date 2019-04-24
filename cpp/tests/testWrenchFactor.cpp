@@ -3,18 +3,19 @@
  * @brief test wrench factor
  * @Author: Frank Dellaert and Mandy Xie
  */
+#include <DHLink.h>
+#include <WrenchFactor.h>
+
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <DHLink.h>
-#include <WrenchFactor.h>
+#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -51,58 +52,28 @@ TEST(WrenchFactor, error_1) {
                       example::pKey, example::qKey, example::cost_model, kMj,
                       inertia, screw_axis, gravity);
   double q = M_PI / 4;
-  Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist << 0, 0, 0, 0, 0, 0;
-  twist_accel << 0, 0, 0, 0, 0, 0;
-  wrench_j << 0, 0, 0, 0, 9.8, 0;
-  wrench_k << 0, 0, 0, 0, 0, 0;
+  Vector twist, twist_accel, wrench_j, wrench_k;
+  twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
+  wrench_k = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
-  Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
-      expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
-      expected_H6;
 
-  actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
-                                       pose, q, actual_H1, actual_H2, actual_H3,
-                                       actual_H4, actual_H5, actual_H6);
+  actual_errors =
+      factor.evaluateError(twist, twist_accel, wrench_j, wrench_k, pose, q);
   expected_errors << 0, 0, 0, 0, 0, 0;
-  expected_H1 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,
-                      wrench_j, wrench_k, pose, q)),
-      twist, 1e-6);
-  expected_H2 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, _1, wrench_j,
-                      wrench_k, pose, q)),
-      twist_accel, 1e-6);
-  expected_H3 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      _1, wrench_k, pose, q)),
-      wrench_j, 1e-6);
-  expected_H4 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      wrench_j, _1, pose, q)),
-      wrench_k, 1e-6);
-  expected_H5 =
-      numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, _1, q)),
-                            pose, 1e-6);
-  expected_H6 =
-      numericalDerivative11(boost::function<Vector(const double &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, pose, _1)),
-                            q, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H1, actual_H1, 1e-6));
-  EXPECT(assert_equal(expected_H2, actual_H2, 1e-6));
-  EXPECT(assert_equal(expected_H3, actual_H3, 1e-6));
-  EXPECT(assert_equal(expected_H4, actual_H4, 1e-6));
-  EXPECT(assert_equal(expected_H5, actual_H5, 1e-6));
-  EXPECT(assert_equal(expected_H6, actual_H6, 1e-6));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::twist_key, twist);
+  values.insert(example::twist_accel_key, twist_accel);
+  values.insert(example::wrench_j_key, wrench_j);
+  values.insert(example::wrench_k_key, wrench_k);
+  values.insert(example::pKey, pose);
+  values.insert(example::qKey, q);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**
@@ -121,57 +92,28 @@ TEST(WrenchFactor, error_2) {
                       inertia, screw_axis);
   double q = 0;
   Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist << 0, 0, 1, 0, 1, 0;
-  twist_accel << 0, 0, 1, 0, 1, 0;
-  wrench_j << 0, 0, 4, -1, 2, 0;
-  wrench_k << 0, 0, 2, 0, 1, 0;
+  twist = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  twist_accel = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  wrench_j = (Vector(6) << 0, 0, 4, -1, 2, 0).finished();
+  wrench_k = (Vector(6) << 0, 0, 2, 0, 1, 0).finished();
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
-  Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
-      expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
-      expected_H6;
 
-  actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
-                                       pose, q, actual_H1, actual_H2, actual_H3,
-                                       actual_H4, actual_H5, actual_H6);
+  actual_errors =
+      factor.evaluateError(twist, twist_accel, wrench_j, wrench_k, pose, q);
   expected_errors << 0, 0, 0, 0, 0, 0;
-  expected_H1 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,
-                      wrench_j, wrench_k, pose, q)),
-      twist, 1e-6);
-  expected_H2 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, _1, wrench_j,
-                      wrench_k, pose, q)),
-      twist_accel, 1e-6);
-  expected_H3 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      _1, wrench_k, pose, q)),
-      wrench_j, 1e-6);
-  expected_H4 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      wrench_j, _1, pose, q)),
-      wrench_k, 1e-6);
-  expected_H5 =
-      numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, _1, q)),
-                            pose, 1e-6);
-  expected_H6 =
-      numericalDerivative11(boost::function<Vector(const double &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, pose, _1)),
-                            q, 1e-6);
+
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H1, actual_H1, 1e-6));
-  EXPECT(assert_equal(expected_H2, actual_H2, 1e-6));
-  EXPECT(assert_equal(expected_H3, actual_H3, 1e-6));
-  EXPECT(assert_equal(expected_H4, actual_H4, 1e-6));
-  EXPECT(assert_equal(expected_H5, actual_H5, 1e-6));
-  EXPECT(assert_equal(expected_H6, actual_H6, 1e-6));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::twist_key, twist);
+  values.insert(example::twist_accel_key, twist_accel);
+  values.insert(example::wrench_j_key, wrench_j);
+  values.insert(example::wrench_k_key, wrench_k);
+  values.insert(example::pKey, pose);
+  values.insert(example::qKey, q);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**
@@ -194,57 +136,28 @@ TEST(WrenchFactor, error_3) {
 
   double q = M_PI / 4;
   Vector6 twist, twist_accel, wrench_j, wrench_k;
-  twist << 0, 0, 10, 0, 10, 0;
-  twist_accel << 0, 0, 0, 0, 0, 0;
-  wrench_j << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0;
-  wrench_k << 0, 0, -10, 0, 10, 0;
+  twist = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
+  twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  wrench_j = (Vector(6) << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0).finished();
+  wrench_k = (Vector(6) << 0, 0, -10, 0, 10, 0).finished();
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
-  Matrix actual_H1, actual_H2, actual_H3, actual_H4, actual_H5, actual_H6,
-      expected_H1, expected_H2, expected_H3, expected_H4, expected_H5,
-      expected_H6;
 
-  actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, wrench_k,
-                                       pose, q, actual_H1, actual_H2, actual_H3,
-                                       actual_H4, actual_H5, actual_H6);
+  actual_errors =
+      factor.evaluateError(twist, twist_accel, wrench_j, wrench_k, pose, q);
   expected_errors << 0, 0, 0, 0, 0, 0;
-  expected_H1 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, _1, twist_accel,
-                      wrench_j, wrench_k, pose, q)),
-      twist, 1e-6);
-  expected_H2 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, _1, wrench_j,
-                      wrench_k, pose, q)),
-      twist_accel, 1e-6);
-  expected_H3 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      _1, wrench_k, pose, q)),
-      wrench_j, 1e-6);
-  expected_H4 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&WrenchFactor::evaluateError, factor, twist, twist_accel,
-                      wrench_j, _1, pose, q)),
-      wrench_k, 1e-6);
-  expected_H5 =
-      numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, _1, q)),
-                            pose, 1e-6);
-  expected_H6 =
-      numericalDerivative11(boost::function<Vector(const double &)>(boost::bind(
-                                &WrenchFactor::evaluateError, factor, twist,
-                                twist_accel, wrench_j, wrench_k, pose, _1)),
-                            q, 1e-6);
+
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H1, actual_H1, 1e-6));
-  EXPECT(assert_equal(expected_H2, actual_H2, 1e-6));
-  EXPECT(assert_equal(expected_H3, actual_H3, 1e-6));
-  EXPECT(assert_equal(expected_H4, actual_H4, 1e-6));
-  EXPECT(assert_equal(expected_H5, actual_H5, 1e-6));
-  EXPECT(assert_equal(expected_H6, actual_H6, 1e-6));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::twist_key, twist);
+  values.insert(example::twist_accel_key, twist_accel);
+  values.insert(example::wrench_j_key, wrench_j);
+  values.insert(example::wrench_k_key, wrench_k);
+  values.insert(example::pKey, pose);
+  values.insert(example::qKey, q);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 int main() {

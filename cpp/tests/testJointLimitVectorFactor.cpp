@@ -12,6 +12,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -36,42 +37,35 @@ TEST(JointLimitVectorFactor, error) {
   Vector2 limit_thresholds(2.0, 2.0);
   JointLimitVectorFactor factor(0, cost_model, lower_limits, upper_limits,
                                 limit_thresholds);
-  Vector2 conf;
+  Vector conf;
   Vector actual_errors, expected_errors;
-  Matrix actual_H, expected_H;
+  // Make sure linearization is correct
+  Values values;
+  double diffDelta = 1e-7;
 
   // Zero errors
   conf = Vector2::Zero();
-  actual_errors = factor.evaluateError(conf, actual_H);
+  actual_errors = factor.evaluateError(conf);
   expected_errors = Vector2::Zero();
-  expected_H = numericalDerivative11(
-      boost::function<Vector2(const Vector2&)>(boost::bind(
-          &JointLimitVectorFactor::evaluateError, factor, _1, boost::none)),
-      conf, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
-
+  values.insert(0, conf);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+ 
   // Over lower limit
   conf = Vector2(-10.0, -10.0);
-  actual_errors = factor.evaluateError(conf, actual_H);
+  actual_errors = factor.evaluateError(conf);
   expected_errors = Vector2(7.0, 2.0);
-  expected_H = numericalDerivative11(
-      boost::function<Vector2(const Vector2&)>(boost::bind(
-          &JointLimitVectorFactor::evaluateError, factor, _1, boost::none)),
-      conf, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  values.update(0, conf);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 
   // Over upper limit
   conf = Vector2(10.0, 10.0);
-  actual_errors = factor.evaluateError(conf, actual_H);
+  actual_errors = factor.evaluateError(conf);
   expected_errors = Vector2(7.0, 2.0);
-  expected_H = numericalDerivative11(
-      boost::function<Vector2(const Vector2&)>(boost::bind(
-          &JointLimitVectorFactor::evaluateError, factor, _1, boost::none)),
-      conf, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  values.update(0, conf);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**

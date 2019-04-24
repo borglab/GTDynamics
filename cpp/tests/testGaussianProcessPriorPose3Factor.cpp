@@ -13,6 +13,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <GaussianProcessPriorPose3Factor.h>
 
@@ -28,59 +29,30 @@ TEST(GaussianProcessPriorPose3Factor, Factor) {
   Matrix Qc = I_6x6;
   noiseModel::Gaussian::shared_ptr Qc_model =
       noiseModel::Gaussian::Covariance(Qc);
-  Key p_key_1 = Symbol('p', 1), p_key_2 = Symbol('p', 2);
-  Key v_key_1 = Symbol('v', 1), v_key_2 = Symbol('v', 2);
-  Key a_key_1 = Symbol('a', 1), a_key_2 = Symbol('a', 2);
-  GaussianProcessPriorPose3Factor factor(p_key_1, v_key_1, a_key_1, p_key_2,
-                                         v_key_2, a_key_2, Qc_model, delta_t);
+  Key p1_key = Symbol('p', 1), p2_key = Symbol('p', 2);
+  Key v1_key = Symbol('v', 1), v2_key = Symbol('v', 2);
+  Key v1dot_key = Symbol('a', 1), v2dot_key = Symbol('a', 2);
+  GaussianProcessPriorPose3Factor factor(p1_key, v1_key, v1dot_key, p2_key,
+                                         v2_key, v2dot_key, Qc_model, delta_t);
   Pose3 p1, p2;
-  Vector6 v1, a1, v2, a2;
-  v1.setZero(), a1.setZero(), v2.setZero(), a2.setZero();
-  Matrix actualH1, actualH2, actualH3, actualH4, actualH5, actualH6;
-  Matrix expectH1, expectH2, expectH3, expectH4, expectH5, expectH6;
+  Vector6 v1, v1dot, v2, v2dot;
+  v1.setZero(), v1dot.setZero(), v2.setZero(), v2dot.setZero();
   Vector actual_errors, expected_errors;
 
   actual_errors =
-      factor.evaluateError(p1, v1, a1, p2, v2, a2, actualH1, actualH2, actualH3,
-                           actualH4, actualH5, actualH6);
+      factor.evaluateError(p1, v1, v1dot, p2, v2, v2dot);
   expected_errors = Vector(18).setZero();
-  expectH1 =
-      numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
-                                &GaussianProcessPriorPose3Factor::evaluateError,
-                                factor, _1, v1, a1, p2, v2, a2)),
-                            p1, 1e-6);
-  expectH2 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&GaussianProcessPriorPose3Factor::evaluateError, factor,
-                      p1, _1, a1, p2, v2, a2)),
-      v1, 1e-6);
-  expectH3 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&GaussianProcessPriorPose3Factor::evaluateError, factor,
-                      p1, v1, _1, p2, v2, a2)),
-      a1, 1e-6);
-  expectH4 =
-      numericalDerivative11(boost::function<Vector(const Pose3 &)>(boost::bind(
-                                &GaussianProcessPriorPose3Factor::evaluateError,
-                                factor, p1, v1, a1, _1, v2, a2)),
-                            p2, 1e-6);
-  expectH5 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&GaussianProcessPriorPose3Factor::evaluateError, factor,
-                      p1, v1, a1, p2, _1, a2)),
-      v2, 1e-6);
-  expectH6 = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(
-          boost::bind(&GaussianProcessPriorPose3Factor::evaluateError, factor,
-                      p1, v1, a1, p2, v2, _1)),
-      a2, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expectH1, actualH1, 1e-6));
-  EXPECT(assert_equal(expectH2, actualH2, 1e-6));
-  EXPECT(assert_equal(expectH3, actualH3, 1e-6));
-  EXPECT(assert_equal(expectH4, actualH4, 1e-6));
-  EXPECT(assert_equal(expectH5, actualH5, 1e-6));
-  EXPECT(assert_equal(expectH6, actualH6, 1e-6));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(p1_key, p1);
+  values.insert(v1_key, v1);
+  values.insert(v1dot_key, v1dot);
+  values.insert(p2_key, p2);
+  values.insert(v2_key, v2);
+  values.insert(v2dot_key, v2dot);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /* main function */

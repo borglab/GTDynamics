@@ -146,39 +146,6 @@ class WrenchFactor
     return error;
   }
 
-  // overload evaluateError
-  /** evaluate wrench balance errors
-    Keyword argument:
-        twsit         -- twist on this link
-        twsit_accel   -- twist acceleration on this link
-        wrench_j      -- wrench on this link
-        wrench_k      -- wrench from the next link
-        pose          -- link COM pose expressed in base frame
-        q             -- joint angle
-*/
-  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
-                              const gtsam::Vector6 &twistAccel,
-                              const gtsam::Vector6 &wrench_j,
-                              const gtsam::Vector6 &wrench_k,
-                              const gtsam::Pose3 pose, const double &q) const {
-    gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis_ * q) * kMj_;
-    // transform gravity from base frame to link COM frame,
-    // to use unrotate function, have to convert gravity vector to a point
-    gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
-    auto gravity = pose.rotation().unrotate(gravity_point).vector();
-    gtsam::Matrix63 intermediateMatrix;
-    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-    auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
-
-    return inertia_ * twistAccel - wrench_j +
-           kTj.AdjointMap().transpose() * wrench_k -
-           gtsam::Pose3::adjointMap(twist).transpose() * inertia_ * twist -
-           gravity_wrench;
-  }
-
-  // for unit test in checking jacobian matrix with numericalDerivative11, boost
-  // bind can bind no more than 9 arguments
-
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(

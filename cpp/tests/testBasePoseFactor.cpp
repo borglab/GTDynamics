@@ -3,18 +3,19 @@
  * @brief test forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
+#include <BasePoseFactor.h>
+#include <DHLink.h>
+
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <BasePoseFactor.h>
-#include <DHLink.h>
 
 #include <iostream>
 
@@ -38,16 +39,16 @@ TEST(BasePoseFactor, error) {
   BasePoseFactor factor(example::pose_key, example::cost_model, base_pose);
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
-  Matrix actual_H, expected_H;
 
-  actual_errors = factor.evaluateError(pose, actual_H);
+  actual_errors = factor.evaluateError(pose);
   expected_errors << 0, 0, 0, 0, 0, 0;
-  expected_H = numericalDerivative11(
-      boost::function<Vector(const Pose3 &)>(
-          boost::bind(&BasePoseFactor::evaluateError, factor, _1, boost::none)),
-      pose, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::pose_key, pose);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 int main() {

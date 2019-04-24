@@ -3,6 +3,7 @@
  * @brief test joint limit factor
  * @Author: Frank Dellaert and Mandy Xie
  */
+#include <JointLimitFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -13,8 +14,7 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <JointLimitFactor.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <iostream>
@@ -36,45 +36,27 @@ TEST(JointLimitFactor, error) {
   JointLimitFactor factor(0, cost_model, lower_limit, upper_limit, miu);
   double q;
   Vector1 actual_error, expected_error;
-  Matrix actual_H, expected_H;
+  // Make sure linearization is correct
+  Values values;
+  double diffDelta = 1e-7;
 
   // Zero errors
   q = 0;
-  actual_error = factor.evaluateError(q, actual_H);
+  actual_error = factor.evaluateError(q);
   expected_error << 0;
-  expected_H = numericalDerivative11(
-      boost::function<Vector(const double &)>(boost::bind(
-          &JointLimitFactor::evaluateError, factor, _1, boost::none)),
-      q, 1e-6);
   EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  
+  values.insert(0, q);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 
   // Non-zero error but in limit
   q = 3;
-  actual_error = factor.evaluateError(q, actual_H);
+  actual_error = factor.evaluateError(q);
   expected_error << 9.16291e-10;
-  expected_H = numericalDerivative11(
-      boost::function<Vector(const double &)>(boost::bind(
-          &JointLimitFactor::evaluateError, factor, _1, boost::none)),
-      q, 1e-6);
   EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
 
-  // Over lower limit
-  q = -10.0;
-  actual_error = factor.evaluateError(q, actual_H);
-  expected_error << std::numeric_limits<double>::infinity();
-  expected_H = (gtsam::Matrix(1, 1) << 0).finished();
-  EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
-
-  // Over upper limit
-  q = 10.0;
-  actual_error = factor.evaluateError(q, actual_H);
-  expected_error << std::numeric_limits<double>::infinity();
-  expected_H = (gtsam::Matrix(1, 1) << 0).finished();
-  EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  values.update(0, q);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(JointLimitFactor, optimization) {

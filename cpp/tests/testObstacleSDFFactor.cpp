@@ -3,14 +3,14 @@
  * @brief test obstacle signed distance field factor used for collision check
  * @Origin: GPMP2
  */
+#include <ObstacleSDFFactor.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include <ObstacleSDFFactor.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 

@@ -18,6 +18,7 @@ namespace manipulator {
 /**
  * 6-way factor for Gaussian Process prior factor, Pose3 version
  * Dynamic model:
+ * x is the state, which contains pose, twist, and acceleration
  * x_plus = Phi * x + noise
  * error:
  * Phi * x - x_plus
@@ -42,12 +43,12 @@ class GaussianProcessPriorPose3Factor
   /// Constructor
   /// @param delta_t is the time between the two states
   GaussianProcessPriorPose3Factor(
-      gtsam::Key p_key1, gtsam::Key v_key1, gtsam::Key a_key1,
-      gtsam::Key p_key2, gtsam::Key v_key2, gtsam::Key a_key2,
+      gtsam::Key p1_key, gtsam::Key v1_key, gtsam::Key vdot1_key,
+      gtsam::Key p2_key, gtsam::Key v2_key, gtsam::Key vdot2_key,
       const gtsam::noiseModel::Gaussian::shared_ptr &Qc_model, double delta_t)
       : Base(gtsam::noiseModel::Gaussian::Covariance(
                  calcQ(getQc(Qc_model), delta_t)),
-             p_key1, v_key1, a_key1, p_key2, v_key2, a_key2),
+             p1_key, v1_key, vdot1_key, p2_key, v2_key, vdot2_key),
         delta_t_(delta_t), delta_t_square_(delta_t*delta_t) {}
 
   virtual ~GaussianProcessPriorPose3Factor() {}
@@ -108,26 +109,6 @@ class GaussianProcessPriorPose3Factor
                gtsam::Z_6x6, gtsam::I_6x6)
                   .finished();
 
-    return (gtsam::Vector(3 * 6)
-                << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
-            (v2 - v1 - v1dot * delta_t_), v2dot - v1dot)
-        .finished();
-  }
-
-  /** evaluate Gaussian process errors
-      Keyword argument:
-        p1      -- pose at time 1
-        v1      -- velocity at time 1
-        v1dot   -- acceleration at time 1
-        p2      -- pose at time 2
-        v2      -- velocity at time 2
-        v2dot   -- acceleration at time 2
-  */
-  gtsam::Vector evaluateError(const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,
-                              const gtsam::Vector6 &v1dot, const gtsam::Pose3 &p2,
-                              const gtsam::Vector6 &v2,
-                              const gtsam::Vector6 &v2dot) const {
-    gtsam::Vector6 r = gtsam::Pose3::Logmap(p1.inverse() * p2);
     return (gtsam::Vector(3 * 6)
                 << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
             (v2 - v1 - v1dot * delta_t_), v2dot - v1dot)

@@ -89,27 +89,6 @@ class GaussianProcessPriorFactor
     return Phi_ * x1 - x2;
   }
 
-  /** evaluate Gaussian process errors, just for unit test
-    Keyword argument:
-      q1         -- joint coordinates at time 1
-      qVel1      -- joint velocity at time 1
-      qAccel1    -- joint acceleration at time 1
-      q2         -- joint coordinates at time 2
-      qVel2      -- joint velocity at time 2
-      qAccel2(   -- joint acceleration at time 2
-    */
-  gtsam::Vector evaluateError(const double &q1, const double &qVel1,
-                              const double &qAccel1, const double &q2,
-                              const double &qVel2,
-                              const double &qAccel2) const {
-    // state vector
-    gtsam::Vector3 x1, x2;
-    x1 << q1, qVel1, qAccel1;
-    x2 << q2, qVel2, qAccel2;
-    // transition matrix & error
-    return calcPhi(delta_t_) * x1 - x2;
-  }
-
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(

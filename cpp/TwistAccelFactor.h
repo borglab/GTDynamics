@@ -114,27 +114,6 @@ class TwistAccelFactor
     return error;
   }
 
-  // overload evaluateError
-  /** evaluate twist acceleration errors
-    Keyword argument:
-        twistAccel_i          -- twist acceleration on previous link
-        twistAccel_j          -- twist acceleration on this link
-        twist                 -- twist on this link
-        q                     -- joint coordination
-        qVel                  -- joint velocity
-        qAccel                -- joint acceleration
-*/
-  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
-                              const gtsam::Vector6 &twistAccel_i,
-                              const gtsam::Vector6 &twistAccel_j,
-                              const double &q, const double &qVel,
-                              const double &qAccel) const {
-    gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
-    return twistAccel_j - jTi.AdjointMap() * twistAccel_i -
-           gtsam::Pose3::adjointMap(twist) * screw_axis_ * qVel -
-           screw_axis_ * qAccel;
-  }
-
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(

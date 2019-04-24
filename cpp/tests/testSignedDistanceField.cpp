@@ -3,14 +3,13 @@
  * @brief test signed distance filed used for collision check
  * @Origin: GPMP2
  */
+#include <SignedDistanceField.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include <SignedDistanceField.h>
 
 #include <CppUnitLite/TestHarness.h>
 
