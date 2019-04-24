@@ -13,6 +13,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -42,36 +43,34 @@ TEST(PoseGoalFactor, error) {
   noiseModel::Gaussian::shared_ptr cost_model =
       noiseModel::Isotropic::Sigma(6, 1.0);
 
-  Vector2 joint_coordinates;
+  Vector joint_coordinates;
   Pose3 goal_pose;
   Vector6 actual_error, expected_error;
-  Matrix actual_H, expected_H;
+  Values values;  
+  double diffDelta = 1e-7;
 
   // zero joint angles
   joint_coordinates = Vector2(0, 0);
   goal_pose = Pose3(Rot3(), Point3(4, 0, 0));
   PoseGoalFactor factor(0, cost_model, goal_pose, example::jacobian);
-  actual_error = factor.evaluateError(joint_coordinates, actual_H);
+  actual_error = factor.evaluateError(joint_coordinates);
   expected_error = Vector6::Zero();
-  expected_H = numericalDerivative11(
-      boost::function<Vector6(const Vector2 &)>(
-          boost::bind(&PoseGoalFactor::evaluateError, factor, _1, boost::none)),
-      joint_coordinates, 1e-6);
   EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  // Make sure linearization is correct
+  values.insert(0, joint_coordinates);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+
 
   // pi/4 joint angle
   joint_coordinates = Vector2(M_PI / 4, 0);
   goal_pose = Pose3(Rot3::Rz(M_PI / 4), Point3(2.82842712, 2.82842712, 0));
   factor = PoseGoalFactor(0, cost_model, goal_pose, example::jacobian);
-  actual_error = factor.evaluateError(joint_coordinates, actual_H);
+  actual_error = factor.evaluateError(joint_coordinates);
   expected_error = Vector6::Zero();
-  expected_H = numericalDerivative11(
-      boost::function<Vector6(const Vector2 &)>(
-          boost::bind(&PoseGoalFactor::evaluateError, factor, _1, boost::none)),
-      joint_coordinates, 1e-6);
   EXPECT(assert_equal(expected_error, actual_error, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  // Make sure linearization is correct
+  values.update(0, joint_coordinates);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(PoseGoalFactor, optimization) {

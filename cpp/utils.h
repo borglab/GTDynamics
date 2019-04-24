@@ -6,16 +6,17 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include <cmath>
-#include <string>
-#include <vector>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
+
+#include <boost/optional.hpp>
+#include <cmath>
+#include <string>
+#include <vector>
+
 
 namespace manipulator {
 
@@ -37,19 +38,21 @@ gtsam::Vector radians(const gtsam::Vector &degree);
  *  Keyword argument:
       q            -- joint angle
       jMi          -- this COM frame, expressed in next link's COM frame at
-                      rest configuration 
+                      rest configuration
       screw_axis   -- screw axis expressed in kth link's COM
-                   frame                  
+                   frame
 */
 gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
-                                  const gtsam::Vector6 &screw_axis);
+                                   const gtsam::Vector6 &screw_axis);
 
 /** calculate Gaussian Process system transition matrix
     Keyword argument:
         tau -- timestep
 */
 inline gtsam::Matrix3 calcPhi(double tau) {
-  return (gtsam::Matrix(3, 3) << 1, tau, 0.5 * tau * tau, 0, 1, tau, 0, 0, 1)
+  return (gtsam::Matrix(3, 3) << 1, tau, 0.5 * tau * tau,  //
+          0, 1, tau,                                       //
+          0, 0, 1)
       .finished();
 }
 

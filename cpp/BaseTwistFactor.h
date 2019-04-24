@@ -40,11 +40,10 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   /** evaluate base twist errors
       Keyword argument:
           twist_0    -- twist on the base
-          H_twist_0  -- jacobian matrix w.r.t. twist_0
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_0,
-      boost::optional<gtsam::Matrix &> H_twist_0 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_twist_0 = boost::none) const override {
     if (H_twist_0) {
       *H_twist_0 = gtsam::I_6x6;
     }
@@ -52,7 +51,7 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

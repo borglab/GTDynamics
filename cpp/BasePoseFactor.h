@@ -42,16 +42,15 @@ class BasePoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** evaluate link pose errors
       Keyword argument:
           pose_0          -- the base pose
-          H_pose_0        -- jacobian matrix w.r.t. the base pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_0,
-      boost::optional<gtsam::Matrix &> H_pose_0 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose_0 = boost::none) const override {
     return pose_0.logmap(base_pose_, H_pose_0);
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

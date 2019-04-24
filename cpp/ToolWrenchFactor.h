@@ -84,10 +84,6 @@ class ToolWrenchFactor
           twsit_accel    -- twist acceleration on this link
           wrench_j       -- wrench on this link
           pose           -- link com pose expressed in base frame
-          H_twist        -- jacobian matrix w.r.t. twist
-          H_twist_accel  -- jacobian matrix w.r.t. twist acceleration
-          H_wrench_j     -- jacobian matrix w.r.t. wrench on this link
-          H_pose         -- jacobian matrix w.r.t. link com pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -95,7 +91,7 @@ class ToolWrenchFactor
       boost::optional<gtsam::Matrix &> H_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
         pose.rotation(H_rotation).unrotate(gravity_, H_unrotate).vector();
@@ -125,33 +121,8 @@ class ToolWrenchFactor
     return error;
   }
 
-  // overload evaluateError
-  /** evaluate wrench balance errors
-    Keyword argument:
-        twsit          -- twist on this link
-        twsit_accel    -- twist acceleration on this link
-        wrench_j       -- wrench on this link
-        pose           -- link com pose expressed in base frame
-*/
-  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
-                              const gtsam::Vector6 &twistAccel,
-                              const gtsam::Vector6 &wrench_j,
-                              const gtsam::Pose3 &pose) const {
-    gtsam::Matrix H_rotation, H_unrotate;
-    auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_, H_unrotate).vector();
-    gtsam::Matrix63 intermediateMatrix;
-    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-    auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
-
-    return inertia_ * twistAccel - wrench_j +
-           tTn_.AdjointMap().transpose() * external_wrench_ -
-           gtsam::Pose3::adjointMap(twist).transpose() * inertia_ * twist -
-           gravity_wrench;
-  }
-
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

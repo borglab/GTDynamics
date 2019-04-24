@@ -3,19 +3,20 @@
  * @brief test forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
+#include <DHLink.h>
+#include <Arm.h>
+#include <PoseFactor.h>
+
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <DHLink.h>
-#include <Arm.h>
-#include <PoseFactor.h>
+#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -51,27 +52,19 @@ TEST(PoseFactor, error) {
                     example::cost_model, jMi, screw_axis);
 
   // call evaluateError
-  Matrix actual_H1, actual_H2, actual_H3;
-  auto actual_errors = factor.evaluateError(pose_i, pose_j, jointAngle,
-                                            actual_H1, actual_H2, actual_H3);
+  auto actual_errors = factor.evaluateError(pose_i, pose_j, jointAngle);
 
   // check value
   auto expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
-  // check derivatives
-  boost::function<Vector(const Pose3 &, const Pose3 &, const double &)> f =
-      boost::bind(&PoseFactor::evaluateError, factor, _1, _2, _3, boost::none,
-                  boost::none, boost::none);
-  Matrix expected_H1 =
-      numericalDerivative31(f, pose_i, pose_j, jointAngle, 1e-6);
-  Matrix expected_H2 =
-      numericalDerivative32(f, pose_i, pose_j, jointAngle, 1e-6);
-  Matrix expected_H3 =
-      numericalDerivative33(f, pose_i, pose_j, jointAngle, 1e-6);
-  EXPECT(assert_equal(expected_H1, actual_H1, 1e-6));
-  EXPECT(assert_equal(expected_H2, actual_H2, 1e-6));
-  EXPECT(assert_equal(expected_H3, actual_H3, 1e-6));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::pose_i_key, pose_i);
+  values.insert(example::pose_j_key, pose_j);
+  values.insert(example::qKey, jointAngle);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**

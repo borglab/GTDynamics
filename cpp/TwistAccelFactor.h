@@ -7,12 +7,12 @@
 
 #pragma once
 
+#include <utils.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <utils.h>
 
 #include <boost/optional.hpp>
 #include <iostream>
@@ -75,12 +75,6 @@ class TwistAccelFactor
           q                     -- joint coordination
           qVel                  -- joint velocity
           qAccel                -- joint acceleration
-          H_twistAccel_i        -- jacobian matrix w.r.t. twistAccel_i
-          H_twistAccel_j        -- jacobian matrix w.r.t. twistAccel_j
-          H_twist               -- jacobian matrix w.r.t. twist
-          H_q                   -- jacobian matrix w.r.t. joint coordinate
-          H_qVel                -- jacobian matrix w.r.t. joint velocity
-          H_qAccel              -- jacobian matrix w.r.t. joint acceleration
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel_i,
@@ -91,7 +85,7 @@ class TwistAccelFactor
       boost::optional<gtsam::Matrix &> H_twistAccel_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
-      boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
     gtsam::Matrix6 H_adjoint;
     gtsam::Vector6 error =
@@ -120,29 +114,8 @@ class TwistAccelFactor
     return error;
   }
 
-  // overload evaluateError
-  /** evaluate twist acceleration errors
-    Keyword argument:
-        twistAccel_i          -- twist acceleration on previous link
-        twistAccel_j          -- twist acceleration on this link
-        twist                 -- twist on this link
-        q                     -- joint coordination
-        qVel                  -- joint velocity
-        qAccel                -- joint acceleration
-*/
-  gtsam::Vector evaluateError(const gtsam::Vector6 &twist,
-                              const gtsam::Vector6 &twistAccel_i,
-                              const gtsam::Vector6 &twistAccel_j,
-                              const double &q, const double &qVel,
-                              const double &qAccel) const {
-    gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
-    return twistAccel_j - jTi.AdjointMap() * twistAccel_i -
-           gtsam::Pose3::adjointMap(twist) * screw_axis_ * qVel -
-           screw_axis_ * qAccel;
-  }
-
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

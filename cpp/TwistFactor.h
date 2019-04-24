@@ -6,12 +6,12 @@
 
 #pragma once
 
+#include <utils.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <utils.h>
 
 #include <boost/optional.hpp>
 #include <iostream>
@@ -62,10 +62,6 @@ class TwistFactor
           twsit_j       -- twist on this link
           q             -- joint coordination
           qVel          -- joint velocity
-          H_twist_i     -- jacobian matrix w.r.t. twist_i
-          H_twist_j     -- jacobian matrix w.r.t. twist_j
-          H_q           -- jacobian matrix w.r.t. joint coordination
-          H_qVel        -- jacobian matrix w.r.t. joint velocity
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
@@ -73,7 +69,7 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
-      boost::optional<gtsam::Matrix &> H_qVel = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
     if (H_twist_i) {
       *H_twist_i = -jTi.AdjointMap();
@@ -92,7 +88,7 @@ class TwistFactor
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

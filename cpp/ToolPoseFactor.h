@@ -41,11 +41,10 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** evaluate link pose errors
       Keyword argument:
           pose         -- last link pose
-          H_pose       -- jacobian matrix w.r.t. last link pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     auto pose_predict = tool_pose_ * tTn_;
     gtsam::Vector6 error = pose.logmap(pose_predict);
     if (H_pose) {
@@ -56,7 +55,7 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

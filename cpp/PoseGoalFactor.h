@@ -53,11 +53,10 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
       Keyword argument:
           jointCoordinates      -- angles for revolution joint,
                                     distances for prismatic joint
-          H                     -- jacobian matrix
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector &joint_coordinates,
-      boost::optional<gtsam::Matrix &> H = boost::none) const {
+      boost::optional<gtsam::Matrix &> H = boost::none) const override {
     // forward kinematics
     std::vector<gtsam::Matrix> jacobian;
     auto end_effector_pose =
@@ -69,7 +68,7 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

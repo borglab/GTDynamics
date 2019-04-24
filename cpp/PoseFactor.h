@@ -6,13 +6,13 @@
 
 #pragma once
 
+#include <utils.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <utils.h>
 
 #include <iostream>
 #include <vector>
@@ -88,15 +88,12 @@ class PoseFactor
           pose_i         -- previous link pose
           pose_j         -- this link pose
           q              -- joint coordination
-          H_pose_i       -- jacobian matrix w.r.t. previous link pose
-          H_pose_j       -- jacobian matrix w.r.t. this link pose
-          H_q            -- jacobian matrix w.r.t. joint coordinate
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j, const double &q,
       boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
       boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
     gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
     if (H_pose_j) {
@@ -106,7 +103,7 @@ class PoseFactor
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

@@ -3,19 +3,19 @@
  * @brief test base acceleration factor
  * @Author: Frank Dellaert and Mandy Xie
  */
+#include <BaseTwistAccelFactor.h>
+
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <BaseTwistAccelFactor.h>
-
+#include <CppUnitLite/TestHarness.h>
 #include <iostream>
 
 using namespace std;
@@ -35,17 +35,17 @@ TEST(BaseTwistAccelFactor, error) {
                               base_acceleration);
   Vector6 conf;
   Vector6 actual_errors, expected_errors;
-  Matrix actual_H, expected_H;
 
   conf = Vector6::Zero();
-  actual_errors = factor.evaluateError(conf, actual_H);
+  actual_errors = factor.evaluateError(conf);
   expected_errors << 0, 0, 0, 0, -9.8, 0;
-  expected_H = numericalDerivative11(
-      boost::function<Vector(const Vector6 &)>(boost::bind(
-          &BaseTwistAccelFactor::evaluateError, factor, _1, boost::none)),
-      conf, 1e-6);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+
+  // Make sure linearization is correct
+  Values values;
+  values.insert(LabeledSymbol('G', '0', 0), conf);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**

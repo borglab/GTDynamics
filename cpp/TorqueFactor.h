@@ -45,13 +45,11 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
       Keyword argument:
           wrench       -- wrench on this link
           torque       -- torque on this link joint
-          H_wrench     -- jacobian matrix w.r.t. wrench
-          H_torque     -- jacobian matrix w.r.t. torque
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench, const double &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
-      boost::optional<gtsam::Matrix &> H_torque = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_wrench) {
       *H_wrench = screw_axis_.transpose();
     }
@@ -63,7 +61,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   }
 
   // @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override{
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
