@@ -93,7 +93,7 @@ class PoseFactor
       const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j, const double &q,
       boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
       boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
     gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
     if (H_pose_j) {

@@ -91,7 +91,7 @@ class ToolWrenchFactor
       boost::optional<gtsam::Matrix &> H_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
         pose.rotation(H_rotation).unrotate(gravity_, H_unrotate).vector();

@@ -88,7 +88,7 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     // if Jacobians used, initialize as zeros
     auto num = sphere_link_.num_sphere();
     auto radius = sphere_link_.radius();

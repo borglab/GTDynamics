@@ -43,7 +43,7 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_0,
-      boost::optional<gtsam::Matrix &> H_twist_0 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_twist_0 = boost::none) const override {
     if (H_twist_0) {
       *H_twist_0 = gtsam::I_6x6;
     }

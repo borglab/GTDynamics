@@ -71,7 +71,7 @@ class GaussianProcessPriorFactor
       boost::optional<gtsam::Matrix &> H_qAccel1 = boost::none,
       boost::optional<gtsam::Matrix &> H_q2 = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel2 = boost::none,
-      boost::optional<gtsam::Matrix &> H_qAccel2 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_qAccel2 = boost::none) const override {
     // state vector
     gtsam::Vector3 x1, x2;
     x1 << q1, qVel1, qAccel1;

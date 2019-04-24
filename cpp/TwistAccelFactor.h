@@ -85,7 +85,7 @@ class TwistAccelFactor
       boost::optional<gtsam::Matrix &> H_twistAccel_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
-      boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
     gtsam::Matrix6 H_adjoint;
     gtsam::Vector6 error =

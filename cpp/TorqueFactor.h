@@ -49,7 +49,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench, const double &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
-      boost::optional<gtsam::Matrix &> H_torque = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_wrench) {
       *H_wrench = screw_axis_.transpose();
     }

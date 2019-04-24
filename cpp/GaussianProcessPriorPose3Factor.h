@@ -70,7 +70,7 @@ class GaussianProcessPriorPose3Factor
       boost::optional<gtsam::Matrix &> H_v1dot = boost::none,
       boost::optional<gtsam::Matrix &> H_p2 = boost::none,
       boost::optional<gtsam::Matrix &> H_v2 = boost::none,
-      boost::optional<gtsam::Matrix &> H_v2dot = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_v2dot = boost::none) const override {
     gtsam::Matrix6 Hinv, Hcomp1, Hcomp2, Hlogmap;
     gtsam::Vector6 r;
     if (H_p1 || H_p2) {

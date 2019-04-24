@@ -52,7 +52,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   */
   gtsam::Vector evaluateError(
       const double &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     if ((q <= lower_limit_) || (q >= upper_limit_)) {
       if (H_q) *H_q = (gtsam::Matrix(1, 1) << 0).finished();
       return gtsam::Vector1(std::numeric_limits<double>::infinity());

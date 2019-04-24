@@ -69,7 +69,7 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
-      boost::optional<gtsam::Matrix &> H_qVel = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
     gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
     if (H_twist_i) {
       *H_twist_i = -jTi.AdjointMap();

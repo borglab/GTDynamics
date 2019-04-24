@@ -96,13 +96,6 @@ class WrenchFactor
           twsit_accel   -- twist acceleration on this link
           wrench_j      -- wrench on this link
           wrench_k      -- wrench from the next link
-          H_twist       -- jacobian matrix w.r.t. twist
-          H_twist_accel -- jacobian matrix w.r.t. twist acceleration
-          H_wrench_j    -- jacobian matrix w.r.t. wrench on this link
-          H_wrench_k    -- jacobian matrix w.r.t. wrench from the next
-                           link
-          H_pose        -- jacobian matrix w.r.t. link com pose
-          H_q           -- jacobian matrix w.r.t. joint angle
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -113,7 +106,7 @@ class WrenchFactor
       boost::optional<gtsam::Matrix &> H_wrench_j = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_k = boost::none,
       boost::optional<gtsam::Matrix &> H_pose = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis_ * q) * kMj_;
     // transform gravity from base frame to link COM frame,
     // to use unrotate function, have to convert gravity vector to a point

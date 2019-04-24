@@ -56,7 +56,7 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector &joint_coordinates,
-      boost::optional<gtsam::Matrix &> H = boost::none) const {
+      boost::optional<gtsam::Matrix &> H = boost::none) const override {
     // forward kinematics
     std::vector<gtsam::Matrix> jacobian;
     auto end_effector_pose =

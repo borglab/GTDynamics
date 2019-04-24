@@ -45,7 +45,7 @@ class BasePoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_0,
-      boost::optional<gtsam::Matrix &> H_pose_0 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_pose_0 = boost::none) const override {
     return pose_0.logmap(base_pose_, H_pose_0);
   }
 
