@@ -6,14 +6,14 @@
 
 #pragma once
 
+#include <JointLimitVectorFactor.h>
+#include <PoseGoalFactor.h>
+
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-
-#include <JointLimitVectorFactor.h>
-#include <PoseGoalFactor.h>
 
 namespace manipulator {
 

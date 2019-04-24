@@ -6,13 +6,13 @@
 
 # pragma once
 
+#include <SignedDistanceField.h>
+#include <SphereLink.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <SignedDistanceField.h>
-#include <SphereLink.h>
 
 #include <iostream>
 #include <vector>

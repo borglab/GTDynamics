@@ -49,6 +49,10 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   /** evaluate joint limit errors
       Keyword argument:
         q    -- joint value
+      barrier function for lower limit:
+        miu*(-log(q - lower_limit) + log(lower_limit))
+      barrier function for upper limit:
+        miu*(-log(upper_limit - q) + log(upper_limit))
   */
   gtsam::Vector evaluateError(
       const double &q,

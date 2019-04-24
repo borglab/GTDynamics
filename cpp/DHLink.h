@@ -6,10 +6,11 @@
 
 #pragma once
 
-#include <gtsam/geometry/Pose3.h>
-
 #include <Link.h>
 #include <utils.h>
+
+#include <gtsam/geometry/Pose3.h>
+
 
 namespace manipulator {
 

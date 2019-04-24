@@ -5,11 +5,11 @@
  **/
 #pragma once
 
+#include <utils.h>
+
 #include <gtsam/base/Testable.h>
 #include <gtsam/geometry/concepts.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <utils.h>
 
 #include <boost/lexical_cast.hpp>
 
