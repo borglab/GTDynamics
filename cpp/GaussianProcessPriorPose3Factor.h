@@ -28,6 +28,7 @@ class GaussianProcessPriorPose3Factor
                                       gtsam::Vector6, gtsam::Vector6> {
  private:
   double delta_t_;
+  double delta_t_square_;
 
   typedef GaussianProcessPriorPose3Factor This;
   typedef gtsam::NoiseModelFactor6<gtsam::Pose3, gtsam::Vector6, gtsam::Vector6,
@@ -47,7 +48,7 @@ class GaussianProcessPriorPose3Factor
       : Base(gtsam::noiseModel::Gaussian::Covariance(
                  calcQ(getQc(Qc_model), delta_t)),
              p_key1, v_key1, a_key1, p_key2, v_key2, a_key2),
-        delta_t_(delta_t) {}
+        delta_t_(delta_t), delta_t_square_(delta_t*delta_t) {}
 
   virtual ~GaussianProcessPriorPose3Factor() {}
 
@@ -55,21 +56,21 @@ class GaussianProcessPriorPose3Factor
       Keyword argument:
         p1         -- pose at time 1
         v1         -- velocity at time 1
-        a1         -- acceleration at time 1
+        v1dot         -- acceleration at time 1
         p2         -- pose at time 2
         v2         -- velocity at time 2
-        a2         -- acceleration at time 2
+        v2dot         -- acceleration at time 2
     */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,
-      const gtsam::Vector6 &a1, const gtsam::Pose3 &p2,
-      const gtsam::Vector6 &v2, const gtsam::Vector6 &a2,
+      const gtsam::Vector6 &v1dot, const gtsam::Pose3 &p2,
+      const gtsam::Vector6 &v2, const gtsam::Vector6 &v2dot,
       boost::optional<gtsam::Matrix &> H_p1 = boost::none,
       boost::optional<gtsam::Matrix &> H_v1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_a1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_v1dot = boost::none,
       boost::optional<gtsam::Matrix &> H_p2 = boost::none,
       boost::optional<gtsam::Matrix &> H_v2 = boost::none,
-      boost::optional<gtsam::Matrix &> H_a2 = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_v2dot = boost::none) const {
     gtsam::Matrix6 Hinv, Hcomp1, Hcomp2, Hlogmap;
     gtsam::Vector6 r;
     if (H_p1 || H_p2) {
@@ -81,35 +82,35 @@ class GaussianProcessPriorPose3Factor
 
     if (H_p1)
       *H_p1 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp1 * Hinv,
-               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Zero(6, 6))
+               gtsam::Z_6x6, gtsam::Z_6x6)
                   .finished();
     if (H_v1)
       *H_v1 =
-          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::Matrix::Identity(6, 6),
-           -gtsam::Matrix::Identity(6, 6))
+          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::I_6x6,
+           -gtsam::I_6x6)
               .finished();
-    if (H_a1)
-      *H_a1 = (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_ * delta_t_ *
-                                              gtsam::Matrix::Identity(6, 6),
-               -delta_t_ * gtsam::Matrix::Identity(6, 6),
-               -gtsam::Matrix::Identity(6, 6))
+    if (H_v1dot)
+      *H_v1dot = (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_square_ *
+                                              gtsam::I_6x6,
+               -delta_t_ * gtsam::I_6x6,
+               -gtsam::I_6x6)
                   .finished();
     if (H_p2)
       *H_p2 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp2,
-               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Zero(6, 6))
+               gtsam::Z_6x6, gtsam::Z_6x6)
                   .finished();
     if (H_v2)
-      *H_v2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Matrix::Zero(6, 6),
-               gtsam::Matrix::Identity(6, 6), gtsam::Matrix::Zero(6, 6))
+      *H_v2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
+               gtsam::I_6x6, gtsam::Z_6x6)
                   .finished();
-    if (H_a2)
-      *H_a2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Matrix::Zero(6, 6),
-               gtsam::Matrix::Zero(6, 6), gtsam::Matrix::Identity(6, 6))
+    if (H_v2dot)
+      *H_v2dot = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
+               gtsam::Z_6x6, gtsam::I_6x6)
                   .finished();
 
     return (gtsam::Vector(3 * 6)
-                << (r - v1 * delta_t_ - a1 * 0.5 * delta_t_ * delta_t_),
-            (v2 - v1 - a1 * delta_t_), a2 - a1)
+                << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
+            (v2 - v1 - v1dot * delta_t_), v2dot - v1dot)
         .finished();
   }
 
@@ -117,19 +118,19 @@ class GaussianProcessPriorPose3Factor
       Keyword argument:
         p1      -- pose at time 1
         v1      -- velocity at time 1
-        a1      -- acceleration at time 1
+        v1dot   -- acceleration at time 1
         p2      -- pose at time 2
         v2      -- velocity at time 2
-        a2      -- acceleration at time 2
+        v2dot   -- acceleration at time 2
   */
   gtsam::Vector evaluateError(const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,
-                              const gtsam::Vector6 &a1, const gtsam::Pose3 &p2,
+                              const gtsam::Vector6 &v1dot, const gtsam::Pose3 &p2,
                               const gtsam::Vector6 &v2,
-                              const gtsam::Vector6 &a2) const {
+                              const gtsam::Vector6 &v2dot) const {
     gtsam::Vector6 r = gtsam::Pose3::Logmap(p1.inverse() * p2);
     return (gtsam::Vector(3 * 6)
-                << (r - v1 * delta_t_ - a1 * 0.5 * delta_t_ * delta_t_),
-            (v2 - v1 - a1 * delta_t_), a2 - a1)
+                << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
+            (v2 - v1 - v1dot * delta_t_), v2dot - v1dot)
         .finished();
   }
 
@@ -139,12 +140,9 @@ class GaussianProcessPriorPose3Factor
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** number of variables attached to this factor */
-  size_t size() const { return 6; }
-
   /** equals specialized to this factor */
-  virtual bool equals(const gtsam::NonlinearFactor &expected,
-                      double tol = 1e-9) const {
+  bool equals(const gtsam::NonlinearFactor &expected,
+                      double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != NULL && Base::equals(*e, tol) &&
            fabs(this->delta_t_ - e->delta_t_) < tol;
