@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-
 namespace manipulator {
 
 /** Create unit twist for axis direction
@@ -74,5 +73,25 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
           1.0 / 2 * pow(tau, 2.0) * Qc, tau * Qc)
       .finished();
 }
+
+/** initial trajectory for q is a straight line
+ * Keyword argument:
+        i           -- the ith time step
+        totol_step  -- total time steps
+        start_q     -- start value of variable q
+        end_q       -- end value of variable q
+*/
+gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
+                           gtsam::Vector &end_q);
+
+/** calculate center of spheres used to represent this link for collision
+ * check
+ * Key arguments:
+ *  length   -- length of the link
+ *  radius   -- sphere radius
+ *  num      -- number of spheres
+ * return sphere centers expressed in link COM frame
+ */
+std::vector<gtsam::Point3> sphereCenters(double length, double radius, int num);
 
 }  // namespace manipulator
