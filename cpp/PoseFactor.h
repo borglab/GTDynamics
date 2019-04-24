@@ -88,9 +88,6 @@ class PoseFactor
           pose_i         -- previous link pose
           pose_j         -- this link pose
           q              -- joint coordination
-          H_pose_i       -- jacobian matrix w.r.t. previous link pose
-          H_pose_j       -- jacobian matrix w.r.t. this link pose
-          H_q            -- jacobian matrix w.r.t. joint coordinate
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j, const double &q,

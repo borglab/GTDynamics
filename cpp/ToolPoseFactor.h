@@ -41,7 +41,6 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** evaluate link pose errors
       Keyword argument:
           pose         -- last link pose
-          H_pose       -- jacobian matrix w.r.t. last link pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,

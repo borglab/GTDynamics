@@ -85,7 +85,6 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** evaluate link pose errors
     Keyword argument:
       pose         -- this link COM pose
-      H_pose       -- jacobian matrix w.r.t. COM pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,

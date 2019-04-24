@@ -17,6 +17,10 @@ namespace manipulator {
 
 /**
  * 6-way factor for Gaussian Process prior factor, linear version
+ * Dynamic model:
+ * x_plus = Phi * x + noise
+ * error:
+ * Phi * x - x_plus
  */
 class GaussianProcessPriorFactor
     : public gtsam::NoiseModelFactor6<double, double, double, double, double,
@@ -55,12 +59,6 @@ class GaussianProcessPriorFactor
       q2         -- joint coordinates at time 2
       qVel2      -- joint velocity at time 2
       qAccel2    -- joint acceleration at time 2
-      H_q1       -- jacobian matrix w.r.t. joint coordinate at time 1
-      H_qVel1    -- jacobian matrix w.r.t. joint velocity at time 1
-      H_qAccel1  -- jacobian matrix w.r.t. joint acceleration at time 1
-      H_q2       -- jacobian matrix w.r.t. joint coordinate at time 2
-      H_qVel2    -- jacobian matrix w.r.t. joint velocity at time 2
-      H_qAccel2  -- jacobian matrix w.r.t. joint acceleration at time 2
     */
   gtsam::Vector evaluateError(
       const double &q1, const double &qVel1, const double &qAccel1,

@@ -17,6 +17,10 @@ namespace manipulator {
 
 /**
  * 6-way factor for Gaussian Process prior factor, Pose3 version
+ * Dynamic model:
+ * x_plus = Phi * x + noise
+ * error:
+ * Phi * x - x_plus
  */
 class GaussianProcessPriorPose3Factor
     : public gtsam::NoiseModelFactor6<gtsam::Pose3, gtsam::Vector6,
@@ -55,12 +59,6 @@ class GaussianProcessPriorPose3Factor
         p2         -- pose at time 2
         v2         -- velocity at time 2
         a2         -- acceleration at time 2
-        H_p1       -- jacobian matrix w.r.t. pose at time 1
-        H_v1       -- jacobian matrix w.r.t. velocity at time 1
-        H_a1       -- jacobian matrix w.r.t. acceleration at time 1
-        H_p2       -- jacobian matrix w.r.t. pose at time 2
-        H_v2       -- jacobian matrix w.r.t. velocity at time 2
-        H_a2       -- jacobian matrix w.r.t. acceleration at time 2
     */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,

@@ -49,7 +49,6 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   /** evaluate joint limit errors
       Keyword argument:
         q    -- joint value
-        H_q  -- jacobian w.r.t. q
   */
   gtsam::Vector evaluateError(
       const double &q,

@@ -53,7 +53,6 @@ class PoseGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
       Keyword argument:
           jointCoordinates      -- angles for revolution joint,
                                     distances for prismatic joint
-          H                     -- jacobian matrix
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector &joint_coordinates,

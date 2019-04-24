@@ -45,8 +45,6 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
       Keyword argument:
           wrench       -- wrench on this link
           torque       -- torque on this link joint
-          H_wrench     -- jacobian matrix w.r.t. wrench
-          H_torque     -- jacobian matrix w.r.t. torque
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench, const double &torque,

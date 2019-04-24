@@ -62,10 +62,6 @@ class TwistFactor
           twsit_j       -- twist on this link
           q             -- joint coordination
           qVel          -- joint velocity
-          H_twist_i     -- jacobian matrix w.r.t. twist_i
-          H_twist_j     -- jacobian matrix w.r.t. twist_j
-          H_q           -- jacobian matrix w.r.t. joint coordination
-          H_qVel        -- jacobian matrix w.r.t. joint velocity
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,

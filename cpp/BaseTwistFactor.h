@@ -40,7 +40,6 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   /** evaluate base twist errors
       Keyword argument:
           twist_0    -- twist on the base
-          H_twist_0  -- jacobian matrix w.r.t. twist_0
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_0,

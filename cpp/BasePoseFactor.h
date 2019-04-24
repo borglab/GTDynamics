@@ -42,7 +42,6 @@ class BasePoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** evaluate link pose errors
       Keyword argument:
           pose_0          -- the base pose
-          H_pose_0        -- jacobian matrix w.r.t. the base pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_0,

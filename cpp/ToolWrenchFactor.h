@@ -84,10 +84,6 @@ class ToolWrenchFactor
           twsit_accel    -- twist acceleration on this link
           wrench_j       -- wrench on this link
           pose           -- link com pose expressed in base frame
-          H_twist        -- jacobian matrix w.r.t. twist
-          H_twist_accel  -- jacobian matrix w.r.t. twist acceleration
-          H_wrench_j     -- jacobian matrix w.r.t. wrench on this link
-          H_pose         -- jacobian matrix w.r.t. link com pose
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
