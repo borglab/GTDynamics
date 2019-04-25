@@ -127,7 +127,7 @@ GaussianFactorGraph Link::inverseFactors(
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j), A_j.transpose(), t(j), -I_6x6, Vector1(0),
+  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(0),
               noiseModel::Constrained::All(1));
 
   return factors;
