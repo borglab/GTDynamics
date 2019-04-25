@@ -97,6 +97,6 @@ class DH_Link : public Link {
   }
 
   /* return approximate length of link */
-  double length() { return sqrt(d_ * d_ + a_ * a_); }
+  double length() const { return sqrt(d_ * d_ + a_ * a_); }
 };
 }  // namespace manipulator

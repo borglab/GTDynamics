@@ -291,6 +291,9 @@ class Link {
       const gtsam::Pose3 &kTj,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+//   /** Return link length, pure virtual function */
+//   virtual double length() const;
+
   virtual ~Link() = default;
 };
 }  // namespace manipulator

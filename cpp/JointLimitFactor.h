@@ -5,75 +5,74 @@
  */
 #pragma once
 
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
-#include <iostream>
-#include <vector>
 #include <cmath>
+#include <iostream>
 #include <limits>
+#include <vector>
 
 namespace manipulator {
 
+/** JointLimitFactor is a class which enforces joint angle, velocity,
+ * acceleration and torque value to be within limit*/
 class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
  private:
   typedef JointLimitFactor This;
   typedef gtsam::NoiseModelFactor1<double> Base;
-  double lower_limit_, upper_limit_, miu_;
+  double lower_limit_, upper_limit_, limit_threshold_;
 
  public:
   /**
    * Construct from joint limits
    * Keyword arguments:
-      q_key                 -- joint value key
-      cost_model            -- noise model
-      lower_limit           -- joint lower limit
-      upper_limit           -- joint upper limit
-      miu                   -- parameter determine how sharp is the barrier function
+      q_key              -- joint value key
+      cost_model         -- noise model
+      lower_limit        -- joint lower limit
+      upper_limit        -- joint upper limit
+      limit_threshold    -- joint limit threshold
    */
-  JointLimitFactor(gtsam::LabeledSymbol q_key,
+  JointLimitFactor(gtsam::Key q_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
                    const double &lower_limit, const double &upper_limit,
-                   const double &miu)
+                   const double &limit_threshold)
       : Base(cost_model, q_key),
         lower_limit_(lower_limit),
         upper_limit_(upper_limit),
-        miu_(miu) {}
+        limit_threshold_(limit_threshold) {}
 
   virtual ~JointLimitFactor() {}
 
  public:
   /** evaluate joint limit errors
       Keyword argument:
-        q    -- joint value
-      barrier function for lower limit:
-        miu*(-log(q - lower_limit) + log(lower_limit))
-      barrier function for upper limit:
-        miu*(-log(upper_limit - q) + log(upper_limit))
+          q  -- joint value
+      hingloss function:
+      error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit - limit_threshold
+      error = lower_limit_ + limit_threshold - q if q < lower_limit + limit_threshold
+      error = q - upper_limit_ + limit_threshold if q > upper_limit + limit_threshold
   */
   gtsam::Vector evaluateError(
       const double &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    if ((q <= lower_limit_) || (q >= upper_limit_)) {
-      if (H_q) *H_q = (gtsam::Matrix(1, 1) << 0).finished();
-      return gtsam::Vector1(std::numeric_limits<double>::infinity());
-    } else if (q <= 0) {
-      if (H_q)
-        *H_q = (gtsam::Matrix(1, 1) << miu_ / (lower_limit_ - q)).finished();
-      return gtsam::Vector1(miu_ *
-                            (-log(q - lower_limit_) + log(-lower_limit_)));
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+    if (q < lower_limit_ + limit_threshold_) {
+      if (H_q) *H_q = (gtsam::Matrix(1, 1) << -1.0).finished();
+      return gtsam::Vector1(lower_limit_ + limit_threshold_ - q);
+    } else if (q <= upper_limit_ - limit_threshold_) {
+      if (H_q) *H_q = (gtsam::Matrix(1, 1) << 0.0).finished();
+      return gtsam::Vector1(0.0);
     } else {
-      if (H_q)
-        *H_q = (gtsam::Matrix(1, 1) << miu_ / (upper_limit_ - q)).finished();
-      return gtsam::Vector1(miu_ * (-log(upper_limit_ - q) + log(upper_limit_)));
+      if (H_q) *H_q = (gtsam::Matrix(1, 1) << 1.0).finished();
+      return gtsam::Vector1(q - upper_limit_ + limit_threshold_);
     }
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

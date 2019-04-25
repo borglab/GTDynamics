@@ -75,4 +75,39 @@ vector<Point3> sphereCenters(double length, double radius, int num) {
   return sphere_centers;
 }
 
+void saveForVisualization(
+    vector<Vector> &jointAngle, Pose3 &goalPose,
+    int dof, string &dir,
+    boost::optional<manipulator::SignedDistanceField &> sdf) {
+  ofstream q_output;
+  for (int i = 0; i < dof + 2; ++i) {
+    char str[100];
+    sprintf(str, "q%d", i);
+    q_output.open(dir + str + ".txt");
+    for (auto &q : jointAngle) {
+      if (i == 0) {
+        q_output << "NaN" << endl;
+      } else if (i == dof + 1) {
+        q_output << "0" << endl;
+      } else {
+        q_output << q[i - 1] << endl;
+      }
+    }
+    q_output.close();
+  }
+
+  ofstream goal_output;
+  goal_output.open(dir + "goal.txt");
+  goal_output << goalPose.translation().vector() << endl;
+  goal_output.close();
+
+  if (sdf) {
+    ofstream fieldInfo_output;
+    fieldInfo_output.open(dir + "fieldInfo.txt");
+    fieldInfo_output << sdf->origin().vector() << endl;
+    fieldInfo_output << sdf->cellSize() << endl;
+    fieldInfo_output.close();
+  }
+}
+
 }  // namespace manipulator

@@ -68,8 +68,11 @@ TEST(MotionPlanner, dh_rr) {
       DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0), -180, 180,
               2, 0.15, 0.02, 0.12, 0.02, 50, 5)};
   auto robot = Arm<DH_Link>(dh_rr);
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
-  Vector6 expected_q = (Vector(2) << 45, 45).finished() * M_PI / 180;
+  Vector3 gravity;
+  gravity << 0, -9.8, 0;
+  Vector2 expected_q;
+  expected_q << 45 , 45;
+  expected_q *= M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
   Pose3 pose_goal(expected_T);
   auto dof = robot.numLinks();
@@ -78,7 +81,7 @@ TEST(MotionPlanner, dh_rr) {
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
   // set Qc_model for GP
-  opt.setQcModel(I_6x6);
+  opt.setQcModel(I_1x1);
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);
@@ -86,8 +89,8 @@ TEST(MotionPlanner, dh_rr) {
   opt.setCollisionEpsilon(0.2);
 
   MotionPlanner mp(opt);
-  auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, boost::none,
-                                            gravity, boost::none);
+  auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
+                                            boost::none, gravity, boost::none);
   auto init_values = mp.factorGraphInitialization(
       robot, pose_goal, Vector::Zero(dof), boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);
@@ -133,9 +136,11 @@ TEST(MotionPlanner, dh_puma) {
               0.02, 100, 5)};
   auto robot = Arm<DH_Link>(dh_puma);
   auto poses = robot.comFrames();
-  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
-  Vector6 expected_q =
-      (Vector(6) << -30, 10, -50, -75, 60, -40).finished() * M_PI / 180;
+  Vector3 gravity;
+  gravity << 0, 0, -9.8;
+  Vector6 expected_q;
+  expected_q << -30, 10, -50, -75, 60, -40;
+  expected_q *= M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
   Pose3 pose_goal(expected_T);
   auto dof = robot.numLinks();
@@ -144,7 +149,7 @@ TEST(MotionPlanner, dh_puma) {
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
   // set Qc_model for GP
-  opt.setQcModel(I_6x6);
+  opt.setQcModel(I_1x1);
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);
@@ -152,8 +157,8 @@ TEST(MotionPlanner, dh_puma) {
   opt.setCollisionEpsilon(0.2);
 
   MotionPlanner mp(opt);
-  auto graph =
-      mp.motionPlanningFactorGraph(robot, pose_goal, boost::none, gravity, sdf);
+  auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
+                                            boost::none, gravity, sdf);
   auto init_values = mp.factorGraphInitialization(
       robot, pose_goal, Vector::Zero(dof), boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);

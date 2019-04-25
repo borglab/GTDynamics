@@ -104,7 +104,7 @@ class MotionPlanner {
     // get link COM pose at start
     auto poses = robot.comFrames();
     // get robot screw_axes for all links
-    auto screw_axes = robot.screw_axes();
+    auto screw_axes = robot.screwAxes();
 
     NonlinearFactorGraph graph;
 
