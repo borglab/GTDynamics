@@ -21,14 +21,14 @@ Symbol J(int j) { return Symbol('J', j); }
 boost::shared_ptr<JacobianFactor>
 Link::BaseTwistAccelFactor(const gtsam::Vector6 &base_twist_accel) {
   return boost::make_shared<gtsam::JacobianFactor>(
-      T(0), gtsam::Matrix::Identity(6, 6), base_twist_accel,
+      T(0), gtsam::I_6x6, base_twist_accel,
       gtsam::noiseModel::Constrained::All(6));
 }
 
 boost::shared_ptr<JacobianFactor>
 Link::ToolWrenchFactor(int N, const gtsam::Vector6 &external_wrench) {
   return boost::make_shared<gtsam::JacobianFactor>(
-      F(N + 1), gtsam::Matrix::Identity(6, 6), -external_wrench,
+      F(N + 1), gtsam::I_6x6, -external_wrench,
       gtsam::noiseModel::Constrained::All(6));
 }
 
@@ -39,13 +39,13 @@ boost::shared_ptr<JacobianFactor> Link::twistFactor(int j, const Pose3 &jTi,
 
   if (j == 1) {
     return boost::make_shared<gtsam::JacobianFactor>(
-        V(j), Matrix::Identity(6, 6), joint_twist,
+        V(j), I_6x6, joint_twist,
         noiseModel::Constrained::All(6));
   } else {
     // Equation 8.45 in MR, page 292
     // V(j) - np.dot(jTi.AdjointMap(), V(j-1)) == joint_twist
     return boost::make_shared<gtsam::JacobianFactor>(
-        V(j), Matrix::Identity(6, 6), V(j - 1), -jTi.AdjointMap(), joint_twist,
+        V(j), I_6x6, V(j - 1), -jTi.AdjointMap(), joint_twist,
         noiseModel::Constrained::All(6));
   }
 }
@@ -71,7 +71,7 @@ Link::wrenchFactor(int j, const Vector6 &twist_j, const Pose3 &kTj,
   // Given the above Equation 8.48 can be written as
   // G_j * T(j) - F(j) + jAk * F(j + 1) == coriolis_j [+ gravity]
   return boost::make_shared<gtsam::JacobianFactor>(
-      T(j), G_j, F(j), -Matrix::Identity(6, 6), F(j + 1), jAk, rhs,
+      T(j), G_j, F(j), -I_6x6, F(j + 1), jAk, rhs,
       noiseModel::Constrained::All(6));
 }
 
@@ -89,7 +89,7 @@ GaussianFactorGraph Link::forwardFactors(
   // Given the above Equation 8.47 can be written as
   // T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
   Vector6 rhs = ad_j * A_j * joint_vel_j;
-  factors.add(T(j), Matrix::Identity(6, 6), a(j), -A_j, T(j - 1),
+  factors.add(T(j), I_6x6, a(j), -A_j, T(j - 1),
               -jTi.AdjointMap(), rhs, noiseModel::Constrained::All(6));
 
   // Wrench on this link is due to acceleration and reaction to next link.
@@ -118,7 +118,7 @@ GaussianFactorGraph Link::inverseFactors(
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j *
   // acceleration_j
   Vector6 rhs = ad_j * A_j * joint_vel_j + A_j * acceleration_j;
-  factors.add(T(j), Matrix::Identity(6, 6), T(j - 1), -jTi.AdjointMap(), rhs,
+  factors.add(T(j), I_6x6, T(j - 1), -jTi.AdjointMap(), rhs,
               noiseModel::Constrained::All(6));
 
   // Wrench on this link is due to acceleration and reaction to next link.
@@ -127,7 +127,7 @@ GaussianFactorGraph Link::inverseFactors(
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j), A_j.transpose(), t(j), -Matrix::Identity(1, 1), Vector1(0),
+  factors.add(F(j), A_j.transpose(), t(j), -I_6x6, Vector1(0),
               noiseModel::Constrained::All(1));
 
   return factors;

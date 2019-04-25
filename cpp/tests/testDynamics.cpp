@@ -8,7 +8,7 @@
 #include <DHLink.h>
 #include <MotionPlanner.h>
 #include <PoseFactor.h>
-#include <SerialLink.h>
+#include <Arm.h>
 #include <ToolPoseFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -33,7 +33,7 @@ vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                  Vector3(0, 0, 0), -180, 180, 2),
                          DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                  Vector3(0, 0, 0), -180, 180, 2)};
-auto robot = SerialLink<DH_Link>(dh_rr);
+auto robot = Arm<DH_Link>(dh_rr);
 auto dof = robot.numLinks();
 
 // get robot jTi list at rest

@@ -5,9 +5,9 @@
  */
 #pragma once
 
+#include <Arm.h>
 #include <NonlinearFactors.h>
 #include <OptimizerSetting.h>
-#include <SerialLink.h>
 #include <utils.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -82,13 +82,14 @@ class MotionPlanner {
       Keyword arguments:
           robot -- robotic arm
           pose goal -- pose goal of manipulator end effector
+          q_init -- initial value for joint angles
           cartesian_path (optional) -- cartesian path for end effector to follow
           gravity (optional) -- gravitatianl acceleration
           sdf (optional) -- Signed Distance Field for collision check
    */
   template <typename Type>
   gtsam::NonlinearFactorGraph motionPlanningFactorGraph(
-      SerialLink<Type> &robot, gtsam::Pose3 &pose_goal,
+      Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
       boost::optional<gtsam::Vector3 &> gravity = boost::none,
       boost::optional<SignedDistanceField &> sdf = boost::none) const {
@@ -107,11 +108,14 @@ class MotionPlanner {
 
     NonlinearFactorGraph graph;
 
-    Vector6 base_twist.setZero(), base_acceleration.setZero(),
-        external_wrench.setZero();
+    Vector6 base_twist, base_acceleration, external_wrench;
+    base_twist.setZero();
+    base_acceleration.setZero();
+    external_wrench.setZero();
 
     for (int j = 1; j <= dof; ++j) {
-      graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, opt_.q_cost_model));
+      graph.add(PriorFactor<double>(JointAngleKey(j, 0), q_init[j - 1],
+                                    opt_.q_cost_model));
       graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, opt_.qv_cost_model));
     }
 
@@ -219,13 +223,15 @@ class MotionPlanner {
 
   /** initialization factor graph, return initial values for optimization
       Keyword arguments:
-          robot -- manipulator
+          robot -- robotic arm
           pose goal -- pose goal of manipulator end effector
+          q_init -- initial value for joint angles
+          cartesian_path (optional) -- cartesian path end effector needs to
+     follow
    */
   template <typename Type>
   gtsam::Values factorGraphInitialization(
-      SerialLink<Type> &robot, gtsam::Pose3 &pose_goal,
-      const gtsam::Vector &q_init,
+      Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path =
           boost::none) const {
     using namespace gtsam;
@@ -234,7 +240,7 @@ class MotionPlanner {
 
     int dof = robot.numLinks();
     int total_step = opt_.total_step;
-    Vector start_q = Vector::Zero(dof), end_q = Vector::Zero(dof);
+    Vector start_q = q_init, end_q = Vector::Zero(dof);
     // call inverse kinematics to get joint angles for pose start and goal
     if (cartesian_path) {
       start_q = robot.inverseKinematics(cartesian_path->front(), q_init);

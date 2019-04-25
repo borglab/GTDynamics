@@ -67,7 +67,7 @@ TEST(MotionPlanner, dh_rr) {
               2, 0.15, 0.02, 0.12, 0.02, 50, 5),
       DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0), -180, 180,
               2, 0.15, 0.02, 0.12, 0.02, 50, 5)};
-  auto robot = SerialLink<DH_Link>(dh_rr);
+  auto robot = Arm<DH_Link>(dh_rr);
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Vector6 expected_q = (Vector(2) << 45, 45).finished() * M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
@@ -78,7 +78,7 @@ TEST(MotionPlanner, dh_rr) {
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
   // set Qc_model for GP
-  opt.setQcModel(Matrix::Identity(1, 1));
+  opt.setQcModel(I_6x6);
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);
@@ -131,7 +131,7 @@ TEST(MotionPlanner, dh_puma) {
       DH_Link(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
               Vector3(0.00015, 0.00015, 0.00004), -180, 180, 2, 0.2, 0.02, 0.2,
               0.02, 100, 5)};
-  auto robot = SerialLink<DH_Link>(dh_puma);
+  auto robot = Arm<DH_Link>(dh_puma);
   auto poses = robot.comFrames();
   Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
   Vector6 expected_q =
@@ -144,7 +144,7 @@ TEST(MotionPlanner, dh_puma) {
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
   // set Qc_model for GP
-  opt.setQcModel(Matrix::Identity(1, 1));
+  opt.setQcModel(I_6x6);
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);

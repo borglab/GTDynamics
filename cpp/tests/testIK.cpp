@@ -8,7 +8,7 @@
 #include <DHLink.h>
 #include <MotionPlanner.h>
 #include <PoseFactor.h>
-#include <SerialLink.h>
+#include <Arm.h>
 #include <ToolPoseFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -36,7 +36,7 @@ TEST(IK_factor_graph, optimization) {
                                    Vector3(0, 0, 0), -180, 180, 2),
                            DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                    Vector3(0, 0, 0), -180, 180, 2)};
-  auto robot = SerialLink<DH_Link>(dh_rr);
+  auto robot = Arm<DH_Link>(dh_rr);
   Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
   auto dof = robot.numLinks();
 
@@ -47,7 +47,7 @@ TEST(IK_factor_graph, optimization) {
   // get link COM pose at start
   auto poses = robot.comFrames();
   // get robot screw_axes for all links
-  auto screw_axes = robot.screw_axes();
+  auto screw_axes = robot.screwAxes();
 
   gtsam::noiseModel::Base::shared_ptr bp_cost_model =
                                           noiseModel::Constrained::All(6),
@@ -63,11 +63,12 @@ TEST(IK_factor_graph, optimization) {
 
   for (int j = 1; j <= dof; ++j) {
     // add pose factor
-    graph.add(PoseFactor(PoseKey(j - 1, 0), PoseKey(j, 0), JointAngleKey(j, 0), p_cost_model,
-                         jMi[j - 1], screw_axes[j - 1]));
+    graph.add(PoseFactor(PoseKey(j - 1, 0), PoseKey(j, 0), JointAngleKey(j, 0),
+                         p_cost_model, jMi[j - 1], screw_axes[j - 1]));
   }
   // add tool pose factor (which is the pose goal)
-  graph.add(ToolPoseFactor(PoseKey(dof, 0), tp_cost_model, jMi[dof], pose_goal));
+  graph.add(
+      ToolPoseFactor(PoseKey(dof, 0), tp_cost_model, jMi[dof], pose_goal));
 
   // set initial values for link COM poses
   poses[0] = Pose3(Rot3::Rz(M_PI / 2), Point3(0, 1, 0));
@@ -95,11 +96,12 @@ TEST(IK_factor_graph, optimization) {
   GaussNewtonOptimizer optimizer(graph, init_values);
   optimizer.optimize();
   Values result = optimizer.values();
-  Vector actual_q =
-      (Vector(2) << result.atDouble(JointAngleKey(1, 0)), result.atDouble(JointAngleKey(2, 0)))
-          .finished();
+  Vector2 actual_q;
+  actual_q << result.atDouble(JointAngleKey(1, 0)),
+                     result.atDouble(JointAngleKey(2, 0));
 
-  Vector expected_q = (Vector(2) << M_PI / 2, 0.0).finished();
+  Vector2 expected_q;
+  expected_q << M_PI / 2, 0.0;
   EXPECT(assert_equal(expected_q, actual_q, 1e-6));
 }
 
