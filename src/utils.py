@@ -13,6 +13,7 @@ from math import pi
 
 import numpy as np
 from gtsam import Point3
+from functools import reduce
 
 
 def vector(*floats):
