@@ -71,9 +71,7 @@ TEST(MotionPlanner, rrr_link_square) {
   graph.printErrors(results, "NonlinearFactorGraph: ", MultiRobotKeyFormatter);
 
   /* +++++++++++++++ output for matlab visualization ++++++++++++++++ */
-  string dir =
-      "/home/mandyxie/Dropbox "
-      "\(GaTech)/CS/Research/code/robot_simulator/";
+  string dir = "./";
   saveForVisualization(actual_q_trajectory, pose_goal, dof, dir, boost::none);
   /* +++++++++++++++ output for matlab visualization ++++++++++++++++ */
 #endif
@@ -120,9 +118,7 @@ TEST(MotionPlanner, rrr_link_circle) {
   graph.printErrors(results, "NonlinearFactorGraph: ", MultiRobotKeyFormatter);
 
   /* +++++++++++++++ output for matlab visualization ++++++++++++++++ */
-  string dir =
-      "/home/mandyxie/Dropbox "
-      "\(GaTech)/CS/Research/code/robot_simulator/";
+  string dir = "./";
   saveForVisualization(actual_q_trajectory, pose_goal, dof, dir, boost::none);
   /* +++++++++++++++ output for matlab visualization ++++++++++++++++ */
 #endif
