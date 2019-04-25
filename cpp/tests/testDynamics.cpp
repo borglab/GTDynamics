@@ -4,12 +4,9 @@
  * @Author: Mandy Xie
  */
 
-#include <BasePoseFactor.h>
+#include <Arm.h>
 #include <DHLink.h>
 #include <MotionPlanner.h>
-#include <PoseFactor.h>
-#include <Arm.h>
-#include <ToolPoseFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -39,12 +36,16 @@ auto dof = robot.numLinks();
 // get robot jTi list at rest
 auto jMi = robot.jTi_list(Vector::Zero(dof));
 // get robot screw_axes for all links
-auto screw_axes = robot.screw_axes();
+auto screw_axes = robot.screwAxes();
 
 Pose3 base_pose = Pose3();
-Vector base_twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-Vector base_acceleration = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-Vector external_wrench = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+Vector base_twist = Vector6::Zero(), base_acceleration = Vector6::Zero(),
+       external_wrench = Vector6::Zero();
+       
+// TODO (Mandy): why can not use the following way: 
+// Vector3 gravity;
+// gravity << 0, -9.8, 0;
+// error: ‘gravity’ does not name a type
 Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
 
 // Forward dynamics known torque, calculate joint acceleration
@@ -56,14 +57,11 @@ vector<Pose3> pose = {Pose3(Rot3(), Point3(1, 0, 0)),
                       Pose3(Rot3(), Point3(3, 0, 0))};
 
 // initial values
-Vector start_q = Vector::Zero(dof);
-Vector start_qVel = Vector::Zero(dof);
-Vector start_qAccel = Vector::Zero(dof);
-Vector start_torque = Vector::Zero(dof);
+Vector start_q = Vector::Zero(dof), start_qVel = Vector::Zero(dof),
+       start_qAccel = Vector::Zero(dof), start_torque = Vector::Zero(dof);
 
-Vector twists = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-Vector accels = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-Vector wrenches = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
+       wrenches = Vector6::Zero();
 
 gtsam::noiseModel::Base::shared_ptr
     bv_cost_model = noiseModel::Constrained::All(6),
@@ -85,37 +83,43 @@ gtsam::noiseModel::Base::shared_ptr
 TEST(FD_factor_graph, optimization) {
   NonlinearFactorGraph graph;
   // add base pose factor
-  graph.add(BasePoseFactor(PoseKey(0, 0), example::p_cost_model, example::base_pose));
-  // add base twist factor
   graph.add(
-      BaseTwistFactor(TwistKey(0, 0), example::bv_cost_model, example::base_twist));
+      BasePoseFactor(PoseKey(0, 0), example::p_cost_model, example::base_pose));
+  // add base twist factor
+  graph.add(BaseTwistFactor(TwistKey(0, 0), example::bv_cost_model,
+                            example::base_twist));
   // add base acceleration factor
   graph.add(BaseTwistAccelFactor(TwistAccelKey(0, 0), example::ba_cost_model,
                                  example::base_acceleration));
   for (int j = 1; j <= example::dof; ++j) {
     // add twist factor
-    graph.add(TwistFactor(TwistKey(j - 1, 0), TwistKey(j, 0), JointAngleKey(j, 0), JointVelKey(j, 0),
+    graph.add(TwistFactor(TwistKey(j - 1, 0), TwistKey(j, 0),
+                          JointAngleKey(j, 0), JointVelKey(j, 0),
                           example::v_cost_model, example::jMi[j - 1],
                           example::screw_axes[j - 1]));
     // add twist acceleration factor
-    graph.add(TwistAccelFactor(TwistKey(j, 0), TwistAccelKey(j - 1, 0), TwistAccelKey(j, 0), JointAngleKey(j, 0), JointVelKey(j, 0),
-                               JointAccelKey(j, 0), example::a_cost_model,
-                               example::jMi[j - 1],
+    graph.add(TwistAccelFactor(TwistKey(j, 0), TwistAccelKey(j - 1, 0),
+                               TwistAccelKey(j, 0), JointAngleKey(j, 0),
+                               JointVelKey(j, 0), JointAccelKey(j, 0),
+                               example::a_cost_model, example::jMi[j - 1],
                                example::screw_axes[j - 1]));
     // add wrench factor
     if (j < example::dof) {
-      graph.add(WrenchFactor(TwistKey(j, 0), TwistAccelKey(j, 0), WrenchKey(j, 0), WrenchKey(j + 1, 0), PoseKey(j, 0),
-                             JointAngleKey(j + 1, 0), example::f_cost_model,
-                             example::jMi[j],
+      graph.add(WrenchFactor(TwistKey(j, 0), TwistAccelKey(j, 0),
+                             WrenchKey(j, 0), WrenchKey(j + 1, 0),
+                             PoseKey(j, 0), JointAngleKey(j + 1, 0),
+                             example::f_cost_model, example::jMi[j],
                              example::robot.link(j - 1).inertiaMatrix(),
                              example::screw_axes[j], example::gravity));
     }
     // add torque factor
-    graph.add(TorqueFactor(WrenchKey(j, 0), TorqueKey(j, 0), example::t_cost_model,
-                           example::screw_axes[j - 1]));
+    graph.add(TorqueFactor(WrenchKey(j, 0), TorqueKey(j, 0),
+                           example::t_cost_model, example::screw_axes[j - 1]));
 
-    graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, example::q_cost_model));
-    graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, example::qv_cost_model));
+    graph.add(
+        PriorFactor<double>(JointAngleKey(j, 0), 0, example::q_cost_model));
+    graph.add(
+        PriorFactor<double>(JointVelKey(j, 0), 0, example::qv_cost_model));
     graph.add(PriorFactor<double>(TorqueKey(j, 0), example::known_torque[j - 1],
                                   example::t_cost_model));
     graph.add(PriorFactor<Pose3>(PoseKey(j, 0), example::pose[j - 1],
@@ -123,8 +127,9 @@ TEST(FD_factor_graph, optimization) {
   }
   // add tool wrench factor
   graph.add(ToolWrenchFactor(
-      TwistKey(example::dof, 0), TwistAccelKey(example::dof, 0), WrenchKey(example::dof, 0),
-      PoseKey(example::dof, 0), example::tf_cost_model, example::jMi[example::dof],
+      TwistKey(example::dof, 0), TwistAccelKey(example::dof, 0),
+      WrenchKey(example::dof, 0), PoseKey(example::dof, 0),
+      example::tf_cost_model, example::jMi[example::dof],
       example::robot.link(example::dof - 1).inertiaMatrix(),
       example::external_wrench, example::gravity));
 
@@ -165,46 +170,54 @@ TEST(FD_factor_graph, optimization) {
 TEST(ID_factor_graph, optimization) {
   NonlinearFactorGraph graph;
   // add base pose factor
-  graph.add(BasePoseFactor(PoseKey(0, 0), example::p_cost_model, example::base_pose));
-  // add base twist factor
   graph.add(
-      BaseTwistFactor(TwistKey(0, 0), example::bv_cost_model, example::base_twist));
+      BasePoseFactor(PoseKey(0, 0), example::p_cost_model, example::base_pose));
+  // add base twist factor
+  graph.add(BaseTwistFactor(TwistKey(0, 0), example::bv_cost_model,
+                            example::base_twist));
   // add base acceleration factor
   graph.add(BaseTwistAccelFactor(TwistAccelKey(0, 0), example::ba_cost_model,
                                  example::base_acceleration));
   for (int j = 1; j <= example::dof; ++j) {
     // add twist factor
-    graph.add(TwistFactor(TwistKey(j - 1, 0), TwistKey(j, 0), JointAngleKey(j, 0), JointVelKey(j, 0),
+    graph.add(TwistFactor(TwistKey(j - 1, 0), TwistKey(j, 0),
+                          JointAngleKey(j, 0), JointVelKey(j, 0),
                           example::v_cost_model, example::jMi[j - 1],
                           example::screw_axes[j - 1]));
     // add twist acceleration factor
-    graph.add(TwistAccelFactor(TwistKey(j, 0), TwistAccelKey(j - 1, 0), TwistAccelKey(j, 0), JointAngleKey(j, 0), JointVelKey(j, 0),
-                               JointAccelKey(j, 0), example::a_cost_model,
-                               example::jMi[j - 1],
+    graph.add(TwistAccelFactor(TwistKey(j, 0), TwistAccelKey(j - 1, 0),
+                               TwistAccelKey(j, 0), JointAngleKey(j, 0),
+                               JointVelKey(j, 0), JointAccelKey(j, 0),
+                               example::a_cost_model, example::jMi[j - 1],
                                example::screw_axes[j - 1]));
     // add wrench factor
     if (j < example::dof) {
-      graph.add(WrenchFactor(TwistKey(j, 0), TwistAccelKey(j, 0), WrenchKey(j, 0), WrenchKey(j + 1, 0), PoseKey(j, 0),
-                             JointAngleKey(j + 1, 0), example::f_cost_model,
-                             example::jMi[j],
+      graph.add(WrenchFactor(TwistKey(j, 0), TwistAccelKey(j, 0),
+                             WrenchKey(j, 0), WrenchKey(j + 1, 0),
+                             PoseKey(j, 0), JointAngleKey(j + 1, 0),
+                             example::f_cost_model, example::jMi[j],
                              example::robot.link(j - 1).inertiaMatrix(),
                              example::screw_axes[j], example::gravity));
     }
     // add torque factor
-    graph.add(TorqueFactor(WrenchKey(j, 0), TorqueKey(j, 0), example::t_cost_model,
-                           example::screw_axes[j - 1]));
+    graph.add(TorqueFactor(WrenchKey(j, 0), TorqueKey(j, 0),
+                           example::t_cost_model, example::screw_axes[j - 1]));
 
-    graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, example::q_cost_model));
-    graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, example::qv_cost_model));
-    graph.add(PriorFactor<double>(JointAccelKey(j, 0), example::known_qAccel[j - 1],
+    graph.add(
+        PriorFactor<double>(JointAngleKey(j, 0), 0, example::q_cost_model));
+    graph.add(
+        PriorFactor<double>(JointVelKey(j, 0), 0, example::qv_cost_model));
+    graph.add(PriorFactor<double>(JointAccelKey(j, 0),
+                                  example::known_qAccel[j - 1],
                                   example::qa_cost_model));
     graph.add(PriorFactor<Pose3>(PoseKey(j, 0), example::pose[j - 1],
                                  example::p_cost_model));
   }
   // add tool wrench factor
   graph.add(ToolWrenchFactor(
-      TwistKey(example::dof, 0), TwistAccelKey(example::dof, 0), WrenchKey(example::dof, 0),
-      PoseKey(example::dof, 0), example::tf_cost_model, example::jMi[example::dof],
+      TwistKey(example::dof, 0), TwistAccelKey(example::dof, 0),
+      WrenchKey(example::dof, 0), PoseKey(example::dof, 0),
+      example::tf_cost_model, example::jMi[example::dof],
       example::robot.link(example::dof - 1).inertiaMatrix(),
       example::external_wrench, example::gravity));
 
