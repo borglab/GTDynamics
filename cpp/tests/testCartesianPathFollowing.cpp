@@ -39,7 +39,7 @@ TEST(MotionPlanner, rrr_link_square) {
   // motion planning optimization settings
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
-  opt.setQcModel(1000 * I_6x6);
+  opt.setQcModel(1000 * I_1x1);
   opt.setJointLimitCostModel(0.001);
   opt.setToolPoseCostModel(0.0001);
   opt.setObstacleCostModel(0.01);
@@ -53,7 +53,8 @@ TEST(MotionPlanner, rrr_link_square) {
 
   MotionPlanner mp(opt);
   auto dof = robot.numLinks();
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 gravity;
+  gravity << 0, -9.8, 0;
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
   auto graph = mp.motionPlanningFactorGraph(
@@ -87,7 +88,7 @@ TEST(MotionPlanner, rrr_link_circle) {
   // motion planning optimization settings
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
-  opt.setQcModel(1000 * I_6x6);
+  opt.setQcModel(1000 * I_1x1);
   opt.setJointLimitCostModel(0.001);
   opt.setToolPoseCostModel(0.0001);
   opt.setObstacleCostModel(0.01);
@@ -101,7 +102,8 @@ TEST(MotionPlanner, rrr_link_circle) {
 
   MotionPlanner mp(opt);
   auto dof = robot.numLinks();
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 gravity;
+  gravity << 0, -9.8, 0;
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
   auto graph = mp.motionPlanningFactorGraph(

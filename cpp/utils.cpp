@@ -110,4 +110,39 @@ void saveForVisualization(
   }
 }
 
+vector<Pose3> circle(int numOfWayPoints, double goalAngle, double radius) {
+  double angle_step = goalAngle / (numOfWayPoints - 1);
+  double angle = 0.0;
+  vector<Pose3> path;
+  Pose3 waypose;
+  for (int i = 0; i < numOfWayPoints; ++i) {
+    angle = angle_step * i;
+    waypose = Pose3(Rot3::Rz(angle),
+                    Point3(radius * cos(angle), radius * sin(angle), 0));
+    path.push_back(waypose);
+  }
+  return path;
+}
+
+vector<Pose3> square(int numOfWayPoints, double goalAngle, double length) {
+  double angle_step = goalAngle / (numOfWayPoints - 1);
+  double angle = 0.0;
+  vector<Pose3> path;
+  Pose3 waypose;
+  double x = 0.0, y = 0.0;
+  for (int i = 0; i < numOfWayPoints; ++i) {
+    angle = angle_step * i;
+    if (i <= 0.5 * numOfWayPoints) {
+      x = length;
+      y = x * tan(angle);
+    } else {
+      y = length;
+      x = y / tan(angle);
+    }
+    waypose = Pose3(Rot3::Rz(angle), Point3(x, y, 0));
+    path.push_back(waypose);
+  }
+  return path;
+}
+
 }  // namespace manipulator
