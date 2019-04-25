@@ -4,11 +4,11 @@
  * @Author: Mandy Xie
  */
 
+#include <Arm.h>
 #include <BasePoseFactor.h>
 #include <DHLink.h>
 #include <MotionPlanner.h>
 #include <PoseFactor.h>
-#include <Arm.h>
 #include <ToolPoseFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -98,7 +98,7 @@ TEST(IK_factor_graph, optimization) {
   Values result = optimizer.values();
   Vector2 actual_q;
   actual_q << result.atDouble(JointAngleKey(1, 0)),
-                     result.atDouble(JointAngleKey(2, 0));
+      result.atDouble(JointAngleKey(2, 0));
 
   Vector2 expected_q;
   expected_q << M_PI / 2, 0.0;

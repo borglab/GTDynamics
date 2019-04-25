@@ -71,7 +71,7 @@ TEST(MotionPlanner, dh_rr) {
   Vector3 gravity;
   gravity << 0, -9.8, 0;
   Vector2 expected_q;
-  expected_q << 45 , 45;
+  expected_q << 45, 45;
   expected_q *= M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
   Pose3 pose_goal(expected_T);

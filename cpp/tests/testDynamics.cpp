@@ -41,8 +41,8 @@ auto screw_axes = robot.screwAxes();
 Pose3 base_pose = Pose3();
 Vector base_twist = Vector6::Zero(), base_acceleration = Vector6::Zero(),
        external_wrench = Vector6::Zero();
-       
-// TODO (Mandy): why can not use the following way: 
+
+// TODO (Mandy): why can not use the following way:
 // Vector3 gravity;
 // gravity << 0, -9.8, 0;
 // error: ‘gravity’ does not name a type

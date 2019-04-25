@@ -193,7 +193,7 @@ class MotionPlanner {
           if (length > 0) {
             int num = std::min((int)(length / opt_.radius), 1);
             auto obs_cost_model =
-                noiseModel::Isotropic::Sigma(num, opt_.obs_sigma);
+                noiseModel::Isotropic::Sigma(num, opt_.obsSigma);
             auto sphere_centers = sphereCenters(length, opt_.radius, num);
             graph.add(ObstacleSDFFactor(PoseKey(j, i), obs_cost_model,
                                         opt_.epsilon, *sdf, opt_.radius,
