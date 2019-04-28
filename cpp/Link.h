@@ -40,7 +40,7 @@ class Link {
  private:
   double mass_;
   gtsam::Pose3 centerOfMass_;
-  gtsam::Vector3 inertia_;
+  gtsam::Matrix3 inertia_;
   gtsam::Vector6 screwAxis_;
   double jointLowerLimit_;
   double jointUpperLimit_;
@@ -56,11 +56,13 @@ class Link {
   /**
    * Construct from joint_type, mass, center_of_mass, and inertia
    * Keyword arguments:
-      joint_type (char)       -- 'R': revolute,  'P' prismatic
-      mass (double)            -- mass of link
-      center_of_mass (gtsam::Pose3) -- center of mass location expressed in link
-      frame inertia (gtsam::Vector) -- principal inertias
-      screw_axis -- joint axis expressed in COM frame
+      joint_type              -- 'R': revolute,
+                                 'P': prismatic
+      mass                    -- mass of link
+      center_of_mass          -- center of mass location expressed
+                                 in link frame
+      inertia                 -- inertia matrix
+      screw_axis              -- joint axis expressed in COM frame
       joint_lower_limit       -- joint angle lower limit
       joint_upper_limit       -- joint angle upper limit
       joint_limit_threshold   -- joint angle limit threshold
@@ -73,7 +75,7 @@ class Link {
     * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
-       const gtsam::Vector3 &inertia, const gtsam::Vector6 &screwAxis,
+       const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -97,11 +99,12 @@ class Link {
   /**
    * Construct from joint_type, mass, center_of_mass, and inertia
    * Keyword arguments:
-   * joint_type (char)              -- 'R': revolute,  'P' prismatic
-   * mass (double)                  -- mass of link
-   * center_of_mass (gtsam::Point3) -- center of mass location expressed in
-   *                                   link frame
-   * inertia (gtsam::Vector)        -- principal inertias
+   * joint_type                     -- 'R': revolute,
+   *                                   'P': prismatic
+   * mass                           -- mass of link
+   * center_of_mass                 -- center of mass location expressed
+   *                                   in link frame
+   * inertia                        -- principal inertias
    * screw_axis                     -- joint axis expressed in COM frame
    * joint_lower_limit              -- joint angle lower limit
    * joint_upper_limit              -- joint angle upper limit
@@ -115,7 +118,7 @@ class Link {
    * Note: joint angle limits are given in radians.
    */
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
-       const gtsam::Vector3 &inertia, const gtsam::Vector6 &screwAxis,
+       const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -163,12 +166,12 @@ class Link {
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
   /* Return inertia. */
-  const gtsam::Vector3 &inertia() const { return inertia_; }
+  const gtsam::Matrix3 &inertia() const { return inertia_; }
 
   /* Return general mass gtsam::Matrix */
   gtsam::Matrix6 inertiaMatrix() const {
     std::vector<gtsam::Matrix> gmm;
-    gmm.push_back(inertia_.asDiagonal());
+    gmm.push_back(inertia_);
     gmm.push_back(gtsam::I_3x3 * mass_);
     return gtsam::diag(gmm);
   }
@@ -235,8 +238,8 @@ class Link {
           jTi -- previous COM frame, expressed in this link's COM frame
           joint_vel_j -- joint velocity for this link
    */
-  boost::shared_ptr<gtsam::JacobianFactor> twistFactor(int j, const gtsam::Pose3 &jTi,
-                                    double joint_vel_j) const;
+  boost::shared_ptr<gtsam::JacobianFactor> twistFactor(
+      int j, const gtsam::Pose3 &jTi, double joint_vel_j) const;
 
   /** Create wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:

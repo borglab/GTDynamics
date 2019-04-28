@@ -28,17 +28,17 @@ class DH_Link : public Link {
   /**
   * Construct from joint_type, mass, center_of_mass, inertia, and joint limits
   * Keyword arguments:
-     d (m)                   -- link offset, i.e., distance between two joints
-     theta (degrees)         -- angle between two joint frame x-axes (theta)
-     a (m)                   -- link length. i.e., distance between two joints
-     alpha (degrees)         -- link twist, i.e., angle between joint axes
-     joint_type (char)       -- 'R': revolute,  'P' prismatic
-     mass (double)            -- mass of link
-     center_of_mass (Point3) -- center of mass location expressed in link frame
-     inertia (vector)        -- principal inertias
-     joint_lower_limit (degrees)       -- joint angle lower limit
-     joint_upper_limit (degrees)       -- joint angle upper limit
-     joint_limit_threshold (degrees)   -- joint angle limit threshold
+     d                   -- link offset, i.e., distance between two joints
+     theta         -- angle between two joint frame x-axes (theta)
+     a                    -- link length. i.e., distance between two joints
+     alpha          -- link twist, i.e., angle between joint axes
+     joint_type        -- 'R': revolute,  'P' prismatic
+     mass            -- mass of link
+     center_of_mass  -- center of mass location expressed in link frame
+     inertia         -- inertia matrix
+     joint_lower_limit        -- joint angle lower limit
+     joint_upper_limit        -- joint angle upper limit
+     joint_limit_threshold   -- joint angle limit threshold
      accelerationLimit -- joint acceleration limit
      accelerationLimitThreshold -- acceleration limit threshold
      torqueLimit -- joint torque limit
@@ -47,7 +47,7 @@ class DH_Link : public Link {
   */
   DH_Link(double theta, double d, double a, double alpha, char joint_type,
           double mass, const gtsam::Point3 &center_of_mass,
-          const gtsam::Vector3 &inertia, double joint_lower_limit = -180,
+          const gtsam::Matrix3 &inertia, double joint_lower_limit = -180,
           double joint_upper_limit = 180, double joint_limit_threshold = 0.0,
           double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
           double acceleration_limit = 10000,
