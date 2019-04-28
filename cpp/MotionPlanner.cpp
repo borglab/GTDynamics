@@ -17,16 +17,13 @@ Values MotionPlanner::factorGraphOptimization(NonlinearFactorGraph &graph,
 
   // set parameters for optimizer
   if (opt_.opt_type == OptimizerSetting::GaussNewton) {
-    parameters = std::shared_ptr<gtsam::NonlinearOptimizerParams>(
-        new GaussNewtonParams());
+    parameters = std::make_shared<gtsam::GaussNewtonParams>();
   } else if (opt_.opt_type == OptimizerSetting::LM) {
-    parameters = std::shared_ptr<gtsam::NonlinearOptimizerParams>(
-        new LevenbergMarquardtParams());
+    parameters = std::make_shared<gtsam::LevenbergMarquardtParams>();
     dynamic_cast<LevenbergMarquardtParams *>(parameters.get())
         ->setlambdaInitial(1e-2);
   } else if (opt_.opt_type == OptimizerSetting::Dogleg) {
-    parameters =
-        std::shared_ptr<gtsam::NonlinearOptimizerParams>(new DoglegParams());
+    parameters = std::make_shared<gtsam::DoglegParams>();
   }
 
   // common settings for parameters
@@ -37,18 +34,16 @@ Values MotionPlanner::factorGraphOptimization(NonlinearFactorGraph &graph,
   }
 
   if (opt_.opt_type == OptimizerSetting::GaussNewton) {
-    optimizer =
-        std::shared_ptr<gtsam::NonlinearOptimizer>(new GaussNewtonOptimizer(
-            graph, init_values,
-            *(dynamic_cast<GaussNewtonParams *>(parameters.get()))));
+    optimizer = std::make_shared<gtsam::GaussNewtonOptimizer>(
+        graph, init_values,
+        *(dynamic_cast<GaussNewtonParams *>(parameters.get())));
   } else if (opt_.opt_type == OptimizerSetting::LM) {
-    optimizer = std::shared_ptr<gtsam::NonlinearOptimizer>(
-        new LevenbergMarquardtOptimizer(
-            graph, init_values,
-            *(dynamic_cast<LevenbergMarquardtParams *>(parameters.get()))));
+    optimizer = std::make_shared<gtsam::LevenbergMarquardtOptimizer>(
+        graph, init_values,
+        *(dynamic_cast<LevenbergMarquardtParams *>(parameters.get())));
   } else if (opt_.opt_type == OptimizerSetting::Dogleg) {
-    optimizer = std::shared_ptr<gtsam::NonlinearOptimizer>(new DoglegOptimizer(
-        graph, init_values, *(dynamic_cast<DoglegParams *>(parameters.get()))));
+    optimizer = std::make_shared<gtsam::DoglegOptimizer>(
+        graph, init_values, *(dynamic_cast<DoglegParams *>(parameters.get())));
   }
   optimizer->optimize();
   return optimizer->values();
@@ -57,9 +52,9 @@ Values MotionPlanner::factorGraphOptimization(NonlinearFactorGraph &graph,
 vector<Vector> MotionPlanner::extractTrajectoryQ(Values &results,
                                                  int dof) const {
   vector<Vector> q_trajectory;
-  Vector joint_coordinates = Vector::Zero(dof);
 
   for (int i = 0; i < opt_.total_step; ++i) {
+    Vector joint_coordinates(dof);
     for (int j = 1; j <= dof; ++j) {
       joint_coordinates[j - 1] = results.atDouble(JointAngleKey(j, i));
     }
@@ -71,9 +66,9 @@ vector<Vector> MotionPlanner::extractTrajectoryQ(Values &results,
 vector<Vector> MotionPlanner::extractTrajectoryTorque(Values &results,
                                                       int dof) const {
   vector<Vector> torque_trajectory;
-  Vector torque = Vector::Zero(dof);
 
   for (int i = 0; i < opt_.total_step; ++i) {
+    Vector torque(dof);
     for (int j = 1; j <= dof; ++j) {
       torque[j - 1] = results.atDouble(TorqueKey(j, i));
     }

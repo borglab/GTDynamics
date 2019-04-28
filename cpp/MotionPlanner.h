@@ -6,7 +6,20 @@
 #pragma once
 
 #include <Arm.h>
-#include <NonlinearFactors.h>
+#include <PoseFactor.h>
+#include <BasePoseFactor.h>
+#include <ToolPoseFactor.h>
+#include <ToolWrenchFactor.h>
+#include <TorqueFactor.h>
+#include <WrenchFactor.h>
+#include <TwistAccelFactor.h>
+#include <TwistFactor.h>
+#include <BaseTwistFactor.h>
+#include <BaseTwistAccelFactor.h>
+#include <JointLimitFactor.h>
+#include <GaussianProcessPriorFactor.h>
+#include <GaussianProcessPriorPose3Factor.h>
+#include <ObstacleSDFFactor.h>
 #include <OptimizerSetting.h>
 #include <utils.h>
 
@@ -79,6 +92,7 @@ class MotionPlanner {
   ~MotionPlanner() {}
 
   /** return nonlinear factor graph of all factors
+   *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
           robot -- robotic arm
           pose goal -- pose goal of manipulator end effector
@@ -222,6 +236,7 @@ class MotionPlanner {
   }
 
   /** initialization factor graph, return initial values for optimization
+   *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
           robot -- robotic arm
           pose goal -- pose goal of manipulator end effector

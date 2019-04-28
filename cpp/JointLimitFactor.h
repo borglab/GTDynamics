@@ -60,13 +60,13 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
       const double &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
     if (q < lower_limit_ + limit_threshold_) {
-      if (H_q) *H_q = (gtsam::Matrix(1, 1) << -1.0).finished();
+      if (H_q) *H_q = - gtsam::I_1x1;
       return gtsam::Vector1(lower_limit_ + limit_threshold_ - q);
     } else if (q <= upper_limit_ - limit_threshold_) {
-      if (H_q) *H_q = (gtsam::Matrix(1, 1) << 0.0).finished();
+      if (H_q) *H_q = gtsam::Z_1x1;
       return gtsam::Vector1(0.0);
     } else {
-      if (H_q) *H_q = (gtsam::Matrix(1, 1) << 1.0).finished();
+      if (H_q) *H_q = gtsam::I_1x1;
       return gtsam::Vector1(q - upper_limit_ + limit_threshold_);
     }
   }
