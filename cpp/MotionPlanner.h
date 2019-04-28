@@ -143,30 +143,9 @@ class MotionPlanner {
       graph.add(BaseTwistAccelFactor(TwistAccelKey(0, i), opt_.ba_cost_model,
                                      base_acceleration));
       for (int j = 1; j <= dof; ++j) {
-        // add joint angle limit factors
-        graph.add(JointLimitFactor(JointAngleKey(j, i), opt_.jl_cost_model,
-                                   robot.link(j - 1).jointLowerLimit(),
-                                   robot.link(j - 1).jointUpperLimit(),
-                                   robot.link(j - 1).jointLimitThreshold()));
+        // add joint limit factors
+        graph.push_back(robot.jointLimitFactors(opt_.jl_cost_model, i));
 
-        // add joint velocity limit factors
-        graph.add(JointLimitFactor(JointVelKey(j, i), opt_.jl_cost_model,
-                                   -robot.link(j - 1).velocityLimit(),
-                                   robot.link(j - 1).velocityLimit(),
-                                   robot.link(j - 1).velocityLimitThreshold()));
-
-        // add joint acceleration limit factors
-        graph.add(
-            JointLimitFactor(JointAccelKey(j, i), opt_.jl_cost_model,
-                             -robot.link(j - 1).accelerationLimit(),
-                             robot.link(j - 1).accelerationLimit(),
-                             robot.link(j - 1).accelerationLimitThreshold()));
-
-        // add joint torque limit factors
-        graph.add(JointLimitFactor(TorqueKey(j, i), opt_.jl_cost_model,
-                                   -robot.link(j - 1).torqueLimit(),
-                                   robot.link(j - 1).torqueLimit(),
-                                   robot.link(j - 1).torqueLimitThreshold()));
         // add pose factor
         graph.add(PoseFactor(PoseKey(j - 1, i), PoseKey(j, i),
                              JointAngleKey(j, i), opt_.p_cost_model, jMi[j - 1],
