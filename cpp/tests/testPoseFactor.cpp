@@ -27,7 +27,7 @@ using namespace manipulator;
 namespace example {
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(Matrix::Identity(6, 6));
+    noiseModel::Gaussian::Covariance(I_6x6);
 Key pose_i_key = Symbol('p', 1), pose_j_key = Symbol('p', 2),
     qKey = Symbol('q', 0);
 }  // namespace example

@@ -228,10 +228,18 @@ class Arm {
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  /** joint limit factors
+  /** joint limit vector factors
    * Returns joint limit factors.
    */
   JointLimitVectorFactor jointLimitVectorFactor() const;
+
+  /** joint limit factor
+   * Returns joint limit factors.
+   * Keyword arguments:
+          cost_model -- noise model
+          i -- timestep index
+   */
+  gtsam::NonlinearFactorGraph jointLimitFactors(const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
 
   /** pose goal factor
    * Return pose goal factor

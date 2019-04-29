@@ -29,7 +29,7 @@ DH_Link dh_r = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Vector3(0, 0, 0),
                        -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(Matrix::Identity(6, 6));
+    noiseModel::Gaussian::Covariance(I_6x6);
 Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
     wrench_j_key = Symbol('W', 1), wrench_k_key = Symbol('W', 2),
     qKey = Symbol('q', 1), pKey = Symbol('p', 1);

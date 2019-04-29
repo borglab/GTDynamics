@@ -42,7 +42,7 @@ TEST(utils, calcPhi) {
  */
 TEST(utils, calcQ) {
   double t = 0.1;
-  Matrix Qc = Matrix::Identity(1, 1);
+  Matrix Qc = I_6x6;
   Matrix expected_Q =
       (Matrix(3 * Qc.rows(), 3 * Qc.rows()) << 1.0 / 20 * pow(t, 5.0) * Qc,
        1.0 / 8 * pow(t, 4.0) * Qc, 1.0 / 6 * pow(t, 3.0) * Qc,

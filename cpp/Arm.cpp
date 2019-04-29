@@ -8,6 +8,9 @@
 #include <DHLink.h>
 #include <URDFLink.h>
 
+#include <gtsam/inference/LabeledSymbol.h>
+#include <JointLimitFactor.h>
+
 using namespace std;
 using namespace gtsam;
 
@@ -352,6 +355,38 @@ JointLimitVectorFactor Arm<T>::jointLimitVectorFactor() const {
       noiseModel::Isotropic::Sigma(numLinks(), 1.0);
   return JointLimitVectorFactor(J(0), cost_model, jointLowerLimits(),
                                 jointUpperLimits(), jointLimitThresholds());
+}
+
+template <typename T>
+NonlinearFactorGraph Arm<T>::jointLimitFactors(
+    const noiseModel::Base::shared_ptr &cost_model, int i) const {
+  NonlinearFactorGraph graph;
+  for (int j = 1; j < numLinks(); ++j) {
+    // add joint angle limit factors
+    graph.add(JointLimitFactor(LabeledSymbol('q', j, i), cost_model,
+                               link(j - 1).jointLowerLimit(),
+                               link(j - 1).jointUpperLimit(),
+                               link(j - 1).jointLimitThreshold()));
+
+    // add joint velocity limit factors
+    graph.add(JointLimitFactor(LabeledSymbol('v', j, i), cost_model,
+                               -link(j - 1).velocityLimit(),
+                               link(j - 1).velocityLimit(),
+                               link(j - 1).velocityLimitThreshold()));
+
+    // add joint acceleration limit factors
+    graph.add(JointLimitFactor(LabeledSymbol('a', j, i), cost_model,
+                               -link(j - 1).accelerationLimit(),
+                               link(j - 1).accelerationLimit(),
+                               link(j - 1).accelerationLimitThreshold()));
+
+    // add joint torque limit factors
+    graph.add(JointLimitFactor(LabeledSymbol('T', j, i), cost_model,
+                               -link(j - 1).torqueLimit(),
+                               link(j - 1).torqueLimit(),
+                               link(j - 1).torqueLimitThreshold()));
+  }
+  return graph;
 }
 
 template <typename T>

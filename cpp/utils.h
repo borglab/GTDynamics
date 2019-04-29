@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <SignedDistanceField.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
@@ -16,7 +18,6 @@
 #include <cmath>
 #include <string>
 #include <vector>
-
 
 namespace manipulator {
 
@@ -74,5 +75,58 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
           1.0 / 2 * pow(tau, 2.0) * Qc, tau * Qc)
       .finished();
 }
+
+/** initial trajectory for q is a straight line
+ * Keyword argument:
+        i           -- the ith time step
+        totol_step  -- total time steps
+        start_q     -- start value of variable q
+        end_q       -- end value of variable q
+*/
+gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
+                           gtsam::Vector &end_q);
+
+/** calculate center of spheres used to represent this link for collision
+ * check
+ * Key arguments:
+ *  length   -- length of the link
+ *  radius   -- sphere radius
+ *  num      -- number of spheres
+ * return sphere centers expressed in link COM frame
+ */
+std::vector<gtsam::Point3> sphereCenters(double length, double radius, int num);
+
+// save for visualization
+/** save optimization result for simulation
+ *  Keyword argument:
+ *    jointAngle  -- joint angle trajectory
+ *    goalPose             -- goal pose
+ *    sdf   -- obstacle signed distance field, optional
+ *    dof                   -- degree of freedom
+      dir                 -- directory
+ field
+*/
+void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
+                          gtsam::Pose3 &goalPose,
+                          int dof, std::string &dir,
+                          boost::optional<manipulator::SignedDistanceField &> sdf = boost::none);
+
+/** generation circular path
+ *  Keyword argument:
+      numOfWayPoints   -- total number of waypoints in cartesian path
+      goalAngle     -- goal angle, assuming start at 0 joint angle
+      radius        -- radius of circular
+*/
+std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
+                                 double radius);
+
+/** generation square path
+ *  Keyword argument:
+      numOfWayPoints   -- total number of waypoints in cartesian path
+      goalAngle     -- goal angle, assuming start at 0 joint angle
+      length        -- length of square
+*/
+std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
+                                 double length);
 
 }  // namespace manipulator

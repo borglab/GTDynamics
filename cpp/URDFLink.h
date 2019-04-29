@@ -92,6 +92,6 @@ class URDF_Link : public Link {
     }
   }
 
-  double linkLength() { return origin_.x(); }
+  double length() const { return origin_.x(); }
 };
 }  // namespace manipulator
