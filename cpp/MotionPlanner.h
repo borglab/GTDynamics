@@ -242,6 +242,7 @@ class MotionPlanner {
     } else {
       end_q = robot.inverseKinematics(pose_goal, q_init);
     }
+    std::cout << "end_q = " << end_q*180/M_PI << std::endl;
 
     Vector start_qVel = Vector::Zero(dof);
     Vector end_qVel = 2 * (end_q - start_q) / opt_.total_time;
