@@ -12,8 +12,10 @@ import math
 import unittest
 
 import numpy as np
-from link_parameters import PUMA_calibration_dh, RR_calibration_dh, RR_calibration_urdf
 from gtsam import Point3, Pose3, Rot3
+
+from link_parameters import (PUMA_calibration_dh, RR_calibration_dh,
+                             RR_calibration_urdf)
 from serial_link import SerialLink
 from utils import GtsamTestCase, unit_twist, vector
 
@@ -250,7 +252,7 @@ class TestURDF_RR(BaseTestCase):
         self.check_forward_dynamics(**scenario)
         self.check_inverse_dynamics(**scenario)
 
-    def test_forward_dynamics_gravity(self):
+    def test_dynamics_gravity(self):
         """Test gravity compensation case: assume Y-axis is up."""
         # Acceleration due to gravity = -9.8, in negative Y direction
         scenario = {"torques": vector(0, 0),
