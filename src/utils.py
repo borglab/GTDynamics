@@ -6,12 +6,14 @@ Author: Frank Dellaert
 # pylint: disable=C0103, E1101, E0401
 
 from __future__ import print_function
-from math import pi
 
 import unittest
+from functools import reduce
+from math import pi
 
 import numpy as np
 from gtsam import Point3
+from functools import reduce
 
 
 def vector(*floats):
