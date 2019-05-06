@@ -85,3 +85,4 @@ while vrep.simxGetConnectionId(clientID) != -1 and not_end:
     vrep.simxSynchronousTrigger(clientID)
     # finish simulation
     vrep.simxGetPingTime(clientID)
+    time.sleep(0.1)
