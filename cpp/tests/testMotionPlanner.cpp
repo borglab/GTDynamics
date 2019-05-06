@@ -230,7 +230,7 @@ TEST(MotionPlanner, urdf_kuka) {
   Vector3 gravity;
   gravity << 0, 0, -9.8;
   Vector7 expected_q;
-  expected_q << -60, 20, -60, -55, 90, -70, 60;
+  expected_q << -120, 40, -60, -55, 150, -70, 90;
   expected_q *= M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
   Pose3 pose_goal(expected_T);

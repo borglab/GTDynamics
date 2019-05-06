@@ -84,11 +84,9 @@ class URDF_Link : public Link {
   Return Link transform.
   */
   gtsam::Pose3 A(double q = 0) const override {
-    if (q < -M_PI) q += 2*M_PI;
-    if (q > M_PI) q -= 2*M_PI;
     if (jointType_ == 'R') {
       return origin_ *
-             gtsam::Pose3(gtsam::Rot3::AxisAngle(axis_, q), gtsam::Point3());
+             gtsam::Pose3(gtsam::Rot3::Rodrigues(axis_ * q), gtsam::Point3());
     } else {
       return origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * q);
     }
