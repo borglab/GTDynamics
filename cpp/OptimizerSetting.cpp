@@ -24,7 +24,7 @@ OptimizerSetting::OptimizerSetting()
       q_cost_model(noiseModel::Isotropic::Sigma(1, 0.001)),
       qv_cost_model(noiseModel::Isotropic::Sigma(1, 0.001)),
       qa_cost_model(noiseModel::Isotropic::Sigma(1, 0.001)),
-      tf_cost_model(noiseModel::Isotropic::Sigma(6, 0.00001)),
+      tf_cost_model(noiseModel::Isotropic::Sigma(6, 0.001)),
       opt_type(LM),
       opt_verbosity(None),
       rel_thresh(1e-2),
