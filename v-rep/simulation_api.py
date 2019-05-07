@@ -13,6 +13,7 @@ time_step = 0.005  # simulation timestep
 joint_num = 7
 base_name = 'LBR_iiwa_7_R800'
 joint_name = 'LBR_iiwa_7_R800_joint'
+obstacle_name = 'diningTable'
 
 # Initialization
 # close previous connection
@@ -49,6 +50,15 @@ joint_config = np.zeros((joint_num,))
 for i in range(joint_num):
     _, joint_position = vrep.simxGetJointPosition(clientID, joint_handle[i], vrep.simx_opmode_streaming)
     joint_config[i] = joint_position
+
+# obtain table handles
+_, table_handle = vrep.simxGetObjectHandle(clientID, obstacle_name, vrep.simx_opmode_blocking)
+# get table position relative to the robot
+_, table_position = vrep.simxGetObjectPosition(clientID, table_handle, base_handle, vrep.simx_opmode_streaming)
+# set table position relative to the robot
+table_position[1] = table_position[1] + 1
+table_position[2] = table_position[2] + 0.3
+vrep.simxSetObjectPosition(clientID, table_handle, base_handle, table_position, vrep.simx_opmode_oneshot)
 
 # open files for joint trajectories
 file_object = [open("./test_data/joint_angles/q" + str(i+1) + ".txt", "r") for i in range(joint_num)]
