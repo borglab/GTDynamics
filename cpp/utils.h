@@ -129,4 +129,10 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
 
+
+/** read a variable from a text file, and save to vector of matrix
+ *  this is used for sdf
+ * 
+ */
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir, gtsam::Point3 &origin, double &cell_size);
 }  // namespace manipulator
