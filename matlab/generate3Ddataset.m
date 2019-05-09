@@ -71,10 +71,10 @@ elseif strcmp(dataset_str, 'KUKADeskDataset')
     % params
     dataset.cols = 200;
     dataset.rows = 200;
-    dataset.z = 200;
+    dataset.z = 100;
     dataset.origin_x = -1;
     dataset.origin_y = -1;
-    dataset.origin_z = -1;
+    dataset.origin_z = 0;
     dataset.cell_size = 0.01;
     % map
     dataset.map = zeros(dataset.rows, dataset.cols, dataset.z);

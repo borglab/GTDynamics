@@ -11,7 +11,6 @@
 
 #include <gtsam/geometry/Pose3.h>
 
-
 namespace manipulator {
 
 /**
@@ -54,8 +53,9 @@ class DH_Link : public Link {
           double acceleration_limit_threshold = 0.0,
           double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
-             unit_twist(gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
-                        gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
+             unit_twist(
+                 gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
+                 gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
@@ -96,7 +96,7 @@ class DH_Link : public Link {
            gtsam::Pose3(gtsam::Rot3::Roll(alpha_), gtsam::Point3(a_, 0, 0));
   }
 
-  /* return approximate length of link */
+  /* return approximate length of this link */
   double length() const { return sqrt(d_ * d_ + a_ * a_); }
 };
 }  // namespace manipulator

@@ -6,21 +6,22 @@
 #pragma once
 
 #include <Arm.h>
-#include <PoseFactor.h>
 #include <BasePoseFactor.h>
+#include <BaseTwistAccelFactor.h>
+#include <BaseTwistFactor.h>
+#include <GaussianProcessPriorFactor.h>
+#include <GaussianProcessPriorPose3Factor.h>
+#include <JointLimitFactor.h>
+#include <Link.h>
+#include <ObstacleSDFFactor.h>
+#include <OptimizerSetting.h>
+#include <PoseFactor.h>
 #include <ToolPoseFactor.h>
 #include <ToolWrenchFactor.h>
 #include <TorqueFactor.h>
-#include <WrenchFactor.h>
 #include <TwistAccelFactor.h>
 #include <TwistFactor.h>
-#include <BaseTwistFactor.h>
-#include <BaseTwistAccelFactor.h>
-#include <JointLimitFactor.h>
-#include <GaussianProcessPriorFactor.h>
-#include <GaussianProcessPriorPose3Factor.h>
-#include <ObstacleSDFFactor.h>
-#include <OptimizerSetting.h>
+#include <WrenchFactor.h>
 #include <utils.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -127,10 +128,34 @@ class MotionPlanner {
     base_acceleration.setZero();
     external_wrench.setZero();
 
+    std::vector<double> lengths;
+    std::vector<std::vector<Point3>> sphere_centers_vec;
     for (int j = 1; j <= dof; ++j) {
       graph.add(PriorFactor<double>(JointAngleKey(j, 0), q_init[j - 1],
                                     opt_.q_cost_model));
       graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, opt_.qv_cost_model));
+
+      if (sdf) {
+        double length;
+        if (robot.link(j - 1).linkType == Link::DH) {
+          length = robot.link(j - 1).length();
+        } else {
+          if (j < dof) {
+            length = robot.link(j).length();
+          } else {
+            length = robot.tool().translation().norm();
+          }
+        }
+        lengths.push_back(length);
+        std::vector<Point3> sphere_centers;
+        if (length > 0) {
+          int num = std::max((int)(length / opt_.radius), 1);
+          sphere_centers = sphereCenters(length, opt_.radius, num);
+        } else {
+          sphere_centers.assign(1, Point3());
+        }
+        sphere_centers_vec.push_back(sphere_centers);
+      }
     }
 
     for (int i = 0; i < opt_.total_step; ++i) {
@@ -182,15 +207,13 @@ class MotionPlanner {
 
         // add obstacle factor
         if (sdf) {
-          auto length = robot.link(j - 1).length();
-          if (length > 0) {
-            int num = std::min((int)(length / opt_.radius), 1);
+          if (lengths[j - 1] > 0) {
+            int num = std::max((int)(lengths[j - 1] / opt_.radius), 1);
             auto obs_cost_model =
                 noiseModel::Isotropic::Sigma(num, opt_.obsSigma);
-            auto sphere_centers = sphereCenters(length, opt_.radius, num);
             graph.add(ObstacleSDFFactor(PoseKey(j, i), obs_cost_model,
                                         opt_.epsilon, *sdf, opt_.radius,
-                                        sphere_centers));
+                                        sphere_centers_vec[j - 1]));
           }
         }
       }

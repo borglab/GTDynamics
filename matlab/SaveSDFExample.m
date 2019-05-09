@@ -18,8 +18,8 @@ disp('calculating signed distance field done');
 dlmwrite('./dataset/kukaDeskDataset.txt', origin, 'delimiter', ' ');
 dlmwrite('./dataset/kukaDeskDataset.txt', cell_size, 'delimiter', ' ','-append');
 dlmwrite('./dataset/kukaDeskDataset.txt', size(field), 'delimiter', ' ', '-append');
-for i = 1:200
-    dlmwrite('./dataset/kukaDeskDataset.txt', field(:,:,i), 'delimiter', ' ', '-append');
+for i = 0:99
+    dlmwrite('./dataset/kukaDeskDataset.txt', field(:,:,100-i), 'delimiter', ' ', '-append');
 end
 
 %% display SDF

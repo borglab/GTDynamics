@@ -92,6 +92,7 @@ class URDF_Link : public Link {
     }
   }
 
-  double length() const { return origin_.x(); }
+  /* return approximate length of the previous link*/
+  double length() const { return origin_.translation().norm(); }
 };
 }  // namespace manipulator

@@ -34,6 +34,10 @@ extern gtsam::Symbol J(int j);
  * Link is the base class for links taking different format of parameters
  */
 class Link {
+ public:
+  enum LinkType { DH, URDF };
+  LinkType linkType;   
+
  protected:
   char jointType_;
 
@@ -81,7 +85,8 @@ class Link {
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
-      : jointType_(joint_type),
+      : linkType(URDF),
+        jointType_(joint_type),
         mass_(mass),
         centerOfMass_(center_of_mass),
         inertia_(inertia),
@@ -124,7 +129,8 @@ class Link {
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
-      : jointType_(joint_type),
+      : linkType(DH),
+        jointType_(joint_type),
         mass_(mass),
         centerOfMass_(gtsam::Pose3(gtsam::Rot3(), center_of_mass)),
         inertia_(inertia),
@@ -141,7 +147,8 @@ class Link {
 
   /* Copy constructor */
   Link(const Link &link)
-      : jointType_(link.jointType_),
+      : linkType(link.linkType),
+        jointType_(link.jointType_),
         mass_(link.mass_),
         centerOfMass_(link.centerOfMass_),
         inertia_(link.inertia_),
