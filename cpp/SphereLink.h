@@ -20,7 +20,7 @@ class SphereLink {
  private:
   double radius_;  // sphere radius
   std::vector<gtsam::Point3>
-      sphere_centers_;  // sphere center position, expressed in link base frame;
+      sphere_centers_;  // sphere center position, expressed in base frame;
 
  public:
   /** constructor for sphere robot model
@@ -37,7 +37,7 @@ class SphereLink {
   /** get sphere centers expressed in base frame
    * key argument
    * index  -- sphere index
-   * H      -- jacobian w.r.t. pose
+   * com_pose  -- link center of mass frame pose in base frame
    */
   gtsam::Point3 sphereCenter(
       size_t index, const gtsam::Pose3 &com_pose,
