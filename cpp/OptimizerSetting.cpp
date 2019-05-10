@@ -11,8 +11,8 @@ using namespace gtsam;
 using namespace manipulator;
 
 OptimizerSetting::OptimizerSetting()
-    : total_step(100),
-      total_time(10),
+    : total_step(120),
+      total_time(12),
       bp_cost_model(noiseModel::Isotropic::Sigma(6, 0.00001)),
       bv_cost_model(noiseModel::Isotropic::Sigma(6, 0.00001)),
       ba_cost_model(noiseModel::Isotropic::Sigma(6, 0.00001)),
@@ -26,7 +26,7 @@ OptimizerSetting::OptimizerSetting()
       qa_cost_model(noiseModel::Isotropic::Sigma(1, 0.001)),
       tf_cost_model(noiseModel::Isotropic::Sigma(6, 0.001)),
       opt_type(LM),
-      opt_verbosity(None),
+      opt_verbosity(Error),
       rel_thresh(1e-2),
       max_iter(50),
       radius(0.05),

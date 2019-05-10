@@ -86,7 +86,7 @@ TEST(MotionPlanner, urdf_kuka) {
   Vector3 gravity;
   gravity << 0, 0, -9.8;
   Vector7 expected_q;
-  expected_q << 120, 70, -120, -55, 70, -30, 60;
+  expected_q << 0, 90, 0, 0, 0, 0, 0;
   expected_q *= M_PI / 180;
   auto expected_T = robot.forwardKinematics(expected_q).back();
   Pose3 pose_goal(expected_T);
@@ -99,9 +99,9 @@ TEST(MotionPlanner, urdf_kuka) {
   opt.setQcModel(1000 * I_1x1);
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.0001);
-  opt.setObstacleCostModel(0.001);
+  opt.setObstacleCostModel(0.01);
   opt.setSphereRadius(0.05);
-  opt.setCollisionEpsilon(0.2);
+  opt.setCollisionEpsilon(0.05);
 
   MotionPlanner mp(opt);
   auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),

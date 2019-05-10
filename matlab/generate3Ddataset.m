@@ -33,58 +33,25 @@ if strcmp(dataset_str, 'SmallDemo')
     dataset.corner_idx = [];
     [dataset.map, dataset.corner_idx] = add_obstacle([150 150 150], [20, 20, 20], dataset.map, dataset.corner_idx);
     
-    
-% dataset 2: desk dataset for WAM WAMDeskDataset
-elseif strcmp(dataset_str, 'WAMDeskDataset')
-    % params
-    dataset.cols = 300;
-    dataset.rows = 300;
-    dataset.z = 300;
-    dataset.origin_x = -1.5;
-    dataset.origin_y = -1.5;
-    dataset.origin_z = -1.5;
-    dataset.cell_size = 0.01;
-    % map
-    dataset.map = zeros(dataset.rows, dataset.cols, dataset.z);
-    % obstacles
-    dataset.corner_idx = [];
-    [dataset.map, dataset.corner_idx] = add_obstacle([170 220 130], [140, 60, 5], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([105 195 90], [10, 10, 80], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([235 195 90], [10, 10, 80], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([105 245 90], [10, 10, 80], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([235 245 90], [10, 10, 80], dataset.map, dataset.corner_idx);
-
-    
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 190 145], [60, 5, 190], dataset.map, dataset.corner_idx);   
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 90 145], [60, 5, 190], dataset.map, dataset.corner_idx);   
-   
-    [dataset.map, dataset.corner_idx] = add_obstacle([200 190 145], [40, 5, 190], dataset.map, dataset.corner_idx);   
-%     [dataset.map, dataset.corner_idx] = add_obstacle([130 40 95], [60, 5, 190], dataset.map, dataset.corner_idx);   
- 
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 140 240], [60, 100, 5], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 140 190], [60, 100, 5], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 140 140], [60, 100, 5], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([250 140 90], [60, 100, 5], dataset.map, dataset.corner_idx);
-    
-% dataset 3: desk dataset for KUKA KUKADeskDataset
+% dataset 2: desk dataset for KUKA KUKADeskDataset
 elseif strcmp(dataset_str, 'KUKADeskDataset')
     % params
-    dataset.cols = 200;
-    dataset.rows = 200;
-    dataset.z = 100;
-    dataset.origin_x = -1;
-    dataset.origin_y = -1;
-    dataset.origin_z = 0;
+    dataset.cols = 160;          % corresponds to x dimension
+    dataset.rows = 200;          % corresponds to y dimension
+    dataset.z = 100;             % corresponds to z dimension
+    dataset.origin_x = 0.2;      % note: this is not the origin of the object body frame origin,
+    dataset.origin_y = -1;       %       if this is a cube, then this origin is the lower left corner of the cube
+    dataset.origin_z = 0;        %       and the body frame origin is the center of the cube
     dataset.cell_size = 0.01;
     % map
     dataset.map = zeros(dataset.rows, dataset.cols, dataset.z);
     % obstacles
-    dataset.corner_idx = [];
-    [dataset.map, dataset.corner_idx] = add_obstacle([100 100 65], [160, 110, 20], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([25 50 30], [10, 10, 55], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([175 150 30], [10, 10, 55], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([25 150 30], [10, 10, 55], dataset.map, dataset.corner_idx);
-    [dataset.map, dataset.corner_idx] = add_obstacle([175 50 30], [10, 10, 55], dataset.map, dataset.corner_idx);
+    dataset.corner_idx = [];    
+    [dataset.map, dataset.corner_idx] = add_obstacle([100 80 65], [160, 110, 20], dataset.map, dataset.corner_idx);
+    [dataset.map, dataset.corner_idx] = add_obstacle([25 30 30], [10, 10, 55], dataset.map, dataset.corner_idx);
+    [dataset.map, dataset.corner_idx] = add_obstacle([175 130 30], [10, 10, 55], dataset.map, dataset.corner_idx);
+    [dataset.map, dataset.corner_idx] = add_obstacle([25 130 30], [10, 10, 55], dataset.map, dataset.corner_idx);
+    [dataset.map, dataset.corner_idx] = add_obstacle([175 30 30], [10, 10, 55], dataset.map, dataset.corner_idx);
 
 % no such dataset
 else
