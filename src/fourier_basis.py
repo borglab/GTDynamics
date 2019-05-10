@@ -8,12 +8,8 @@
 from __future__ import print_function
 
 import math
-import unittest
 
 import numpy as np
-
-import utils
-from utils import GtsamTestCase
 
 
 class FourierBasis(object):

@@ -8,19 +8,10 @@
 from __future__ import print_function
 
 import math
-import pdb
-import unittest
-from collections import namedtuple
-
-import numpy as np
 
 import gtsam
-import utils
-from dynamics_model import DynamicsModel
-from fourier_decomposition import FourierDecomposition
-from gtsam import Point3, Pose3, Rot3
+import src.utils as utils
 from gtsam_unstable import PaddleFactor
-from utils import GtsamTestCase
 
 
 class GaitOptimizer(object):
@@ -28,6 +19,7 @@ class GaitOptimizer(object):
 
     def __init__(self, model, args):
         """Constructor."""
+        self._model = model
         self._args = args
 
     def create_graph(self):
@@ -58,6 +50,7 @@ class GaitOptimizer(object):
         graph = self.create_graph()
 
         def initial_guess_1(initial):
+            """Initial guess 1 for optimization."""
             initial.insert(0, utils.vector(1.0, 1.0, 1.0))
             initial.insert(1, utils.vector(1.0, 1.0, 1.0))
             initial.insert(2, utils.vector(1.0, 1.0, 1.0))
@@ -65,6 +58,7 @@ class GaitOptimizer(object):
             return initial
 
         def initial_guess_2(initial):
+            """Initial guess 2 for optimization."""
             initial.insert(0, utils.vector(1.5661, 1.2717, 1.2717))
             initial.insert(1, utils.vector(1.5661, 1.2717, 1.2717))
             initial.insert(2, utils.vector(1.5661, 1.2717, 1.2717))

@@ -7,12 +7,7 @@
 
 from __future__ import print_function
 
-import math
-import unittest
-
-import urdf_link
-import utils
-from utils import GtsamTestCase
+import src.urdf_link as urdf_link
 
 
 class DynamicsModel(object):

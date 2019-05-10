@@ -8,16 +8,9 @@
 
 from __future__ import print_function
 
-import math
-import unittest
-
-import numpy as np
-
-import gtsam
-import utils
-from fourier_basis import FourierBasis
+import src.utils as utils
 from gtsam import GaussianFactorGraph
-from utils import GtsamTestCase
+from src.fourier_basis import FourierBasis
 
 PARAMETERS_KEY = 0
 

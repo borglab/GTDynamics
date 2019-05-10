@@ -13,9 +13,9 @@ import unittest
 
 import numpy as np
 
-import utils
-from fourier_basis import FourierBasis
-from utils import GtsamTestCase
+import src.utils as utils
+from src.fourier_basis import FourierBasis
+from src.utils import GtsamTestCase
 
 
 class TestFourierBasis(GtsamTestCase):

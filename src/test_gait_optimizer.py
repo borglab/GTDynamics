@@ -8,19 +8,17 @@
 
 from __future__ import print_function
 
-import math
-import pdb
 import unittest
 from collections import namedtuple
 
 import numpy as np
 
 import gtsam
-import utils
-from dynamics_model import DynamicsModel
-from fourier_decomposition import FourierDecomposition
-from gait_optimizer import GaitOptimizer
-from utils import GtsamTestCase
+import src.utils as utils
+from src.dynamics_model import DynamicsModel
+from src.fourier_decomposition import FourierDecomposition
+from src.gait_optimizer import GaitOptimizer
+from src.utils import GtsamTestCase
 
 
 class TestGaitOptimizer(GtsamTestCase):
@@ -34,7 +32,7 @@ class TestGaitOptimizer(GtsamTestCase):
         self.optimizer = GaitOptimizer(model, args)
         self.numberFourierCoefficients = 3
         # Ensure number of Fourier coefficients is an odd number.
-        self.assert_(self.numberFourierCoefficients % 2 == 1)
+        self.assertTrue(self.numberFourierCoefficients % 2 == 1)
 
     def test_dynamics_model(self):
         """Test the DynamicsModel object."""

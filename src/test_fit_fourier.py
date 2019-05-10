@@ -14,14 +14,13 @@ import unittest
 import numpy as np
 
 import gtsam
-import utils
-from fit_fourier import FitFourier
-from fourier_basis import FourierBasis
-from gtsam import GaussianFactorGraph
-from utils import GtsamTestCase
+import src.utils as utils
+from src.fit_fourier import FitFourier
+from src.utils import GtsamTestCase
 
 
 class TestFitFourier(GtsamTestCase):
+    """Class to test FitFourier class."""
 
     def test_decomposition(self):
         """ Test Fourier decomposition. """
@@ -46,3 +45,4 @@ class TestFitFourier(GtsamTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+ 

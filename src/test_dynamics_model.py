@@ -9,15 +9,14 @@
 
 from __future__ import print_function
 
-import math
 import unittest
 
-import utils
-from dynamics_model import DynamicsModel
-from utils import GtsamTestCase
+from src.dynamics_model import DynamicsModel
+from src.utils import GtsamTestCase
 
 
 class TestDynamicsModel(GtsamTestCase):
+    """Class to test DynamicsModel class."""
 
     def test_empty_model(self):
         """Test creating an empty DynamicsModel object."""
