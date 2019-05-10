@@ -39,24 +39,24 @@ class TestURDFLink(GtsamTestCase):
         self.assertIsInstance(link, URDF_Link)
 
 
-# class TestURDFFetch(GtsamTestCase):
-#     """Unit tests for urdf link of the fetch robot."""
+class TestURDFFetch(GtsamTestCase):
+    """Unit tests for urdf link of the fetch robot."""
 
-#     def test_load(self):
-#         # load the urdf file
-#         file_name = os.path.join(URDFS_PATH, "fetch.urdf")
-#         link_dict = read_urdf(file_name)
-#         self.assertEqual(len(link_dict), 21)
+    def test_load(self):
+        # load the urdf file
+        file_name = os.path.join(URDFS_PATH, "fetch.urdf")
+        link_dict = read_urdf(file_name)
+        self.assertEqual(len(link_dict), 21)
 
-#         serial_link = SerialLink.from_urdf(
-#             link_dict, leaf_link_name="r_gripper_finger_link")
-#         self.assertIsInstance(serial_link, SerialLink)
-#         self.assertEqual(
-#             link_dict["r_gripper_finger_link"][1], "gripper_link")
-#         for link_info in link_dict.values():
-#             self.assertIsInstance(link_info[0], URDF_Link)
-#         self.assertEqual(serial_link._links[0].mass, 70.1294)
-#         self.assertEqual(len(serial_link._links), 11)
+        serial_link = SerialLink.from_urdf(
+            link_dict, leaf_link_name="r_gripper_finger_link")
+        self.assertIsInstance(serial_link, SerialLink)
+        self.assertEqual(
+            link_dict["r_gripper_finger_link"][1], "gripper_link")
+        for link_info in link_dict.values():
+            self.assertIsInstance(link_info[0], URDF_Link)
+        self.assertEqual(serial_link._links[0].mass, 70.1294)
+        self.assertEqual(len(serial_link._links), 11)
 
 
 class TestURDFFanuc(GtsamTestCase):
