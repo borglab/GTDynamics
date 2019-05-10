@@ -234,7 +234,7 @@ class MotionPlanner {
 
     int dof = robot.numLinks();
     int total_step = opt_.total_step;
-    Vector start_q = q_init, end_q = Vector::Zero(dof);
+    Vector start_q = Vector::Zero(dof), end_q = Vector::Zero(dof);
     // call inverse kinematics to get joint angles for pose start and goal
     if (cartesian_path) {
       start_q = robot.inverseKinematics(cartesian_path->front(), q_init);
