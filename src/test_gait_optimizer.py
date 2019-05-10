@@ -8,70 +8,40 @@
 
 from __future__ import print_function
 
-import math
 import unittest
+from collections import namedtuple
 
 import numpy as np
 
 import gtsam
-
-import utils
-from utils import GtsamTestCase
-
-
-class DynamicsModel(object):
-    """Specifies the dynamics parameters."""
-
-    def __init__(self):
-        """Constructor."""
-        pass
-
-
-class FourierDecomposition(object):
-    """Obtain Fourier coefficients for the given model."""
-
-    def __init__(self, numberFourierCoefficients):
-        """Constructor."""
-        self.number_fourier_coefficients = numberFourierCoefficients
-
-    def get_coefficients(self, model):
-        """ Obtain the Fourier coefficients for the model.
-            Keyword arguments:
-                model - the model for which Fourier coefficients will be found
-            Returns a dictionary of numpy arrays of Fourier coefficients.
-                Each key is the index of a particular leg.
-        """
-
-        return {str(i): utils.vector() for i in range(self.number_fourier_coefficients)}
-
-
-class GaitOptimizer(object):
-    """Class that optimizes gaits for a particular walking robot."""
-
-    def __init__(self):
-        """Constructor."""
-        pass
-
-    def evaluate(self, model, fourier_coefficients):
-        """ Evaluate the Fourier coefficients on the given model.
-            Keyword arguments:
-                model - the model whose gait is being optimized
-                fourier_coefficients - dictionary of lists of Fourier coefficients describing a gait
-            Returns a value indicating how good the gait is.
-        """
-        return 0.
+import src.utils as utils
+from src.dynamics_model import DynamicsModel
+from src.fourier_decomposition import FourierDecomposition
+from src.gait_optimizer import GaitOptimizer
+from src.utils import GtsamTestCase
 
 
 class TestGaitOptimizer(GtsamTestCase):
     """Unit tests for GaitOptimizer."""
 
     def setUp(self):
+        """Create common variables for all tests."""
+        model = DynamicsModel("src/turtle.urdf")
+        Args = namedtuple('Args', ['num_samples', 'length', 'alpha', 'beta'])
+        args = Args(8, 1.0, 1.0, 1.0)
+        self.optimizer = GaitOptimizer(model, args)
         self.numberFourierCoefficients = 3
-        expected_coeffs = {"0": utils.vector(1.5661, 1.2717, 1.2717),
-                           "1": utils.vector(1.5661, 1.2717, 1.2717)}
-
         # Ensure number of Fourier coefficients is an odd number.
-        self.assert_(self.numberFourierCoefficients % 2 == 1)
+        self.assertTrue(self.numberFourierCoefficients % 2 == 1)
+
+    def test_dynamics_model(self):
+        """Test the DynamicsModel object."""
+        # Instantiate empty.braces
+        model_empty = DynamicsModel()
+
+        # Instantiate with URDF.
+        model = DynamicsModel("src/turtle.urdf")
+        print(model.urdf_model)
 
     def test_fourier_coefficients(self):
         """Test getting the Fourier coefficients from a model."""
@@ -83,16 +53,31 @@ class TestGaitOptimizer(GtsamTestCase):
         for value in coefficients.values():
             self.assertIsInstance(value, type(utils.vector()))
 
-    def test_optimizer(self):
+    def test_create_graph(self):
+        """Check that we can create a nice factor graph."""
+        graph = self.optimizer.create_graph()
+        self.assertIsInstance(graph, gtsam.NonlinearFactorGraph)
+        self.assertEqual(32, graph.size())
+
+    # @unittest.skip("Not yet")
+    def test_run(self):
         """Test the gait optimization using the Fourier coefficients."""
-        model = DynamicsModel()
-        fourier = FourierDecomposition(self.numberFourierCoefficients)
-        optimizer = GaitOptimizer()
-        coefficients = fourier.get_coefficients(model)
+        actual = self.optimizer.run()
+        self.assertIsInstance(actual, gtsam.Values)
 
-        coefficient_goodness = optimizer.evaluate(model, coefficients)
-
-        self.assertIsInstance(coefficient_goodness, float)
+        # We expect four joint trajectories, represented by their Fourier
+        # coefficients, one for each leg.
+        expected = gtsam.Values()
+        expected.insert(0, utils.vector(1.5661, 1.2717, 1.2717))
+        expected.insert(1, utils.vector(1.5661, 1.2717, 1.2717))
+        expected.insert(2, utils.vector(1.5661, 1.2717, 1.2717))
+        expected.insert(3, utils.vector(1.5661, 1.2717, 1.2717))
+        keys = expected.keys()
+        for i in range(keys.size()):
+            key = keys.at(i)
+            print(key)
+            np.testing.assert_array_almost_equal(
+                expected.atVector(key), actual.atVector(key))
 
 
 if __name__ == "__main__":
