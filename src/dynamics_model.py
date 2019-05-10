@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
     Dynamics model file
     Author: Frank Dellaert and Stephen Eick
@@ -34,21 +33,3 @@ class DynamicsModel(object):
             Returns an XML tree of the URDF.
         """
         self.urdf_model = urdf_link.read_urdf(filePath)
-
-
-class TestDynamicsModel(GtsamTestCase):
-
-    def test_empty_model(self):
-        """Test creating an empty DynamicsModel object."""
-        model_empty = DynamicsModel()
-        self.assertIsInstance(model_empty, DynamicsModel)
-
-    def test_loading_urdf(self):
-        """Test reading in a URDF file."""
-        model = DynamicsModel("src/turtle.urdf")
-        self.assertIsInstance(model, DynamicsModel)
-        self.assertIsInstance(model.urdf_model, dict)
-
-
-if __name__ == "__main__":
-    unittest.main()
