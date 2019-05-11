@@ -4,12 +4,28 @@ taking universal robot discription format parameters.
 Author: Frank Dellaert and Mandy Xie
 """
 import math
+
+import numpy as np
+from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3
+from urdf_parser_py.urdf import URDF
+
 import utils
 from link import Link
-from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3
-import numpy as np
-from urdf_parser_py.urdf import URDF
 from serial_link import SerialLink
+
+
+def compose_pose(rpy, xyz):
+    """ Return Pose.
+        Keyword arguments:
+            rpy -- 3 dimensional vector representing rotation
+            xyz -- 3 dimensional vector representing position
+    """
+
+    # TODO(yetong): construct the rotation using rpy values
+    # rotation = Rot3.rpy(rpy[0], rpy[1], rpy[2])
+    rotation = Rot3()
+    point = Point3(xyz[0], xyz[1], xyz[2])
+    return Pose3(rotation, point)
 
 
 class URDF_Link(Link):
@@ -106,20 +122,6 @@ class URDF_Link(Link):
                 self._origin,
                 Pose3(Rot3(), utils.point3_of_vector(self._axis * q))
             )
-
-
-def compose_pose(rpy, xyz):
-    """ Return Pose.
-        Keyword arguments:
-            rpy -- 3 dimensional vector representing rotation
-            xyz -- 3 dimensional vector representing position
-    """
-
-    # TODO(yetong): construct the rotation using rpy values
-    # rotation = Rot3.rpy(rpy[0], rpy[1], rpy[2])
-    rotation = Rot3()
-    point = Point3(xyz[0], xyz[1], xyz[2])
-    return Pose3(rotation, point)
 
 
 def read_urdf(file_name):

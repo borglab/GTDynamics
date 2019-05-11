@@ -1,6 +1,6 @@
 """
 dh parameter link class, inheritate from Link class
-taking Denavit Hartenberg parameters.
+taking Denavit-Hartenberg parameters.
 Author: Frank Dellaert and Mandy Xie
 """
 import math
@@ -9,7 +9,7 @@ from link import Link
 from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3
 
 class DH_Link(Link):
-    """Link taking Denavite Hartenberg parameters"""
+    """Link taking Denavit-Hartenberg parameters"""
     def __init__(self, theta, d, a, alpha, joint_type, mass, center_of_mass, inertia):
         """ Constructor.
             Keyword arguments:
