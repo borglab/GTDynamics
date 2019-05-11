@@ -12,7 +12,8 @@ import unittest
 import gtsam
 import numpy as np
 import sympy
-from sympy import Matrix, N, S, Symbol, pprint, solve_poly_system, solveset
+from sympy import (Matrix, N, Rational, S, Symbol, pprint, solve_poly_system,
+                   solveset)
 from sympy.solvers.solveset import nonlinsolve
 
 from serial_link import SerialLink
@@ -33,86 +34,106 @@ class FasterIK:
         self._robot = SerialLink.from_urdf(link_dict, leaf_link_name="Part6")
 
     @staticmethod
-    def Z(label: str = "", trig=False):
+    def Z(label: str = "", method="cs"):
         """ Create symbolic rotation matrix around Z-axis.
             Arguments:
                 label(str): symbols created are "cL" and "sL", where L is label.
-                trig (bool): whether to use cos/sin rather than c,s,c^2+s^2==1
+                method (str): "cs", "trig", or "cayley"
             Returns:
                 (sympy.Matrix, unit constraint on "cL" and "sL")
         """
-        if trig:
+        if method == "trig":
             theta = Symbol("\\theta"+label, real=True)
             c, s = sympy.cos(theta), sympy.sin(theta)
             R = Matrix([[c, -s, 0], [s, c, 0], [0, 0, 1]])
-            return R, [], [theta]
-        else:
+            return R, None, [theta]
+        if method == "cayley":
+            w = Symbol("w"+label, real=True)
+            K = 1 + w**2
+            c, s = (1-w**2)/K, 2*w/K
+            R = Matrix([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+            return R, None, [w]
+        if method == "cs":
             c = Symbol("c"+label, real=True)
             s = Symbol("s"+label, real=True)
             R = Matrix([[c, -s, 0], [s, c, 0], [0, 0, 1]])
             return R, c**2 + s**2 - 1, [c, s]
 
     @classmethod
-    def RRR_rotation(cls, R12, R23, R3e, label: str = "", trig=False):
+    def RRR_rotation(cls, R12, R23, R3e, label: str = "", method="cs"):
         """ Calculate symbolic expression of the rotation matrix at the end of three links.
             Arguments:
                 Rij: rotation matrices from frame i to frame j.
                      Frame 1 corresponding to joint angle 1 is assumed identity.
                      The end-effector frame E is related to frame 3 by R3e.
                 label (str): symbols created are "cL1", "cL2" etc... where L is the label.
-                trig (bool): whether to use cos/sin rather than c,s,c^2+s^2==1
+                method (str): "cs", "trig", or "cayley"
             Returns:
                 rotation, [Z-matrices], [unit constraints for the angles], [symbols]
         """
-        Z1, e1, syms1 = cls.Z(label+"1", trig)
-        Z2, e2, syms2 = cls.Z(label+"2", trig)
-        Z3, e3, syms3 = cls.Z(label+"3", trig)
+        Z1, e1, syms1 = cls.Z(label+"1", method)
+        Z2, e2, syms2 = cls.Z(label+"2", method)
+        Z3, e3, syms3 = cls.Z(label+"3", method)
         syms = syms1 + syms2 + syms3
-        return Z1 * R12 * Z2 * R23 * Z3 * R3e, [Z1, Z2, Z3], [e1, e2, e3], syms
+        constraints = [e for e in [e1, e2, e3] if e is not None]
+        return Z1 * R12 * Z2 * R23 * Z3 * R3e, [Z1, Z2, Z3], constraints, syms
 
     @classmethod
-    def RRR_pose(cls, R12, t12, R23, t23, R3e, t3e, label: str = "", trig=False):
+    def RRR_pose(cls, R12, t12, R23, t23, R3e, t3e, label: str = "", method="cs"):
         """ Calculate symbolic expression of the pose at the end of three links.
             Arguments:
                 Tij: link transform from frame i to frame j.
                      Frame 1 corresponding to joint angle 1 is assumed identity.
                      The end-effector frame E is related to frame 3 by T3e.
                 label(str): symbols created are "cL1", "cL2" etc... where L is the label.
+                method (str): "cs", "trig", or "cayley"
             Returns:
                 rotation, translation, [unit constraints for the angles], [symbols]
         """
         Re, Zs, constraints, syms = cls.RRR_rotation(
-            R12, R23, R3e, label, trig)
+            R12, R23, R3e, label, method)
         Z1, Z2, Z3 = Zs
         te = Z1*(t12 + R12*Z2*(t23 + R23*Z3*t3e))
         return Re, te, Zs, constraints, syms
 
     @classmethod
-    def R6_pose(cls, *robot):
+    def R6_pose(cls, *robot, method="cs"):
         """ Calculate symbolic expression of the pose at the end of 6DOF manipulator.
             Arguments:
                 robot: list of [R, t, R, t...]
+                method (str): "cs", "trig", or "cayley"
             Returns:
                 rotation, translation, [unit constraints for the angles], [symbols]
         """
-        R4, t4, ZA, constraintsA, symsA = cls.RRR_pose(*robot[:6], "a")
-        R4e, t4e, ZB, constraintsB, symsB = cls.RRR_pose(*robot[6:], "b")
+        R4, t4, ZA, constraintsA, symsA = cls.RRR_pose(*robot[:6], "a", method)
+        R4e, t4e, ZB, constraintsB, symsB = cls.RRR_pose(
+            *robot[6:], "b", method)
         Re = R4 * R4e
         te = t4 + R4 * t4e
         return Re, te, ZA+ZB, constraintsA+constraintsB, symsA+symsB
 
     @classmethod
-    def RRR_solve(cls, R12, t12, R23, t23, R3e, t3e, lock_theta1=False, label: str = ""):
+    def RRR_solve(cls, R12, t12, R23, t23, R3e, t3e,
+                  lock_theta1=False, label: str = "", method="cs"):
         """ Solve for RRR link, as a function of position (x,0,z).
             The idea is that for non-zero y the first joint can be rotated appropriately.
             Typically returns two solutions, corresponding to two elbow configurations.
+            Arguments:
+                Tij: link transform from frame i to frame j.
+                     Frame 1 corresponding to joint angle 1 is assumed identity.
+                     The end-effector frame E is related to frame 3 by T3e.
+                lock_theta1 (bool)
+                label(str): symbols created are "cL1", "cL2" etc... where L is the label.
+                method (str): "cs", "trig", or "cayley"
+            Returns:
+                [solutions], [symbols]
         """
         # Get a symbolic expression for te
         _, te, Zs, constraints, syms = cls.RRR_pose(
-            R12, t12, R23, t23, R3e, t3e)
+            R12, t12, R23, t23, R3e, t3e, method=method)
         x, z = sympy.symbols('x z')
         td = Matrix([[x], [0], [z]], real=True)
-        if lock_theta1:
+        if method == "cs" and lock_theta1:
             # For some robots, all 5-D configurations beyond theta1 lie entirely in the
             # the y==0 plane and hence we can lock in theta=0.
             # Below we reduce the system to only solve for theta1 and theta2
@@ -121,26 +142,34 @@ class FasterIK:
             syms = syms[2:]
             constraints = constraints[1:]
             te = te.subs([(c1, 1), (s1, 0)])
-        equations = sympy.flatten(te-td) + constraints
+        equations = sympy.flatten(sympy.simplify(4*(te-td))) + constraints
+        pprint(equations)
         return solve_poly_system(equations, syms), syms + [x, z]
 
     @classmethod
-    def R6_solve(cls, lock_theta1, *robot):
+    def R6_solve(cls, lock_theta1, *robot, method="cs'"):
         """ Solve for 6DOF arm, as a function of position (x,0,z).
+            Arguments:
+                lock_theta1 (bool)
+                robot: list of [R, t, R, t...]
+                method (str): "cs", "trig", or "cayley"
+            Returns:
+                [solutions], [symbols]
         """
-        Re, te, Zs, constraints, syms = cls.R6_pose(*robot)
+        Re, te, Zs, constraints, syms = cls.R6_pose(*robot, method=method)
         x, z = sympy.symbols('x z')
         Rd = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         td = Matrix([[x], [0], [z]], real=True)
-        if lock_theta1:
+        if method == "cs" and lock_theta1:
             # Same as in RRR_solve
             c1, s1 = syms[0:2]
             syms = syms[2:]
             constraints = constraints[1:]
             te = te.subs([(c1, 1), (s1, 0)])
-        equations = sympy.flatten(Re-Rd) + sympy.flatten(te-td) + constraints
+        equations = sympy.flatten(sympy.expand(
+            64*(Re-Rd))) + sympy.flatten(sympy.expand(32*(te-td))) + constraints
         # equations = [sympy.expand(e) for e in equations]
-        print(equations)
+        pprint(equations)
         return solve_poly_system(equations, syms), syms + [x, z]
 
     @staticmethod
@@ -265,7 +294,8 @@ def timeit(method):
 def run_rrr():
     """Run RRR solver for simple example."""
     robot = TestInverseKinematics.ROBOT
-    solutions, syms = FasterIK.RRR_solve(*robot, lock_theta1=True)
+    solutions, syms = FasterIK.RRR_solve(
+        *robot, lock_theta1=True, method="cs")
     FasterIK.print_solutions(solutions)
     x, z = syms[-2:]
     FasterIK.print_solutions_for(solutions, (x, 1.5), (z, 2))
