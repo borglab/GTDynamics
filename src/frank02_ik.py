@@ -254,34 +254,40 @@ class FasterIK:
         return vector(0, 0, 0)
 
 
+O = np.array([[0], [0], [0]])
+X = np.array([[1], [0], [0]])
+Y = np.array([[0], [1], [0]])
+Z = np.array([[0], [0], [1]])
+
+I3 = np.column_stack([X, Y, Z])
+
+t12 = Z
+R12 = np.column_stack([X, Z, -Y])
+
+t23 = X
+R23 = np.column_stack([X, Y, Z])
+
+t34 = X
+R34 = np.column_stack([X, -Z, Y])
+
+RRR = [R12, t12, R23, t23, R34, t34]
+
+t45 = O
+R45 = np.column_stack([X, Z, -Y])
+
+t56 = O
+R56 = np.column_stack([X, -Z, Y])
+
+t6e = Z
+R6e = np.column_stack([X, Y, Z])
+
+WRIST = [R45, t45, R56, t56, R6e, t6e]
+
+ROBOT = RRR + WRIST
+
+
 class TestInverseKinematics(GtsamTestCase):
     """Unit tests for FasterIK class."""
-
-    I3 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-
-    t12 = np.array([[0], [0], [1]])
-    R12 = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
-
-    t23 = np.array([[0], [1], [0]])
-    R23 = I3
-
-    t34 = np.array([[0], [1], [0]])
-    R34 = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
-
-    RRR = [R12, t12, R23, t23, R34, t34]
-
-    t45 = np.array([[0], [0], [1]])
-    R45 = R12
-
-    t56 = np.array([[0], [1], [0]])
-    R56 = R34
-
-    t6e = np.array([[0], [0], [1]])
-    R6e = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]])
-
-    WRIST = [R45, t45, R56, t56, R6e, t6e]
-
-    ROBOT = RRR + WRIST
 
     def setUp(self):
         """Read URDF from file and create class instance."""
@@ -290,7 +296,7 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_RRR_rotation(self):
         """Check expression for rotation matrix at end of three links."""
-        R3 = [self.R12, self.R23, self.R34]
+        R3 = [R12, R23, R34]
         Re, Zs, constraints, syms = FasterIK.RRR_rotation(*R3)
         self.assertIsInstance(Re, sympy.Matrix)
         self.assertIsInstance(constraints, list)
@@ -299,7 +305,7 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_RRR_pose(self):
         """Check expression for pose at end of three links."""
-        Re, te, _, constraints, syms = FasterIK.RRR_pose(*self.RRR)
+        Re, te, _, constraints, syms = FasterIK.RRR_pose(*RRR)
         self.assertIsInstance(Re, sympy.Matrix)
         self.assertIsInstance(constraints, list)
         self.assertEqual(len(constraints), 3)
@@ -307,24 +313,23 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_RRR_fk(self):
         """Check forward kinematics for two configurations of RRR."""
-        R, t = FasterIK.RRR_fk(vector(0, 0, 0), *self.RRR)  # rest
-        np.testing.assert_array_almost_equal(R, self.I3)
-        np.testing.assert_array_almost_equal(t, vector(0, 0, 3))
-
-        R, t = FasterIK.RRR_fk(vector(0, -math.pi/2, 0), *self.RRR)  # bent
-        np.testing.assert_array_almost_equal(
-            R, N(Matrix([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])))
+        R, t = FasterIK.RRR_fk(vector(0, 0, 0), *RRR)  # rest
         np.testing.assert_array_almost_equal(t, vector(2, 0, 1))
+        np.testing.assert_array_almost_equal(R, np.column_stack([X, Y,Z]))
+
+        R, t = FasterIK.RRR_fk(vector(0, math.pi/2, 0), *RRR)  # up
+        np.testing.assert_array_almost_equal(t, vector(0, 0, 3))
+        np.testing.assert_array_almost_equal(R, np.column_stack([Z, Y, -X]))
 
     @unittest.skip("too slow")
     def test_RRR_solve(self):
-        solutions, syms = FasterIK.RRR_solve(*self.RRR, lock_theta1=True)
+        solutions, syms = FasterIK.RRR_solve(*RRR, lock_theta1=True)
         self.assertEqual(len(solutions), 2)
         self.assertEqual(len(syms), 6)
 
     def test_R6_pose(self):
         """Check expression for pose at end of 6DOF manipulator."""
-        Re, te, Zs, constraints, syms = FasterIK.R6_pose(*self.ROBOT)
+        Re, te, Zs, constraints, syms = FasterIK.R6_pose(*ROBOT)
         self.assertIsInstance(Re, sympy.Matrix)
         self.assertIsInstance(constraints, list)
         self.assertEqual(len(constraints), 6)
@@ -332,19 +337,18 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_R6_fk(self):
         """Check forward kinematics for two configurations of 6DOF manipulator."""
-        R, t = FasterIK.R6_fk(vector(0, 0, 0, 0, 0, 0), *self.ROBOT)  # rest
-        np.testing.assert_array_almost_equal(
-            R, np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]]))
-        np.testing.assert_array_almost_equal(t, vector(0, 0, 6))
+        R, t = FasterIK.R6_fk(vector(0, 0, 0, 0, 0, 0), *ROBOT)  # rest
+        np.testing.assert_array_almost_equal(t, vector(2, 0, 2))
+        np.testing.assert_array_almost_equal(R, np.column_stack([X, Y, Z]))
 
         R, t = FasterIK.R6_fk(
-            vector(0, -math.pi/2, 0, 0, 0, 0), *self.ROBOT)  # bent
-        np.testing.assert_array_almost_equal(R, self.I3)
-        np.testing.assert_array_almost_equal(t, vector(5, 0, 1))
+            vector(0, math.pi/2, 0, 0, 0, 0), *ROBOT)  # up
+        np.testing.assert_array_almost_equal(t, vector(-1, 0, 3))
+        np.testing.assert_array_almost_equal(R, np.column_stack([Z, Y, -X]))
 
     @unittest.skip("too slow")
     def test_R6_solve(self):
-        solutions, syms = FasterIK.R6_solve(True, *self.ROBOT)
+        solutions, syms = FasterIK.R6_solve(True, *ROBOT)
         self.assertEqual(len(solutions), 2)
         self.assertEqual(len(syms), 6)
 
