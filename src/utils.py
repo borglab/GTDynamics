@@ -63,6 +63,11 @@ def spatial_velocity(J, qdot, ps):
     return np.dot(hat(np.dot(J, qdot)), ps)
 
 
+def matrix_of_point3(p):
+    """Convert Point3 to 2D numpy array."""
+    return np.array([[p.x()], [p.y()], [p.z()]])
+
+
 def vector_of_point3(p):
     """Convert Point3 to numpy array."""
     return vector(p.x(), p.y(), p.z())

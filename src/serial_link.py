@@ -97,7 +97,7 @@ class SerialLink(object):
         """
         return [link.A(0 if q is None else q[i]) for i, link in enumerate(self._links)]
 
-    def fkine(self, q):
+    def fkine(self, q=None):
         """ Forward kinematics.
             Keyword arguments:
                 q (numpy array) -- joint angles.
