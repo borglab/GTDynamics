@@ -139,16 +139,23 @@ class FasterIK:
                 print()
 
     @staticmethod
-    def print_solutions_for(solutions, *substitutions):
+    def solutions_for(solutions, *substitutions):
+        """Return numerical solutions given substitution list."""
+        def f(solution):
+            return np.array([N(s) for s in solution], np.float)
+
+        return [f([si.subs([*substitutions]) for si in s]) for s in solutions]
+
+    @classmethod
+    def print_solutions_for(cls, solutions, *substitutions):
         """Pretty print numerical solutions given substitution list."""
         def f(c, s):
-            return round(math.degrees(math.atan2(N(s), N(c))))
+            return round(math.degrees(math.atan2(s, c)))
 
         def g(s):
             return [f(s[2*i], s[2*i+1]) for i in range(len(s)//2)]
 
-        for s in solutions:
-            s = [si.subs([*substitutions]) for si in s]
+        for s in cls.solutions_for(solutions, *substitutions):
             print([round(si, 3) for si in s])
             print(g(s))
 
@@ -196,7 +203,6 @@ class FasterIK_RRR(FasterIK):
             constraints = constraints[1:]
             te = te.subs([(c1, 1), (s1, 0)])
         equations = sympy.flatten(sympy.expand(4*(te-td))) + constraints
-        pprint(equations)
         if method == "cs":
             return solve_poly_system(equations, syms), syms + [x, z]
         else:
@@ -257,8 +263,6 @@ class FasterIK_R6(FasterIK):
             te = te.subs([(c1, 1), (s1, 0)])
         equations = sympy.flatten(sympy.expand(
             64*(Re-Rd))) + sympy.flatten(sympy.expand(32*(te-td))) + constraints
-        # equations = [sympy.expand(e) for e in equations]
-        pprint(equations)
         return solve_poly_system(equations, syms), syms + [x, z]
 
 
@@ -313,11 +317,19 @@ class TestFasterIKRRR(GtsamTestCase):
         np.testing.assert_array_almost_equal(t, vector(0, 0, 3))
         np.testing.assert_array_almost_equal(R, np.column_stack([Z, Y, -X]))
 
-    @unittest.skip("too slow")
+    # @unittest.skip("too slow")
     def test_solve(self):
         solutions, syms = self.ik.solve(lock_theta1=True)
         self.assertEqual(len(solutions), 2)
         self.assertEqual(len(syms), 6)
+
+        x, z = syms[-2:]
+        numerical = FasterIK.solutions_for(solutions, (x, 1.5), (z, 2))
+
+        np.testing.assert_array_almost_equal(
+            numerical[0], [0.51, 0.86, 0.625, -0.781], decimal=2)
+        np.testing.assert_array_almost_equal(
+            numerical[1], [0.99, 0.14, 0.625, 0.781], decimal=2)
 
 
 class TestFasterIKR6(GtsamTestCase):
@@ -349,8 +361,20 @@ class TestFasterIKR6(GtsamTestCase):
     @unittest.skip("too slow")
     def test_solve(self):
         solutions, syms = self.ik.solve(True)
-        self.assertEqual(len(solutions), 2)
-        self.assertEqual(len(syms), 6)
+        self.assertEqual(len(solutions), 4)
+        self.assertEqual(len(syms), 12)
+
+        x, z = syms[-2:]
+        numerical = FasterIK.solutions_for(solutions, (x, 1.5), (z, 2))
+
+        np.testing.assert_array_almost_equal(
+            numerical[0], [0.75, 0.661, 0.125, -0.992, -1.0, 0, 0.75, -0.661, -1.0, 0], decimal=2)
+        np.testing.assert_array_almost_equal(
+            numerical[1], [0.75, 0.661, 0.125, -0.992, 1.0, 0, 0.75, 0.661, 1.0, 0], decimal=2)
+        np.testing.assert_array_almost_equal(
+            numerical[2], [0.75, -0.661, 0.125, 0.992, -1.0, 0, 0.75, 0.661, -1.0, 0], decimal=2)
+        np.testing.assert_array_almost_equal(
+            numerical[3], [0.75, -0.661, 0.125, 0.992, 1.0, 0, 0.75, -0.661, 1.0, 0], decimal=2)
 
 
 class TestFasterIKFanuc(GtsamTestCase):
