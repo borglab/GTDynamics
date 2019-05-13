@@ -12,13 +12,13 @@ import unittest
 import gtsam
 import numpy as np
 import sympy
-from sympy import (Matrix, N, Rational, S, Symbol, pprint, solve_poly_system,
-                   solveset)
+from sympy import Matrix, N, Rational, S, Symbol, pprint, solve_poly_system
 from sympy.solvers.solveset import nonlinsolve
 
+from link_parameters import R6_calibration_dh, RRR_calibration_dh
 from serial_link import SerialLink
 from urdf_link import read_urdf
-from utils import GtsamTestCase, vector
+from utils import GtsamTestCase, matrix_of_point3, point3_of_vector, vector
 
 MY_PATH = os.path.dirname(os.path.realpath(__file__))
 URDFS_PATH = os.path.join(MY_PATH, '../urdfs')
@@ -80,17 +80,29 @@ class FasterIK:
         return Z1 * R12 * Z2 * R23 * Z3 * R3e, [Z1, Z2, Z3], constraints, syms
 
     @classmethod
-    def RRR_pose(cls, R12, t12, R23, t23, R3e, t3e, label: str = "", method="cs"):
+    def RRR_pose(cls, robot: SerialLink, label: str = "", method="cs", offset=0):
         """ Calculate symbolic expression of the pose at the end of three links.
             Arguments:
-                Tij: link transform from frame i to frame j.
-                     Frame 1 corresponding to joint angle 1 is assumed identity.
-                     The end-effector frame E is related to frame 3 by T3e.
+                robot(SerialLink): serial link manipulator
                 label(str): symbols created are "cL1", "cL2" etc... where L is the label.
                 method (str): "cs", "trig", or "cayley"
+                offset(int): 0 or 3, to select first three or last three joints
             Returns:
                 rotation, translation, [unit constraints for the angles], [symbols]
         """
+        def of_pose(pose):
+            R = pose.rotation().matrix()
+            t = matrix_of_point3(pose.translation())
+            Ri, ti = R.astype(np.int), t.astype(np.int)
+            R = Ri if np.linalg.norm(R-Ri) < 1e-9 else R
+            t = ti if np.linalg.norm(t-ti) < 1e-9 else t
+            return R, t
+
+        frames = robot.link_transforms()
+        R12, t12 = of_pose(frames[0+offset])
+        R23, t23 = of_pose(frames[1+offset])
+        R3e, t3e = of_pose(frames[2+offset])
+
         Re, Zs, constraints, syms = cls.RRR_rotation(
             R12, R23, R3e, label, method)
         Z1, Z2, Z3 = Zs
@@ -110,30 +122,28 @@ class FasterIK:
         return R, t
 
     @classmethod
-    def RRR_fk(cls, q, R12, t12, R23, t23, R3e, t3e):
+    def RRR_fk(cls, robot: SerialLink, q):
         """ Forward Kinematics for RRR arm.
             Arguments:
+                robot(SerialLink): serial link manipulator
                 q(vector): joint angles
-                robot: list of [R, t, R, t...]
             Returns:
                 rotation, translation
         """
-        Re, te, _, _, syms = cls.RRR_pose(R12, t12, R23, t23, R3e, t3e)
+        Re, te, _, _, syms = cls.RRR_pose(robot)
         c1, s1, c2, s2, c3, s3 = syms
         substitutions = cls.cs(
             c1, s1, q[0]) + cls.cs(c2, s2, q[1]) + cls.cs(c3, s3, q[2])
         return cls.pose2numpy(Re, te, substitutions)
 
     @classmethod
-    def RRR_solve(cls, R12, t12, R23, t23, R3e, t3e,
+    def RRR_solve(cls, robot: SerialLink,
                   lock_theta1=False, label: str = "", method="cs"):
         """ Solve for RRR link, as a function of position (x,0,z).
             The idea is that for non-zero y the first joint can be rotated appropriately.
             Typically returns two solutions, corresponding to two elbow configurations.
             Arguments:
-                Tij: link transform from frame i to frame j.
-                     Frame 1 corresponding to joint angle 1 is assumed identity.
-                     The end-effector frame E is related to frame 3 by T3e.
+                robot(SerialLink): serial link manipulator
                 lock_theta1 (bool)
                 label(str): symbols created are "cL1", "cL2" etc... where L is the label.
                 method (str): "cs", "trig", or "cayley"
@@ -142,7 +152,7 @@ class FasterIK:
         """
         # Get a symbolic expression for te
         _, te, Zs, constraints, syms = cls.RRR_pose(
-            R12, t12, R23, t23, R3e, t3e, method=method)
+            robot, method=method)
         x, z = sympy.symbols('x z')
         td = Matrix([[x], [0], [z]], real=True)
         if method == "cs" and lock_theta1:
@@ -162,47 +172,47 @@ class FasterIK:
             return nonlinsolve(equations, syms), syms + [x, z]
 
     @classmethod
-    def R6_pose(cls, *robot, method="cs"):
+    def R6_pose(cls, robot: SerialLink, method="cs"):
         """ Calculate symbolic expression of the pose at the end of 6DOF manipulator.
             Arguments:
-                robot: list of [R, t, R, t...]
+                robot(SerialLink): serial link manipulator
                 method (str): "cs", "trig", or "cayley"
             Returns:
                 rotation, translation, [unit constraints for the angles], [symbols]
         """
-        R4, t4, ZA, constraintsA, symsA = cls.RRR_pose(*robot[:6], "a", method)
+        R4, t4, ZA, constraintsA, symsA = cls.RRR_pose(robot, "a", method)
         R4e, t4e, ZB, constraintsB, symsB = cls.RRR_pose(
-            *robot[6:], "b", method)
+            robot, "b", method, offset=3)
         Re = R4 * R4e
         te = t4 + R4 * t4e
         return Re, te, ZA+ZB, constraintsA+constraintsB, symsA+symsB
 
     @classmethod
-    def R6_fk(cls, q, *robot):
-        """ Forward Kinematics for 6DOF manipulator.
+    def R6_fk(cls, robot, q):
+        """ Forward Kinematics for 6DOF manipulator by evaluation symbolic expression.
             Arguments:
+                robot(SerialLink): serial link manipulator
                 q(vector): joint angles
-                robot: list of [R, t, R, t...]
             Returns:
                 rotation, translation (numpy arrays)
         """
-        Re, te, _, _, syms = cls.R6_pose(*robot)
+        Re, te, _, _, syms = cls.R6_pose(robot)
         c1, s1, c2, s2, c3, s3, c4, s4, c5, s5, c6, s6 = syms
         substitutions = cls.cs(c1, s1, q[0]) + cls.cs(c2, s2, q[1]) + cls.cs(
             c3, s3, q[2]) + cls.cs(c4, s4, q[3]) + cls.cs(c5, s5, q[4]) + cls.cs(c6, s6, q[5])
         return cls.pose2numpy(Re, te, substitutions)
 
     @classmethod
-    def R6_solve(cls, lock_theta1, *robot, method="cs"):
+    def R6_solve(cls, robot: SerialLink, lock_theta1: bool = False, method="cs"):
         """ Solve for 6DOF arm, as a function of position (x,0,z).
             Arguments:
-                lock_theta1 (bool)
-                robot: list of [R, t, R, t...]
+                robot(SerialLink): serial link manipulator
+                lock_theta1 (bool): False by default
                 method (str): "cs", "trig", or "cayley"
             Returns:
                 [solutions], [symbols]
         """
-        Re, te, Zs, constraints, syms = cls.R6_pose(*robot, method=method)
+        Re, te, Zs, constraints, syms = cls.R6_pose(robot, method=method)
         x, z = sympy.symbols('x z')
         Rd = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
         td = Matrix([[x], [0], [z]], real=True)
@@ -261,29 +271,10 @@ Z = np.array([[0], [0], [1]])
 
 I3 = np.column_stack([X, Y, Z])
 
-t12 = Z
-R12 = np.column_stack([X, Z, -Y])
 
-t23 = X
-R23 = np.column_stack([X, Y, Z])
-
-t34 = X
-R34 = np.column_stack([X, -Z, Y])
-
-RRR = [R12, t12, R23, t23, R34, t34]
-
-t45 = O
-R45 = np.column_stack([X, Z, -Y])
-
-t56 = O
-R56 = np.column_stack([X, -Z, Y])
-
-t6e = Z
-R6e = np.column_stack([X, Y, Z])
-
-WRIST = [R45, t45, R56, t56, R6e, t6e]
-
-ROBOT = RRR + WRIST
+def pose(R, t):
+    """Create a Pose3 out of 2 numpy arrays."""
+    return gtsam.Pose3(gtsam.Rot3(R), point3_of_vector(t.flatten()))
 
 
 class TestInverseKinematics(GtsamTestCase):
@@ -293,9 +284,14 @@ class TestInverseKinematics(GtsamTestCase):
         """Read URDF from file and create class instance."""
         urdf_file = os.path.join(URDFS_PATH, "fanuc_lrmate200id.urdf")
         self.ik = FasterIK(urdf_file)
+        self.elbow = SerialLink(RRR_calibration_dh)
+        self.r6 = SerialLink(R6_calibration_dh)
 
     def test_RRR_rotation(self):
         """Check expression for rotation matrix at end of three links."""
+        R12 = np.column_stack([X, Z, -Y])
+        R23 = np.column_stack([X, Y, Z])
+        R34 = np.column_stack([X, -Z, Y])
         R3 = [R12, R23, R34]
         Re, Zs, constraints, syms = FasterIK.RRR_rotation(*R3)
         self.assertIsInstance(Re, sympy.Matrix)
@@ -305,7 +301,7 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_RRR_pose(self):
         """Check expression for pose at end of three links."""
-        Re, te, _, constraints, syms = FasterIK.RRR_pose(*RRR)
+        Re, te, _, constraints, syms = FasterIK.RRR_pose(self.elbow)
         self.assertIsInstance(Re, sympy.Matrix)
         self.assertIsInstance(constraints, list)
         self.assertEqual(len(constraints), 3)
@@ -313,23 +309,23 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_RRR_fk(self):
         """Check forward kinematics for two configurations of RRR."""
-        R, t = FasterIK.RRR_fk(vector(0, 0, 0), *RRR)  # rest
+        R, t = FasterIK.RRR_fk(self.elbow, vector(0, 0, 0))  # rest
         np.testing.assert_array_almost_equal(t, vector(2, 0, 1))
-        np.testing.assert_array_almost_equal(R, np.column_stack([X, Y,Z]))
+        np.testing.assert_array_almost_equal(R, np.column_stack([X, Y, Z]))
 
-        R, t = FasterIK.RRR_fk(vector(0, math.pi/2, 0), *RRR)  # up
+        R, t = FasterIK.RRR_fk(self.elbow, vector(0, math.pi/2, 0))  # up
         np.testing.assert_array_almost_equal(t, vector(0, 0, 3))
         np.testing.assert_array_almost_equal(R, np.column_stack([Z, Y, -X]))
 
     @unittest.skip("too slow")
     def test_RRR_solve(self):
-        solutions, syms = FasterIK.RRR_solve(*RRR, lock_theta1=True)
+        solutions, syms = FasterIK.RRR_solve(self.elbow, lock_theta1=True)
         self.assertEqual(len(solutions), 2)
         self.assertEqual(len(syms), 6)
 
     def test_R6_pose(self):
         """Check expression for pose at end of 6DOF manipulator."""
-        Re, te, Zs, constraints, syms = FasterIK.R6_pose(*ROBOT)
+        Re, te, Zs, constraints, syms = FasterIK.R6_pose(self.r6)
         self.assertIsInstance(Re, sympy.Matrix)
         self.assertIsInstance(constraints, list)
         self.assertEqual(len(constraints), 6)
@@ -337,18 +333,18 @@ class TestInverseKinematics(GtsamTestCase):
 
     def test_R6_fk(self):
         """Check forward kinematics for two configurations of 6DOF manipulator."""
-        R, t = FasterIK.R6_fk(vector(0, 0, 0, 0, 0, 0), *ROBOT)  # rest
+        R, t = FasterIK.R6_fk(self.r6, vector(0, 0, 0, 0, 0, 0))  # rest
         np.testing.assert_array_almost_equal(t, vector(2, 0, 2))
         np.testing.assert_array_almost_equal(R, np.column_stack([X, Y, Z]))
 
-        R, t = FasterIK.R6_fk(
-            vector(0, math.pi/2, 0, 0, 0, 0), *ROBOT)  # up
+        R, t = FasterIK.R6_fk(self.r6,
+                              vector(0, math.pi/2, 0, 0, 0, 0))  # up
         np.testing.assert_array_almost_equal(t, vector(-1, 0, 3))
         np.testing.assert_array_almost_equal(R, np.column_stack([Z, Y, -X]))
 
     @unittest.skip("too slow")
     def test_R6_solve(self):
-        solutions, syms = FasterIK.R6_solve(True, *ROBOT)
+        solutions, syms = FasterIK.R6_solve(True, self.r6)
         self.assertEqual(len(solutions), 2)
         self.assertEqual(len(syms), 6)
 
@@ -383,8 +379,8 @@ def timeit(method):
 @timeit
 def run_rrr():
     """Run RRR solver for simple example."""
-    solutions, syms = FasterIK.RRR_solve(
-        *TestInverseKinematics.RRR, lock_theta1=False, method="cs")
+    elbow = SerialLink(RRR_calibration_dh)
+    solutions, syms = FasterIK.RRR_solve(elbow, lock_theta1=True, method="cs")
     if solutions is None:
         print("no solution!")
     else:
@@ -396,9 +392,8 @@ def run_rrr():
 @timeit
 def run_r6():
     """Run 6DOF solver for simple example."""
-    lock_theta1 = True
-    solutions, syms = FasterIK.R6_solve(
-        lock_theta1, *TestInverseKinematics.ROBOT)
+    r6 = SerialLink(R6_calibration_dh)
+    solutions, syms = FasterIK.R6_solve(r6, lock_theta1=True)
     if solutions is None:
         print("no solution!")
     else:
@@ -408,6 +403,6 @@ def run_r6():
 
 
 if __name__ == "__main__":
-    # run_rrr()
-    # run_r6()
+    run_rrr()
+    run_r6()
     unittest.main()
