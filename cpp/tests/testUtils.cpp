@@ -56,9 +56,9 @@ TEST(utils, calcQ) {
 }
 
 /**
- * Test readFromMat
+ * Test readFromTxt
  */
-TEST(utils, readFromMat) {
+TEST(utils, readFromTxt) {
   Point3 expected_origin(-1, -1, -1), actual_origin;
   double expected_cell_size = 0.01, actual_cell_size;
   vector<Matrix> expected_data, actual_data;
