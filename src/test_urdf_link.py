@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test Link with Denavit Hartenberg parameters.
+Test SerialLink built from URDF file.
 Author: Frank Dellaert and Mandy Xie
 """
 
@@ -48,15 +48,15 @@ class TestURDFFetch(GtsamTestCase):
         link_dict = read_urdf(file_name)
         self.assertEqual(len(link_dict), 21)
 
-        serial_link = SerialLink.from_urdf(
+        robot = SerialLink.from_urdf(
             link_dict, leaf_link_name="r_gripper_finger_link")
-        self.assertIsInstance(serial_link, SerialLink)
+        self.assertIsInstance(robot, SerialLink)
         self.assertEqual(
             link_dict["r_gripper_finger_link"][1], "gripper_link")
         for link_info in link_dict.values():
             self.assertIsInstance(link_info[0], URDF_Link)
-        self.assertEqual(serial_link._links[0].mass, 70.1294)
-        self.assertEqual(len(serial_link._links), 11)
+        self.assertEqual(robot.link(0).mass, 70.1294)
+        self.assertEqual(len(robot._links), 11)
 
 
 class TestURDFFanuc(GtsamTestCase):
@@ -68,9 +68,14 @@ class TestURDFFanuc(GtsamTestCase):
         link_dict = read_urdf(file_name)
         self.assertEqual(len(link_dict), 6)
 
-        serial_link = SerialLink.from_urdf(
-            link_dict, leaf_link_name="Part6")
-        self.assertEqual(serial_link._links[0].mass, 4.85331)
+        robot = SerialLink.from_urdf(link_dict, leaf_link_name="Part6")
+        self.assertEqual(robot.link(0).mass, 4.85331)
+        # print(robot.link_frames(utils.vector(0,np.pi/2, 0, 0, 0, 0, 0)))
+        # TODO(frank): fix the mess
+        self.gtsamAssertEquals(robot.link(1).A(0), Pose3(
+            Rot3(), Point3(0.105, 0.09, 0.16859)))
+        self.gtsamAssertEquals(robot.link(1).A(np.pi/2), Pose3(
+            Rot3.Rz(np.pi/2), Point3(0.105, 0.09, 0.16859)))
 
 
 if __name__ == "__main__":

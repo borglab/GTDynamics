@@ -14,10 +14,11 @@ import unittest
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 
-from link_parameters import (PUMA_calibration_dh, RR_calibration_dh,
-                             RR_calibration_urdf)
+from link_parameters import (PUMA_calibration_dh, R6_calibration_dh,
+                             RR_calibration_dh, RR_calibration_urdf,
+                             RRR_calibration_dh)
 from serial_link import SerialLink
-from utils import GtsamTestCase, unit_twist, vector
+from utils import GtsamTestCase, point3_of_vector, unit_twist, vector
 
 HALF_PI = math.pi/2
 R90 = Rot3.Rz(HALF_PI)
@@ -88,10 +89,11 @@ class BaseTestCase(GtsamTestCase):
         np.testing.assert_array_almost_equal(
             self.robot.extract_torques(result), torques)
 
+
 class TestURDF_RR(BaseTestCase):
     """Unit tests for DH RR."""
 
-    QZ = vector(0.00, 0.00)  # at rest
+    QZ = vector(0, 0)  # at rest
     Q1 = vector(HALF_PI, 0)  # vertical
     Q2 = vector(0, math.pi)  # doubled back
 
@@ -104,7 +106,7 @@ class TestURDF_RR(BaseTestCase):
             RR_calibration_urdf,
             tool=Pose3(Rot3(), Point3(2, 0, 0))
         )
-    
+
     def test_link_transforms(self):
         """Test link_transforms."""
         # Check zero joint angles
@@ -318,7 +320,7 @@ class TestDH_R(BaseTestCase):
 class TestDH_RR(BaseTestCase):
     """Unit tests for DH RR."""
 
-    QZ = vector(0.00, 0.00)  # at rest
+    QZ = vector(0, 0)  # at rest
     Q1 = vector(HALF_PI, 0)  # vertical
     Q2 = vector(0, math.pi)  # doubled back
 
@@ -501,14 +503,88 @@ class TestDH_RR(BaseTestCase):
         self.check_inverse_dynamics(**scenario)
 
 
+# unit vectors for use in tests below
+O = np.array([[0], [0], [0]])
+X = np.array([[1], [0], [0]])
+Y = np.array([[0], [1], [0]])
+Z = np.array([[0], [0], [1]])
+
+
+def pose(R, t):
+    """Create a Pose3 out of 2 numpy arrays."""
+    return Pose3(Rot3(R), point3_of_vector(t.flatten()))
+
+
+class TestDH_RRR(BaseTestCase):
+    """Unit tests for DH RRR."""
+
+    def setUp(self):
+        """Create RRR robot."""
+        self.robot = SerialLink(RRR_calibration_dh)
+
+    def test_link_transforms(self):
+        """Test link_transforms."""
+        # Check zero joint angles
+        frames = self.robot.link_transforms()
+
+        t12 = Z
+        R12 = np.column_stack([X, Z, -Y])
+        self.gtsamAssertEquals(frames[0], pose(R12, t12))
+
+        t23 = X
+        R23 = np.column_stack([X, Y, Z])
+        self.gtsamAssertEquals(frames[1], pose(R23, t23))
+
+        t34 = X
+        R34 = np.column_stack([X, -Z, Y])
+        self.gtsamAssertEquals(frames[2], pose(R34, t34))
+
+    def test_fkine(self):
+        """Test forward kinematics."""
+        te = np.array([[2], [0], [1]])
+        Re = np.column_stack([X, Y, Z])
+        self.gtsamAssertEquals(self.robot.fkine(), pose(Re, te))
+
+
+class TestDH_R6(BaseTestCase):
+    """Unit tests for DH R6."""
+
+    def setUp(self):
+        """Create R6 robot."""
+        self.robot = SerialLink(R6_calibration_dh)
+
+    def test_link_transforms(self):
+        """Test link_transforms."""
+        # Check zero joint angles
+        frames = self.robot.link_transforms()
+
+        t45 = O
+        R45 = np.column_stack([X, Z, -Y])
+        self.gtsamAssertEquals(frames[3], pose(R45, t45))
+
+        t56 = O
+        R56 = np.column_stack([X, -Z, Y])
+        self.gtsamAssertEquals(frames[4], pose(R56, t56))
+
+        t67 = Z
+        R67 = np.column_stack([X, Y, Z])
+        self.gtsamAssertEquals(frames[5], pose(R67, t67))
+
+    def test_fkine(self):
+        """Test forward kinematics."""
+        te = np.array([[2], [0], [2]])
+        Re = np.column_stack([X, Y, Z])
+        self.gtsamAssertEquals(self.robot.fkine(), pose(Re, te))
+
+
 class TestDH_Puma(BaseTestCase):
     """Unit tests for DH Puma."""
 
     def setUp(self):
         """Create Puma robot."""
         self.robot = SerialLink(PUMA_calibration_dh,
-            base=Pose3(Rot3(), Point3()),
-            tool=Pose3(Rot3(), Point3()))
+                                base=Pose3(Rot3(), Point3()),
+                                tool=Pose3(Rot3(), Point3()))
 
     def test_fkine(self):
         """Test forward kinematics, example from Corke 2017 page 203."""
@@ -516,7 +592,7 @@ class TestDH_Puma(BaseTestCase):
         T = self.robot.fkine(qz)
         self.assertIsInstance(T, Pose3)
         self.gtsamAssertEquals(
-            T, Pose3(Rot3(), Point3(0.58185, -0.4521, 2.76831e-17)), tol=1e-4) # from Matlab
+            T, Pose3(Rot3(), Point3(0.58185, -0.4521, 2.76831e-17)), tol=1e-4)  # from Matlab
 
     def test_link_frames(self):
         """Test link_frames."""
@@ -534,9 +610,10 @@ class TestDH_Puma(BaseTestCase):
     def test_PUMA_forward_dynamics_matlab(self):
         """Test forward dynamics, Mandy's MATLAB example."""
         self.check_forward_dynamics(
-            gravity = vector(0, 0, -9.8),
+            gravity=vector(0, 0, -9.8),
             joint_velocities=np.radians(vector(-5, -10, -15, -20, -25, -30)),
-            torques=vector(2.14242560e+00, -4.72874900e+01, 1.37677604e+01, 2.15162000e-01, 1.45261716e-03, 7.67944871e-05),
+            torques=vector(2.14242560e+00, -4.72874900e+01, 1.37677604e+01,
+                           2.15162000e-01, 1.45261716e-03, 7.67944871e-05),
             accelerations=vector(
                 0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.047198)  # from MATLAB
         )
