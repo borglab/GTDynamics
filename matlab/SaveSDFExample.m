@@ -1,6 +1,6 @@
-% Example to save sdf as gpmp2 datatype
-% @author Mustafa Mukadam
-% @date   May 4, 2017
+% Save sdf
+% @author Mandy Xie
+% @date   May 8, 2019
 
 close all
 clear

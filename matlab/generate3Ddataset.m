@@ -1,9 +1,10 @@
 function dataset = generate3Ddataset(dataset_str)
+%   Modified from GPMP2 
 %GENERATE3DDATASET enerate 3D dataset evidence grid
 %
 %   Usage: dataset = GENERATE3DDATASET(dataset_str)
 %   @dataset_str       dataset string, existing datasets:
-%                      'WAMDeskDataset'
+%                      'KUKADeskDataset'
 %
 %   Dataset Format:
 %   dataset.map        ground truth evidence grid

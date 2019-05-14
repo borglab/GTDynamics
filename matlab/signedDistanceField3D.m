@@ -1,4 +1,5 @@
 function field = signedDistanceField3D(ground_truth_map, cell_size)
+%   From GPMP2 repo
 %SIGNEDDISTANCEFIELD3D 3D signed distance field
 %   Given a ground truth 3D map defined in Matrix in 0-1,
 %   calculate 3D signed distance field, which is defined as a matrix

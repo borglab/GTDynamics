@@ -1,6 +1,6 @@
 function h = plotSignedDistanceField3D(field, origin, cell_size, epsilon_dist, marker_size)
 %PLOTSIGNEDDISTANCEFIELD3D plot 3D SignedDistanceField
-%
+%   From GPMP2 repo
 %   Usage: PLOTSIGNEDDISTANCEFIELD3D(field, origin, cell_size, epsilon_dist)
 %   @field                  field 3D matrix
 %   @origin                 origin of the map
