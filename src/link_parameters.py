@@ -24,16 +24,16 @@ RR_calibration_dh = 2 * \
 # Denavit-Hartenberg parameters for RRR manipulator
 # Note that the rest configuration has the arm perpendicular to shoulder axis.
 RRR_calibration_dh = [
-    DH_Link.revolute(1, 0, 90),  # 12
-    DH_Link.revolute(0, 1, 0),  # 23
-    DH_Link.revolute(0, 1, -90)  # 34
+    DH_Link.revolute(1, 0, 90),  # joint 1 to joint 2
+    DH_Link.revolute(0, 1, 0),  # 2 to 3
+    DH_Link.revolute(0, 1, -90)  # 3 to 4
 ]
 
 # Denavit-Hartenberg parameters for R6 manipulator: RRR + wrist
 R6_calibration_dh = RRR_calibration_dh + [
-    DH_Link.revolute(0, 0, 90),  # 45
-    DH_Link.revolute(0, 0, -90),  # 56
-    DH_Link.revolute(1, 0, 0)  # 6e
+    DH_Link.revolute(0, 0, 90),  # joint 4 to joint 5
+    DH_Link.revolute(0, 0, -90),  # 5 to 6
+    DH_Link.revolute(1, 0, 0)  # 6 to end-effector
 ]
 
 # Denavit-Hartenberg parameters for PUMA manipulator theta, d, a, alpha
