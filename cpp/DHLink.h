@@ -11,7 +11,6 @@
 
 #include <gtsam/geometry/Pose3.h>
 
-
 namespace manipulator {
 
 /**
@@ -28,21 +27,26 @@ class DH_Link : public Link {
   /**
   * Construct from joint_type, mass, center_of_mass, inertia, and joint limits
   * Keyword arguments:
-     d                   -- link offset, i.e., distance between two joints
-     theta         -- angle between two joint frame x-axes (theta)
-     a                    -- link length. i.e., distance between two joints
-     alpha          -- link twist, i.e., angle between joint axes
-     joint_type        -- 'R': revolute,  'P' prismatic
-     mass            -- mass of link
-     center_of_mass  -- center of mass location expressed in link frame
-     inertia         -- inertia matrix
-     joint_lower_limit        -- joint angle lower limit
-     joint_upper_limit        -- joint angle upper limit
-     joint_limit_threshold   -- joint angle limit threshold
-     accelerationLimit -- joint acceleration limit
+     theta                      -- angle between two joint frame
+                                   x-axes (theta)
+     d                          -- link offset,
+                                   i.e., distance between two joints
+     a                          -- link length,
+                                   i.e., distance between two joints
+     alpha                      -- link twist,
+                                   i.e., angle between joint axes
+     joint_type                 -- 'R': revolute,  'P' prismatic
+     mass                       -- mass of link
+     center_of_mass             -- center of mass location expressed
+                                   in link frame
+     inertia                    -- inertia matrix
+     joint_lower_limit          -- joint angle lower limit
+     joint_upper_limit          -- joint angle upper limit
+     joint_limit_threshold      -- joint angle limit threshold
+     accelerationLimit          -- joint acceleration limit
      accelerationLimitThreshold -- acceleration limit threshold
-     torqueLimit -- joint torque limit
-     torqueLimitThreshold -- torque limit threshold
+     torqueLimit                -- joint torque limit
+     torqueLimitThreshold       -- torque limit threshold
   * Note: angles are given in degrees, but converted to radians internally.
   */
   DH_Link(double theta, double d, double a, double alpha, char joint_type,
@@ -54,8 +58,9 @@ class DH_Link : public Link {
           double acceleration_limit_threshold = 0.0,
           double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
-             unit_twist(gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
-                        gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
+             unit_twist(
+                 gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
+                 gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
