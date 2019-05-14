@@ -19,7 +19,7 @@ class URDF_Link(Link):
         """ Constructor.
             Keyword arguments:
                 origin (Pose3)          -- the x-y-z and roll-pitch-yaw coords of link frame w.r.t.
-                                           the former link frame 
+                                           the former link frame
                 axis (vector)           -- the x-y-z unit vector along the rotation axis in the link frame
                 joint_type (char)       -- 'R': revolute,  'P' prismatic
                 mass (float)            -- mass of link
@@ -41,7 +41,48 @@ class URDF_Link(Link):
         point_on_axis = utils.vector_of_point3(link_com.translation())
         screw_axis = utils.unit_twist(joint_axis_com, point_on_axis)
 
-        Link.__init__(self, joint_type, mass, center_of_mass, inertia, screw_axis)
+        Link.__init__(self, joint_type, mass,
+                      center_of_mass, inertia, screw_axis)
+
+    @staticmethod
+    def FromLinkSpec(link, parent_map, joints):
+        """ Create link from urdf specs.
+            Arguments:
+                link: URDF spec for the link
+                parent_map: robot topology from URDF file
+                joints (dict): named joint specs from URDF file
+            Returns
+                URDF_Link
+                parent (str)
+        """
+        I = link.inertial.inertia
+        inertia_matrix = np.array(
+            [[I.ixx, I.ixy, I.ixz], [I.ixy, I.iyy, I.iyz], [I.ixz, I.iyz, I.izz]])
+
+        mass = link.inertial.mass
+        center_of_mass = compose_pose(
+            link.inertial.origin.rpy, link.inertial.origin.xyz)
+
+        # find the joint attached to the link
+        if link.name in parent_map:
+            joint_name, parent_name = parent_map[link.name]
+            joint = joints[joint_name]
+            joint_type = 'R' if joint.joint_type in [
+                'revolute', 'continuous'] else 'P'
+            # TODO(yetong): special case for fixed joint, combine both links as the same link, or set the joint angle to be fixed
+            axis = utils.vector(0, 0, 1) if joint.axis is None else utils.vector(
+                joint.axis[0], joint.axis[1], joint.axis[2])
+            origin = compose_pose(joint.origin.rpy, joint.origin.xyz)
+        else:  # base link
+            parent_name = None
+            joint_type = 'R'
+            axis = utils.vector(0, 0, 1)
+            origin = compose_pose([0, 0, 0], [0, 0, 0])
+
+        # create the link
+        urdf_link = URDF_Link(origin, axis, joint_type,
+                              mass, center_of_mass, inertia_matrix)
+        return [urdf_link, parent_name]
 
     def A(self, q=0):
         """ Return Link transform.
@@ -90,48 +131,7 @@ def read_urdf(file_name):
     with open(file_name, "r") as f:
         urdf_contents = f.read()
         robot = URDF.from_xml_string(urdf_contents)
-    link_dict = {link.name: link for link in robot.links}
-    joint_dict = {joint.name: joint for joint in robot.joints}
 
-    link_names = [link.name for link in robot.links]
-    ordered_link_names = [link_name for link_name in link_names if link_name not in robot.parent_map]
-    while len(ordered_link_names) < len(link_names):
-        for link_name in link_names:
-            if (link_name not in ordered_link_names) and robot.parent_map[link_name][1] in ordered_link_names:
-                ordered_link_names.append(link_name)
-
-    # create each link with the urdf specs
-    urdf_link_dict = {}
-    for link_name in link_names:
-        link = link_dict[link_name]
-
-        # ignore imaginary links
-        if link.inertial is None:
-            continue
-
-        inertia = link.inertial.inertia
-        inertia_matrix = np.array(
-            [[inertia.ixx, inertia.ixy, inertia.ixz], [inertia.ixy, inertia.iyy, inertia.iyz], [inertia.ixz, inertia.iyz, inertia.izz]])
-
-        mass = link.inertial.mass
-        center_of_mass = compose_pose(link.inertial.origin.rpy, link.inertial.origin.xyz)
-
-        # find the joint attached to the link
-        if link_name in robot.parent_map:
-            joint_name, parent_name = robot.parent_map[link_name]
-            joint = joint_dict[joint_name]
-            joint_type = 'R' if joint.joint_type in ['revolute', 'continuous'] else 'P'
-            # TODO(yetong): special case for fixed joint, combine both links as the same link, or set the joint angle to be fixed
-            axis = utils.vector(0, 0, 1) if joint.axis is None else utils.vector(joint.axis[0], joint.axis[1], joint.axis[2])
-            origin = compose_pose(joint.origin.rpy, joint.origin.xyz)
-        else:  # base link
-            parent_name = None
-            joint_type = 'R'
-            axis = utils.vector(0, 0, 1)
-            origin = compose_pose([0, 0, 0], [0, 0, 0])
-
-        # create the link
-        urdf_link = URDF_Link(origin, axis, joint_type, mass, center_of_mass, inertia_matrix)
-        urdf_link_dict[link_name] = [urdf_link, parent_name]
-
-    return urdf_link_dict
+    joints = {joint.name: joint for joint in robot.joints}
+    return {link.name: URDF_Link.FromLinkSpec(link, robot.parent_map, joints)
+            for link in robot.links if link.inertial is not None}

@@ -1,0 +1,197 @@
+<!-- From https://github.com/sezan92/Fanuc />-->
+<robot name = "Fanuc">
+    <link name="base_link">
+        <collision>
+            <geometry>
+                <mesh filename = "package://fanuc_motoman/meshes/Part 1.STL" scale = "0.001 0.001 0.001" />
+            </geometry>
+            <origin xyz = "0 0 0" rpy = "0 0 0"/>
+        </collision>
+
+        <visual>
+            <geometry>
+                <mesh filename = "package://fanuc_motoman/meshes/Part 1.STL" scale = "0.001 0.001 0.001" />
+            </geometry>
+            <origin xyz = "0 0 0" rpy = "0 0 0"/>
+            <!-- Best value <origin xyz = "0.105 0.09 0" rpy = "0 0 0" />-->
+        </visual>
+        <inertial>
+            <origin xyz = "0.105 0.09 0.08042" rpy = "0 0 0" />
+            <!-- Best value <origin xyz = "0.105 0.09 0.08042" rpy = "0 0 0" />-->
+            <mass value = "4.85331"/>
+            <inertia ixx ="0.000533781" iyy=".055445798" izz=".02302818052" ixy="0.00012915752" ixz ="-0.002807595" iyz = "-0.000094967"/>
+        </inertial>
+    </link>
+    <link name = "world"/>
+
+    <joint name="world_base_joint" type="fixed">
+        <parent link="world"/>
+        <child link="base_link" />
+        <origin xyz = "0 0 0" rpy = "0 0 0"/>
+    </joint>
+
+    <gazebo reference= "base_link">
+        <material>Gazebo/Black</material>
+    </gazebo>
+    <joint name="Base_Part2" type="continuous">
+        <parent link ="base_link"/>
+        <child link="Part2"/>
+        <dynamics damping="0.7"/>
+        <axis xyz= "0 0 1" />
+        <origin xyz="0.105 0.09 0.16859"/>
+
+    </joint>
+
+    <!-- Part 2 -->
+    <link name ="Part2">
+        <collision>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 2.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <origin xyz="-0.125 -0.110 0" rpy ="0 0 0"/>
+        </collision>
+        <visual>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 2.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <origin xyz="-0.125 -0.110 0" rpy="0 0 0"/>
+        </visual>
+        <inertial>
+            <origin xyz = "0.0 0.0 0.081" rpy = "0 0 0" />
+            <mass value = "4.85331"/>
+            <inertia ixx ="0.000533781" iyy=".055445798" izz=".02302818052" ixy="0.00012915752" ixz ="-0.002807595" iyz = "-0.000094967"/>
+        </inertial>
+    </link>
+    <gazebo reference= "Part2">
+        <material>Gazebo/Orange</material>
+    </gazebo>
+
+    <!--Part2-Part3 Joint-->
+    <joint name="Part2_Part3" type="continuous">
+        <parent link ="Part2"/>
+        <child link="Part3"/>
+
+        <axis xyz= "0 1 0" />
+        <dynamics damping="0.7"/>
+        <origin xyz="0.05085 0.0 0.16872" rpy="0 0 0"/>
+
+    </joint>
+    <!--Part3-->
+    <link name = "Part3">
+        <collision>
+            <origin xyz="-0.075 -0.1 -0.07" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 3.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.075 -0.1 -0.07" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename = "package://fanuc_motoman/meshes/Part 3.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin xyz = "0 -0.00155 0.17556" rpy ="0 0 0"/>
+            <mass value = "7.96646"/>
+            <inertia ixx ="0.44125720672" iyy=".42103008445" izz=".03658588308" ixy="0.000023323" ixz ="-0.01624821395" iyz = "-0.00127983617"/>
+        </inertial>
+    </link>
+    <gazebo reference= "Part3">
+        <material>Gazebo/Orange</material>
+    </gazebo>
+
+    <!-- Part3-Part4 Joint>-->
+    <joint name ="Part3_Part4" type="continuous">
+        <parent link = "Part3"/>
+        <child link = "Part4"/>
+        <origin xyz="0 0 0.44" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <dynamics damping="0.7"/>
+    </joint>
+    <link name="Part4">
+        <collision>
+            <origin xyz="-0.078 -0.068 -0.06" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 4.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.078 -0.068 -0.06" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 4.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin xyz = "0.008 0.00068 0.0177" rpy ="0 0 0"/>
+            <mass value = "2.401"/>
+            <inertia ixx ="0.00709493364" iyy=".08303386" izz=".007482747" ixy="0.000062924" ixz ="0.000131383" iyz = "0.000095227"/>
+        </inertial>
+    </link>
+    <gazebo reference= "Part4">
+        <material>Gazebo/Orange</material>
+    </gazebo>
+    <!-- Part5-Part4 Joint-->
+    <joint name = "Part4_Part5" type="continuous">
+        <parent link="Part4"/>
+        <child link ="Part5"/>
+        <origin xyz="0.1 0 0.025" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
+        <dynamics damping="0.7"/>
+    </joint>
+    <link name = "Part5">
+        <collision>
+            <origin xyz ="-0.1 -0.05 -0.045" rpy = "0 0 0" />
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 5.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz ="-0.1 -0.05 -0.045" rpy = "0 0 0" />
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 5.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin xyz = "0.24013 0 0" rpy ="0 0 0"/>
+            <mass value = "2.89084"/>
+            <inertia ixx ="0.004863267" iyy=".19336297539" izz=".19385148073" ixy="0.00303203667" ixz ="0.000018846079" iyz = "-0.00000096841"/>
+        </inertial>
+
+    </link>
+    <gazebo reference= "Part5">
+        <material>Gazebo/Orange</material>
+    </gazebo>
+    <!--Part5-Part6 Joint-->
+    <joint name = "Part6_Part6" type="continuous">
+        <parent link="Part5"/>
+        <child link ="Part6"/>
+        <origin xyz="0.325 0 0" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <dynamics damping="0.7"/>
+    </joint>
+    <!-- Part6-->
+    <link name="Part6">
+        <collision>
+            <origin xyz="-0.045 -.035 0.050" rpy ="0 1.57 0"/>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 6.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin xyz="-0.045 -.035 0.050" rpy ="0 1.57 0"/>
+            <geometry>
+                <mesh filename="package://fanuc_motoman/meshes/Part 6.STL" scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin xyz = "0.01573 0.003 -0.00006" rpy ="0 0 0"/>
+            <mass value = "0.043284"/>
+            <inertia ixx ="0.00029985018" iyy=".000661879" izz=".00064231094" ixy="-0.00000439197" ixz ="-0.000000345" iyz = "-0.00000008651"/>
+        </inertial>
+
+    </link>
+    <gazebo reference= "Part6">
+        <material>Gazebo/Black</material>
+    </gazebo>
+
+</robot>

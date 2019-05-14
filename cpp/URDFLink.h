@@ -26,24 +26,26 @@ class URDF_Link : public Link {
   /**
   * Construct from joint_type, mass, center_of_mass, and inertia
   * Keyword arguments:
-         origin           -- the x-y-z and roll-pitch-yaw coords of link
-                                    frame w.r.t. the former link frame
-         axis          -- the x-y-z unit vector along the rotation
-                                    axis in the link frame
-         joint_type        --'R': revolute,  'P' prismatic
-         mass           -- mass of link
-         center_of_mass   -- the position and orientation of the center
-                                    of mass frame w.r.t. link frame
-         inertia         -- principal inertias
-         joint_lower_limit       -- joint angle lower limit
-         joint_upper_limit      -- joint angle upper limit
-         joint_limit_threshold   -- joint angle limit threshold
-         velocityLimit -- joint velocity limit
-         velocityLimitThreshold -- velocity limit threshold
-         accelerationLimit       -- joint acceleration limit
-         accelerationLimitThreshold -- joint acceleration limit threshold
-         torqueLimit                -- joint torque limit
-         torqueLimitThreshold       -- joint torque limit threshold
+         origin                      -- the x-y-z and roll-pitch-yaw
+                                        coords of link frame w.r.t.
+                                        the former link frame
+         axis                        -- the x-y-z unit vector along
+                                        the rotation axis in the link frame
+         joint_type                  --'R': revolute,  'P' prismatic
+         mass                        -- mass of link
+         center_of_mass              -- the position and orientation
+                                        of the center of mass frame w.r.t.
+                                        link frame
+         inertia                     -- principal inertias
+         joint_lower_limit           -- joint angle lower limit
+         joint_upper_limit           -- joint angle upper limit
+         joint_limit_threshold       -- joint angle limit threshold
+         velocityLimit               -- joint velocity limit
+         velocityLimitThreshold      -- velocity limit threshold
+         accelerationLimit           -- joint acceleration limit
+         accelerationLimitThreshold  -- joint acceleration limit threshold
+         torqueLimit                 -- joint torque limit
+         torqueLimitThreshold        -- joint torque limit threshold
   * Note: angles are given in degrees, but converted to radians internally.
   */
   URDF_Link(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,

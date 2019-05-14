@@ -8,20 +8,20 @@ Author: Frank Dellaert and Mandy Xie
 
 from __future__ import print_function
 
+import os
 import unittest
 
 import numpy as np
+from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
 
 import utils
-from gtsam import GaussianFactorGraph, Point3, Pose3, Rot3, VectorValues
-from urdf_link import URDF_Link, read_urdf
-from serial_link import SerialLink
 from link import F, Link, T, a
+from serial_link import SerialLink
+from urdf_link import URDF_Link, read_urdf
 from utils import GtsamTestCase
-import os
 
-ZERO1 = utils.vector(0)
-ZERO6 = utils.vector(0, 0, 0, 0, 0, 0)
+MY_PATH = os.path.dirname(os.path.realpath(__file__))
+URDFS_PATH = os.path.join(MY_PATH, '../urdfs')
 
 
 class TestURDFLink(GtsamTestCase):
@@ -30,36 +30,47 @@ class TestURDFLink(GtsamTestCase):
     # The joint screw axis, in the COM frame, is the same for all joints
     AXIS = utils.unit_twist([0, 0, 1], [-1, 0, 0])
 
-    def setUp(self):
+    def test_constructor(self):
         origin = Pose3(Rot3(), Point3(1, 0, 0))
         axis = utils.vector(0, 0, 1)
         center_of_mass = Pose3(Rot3(), Point3(1, 0, 0))
-        self.link = URDF_Link(origin, axis, 'R', 1,
-                              center_of_mass, np.diag([0, 1 / 6., 1 / 6.]))
-
-    def test_constructor(self):
-        """Test constructor."""
-        self.assertIsInstance(self.link, URDF_Link)
+        link = URDF_Link(origin, axis, 'R', 1,
+                         center_of_mass, np.diag([0, 1 / 6., 1 / 6.]))
+        self.assertIsInstance(link, URDF_Link)
 
 
 class TestURDFFetch(GtsamTestCase):
     """Unit tests for urdf link of the fetch robot."""
 
-    def setUp(self):
+    def test_load(self):
         # load the urdf file
-        dir_name = os.path.dirname(os.path.realpath(__file__))
-        file_name = os.path.join(dir_name, "fetch.urdf")
-        self.link_dict = read_urdf(file_name)
-        self.serial_link = SerialLink.from_urdf(self.link_dict, leaf_link_name="r_gripper_finger_link")
+        file_name = os.path.join(URDFS_PATH, "fetch.urdf")
+        link_dict = read_urdf(file_name)
+        self.assertEqual(len(link_dict), 21)
 
-    def test_constructor(self):
-        self.assertIsInstance(self.serial_link, SerialLink)
-        self.assertEqual(len(self.link_dict), 21)
-        self.assertEqual(self.link_dict["r_gripper_finger_link"][1], "gripper_link")
-        for link_info in self.link_dict.values():
+        serial_link = SerialLink.from_urdf(
+            link_dict, leaf_link_name="r_gripper_finger_link")
+        self.assertIsInstance(serial_link, SerialLink)
+        self.assertEqual(
+            link_dict["r_gripper_finger_link"][1], "gripper_link")
+        for link_info in link_dict.values():
             self.assertIsInstance(link_info[0], URDF_Link)
-        self.assertEqual(self.serial_link._links[0].mass, 70.1294)
-        self.assertEqual(len(self.serial_link._links), 11)
+        self.assertEqual(serial_link._links[0].mass, 70.1294)
+        self.assertEqual(len(serial_link._links), 11)
+
+
+class TestURDFFanuc(GtsamTestCase):
+    """Unit tests for the Fanuc URDF."""
+
+    def test_load(self):
+        # load the urdf file
+        file_name = os.path.join(URDFS_PATH, "fanuc_lrmate200id.urdf")
+        link_dict = read_urdf(file_name)
+        self.assertEqual(len(link_dict), 6)
+
+        serial_link = SerialLink.from_urdf(
+            link_dict, leaf_link_name="Part6")
+        self.assertEqual(serial_link._links[0].mass, 4.85331)
 
 
 if __name__ == "__main__":
