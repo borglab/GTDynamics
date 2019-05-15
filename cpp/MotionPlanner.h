@@ -136,8 +136,10 @@ class MotionPlanner {
       graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, opt_.qv_cost_model));
 
       if (sdf) {
+        // TODO:(Mandy) need to take the shape of robot arm
+        //      into consideration instead of naively using length.
         double length;
-        if (robot.link(j - 1).linkType == Link::DH) {
+        if (robot.link(j - 1).linkType() == Link::DH) {
           length = robot.link(j - 1).length();
         } else {
           if (j < dof) {
