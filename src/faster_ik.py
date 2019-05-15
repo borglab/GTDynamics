@@ -111,7 +111,7 @@ class FasterIK:
 
     @staticmethod
     def cs(c, s, theta):
-        """Make subsitution for c/s parameters, given angle joint theta."""
+        """Make subsitution for c/s parameters, given joint angle theta."""
         return [(c, math.cos(theta)), (s, math.sin(theta))]
 
     @staticmethod
