@@ -36,7 +36,7 @@ class SphereLink {
 
   /** get sphere centers expressed in base frame
    * key argument
-   * index  -- sphere index
+   * index     -- sphere index
    * com_pose  -- link center of mass frame pose in base frame
    */
   gtsam::Point3 sphereCenter(

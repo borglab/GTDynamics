@@ -26,8 +26,6 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   /**
    * Construct from joint angle limits
    * Keyword arguments:
-      pose_key (key)                   --
-      cost_model (noiseModel::Base::shared_ptr)    --
       lower_limit (Vector)             -- joint angle lower limit
       upper_limit (Vector)             -- joint angle upper limit
       limit_threshold (Vector)         -- joint angle limit threshold
@@ -52,34 +50,30 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
  private:
   /** calculate joint limit cost
       Keyword argument:
-          p --
-          lower_limit --
-          upper_limit --
-          limit_threshold --
-          error --
-          H_p --
+          q                   -- joint related values
+                                 e.g. angle, velocity, acceleration, torque
+          lower_limit         -- lower limit value
+          upper_limit         -- uppper limit value
+          limit_threshold     -- limit threshold to keep value from getting 
+                                 too close to the limit
   */
-  double jointLimitCost_(double p, double lower_limit, double upper_limit,
+  double jointLimitCost_(double q, double lower_limit, double upper_limit,
                          double limit_threshold,
                          boost::optional<double &> H_p = boost::none) const {
-    if (p < lower_limit + limit_threshold) {
+    if (q < lower_limit + limit_threshold) {
       if (H_p) *H_p = -1.0;
-      return lower_limit + limit_threshold - p;
-    } else if (p <= upper_limit - limit_threshold) {
+      return lower_limit + limit_threshold - q;
+    } else if (q <= upper_limit - limit_threshold) {
       if (H_p) *H_p = 0.0;
       return 0.0;
     } else {
       if (H_p) *H_p = 1.0;
-      return p - upper_limit + limit_threshold;
+      return q - upper_limit + limit_threshold;
     }
   }
 
  public:
-  /** evaluate joint angle limit errors
-      Keyword argument:
-          conf   --
-          H      --
-  */
+  /** evaluate joint angle limit errors */
   gtsam::Vector evaluateError(
       const gtsam::Vector &conf,
       boost::optional<gtsam::Matrix &> H = boost::none) const {
@@ -101,7 +95,7 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

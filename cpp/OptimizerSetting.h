@@ -52,7 +52,7 @@ class OptimizerSetting {
   /// collision checking setting
   double radius;     // sphere link radius
   double epsilon;    // obstacle clearance
-  double obsSigma;  // obstacle cost model covariance
+  double obsSigma;   // obstacle cost model covariance
 
   // default constructor
   OptimizerSetting();

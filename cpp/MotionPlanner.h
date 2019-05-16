@@ -95,12 +95,12 @@ class MotionPlanner {
   /** return nonlinear factor graph of all factors
    *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
-          robot -- robotic arm
-          pose goal -- pose goal of manipulator end effector
-          q_init -- initial value for joint angles
+          robot                     -- robotic arm
+          pose goal                 -- pose goal of manipulator end effector
+          q_init                    -- initial value for joint angles
           cartesian_path (optional) -- cartesian path for end effector to follow
-          gravity (optional) -- gravitatianl acceleration
-          sdf (optional) -- Signed Distance Field for collision check
+          gravity (optional)        -- gravitatianl acceleration
+          sdf (optional)            -- Signed Distance Field for collision check
    */
   template <typename Type>
   gtsam::NonlinearFactorGraph motionPlanningFactorGraph(
@@ -242,9 +242,9 @@ class MotionPlanner {
   /** initialization factor graph, return initial values for optimization
    *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
-          robot -- robotic arm
-          pose goal -- pose goal of manipulator end effector
-          q_init -- initial value for joint angles
+          robot                     -- robotic arm
+          pose goal                 -- pose goal of manipulator end effector
+          q_init                    -- initial value for joint angles
           cartesian_path (optional) -- cartesian path end effector needs to
      follow
    */
@@ -317,8 +317,8 @@ class MotionPlanner {
 
   /** optimize factor graph
       Keyword arguments:
-          graph -- nonlinear factor graph for motion planning
-          init_values -- initial values for optimization
+          graph         -- nonlinear factor graph for motion planning
+          init_values   -- initial values for optimization
    */
   gtsam::Values factorGraphOptimization(gtsam::NonlinearFactorGraph &graph,
                                         gtsam::Values &init_values) const;

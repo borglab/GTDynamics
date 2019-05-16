@@ -99,11 +99,11 @@ std::vector<gtsam::Point3> sphereCenters(double length, double radius, int num);
 // save for visualization
 /** save optimization result for simulation
  *  Keyword argument:
- *    jointAngle  -- joint angle trajectory
- *    goalPose             -- goal pose
- *    sdf   -- obstacle signed distance field, optional
- *    dof                   -- degree of freedom
-      dir                 -- directory
+ *    jointAngle    -- joint angle trajectory
+ *    goalPose      -- goal pose
+ *    sdf           -- obstacle signed distance field, optional
+ *    dof           -- degree of freedom
+      dir           -- directory
  field
 */
 void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
@@ -114,8 +114,8 @@ void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
 /** generation circular path
  *  Keyword argument:
       numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle     -- goal angle, assuming start at 0 joint angle
-      radius        -- radius of circular
+      goalAngle        -- goal angle, assuming start at 0 joint angle
+      radius           -- radius of circular
 */
 std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
                                  double radius);
@@ -123,8 +123,8 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 /** generation square path
  *  Keyword argument:
       numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle     -- goal angle, assuming start at 0 joint angle
-      length        -- length of square
+      goalAngle        -- goal angle, assuming start at 0 joint angle
+      length           -- length of square
 */
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);

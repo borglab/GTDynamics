@@ -60,19 +60,19 @@ class Link {
   /**
    * Construct from joint_type, mass, center_of_mass, and inertia
    * Keyword arguments:
-      joint_type              -- 'R': revolute,
-                                 'P': prismatic
-      mass                    -- mass of link
-      center_of_mass          -- center of mass location expressed
-                                 in link frame
-      inertia                 -- inertia matrix
-      screw_axis              -- joint axis expressed in COM frame
-      joint_lower_limit       -- joint angle lower limit
-      joint_upper_limit       -- joint angle upper limit
-      joint_limit_threshold   -- joint angle limit threshold
-      velocityLimit           -- joint velocity limit
-      velocityLimitThreshold  -- joint velocity limit threshold
-      accelerationLimit       -- joint acceleration limit
+      joint_type                 -- 'R': revolute,
+                                    'P': prismatic
+      mass                       -- mass of link
+      center_of_mass             -- center of mass location expressed
+                                    in link frame
+      inertia                    -- inertia matrix
+      screw_axis                 -- joint axis expressed in COM frame
+      joint_lower_limit          -- joint angle lower limit
+      joint_upper_limit          -- joint angle upper limit
+      joint_limit_threshold      -- joint angle limit threshold
+      velocityLimit              -- joint velocity limit
+      velocityLimitThreshold     -- joint velocity limit threshold
+      accelerationLimit          -- joint acceleration limit
       accelerationLimitThreshold -- joint acceleration limit threshold
       torqueLimit                -- joint torque limit
       torqueLimitThreshold       -- joint torque limit threshold
