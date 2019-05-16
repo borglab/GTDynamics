@@ -43,7 +43,6 @@ TEST(MotionPlanner, rrr_link_square) {
   opt.setJointLimitCostModel(0.001);
   opt.setToolPoseCostModel(0.0001);
   opt.setObstacleCostModel(0.01);
-  opt.setSphereRadius(0.2);
   opt.setCollisionEpsilon(0.2);
 
   // generate cartesian path
@@ -58,7 +57,7 @@ TEST(MotionPlanner, rrr_link_square) {
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
   auto graph = mp.motionPlanningFactorGraph(
-      robot, pose_goal, q_init, cartesianPath, gravity, boost::none);
+      robot, pose_goal, q_init, cartesianPath, gravity);
   auto init_values =
       mp.factorGraphInitialization(robot, pose_goal, q_init, cartesianPath);
   auto results = mp.factorGraphOptimization(graph, init_values);
@@ -90,7 +89,6 @@ TEST(MotionPlanner, rrr_link_circle) {
   opt.setJointLimitCostModel(0.001);
   opt.setToolPoseCostModel(0.0001);
   opt.setObstacleCostModel(0.01);
-  opt.setSphereRadius(0.2);
   opt.setCollisionEpsilon(0.2);
 
   // generate cartesian path
@@ -105,7 +103,7 @@ TEST(MotionPlanner, rrr_link_circle) {
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
   auto graph = mp.motionPlanningFactorGraph(
-      robot, pose_goal, q_init, cartesianPath, gravity, boost::none);
+      robot, pose_goal, q_init, cartesianPath, gravity);
   auto init_values =
       mp.factorGraphInitialization(robot, pose_goal, q_init, cartesianPath);
   auto results = mp.factorGraphOptimization(graph, init_values);

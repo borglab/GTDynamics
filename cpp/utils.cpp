@@ -62,33 +62,6 @@ Vector q_trajectory(int i, int total_step, Vector &start_q, Vector &end_q) {
   }
 }
 
-// vector<vector<Point3>> sphereCenters(vector<double> lengths,
-//                                      vector<double> radii) {
-//   vector<vector<Point3>> shpere_centers_all;
-//   int dof = lengths.size();
-//   for (int j = 0; j < dof; ++j) {
-//     vector<Point3> sphere_centers;
-//     if (lengths[j] == 0) {
-//       sphere_centers.assign(1, Point3());
-//     } else {
-//       int num = std::max((int)(lengths[j] / radii[j]), 1);
-//       std::cout << "num = " << num << std::endl;
-//       if (num == 1) {
-//         sphere_centers.push_back(Point3(0, 0, 0));
-//       } else {
-//         for (int i = 0; i < num; ++i) {
-//           // get sphere center expressed in link COM frame
-//           sphere_centers.push_back(
-//               Point3((2 * i + 1) * radii[j] - 0.5 * lengths[j], 0, 0));
-//               std::cout << "centers = " << Point3((2 * i + 1) * radii[j] - 0.5 * lengths[j], 0, 0) << std::endl;
-//         }
-//       }
-//     }
-//     shpere_centers_all.push_back(sphere_centers);
-//   }
-//   return shpere_centers_all;
-// }
-
 vector<vector<Point3>> sphereCenters(vector<double> lengths,
                                      vector<double> radii) {
   vector<vector<Point3>> shpere_centers_all;
