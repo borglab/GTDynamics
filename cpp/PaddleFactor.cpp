@@ -6,7 +6,7 @@
  *  @date April 2019
  */
 
-#include <gtsam_unstable/nonlinear/PaddleFactor.h>
+#include <PaddleFactor.h>
 
 #include <cmath>
 #include <iostream>

@@ -56,19 +56,19 @@ class Link {
   /**
    * Construct from joint_type, mass, center_of_mass, and inertia
    * Keyword arguments:
-      joint_type              -- 'R': revolute,
-                                 'P': prismatic
-      mass                    -- mass of link
-      center_of_mass          -- center of mass location expressed
-                                 in link frame
-      inertia                 -- inertia matrix
-      screw_axis              -- joint axis expressed in COM frame
-      joint_lower_limit       -- joint angle lower limit
-      joint_upper_limit       -- joint angle upper limit
-      joint_limit_threshold   -- joint angle limit threshold
-      velocityLimit           -- joint velocity limit
-      velocityLimitThreshold  -- joint velocity limit threshold
-      accelerationLimit       -- joint acceleration limit
+      joint_type                 -- 'R': revolute,
+                                    'P': prismatic
+      mass                       -- mass of link
+      center_of_mass             -- center of mass location expressed
+                                    in link frame
+      inertia                    -- inertia matrix
+      screw_axis                 -- joint axis expressed in COM frame
+      joint_lower_limit          -- joint angle lower limit
+      joint_upper_limit          -- joint angle upper limit
+      joint_limit_threshold      -- joint angle limit threshold
+      velocityLimit              -- joint velocity limit
+      velocityLimitThreshold     -- joint velocity limit threshold
+      accelerationLimit          -- joint acceleration limit
       accelerationLimitThreshold -- joint acceleration limit threshold
       torqueLimit                -- joint torque limit
       torqueLimitThreshold       -- joint torque limit threshold
@@ -138,24 +138,7 @@ class Link {
         accelerationLimitThreshold_(acceleration_limit_threshold),
         torqueLimit_(torque_limit),
         torqueLimitThreshold_(torque_limit_threshold) {}
-
-  /* Copy constructor */
-  Link(const Link &link)
-      : jointType_(link.jointType_),
-        mass_(link.mass_),
-        centerOfMass_(link.centerOfMass_),
-        inertia_(link.inertia_),
-        screwAxis_(link.screwAxis_),
-        jointLowerLimit_(link.jointLowerLimit_),
-        jointUpperLimit_(link.jointUpperLimit_),
-        jointLimitThreshold_(link.jointLimitThreshold_),
-        velocityLimit_(link.velocityLimit_),
-        velocityLimitThreshold_(link.velocityLimitThreshold_),
-        accelerationLimit_(link.accelerationLimit_),
-        accelerationLimitThreshold_(link.accelerationLimitThreshold_),
-        torqueLimit_(link.torqueLimit_),
-        torqueLimitThreshold_(link.torqueLimitThreshold_) {}
-
+        
   /* Return screw axis. */
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
 

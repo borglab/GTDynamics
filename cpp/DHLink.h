@@ -101,7 +101,7 @@ class DH_Link : public Link {
            gtsam::Pose3(gtsam::Rot3::Roll(alpha_), gtsam::Point3(a_, 0, 0));
   }
 
-  /* return approximate length of link */
+  /* return approximate length of this link */
   double length() const { return sqrt(d_ * d_ + a_ * a_); }
 };
 }  // namespace manipulator

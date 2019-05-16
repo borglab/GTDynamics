@@ -94,6 +94,21 @@ TEST(MotionPlanner, dh_puma) {
   Pose3 pose_goal(expected_T);
   auto dof = robot.numLinks();
 
+  // TODO:(Mandy) need to take the shape of robot arm
+  //      into consideration instead of naively using length.
+  // generate sphere robot arm model
+  vector<double> lengths, radii;
+  radii.assign(dof, 0.05);
+  double l;
+  for (int i = 0; i < dof; ++i) {
+    l = robot.link(i).length();
+    lengths.push_back(l);
+    if (l == 0) {
+      radii[i] = 0;
+    }
+  }
+  vector<vector<Point3>> sphere_centers_all = sphereCenters(lengths, radii);
+
   // motion planning optimization settings
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
@@ -102,12 +117,11 @@ TEST(MotionPlanner, dh_puma) {
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);
-  opt.setSphereRadius(0.05);
   opt.setCollisionEpsilon(0.2);
 
   MotionPlanner mp(opt);
   auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
-                                            boost::none, gravity, sdf);
+                                            boost::none, gravity, sdf, sphere_centers_all, radii);
   auto init_values = mp.factorGraphInitialization(
       robot, pose_goal, Vector::Zero(dof), boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);

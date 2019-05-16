@@ -6,21 +6,22 @@
 #pragma once
 
 #include <Arm.h>
-#include <PoseFactor.h>
 #include <BasePoseFactor.h>
+#include <BaseTwistAccelFactor.h>
+#include <BaseTwistFactor.h>
+#include <GaussianProcessPriorFactor.h>
+#include <GaussianProcessPriorPose3Factor.h>
+#include <JointLimitFactor.h>
+#include <Link.h>
+#include <ObstacleSDFFactor.h>
+#include <OptimizerSetting.h>
+#include <PoseFactor.h>
 #include <ToolPoseFactor.h>
 #include <ToolWrenchFactor.h>
 #include <TorqueFactor.h>
-#include <WrenchFactor.h>
 #include <TwistAccelFactor.h>
 #include <TwistFactor.h>
-#include <BaseTwistFactor.h>
-#include <BaseTwistAccelFactor.h>
-#include <JointLimitFactor.h>
-#include <GaussianProcessPriorFactor.h>
-#include <GaussianProcessPriorPose3Factor.h>
-#include <ObstacleSDFFactor.h>
-#include <OptimizerSetting.h>
+#include <WrenchFactor.h>
 #include <utils.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -94,19 +95,22 @@ class MotionPlanner {
   /** return nonlinear factor graph of all factors
    *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
-          robot -- robotic arm
-          pose goal -- pose goal of manipulator end effector
-          q_init -- initial value for joint angles
-          cartesian_path (optional) -- cartesian path for end effector to follow
-          gravity (optional) -- gravitatianl acceleration
-          sdf (optional) -- Signed Distance Field for collision check
+          robot                     -- robotic arm
+          pose goal                 -- pose goal of manipulator end effector
+          q_init                    -- initial value for joint angles
+          sphere_centers_all        -- sphere centers for each link sphere
+   models cartesian_path (optional) -- cartesian path for end effector to follow
+          gravity (optional)        -- gravitatianl acceleration
+          sdf (optional)            -- Signed Distance Field for collision check
    */
   template <typename Type>
   gtsam::NonlinearFactorGraph motionPlanningFactorGraph(
       Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
       boost::optional<gtsam::Vector3 &> gravity = boost::none,
-      boost::optional<SignedDistanceField &> sdf = boost::none) const {
+      boost::optional<SignedDistanceField &> sdf = boost::none,
+      boost::optional<std::vector<std::vector<gtsam::Point3>> &> sphereCenters = boost::none, 
+      boost::optional<std::vector<double> &> radii = boost::none) const {
     using namespace gtsam;
     double delta_t = opt_.total_time / opt_.total_step;
 
@@ -181,16 +185,14 @@ class MotionPlanner {
         }
 
         // add obstacle factor
-        if (sdf) {
-          auto length = robot.link(j - 1).length();
-          if (length > 0) {
-            int num = std::min((int)(length / opt_.radius), 1);
+        if (sphereCenters && radii && sdf) {
+          if (radii->at(j - 1) > 0) {
+            int num = sphereCenters->at(j - 1).size();
             auto obs_cost_model =
                 noiseModel::Isotropic::Sigma(num, opt_.obsSigma);
-            auto sphere_centers = sphereCenters(length, opt_.radius, num);
             graph.add(ObstacleSDFFactor(PoseKey(j, i), obs_cost_model,
-                                        opt_.epsilon, *sdf, opt_.radius,
-                                        sphere_centers));
+                                        opt_.epsilon, *sdf, radii->at(j - 1),
+                                        sphereCenters->at(j - 1)));
           }
         }
       }
@@ -217,9 +219,9 @@ class MotionPlanner {
   /** initialization factor graph, return initial values for optimization
    *  template Type -- the link type of this robot, URDF_Link or DH_Link
       Keyword arguments:
-          robot -- robotic arm
-          pose goal -- pose goal of manipulator end effector
-          q_init -- initial value for joint angles
+          robot                     -- robotic arm
+          pose goal                 -- pose goal of manipulator end effector
+          q_init                    -- initial value for joint angles
           cartesian_path (optional) -- cartesian path end effector needs to
      follow
    */
@@ -292,8 +294,8 @@ class MotionPlanner {
 
   /** optimize factor graph
       Keyword arguments:
-          graph -- nonlinear factor graph for motion planning
-          init_values -- initial values for optimization
+          graph         -- nonlinear factor graph for motion planning
+          init_values   -- initial values for optimization
    */
   gtsam::Values factorGraphOptimization(gtsam::NonlinearFactorGraph &graph,
                                         gtsam::Values &init_values) const;

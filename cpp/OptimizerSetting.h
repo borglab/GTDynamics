@@ -50,9 +50,8 @@ class OptimizerSetting {
   int max_iter;       // max iteration for stopping optimization
 
   /// collision checking setting
-  double radius;     // sphere link radius
   double epsilon;    // obstacle clearance
-  double obsSigma;  // obstacle cost model covariance
+  double obsSigma;   // obstacle cost model covariance
 
   // default constructor
   OptimizerSetting();
@@ -84,8 +83,6 @@ class OptimizerSetting {
   void setMaxIteration(size_t iter) { max_iter = iter; }
 
   /// collision check setting
-  // set sphere radius for simplified arm
-  void setSphereRadius(double r) { radius = r; }
   // set safty distance threshold
   void setCollisionEpsilon(double e) { epsilon = e; }
 };

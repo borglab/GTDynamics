@@ -53,12 +53,13 @@ for i in range(joint_num):
 
 # obtain table handles
 _, table_handle = vrep.simxGetObjectHandle(clientID, obstacle_name, vrep.simx_opmode_blocking)
-# get table position relative to the robot
-_, table_position = vrep.simxGetObjectPosition(clientID, table_handle, base_handle, vrep.simx_opmode_streaming)
-# set table position relative to the robot
-table_position[1] = table_position[1] + 1
-table_position[2] = table_position[2] + 0.3
-vrep.simxSetObjectPosition(clientID, table_handle, base_handle, table_position, vrep.simx_opmode_oneshot)
+# get table position in world frame
+_, table_position = vrep.simxGetObjectPosition(clientID, table_handle, -1, vrep.simx_opmode_streaming)
+# set table position in world frame
+table_position[0] = 1
+table_position[1] = 0
+table_position[2] = table_position[2] + 0.375
+vrep.simxSetObjectPosition(clientID, table_handle, -1, table_position, vrep.simx_opmode_oneshot)
 
 # open files for joint trajectories
 file_object = [open("./test_data/joint_angles/q" + str(i+1) + ".txt", "r") for i in range(joint_num)]

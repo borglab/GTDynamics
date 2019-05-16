@@ -62,17 +62,26 @@ Vector q_trajectory(int i, int total_step, Vector &start_q, Vector &end_q) {
   }
 }
 
-vector<Point3> sphereCenters(double length, double radius, int num) {
-  vector<Point3> sphere_centers;
-  if (num == 1) {
-    sphere_centers.push_back(Point3(0, 0, 0));
-    return sphere_centers;
+vector<vector<Point3>> sphereCenters(vector<double> lengths,
+                                     vector<double> radii) {
+  vector<vector<Point3>> shpere_centers_all;
+  int dof = lengths.size();
+  for (int j = 0; j < dof; ++j) {
+    vector<Point3> sphere_centers;
+    if (lengths[j] == 0) {
+      sphere_centers.assign(1, Point3());
+    } else {
+      int num = ceil(lengths[j] / radii[j]);
+      double distance = lengths[j] / num;
+      for (int i = 0; i < num; ++i) {
+        // get sphere center expressed in link COM frame
+        sphere_centers.push_back(
+            Point3((i + 0.5) * distance - 0.5 * lengths[j], 0, 0));
+      }
+    }
+    shpere_centers_all.push_back(sphere_centers);
   }
-  for (int i = 0; i < num; ++i) {
-    // get sphere center expressed in link COM frame
-    sphere_centers.push_back(Point3((2 * i + 1) * radius - 0.5 * length, 0, 0));
-  }
-  return sphere_centers;
+  return shpere_centers_all;
 }
 
 void saveForVisualization(
@@ -146,6 +155,41 @@ vector<Pose3> square(int numOfWayPoints, double goalAngle, double length) {
     path.push_back(waypose);
   }
   return path;
+}
+
+std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
+                                       double &cell_size) {
+  vector<gtsam::Matrix> data;
+  ifstream is;
+  is.open(mat_dir);
+  if (!is.is_open()) {
+    std::cout << "failed to open file" << std::endl;
+  } else {
+    // read origin of sdf
+    double x, y, z;
+    is >> x >> y >> z;
+    origin = Point3(x, y, z);
+
+    // read cell size of sdf
+    is >> cell_size;
+
+    // read filed rows, cols, and z
+    int field_rows, field_cols, field_z;
+    is >> field_rows >> field_cols >> field_z;
+
+    // read filed data
+    for (int k = 0; k < field_z; ++k) {
+      Matrix data_slice = Matrix::Zero(field_rows, field_cols);
+      for (int i = 0; i < field_rows; ++i) {
+        for (int j = 0; j < field_cols; ++j) {
+          is >> data_slice(i, j);
+        }
+      }
+      data.push_back(data_slice);
+    }
+  }
+  // generate sdf
+  return data;
 }
 
 }  // namespace manipulator

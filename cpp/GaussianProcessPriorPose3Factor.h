@@ -57,10 +57,10 @@ class GaussianProcessPriorPose3Factor
       Keyword argument:
         p1         -- pose at time 1
         v1         -- velocity at time 1
-        v1dot         -- acceleration at time 1
+        v1dot      -- acceleration at time 1
         p2         -- pose at time 2
         v2         -- velocity at time 2
-        v2dot         -- acceleration at time 2
+        v2dot      -- acceleration at time 2
     */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &p1, const gtsam::Vector6 &v1,

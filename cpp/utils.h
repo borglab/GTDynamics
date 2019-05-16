@@ -87,23 +87,22 @@ gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
                            gtsam::Vector &end_q);
 
 /** calculate center of spheres used to represent this link for collision
- * check
+ *  check
  * Key arguments:
- *  length   -- length of the link
- *  radius   -- sphere radius
- *  num      -- number of spheres
- * return sphere centers expressed in link COM frame
+ *  length   -- a vector of length for each link
+ *  radius   -- a vector of sphere radius for each link
+ * return sphere centers expressed in COM frame of each link
  */
-std::vector<gtsam::Point3> sphereCenters(double length, double radius, int num);
+std::vector<std::vector<gtsam::Point3>> sphereCenters(std::vector<double> lengths, std::vector<double> radii);
 
 // save for visualization
 /** save optimization result for simulation
  *  Keyword argument:
- *    jointAngle  -- joint angle trajectory
- *    goalPose             -- goal pose
- *    sdf   -- obstacle signed distance field, optional
- *    dof                   -- degree of freedom
-      dir                 -- directory
+ *    jointAngle    -- joint angle trajectory
+ *    goalPose      -- goal pose
+ *    sdf           -- obstacle signed distance field, optional
+ *    dof           -- degree of freedom
+      dir           -- directory
  field
 */
 void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
@@ -114,8 +113,8 @@ void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
 /** generation circular path
  *  Keyword argument:
       numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle     -- goal angle, assuming start at 0 joint angle
-      radius        -- radius of circular
+      goalAngle        -- goal angle, assuming start at 0 joint angle
+      radius           -- radius of circular
 */
 std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
                                  double radius);
@@ -123,10 +122,16 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 /** generation square path
  *  Keyword argument:
       numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle     -- goal angle, assuming start at 0 joint angle
-      length        -- length of square
+      goalAngle        -- goal angle, assuming start at 0 joint angle
+      length           -- length of square
 */
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
 
+
+/** read a variable from a text file, and save to vector of matrix
+ *  this is used for sdf
+ * 
+ */
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir, gtsam::Point3 &origin, double &cell_size);
 }  // namespace manipulator
