@@ -48,12 +48,10 @@ TEST(MotionPlanner, dh_rr) {
   opt.setJointLimitCostModel(0.01);
   opt.setToolPoseCostModel(0.001);
   opt.setObstacleCostModel(0.001);
-  opt.setSphereRadius(0.2);
-  opt.setCollisionEpsilon(0.2);
 
   MotionPlanner mp(opt);
   auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
-                                            boost::none, gravity, boost::none);
+                                            boost::none, gravity);
   auto init_values = mp.factorGraphInitialization(
       robot, pose_goal, Vector::Zero(dof), boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);

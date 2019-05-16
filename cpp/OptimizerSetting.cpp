@@ -26,10 +26,9 @@ OptimizerSetting::OptimizerSetting()
       qa_cost_model(noiseModel::Isotropic::Sigma(1, 0.001)),
       tf_cost_model(noiseModel::Isotropic::Sigma(6, 0.001)),
       opt_type(LM),
-      opt_verbosity(Error),
+      opt_verbosity(None),
       rel_thresh(1e-2),
       max_iter(50),
-      radius(0.05),
       epsilon(0.2) {}
 
 void OptimizerSetting::setToolPoseCostModel(const double sigma) {

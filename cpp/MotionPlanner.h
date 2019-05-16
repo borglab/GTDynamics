@@ -98,7 +98,8 @@ class MotionPlanner {
           robot                     -- robotic arm
           pose goal                 -- pose goal of manipulator end effector
           q_init                    -- initial value for joint angles
-          cartesian_path (optional) -- cartesian path for end effector to follow
+          sphere_centers_all        -- sphere centers for each link sphere
+   models cartesian_path (optional) -- cartesian path for end effector to follow
           gravity (optional)        -- gravitatianl acceleration
           sdf (optional)            -- Signed Distance Field for collision check
    */
@@ -107,7 +108,9 @@ class MotionPlanner {
       Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
       boost::optional<gtsam::Vector3 &> gravity = boost::none,
-      boost::optional<SignedDistanceField &> sdf = boost::none) const {
+      boost::optional<SignedDistanceField &> sdf = boost::none,
+      boost::optional<std::vector<std::vector<gtsam::Point3>> &> sphereCenters = boost::none, 
+      boost::optional<std::vector<double> &> radii = boost::none) const {
     using namespace gtsam;
     double delta_t = opt_.total_time / opt_.total_step;
 
@@ -128,36 +131,10 @@ class MotionPlanner {
     base_acceleration.setZero();
     external_wrench.setZero();
 
-    std::vector<double> lengths;
-    std::vector<std::vector<Point3>> sphere_centers_vec;
     for (int j = 1; j <= dof; ++j) {
       graph.add(PriorFactor<double>(JointAngleKey(j, 0), q_init[j - 1],
                                     opt_.q_cost_model));
       graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, opt_.qv_cost_model));
-
-      if (sdf) {
-        // TODO:(Mandy) need to take the shape of robot arm
-        //      into consideration instead of naively using length.
-        double length;
-        if (robot.link(j - 1).linkType() == Link::DH) {
-          length = robot.link(j - 1).length();
-        } else {
-          if (j < dof) {
-            length = robot.link(j).length();
-          } else {
-            length = robot.tool().translation().norm();
-          }
-        }
-        lengths.push_back(length);
-        std::vector<Point3> sphere_centers;
-        if (length > 0) {
-          int num = std::max((int)(length / opt_.radius), 1);
-          sphere_centers = sphereCenters(length, opt_.radius, num);
-        } else {
-          sphere_centers.assign(1, Point3());
-        }
-        sphere_centers_vec.push_back(sphere_centers);
-      }
     }
 
     for (int i = 0; i < opt_.total_step; ++i) {
@@ -208,14 +185,14 @@ class MotionPlanner {
         }
 
         // add obstacle factor
-        if (sdf) {
-          if (lengths[j - 1] > 0) {
-            int num = std::max((int)(lengths[j - 1] / opt_.radius), 1);
+        if (sphereCenters && radii && sdf) {
+          if (radii->at(j - 1) > 0) {
+            int num = sphereCenters->at(j - 1).size();
             auto obs_cost_model =
                 noiseModel::Isotropic::Sigma(num, opt_.obsSigma);
             graph.add(ObstacleSDFFactor(PoseKey(j, i), obs_cost_model,
-                                        opt_.epsilon, *sdf, opt_.radius,
-                                        sphere_centers_vec[j - 1]));
+                                        opt_.epsilon, *sdf, radii->at(j - 1),
+                                        sphereCenters->at(j - 1)));
           }
         }
       }

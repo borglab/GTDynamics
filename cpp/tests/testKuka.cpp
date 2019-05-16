@@ -92,20 +92,38 @@ TEST(MotionPlanner, urdf_kuka) {
   Pose3 pose_goal(expected_T);
   auto dof = robot.numLinks();
 
+  // TODO:(Mandy) need to take the shape of robot arm
+  //      into consideration instead of naively using length.
+  // generate sphere robot arm model
+  vector<double> lengths, radii;
+  radii.assign(dof, 0.05);
+  double l;
+  for (int i = 1; i < dof + 1; ++i) {
+    if (i < dof) {
+      l = robot.link(i).length();
+    } else {
+      l = robot.tool().translation().norm();
+    }
+    lengths.push_back(l);
+    if (l == 0) {
+      radii[i - 1] = 0;
+    }
+  }
+  vector<vector<Point3>> sphere_centers_all = sphereCenters(lengths, radii);
+
   // motion planning optimization settings
   OptimizerSetting opt = OptimizerSetting();
   opt.setLM();
   // set Qc_model for GP
   opt.setQcModel(1000 * I_1x1);
   opt.setJointLimitCostModel(0.01);
-  opt.setToolPoseCostModel(0.0001);
-  opt.setObstacleCostModel(0.01);
-  opt.setSphereRadius(0.05);
+  opt.setToolPoseCostModel(0.001);
+  opt.setObstacleCostModel(0.1);
   opt.setCollisionEpsilon(0.05);
 
   MotionPlanner mp(opt);
   auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
-                                            boost::none, gravity, sdf);
+                                            boost::none, gravity, sdf, sphere_centers_all, radii);
   auto init_values =
       mp.factorGraphInitialization(robot, pose_goal, expected_q, boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);
@@ -113,15 +131,16 @@ TEST(MotionPlanner, urdf_kuka) {
   auto actual_T = robot.forwardKinematics(actual_q_trajectory.back()).back();
   EXPECT(assert_equal(expected_T, actual_T, 1e-3));
 
-#if (DEBUG == 1)
-  results.print("", MultiRobotKeyFormatter);
-  graph.printErrors(results, "NonlinearFactorGraph: ", MultiRobotKeyFormatter);
+  #if (DEBUG == 1)
+    results.print("", MultiRobotKeyFormatter);
+    graph.printErrors(results, "NonlinearFactorGraph: ",
+    MultiRobotKeyFormatter);
 
-  /* +++++++++++++++ output for v-rep visualization ++++++++++++++++ */
-  string dir = "../../../v-rep/test_data/joint_angles/";
-  saveForVisualization(actual_q_trajectory, pose_goal, dof, dir, sdf);
-  /* +++++++++++++++ output for v-rep visualization ++++++++++++++++ */
-#endif
+    /* +++++++++++++++ output for v-rep visualization ++++++++++++++++ */
+    string dir = "../../../v-rep/test_data/joint_angles/";
+    saveForVisualization(actual_q_trajectory, pose_goal, dof, dir, sdf);
+    /* +++++++++++++++ output for v-rep visualization ++++++++++++++++ */
+  #endif
 }
 
 int main() {

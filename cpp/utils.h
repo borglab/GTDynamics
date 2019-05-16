@@ -87,14 +87,13 @@ gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
                            gtsam::Vector &end_q);
 
 /** calculate center of spheres used to represent this link for collision
- * check
+ *  check
  * Key arguments:
- *  length   -- length of the link
- *  radius   -- sphere radius
- *  num      -- number of spheres
- * return sphere centers expressed in link COM frame
+ *  length   -- a vector of length for each link
+ *  radius   -- a vector of sphere radius for each link
+ * return sphere centers expressed in COM frame of each link
  */
-std::vector<gtsam::Point3> sphereCenters(double length, double radius, int num);
+std::vector<std::vector<gtsam::Point3>> sphereCenters(std::vector<double> lengths, std::vector<double> radii);
 
 // save for visualization
 /** save optimization result for simulation
