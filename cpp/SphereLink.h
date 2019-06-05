@@ -29,7 +29,7 @@ class SphereLink {
    * sphere_centers -- sphere center positions, expressed in
    *                   link COM frame;
    */
-  SphereLink(double radius, std::vector<gtsam::Point3> &sphere_centers)
+  SphereLink(double radius, const std::vector<gtsam::Point3> &sphere_centers)
       : radius_(radius), sphere_centers_(sphere_centers) {}
 
   ~SphereLink() {}
@@ -42,7 +42,7 @@ class SphereLink {
   gtsam::Point3 sphereCenter(
       size_t index, const gtsam::Pose3 &com_pose,
       gtsam::OptionalJacobian<3, 6> H = boost::none) const {
-    return com_pose.transform_from(sphere_centers_[index], H);
+    return com_pose.transformFrom(sphere_centers_[index], H);
   }
 
   // return the number of spheres to model this link

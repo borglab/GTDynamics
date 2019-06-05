@@ -12,7 +12,7 @@
 
 #include <boost/optional.hpp>
 #include <iostream>
-#include <vector>
+#include <string>
 
 namespace manipulator {
 
@@ -51,7 +51,7 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -59,7 +59,7 @@ class BaseTwistFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "base twist factor" << std::endl;
     Base::print("", keyFormatter);
   }

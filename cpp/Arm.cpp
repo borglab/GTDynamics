@@ -8,8 +8,8 @@
 #include <DHLink.h>
 #include <URDFLink.h>
 
-#include <gtsam/inference/LabeledSymbol.h>
 #include <JointLimitFactor.h>
+#include <gtsam/inference/LabeledSymbol.h>
 
 using namespace std;
 using namespace gtsam;
@@ -163,7 +163,7 @@ vector<Matrix> Arm<T>::spatialManipulatorJacobian(const Vector &q) const {
 
 template <typename T>
 vector<Matrix> Arm<T>::bodyManipulatorJacobian(const Vector &q,
-                                               vector<Pose3> &sTb) const {
+                                               const vector<Pose3> &sTb) const {
   // Calculate spatial_manipulator_jacobian
   vector<Matrix> Js = spatialManipulatorJacobian(q);
   // assign space for manipulator jacobian
@@ -363,16 +363,14 @@ NonlinearFactorGraph Arm<T>::jointLimitFactors(
   NonlinearFactorGraph graph;
   for (int j = 1; j < numLinks(); ++j) {
     // add joint angle limit factors
-    graph.add(JointLimitFactor(LabeledSymbol('q', j, i), cost_model,
-                               link(j - 1).jointLowerLimit(),
-                               link(j - 1).jointUpperLimit(),
-                               link(j - 1).jointLimitThreshold()));
+    graph.add(JointLimitFactor(
+        LabeledSymbol('q', j, i), cost_model, link(j - 1).jointLowerLimit(),
+        link(j - 1).jointUpperLimit(), link(j - 1).jointLimitThreshold()));
 
     // add joint velocity limit factors
-    graph.add(JointLimitFactor(LabeledSymbol('v', j, i), cost_model,
-                               -link(j - 1).velocityLimit(),
-                               link(j - 1).velocityLimit(),
-                               link(j - 1).velocityLimitThreshold()));
+    graph.add(JointLimitFactor(
+        LabeledSymbol('v', j, i), cost_model, -link(j - 1).velocityLimit(),
+        link(j - 1).velocityLimit(), link(j - 1).velocityLimitThreshold()));
 
     // add joint acceleration limit factors
     graph.add(JointLimitFactor(LabeledSymbol('a', j, i), cost_model,
@@ -381,10 +379,9 @@ NonlinearFactorGraph Arm<T>::jointLimitFactors(
                                link(j - 1).accelerationLimitThreshold()));
 
     // add joint torque limit factors
-    graph.add(JointLimitFactor(LabeledSymbol('T', j, i), cost_model,
-                               -link(j - 1).torqueLimit(),
-                               link(j - 1).torqueLimit(),
-                               link(j - 1).torqueLimitThreshold()));
+    graph.add(JointLimitFactor(
+        LabeledSymbol('T', j, i), cost_model, -link(j - 1).torqueLimit(),
+        link(j - 1).torqueLimit(), link(j - 1).torqueLimitThreshold()));
   }
   return graph;
 }

@@ -13,6 +13,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <string>
+
 namespace manipulator {
 
 /**
@@ -49,7 +51,8 @@ class GaussianProcessPriorPose3Factor
       : Base(gtsam::noiseModel::Gaussian::Covariance(
                  calcQ(getQc(Qc_model), delta_t)),
              p1_key, v1_key, vdot1_key, p2_key, v2_key, vdot2_key),
-        delta_t_(delta_t), delta_t_square_(delta_t*delta_t) {}
+        delta_t_(delta_t),
+        delta_t_square_(delta_t * delta_t) {}
 
   virtual ~GaussianProcessPriorPose3Factor() {}
 
@@ -82,32 +85,30 @@ class GaussianProcessPriorPose3Factor
     }
 
     if (H_p1)
-      *H_p1 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp1 * Hinv,
-               gtsam::Z_6x6, gtsam::Z_6x6)
+      *H_p1 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp1 * Hinv, gtsam::Z_6x6,
+               gtsam::Z_6x6)
                   .finished();
     if (H_v1)
       *H_v1 =
-          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::I_6x6,
-           -gtsam::I_6x6)
+          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::I_6x6, -gtsam::I_6x6)
               .finished();
     if (H_v1dot)
-      *H_v1dot = (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_square_ *
-                                              gtsam::I_6x6,
-               -delta_t_ * gtsam::I_6x6,
-               -gtsam::I_6x6)
-                  .finished();
+      *H_v1dot =
+          (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_square_ * gtsam::I_6x6,
+           -delta_t_ * gtsam::I_6x6, -gtsam::I_6x6)
+              .finished();
     if (H_p2)
-      *H_p2 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp2,
-               gtsam::Z_6x6, gtsam::Z_6x6)
+      *H_p2 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp2, gtsam::Z_6x6,
+               gtsam::Z_6x6)
                   .finished();
     if (H_v2)
-      *H_v2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
-               gtsam::I_6x6, gtsam::Z_6x6)
-                  .finished();
+      *H_v2 =
+          (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6, gtsam::I_6x6, gtsam::Z_6x6)
+              .finished();
     if (H_v2dot)
-      *H_v2dot = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
-               gtsam::Z_6x6, gtsam::I_6x6)
-                  .finished();
+      *H_v2dot =
+          (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6, gtsam::Z_6x6, gtsam::I_6x6)
+              .finished();
 
     return (gtsam::Vector(3 * 6)
                 << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
@@ -116,14 +117,14 @@ class GaussianProcessPriorPose3Factor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /** equals specialized to this factor */
   bool equals(const gtsam::NonlinearFactor &expected,
-                      double tol = 1e-9) const override {
+              double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != NULL && Base::equals(*e, tol) &&
            fabs(this->delta_t_ - e->delta_t_) < tol;
@@ -132,7 +133,7 @@ class GaussianProcessPriorPose3Factor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "6-way Gaussian Process Factor Pose3" << std::endl;
     Base::print("", keyFormatter);
   }
