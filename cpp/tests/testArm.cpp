@@ -24,7 +24,6 @@ static const Rot3 R90 = Rot3::Rz(HALF_PI);
 static const Rot3 R180 = Rot3::Rz(M_PI);
 static const Vector6 ZERO6 = Vector6::Zero();
 static const Vector2 ZERO2 = Vector2::Zero();
-static const double tol = 1e-9;
 static const Vector2 QZ = Vector2(0, 0);        // at rest
 static const Vector2 Q1 = Vector2(HALF_PI, 0);  // vertical
 static const Vector2 Q2 = Vector2(0, M_PI);     // doubled back

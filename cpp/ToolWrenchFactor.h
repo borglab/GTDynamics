@@ -13,6 +13,7 @@
 
 #include <boost/optional.hpp>
 #include <iostream>
+#include <string>
 #include <vector>
 
 namespace manipulator {
@@ -62,18 +63,18 @@ class ToolWrenchFactor
  private:
   /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
-  // TODO(Mandy): figure out if this can be done with vector math
+    // TODO(Mandy): figure out if this can be done with vector math
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
     auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
          v2 = twist(4), v3 = twist(5);
     gtsam::Matrix6 H_twist;
     H_twist << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
-         (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,                         //
-         (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,                         //
-         0, -m * v3, m * v2, 0, m * w3, -m * w2,                             //
-         m * v3, 0, -m * v1, -m * w3, 0, m * w1,                             //
-         -m * v2, m * v1, 0, m * w2, -m * w1, 0;
+        (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,         //
+        (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,         //
+        0, -m * v3, m * v2, 0, m * w3, -m * w2,             //
+        m * v3, 0, -m * v1, -m * w3, 0, m * w1,             //
+        -m * v2, m * v1, 0, m * w2, -m * w1, 0;
     return H_twist;
   }
 
@@ -122,7 +123,7 @@ class ToolWrenchFactor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -130,7 +131,7 @@ class ToolWrenchFactor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "tool wrench factor" << std::endl;
     Base::print("", keyFormatter);
   }

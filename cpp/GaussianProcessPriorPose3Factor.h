@@ -13,6 +13,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <string>
+
 namespace manipulator {
 
 /**
@@ -28,8 +30,8 @@ class GaussianProcessPriorPose3Factor
                                       gtsam::Vector6, gtsam::Pose3,
                                       gtsam::Vector6, gtsam::Vector6> {
  private:
-  double delta_t_;
-  double delta_t_square_;
+  double dt_;
+  double dt_2_;
 
   typedef GaussianProcessPriorPose3Factor This;
   typedef gtsam::NoiseModelFactor6<gtsam::Pose3, gtsam::Vector6, gtsam::Vector6,
@@ -49,7 +51,8 @@ class GaussianProcessPriorPose3Factor
       : Base(gtsam::noiseModel::Gaussian::Covariance(
                  calcQ(getQc(Qc_model), delta_t)),
              p1_key, v1_key, vdot1_key, p2_key, v2_key, vdot2_key),
-        delta_t_(delta_t), delta_t_square_(delta_t*delta_t) {}
+        dt_(delta_t),
+        dt_2_(delta_t * delta_t) {}
 
   virtual ~GaussianProcessPriorPose3Factor() {}
 
@@ -72,67 +75,52 @@ class GaussianProcessPriorPose3Factor
       boost::optional<gtsam::Matrix &> H_p2 = boost::none,
       boost::optional<gtsam::Matrix &> H_v2 = boost::none,
       boost::optional<gtsam::Matrix &> H_v2dot = boost::none) const override {
-    gtsam::Matrix6 Hinv, Hcomp1, Hcomp2, Hlogmap;
+    gtsam::Matrix6 Hcomp1, Hcomp2, Hlogmap;
     gtsam::Vector6 r;
     if (H_p1 || H_p2) {
-      r = gtsam::Pose3::Logmap(p1.inverse(Hinv).compose(p2, Hcomp1, Hcomp2),
-                               Hlogmap);
+      auto p12 = p1.between(p2, Hcomp1, Hcomp2);
+      r = gtsam::Pose3::Logmap(p12, Hlogmap);
     } else {
-      r = gtsam::Pose3::Logmap(p1.inverse() * p2);
+      auto p12 = p1.between(p2);
+      r = gtsam::Pose3::Logmap(p12);
     }
 
-    if (H_p1)
-      *H_p1 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp1 * Hinv,
-               gtsam::Z_6x6, gtsam::Z_6x6)
-                  .finished();
-    if (H_v1)
-      *H_v1 =
-          (gtsam::Matrix(3 * 6, 6) << -delta_t_ * gtsam::I_6x6,
-           -gtsam::I_6x6)
-              .finished();
-    if (H_v1dot)
-      *H_v1dot = (gtsam::Matrix(3 * 6, 6) << -0.5 * delta_t_square_ *
-                                              gtsam::I_6x6,
-               -delta_t_ * gtsam::I_6x6,
-               -gtsam::I_6x6)
-                  .finished();
-    if (H_p2)
-      *H_p2 = (gtsam::Matrix(3 * 6, 6) << Hlogmap * Hcomp2,
-               gtsam::Z_6x6, gtsam::Z_6x6)
-                  .finished();
-    if (H_v2)
-      *H_v2 = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
-               gtsam::I_6x6, gtsam::Z_6x6)
-                  .finished();
-    if (H_v2dot)
-      *H_v2dot = (gtsam::Matrix(3 * 6, 6) << gtsam::Z_6x6,
-               gtsam::Z_6x6, gtsam::I_6x6)
-                  .finished();
+    auto error = gtsam::Vector(3 * 6);
+    error << r - v1 * dt_ - v1dot * 0.5 * dt_2_,  //
+        v2 - v1 - v1dot * dt_,                    //
+        v2dot - v1dot;
 
-    return (gtsam::Vector(3 * 6)
-                << (r - v1 * delta_t_ - v1dot * 0.5 * delta_t_square_),
-            (v2 - v1 - v1dot * delta_t_), v2dot - v1dot)
-        .finished();
+    // derivatives
+    auto I6 = gtsam::I_6x6;
+    auto Z6 = gtsam::Z_6x6;
+    Eigen::Matrix<double, 18, 6> H;  // memory used for all assignments below.
+    if (H_p1) *H_p1 = (H << Hlogmap * Hcomp1, Z6, Z6).finished();
+    if (H_v1) *H_v1 = (H << -dt_ * I6, -I6, Z6).finished();
+    if (H_v1dot) *H_v1dot = (H << -0.5 * dt_2_ * I6, -dt_ * I6, -I6).finished();
+    if (H_p2) *H_p2 = (H << Hlogmap * Hcomp2, Z6, Z6).finished();
+    if (H_v2) *H_v2 = (H << Z6, I6, Z6).finished();
+    if (H_v2dot) *H_v2dot = (H << Z6, Z6, I6).finished();
+
+    return error;
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /** equals specialized to this factor */
   bool equals(const gtsam::NonlinearFactor &expected,
-                      double tol = 1e-9) const override {
+              double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
-    return e != NULL && Base::equals(*e, tol) &&
-           fabs(this->delta_t_ - e->delta_t_) < tol;
+    return e != NULL && Base::equals(*e, tol) && fabs(this->dt_ - e->dt_) < tol;
   }
 
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "6-way Gaussian Process Factor Pose3" << std::endl;
     Base::print("", keyFormatter);
   }
@@ -143,7 +131,7 @@ class GaussianProcessPriorPose3Factor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Base);
-    ar &BOOST_SERIALIZATION_NVP(delta_t_);
+    ar &BOOST_SERIALIZATION_NVP(dt_);
   }
 
 };  // GaussianProcessPriorPose3Factor

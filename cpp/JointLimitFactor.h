@@ -14,6 +14,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace manipulator {
@@ -52,15 +53,16 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
       Keyword argument:
           q  -- joint value
       hingloss function:
-      error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit - limit_threshold
-      error = lower_limit_ + limit_threshold - q if q < lower_limit + limit_threshold
-      error = q - upper_limit_ + limit_threshold if q > upper_limit + limit_threshold
+      error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit -
+     limit_threshold error = lower_limit_ + limit_threshold - q if q <
+     lower_limit + limit_threshold error = q - upper_limit_ + limit_threshold if
+     q > upper_limit + limit_threshold
   */
   gtsam::Vector evaluateError(
       const double &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     if (q < lower_limit_ + limit_threshold_) {
-      if (H_q) *H_q = - gtsam::I_1x1;
+      if (H_q) *H_q = -gtsam::I_1x1;
       return gtsam::Vector1(lower_limit_ + limit_threshold_ - q);
     } else if (q <= upper_limit_ - limit_threshold_) {
       if (H_q) *H_q = gtsam::Z_1x1;
@@ -80,7 +82,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "JointLimitFactor" << std::endl;
     Base::print("", keyFormatter);
   }

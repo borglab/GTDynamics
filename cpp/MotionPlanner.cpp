@@ -10,8 +10,8 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-Values MotionPlanner::factorGraphOptimization(NonlinearFactorGraph &graph,
-                                              Values &init_values) const {
+Values MotionPlanner::factorGraphOptimization(const NonlinearFactorGraph &graph,
+                                              const Values &init_values) const {
   std::shared_ptr<gtsam::NonlinearOptimizer> optimizer;
   std::shared_ptr<gtsam::NonlinearOptimizerParams> parameters;
 
@@ -49,7 +49,7 @@ Values MotionPlanner::factorGraphOptimization(NonlinearFactorGraph &graph,
   return optimizer->values();
 }
 
-vector<Vector> MotionPlanner::extractTrajectoryQ(Values &results,
+vector<Vector> MotionPlanner::extractTrajectoryQ(const Values &results,
                                                  int dof) const {
   vector<Vector> q_trajectory;
 
@@ -63,7 +63,7 @@ vector<Vector> MotionPlanner::extractTrajectoryQ(Values &results,
   return q_trajectory;
 }
 
-vector<Vector> MotionPlanner::extractTrajectoryTorque(Values &results,
+vector<Vector> MotionPlanner::extractTrajectoryTorque(const Values &results,
                                                       int dof) const {
   vector<Vector> torque_trajectory;
 

@@ -15,6 +15,8 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
+#include <vector>
+
 namespace manipulator {
 
 /**
@@ -132,7 +134,7 @@ class Arm {
    *  sTb -- eef body frame expressed base frame
    */
   std::vector<gtsam::Matrix> bodyManipulatorJacobian(
-      const gtsam::Vector &q, std::vector<gtsam::Pose3> &sTb) const;
+      const gtsam::Vector &q, const std::vector<gtsam::Pose3> &sTb) const;
 
   /** Calculate velocity twists for all joints, expressed in their COM frame.
    * Keyword arguments:
@@ -239,7 +241,8 @@ class Arm {
           cost_model -- noise model
           i -- timestep index
    */
-  gtsam::NonlinearFactorGraph jointLimitFactors(const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
+  gtsam::NonlinearFactorGraph jointLimitFactors(
+      const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
 
   /** pose goal factor
    * Return pose goal factor

@@ -13,6 +13,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <string>
+
 namespace manipulator {
 
 /**
@@ -97,7 +99,7 @@ class GaussianProcessPriorFactor
 
   /** equals specialized to this factor */
   bool equals(const gtsam::NonlinearFactor &expected,
-                      double tol = 1e-9) const override {
+              double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != NULL && Base::equals(*e, tol) &&
            fabs(this->delta_t_ - e->delta_t_) < tol;
@@ -106,7 +108,7 @@ class GaussianProcessPriorFactor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "6-way Gaussian Process Factor Linear" << std::endl;
     Base::print("", keyFormatter);
   }
@@ -119,7 +121,6 @@ class GaussianProcessPriorFactor
     ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Base);
     ar &BOOST_SERIALIZATION_NVP(delta_t_);
   }
-
 };  // GaussianProcessPriorFactor
 
 }  // namespace manipulator

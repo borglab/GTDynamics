@@ -20,7 +20,7 @@ TEST(PaddleFactor, Creation)
 {
   const Key key = 0;
   const double t = 0.25;
-  const double omega = 6.283;
+  const double omega = 0;
   const double length = 1;
   const double alpha = 1;
   const double beta = 1;
@@ -30,9 +30,9 @@ TEST(PaddleFactor, Creation)
 
   // Set the linearization point
   Values values;
-  values.insert(key, Vector3(1.5662, 1.2717, 1.2717));
+  values.insert(key, Vector3(1.5661, 1.2717, 1.2717));
 
-  // EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
 /* ************************************************************************* */

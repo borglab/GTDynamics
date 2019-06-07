@@ -4,7 +4,7 @@
  * @Author: Mandy Xie and Frank Dellaert
  */
 
-# pragma once
+#pragma once
 
 #include <SignedDistanceField.h>
 #include <SphereLink.h>
@@ -15,6 +15,7 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 namespace manipulator {
@@ -74,7 +75,8 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   ObstacleSDFFactor(gtsam::Key poseKey,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     double epsilon, const SignedDistanceField &sdf,
-                    double radius, std::vector<gtsam::Point3> &sphere_centers)
+                    double radius,
+                    const std::vector<gtsam::Point3> &sphere_centers)
       : Base(cost_model, poseKey),
         epsilon_(epsilon),
         sdf_(sdf),
@@ -113,7 +115,7 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 
   /// @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -121,7 +123,7 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "ObstacleSDFFactor :" << std::endl;
     Base::print("", keyFormatter);
   }

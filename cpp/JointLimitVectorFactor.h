@@ -54,7 +54,7 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
                                  e.g. angle, velocity, acceleration, torque
           lower_limit         -- lower limit value
           upper_limit         -- uppper limit value
-          limit_threshold     -- limit threshold to keep value from getting 
+          limit_threshold     -- limit threshold to keep value from getting
                                  too close to the limit
   */
   double jointLimitCost_(double q, double lower_limit, double upper_limit,
@@ -76,7 +76,7 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   /** evaluate joint angle limit errors */
   gtsam::Vector evaluateError(
       const gtsam::Vector &conf,
-      boost::optional<gtsam::Matrix &> H = boost::none) const {
+      boost::optional<gtsam::Matrix &> H = boost::none) const override {
     int size = conf.size();
     gtsam::Vector errors = gtsam::Vector::Zero(size);
     if (H) {
