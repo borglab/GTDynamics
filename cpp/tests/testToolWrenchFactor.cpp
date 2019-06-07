@@ -77,7 +77,7 @@ TEST(ToolWrenchFactor, error_2) {
   Pose3 tTn = Pose3(Rot3(), Point3(-1, 0, 0));
   auto inertia = example::dh_r.inertiaMatrix();
 
-  Vector6 external_wrench;
+  Vector6 external_wrench = Vector::Zero(6);
   Vector3 gravity;
   gravity << 0, -9.8, 0;
 
@@ -88,7 +88,7 @@ TEST(ToolWrenchFactor, error_2) {
   Vector6 twist, twist_accel, wrench_j;
   twist << 0, 0, 0, 0, 0, 0;
   twist_accel << 0, 0, 0, 0, 0, 0;
-  wrench_j << 0, 0, -2, 9.8, 0, 0;
+  wrench_j << 0, 0, 0, 9.8, 0, 0;
   Pose3 pose(Rot3::Rz(M_PI/2), Point3(0, 1, 0));
   Vector6 actual_errors, expected_errors;
 
