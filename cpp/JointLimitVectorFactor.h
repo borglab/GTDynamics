@@ -40,9 +40,9 @@ class JointLimitVectorFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
         upper_limits_(upper_limits),
         limit_thresholds_(limit_thresholds) {
     // check dimensions
-    assert(lower_limits.size() == cost_model->dim());
-    assert(upper_limits.size() == cost_model->dim());
-    assert(limit_thresholds.size() == cost_model->dim());
+    assert(static_cast<size_t>(lower_limits.size()) == cost_model->dim());
+    assert(static_cast<size_t>(upper_limits.size()) == cost_model->dim());
+    assert(static_cast<size_t>(limit_thresholds.size()) == cost_model->dim());
   }
 
   virtual ~JointLimitVectorFactor() {}
