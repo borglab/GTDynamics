@@ -155,7 +155,7 @@ class WrenchFactor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "wrench factor" << std::endl;
     Base::print("", keyFormatter);
   }

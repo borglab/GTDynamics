@@ -15,6 +15,8 @@
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <vector>
+
 namespace manipulator {
 /* Shorthand symbol for linear factors */
 /* Shorthand for T_j, for twist accelerations on the j-th link. */
@@ -138,7 +140,7 @@ class Link {
         accelerationLimitThreshold_(acceleration_limit_threshold),
         torqueLimit_(torque_limit),
         torqueLimitThreshold_(torque_limit_threshold) {}
-        
+
   /* Return screw axis. */
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
 

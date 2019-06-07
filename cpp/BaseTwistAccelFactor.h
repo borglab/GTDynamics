@@ -12,6 +12,7 @@
 
 #include <boost/optional.hpp>
 #include <iostream>
+#include <string>
 #include <vector>
 
 namespace manipulator {
@@ -47,9 +48,9 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
       Keyword argument:
           twistAccel_0  -- twist on the base
   */
-  gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twistAccel_0,
-      boost::optional<gtsam::Matrix &> H_twistAccel_0 = boost::none) const override {
+  gtsam::Vector evaluateError(const gtsam::Vector6 &twistAccel_0,
+                              boost::optional<gtsam::Matrix &> H_twistAccel_0 =
+                                  boost::none) const override {
     if (H_twistAccel_0) {
       *H_twistAccel_0 = gtsam::I_6x6;
     }
@@ -57,7 +58,7 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -65,7 +66,7 @@ class BaseTwistAccelFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "base twist acceleration factor" << std::endl;
     Base::print("", keyFormatter);
   }

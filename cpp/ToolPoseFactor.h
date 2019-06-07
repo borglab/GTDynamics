@@ -12,7 +12,7 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <iostream>
-#include <vector>
+#include <string>
 
 namespace manipulator {
 
@@ -55,7 +55,7 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -63,7 +63,7 @@ class ToolPoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "tool pose factor" << std::endl;
     Base::print("", keyFormatter);
   }

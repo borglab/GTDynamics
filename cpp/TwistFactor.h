@@ -15,7 +15,7 @@
 
 #include <boost/optional.hpp>
 #include <iostream>
-#include <vector>
+#include <string>
 
 namespace manipulator {
 
@@ -26,7 +26,8 @@ class TwistFactor
                                       double> {
  private:
   typedef TwistFactor This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double, double>
+  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
+                                   double>
       Base;
   gtsam::Pose3 jMi_;
   gtsam::Vector6 screw_axis_;
@@ -50,7 +51,7 @@ class TwistFactor
  private:
   /* calculate jacobian of AdjointMap term w.r.t. joint coordinate q */
   gtsam::Matrix61 qJacobian_(const double &q,
-                           const gtsam::Vector6 &twist_i) const {
+                             const gtsam::Vector6 &twist_i) const {
     auto H = AdjointMapJacobianQ(q, jMi_, screw_axis_);
     return H * twist_i;
   }
@@ -88,7 +89,7 @@ class TwistFactor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -96,7 +97,7 @@ class TwistFactor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "twist factor" << std::endl;
     Base::print("", keyFormatter);
   }

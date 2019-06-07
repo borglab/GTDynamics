@@ -13,6 +13,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <string>
+
 namespace manipulator {
 
 /**
@@ -103,14 +105,14 @@ class GaussianProcessPriorPose3Factor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /** equals specialized to this factor */
   bool equals(const gtsam::NonlinearFactor &expected,
-                      double tol = 1e-9) const override {
+              double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != NULL && Base::equals(*e, tol) && fabs(this->dt_ - e->dt_) < tol;
   }
@@ -118,7 +120,7 @@ class GaussianProcessPriorPose3Factor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "6-way Gaussian Process Factor Pose3" << std::endl;
     Base::print("", keyFormatter);
   }

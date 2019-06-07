@@ -85,11 +85,14 @@ class MotionPlanner {
   OptimizerSetting opt_;
 
  public:
-  /**Constructor
+  using SphereCenters = std::vector<std::vector<gtsam::Point3>>;
+
+  /**
+   * Constructor
    * Keyword arguments:
-      opt  -- optimizer setting
+   *  opt  -- optimizer setting
    */
-  MotionPlanner(OptimizerSetting &opt) : opt_(opt) {}
+  explicit MotionPlanner(const OptimizerSetting &opt) : opt_(opt) {}
   ~MotionPlanner() {}
 
   /** return nonlinear factor graph of all factors
@@ -105,11 +108,12 @@ class MotionPlanner {
    */
   template <typename Type>
   gtsam::NonlinearFactorGraph motionPlanningFactorGraph(
-      Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
+      const Arm<Type> &robot, const gtsam::Pose3 &pose_goal,
+      const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
       boost::optional<gtsam::Vector3 &> gravity = boost::none,
       boost::optional<SignedDistanceField &> sdf = boost::none,
-      boost::optional<std::vector<std::vector<gtsam::Point3>> &> sphereCenters = boost::none, 
+      boost::optional<SphereCenters &> sphereCenters = boost::none,
       boost::optional<std::vector<double> &> radii = boost::none) const {
     using namespace gtsam;
     double delta_t = opt_.total_time / opt_.total_step;
@@ -227,7 +231,8 @@ class MotionPlanner {
    */
   template <typename Type>
   gtsam::Values factorGraphInitialization(
-      Arm<Type> &robot, gtsam::Pose3 &pose_goal, const gtsam::Vector &q_init,
+      const Arm<Type> &robot, const gtsam::Pose3 &pose_goal,
+      const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path =
           boost::none) const {
     using namespace gtsam;
@@ -297,16 +302,17 @@ class MotionPlanner {
           graph         -- nonlinear factor graph for motion planning
           init_values   -- initial values for optimization
    */
-  gtsam::Values factorGraphOptimization(gtsam::NonlinearFactorGraph &graph,
-                                        gtsam::Values &init_values) const;
+  gtsam::Values factorGraphOptimization(
+      const gtsam::NonlinearFactorGraph &graph,
+      const gtsam::Values &init_values) const;
 
   /** extract joint cooridinates trajactory*/
-  std::vector<gtsam::Vector> extractTrajectoryQ(gtsam::Values &results,
+  std::vector<gtsam::Vector> extractTrajectoryQ(const gtsam::Values &results,
                                                 int dof) const;
 
   /** extract joint torque trajactory*/
-  std::vector<gtsam::Vector> extractTrajectoryTorque(gtsam::Values &results,
-                                                     int dof) const;
+  std::vector<gtsam::Vector> extractTrajectoryTorque(
+      const gtsam::Values &results, int dof) const;
 };
 
 }  // namespace manipulator
