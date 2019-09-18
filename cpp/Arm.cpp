@@ -10,6 +10,7 @@
 
 #include <JointLimitFactor.h>
 #include <gtsam/inference/LabeledSymbol.h>
+#include <gtsam/base/timing.h>
 
 using namespace std;
 using namespace gtsam;
@@ -67,7 +68,7 @@ vector<Pose3> Arm<T>::linkTransforms(const Vector &default_q) const {
 
 template <typename T>
 vector<Pose3> Arm<T>::forwardKinematics(
-    const Vector &q, boost::optional<std::vector<gtsam::Matrix> &> J) const {
+    const Vector &q, boost::optional<std::vector<Matrix> &> J) const {
   vector<Pose3> sTb;
   Pose3 t = base_;
   vector<Pose3> transforms = linkTransforms(q);
@@ -219,6 +220,7 @@ GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities, const Vector &torques,
     const Vector6 &base_twist_accel, const Vector6 &external_wrench,
     boost::optional<Vector3 &> gravity) const {
+  gttic_(Arms_forwardDynamicsFactorGraph);
   int N = numLinks();
   assert(q.size() == N);
   assert(joint_velocities.size() == N);
@@ -257,10 +259,50 @@ GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
 }
 
 template <typename T>
+GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
+    const Vector &q, const Vector &joint_velocities, const Vector &torques,
+    const gtsam::Vector6 &screw_axis, const Vector6 &base_twist_accel,
+    const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
+  int N = numLinks();
+
+  // Configuration of COM link frames
+  vector<Pose3> Ts = comFrames(q);
+  // Calculate all twists
+  vector<Vector6> twists_vec = twists(Ts, joint_velocities);
+  // Set up Gaussian Factors Graph
+  GaussianFactorGraph gfg = GaussianFactorGraph();
+  // Add factor to enforce base acceleration
+  gfg.push_back(Link::BaseTwistAccelFactor(base_twist_accel));
+  // Configuration of link frame j-1 relative to link frame j for arbitrary
+  // joint angle
+  vector<Pose3> jTis = jTi_list(q);
+  Vector3 g_in_space = Vector3::Zero(), g_in_body;
+  if (gravity) {
+    g_in_space = *gravity;
+  }
+
+  int j = 0;
+  for (int i = 0; i < N; ++i) {
+    j = i + 1;
+    auto jRw = Ts[i].rotation().inverse();
+    g_in_body = jRw * g_in_space;
+    gfg.push_back(links_[i].forwardFactors(j, jTis[i], joint_velocities[i],
+                                           twists_vec[i], torques[i], jTis[j],
+                                           g_in_body));
+  }
+  // Add loop factor to enforce kinematic loop
+  gfg.push_back(links_[N - 1].forwardLoopFactor(
+      N, screw_axis, Ts.back().inverse(), joint_velocities[N],
+      twists_vec[N - 1], torques[N], jTis[N], g_in_body));
+  return gfg;
+}
+
+template <typename T>
 GaussianFactorGraph Arm<T>::inverseDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities,
     const Vector &joint_accelerations, const Vector6 &base_twist_accel,
     const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
+  gttic_(Arms_inverseDynamicsFactorGraph);
   int N = numLinks();
   assert(q.size() == N);
   assert(joint_velocities.size() == N);
@@ -294,7 +336,56 @@ GaussianFactorGraph Arm<T>::inverseDynamicsFactorGraph(
   }
   // Add factor to enforce external wrench at tool
   gfg.push_back(Link::ToolWrenchFactor(N, external_wrench));
+  return gfg;
+}
 
+template <typename T>
+GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
+    const Vector &q, const Vector &joint_velocities,
+    const Vector &joint_accelerations, const gtsam::Vector6 &screw_axis,
+    bool isLoopJointActuated, const Vector6 &base_twist_accel,
+    const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
+  int N = numLinks();
+
+  // Configuration of COM link frames
+  vector<Pose3> Ts = comFrames(q);
+  // Calculate all twists
+  vector<Vector6> twists_vec = twists(Ts, joint_velocities);
+  // Set up Gaussian Factors Graph
+  GaussianFactorGraph gfg = GaussianFactorGraph();
+  // Add factor to enforce base acceleration
+  gfg.push_back(Link::BaseTwistAccelFactor(base_twist_accel));
+  // Configuration of link frame j-1 relative to link frame j for arbitrary
+  // joint angle
+  vector<Pose3> jTis = jTi_list(q);
+  Vector3 g_in_space = Vector3::Zero(), g_in_body;
+  if (gravity) {
+    g_in_space = *gravity;
+  }
+
+  int j = 0;
+  for (int i = 0; i < N; ++i) {
+    j = i + 1;
+    auto jRw = Ts[i].rotation().inverse();
+    g_in_body = jRw * g_in_space;
+
+    gfg.push_back(links_[i].inverseFactors(
+        j, jTis[i], joint_velocities[i], twists_vec[i], joint_accelerations[i],
+        jTis[j], g_in_body));
+
+    // add torque factor for passive joint
+    if (!links_[i].isActuated()) {
+        gfg.add(t(j), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
+    }
+    
+  }
+  // Add loop factor to enforce kinematic loop
+  if (!isLoopJointActuated) {
+    gfg.add(t(N + 1), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
+  }
+  gfg.push_back(links_[N - 1].inverseLoopFactor(
+      N, screw_axis, Ts.back().inverse(), joint_velocities[N],
+      twists_vec[N - 1], joint_accelerations[N], jTis[N], g_in_body));
   return gfg;
 }
 
@@ -358,20 +449,26 @@ GaussianFactorGraph Arm<T>::hybridDynamicsFactorGraph(
 }
 
 template <typename T>
-Vector Arm<T>::extractJointAcceleraions(const VectorValues &result) const {
-  int N = numLinks();
-  Vector joint_accels(N);
-  for (int j = 1; j <= N; ++j) {
+Vector Arm<T>::extractJointAcceleraions(const VectorValues &result, boost::optional<int &> N) const {
+  int num = numLinks();
+  if (N) {
+    num = *N;
+  }
+  Vector joint_accels(num);
+  for (int j = 1; j <= num; ++j) {
     joint_accels[j - 1] = result.at(a(j))(0);
   }
   return joint_accels;
 }
 
 template <typename T>
-Vector Arm<T>::extractTorques(const VectorValues &result) const {
-  int N = numLinks();
-  Vector torques(N);
-  for (int j = 1; j <= N; ++j) {
+Vector Arm<T>::extractTorques(const VectorValues &result, boost::optional<int &> N) const {
+  int num = numLinks();
+  if (N) {
+    num = *N;
+  }
+  Vector torques(num);
+  for (int j = 1; j <= num; ++j) {
     torques[j - 1] = result.at(t(j))(0);
   }
   return torques;
@@ -409,14 +506,6 @@ Vector Arm<T>::inverseDynamics(const Vector &q, const Vector &joint_velocities,
 }
 
 template <typename T>
-JointLimitVectorFactor Arm<T>::jointLimitVectorFactor() const {
-  noiseModel::Gaussian::shared_ptr cost_model =
-      noiseModel::Isotropic::Sigma(numLinks(), 1.0);
-  return JointLimitVectorFactor(J(0), cost_model, jointLowerLimits(),
-                                jointUpperLimits(), jointLimitThresholds());
-}
-
-template <typename T>
 typename Arm<T>::HybridResults Arm<T>::hybridDynamics(
     const Vector &q, const Vector &joint_velocities,
     const JointValues &joint_accelerations,
@@ -438,6 +527,14 @@ typename Arm<T>::HybridResults Arm<T>::hybridDynamics(
     jointTorques.emplace(i, result.at(t(i+1))(0));
   }
   return HybridResults(jointAccels, jointTorques);
+}
+
+template <typename T>
+JointLimitVectorFactor Arm<T>::jointLimitVectorFactor() const {
+  noiseModel::Gaussian::shared_ptr cost_model =
+      noiseModel::Isotropic::Sigma(numLinks(), 1.0);
+  return JointLimitVectorFactor(J(0), cost_model, jointLowerLimits(),
+                                jointUpperLimits(), jointLimitThresholds());
 }
 
 template <typename T>
