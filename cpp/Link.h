@@ -36,6 +36,14 @@ extern gtsam::Symbol J(int j);
  * Link is the base class for links taking different format of parameters
  */
 class Link {
+ public:
+  /** joint effort types
+   * Actuated: motor powdered
+   * Unactuated: no powdered, free to move, exert zero torque
+   * Impedence: with spring resistance
+   */
+  enum JointEffortType { Actuated, Unactuated, Impedence };
+
  protected:
   char jointType_;
 
@@ -44,7 +52,7 @@ class Link {
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
   gtsam::Vector6 screwAxis_;
-  bool isActuated_;
+  JointEffortType jointEffortType_;
   double jointLowerLimit_;
   double jointUpperLimit_;
   double jointLimitThreshold_;
@@ -66,7 +74,7 @@ class Link {
                                     in link frame
       inertia                    -- inertia matrix
       screw_axis                 -- joint axis expressed in COM frame
-      isActuated                 -- specify if this joint is actuated or not
+      jointEffortType                 -- specify if this joint is actuated or not
       joint_lower_limit          -- joint angle lower limit
       joint_upper_limit          -- joint angle upper limit
       joint_limit_threshold      -- joint angle limit threshold
@@ -80,7 +88,7 @@ class Link {
    */
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
-       bool isActuated = false,
+       JointEffortType jointEffortType = Actuated,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -91,7 +99,7 @@ class Link {
         centerOfMass_(center_of_mass),
         inertia_(inertia),
         screwAxis_(screwAxis),
-        isActuated_(isActuated),
+        jointEffortType_(jointEffortType),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -112,7 +120,7 @@ class Link {
    *                                   in link frame
    * inertia                        -- principal inertias
    * screw_axis                     -- joint axis expressed in COM frame
-   * isActuated                     -- specify if this joint is actuated or not
+   * jointEffortType                     -- specify if this joint is actuated or not
    * joint_lower_limit              -- joint angle lower limit
    * joint_upper_limit              -- joint angle upper limit
    * joint_limit_threshold          -- joint angle limit threshold
@@ -126,7 +134,7 @@ class Link {
    */
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
-       bool isActuated = false,
+       JointEffortType jointEffortType = Actuated,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -137,7 +145,7 @@ class Link {
         centerOfMass_(gtsam::Pose3(gtsam::Rot3(), center_of_mass)),
         inertia_(inertia),
         screwAxis_(screwAxis),
-        isActuated_(isActuated),
+        jointEffortType_(jointEffortType),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -169,7 +177,7 @@ class Link {
   }
 
   /* Return true if joint is actuated. */
-  bool isActuated() const { return isActuated_; }
+  JointEffortType jointEffortType() const { return jointEffortType_; }
 
   /* Return joint angle lower limit. */
   double jointLowerLimit() const { return jointLowerLimit_; }

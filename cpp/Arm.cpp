@@ -445,7 +445,7 @@ template <typename T>
 GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities,
     const Vector &joint_accelerations, const gtsam::Vector6 &screw_axis,
-    bool isLoopJointActuated, const Vector6 &base_twist_accel,
+    Link::JointEffortType loopJointEffortType, const Vector6 &base_twist_accel,
     const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
   int N = numLinks();
 
@@ -476,13 +476,13 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
         jTis[j], g_in_body));
 
     // add torque factor for passive joint
-    if (!links_[i].isActuated()) {
+    if (links_[i].jointEffortType() == Link::Unactuated) {
         gfg.add(t(j), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
     }
     
   }
   // Add loop factor to enforce kinematic loop
-  if (!isLoopJointActuated) {
+  if (loopJointEffortType == Link::Unactuated) {
     gfg.add(t(N + 1), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
   }
   gfg.push_back(links_[N - 1].inverseLoopFactor(

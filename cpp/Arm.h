@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <Link.h>
 #include <JointLimitVectorFactor.h>
 #include <PoseGoalFactor.h>
 
@@ -234,6 +235,8 @@ class Arm {
    *   joint_vecocities    -- joint angular velocities (in rad/s)
    *   joint_accelerations
    *   screw_axis          -- screw axis for loop joint
+   *   loopJointEffortType -- specify if loop joint is actuated, 
+   *                          unactuated or impedence
    *   gravity             -- if given, will create gravity forces
    *   base_twist_accel    -- optional acceleration for base
    *   external_wrench     -- optional external wrench
@@ -243,7 +246,8 @@ class Arm {
   gtsam::GaussianFactorGraph closedLoopInverseDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &screw_axis, bool isLoopJointActuated = false,
+      const gtsam::Vector6 &screw_axis,
+      Link::JointEffortType loopJointEffortType = Link::Actuated,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
