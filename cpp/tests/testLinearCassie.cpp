@@ -77,10 +77,10 @@ vector<URDF_Link> urdf_cassie = {
 
 Pose3 base = Pose3();
 Pose3 tool = Pose3(Rot3(), Point3(0.418, 0, 0));
-auto robot = Arm<URDF_Link>(urdf_cassie, base, tool);
-auto dof = robot.numLinks();
 // get screw_axis for loop closure
 auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.000202169, 3.86353e-05, 0.0045));
+auto robot = Arm<URDF_Link>(urdf_cassie, screw_axis,  Link::Unactuated, base, tool);
+auto dof = robot.numLinks();
 // required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof);
 Vector torque_ID = Vector::Zero(dof);
@@ -100,7 +100,7 @@ TEST(ID_factor_graph, gravity_y) {
          external_wrench = Vector::Zero(6);
   known_q << -1.201826, 0, 1.428819, 0, -1.481429, 1.254439;
   auto factor_graph = example::robot.closedLoopInverseDynamicsFactorGraph(
-      known_q, known_qVel, known_qAccel, example::screw_axis, Link::Unactuated, base_twist_accel,
+      known_q, known_qVel, known_qAccel, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
@@ -127,7 +127,7 @@ TEST(FD_factor_graph, gravity_y) {
   known_q << -1.201826, 0, 1.428819, 0, -1.481429, 1.254439;
   known_torque = example::torque_ID;
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, example::screw_axis, Link::Unactuated, base_twist_accel,
+      known_q, known_qVel, known_torque, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;

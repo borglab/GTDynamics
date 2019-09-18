@@ -29,6 +29,8 @@ template <typename T>
 class Arm {
  private:
   std::vector<T> links_;
+  gtsam::Vector6 loopScrewAxis_;
+  Link::JointEffortType loopJointEffortType_;
   gtsam::Pose3 base_;
   gtsam::Pose3 tool_;
   std::vector<gtsam::Vector6> screwAxes_;
@@ -44,15 +46,21 @@ class Arm {
         base        -- optional wT0 base frame in world frame
         tool        -- optional tool frame in link N frame
    */
-  Arm(const std::vector<T> &links, const gtsam::Pose3 &base = gtsam::Pose3(),
+  Arm(const std::vector<T> &links,
+      const gtsam::Vector6 &loopScrewAxis = gtsam::Vector6::Zero(),
+      Link::JointEffortType loopJointEffortType = Link::Actuated,
+      const gtsam::Pose3 &base = gtsam::Pose3(),
       const gtsam::Pose3 &tool = gtsam::Pose3());
 
-  /* Copy constructor */
-  Arm(const Arm &arm)
-      : links_(arm.links_),
-        base_(arm.base_),
-        tool_(arm.tool_),
-        screwAxes_(arm.screwAxes_) {}
+  // return loop joint screw axis
+  const gtsam::Vector6 &loopScrewAxis() const {
+      return loopScrewAxis_;
+  }
+
+  // return loop joint effort type
+  Link::JointEffortType loopJointEffortType() const {
+      return loopJointEffortType_;
+  }
 
   /* Return base pose in world frame */
   const gtsam::Pose3 &base() const { return base_; }
@@ -189,7 +197,6 @@ class Arm {
    *   q                   -- joint angles (in rad).
    *   joint_vecocities    -- joint angular velocities (in rad/s)
    *   joint_accelerations
-   *   screw_axis          -- screw axis for loop joint
    *   gravity             -- if given, will create gravity forces
    *   base_twist_accel    -- optional acceleration for base
    *   external_wrench     -- optional external wrench
@@ -198,8 +205,7 @@ class Arm {
    */
   gtsam::GaussianFactorGraph closedLoopForwardDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &torques, const gtsam::Vector6 &screw_axis, 
-      Link::JointEffortType loopJointEffortType = Link::Actuated,
+      const gtsam::Vector &torques, 
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -235,9 +241,6 @@ class Arm {
    *   q                   -- joint angles (in rad).
    *   joint_vecocities    -- joint angular velocities (in rad/s)
    *   joint_accelerations
-   *   screw_axis          -- screw axis for loop joint
-   *   loopJointEffortType -- specify if loop joint is actuated, 
-   *                          unactuated or impedence
    *   gravity             -- if given, will create gravity forces
    *   base_twist_accel    -- optional acceleration for base
    *   external_wrench     -- optional external wrench
@@ -247,8 +250,6 @@ class Arm {
   gtsam::GaussianFactorGraph closedLoopInverseDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &screw_axis,
-      Link::JointEffortType loopJointEffortType = Link::Actuated,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
