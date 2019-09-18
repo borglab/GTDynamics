@@ -219,13 +219,32 @@ class Link {
   static boost::shared_ptr<gtsam::JacobianFactor> BaseTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel);
 
+  // convert unary factor on base acceleration to first link acceleration 
+  // for forward dynamics  
+  boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
+      const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
+      double joint_vel_j, const gtsam::Vector6 &twist_j,
+      double acceleration_j) const;
+
+  // convert unary factor on base acceleration to first link acceleration 
+  // for forward dynamics 
+  boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
+      const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
+      double joint_vel_j, const gtsam::Vector6 &twist_j) const;
+
   /** Factor enforcing external wrench at tool frame.
       Keyword argument:
           N -- number of links, used to create wrench index
           external_wrench (np.array) -- optional external wrench
    */
   static boost::shared_ptr<gtsam::JacobianFactor> ToolWrenchFactor(
-      int N, const gtsam::Vector6 &external_wrench);
+      int N, const gtsam::Vector6 &external_wrench); 
+
+  // convert unary factor on tool wrench to last link wrench 
+  boost::shared_ptr<gtsam::JacobianFactor> lastWrenchFactor(
+      const gtsam::Vector6 &external_wrench, int j,
+      const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
+      boost::optional<gtsam::Vector3 &> gravity) const;
 
   /** Create single factor relating this link's twist with previous one.
       Keyword argument:
@@ -294,6 +313,12 @@ class Link {
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  // forward factor with the base and tool wrench taken away
+  gtsam::GaussianFactorGraph reducedForwardFactors(
+      int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
+      const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
   /** Create all factors linking this links dynamics with previous and next
      link.
      Keyword arguments:
@@ -311,6 +336,13 @@ class Link {
    */
   gtsam::GaussianFactorGraph inverseFactors(
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
+      const gtsam::Vector6 &twist_j, double acceleration_j,
+      const gtsam::Pose3 &kTj,
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  // inverse factor with the base and tool wrench taken away
+  gtsam::GaussianFactorGraph reducedInverseFactors(
+      int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
       const gtsam::Pose3 &kTj,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;

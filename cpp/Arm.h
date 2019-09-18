@@ -176,6 +176,25 @@ class Arm {
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  gtsam::GaussianFactorGraph reducedForwardDynamicsFactorGraph(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const gtsam::Vector &torques,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  /** Build factor graph for closed loop manipulator forward dynamics.
+   * Keyword arguments:
+   *   q                   -- joint angles (in rad).
+   *   joint_vecocities    -- joint angular velocities (in rad/s)
+   *   joint_accelerations
+   *   screw_axis          -- screw axis for loop joint
+   *   gravity             -- if given, will create gravity forces
+   *   base_twist_accel    -- optional acceleration for base
+   *   external_wrench     -- optional external wrench
+   * Note: see Link.base_factor on use of base_twist_accel
+   * Return Gaussian factor graph
+   */
   gtsam::GaussianFactorGraph closedLoopForwardDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &torques, const gtsam::Vector6 &screw_axis, 
@@ -201,6 +220,26 @@ class Arm {
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  // inverse dynamics factor graph base and tool wrench reduced
+  gtsam::GaussianFactorGraph reducedInverseDynamicsFactorGraph(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const gtsam::Vector &joint_accelerations,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  /** Build factor graph for closed loop manipulator inverse dynamics.
+   * Keyword arguments:
+   *   q                   -- joint angles (in rad).
+   *   joint_vecocities    -- joint angular velocities (in rad/s)
+   *   joint_accelerations
+   *   screw_axis          -- screw axis for loop joint
+   *   gravity             -- if given, will create gravity forces
+   *   base_twist_accel    -- optional acceleration for base
+   *   external_wrench     -- optional external wrench
+   * Note: see Link.base_factor on use of base_twist_accel
+   * Return Gaussian factor graph
+   */
   gtsam::GaussianFactorGraph closedLoopInverseDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &joint_accelerations,
@@ -222,6 +261,15 @@ class Arm {
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph hybridDynamicsFactorGraph(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const JointValues &joint_accelerations,
+      const JointValues &torques,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  // hybrid dynamics factor graph base and tool wrench reduced
+  gtsam::GaussianFactorGraph reducedHybridDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const JointValues &joint_accelerations,
       const JointValues &torques,
@@ -274,6 +322,14 @@ class Arm {
    *  See hybridDynamicsFactorGraph for input arguments.
   */
   HybridResults hybridDynamics(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const JointValues &joint_accelerations,
+      const JointValues &torques,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  HybridResults reducedHybridDynamics(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const JointValues &joint_accelerations,
       const JointValues &torques,

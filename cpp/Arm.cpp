@@ -259,6 +259,57 @@ GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
 }
 
 template <typename T>
+GaussianFactorGraph Arm<T>::reducedForwardDynamicsFactorGraph(
+    const Vector &q, const Vector &joint_velocities, const Vector &torques,
+    const Vector6 &base_twist_accel, const Vector6 &external_wrench,
+    boost::optional<Vector3 &> gravity) const {
+  gttic_(Arms_reducedForwardDynamicsFactorGraph);
+  int N = numLinks();
+  assert(q.size() == N);
+  assert(joint_velocities.size() == N);
+  assert(torques.size() == N);
+
+  // Configuration of COM link frames
+  vector<Pose3> Ts = comFrames(q);
+  // Calculate all twists
+  vector<Vector6> twists_vec = twists(Ts, joint_velocities);
+  // Set up Gaussian Factors Graph
+  GaussianFactorGraph gfg = GaussianFactorGraph();
+  // Configuration of link frame j-1 relative to link frame j for arbitrary
+  // joint angle
+  vector<Pose3> jTis = jTi_list(q);
+  // Add factor to enforce first acceleration
+  gfg.push_back(links_[0].firstTwistAccelFactor(base_twist_accel, jTis[0],
+      joint_velocities[0], twists_vec[0]));
+
+  int j = 0;
+  for (int i = 0; i < N; ++i) {
+    j = i + 1;
+    auto jRw = Ts[i].rotation().inverse();
+    if (gravity) {
+      gfg.push_back(links_[i].reducedForwardFactors(j, N, jTis[i], joint_velocities[i],
+                                             twists_vec[i], torques[i], jTis[j],
+                                             jRw * (*gravity)));
+    } else {
+      gfg.push_back(links_[i].reducedForwardFactors(j, N, jTis[i], joint_velocities[i],
+                                             twists_vec[i], torques[i], jTis[j],
+                                             gravity));
+    }
+  }
+  // Add factor to enforce external wrench at tool
+  auto jRw = Ts[N-1].rotation().inverse();
+  if (gravity) {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], jRw * (*gravity)));
+  } else {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], gravity));
+  }
+
+  return gfg;
+}
+
+template <typename T>
 GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities, const Vector &torques,
     const gtsam::Vector6 &screw_axis, const Vector6 &base_twist_accel,
@@ -336,6 +387,57 @@ GaussianFactorGraph Arm<T>::inverseDynamicsFactorGraph(
   }
   // Add factor to enforce external wrench at tool
   gfg.push_back(Link::ToolWrenchFactor(N, external_wrench));
+  return gfg;
+}
+
+template <typename T>
+GaussianFactorGraph Arm<T>::reducedInverseDynamicsFactorGraph(
+    const Vector &q, const Vector &joint_velocities,
+    const Vector &joint_accelerations, const Vector6 &base_twist_accel,
+    const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
+  gttic_(Arms_reducedInverseDynamicsFactorGraph);
+  int N = numLinks();
+  assert(q.size() == N);
+  assert(joint_velocities.size() == N);
+  assert(joint_accelerations.size() == N);
+
+  // Configuration of COM link frames
+  vector<Pose3> Ts = comFrames(q);
+  // Calculate all twists
+  vector<Vector6> twists_vec = twists(Ts, joint_velocities);
+  // Set up Gaussian Factors Graph
+  GaussianFactorGraph gfg = GaussianFactorGraph();
+  // Configuration of link frame j-1 relative to link frame j for arbitrary
+  // joint angle
+  vector<Pose3> jTis = jTi_list(q);
+  // Add factor to enforce first acceleration
+  gfg.push_back(links_[0].firstTwistAccelFactor(base_twist_accel, jTis[0],
+      joint_velocities[0], twists_vec[0], joint_accelerations[0]));
+
+  int j = 0;
+  for (int i = 0; i < N; ++i) {
+    j = i + 1;
+    auto jRw = Ts[i].rotation().inverse();
+    if (gravity) {
+      gfg.push_back(links_[i].reducedInverseFactors(
+          j, N, jTis[i], joint_velocities[i], twists_vec[i],
+          joint_accelerations[i], jTis[j], jRw * (*gravity)));
+    } else {
+      gfg.push_back(links_[i].reducedInverseFactors(
+          j, N, jTis[i], joint_velocities[i], twists_vec[i],
+          joint_accelerations[i], jTis[j], gravity));
+    }
+  }
+  // Add factor to enforce external wrench at tool
+  auto jRw = Ts[N-1].rotation().inverse();
+  if (gravity) {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], jRw * (*gravity)));
+  } else {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], gravity));
+  }
+
   return gfg;
 }
 
@@ -449,6 +551,79 @@ GaussianFactorGraph Arm<T>::hybridDynamicsFactorGraph(
 }
 
 template <typename T>
+GaussianFactorGraph Arm<T>::reducedHybridDynamicsFactorGraph(
+    const Vector &q, const Vector &joint_velocities,
+    const JointValues &joint_accelerations,
+    const JointValues &torques,
+    const Vector6 &base_twist_accel,
+    const Vector6 &external_wrench,
+    boost::optional<Vector3 &> gravity) const {
+  int N = numLinks();
+  assert(q.size() == N);
+  assert(joint_velocities.size() == N);
+
+  // Configuration of COM link frames
+  vector<Pose3> Ts = comFrames(q);
+  // Calculate all twists
+  vector<Vector6> twists_vec = twists(Ts, joint_velocities);
+  // Set up Gaussian Factors Graph
+  GaussianFactorGraph gfg = GaussianFactorGraph();
+  // Configuration of link frame j-1 relative to link frame j for arbitrary
+  // joint angle
+  vector<Pose3> jTis = jTi_list(q);
+  // Add factor to enforce first acceleration
+  if (joint_accelerations.begin()->first == 0) {
+    gfg.push_back(links_[0].firstTwistAccelFactor(
+        base_twist_accel, jTis[0], joint_velocities[0], twists_vec[0],
+        joint_accelerations.begin()->second));
+  } else {
+    gfg.push_back(links_[0].firstTwistAccelFactor(
+        base_twist_accel, jTis[0], joint_velocities[0], twists_vec[0]));
+  }
+  
+  for (map_iter it = joint_accelerations.begin();
+       it != joint_accelerations.end(); ++it) {
+    int i = it->first;
+    auto jRw = Ts[i].rotation().inverse();
+    if (gravity) {
+      gfg.push_back(links_[i].reducedInverseFactors(
+          i + 1, N, jTis[i], joint_velocities[i], twists_vec[i],
+          it->second, jTis[i + 1], jRw * (*gravity)));
+    } else {
+      gfg.push_back(links_[i].reducedInverseFactors(
+          i + 1, N, jTis[i], joint_velocities[i], twists_vec[i],
+          it->second, jTis[i + 1], gravity));
+    }
+  }
+
+  for (map_iter it = torques.begin(); it != torques.end(); ++it) {
+    int i = it->first;
+    auto jRw = Ts[i].rotation().inverse();
+    if (gravity) {
+      gfg.push_back(links_[i].reducedForwardFactors(
+          i + 1, N, jTis[i], joint_velocities[i], twists_vec[i], it->second,
+          jTis[i + 1], jRw * (*gravity)));
+    } else {
+      gfg.push_back(links_[i].reducedForwardFactors(i + 1, N, jTis[i],
+                                             joint_velocities[i], twists_vec[i],
+                                             it->second, jTis[i + 1], gravity));
+    }
+  }
+
+  // Add factor to enforce external wrench at tool
+  auto jRw = Ts[N-1].rotation().inverse();
+  if (gravity) {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], jRw * (*gravity)));
+  } else {
+    gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTis[N], gravity));
+  }
+
+  return gfg;
+}
+
+template <typename T>
 Vector Arm<T>::extractJointAcceleraions(const VectorValues &result, boost::optional<int &> N) const {
   int num = numLinks();
   if (N) {
@@ -514,6 +689,30 @@ typename Arm<T>::HybridResults Arm<T>::hybridDynamics(
     const Vector6 &external_wrench,
     boost::optional<Vector3 &> gravity) const {
   GaussianFactorGraph factor_graph = hybridDynamicsFactorGraph(
+      q, joint_velocities, joint_accelerations, torques, base_twist_accel,
+      external_wrench, gravity);
+  VectorValues result = factor_graph.optimize();
+  JointValues jointTorques, jointAccels;
+  for (map_iter it = torques.begin(); it != torques.end(); ++it) { 
+    int i = it->first;
+    jointAccels.emplace(i, result.at(a(i+1))(0));
+  }
+  for (map_iter it = joint_accelerations.begin(); it != joint_accelerations.end(); ++it) { 
+    int i = it->first;
+    jointTorques.emplace(i, result.at(t(i+1))(0));
+  }
+  return HybridResults(jointAccels, jointTorques);
+}
+
+template <typename T>
+typename Arm<T>::HybridResults Arm<T>::reducedHybridDynamics(
+    const Vector &q, const Vector &joint_velocities,
+    const JointValues &joint_accelerations,
+    const JointValues &torques,
+    const Vector6 &base_twist_accel,
+    const Vector6 &external_wrench,
+    boost::optional<Vector3 &> gravity) const {
+  GaussianFactorGraph factor_graph = reducedHybridDynamicsFactorGraph(
       q, joint_velocities, joint_accelerations, torques, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
