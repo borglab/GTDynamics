@@ -312,7 +312,9 @@ GaussianFactorGraph Arm<T>::reducedForwardDynamicsFactorGraph(
 template <typename T>
 GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities, const Vector &torques,
-    const gtsam::Vector6 &screw_axis, const Vector6 &base_twist_accel,
+    const gtsam::Vector6 &screw_axis, 
+    Link::JointEffortType loopJointEffortType,
+    const Vector6 &base_twist_accel,
     const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
   int N = numLinks();
 
@@ -333,18 +335,31 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
   }
 
   int j = 0;
+  double loopJointTorque = 0;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
     auto jRw = Ts[i].rotation().inverse();
     g_in_body = jRw * g_in_space;
+    if (links_[i].jointEffortType() == Link::Impedence) {
+      // spring joint: torque = springCoefficient * jointAngle, springCoefficient = -1500 N/rad
+      loopJointTorque = -1500 * q[i];
+    } else {
+      loopJointTorque = torques[i];
+    }
     gfg.push_back(links_[i].forwardFactors(j, jTis[i], joint_velocities[i],
-                                           twists_vec[i], torques[i], jTis[j],
+                                           twists_vec[i], loopJointTorque, jTis[j],
                                            g_in_body));
   }
   // Add loop factor to enforce kinematic loop
+  if (loopJointEffortType == Link::Impedence) {
+    // spring torque factor: torque = springCoefficient * jointAngle
+    loopJointTorque = -1500 * q[N];
+  } else {
+    loopJointTorque = torques[N];
+  }
   gfg.push_back(links_[N - 1].forwardLoopFactor(
       N, screw_axis, Ts.back().inverse(), joint_velocities[N],
-      twists_vec[N - 1], torques[N], jTis[N], g_in_body));
+      twists_vec[N - 1], loopJointTorque, jTis[N], g_in_body));
   return gfg;
 }
 
@@ -477,14 +492,24 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
 
     // add torque factor for passive joint
     if (links_[i].jointEffortType() == Link::Unactuated) {
-        gfg.add(t(j), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
+      gfg.add(t(j), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
+    } else if (links_[i].jointEffortType() == Link::Impedence) {
+      // spring joint: torque = springCoefficient * jointAngle,
+      // springCoefficient = -1500 N/rad
+      gfg.add(t(j), I_1x1, Vector1(-1500 * q[i]),
+              noiseModel::Constrained::All(1));
     }
-    
   }
   // Add loop factor to enforce kinematic loop
   if (loopJointEffortType == Link::Unactuated) {
     gfg.add(t(N + 1), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
+  } else if (loopJointEffortType == Link::Impedence) {
+    // spring joint: torque = springCoefficient * jointAngle, springCoefficient
+    // = -1500 N/rad
+    gfg.add(t(N + 1), I_1x1, Vector1(-1500 * q[N]),
+            noiseModel::Constrained::All(1));
   }
+
   gfg.push_back(links_[N - 1].inverseLoopFactor(
       N, screw_axis, Ts.back().inverse(), joint_velocities[N],
       twists_vec[N - 1], joint_accelerations[N], jTis[N], g_in_body));

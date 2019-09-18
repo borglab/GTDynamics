@@ -199,6 +199,7 @@ class Arm {
   gtsam::GaussianFactorGraph closedLoopForwardDynamicsFactorGraph(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &torques, const gtsam::Vector6 &screw_axis, 
+      Link::JointEffortType loopJointEffortType = Link::Actuated,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;

@@ -63,13 +63,13 @@ vector<URDF_Link> urdf_cassie = {
         Pose3(Rot3(), Point3(0.11046, -0.03058, -0.00131)),
         (Matrix(3, 3) << 0.00039238, 0.00023651, -4.987e-05, 0.00023651,
          0.013595, -4.82e-06, -4.987e-05, -4.82e-06, 0.013674)
-            .finished(), Link::Actuated),
+            .finished(), Link::Unactuated),
     URDF_Link(Pose3(Rot3::RzRyRx(0, 0, 2.7207), Point3(-0.01269, -0.03059, 0)),
         Vector3(0, 0, 1), 'R', 0.126,
         Pose3(Rot3(), Point3(0.081, 0.0022, 0)),
         (Matrix(3, 3) << 2.959e-05, 7.15e-06, -6e-07, 7.15e-06, 0.00022231,
          1e-07, -6e-07, 1e-07, 0.0002007)
-            .finished(), Link::Unactuated),
+            .finished(), Link::Actuated),
     URDF_Link(Pose3(Rot3::RzRyRx(0, 0, 0.608212), Point3(0.11877, -0.01, 0)),
         Vector3(0, 0, 1), 'R', 0.157,
         Pose3(Rot3(), Point3(0.2472, 0, 0)),
@@ -106,6 +106,7 @@ TEST(ID_factor_graph, gravity_y) {
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
   Vector expected_qTorque = Vector::Zero(example::dof + 1);
+  expected_qTorque << 3.34056589, 1.79605854, 6.83348015e-17, -0.731110172, -4.9478099e-18, 0;
   EXPECT(assert_equal(expected_qTorque, actual_qTorque, 10e-6));
   example::torque_ID = actual_qTorque;
   example::qAccel_ID = known_qAccel;
@@ -126,7 +127,7 @@ TEST(FD_factor_graph, gravity_y) {
   known_q << -1.201826, 0, 1.428819, 0, -1.481429, 1.254439;
   known_torque = example::torque_ID;
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, example::screw_axis, base_twist_accel,
+      known_q, known_qVel, known_torque, example::screw_axis, Link::Unactuated, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
