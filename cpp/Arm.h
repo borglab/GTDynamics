@@ -16,6 +16,8 @@
 #include <gtsam/nonlinear/Values.h>
 
 #include <vector>
+#include <map>
+#include <utility>
 
 namespace manipulator {
 
@@ -31,6 +33,9 @@ class Arm {
   std::vector<gtsam::Vector6> screwAxes_;
 
  public:
+  typedef std::map<size_t, double>::const_iterator map_iter;
+  typedef std::map<size_t, double> JointValues;
+  typedef std::pair<JointValues, JointValues> HybridResults;
   /**
    * Construct robotic arm from a list of Link instances
    * Keyword arguments:
@@ -191,6 +196,26 @@ class Arm {
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  /** Build factor graph for RR manipulator hybrid dynamics.
+   * Keyword arguments:
+   *   q                   -- joint angles (in rad).
+   *   joint_vecocities    -- joint angular velocities (in rad/s)
+   *   joint_accelerations -- desired joint accelerations 
+   *   torques             -- torques 
+   *   gravity             -- if given, will create gravity forces
+   *   base_twist_accel    -- optional acceleration for base
+   *   external_wrench     -- optional external wrench
+   * Note: see Link.base_factor on use of base_twist_accel
+   * Return Gaussian factor graph
+   */
+  gtsam::GaussianFactorGraph hybridDynamicsFactorGraph(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const JointValues &joint_accelerations,
+      const JointValues &torques,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
   /* Extract joint accelerations for all joints from gtsam::VectorValues. */
   gtsam::Vector extractJointAcceleraions(
       const gtsam::VectorValues &result) const;
@@ -226,6 +251,17 @@ class Arm {
   gtsam::Vector inverseDynamics(
       const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
       const gtsam::Vector &joint_accelerations,
+      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+
+  /** Calculate joint accelerations and torques for hybrid dynamics problem
+   *  See hybridDynamicsFactorGraph for input arguments.
+  */
+  HybridResults hybridDynamics(
+      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
+      const JointValues &joint_accelerations,
+      const JointValues &torques,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
