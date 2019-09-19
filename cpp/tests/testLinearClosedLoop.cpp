@@ -29,19 +29,19 @@ static const double HALF_PI = M_PI / 2;
 namespace example {
 vector<URDF_Link> urdf_5r = {
     URDF_Link(Pose3(Rot3::Rz(HALF_PI), Point3(-0.2, 0, 0)), Vector3(0, 0, 1), 'R',
-              2, Pose3(Rot3(), Point3(0.4, 0, 0)), Z_3x3, true),
+              2, Pose3(Rot3(), Point3(0.4, 0, 0)), Z_3x3, Link::Actuated),
     URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(0.8, 0, 0)), Vector3(0, 0, 1), 'R',
-              2.25, Pose3(Rot3(), Point3(0.45, 0, 0)), Z_3x3, false),
+              2.25, Pose3(Rot3(), Point3(0.45, 0, 0)), Z_3x3, Link::Unactuated),
     URDF_Link(Pose3(Rot3::Rz(-M_PI/3), Point3(0.4, 0, 0)), Vector3(0, 0, 1), 'R',
-              sqrt(3), Pose3(Rot3(), Point3(0.2*sqrt(3), 0, 0)), Z_3x3, false),
+              sqrt(3), Pose3(Rot3(), Point3(0.2*sqrt(3), 0, 0)), Z_3x3, Link::Unactuated),
     URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(0.4*sqrt(3), 0, 0)), Vector3(0, 0, 1), 'R',
-              1, Pose3(Rot3(), Point3(0.2, 0, 0)), Z_3x3, false)};
+              1, Pose3(Rot3(), Point3(0.2, 0, 0)), Z_3x3, Link::Unactuated)};
 Pose3 base = Pose3();
 Pose3 tool = Pose3(Rot3(), Point3(0.4, 0, 0));
-auto robot = Arm<URDF_Link>(urdf_5r, base, tool);
-auto dof = robot.numLinks();
 // get screw_axis for loop closure
 auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2, 0, 0));
+auto robot = Arm<URDF_Link>(urdf_5r, screw_axis, Link::Actuated, base, tool);
+auto dof = robot.numLinks();
 // required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof + 1);
 Vector torque_ID = Vector::Zero(dof + 1);
@@ -62,7 +62,7 @@ TEST(ID_factor_graph, gravity_y) {
   known_qVel << 0.5, -0.5, 0.5, 0, -0.5;
   known_qVel << 0.15, -0.15, 0.15, 0, -0.15;
   auto factor_graph = example::robot.closedLoopInverseDynamicsFactorGraph(
-      known_q, known_qVel, known_qAccel, example::screw_axis, true, base_twist_accel,
+      known_q, known_qVel, known_qAccel, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
@@ -90,7 +90,7 @@ TEST(FD_factor_graph, gravity_y) {
   known_qVel << 0.15, -0.15, 0.15, 0, -0.15;
   known_torque = example::torque_ID;
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, example::screw_axis, base_twist_accel,
+      known_q, known_qVel, known_torque, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
@@ -112,7 +112,7 @@ TEST(ID_factor_graph, gravity_x) {
          base_twist_accel = Vector::Zero(6),
          external_wrench = Vector::Zero(6);
   auto factor_graph = example::robot.closedLoopInverseDynamicsFactorGraph(
-      known_q, known_qVel, known_qAccel, example::screw_axis, true, base_twist_accel,
+      known_q, known_qVel, known_qAccel, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
@@ -138,7 +138,7 @@ TEST(FD_factor_graph, gravity_x) {
          external_wrench = Vector::Zero(6);
   known_torque = example::torque_ID;
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, example::screw_axis, base_twist_accel,
+      known_q, known_qVel, known_torque, base_twist_accel,
       external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
