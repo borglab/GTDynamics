@@ -29,18 +29,18 @@ static const double HALF_PI = M_PI / 2;
 namespace example {
 vector<URDF_Link> urdf_5r = {
     URDF_Link(Pose3(Rot3::Rz(HALF_PI), Point3(-0.2, 0, 0)), Vector3(0, 0, 1), 'R',
-              2, Pose3(Rot3(), Point3(0.4, 0, 0)), Z_3x3, Link::Actuated),
+              2, Pose3(Rot3(), Point3(0.4, 0, 0)), Z_3x3, true),
     URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(0.8, 0, 0)), Vector3(0, 0, 1), 'R',
-              2.25, Pose3(Rot3(), Point3(0.45, 0, 0)), Z_3x3, Link::Unactuated),
+              2.25, Pose3(Rot3(), Point3(0.45, 0, 0)), Z_3x3, false),
     URDF_Link(Pose3(Rot3::Rz(-M_PI/3), Point3(0.4, 0, 0)), Vector3(0, 0, 1), 'R',
-              sqrt(3), Pose3(Rot3(), Point3(0.2*sqrt(3), 0, 0)), Z_3x3, Link::Unactuated),
+              sqrt(3), Pose3(Rot3(), Point3(0.2*sqrt(3), 0, 0)), Z_3x3, false),
     URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(0.4*sqrt(3), 0, 0)), Vector3(0, 0, 1), 'R',
-              1, Pose3(Rot3(), Point3(0.2, 0, 0)), Z_3x3, Link::Unactuated)};
+              1, Pose3(Rot3(), Point3(0.2, 0, 0)), Z_3x3, false)};
 Pose3 base = Pose3();
 Pose3 tool = Pose3(Rot3(), Point3(0.4, 0, 0));
 // get screw_axis for loop closure
 auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2, 0, 0));
-auto robot = Arm<URDF_Link>(urdf_5r, base, tool, screw_axis, Link::Actuated);
+auto robot = Arm<URDF_Link>(urdf_5r, base, tool, screw_axis, true);
 auto dof = robot.numLinks();
 // required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof + 1);
