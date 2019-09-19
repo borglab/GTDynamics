@@ -11,7 +11,8 @@ using namespace gtsam;
 
 namespace manipulator {
 template <typename T>
-void Simulation<T>::updateJointTorques() {
+void Simulation<T>::updateJointTorques(const gtsam::Vector &known_torque) {
+  jointTorques = known_torque;
   for(int i = 0; i < dof_; ++i) {
     if (robot_.link(i).jointEffortType() == Link::Impedence) {
       jointTorques[i] = -1500 * jointAngles[i];
@@ -23,46 +24,30 @@ void Simulation<T>::updateJointTorques() {
 }
 
 template <typename T>
-Vector Simulation<T>::accelerations(boost::optional<Vector &> known_torque,
-                                    boost::optional<Vector &> known_q,
-                                    boost::optional<Vector &> known_qVel) {
-  Vector torques, qs, qVels;
-  if (known_torque) {
-    torques = *known_torque;
-  } else {
-    torques = Vector::Zero(dof_);
-  }
-  if (known_q) {
-    qs = *known_q;
-  } else {
-    qs = jointAngles;
-  }
-  if (known_qVel) {
-    qVels = *known_qVel;
-  } else {
-    qVels = jointVelocities;
-  }
+Vector Simulation<T>::accelerations(const gtsam::Vector &known_torque,
+                                    const gtsam::Vector &known_q,
+                                    const gtsam::Vector &known_qVel) {
   auto factor_graph = robot_.closedLoopForwardDynamicsFactorGraph(
-      qs, qVels, torques, gtsam::Vector6::Zero(),
+      known_q, known_qVel, known_torque, gtsam::Vector6::Zero(),
       gtsam::Vector6::Zero(), gravity_);
   VectorValues results = factor_graph.optimize();
   return robot_.extractJointAcceleraions(results, dof_);
 }
 
 template <typename T>
-void Simulation<T>::integration(boost::optional<Vector &> known_torque) {
-  auto newJointAccelerations = accelerations(known_torque);
+void Simulation<T>::integration(const gtsam::Vector &known_torque) {
+  auto newJointAccelerations = accelerations(known_torque, jointAngles, jointVelocities);
   auto newJointVelocities = jointVelocities + newJointAccelerations * dt_;
   auto newJointAngles =
       jointAngles + jointVelocities * dt_ + 0.5 * newJointAccelerations * dt_2_;
   updateJointAccelerations(newJointAccelerations);
   updateJointVelocities(newJointVelocities);
   updateJointAngles(newJointAngles);
-  updateJointTorques();
+  updateJointTorques(known_torque);
 }
 
 template <typename T>
-void Simulation<T>::rungeKutta4(boost::optional<Vector &> known_torque) {
+void Simulation<T>::rungeKutta4(const gtsam::Vector &known_torque) {
   double c = 1.0 / 6, c1 = 1.0 / 3, c2 = 1.0 / 3, c3 = 1.0 / 6;
   Vector q1, q2, q3, q4;
   Vector qVel1, qVel2, qVel3, qVel4;
@@ -84,7 +69,7 @@ void Simulation<T>::rungeKutta4(boost::optional<Vector &> known_torque) {
   updateJointAccelerations(qAccel3);
   updateJointVelocities(qVel4);
   updateJointAngles(q4);
-  updateJointTorques();
+  updateJointTorques(known_torque);
 }
 template class Simulation<URDF_Link>;
 }  // namespace manipulator

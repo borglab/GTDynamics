@@ -62,7 +62,7 @@ class Simulation {
   }
 
   /// update joint torque values
-  void updateJointTorques();
+  void updateJointTorques(const gtsam::Vector &known_torque);
 
   /// return joint angle values
   gtsam::Vector getJointAngles() { return jointAngles; }
@@ -76,18 +76,17 @@ class Simulation {
   gtsam::Vector getJointTorques() { return jointTorques; }
 
   /// calculate joint accelerations from forward dynamics factor graph
-  gtsam::Vector accelerations(
-      boost::optional<gtsam::Vector &> known_torque = boost::none,
-      boost::optional<gtsam::Vector &> known_q = boost::none,
-      boost::optional<gtsam::Vector &> known_qVel = boost::none);
+  gtsam::Vector accelerations(const gtsam::Vector &known_torque,
+                              const gtsam::Vector &known_q,
+                              const gtsam::Vector &known_qVel);
 
   /// integrate joint velocities and joint accelerations to get joint angles
   /// and joint velocities
-  void integration(boost::optional<gtsam::Vector &> known_torque = boost::none);
+  void integration(const gtsam::Vector &known_torque);
 
   /// integrate joint velocities and joint accelerations to get joint angles
   /// and joint velocities using RungeKutta4 method
-  void rungeKutta4(boost::optional<gtsam::Vector &> known_torque = boost::none);
+  void rungeKutta4(const gtsam::Vector &known_torque);
 };
 
 }  // namespace manipulator
