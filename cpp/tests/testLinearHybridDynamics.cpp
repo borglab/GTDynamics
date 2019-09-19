@@ -25,18 +25,18 @@ using namespace manipulator;
 namespace example {
 vector<DH_Link> dh_puma = {
     DH_Link(0, 0.0000, 0.0000, +90, 'R', 0, Point3(0, 0, 0),
-            Vector3(0, 0.35, 0).asDiagonal(), -180, 180, 20),
+            Vector3(0, 0.35, 0).asDiagonal()),
     DH_Link(0, 0.4318, 0, 0.0, 'R', 17.40, Point3(-0.3638, 0.006, 0.2275),
-            Vector3(0.130, 0.524, 0.539).asDiagonal(), -180, 180, 20),
+            Vector3(0.130, 0.524, 0.539).asDiagonal()),
     DH_Link(0, 0.0203, 0.15005, -90, 'R', 4.80,
             Point3(-0.0203, -0.0141, 0.0700),
-            Vector3(0.066, 0.086, 0.0125).asDiagonal(), -180, 180, 20),
+            Vector3(0.066, 0.086, 0.0125).asDiagonal()),
     DH_Link(0, 0, 0.4318, +90, 'R', 0.82, Point3(0, 0.19, 0),
-            Vector3(0.0018, 0.0013, 0.0018).asDiagonal(), -180, 180, 20),
+            Vector3(0.0018, 0.0013, 0.0018).asDiagonal()),
     DH_Link(0, 0.0000, 0.0000, -90, 'R', 0.34, Point3(0, 0, 0),
-            Vector3(0.0003, 0.0004, 0.0003).asDiagonal(), -180, 180, 20),
+            Vector3(0.0003, 0.0004, 0.0003).asDiagonal()),
     DH_Link(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
-            Vector3(0.00015, 0.00015, 0.00004).asDiagonal(), -180, 180, 20)};
+            Vector3(0.00015, 0.00015, 0.00004).asDiagonal())};
 
 // Create Puma robot.
 auto robot = Arm<DH_Link>(dh_puma, Pose3(), Pose3());

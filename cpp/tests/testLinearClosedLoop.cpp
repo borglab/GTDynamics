@@ -40,7 +40,7 @@ Pose3 base = Pose3();
 Pose3 tool = Pose3(Rot3(), Point3(0.4, 0, 0));
 // get screw_axis for loop closure
 auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2, 0, 0));
-auto robot = Arm<URDF_Link>(urdf_5r, screw_axis, Link::Actuated, base, tool);
+auto robot = Arm<URDF_Link>(urdf_5r, base, tool, screw_axis, Link::Actuated);
 auto dof = robot.numLinks();
 // required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof + 1);
