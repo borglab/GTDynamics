@@ -53,6 +53,8 @@ class Link {
   gtsam::Matrix3 inertia_;
   gtsam::Vector6 screwAxis_;
   JointEffortType jointEffortType_;
+  double springCoefficient_;
+  double dampingCoefficient_;
   double jointLowerLimit_;
   double jointUpperLimit_;
   double jointLimitThreshold_;
@@ -74,7 +76,7 @@ class Link {
                                     in link frame
       inertia                    -- inertia matrix
       screw_axis                 -- joint axis expressed in COM frame
-      jointEffortType                 -- specify if this joint is actuated or not
+      jointEffortType            -- specify if this joint is actuated or not
       joint_lower_limit          -- joint angle lower limit
       joint_upper_limit          -- joint angle upper limit
       joint_limit_threshold      -- joint angle limit threshold
@@ -89,6 +91,7 @@ class Link {
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
        JointEffortType jointEffortType = Actuated,
+       double springCoefficient = 0, double dampingCoefficient = 0,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -100,6 +103,8 @@ class Link {
         inertia_(inertia),
         screwAxis_(screwAxis),
         jointEffortType_(jointEffortType),
+        springCoefficient_(springCoefficient),
+        dampingCoefficient_(dampingCoefficient),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -135,6 +140,7 @@ class Link {
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
        JointEffortType jointEffortType = Actuated,
+       double springCoefficient = 0, double dampingCoefficient = 0,
        double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
        double joint_limit_threshold = 0.0, double velocity_limit = 10000,
        double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
@@ -146,6 +152,8 @@ class Link {
         inertia_(inertia),
         screwAxis_(screwAxis),
         jointEffortType_(jointEffortType),
+        springCoefficient_(springCoefficient),
+        dampingCoefficient_(dampingCoefficient),
         jointLowerLimit_(joint_lower_limit),
         jointUpperLimit_(joint_upper_limit),
         jointLimitThreshold_(joint_limit_threshold),
@@ -178,6 +186,12 @@ class Link {
 
   /* Return true if joint is actuated. */
   JointEffortType jointEffortType() const { return jointEffortType_; }
+
+  // return spring coefficient
+  double springCoefficient() const { return springCoefficient_; }
+
+  // return danmping coefficient
+  double dampingCoefficient() const { return dampingCoefficient_; }
 
   /* Return joint angle lower limit. */
   double jointLowerLimit() const { return jointLowerLimit_; }

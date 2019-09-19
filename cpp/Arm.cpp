@@ -19,11 +19,15 @@ namespace manipulator {
 
 template <typename T>
 Arm<T>::Arm(const std::vector<T> &links, const Vector6 &loopScrewAxis,
-            Link::JointEffortType loopJointEffortType, const Pose3 &base,
+            Link::JointEffortType loopJointEffortType,
+            double loopSpringCoefficient, double loopDampingCoefficient,
+            const Pose3 &base,
             const Pose3 &tool)
     : links_(links),
       loopScrewAxis_(loopScrewAxis),
       loopJointEffortType_(loopJointEffortType),
+      loopSpringCoefficient_(loopSpringCoefficient),
+      loopDampingCoefficient_(loopDampingCoefficient),
       base_(base),
       tool_(tool) {
   // Calculate screw axes for all joints, expressed in their COM frame.
@@ -339,31 +343,31 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
   }
 
   int j = 0;
-  double loopJointTorque = 0;
+  double jointTorque;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
     auto jRw = Ts[i].rotation().inverse();
     g_in_body = jRw * g_in_space;
+    // damping torque = dampingCoefficient * joint_velocity
+    jointTorque = torques[i] + links_[i].dampingCoefficient() * joint_velocities[i];
     if (links_[i].jointEffortType() == Link::Impedence) {
-      // spring joint: torque = springCoefficient * jointAngle, springCoefficient = -1500 N/rad
-      loopJointTorque = -1500 * q[i];
-    } else {
-      loopJointTorque = torques[i];
-    }
+      // spring joint: spring torque = springCoefficient * jointAngle
+      jointTorque += links_[i].springCoefficient() * q[i];
+    } 
     gfg.push_back(links_[i].forwardFactors(j, jTis[i], joint_velocities[i],
-                                           twists_vec[i], loopJointTorque, jTis[j],
+                                           twists_vec[i], jointTorque, jTis[j],
                                            g_in_body));
   }
   // Add loop factor to enforce kinematic loop
+  // damping torque = dampingCoefficient * joint_velocity
+  jointTorque = torques[N] + loopDampingCoefficient() * joint_velocities[N];
   if (loopJointEffortType() == Link::Impedence) {
     // spring torque factor: torque = springCoefficient * jointAngle
-    loopJointTorque = -1500 * q[N];
-  } else {
-    loopJointTorque = torques[N];
+    jointTorque += loopSpringCoefficient() * q[N];
   }
   gfg.push_back(links_[N - 1].forwardLoopFactor(
       N, loopScrewAxis(), Ts.back().inverse(), joint_velocities[N],
-      twists_vec[N - 1], loopJointTorque, jTis[N], g_in_body));
+      twists_vec[N - 1], jointTorque, jTis[N], g_in_body));
   return gfg;
 }
 

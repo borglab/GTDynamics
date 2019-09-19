@@ -31,6 +31,8 @@ class Arm {
   std::vector<T> links_;
   gtsam::Vector6 loopScrewAxis_;
   Link::JointEffortType loopJointEffortType_;
+  double loopSpringCoefficient_;
+  double loopDampingCoefficient_;
   gtsam::Pose3 base_;
   gtsam::Pose3 tool_;
   std::vector<gtsam::Vector6> screwAxes_;
@@ -49,6 +51,7 @@ class Arm {
   Arm(const std::vector<T> &links,
       const gtsam::Vector6 &loopScrewAxis = gtsam::Vector6::Zero(),
       Link::JointEffortType loopJointEffortType = Link::Actuated,
+      double loopSpringCoefficient = 0, double loopDampingCoefficient = 0,
       const gtsam::Pose3 &base = gtsam::Pose3(),
       const gtsam::Pose3 &tool = gtsam::Pose3());
 
@@ -61,6 +64,12 @@ class Arm {
   Link::JointEffortType loopJointEffortType() const {
       return loopJointEffortType_;
   }
+
+  // return loop springCoefficient
+  double loopSpringCoefficient() const { return loopSpringCoefficient_;}
+  
+  // return loop dampingCoefficient
+  double loopDampingCoefficient() const { return loopDampingCoefficient_;}
 
   /* Return base pose in world frame */
   const gtsam::Pose3 &base() const { return base_; }

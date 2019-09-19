@@ -54,6 +54,7 @@ class DH_Link : public Link {
           double mass, const gtsam::Point3 &center_of_mass,
           const gtsam::Matrix3 &inertia, 
           JointEffortType jointEffortType = Link::Actuated,
+          double springCoefficient = 0, double dampingCoefficient = 0,
           double joint_lower_limit = -180,
           double joint_upper_limit = 180, double joint_limit_threshold = 0.0,
           double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
@@ -65,6 +66,7 @@ class DH_Link : public Link {
                  gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
                  gtsam::Vector3(-a, 0, 0) - center_of_mass.vector()),
              jointEffortType,
+             springCoefficient, dampingCoefficient,
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
@@ -74,20 +76,6 @@ class DH_Link : public Link {
         d_(d),
         a_(a),
         alpha_(radians(alpha)) {}
-
-  /* Copy constructor */
-  DH_Link(const DH_Link &dh_link)
-      : Link(dh_link.jointType_, dh_link.mass(), dh_link.centerOfMass(),
-             dh_link.inertia(), dh_link.screwAxis(), dh_link.jointEffortType(),
-             dh_link.jointLowerLimit(), dh_link.jointUpperLimit(),
-             dh_link.jointLimitThreshold(), dh_link.velocityLimit(),
-             dh_link.velocityLimitThreshold(), dh_link.accelerationLimit(),
-             dh_link.accelerationLimitThreshold(), dh_link.torqueLimit(),
-             dh_link.torqueLimitThreshold()),
-        theta_(dh_link.theta_),
-        d_(dh_link.d_),
-        a_(dh_link.a_),
-        alpha_(dh_link.alpha_) {}
 
   /** Calculate link transform
    * Keyword argument:

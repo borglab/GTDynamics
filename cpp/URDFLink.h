@@ -52,6 +52,7 @@ class URDF_Link : public Link {
   URDF_Link(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,
             char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
             const gtsam::Matrix3 &inertia, JointEffortType jointEffortType = Link::Actuated,
+            double springCoefficient = 0, double dampingCoefficient = 0,
             double joint_lower_limit = -180,
             double joint_upper_limit = 180, double joint_limit_threshold = 0.0,
             double velocity_limit = 10000,
@@ -63,6 +64,7 @@ class URDF_Link : public Link {
              unit_twist(center_of_mass.rotation().inverse() * axis,
                         center_of_mass.inverse().translation().vector()),
              jointEffortType,
+             springCoefficient, dampingCoefficient,
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,
@@ -70,18 +72,6 @@ class URDF_Link : public Link {
              torque_limit_threshold),
         origin_(origin),
         axis_(axis) {}
-
-  /* Copy constructor */
-  URDF_Link(const URDF_Link &urdf_link)
-      : Link(urdf_link.jointType_, urdf_link.mass(), urdf_link.centerOfMass(),
-             urdf_link.inertia(), urdf_link.screwAxis(), urdf_link.jointEffortType(),
-             urdf_link.jointLowerLimit(), urdf_link.jointUpperLimit(),
-             urdf_link.jointLimitThreshold(), urdf_link.velocityLimit(),
-             urdf_link.velocityLimitThreshold(), urdf_link.accelerationLimit(),
-             urdf_link.accelerationLimitThreshold(), urdf_link.torqueLimit(),
-             urdf_link.torqueLimitThreshold()),
-        origin_(urdf_link.origin_),
-        axis_(urdf_link.axis_) {}
 
   /** Calculate link transform
   Keyword argument:
