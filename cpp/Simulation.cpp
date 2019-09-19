@@ -13,12 +13,16 @@ namespace manipulator {
 template <typename T>
 void Simulation<T>::updateJointTorques(const gtsam::Vector &known_torque) {
   jointTorques = known_torque;
-  for(int i = 0; i < dof_; ++i) {
+  for (int i = 0; i < dof_; ++i) {
     if (robot_.link(i).jointEffortType() == Link::Impedence) {
-      jointTorques[i] = -1500 * jointAngles[i];
+      jointTorques[i] =
+          robot_.link(i).springCoefficient() * jointAngles[i] +
+          robot_.link(i).dampingCoefficient() * jointVelocities[i];
     }
     if (robot_.loopJointEffortType() == Link::Impedence) {
-      jointTorques[dof_-1] = -1500 * jointAngles[dof_-1];
+      jointTorques[dof_ - 1] =
+          robot_.loopSpringCoefficient() * jointAngles[dof_ - 1] +
+          robot_.loopDampingCoefficient() * jointVelocities[dof_ - 1];
     }
   }
 }
