@@ -18,7 +18,7 @@ class Simulation {
   double dt_;
   double dt_2_;
   Arm<T> robot_;
-  double dof_;
+  int dof_;
   gtsam::Vector3 gravity_;
 
  protected:
