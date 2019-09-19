@@ -37,7 +37,7 @@ class URDF_Link : public Link {
                                         of the center of mass frame w.r.t.
                                         link frame
          inertia                     -- principal inertias
-         jointEffortType                  -- specify if this joint is actuated or not
+         isActuated                  -- specify if this joint is actuated or not
          joint_lower_limit           -- joint angle lower limit
          joint_upper_limit           -- joint angle upper limit
          joint_limit_threshold       -- joint angle limit threshold
@@ -51,11 +51,10 @@ class URDF_Link : public Link {
   */
   URDF_Link(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,
             char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
-            const gtsam::Matrix3 &inertia, JointEffortType jointEffortType = Link::Actuated,
+            const gtsam::Matrix3 &inertia, bool isActuated = true,
             double springCoefficient = 0, double dampingCoefficient = 0,
-            double joint_lower_limit = -180,
-            double joint_upper_limit = 180, double joint_limit_threshold = 0.0,
-            double velocity_limit = 10000,
+            double joint_lower_limit = -180, double joint_upper_limit = 180,
+            double joint_limit_threshold = 0.0, double velocity_limit = 10000,
             double velocity_limit_threshold = 0.0,
             double acceleration_limit = 10000,
             double acceleration_limit_threshold = 0.0,
@@ -63,8 +62,7 @@ class URDF_Link : public Link {
       : Link(joint_type, mass, center_of_mass, inertia,
              unit_twist(center_of_mass.rotation().inverse() * axis,
                         center_of_mass.inverse().translation().vector()),
-             jointEffortType,
-             springCoefficient, dampingCoefficient,
+             isActuated, springCoefficient, dampingCoefficient,
              radians(joint_lower_limit), radians(joint_upper_limit),
              radians(joint_limit_threshold), velocity_limit,
              velocity_limit_threshold, acceleration_limit,

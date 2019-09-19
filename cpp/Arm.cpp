@@ -20,11 +20,11 @@ namespace manipulator {
 template <typename T>
 Arm<T>::Arm(const std::vector<T> &links, const Pose3 &base, const Pose3 &tool,
             const Vector6 &loopScrewAxis,
-            Link::JointEffortType loopJointEffortType,
+            bool isLoopJointActuated,
             double loopSpringCoefficient, double loopDampingCoefficient)
     : links_(links),
       loopScrewAxis_(loopScrewAxis),
-      loopJointEffortType_(loopJointEffortType),
+      isLoopJointActuated_(isLoopJointActuated),
       loopSpringCoefficient_(loopSpringCoefficient),
       loopDampingCoefficient_(loopDampingCoefficient),
       base_(base),
@@ -347,23 +347,18 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
     j = i + 1;
     auto jRw = Ts[i].rotation().inverse();
     g_in_body = jRw * g_in_space;
-    // damping torque = dampingCoefficient * joint_velocity
-    jointTorque = torques[i] + links_[i].dampingCoefficient() * joint_velocities[i];
-    if (links_[i].jointEffortType() == Link::Impedence) {
-      // spring joint: spring torque = springCoefficient * jointAngle
-      jointTorque += links_[i].springCoefficient() * q[i];
-    } 
+    // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
+    jointTorque = torques[i] +
+                  links_[i].dampingCoefficient() * joint_velocities[i] +
+                  links_[i].springCoefficient() * q[i];
     gfg.push_back(links_[i].forwardFactors(j, jTis[i], joint_velocities[i],
                                            twists_vec[i], jointTorque, jTis[j],
                                            g_in_body));
   }
   // Add loop factor to enforce kinematic loop
-  // damping torque = dampingCoefficient * joint_velocity
-  jointTorque = torques[N] + loopDampingCoefficient() * joint_velocities[N];
-  if (loopJointEffortType() == Link::Impedence) {
-    // spring torque factor: torque = springCoefficient * jointAngle
-    jointTorque += loopSpringCoefficient() * q[N];
-  }
+  // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
+  jointTorque = torques[N] + loopDampingCoefficient() * joint_velocities[N] +
+                loopSpringCoefficient() * q[N];
   gfg.push_back(links_[N - 1].forwardLoopFactor(
       N, loopScrewAxis(), Ts.back().inverse(), joint_velocities[N],
       twists_vec[N - 1], jointTorque, jTis[N], g_in_body));
@@ -494,15 +489,11 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
     auto jRw = Ts[i].rotation().inverse();
     g_in_body = jRw * g_in_space;
 
-    // damping torque = dampingCoefficient * joint_velocity
-    jointTorque = links_[i].dampingCoefficient() * joint_velocities[i];
+    // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
+    jointTorque = links_[i].dampingCoefficient() * joint_velocities[i] + links_[i].springCoefficient() * q[i];
     // add torque factor for passive joint
-    if (links_[i].jointEffortType() != Link::Actuated) {
+    if (!links_[i].isActuated()) {
       gfg.add(t(j), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
-      if (links_[i].jointEffortType() == Link::Impedence) {
-        // spring joint: spring torque = springCoefficient * jointAngle
-        jointTorque += links_[i].springCoefficient() * q[i];
-      }
     }
 
     gfg.push_back(links_[i].inverseFactors(
@@ -510,14 +501,10 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
         jTis[j], g_in_body, jointTorque));
   }
 
-  jointTorque = loopDampingCoefficient() * joint_velocities[N];
+  jointTorque = loopDampingCoefficient() * joint_velocities[N] + loopSpringCoefficient() * q[N];
   // Add loop factor to enforce kinematic loop
-  if (loopJointEffortType() != Link::Actuated) {
+  if (!isLoopJointActuated()) {
     gfg.add(t(N + 1), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
-    if (loopJointEffortType() == Link::Impedence) {
-      // spring torque factor: torque = springCoefficient * jointAngle
-      jointTorque += loopSpringCoefficient() * q[N];
-    }
   }
 
   gfg.push_back(links_[N - 1].inverseLoopFactor(

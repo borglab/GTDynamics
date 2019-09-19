@@ -30,7 +30,7 @@ class Arm {
  private:
   std::vector<T> links_;
   gtsam::Vector6 loopScrewAxis_;
-  Link::JointEffortType loopJointEffortType_;
+  bool isLoopJointActuated_;
   double loopSpringCoefficient_;
   double loopDampingCoefficient_;
   gtsam::Pose3 base_;
@@ -52,7 +52,7 @@ class Arm {
       const gtsam::Pose3 &base = gtsam::Pose3(),
       const gtsam::Pose3 &tool = gtsam::Pose3(),
       const gtsam::Vector6 &loopScrewAxis = gtsam::Vector6::Zero(),
-      Link::JointEffortType loopJointEffortType = Link::Actuated,
+      bool isLoopJointActuated = true,
       double loopSpringCoefficient = 0, double loopDampingCoefficient = 0);
 
   // return loop joint screw axis
@@ -60,9 +60,9 @@ class Arm {
       return loopScrewAxis_;
   }
 
-  // return loop joint effort type
-  Link::JointEffortType loopJointEffortType() const {
-      return loopJointEffortType_;
+  // return if loop joint is actuated
+  bool isLoopJointActuated() const {
+      return isLoopJointActuated_;
   }
 
   // return loop springCoefficient
