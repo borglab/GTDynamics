@@ -49,11 +49,11 @@ class Arm {
         tool        -- optional tool frame in link N frame
    */
   Arm(const std::vector<T> &links,
+      const gtsam::Pose3 &base = gtsam::Pose3(),
+      const gtsam::Pose3 &tool = gtsam::Pose3(),
       const gtsam::Vector6 &loopScrewAxis = gtsam::Vector6::Zero(),
       Link::JointEffortType loopJointEffortType = Link::Actuated,
-      double loopSpringCoefficient = 0, double loopDampingCoefficient = 0,
-      const gtsam::Pose3 &base = gtsam::Pose3(),
-      const gtsam::Pose3 &tool = gtsam::Pose3());
+      double loopSpringCoefficient = 0, double loopDampingCoefficient = 0);
 
   // return loop joint screw axis
   const gtsam::Vector6 &loopScrewAxis() const {

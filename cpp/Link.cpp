@@ -173,7 +173,8 @@ gtsam::GaussianFactorGraph Link::forwardLoopFactor(
 gtsam::GaussianFactorGraph Link::inverseLoopFactor(
     int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jT0,
     double joint_vel_j, const gtsam::Vector6 &twist_j, double acceleration_j,
-    const gtsam::Pose3 &kTj, boost::optional<gtsam::Vector3 &> gravity) const {
+    const gtsam::Pose3 &kTj, 
+    boost::optional<gtsam::Vector3 &> gravity, double internal_torque) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
   // Twist acceleration in this link as a function of previous and joint accel.
   // We need to know our screw axis, and an adjoint map:
@@ -201,7 +202,8 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j+1), A_j.transpose(), t(j+1), -I_1x1, Vector1(0),
+  // internal_torque includes spring torque and damping torque
+  factors.add(F(j+1), A_j.transpose(), t(j+1), -I_1x1, Vector1(internal_torque),
               noiseModel::Constrained::All(1));
 
   return factors;
@@ -273,7 +275,7 @@ GaussianFactorGraph Link::reducedForwardFactors(
 GaussianFactorGraph Link::inverseFactors(
     int j, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double acceleration_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    boost::optional<Vector3 &> gravity, double internal_torque) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
 
   // Twist acceleration in this link as a function of previous and joint accel.
@@ -293,7 +295,7 @@ GaussianFactorGraph Link::inverseFactors(
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(0),
+  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(internal_torque),
               noiseModel::Constrained::All(1));
 
   return factors;
@@ -302,7 +304,7 @@ GaussianFactorGraph Link::inverseFactors(
 GaussianFactorGraph Link::reducedInverseFactors(
     int j, int N, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double acceleration_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    boost::optional<Vector3 &> gravity, double internal_torque) const {
   gttic_(Link_inverseFactors);
   GaussianFactorGraph factors = GaussianFactorGraph();
 
@@ -327,7 +329,7 @@ GaussianFactorGraph Link::reducedInverseFactors(
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(0),
+  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(internal_torque),
               noiseModel::Constrained::All(1));
 
   return factors;
