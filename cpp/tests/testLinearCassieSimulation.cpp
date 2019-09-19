@@ -73,7 +73,7 @@ vector<URDF_Link> urdf_cassie = {
         Vector3(0.000004, 0.014061, 0.014061).asDiagonal(), Link::Unactuated)};
 
 Pose3 base = Pose3();
-Pose3 tool = Pose3(Rot3(), Point3(0.418, 0, 0));
+Pose3 tool = Pose3(Rot3(), Point3(0.5012, 0, 0));
 // get screw_axis for loop closure
 auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.000202169, 3.86353e-05, 0.0045));
 auto robot = Arm<URDF_Link>(urdf_cassie, screw_axis,  Link::Unactuated, base, tool);
