@@ -42,46 +42,6 @@ static const double HALF_PI = M_PI / 2;
             parent link: left-achilles-rod
             child link: left-thigh
 */
-// namespace example {
-// vector<URDF_Link> urdf_cassie = {
-//     URDF_Link(Pose3(Rot3(), Point3(0.12, 0, 0.0045)), Vector3(0, 0, 1),
-//         'R', 0.7578, Pose3(Rot3(), Point3(0.023, 0.03207, -0.002181)),
-//         (Matrix(3, 3) << 0.001376, -0.00039744, -4.085e-05, -0.00039744,
-//          0.0010335, -5.374e-05, -4.085e-05, -5.374e-05, 0.0021637)
-//             .finished(), true, 0, -1, -2.8623, -0.64577),
-//     URDF_Link(Pose3(Rot3(), Point3(0.06068, 0.04741, 0)),
-//         Vector3(0, 0, 1), 'R', 0.577,
-//         Pose3(Rot3(), Point3(0.18338, 0.001169, 0.0002123)),
-//         (Matrix(3, 3) << 0.00035939, -0.00020981, 2.266e-05, -0.00020981,
-//          0.014728, -1.2e-07, 2.266e-05, -1.2e-07, 0.014707)
-//             .finished(), false, -1500, -0.1, -0.34907, 0.34907),
-//     URDF_Link(Pose3(Rot3(), Point3(0.43476, 0.02, 0)), Vector3(0, 0, 1),
-//         'R', 0.782,
-//         Pose3(Rot3(), Point3(0.11046, -0.03058, -0.00131)),
-//         (Matrix(3, 3) << 0.00039238, 0.00023651, -4.987e-05, 0.00023651,
-//          0.013595, -4.82e-06, -4.987e-05, -4.82e-06, 0.013674)
-//             .finished(), false, 0, -0.1, 0.87266, 2.9671),
-//     URDF_Link(Pose3(Rot3::RzRyRx(0, 0, 2.7207), Point3(-0.01269, -0.03059, 0)),
-//         Vector3(0, 0, 1), 'R', 0.126,
-//         Pose3(Rot3(), Point3(0.081, 0.0022, 0)),
-//         (Matrix(3, 3) << 2.959e-05, 7.15e-06, -6e-07, 7.15e-06, 0.00022231,
-//          1e-07, -6e-07, 1e-07, 0.0002007)
-//             .finished(), false, -1250, 0),
-//     URDF_Link(Pose3(Rot3::RzRyRx(0, 0, 0.608212), Point3(0.11877, -0.01, 0)),
-//         Vector3(0, 0, 1), 'R', 0.157,
-//         Pose3(Rot3(), Point3(0.2472, 0, 0)),
-//         Vector3(0.000004, 0.014061, 0.014061).asDiagonal(), false, 0, 0)};
-
-// Pose3 base = Pose3(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0));
-// Pose3 tool = Pose3(Rot3(), Point3(0.5012, 0, 0));
-// // get screw_axis for loop closure
-// auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2540, 0, 0)); //0.5012-0.2472
-// auto robot = Arm<URDF_Link>(urdf_cassie, base, tool, screw_axis, false, 0, 0);
-// auto dof = robot.numLinks() + 1;
-// // required joint acceleration and applied torque at Inverse Dynamics
-// Vector qAccel_ID = Vector::Zero(dof);
-// Vector torque_ID = Vector::Zero(dof);
-// }  // namespace example
 namespace example {
 vector<URDF_Link> urdf_cassie = {
     URDF_Link(Pose3(Rot3(), Point3(0.12, 0, 0.0045)), Vector3(0, 0, 1),
@@ -128,15 +88,13 @@ Vector torque_ID = Vector::Zero(dof);
  * Test simulation with gravity in x direction, zero joint angles
  */
 TEST(Simulation, gravity_x) {
-  double time_step = 0.0005;
+  double time_step = 0.001;
   int total_steps = 10000;
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
          known_torque = Vector::Zero(example::dof);
   initialJointAngles << -1.201826, 0, 1.428819, 0, -1.481429, -1.254439;
   auto T = example::robot.forwardKinematics(initialJointAngles);
-  std::cout << "T = " << T.back() << std::endl;
-  std::cout << "rpy = " << T.back().rotation().rpy() << std::endl;
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Simulation<URDF_Link> FDsim(time_step, example::robot, gravity,
                               initialJointAngles, initialJointVelocities);
