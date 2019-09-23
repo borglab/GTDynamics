@@ -75,8 +75,8 @@ vector<URDF_Link> urdf_cassie = {
 Pose3 base = Pose3(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0));
 Pose3 tool = Pose3(Rot3(), Point3(0.5012, 0, 0));
 // get screw_axis for loop closure
-auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.000202169, 3.86353e-05, 0.0045));
-auto robot = Arm<URDF_Link>(urdf_cassie, base, tool, screw_axis,  false, 0, 0);
+auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2540, 0, 0)); //0.5012-0.2472
+auto robot = Arm<URDF_Link>(urdf_cassie, base, tool, screw_axis, false, 0, 0);
 auto dof = robot.numLinks() + 1;
 // required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof);
@@ -93,7 +93,7 @@ TEST(Simulation, gravity_x) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
          known_torque = Vector::Zero(example::dof);
-  initialJointAngles << -1.201826, 0, 1.428819, 0, -1.481429, 1.254439;
+  initialJointAngles << -1.201826, 0, 1.428819, 0, -1.481429, -1.254439;
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Simulation<URDF_Link> FDsim(time_step, example::robot, gravity,
                               initialJointAngles, initialJointVelocities);
