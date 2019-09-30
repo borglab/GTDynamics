@@ -33,11 +33,11 @@ struct DynamicsFactorGraphInput {
 
   /** Build dydnamics factor graph input arguments
    * Keyword arguments:
-   * q -- joint angles (in rad).
-   * qVel -- joint angular velocities (in rad/s)
+   * q               -- joint angles (in rad).
+   * qVel            -- joint angular velocities (in rad/s)
    * given_variables -- torques applied at each joint for forward dynamics
-   * or joint angular accelerations for inverse dynamics
-   * base_accel -- optional acceleration for base
+   *                    or joint angular accelerations for inverse dynamics
+   * base_accel      -- optional acceleration for base
    * external_wrench -- optional external wrench
    */
   DynamicsFactorGraphInput(
