@@ -21,11 +21,41 @@
 #include <utility>
 
 namespace manipulator {
+/// structure contains all the known varibles used for dynamics factor graph
+/// function argument
+template <typename jointValuesType>
+struct DynamicsFactorGraphInput {
+ public:
+  gtsam::Vector jointAngles, jointVelocities;
+  jointValuesType givenVariables;
+  gtsam::Vector6 baseAcceleration;
+  gtsam::Vector6 externalWrench;
+
+  /** Build dydnamics factor graph input arguments
+   * Keyword arguments:
+   * q -- joint angles (in rad).
+   * qVel -- joint angular velocities (in rad/s)
+   * given_variables -- torques applied at each joint for forward dynamics
+   * or joint angular accelerations for inverse dynamics
+   * base_accel -- optional acceleration for base
+   * external_wrench -- optional external wrench
+   */
+  DynamicsFactorGraphInput(
+      const gtsam::Vector &q, const gtsam::Vector &qVel,
+      const jointValuesType &given_variables,
+      const gtsam::Vector6 &base_accel = gtsam::Vector6::Zero(),
+      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero())
+      : jointAngles(q),
+        jointVelocities(qVel),
+        givenVariables(given_variables),
+        baseAcceleration(base_accel),
+        externalWrench(external_wrench) {}
+};
 
 /**
  * Robotic arm of several links
  */
-template <typename T>
+template <typename T >
 class Arm {
  private:
   std::vector<T> links_;
@@ -40,7 +70,7 @@ class Arm {
  public:
 using map_iter = std::map<size_t, double>::const_iterator;
 using JointValues = std::map<size_t, double>;
-using GivenPair = std::pair<JointValues, JointValues>;
+using AngularVariablesPair = std::pair<JointValues, JointValues>;
 using HybridResults = std::pair<JointValues, JointValues>;
   /**
    * Construct robotic arm from a list of Link instances
@@ -189,17 +219,11 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   gtsam::GaussianFactorGraph reducedForwardDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Build factor graph for closed loop manipulator forward dynamics.
@@ -214,10 +238,7 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph closedLoopForwardDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &torques, 
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Build factor graph for RR manipulator inverse dynamics.
@@ -232,18 +253,12 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   // inverse dynamics factor graph base and tool wrench reduced
   gtsam::GaussianFactorGraph reducedInverseDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Build factor graph for closed loop manipulator inverse dynamics.
@@ -258,10 +273,7 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph closedLoopInverseDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Build factor graph for RR manipulator hybrid dynamics.
@@ -277,20 +289,12 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Return Gaussian factor graph
    */
   gtsam::GaussianFactorGraph hybridDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const JointValues &joint_accelerations,
-      const JointValues &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   // hybrid dynamics factor graph base and tool wrench reduced
   gtsam::GaussianFactorGraph reducedHybridDynamicsFactorGraph(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const JointValues &joint_accelerations,
-      const JointValues &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /* Extract joint accelerations for all joints from gtsam::VectorValues. */
@@ -318,39 +322,25 @@ using HybridResults = std::pair<JointValues, JointValues>;
           See forwardDynamicsFactorGraph for input arguments.
   */
   gtsam::Vector forwardDynamics(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Calculate joint accelerations from manipulator state and torques.
           See inverseDynamicsFactorGraph for input arguments.
   */
   gtsam::Vector inverseDynamics(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const gtsam::Vector &joint_accelerations,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Calculate joint accelerations and torques for hybrid dynamics problem
    *  See hybridDynamicsFactorGraph for input arguments.
   */
   HybridResults hybridDynamics(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const JointValues &joint_accelerations,
-      const JointValues &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   HybridResults reducedHybridDynamics(
-      const gtsam::Vector &q, const gtsam::Vector &joint_velocities,
-      const JointValues &joint_accelerations,
-      const JointValues &torques,
-      const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
-      const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
+      const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** joint limit vector factors

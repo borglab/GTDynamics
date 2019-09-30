@@ -26,9 +26,11 @@ template <typename T>
 Vector Simulation<T>::accelerations(const gtsam::Vector &known_torque,
                                     const gtsam::Vector &known_q,
                                     const gtsam::Vector &known_qVel) {
-  auto factor_graph = robot_.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, gtsam::Vector6::Zero(),
-      gtsam::Vector6::Zero(), gravity_);
+  DynamicsFactorGraphInput<Vector> dynamicsInput(known_q, known_qVel, known_torque,
+                                         gtsam::Vector6::Zero(),
+                                         gtsam::Vector6::Zero());
+  auto factor_graph =
+      robot_.closedLoopForwardDynamicsFactorGraph(dynamicsInput, gravity_);
   VectorValues results = factor_graph.optimize();
   return robot_.extractJointAcceleraions(results, dof_);
 }
