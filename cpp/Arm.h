@@ -38,9 +38,10 @@ class Arm {
   std::vector<gtsam::Vector6> screwAxes_;
 
  public:
-  typedef std::map<size_t, double>::const_iterator map_iter;
-  typedef std::map<size_t, double> JointValues;
-  typedef std::pair<JointValues, JointValues> HybridResults;
+using map_iter = std::map<size_t, double>::const_iterator;
+using JointValues = std::map<size_t, double>;
+using GivenPair = std::pair<JointValues, JointValues>;
+using HybridResults = std::pair<JointValues, JointValues>;
   /**
    * Construct robotic arm from a list of Link instances
    * Keyword arguments:
