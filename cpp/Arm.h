@@ -222,6 +222,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  /// forward dyanmics factor graph with base and tool wrench unary factors
+  /// reduced
   gtsam::GaussianFactorGraph reducedForwardDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -256,7 +258,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  // inverse dynamics factor graph base and tool wrench reduced
+  /// inverse dyanmics factor graph with base and tool wrench unary factors
+  /// reduced
   gtsam::GaussianFactorGraph reducedInverseDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -292,7 +295,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  // hybrid dynamics factor graph base and tool wrench reduced
+  /// hybrid dyanmics factor graph with base and tool wrench unary factors
+  /// reduced
   gtsam::GaussianFactorGraph reducedHybridDynamicsFactorGraph(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -339,6 +343,7 @@ using HybridResults = std::pair<JointValues, JointValues>;
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
+  /// forward dyanmics with base and tool wrench unary factors reduced
   HybridResults reducedHybridDynamics(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
