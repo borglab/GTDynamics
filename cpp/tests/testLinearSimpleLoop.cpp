@@ -65,7 +65,7 @@ TEST(FD_factor_graph, gravity_x) {
   VectorValues result = factor_graph.optimize();
   auto actual_qAccel = example::robot.extractJointAcceleraions(result, example::dof);
   Vector expected_qAccel = Vector::Zero(example::dof);
-  expected_qAccel = example::qAccel_ID;
+  expected_qAccel << -6.70526316, 6.70526316, -6.70526316, -6.70526316;
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 10e-6));
 }
 
