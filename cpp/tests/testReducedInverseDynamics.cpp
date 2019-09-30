@@ -46,12 +46,13 @@ TEST(Arm, reducedInverseDynamics_1) {
   Vector3 gravity(0, -9.8, 0);
   example::external_wrench << 0, 0, 0, 0, 0, 0;
   example::expected_torques << 0, 0;
-
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      example::joint_angles, example::joint_velocities,
+      example::joint_accelerations, example::base_twist_accel,
+      example::external_wrench);
   GaussianFactorGraph factor_graph =
       example::robot.reducedInverseDynamicsFactorGraph(
-          example::joint_angles, example::joint_velocities,
-          example::joint_accelerations, example::base_twist_accel,
-          example::external_wrench, gravity);
+          inverseDynamicsInput, gravity);
 
   VectorValues result = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(result);
@@ -64,12 +65,13 @@ TEST(Arm, reducedInverseDynamics_2) {
   example::base_twist_accel << 0, 0, 0, 0, 0, 0;
   example::external_wrench << 0, 0, 0, 0, -2.5, 0;
   example::expected_torques << 0, 0;
-
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      example::joint_angles, example::joint_velocities,
+      example::joint_accelerations, example::base_twist_accel,
+      example::external_wrench);
   GaussianFactorGraph factor_graph =
       example::robot.reducedInverseDynamicsFactorGraph(
-          example::joint_angles, example::joint_velocities,
-          example::joint_accelerations, example::base_twist_accel,
-          example::external_wrench);
+          inverseDynamicsInput);
  
   VectorValues result = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(result);

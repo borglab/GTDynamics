@@ -67,10 +67,15 @@ Vector3 gravity(0, 0, -9.8);
     joint_torques.emplace(4, example::torques[4]);
     joint_torques.emplace(5, example::torques[5]);
 
-    auto hybridResult = example::robot.hybridDynamics(
-        example::joint_angles, radians(example::joint_velocities), joint_accels,
-        joint_torques, example::base_twist_accel, example::external_wrench,
-        example::gravity);
+    Arm<DH_Link>::AngularVariablesPair givenVariablesPair(joint_accels,
+                                                          joint_torques);
+    DynamicsFactorGraphInput<Arm<DH_Link>::AngularVariablesPair>
+        hybridDynamicsInput(example::joint_angles, radians(example::joint_velocities),
+                            givenVariablesPair, example::base_twist_accel,
+                            example::external_wrench);
+
+    auto hybridResult =
+        example::robot.hybridDynamics(hybridDynamicsInput, example::gravity);
 
     map<size_t, double> expected_joint_accels, expected_joint_torques;
     expected_joint_accels.emplace(3, example::joint_accelerations[3]);

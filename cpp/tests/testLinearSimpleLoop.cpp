@@ -59,9 +59,10 @@ TEST(FD_factor_graph, gravity_x) {
          base_twist_accel = Vector::Zero(6),
          external_wrench = Vector::Zero(6);
   known_torque = example::torque_ID;
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      known_q, known_qVel, known_torque, base_twist_accel, external_wrench);
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, base_twist_accel,
-      external_wrench, gravity);
+      forwardDynamicsInput, gravity);
   VectorValues result = factor_graph.optimize();
   auto actual_qAccel = example::robot.extractJointAcceleraions(result, example::dof);
   Vector expected_qAccel = Vector::Zero(example::dof);

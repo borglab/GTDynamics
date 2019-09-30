@@ -61,9 +61,10 @@ TEST(ID_factor_graph, gravity_y) {
          external_wrench = Vector::Zero(6);
   known_qVel << 0.5, -0.5, 0.5, 0, -0.5;
   known_qVel << 0.15, -0.15, 0.15, 0, -0.15;
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      known_q, known_qVel, known_qAccel, base_twist_accel, external_wrench);
   auto factor_graph = example::robot.closedLoopInverseDynamicsFactorGraph(
-      known_q, known_qVel, known_qAccel, base_twist_accel,
-      external_wrench, gravity);
+      inverseDynamicsInput, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
@@ -89,9 +90,10 @@ TEST(FD_factor_graph, gravity_y) {
   known_qVel << 0.5, -0.5, 0.5, 0, -0.5;
   known_qVel << 0.15, -0.15, 0.15, 0, -0.15;
   known_torque = example::torque_ID;
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      known_q, known_qVel, known_torque, base_twist_accel, external_wrench);
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, base_twist_accel,
-      external_wrench, gravity);
+      forwardDynamicsInput, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
   auto actual_qAccel = example::robot.extractJointAcceleraions(result, N);
@@ -111,9 +113,10 @@ TEST(ID_factor_graph, gravity_x) {
          known_torque = Vector::Zero(example::dof + 1),
          base_twist_accel = Vector::Zero(6),
          external_wrench = Vector::Zero(6);
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      known_q, known_qVel, known_qAccel, base_twist_accel, external_wrench);
   auto factor_graph = example::robot.closedLoopInverseDynamicsFactorGraph(
-      known_q, known_qVel, known_qAccel, base_twist_accel,
-      external_wrench, gravity);
+      inverseDynamicsInput, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
@@ -137,9 +140,10 @@ TEST(FD_factor_graph, gravity_x) {
          base_twist_accel = Vector::Zero(6),
          external_wrench = Vector::Zero(6);
   known_torque = example::torque_ID;
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      known_q, known_qVel, known_torque, base_twist_accel, external_wrench);
   auto factor_graph = example::robot.closedLoopForwardDynamicsFactorGraph(
-      known_q, known_qVel, known_torque, base_twist_accel,
-      external_wrench, gravity);
+      forwardDynamicsInput, gravity);
   VectorValues result = factor_graph.optimize();
   int N = example::dof+1;
   auto actual_qAccel = example::robot.extractJointAcceleraions(result, N);

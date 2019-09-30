@@ -52,11 +52,14 @@ TEST(Arm, reducedHybridDynamics_1) {
   map<size_t, double> joint_accels, joint_torques;
   joint_accels.emplace(0, example::joint_accelerations[0]);
   joint_torques.emplace(1, example::torques[1]);
-
+  Arm<DH_Link>::AngularVariablesPair givenVariablesPair(joint_accels, joint_torques);
+  DynamicsFactorGraphInput<Arm<DH_Link>::AngularVariablesPair> hybridDynamicsInput(
+      example::joint_angles, example::joint_velocities,
+          givenVariablesPair, example::base_twist_accel,
+          example::external_wrench);
   auto result =
       example::robot.reducedHybridDynamics(
-          example::joint_angles, example::joint_velocities, joint_accels, joint_torques,
-          example::base_twist_accel, example::external_wrench);
+          hybridDynamicsInput);
 
   map<size_t, double> expected_joint_accels, expected_joint_torques;
   expected_joint_accels.emplace(1, example::expected_joint_accelerations[1]);
@@ -77,10 +80,14 @@ TEST(Arm, reducedHybridDynamics_2) {
   joint_accels.emplace(0, example::joint_accelerations[0]);
   joint_torques.emplace(1, example::torques[1]);
 
+  Arm<DH_Link>::AngularVariablesPair givenVariablesPair(joint_accels, joint_torques);
+  DynamicsFactorGraphInput<Arm<DH_Link>::AngularVariablesPair> hybridDynamicsInput(
+      example::joint_angles, example::joint_velocities,
+          givenVariablesPair, example::base_twist_accel,
+          example::external_wrench);
   auto result =
-      example::robot.hybridDynamics(
-          example::joint_angles, example::joint_velocities, joint_accels, joint_torques,
-          example::base_twist_accel, example::external_wrench, gravity);
+      example::robot.reducedHybridDynamics(
+          hybridDynamicsInput, gravity);
 
   map<size_t, double> expected_joint_accels, expected_joint_torques;
   expected_joint_accels.emplace(1, example::expected_joint_accelerations[1]);
