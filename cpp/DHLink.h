@@ -84,12 +84,12 @@ class DH_Link : public Link {
         a_(dh_link.a_),
         alpha_(dh_link.alpha_) {}
 
-  /** Calculate link transform
+  /** Calculate link transform of current link with respect to previous link.
    * Keyword argument:
       q -- optional generalized joint angle (default 0)
    * Return Link transform.
   */
-  gtsam::Pose3 A(double q = 0) const override {
+  gtsam::Pose3 linkTransform(double q = 0) const override {
     double theta = theta_;
     double d = d_;
     if (jointType_ == 'R') {

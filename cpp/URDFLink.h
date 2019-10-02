@@ -80,12 +80,12 @@ class URDF_Link : public Link {
         origin_(urdf_link.origin_),
         axis_(urdf_link.axis_) {}
 
-  /** Calculate link transform
+  /** Calculate link transform of current link with respect to previous link
   Keyword argument:
       q -- optional generalized joint angle (default 0)
   Return Link transform.
   */
-  gtsam::Pose3 A(double q = 0) const override {
+  gtsam::Pose3 linkTransform(double q = 0) const override {
     if (jointType_ == 'R') {
       return origin_ *
              gtsam::Pose3(gtsam::Rot3::Rodrigues(axis_ * q), gtsam::Point3());
