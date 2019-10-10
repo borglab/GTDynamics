@@ -280,5 +280,9 @@ class Link {
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   virtual ~Link() = default;
+
+  /** Clone a factor (make a deep copy) */
+  virtual boost::shared_ptr<Link> clone() const {
+      return boost::make_shared<Link>(*this); }
 };
 }  // namespace manipulator

@@ -96,5 +96,9 @@ class URDF_Link : public Link {
 
   /* return approximate length of the previous link*/
   double length() const { return origin_.translation().norm(); }
+
+  /** Clone this URDF_Link */
+  virtual boost::shared_ptr<Link> clone() const {
+      return boost::make_shared<URDF_Link>(*this); }
 };
 }  // namespace manipulator

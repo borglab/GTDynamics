@@ -4,14 +4,13 @@ class gtsam::Matrix6;
 class gtsam::Matrix3;
 class gtsam::Pose3;
 class gtsam::Point3;
-class gtsam::GaussianFactorGraph;
 class gtsam::JacobianFactor;
-
+class gtsam::GaussianFactorGraph;
 
 namespace manipulator {
 #include <Link.h>
 
-class Link {
+virtual class Link {
   Link(char joint_type, double mass, const gtsam::Pose3& center_of_mass,
        const gtsam::Matrix3& inertia, const gtsam::Vector6& screwAxis,
        double joint_lower_limit, double joint_upper_limit,
@@ -37,7 +36,6 @@ class Link {
 
   double jointLowerLimit() const;
 
-
   double jointUpperLimit() const;
 
   double jointLimitThreshold() const;
@@ -56,13 +54,13 @@ class Link {
 
   gtsam::Pose3 linkTransform(double q) const;
 
-  static gtsam::JacobianFactor BaseTwistAccelFactor(
+  static gtsam::JacobianFactor* BaseTwistAccelFactor(
       const gtsam::Vector6& base_twist_accel);
 
-  static gtsam::JacobianFactor ToolWrenchFactor(
+  static gtsam::JacobianFactor* ToolWrenchFactor(
       int N, const gtsam::Vector6& external_wrench);
 
-  gtsam::JacobianFactor twistFactor(
+  gtsam::JacobianFactor* twistFactor(
       int j, const gtsam::Pose3& jTi, double joint_vel_j) const;
 
 //TODO: Test the following functions with boost::optional removed in MATLAB.
@@ -84,7 +82,9 @@ class Link {
 };
 
 #include <utils.h>
-class DHLink {
+#include <DHLink.h>
+#include <URDFLink.h>
+virtual class DH_Link : manipulator::Link {
   DH_Link(double theta, double d, double a, double alpha, char joint_type,
           double mass, const gtsam::Point3& center_of_mass,
           const gtsam::Matrix3& inertia, double joint_lower_limit,
@@ -97,7 +97,7 @@ class DHLink {
   double length() const;
 };
 
-class URDF_Link {
+virtual class URDF_Link : manipulator::Link {
   URDF_Link(const gtsam::Pose3& origin, const gtsam::Vector3& axis,
             char joint_type, double mass, const gtsam::Pose3& center_of_mass,
             const gtsam::Matrix3& inertia, double joint_lower_limit,
@@ -113,6 +113,7 @@ class URDF_Link {
 
 #include <DHLink.h>
 #include <URDFLink.h>
+#include <Arm.h>
 #include <JointLimitVectorFactor.h>
 #include <PoseGoalFactor.h>
 
@@ -131,7 +132,7 @@ class Arm {
   gtsam::Pose3 base() const;
   gtsam::Pose3 tool() const;
   int numLinks() const;
-//   T link(int i) const;
+  T link(int i) const;
   Vector jointLowerLimits() const;
   Vector jointUpperLimits() const;
   Vector jointLimitThresholds() const;

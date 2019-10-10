@@ -103,5 +103,9 @@ class DH_Link : public Link {
 
   /* return approximate length of this link */
   double length() const { return sqrt(d_ * d_ + a_ * a_); }
+
+  /** Clone this DH_Link */
+  virtual boost::shared_ptr<Link> clone() const {
+      return boost::make_shared<DH_Link>(*this); }
 };
 }  // namespace manipulator
