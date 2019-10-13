@@ -214,11 +214,11 @@ class Link {
   /* Return joint torque limit threshold. */
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
-  /** Return link transform (gtsam::Pose3).
+  /** Return link transform of current link with respect to previous link (gtsam::Pose3).
    * Keyword arguments:
    *  q -- optional generalized joint angle (default 0)
    */
-  virtual gtsam::Pose3 A(double q = 0) const { return gtsam::Pose3(); }
+  virtual gtsam::Pose3 linkTransform(double q = 0) const { return gtsam::Pose3(); }
 
   /** Factor enforcing base acceleration.
    *  Keyword argument:

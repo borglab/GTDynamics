@@ -70,7 +70,7 @@ vector<Pose3> Arm<T>::linkTransforms(const Vector &default_q) const {
   }
   vector<Pose3> transforms;
   for (int i = 0; i < numLinks(); ++i) {
-    transforms.push_back(links_[i].A(q[i]));
+    transforms.push_back(links_[i].linkTransform(q[i]));
   }
   return transforms;
 }
