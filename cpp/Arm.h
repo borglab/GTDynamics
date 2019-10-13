@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include <Link.h>
 #include <JointLimitVectorFactor.h>
+#include <Link.h>
 #include <PoseGoalFactor.h>
 
 #include <gtsam/inference/Symbol.h>
@@ -16,9 +16,9 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <vector>
 #include <map>
 #include <utility>
+#include <vector>
 
 namespace manipulator {
 /// structure contains all the known varibles used for dynamics factor graph
@@ -31,7 +31,7 @@ struct DynamicsFactorGraphInput {
   gtsam::Vector6 baseAcceleration;
   gtsam::Vector6 externalWrench;
 
-  /** Build dydnamics factor graph input arguments
+  /** Build dynamics factor graph input arguments
    * Keyword arguments:
    * q               -- joint angles (in rad).
    * qVel            -- joint angular velocities (in rad/s)
@@ -55,7 +55,7 @@ struct DynamicsFactorGraphInput {
 /**
  * Robotic arm of several links
  */
-template <typename T >
+template <typename T>
 class Arm {
  private:
   std::vector<T> links_;
@@ -68,39 +68,39 @@ class Arm {
   std::vector<gtsam::Vector6> screwAxes_;
 
  public:
-using map_iter = std::map<size_t, double>::const_iterator;
-using JointValues = std::map<size_t, double>;
-using AngularVariablesPair = std::pair<JointValues, JointValues>;
-using HybridResults = std::pair<JointValues, JointValues>;
+  using map_iter = std::map<size_t, double>::const_iterator;
+  using JointValues = std::map<size_t, double>;
+  using AngularVariablesPair = std::pair<JointValues, JointValues>;
+  using HybridResults = std::pair<JointValues, JointValues>;
   /**
    * Construct robotic arm from a list of Link instances
    * Keyword arguments:
-        links       -- a vector of links
-        base        -- optional wT0 base frame in world frame
-        tool        -- optional tool frame in link N frame
+        links                   -- a vector of links
+        base                    -- optional wT0 base frame in world frame
+        tool                    -- optional tool frame in link N frame
+        loopScrewAxis           -- screw axis for loop joint expressed
+                                   in last link frame
+        isLoopJointActuated     -- specifiy if loop joint is actuated
+        loopSpringCoefficient   -- joint spring coefficient
+        loopDampingCoefficient  -- joint damping coefficient
    */
-  Arm(const std::vector<T> &links,
-      const gtsam::Pose3 &base = gtsam::Pose3(),
+  Arm(const std::vector<T> &links, const gtsam::Pose3 &base = gtsam::Pose3(),
       const gtsam::Pose3 &tool = gtsam::Pose3(),
       const gtsam::Vector6 &loopScrewAxis = gtsam::Vector6::Zero(),
-      bool isLoopJointActuated = true,
-      double loopSpringCoefficient = 0, double loopDampingCoefficient = 0);
+      bool isLoopJointActuated = true, double loopSpringCoefficient = 0,
+      double loopDampingCoefficient = 0);
 
   // return loop joint screw axis
-  const gtsam::Vector6 &loopScrewAxis() const {
-      return loopScrewAxis_;
-  }
+  const gtsam::Vector6 &loopScrewAxis() const { return loopScrewAxis_; }
 
   // return if loop joint is actuated
-  bool isLoopJointActuated() const {
-      return isLoopJointActuated_;
-  }
+  bool isLoopJointActuated() const { return isLoopJointActuated_; }
 
   // return loop springCoefficient
-  double loopSpringCoefficient() const { return loopSpringCoefficient_;}
-  
+  double loopSpringCoefficient() const { return loopSpringCoefficient_; }
+
   // return loop dampingCoefficient
-  double loopDampingCoefficient() const { return loopDampingCoefficient_;}
+  double loopDampingCoefficient() const { return loopDampingCoefficient_; }
 
   /* Return base pose in world frame */
   const gtsam::Pose3 &base() const { return base_; }
@@ -181,8 +181,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** calculate "body manipulator jacobian" and joint poses
    * Keyword arguments:
-   *  q -- angles for revolution joint,
-   *       distances for prismatic joint
+   *  q   -- angles for revolution joint,
+   *         distances for prismatic joint
    *  sTb -- eef body frame expressed base frame
    */
   std::vector<gtsam::Matrix> bodyManipulatorJacobian(
@@ -190,7 +190,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Calculate velocity twists for all joints, expressed in their COM frame.
    * Keyword arguments:
-   *   Ts -- link's center of mass frame expressed in the world frame
+   *   Ts               -- link's center of mass frame 
+   *                       expressed in the world frame
    *   joint_vecocities -- joint angular velocities (in rad/s)
    */
   std::vector<gtsam::Vector6> twists(
@@ -209,12 +210,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Build factor graph for RR manipulator forward dynamics.
    * Keyword arguments:
-   *   q                -- joint angles (in rad).
-   *   joint_vecocities -- joint angular velocities (in rad/s)
-   *   torques          -- torques applied at each joint
+   *   dynamicsInput    -- dynamics factor graph input
    *   gravity          -- if given, will create gravity forces
-   *   base_twist_accel -- optional acceleration for base
-   *   external_wrench  -- optional external wrench
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -230,12 +227,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Build factor graph for closed loop manipulator forward dynamics.
    * Keyword arguments:
-   *   q                   -- joint angles (in rad).
-   *   joint_vecocities    -- joint angular velocities (in rad/s)
-   *   joint_accelerations
-   *   gravity             -- if given, will create gravity forces
-   *   base_twist_accel    -- optional acceleration for base
-   *   external_wrench     -- optional external wrench
+   *   dynamicsInput    -- dynamics factor graph input
+   *   gravity          -- if given, will create gravity forces
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -245,12 +238,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Build factor graph for RR manipulator inverse dynamics.
    * Keyword arguments:
-   *   q                   -- joint angles (in rad).
-   *   joint_vecocities    -- joint angular velocities (in rad/s)
-   *   joint_accelerations
-   *   gravity             -- if given, will create gravity forces
-   *   base_twist_accel    -- optional acceleration for base
-   *   external_wrench     -- optional external wrench
+   *   dynamicsInput    -- dynamics factor graph input
+   *   gravity          -- if given, will create gravity forces
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -266,12 +255,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Build factor graph for closed loop manipulator inverse dynamics.
    * Keyword arguments:
-   *   q                   -- joint angles (in rad).
-   *   joint_vecocities    -- joint angular velocities (in rad/s)
-   *   joint_accelerations
-   *   gravity             -- if given, will create gravity forces
-   *   base_twist_accel    -- optional acceleration for base
-   *   external_wrench     -- optional external wrench
+   *   dynamicsInput    -- dynamics factor graph input
+   *   gravity          -- if given, will create gravity forces
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -281,13 +266,8 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Build factor graph for RR manipulator hybrid dynamics.
    * Keyword arguments:
-   *   q                   -- joint angles (in rad).
-   *   joint_vecocities    -- joint angular velocities (in rad/s)
-   *   joint_accelerations -- desired joint accelerations 
-   *   torques             -- torques 
-   *   gravity             -- if given, will create gravity forces
-   *   base_twist_accel    -- optional acceleration for base
-   *   external_wrench     -- optional external wrench
+   *   dynamicsInput    -- dynamics factor graph input
+   *   gravity          -- if given, will create gravity forces
    * Note: see Link.base_factor on use of base_twist_accel
    * Return Gaussian factor graph
    */
@@ -338,7 +318,7 @@ using HybridResults = std::pair<JointValues, JointValues>;
 
   /** Calculate joint accelerations and torques for hybrid dynamics problem
    *  See hybridDynamicsFactorGraph for input arguments.
-  */
+   */
   HybridResults hybridDynamics(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -357,7 +337,7 @@ using HybridResults = std::pair<JointValues, JointValues>;
    * Returns joint limit factors.
    * Keyword arguments:
           cost_model -- noise model
-          i -- timestep index
+          i          -- timestep index
    */
   gtsam::NonlinearFactorGraph jointLimitFactors(
       const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;

@@ -1,6 +1,7 @@
 /**
  * @file testLinearClosedLoop.cpp
- * @brief test robotic manipulator with closed kinematic loop with linear factor
+ * @brief test robotic manipulator with 4-bar linkage 
+ *        closed kinematic loop with linear factor
  * graph
  * @Author: Mandy Xie
  */

@@ -83,10 +83,6 @@ class Simulation {
   /// integrate joint velocities and joint accelerations to get joint angles
   /// and joint velocities
   void integration(const gtsam::Vector &known_torque);
-
-  /// integrate joint velocities and joint accelerations to get joint angles
-  /// and joint velocities using RungeKutta4 method
-  void rungeKutta4(const gtsam::Vector &known_torque);
 };
 
 }  // namespace manipulator
