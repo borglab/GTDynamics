@@ -291,8 +291,7 @@ class Link {
   gtsam::GaussianFactorGraph forwardLoopFactor(
       int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j,
-      double torque_j, const gtsam::Pose3 &kTj,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      double torque_j) const;
 
   /** Create loop closure factor in inverse dynamics
    *  for manipulator with kinematic loops
