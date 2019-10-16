@@ -6,6 +6,11 @@ class gtsam::Pose3;
 class gtsam::Point3;
 class gtsam::JacobianFactor;
 class gtsam::GaussianFactorGraph;
+class gtsam::VectorValues;
+class gtsam::Values;
+class gtsam::NonlinearFactorGraph;
+class gtsam::noiseModel::Base;
+virtual class gtsam::NoiseModelFactor;
 
 namespace manipulator {
 #include <Link.h>
@@ -63,25 +68,35 @@ virtual class Link {
   gtsam::JacobianFactor* twistFactor(
       int j, const gtsam::Pose3& jTi, double joint_vel_j) const;
 
-//TODO: Test the following functions with boost::optional removed in MATLAB.
-//   gtsam::JacobianFactor wrenchFactor(
-//       int j, const gtsam::Vector6& twist_j, const gtsam::Pose3& kTj,
-//       boost::optional<gtsam::Vector3& > gravity) const;
+  gtsam::JacobianFactor* wrenchFactor(
+      int j, const gtsam::Vector6& twist_j, const gtsam::Pose3& kTj) const;
+  
+  gtsam::JacobianFactor* wrenchFactor(
+      int j, const gtsam::Vector6& twist_j, const gtsam::Pose3& kTj,
+      gtsam::Vector3& gravity) const;
 
-//   gtsam::GaussianFactorGraph forwardFactors(
-//       int j, const gtsam::Pose3& jTi, double joint_vel_j,
-//       const gtsam::Vector6& twist_j, double torque_j, const gtsam::Pose3& kTj,
-//       boost::optional<gtsam::Vector3& > gravity) const;
+  gtsam::GaussianFactorGraph forwardFactors(
+      int j, const gtsam::Pose3& jTi, double joint_vel_j,
+      const gtsam::Vector6& twist_j, double torque_j, const gtsam::Pose3& kTj) const;
 
-//   gtsam::GaussianFactorGraph inverseFactors(
-//       int j, const gtsam::Pose3& jTi, double joint_vel_j,
-//       const gtsam::Vector6& twist_j, double acceleration_j,
-//       const gtsam::Pose3& kTj,
-//       boost::optional<gtsam::Vector3& > gravity) const;
+    gtsam::GaussianFactorGraph forwardFactors(
+      int j, const gtsam::Pose3& jTi, double joint_vel_j,
+      const gtsam::Vector6& twist_j, double torque_j, const gtsam::Pose3& kTj,
+      gtsam::Vector3& gravity) const;
+
+  gtsam::GaussianFactorGraph inverseFactors(
+      int j, const gtsam::Pose3& jTi, double joint_vel_j,
+      const gtsam::Vector6& twist_j, double acceleration_j,
+      const gtsam::Pose3& kTj) const;
+
+  gtsam::GaussianFactorGraph inverseFactors(
+      int j, const gtsam::Pose3& jTi, double joint_vel_j,
+      const gtsam::Vector6& twist_j, double acceleration_j,
+      const gtsam::Pose3& kTj,
+      gtsam::Vector3& gravity) const;
 
 };
 
-#include <utils.h>
 #include <DHLink.h>
 #include <URDFLink.h>
 virtual class DH_Link : manipulator::Link {
@@ -111,19 +126,21 @@ virtual class URDF_Link : manipulator::Link {
   double length() const;
 };
 
-#include <DHLink.h>
-#include <URDFLink.h>
-#include <Arm.h>
 #include <JointLimitVectorFactor.h>
+virtual class JointLimitVectorFactor : gtsam::NoiseModelFactor {
+  JointLimitVectorFactor(gtsam::Key pose_key,
+                         const gtsam::noiseModel::Base* cost_model,
+                         const Vector& lower_limits,
+                         const Vector& upper_limits,
+                         const Vector& limit_thresholds);        
+};
+
+// TODO: add constructor to this class after fixing the std::vector problem.
 #include <PoseGoalFactor.h>
+virtual class PoseGoalFactor : gtsam::NoiseModelFactor {   
+};
 
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-
-//#include <vector>
+#include <Arm.h>
 template<T = {manipulator::DH_Link, manipulator::URDF_Link}>
 class Arm {
 //   Arm(const std::vector<T>& links, const gtsam::Pose3& base,
@@ -169,60 +186,84 @@ class Arm {
 
 // //   std::vector<gtsam::Pose3> jTi_list(const Vector& q) const;
 
-// //   gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
-// //       const Vector& q, const Vector& joint_velocities,
-// //       const Vector& torques,
-// //       const gtsam::Vector6& base_twist_accel,
-// //       const gtsam::Vector6& external_wrench,
-// //       boost::optional<gtsam::Vector3& > gravity = boost::none) const;
+  gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& torques,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench) const;
 
-// //   gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
-// //       const Vector& q, const Vector& joint_velocities,
-// //       const Vector& joint_accelerations,
-// //       const gtsam::Vector6& base_twist_accel,
-// //       const gtsam::Vector6& external_wrench,
-// //       boost::optional<gtsam::Vector3& > gravity = boost::none) const;
+  gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& torques,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench,
+      gtsam::Vector3& gravity) const;
 
-//   Vector extractJointAcceleraions(
-//       const gtsam::VectorValues& result) const;
+  gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& joint_accelerations,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench) const;
 
-//   Vector extractTorques(const gtsam::VectorValues& result) const;
+  gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& joint_accelerations,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench,
+      gtsam::Vector3& gravity) const;
 
-//   gtsam::VectorValues factorGraphOptimization(
-//       const gtsam::GaussianFactorGraph& dynamics_factor_graph) const;
+  Vector extractJointAcceleraions(
+      const gtsam::VectorValues& result) const;
 
-// //   Vector forwardDynamics(
-// //       const Vector& q, const Vector& joint_velocities,
-// //       const Vector& torques,
-// //       const gtsam::Vector6& base_twist_accel,
-// //       const gtsam::Vector6& external_wrench,
-// //       boost::optional<gtsam::Vector3& > gravity = boost::none) const;
+  Vector extractTorques(const gtsam::VectorValues& result) const;
 
-// //   Vector inverseDynamics(
-// //       const Vector& q, const Vector& joint_velocities,
-// //       const Vector& joint_accelerations,
-// //       const gtsam::Vector6& base_twist_accel,
-// //       const gtsam::Vector6& external_wrench,
-// //       boost::optional<gtsam::Vector3& > gravity = boost::none) const;
+  gtsam::VectorValues factorGraphOptimization(
+      const gtsam::GaussianFactorGraph& dynamics_factor_graph) const;
 
-//   JointLimitVectorFactor jointLimitVectorFactor() const;
+  Vector forwardDynamics(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& torques,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench) const;
 
-//   gtsam::NonlinearFactorGraph jointLimitFactors(
-//       const gtsam::noiseModel::Base::shared_ptr& cost_model, int i) const;
+  Vector forwardDynamics(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& torques,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench,
+      gtsam::Vector3& gravity) const;
 
-//   PoseGoalFactor poseGoalFactor(const gtsam::Pose3& goal_pose) const;
+  Vector inverseDynamics(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& joint_accelerations,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench) const;
 
-//   gtsam::NonlinearFactorGraph inverseKinematicsFactorGraph(
-//       const gtsam::Pose3& goal_pose) const;
+  Vector inverseDynamics(
+      const Vector& q, const Vector& joint_velocities,
+      const Vector& joint_accelerations,
+      const gtsam::Vector6& base_twist_accel,
+      const gtsam::Vector6& external_wrench,
+      gtsam::Vector3& gravity) const;
 
-//   Vector extractJointCooridinates(const gtsam::Values& results) const;
+  manipulator::JointLimitVectorFactor jointLimitVectorFactor() const;
 
-//   gtsam::Values factorGraphOptimization(
-//       const gtsam::NonlinearFactorGraph& graph,
-//       const gtsam::Values& init_values) const;
+  gtsam::NonlinearFactorGraph jointLimitFactors(
+      const gtsam::noiseModel::Base* cost_model, int i) const;
 
-//   Vector inverseKinematics(const gtsam::Pose3& goal_pose,
-//                                   const Vector& init_q) const;
+  manipulator::PoseGoalFactor poseGoalFactor(const gtsam::Pose3& goal_pose) const;
+
+  gtsam::NonlinearFactorGraph inverseKinematicsFactorGraph(
+      const gtsam::Pose3& goal_pose) const;
+
+  Vector extractJointCooridinates(const gtsam::Values& results) const;
+
+  gtsam::Values factorGraphOptimization(
+      const gtsam::NonlinearFactorGraph& graph,
+      const gtsam::Values& init_values) const;
+
+  Vector inverseKinematics(const gtsam::Pose3& goal_pose,
+                                  const Vector& init_q) const;
 };
 
 }
