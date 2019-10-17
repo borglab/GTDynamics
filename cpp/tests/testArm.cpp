@@ -37,8 +37,8 @@ Pose3 transform(double theta) {
 // Unit tests for dh link RR
 TEST(Arm, DH_RR) {
   vector<DH_Link> dh_rr = {
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20),
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20)};
+      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3),
+      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
 
   // The joint screw axis, in the COM frame, is the same for both joints
   auto AXIS = unit_twist(Vector3(0, 0, 1), Vector3(-1, 0, 0));
@@ -269,20 +269,22 @@ TEST(Arm, DH_RR) {
   Vector expected_torques = ZERO2;
   Vector base_twist_accel = ZERO6;
   Vector external_wrench = ZERO6;
-
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
   auto factor_graph =
-      robot.forwardDynamicsFactorGraph(joint_angles, joint_velocities, torques,
-                                       base_twist_accel, external_wrench);
+      robot.forwardDynamicsFactorGraph(forwardDynamicsInput);
   EXPECT(assert_equal(factor_graph.size(), 1 + N * 3 + 1));
 
-  auto result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                      base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
+  auto result = robot.forwardDynamics(forwardDynamicsInput);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 
   /* ========= test case when an external wrench is applied ========== */
@@ -290,15 +292,18 @@ TEST(Arm, DH_RR) {
   external_wrench << 0, 0, 0, 0, -2.5, 0;
   expected_joint_accelerations << 5, -20;
   expected_torques << 0, 0;
+  forwardDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
+  result = robot.forwardDynamics(forwardDynamicsInput);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
-  result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                 base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
-
+  inverseDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 
   /* ======== gravity compensation case: assume Y-axis is up ========= */
@@ -309,14 +314,18 @@ TEST(Arm, DH_RR) {
   expected_joint_accelerations << -9.8, 19.6;
   expected_torques << 0, 0;
 
-  result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                 base_twist_accel, external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
+  forwardDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
+  result = robot.forwardDynamics(forwardDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
+  inverseDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 }
 
@@ -324,26 +333,20 @@ TEST(Arm, DH_RR) {
 TEST(Arm, DH_PUMA) {
   vector<DH_Link> dh_puma = {
       DH_Link(0, 0.0000, 0.0000, +90, 'R', 0, Point3(0, 0, 0),
-              Vector3(0, 0.35, 0).asDiagonal(), -180,
-              180, 20),
+              Vector3(0, 0.35, 0).asDiagonal()),
       DH_Link(0, 0.4318, 0, 0.0, 'R', 17.40, Point3(-0.3638, 0.006, 0.2275),
-              Vector3(0.130, 0.524, 0.539).asDiagonal(),
-              -180, 180, 20),
+              Vector3(0.130, 0.524, 0.539).asDiagonal()),
       DH_Link(
           0, 0.0203, 0.15005, -90, 'R', 4.80, Point3(-0.0203, -0.0141, 0.0700),
-          Vector3(0.066, 0.086, 0.0125).asDiagonal(),
-          -180, 180, 20),
+          Vector3(0.066, 0.086, 0.0125).asDiagonal()),
       DH_Link(
           0, 0, 0.4318, +90, 'R', 0.82, Point3(0, 0.19, 0),
-          Vector3(0.0018, 0.0013, 0.0018).asDiagonal(),
-          -180, 180, 20),
+          Vector3(0.0018, 0.0013, 0.0018).asDiagonal()),
       DH_Link(
           0, 0.0000, 0.0000, -90, 'R', 0.34, Point3(0, 0, 0),
-          Vector3(0.0003, 0.0004, 0.0003).asDiagonal(),
-          -180, 180, 20),
+          Vector3(0.0003, 0.0004, 0.0003).asDiagonal()),
       DH_Link(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
-              Vector3(0.00015, 0.00015, 0.00004).asDiagonal(),
-              -180, 180, 20)};
+              Vector3(0.00015, 0.00015, 0.00004).asDiagonal())};
 
   // Create Puma robot.
   auto robot = Arm<DH_Link>(dh_puma, Pose3(), Pose3());
@@ -372,19 +375,22 @@ TEST(Arm, DH_PUMA) {
   Vector base_twist_accel = ZERO6;
   Vector external_wrench = ZERO6;
 
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
   auto factor_graph =
-      robot.forwardDynamicsFactorGraph(joint_angles, joint_velocities, torques,
-                                       base_twist_accel, external_wrench);
+      robot.forwardDynamicsFactorGraph(forwardDynamicsInput);
   EXPECT(assert_equal(factor_graph.size(), 1 + N * 3 + 1));
 
-  auto result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                      base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
+  auto result = robot.forwardDynamics(forwardDynamicsInput);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 
   /* ================== test Mandy's MATLAB example ================== */
@@ -399,20 +405,21 @@ TEST(Arm, DH_PUMA) {
       1.047198;
   base_twist_accel << 0, 0, 0, 0, 0, 0;
   Vector3 gravity(0, 0, -9.8);
-  factor_graph = robot.forwardDynamicsFactorGraph(
+  forwardDynamicsInput = DynamicsFactorGraphInput<Vector>(
       joint_angles, radians(joint_velocities), torques, base_twist_accel,
-      external_wrench, gravity);
-  EXPECT(assert_equal(factor_graph.size(), 1 + N * 3 + 1));
+      external_wrench);
+  factor_graph = robot.forwardDynamicsFactorGraph(forwardDynamicsInput, gravity);
+  EXPECT(assert_equal(1 + N * 3 + 1, factor_graph.size()));
 
   result =
-      robot.forwardDynamics(joint_angles, radians(joint_velocities), torques,
-                            base_twist_accel, external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_joint_accelerations, 1e-5));
+      robot.forwardDynamics(forwardDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_joint_accelerations, result, 1e-5));
 
-  result = robot.inverseDynamics(joint_angles, radians(joint_velocities),
-                                 joint_accelerations, base_twist_accel,
-                                 external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_torques, 1e-5));
+  inverseDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, radians(joint_velocities), joint_accelerations, base_twist_accel,
+      external_wrench);
+  result = robot.inverseDynamics(inverseDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_torques, result, 1e-5));
   /* ================================================================= */
 }
 
@@ -420,9 +427,9 @@ TEST(Arm, DH_PUMA) {
 TEST(Arm, URDF_RR) {
   vector<URDF_Link> urdf_rr = {
       URDF_Link(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
-                Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, -180, 180, 20),
+                Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3),
       URDF_Link(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
-                Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, -180, 180, 20)};
+                Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3)};
 
   // The joint screw axis, in the COM frame, is the same for both joints
   auto AXIS = unit_twist(Vector3(0, 0, 1), Vector3(-1, 0, 0));
@@ -575,20 +582,21 @@ TEST(Arm, URDF_RR) {
   Vector expected_torques = ZERO2;
   Vector base_twist_accel = ZERO6;
   Vector external_wrench = ZERO6;
-
+  DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
   auto factor_graph =
-      robot.forwardDynamicsFactorGraph(joint_angles, joint_velocities, torques,
-                                       base_twist_accel, external_wrench);
-  EXPECT(assert_equal(factor_graph.size(), 1 + N * 3 + 1));
+      robot.forwardDynamicsFactorGraph(forwardDynamicsInput);
+  EXPECT(assert_equal(1 + N * 3 + 1, factor_graph.size()));
 
-  auto result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                      base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
+  auto result = robot.forwardDynamics(forwardDynamicsInput);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
-  result = robot.inverseDynamics(joint_angles, radians(joint_velocities),
-                                 joint_accelerations, base_twist_accel,
-                                 external_wrench);
-  EXPECT(assert_equal(result, expected_torques));
+  DynamicsFactorGraphInput<Vector> inverseDynamicsInput(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
+  result = robot.inverseDynamics(inverseDynamicsInput);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 
   /* ========= test case when an external wrench is applied ========== */
@@ -596,15 +604,18 @@ TEST(Arm, URDF_RR) {
   external_wrench << 0, 0, 0, 0, -2.5, 0;
   expected_joint_accelerations << 5, -20;
   expected_torques << 0, 0;
+  forwardDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
+  result = robot.forwardDynamics(forwardDynamicsInput);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
-  result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                 base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
-
+  inverseDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 
   /* ======== gravity compensation case: assume Y-axis is up ========= */
@@ -614,15 +625,18 @@ TEST(Arm, URDF_RR) {
   Vector3 gravity(0, -9.8, 0);
   expected_joint_accelerations << -9.8, 19.6;
   expected_torques << 0, 0;
+  forwardDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, torques, base_twist_accel,
+      external_wrench);
+  result = robot.forwardDynamics(forwardDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_joint_accelerations, result));
 
-  result = robot.forwardDynamics(joint_angles, joint_velocities, torques,
-                                 base_twist_accel, external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_joint_accelerations));
-
+  inverseDynamicsInput = DynamicsFactorGraphInput<Vector>(
+      joint_angles, joint_velocities, joint_accelerations, base_twist_accel,
+      external_wrench);
   result =
-      robot.inverseDynamics(joint_angles, joint_velocities, joint_accelerations,
-                            base_twist_accel, external_wrench, gravity);
-  EXPECT(assert_equal(result, expected_torques));
+      robot.inverseDynamics(inverseDynamicsInput, gravity);
+  EXPECT(assert_equal(expected_torques, result));
   /* ================================================================= */
 }
 

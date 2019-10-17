@@ -98,9 +98,9 @@ TEST(PoseFactor, breaking) {
 TEST(PoseFactor, breaking_rr) {
   // RR link example
   vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                   Z_3x3, -180, 180, 2),
+                                   Z_3x3),
                            DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                   Z_3x3, -180, 180, 2)};
+                                   Z_3x3)};
   auto robot = Arm<DH_Link>(dh_rr);
   Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
   auto dof = robot.numLinks();
