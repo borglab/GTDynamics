@@ -59,6 +59,17 @@ class SignedDistanceField {
         cell_size_(cell_size),
         data_(data) {}
 
+  // constructor with no data for the wrapper
+  SignedDistanceField(const gtsam::Point3& origin, double cell_size,
+                      size_t field_rows,
+      size_t field_cols, size_t field_z)
+      : origin_(origin),
+        field_rows_(field_rows),
+        field_cols_(field_cols),
+        field_z_(field_z),
+        cell_size_(cell_size),
+        data_(std::vector<gtsam::Matrix>(field_z)) {}
+
   // destructor
   ~SignedDistanceField() {}
 
