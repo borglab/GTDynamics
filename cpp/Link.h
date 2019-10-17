@@ -82,11 +82,11 @@ class Link {
    */
   Link(char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
-       bool isActuated = true,
-       double springCoefficient = 0, double dampingCoefficient = 0,
-       double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
-       double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-       double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
+       bool isActuated = true, double springCoefficient = 0,
+       double dampingCoefficient = 0, double joint_lower_limit = -M_PI,
+       double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
+       double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
+       double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
@@ -117,8 +117,8 @@ class Link {
    *                                   in link frame
    * inertia                        -- principal inertias
    * screw_axis                     -- joint axis expressed in COM frame
-   * jointEffortType                     -- specify if this joint is actuated or not
-   * joint_lower_limit              -- joint angle lower limit
+   * jointEffortType                     -- specify if this joint is actuated or
+   * not joint_lower_limit              -- joint angle lower limit
    * joint_upper_limit              -- joint angle upper limit
    * joint_limit_threshold          -- joint angle limit threshold
    * velocityLimit                  -- joint velocity limit
@@ -131,11 +131,11 @@ class Link {
    */
   Link(char joint_type, double mass, const gtsam::Point3 &center_of_mass,
        const gtsam::Matrix3 &inertia, const gtsam::Vector6 &screwAxis,
-       bool isActuated = true,
-       double springCoefficient = 0, double dampingCoefficient = 0,
-       double joint_lower_limit = -M_PI, double joint_upper_limit = M_PI,
-       double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-       double velocity_limit_threshold = 0.0, double acceleration_limit = 10000,
+       bool isActuated = true, double springCoefficient = 0,
+       double dampingCoefficient = 0, double joint_lower_limit = -M_PI,
+       double joint_upper_limit = M_PI, double joint_limit_threshold = 0.0,
+       double velocity_limit = 10000, double velocity_limit_threshold = 0.0,
+       double acceleration_limit = 10000,
        double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
        double torque_limit_threshold = 0.0)
       : jointType_(joint_type),
@@ -214,11 +214,13 @@ class Link {
   /* Return joint torque limit threshold. */
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
-  /** Return link transform of current link with respect to previous link (gtsam::Pose3).
-   * Keyword arguments:
-   *  q -- optional generalized joint angle (default 0)
+  /** Return link transform of current link with respect to previous link
+   * (gtsam::Pose3). Keyword arguments: q -- optional generalized joint angle
+   * (default 0)
    */
-  virtual gtsam::Pose3 linkTransform(double q = 0) const { return gtsam::Pose3(); }
+  virtual gtsam::Pose3 linkTransform(double q = 0) const {
+    return gtsam::Pose3();
+  }
 
   /** Factor enforcing base acceleration.
    *  Keyword argument:
@@ -233,15 +235,15 @@ class Link {
   static boost::shared_ptr<gtsam::JacobianFactor> BaseTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel);
 
-  // convert unary factor on base acceleration to first link acceleration 
-  // for forward dynamics  
+  // convert unary factor on base acceleration to first link acceleration
+  // for forward dynamics
   boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j,
       double acceleration_j) const;
 
-  // convert unary factor on base acceleration to first link acceleration 
-  // for forward dynamics 
+  // convert unary factor on base acceleration to first link acceleration
+  // for forward dynamics
   boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j) const;
@@ -252,9 +254,9 @@ class Link {
           external_wrench (np.array) -- optional external wrench
    */
   static boost::shared_ptr<gtsam::JacobianFactor> ToolWrenchFactor(
-      int N, const gtsam::Vector6 &external_wrench); 
+      int N, const gtsam::Vector6 &external_wrench);
 
-  // convert unary factor on tool wrench to last link wrench 
+  // convert unary factor on tool wrench to last link wrench
   boost::shared_ptr<gtsam::JacobianFactor> lastWrenchFactor(
       const gtsam::Vector6 &external_wrench, int j,
       const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
@@ -286,13 +288,12 @@ class Link {
       Keyword argument:
           j          -- index for loop joint
           screw_axis -- screw_axis for loop closure joint
+          jTi        -- T_0N, transform from last link to base
      frame.
    */
-  gtsam::GaussianFactorGraph forwardLoopFactor(
+  static gtsam::GaussianFactorGraph forwardLoopFactor(
       int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jTi,
-      double joint_vel_j, const gtsam::Vector6 &twist_j,
-      double torque_j, const gtsam::Pose3 &kTj,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      double joint_vel_j, double torque_j);
 
   /** Create loop closure factor in inverse dynamics
    *  for manipulator with kinematic loops
@@ -301,12 +302,9 @@ class Link {
           screw_axis -- screw_axis for loop closure joint
      frame.
    */
-  gtsam::GaussianFactorGraph inverseLoopFactor(
+  static gtsam::GaussianFactorGraph inverseLoopFactor(
       int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jTi,
-      double joint_vel_j, const gtsam::Vector6 &twist_j, double acceleration_j,
-      const gtsam::Pose3 &kTj, 
-      boost::optional<gtsam::Vector3 &> gravity = boost::none, 
-      double internal_torque = 0) const;
+      double joint_vel_j, double acceleration_j, double internal_torque = 0);
 
   /** Create all factors linking this links dynamics with previous and next
      link.
@@ -352,16 +350,16 @@ class Link {
   gtsam::GaussianFactorGraph inverseFactors(
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
-      const gtsam::Pose3 &kTj, 
-      boost::optional<gtsam::Vector3 &> gravity = boost::none, 
+      const gtsam::Pose3 &kTj,
+      boost::optional<gtsam::Vector3 &> gravity = boost::none,
       double internal_torque = 0) const;
 
   // inverse factor with the base and tool wrench taken away
   gtsam::GaussianFactorGraph reducedInverseFactors(
       int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
-      const gtsam::Pose3 &kTj, 
-      boost::optional<gtsam::Vector3 &> gravity = boost::none, 
+      const gtsam::Pose3 &kTj,
+      boost::optional<gtsam::Vector3 &> gravity = boost::none,
       double internal_torque = 0) const;
 
   virtual ~Link() = default;

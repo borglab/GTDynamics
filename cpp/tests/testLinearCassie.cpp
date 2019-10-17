@@ -21,8 +21,6 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-static const double HALF_PI = M_PI / 2;
-
 /* cassie_agility.urdf
     joint1: left-knee-joint (active joint)
             parent link: left-thigh (considered as base, cannot move)
@@ -107,7 +105,7 @@ TEST(ID_factor_graph, gravity_y) {
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
   Vector expected_qTorque = Vector::Zero(example::dof + 1);
-  expected_qTorque << 3.34056589, 1.79605854, 6.83348015e-17, -0.731110172, -4.9478099e-18, 0;
+  expected_qTorque << 3.37669653, 1.82893055, 0, -0.733806313, 0, 0;
   EXPECT(assert_equal(expected_qTorque, actual_qTorque, 10e-6));
   example::torque_ID = actual_qTorque;
   example::qAccel_ID = known_qAccel;

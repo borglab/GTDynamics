@@ -18,8 +18,6 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-static const double HALF_PI = M_PI / 2;
-
 /* cassie_agility.urdf
     joint1: left-knee-joint (active joint)
             parent link: left-thigh (considered as base, cannot move)

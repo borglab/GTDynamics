@@ -79,7 +79,7 @@ class Arm {
         base                    -- optional wT0 base frame in world frame
         tool                    -- optional tool frame in link N frame
         loopScrewAxis           -- screw axis for loop joint expressed
-                                   in last link frame
+                                   in base frame
         isLoopJointActuated     -- specifiy if loop joint is actuated
         loopSpringCoefficient   -- joint spring coefficient
         loopDampingCoefficient  -- joint damping coefficient
@@ -190,7 +190,7 @@ class Arm {
 
   /** Calculate velocity twists for all joints, expressed in their COM frame.
    * Keyword arguments:
-   *   Ts               -- link's center of mass frame 
+   *   Ts               -- link's center of mass frame
    *                       expressed in the world frame
    *   joint_vecocities -- joint angular velocities (in rad/s)
    */
@@ -207,6 +207,16 @@ class Arm {
    *        frame
    */
   std::vector<gtsam::Pose3> jTi_list(const gtsam::Vector &q) const;
+
+  /** Calculate list of transforms from COM frame j-1 relative to COM j.
+   * Keyword arguments:
+   *     q -- joint angles (in rad).
+   *  Returns list of transforms, 2 more than number of links:
+   *      - first transform is bT1, i.e. base expressed in link 1
+   *      - last transform is nTb, i.e., link N COM frame expressed in base
+   *        frame
+   */
+  std::vector<gtsam::Pose3> closedLoopjTi_list(const gtsam::Vector &q) const;
 
   /** Build factor graph for RR manipulator forward dynamics.
    * Keyword arguments:

@@ -134,76 +134,65 @@ Link::wrenchFactor(int j, const Vector6 &twist_j, const Pose3 &kTj,
 }
 
 gtsam::GaussianFactorGraph Link::forwardLoopFactor(
-    int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jT0,
-    double joint_vel_j, const gtsam::Vector6 &twist_j, double torque_j,
-    const gtsam::Pose3 &kTj, boost::optional<gtsam::Vector3 &> gravity) const {
+    int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jTi,
+    double joint_vel_j, double torque_j) {
   GaussianFactorGraph factors = GaussianFactorGraph();
-  // Twist acceleration in this link as a function of previous and joint accel.
-  // We need to know our screw axis, and an adjoint map:
-  Vector6 A_j = screw_axis;  // joint axis expressed in COM frame
+  // Twist of base link is zero
+  auto twist_j = Vector6::Zero();
+  Vector6 A_j = screw_axis;  // joint axis expressed in base frame
   Matrix6 ad_j = Pose3::adjointMap(twist_j);
 
   // add twist acceleration factor
   // Given the above Equation 8.47 can be written as
   // T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
   Vector6 rhs = ad_j * A_j * joint_vel_j;
-  factors.add(T(j), I_6x6, a(j+1), -A_j, T(0), -jT0.AdjointMap(), rhs,
-              noiseModel::Constrained::All(6));
-
-  // add wrench factor
-  // Wrench on this link is due to acceleration and reaction to next link.
-  factors.push_back(wrenchFactor(j, twist_j, kTj, gravity));
+  factors.add(T(0), I_6x6, a(j), -A_j, T(j - 1),
+              -jTi.AdjointMap(), rhs, noiseModel::Constrained::All(6));
 
   // add planar wrench factor to fix the indeterminate issue
   Matrix36 J_wrench;
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j+1), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
 
   // add torque factor
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
-  factors.add(F(j+1), A_j.transpose(), Vector1(torque_j),
+  factors.add(F(j), A_j.transpose(), Vector1(torque_j),
               noiseModel::Constrained::All(1));
   return factors;
 }
 
 gtsam::GaussianFactorGraph Link::inverseLoopFactor(
-    int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jT0,
-    double joint_vel_j, const gtsam::Vector6 &twist_j, double acceleration_j,
-    const gtsam::Pose3 &kTj, 
-    boost::optional<gtsam::Vector3 &> gravity, double internal_torque) const {
+    int j, const gtsam::Vector6 &screw_axis, const gtsam::Pose3 &jTi,
+    double joint_vel_j, double acceleration_j, double internal_torque) {
   GaussianFactorGraph factors = GaussianFactorGraph();
-  // Twist acceleration in this link as a function of previous and joint accel.
-  // We need to know our screw axis, and an adjoint map:
-  Vector6 A_j = screw_axis;  // joint axis expressed in COM frame
+  // Twist of base link is zero
+  auto twist_j = Vector6::Zero();
+  Vector6 A_j = screw_axis;  // joint axis expressed in base frame
   Matrix6 ad_j = Pose3::adjointMap(twist_j);
 
   // add twist acceleration factor
   // Given the above Equation 8.47 can be written as
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j + A_j * a(j)
   Vector6 rhs = ad_j * A_j * joint_vel_j + A_j * acceleration_j;
-  factors.add(T(j), I_6x6, T(0), -jT0.AdjointMap(), rhs,
+  factors.add(T(0), I_6x6, T(j-1), -jTi.AdjointMap(), rhs,
               noiseModel::Constrained::All(6));
-
-  // add wrench factor
-  // Wrench on this link is due to acceleration and reaction to next link.
-  factors.push_back(wrenchFactor(j, twist_j, kTj, gravity));
 
   // add planar wrench factor to fix the indeterminate issue
   Matrix36 J_wrench;
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j+1), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
 
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
   // A_j.transpose() * F(j).transpose() == torque_j
   // internal_torque includes spring torque and damping torque
-  factors.add(F(j+1), A_j.transpose(), t(j+1), -I_1x1, Vector1(internal_torque),
+  factors.add(F(j), A_j.transpose(), t(j), -I_1x1, Vector1(internal_torque),
               noiseModel::Constrained::All(1));
 
   return factors;
