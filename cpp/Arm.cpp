@@ -225,6 +225,20 @@ vector<Pose3> Arm<T>::jTi_list(const Vector &q) const {
 }
 
 template <typename T>
+vector<Pose3> Arm<T>::closedLoopjTi_list(const Vector &q) const {
+  vector<Pose3> Ts = comFrames(q);
+  Pose3 bT1 = Ts[0].between(base_);
+  Pose3 nTt = tool_;
+  vector<Pose3> jTi_com;
+  jTi_com.push_back(bT1);
+  for (int j = 1; j < numLinks(); ++j) {
+    jTi_com.push_back(Ts[j].between(Ts[j - 1]));
+  }
+  jTi_com.push_back(base_.between(Ts.back()));
+  return jTi_com;
+}
+
+template <typename T>
 GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
     const DynamicsFactorGraphInput<Vector> &dynamicsInput,
     boost::optional<Vector3 &> gravity) const {
@@ -350,8 +364,7 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
   gfg.push_back(Link::BaseTwistAccelFactor(base_twist_accel));
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
-  vector<Pose3> jTis = jTi_list(q);
-  jTis[N] = Ts.back(); // the last entry should be T05
+  vector<Pose3> jTis = closedLoopjTi_list(q);
 
   Vector3 g_in_space = Vector3::Zero(), g_in_body;
   if (gravity) {
@@ -376,9 +389,8 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
   // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
   jointTorque = torques[N] + loopDampingCoefficient() * joint_velocities[N] +
                 loopSpringCoefficient() * q[N];
-  gfg.push_back(links_[N - 1].forwardLoopFactor(
-      N+1, jTis.back().AdjointMap() * loopScrewAxis(), jTis.back(), joint_velocities[N],
-      gtsam::Vector6::Zero(), jointTorque));
+  gfg.push_back(Link::forwardLoopFactor(
+      N+1, loopScrewAxis(), jTis.back(), joint_velocities[N], jointTorque));
   return gfg;
 }
 
@@ -507,7 +519,7 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
   gfg.push_back(Link::BaseTwistAccelFactor(base_twist_accel));
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
-  vector<Pose3> jTis = jTi_list(q);
+  vector<Pose3> jTis = closedLoopjTi_list(q);
   Vector3 g_in_space = Vector3::Zero(), g_in_body;
   if (gravity) {
     g_in_space = *gravity;
@@ -538,9 +550,8 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
     gfg.add(t(N + 1), I_1x1, Vector1(0), noiseModel::Constrained::All(1));
   }
 
-  gfg.push_back(links_[N - 1].inverseLoopFactor(
-      N, loopScrewAxis(), Ts.back().inverse(), joint_velocities[N],
-      twists_vec[N - 1], joint_accelerations[N], jTis[N], g_in_body, jointTorque));
+  gfg.push_back(Link::inverseLoopFactor(
+      N+1, loopScrewAxis(), jTis.back(), joint_velocities[N], joint_accelerations[N], jointTorque));
   return gfg;
 }
 

@@ -12,7 +12,6 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/timing.h>
-#include <gtsam/linear/EigenOptimizer.h>
 #include <gtsam/linear/VectorValues.h>
 
 #include <CppUnitLite/TestHarness.h>
