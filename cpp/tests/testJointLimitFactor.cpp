@@ -23,9 +23,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test joint limit factor
- */
+// Test joint limit factor
 TEST(JointLimitFactor, error) {
   // Create all factors
   // nosie model

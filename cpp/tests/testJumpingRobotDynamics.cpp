@@ -85,9 +85,7 @@ Vector torque_ID = Vector::Zero(dof);
 }  // namespace example
 
 /* ************************************************************************/
-/**
- * Test forward dynamics of jumping robot
- */
+// Test forward dynamics of jumping robot
 TEST(JumpingRobot, forward_dynamics) {
   double torque3 = 1;
   double torque2 = 0.5;

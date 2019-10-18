@@ -33,9 +33,7 @@ noiseModel::Gaussian::shared_ptr cost_model =
 Key torque_key = Symbol('t', 1), wrench_key = Symbol('F', 1);
 }  // namespace example
 
-/**
- * Test Torque factor for stationary case
- */
+// Test Torque factor for stationary case
 TEST(TorqueFactor, error) {
   // Create all factors
   Vector6 screw_axis;

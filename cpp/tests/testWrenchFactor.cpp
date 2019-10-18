@@ -34,9 +34,7 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
     qKey = Symbol('q', 1), pKey = Symbol('p', 1);
 }  // namespace example
 
-/**
- * Test wrench factor for stationary case with gravity
- */
+// Test wrench factor for stationary case with gravity
 TEST(WrenchFactor, error_1) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
@@ -75,9 +73,7 @@ TEST(WrenchFactor, error_1) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test wrench factor for non-zero twist case, zero joint angle
- */
+// Test wrench factor for non-zero twist case, zero joint angle
 TEST(WrenchFactor, error_2) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
@@ -115,9 +111,7 @@ TEST(WrenchFactor, error_2) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test wrench factor for non-zero twist case, non-zero joint angle
- */
+// Test wrench factor for non-zero twist case, non-zero joint angle
 TEST(WrenchFactor, error_3) {
   // Create all factors
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));

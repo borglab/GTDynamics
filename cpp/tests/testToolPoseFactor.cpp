@@ -29,9 +29,7 @@ noiseModel::Gaussian::shared_ptr cost_model =
 Key pose_key = Symbol('p', 1);
 }  // namespace example
 
-/**
- * Test tool pose factor
- */
+// Test tool pose factor
 TEST(ToolPoseFactor, error) {
   // Create all factors
   Pose3 tTn = Pose3(Rot3(), Point3(-1, 0, 0));

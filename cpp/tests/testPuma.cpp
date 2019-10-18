@@ -58,9 +58,7 @@ TEST(ObstacleSDFFactorArm, data) {
   sdf = SignedDistanceField(origin, cell_size, field);
 }
 
-/**
- * Test motion planner for puma manipulator
- */
+// Test motion planner for puma manipulator
 TEST(MotionPlanner, dh_puma) {
   // puma example
   vector<DH_Link> dh_puma = {

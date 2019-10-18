@@ -35,9 +35,7 @@ auto jacobian =
     boost::bind(&Arm<DH_Link>::forwardKinematics, robot, _1, _2);
 }  // namespace example
 
-/**
- * Test pose goal factor
- */
+// Test pose goal factor
 TEST(PoseGoalFactor, error) {
   // settings
   noiseModel::Gaussian::shared_ptr cost_model =

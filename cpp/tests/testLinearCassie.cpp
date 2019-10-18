@@ -85,9 +85,7 @@ Vector torque_ID = Vector::Zero(dof);
 }  // namespace example
 
 /* ************************************************************************* */
-/**
- * Test inverse dynamics with gravity in y direction
- */
+// Test inverse dynamics with gravity in y direction
 TEST(ID_factor_graph, gravity_y) {
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),
@@ -112,9 +110,7 @@ TEST(ID_factor_graph, gravity_y) {
 }
 
 /* ************************************************************************* */
-/**
- * Test forward dynamics with gravity in y direction
- */
+// Test forward dynamics with gravity in y direction
 TEST(FD_factor_graph, gravity_y) {
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),

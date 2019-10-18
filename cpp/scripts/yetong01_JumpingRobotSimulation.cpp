@@ -74,9 +74,7 @@ Vector torque_ID = Vector::Zero(dof);
 } // namespace example
 
 /* ************************************************************************/
-/**
- * Test forward dynamics of jumping robot
- */
+// Test forward dynamics of jumping robot
 TEST(Simulation, gravity_y) {
   double time_step = 0.001;
   int total_steps = 1200;

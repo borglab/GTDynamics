@@ -23,9 +23,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test base twist factor
- */
+// Test base twist factor
 TEST(BaseTwistFactor, error) {
   // nosie model
   noiseModel::Gaussian::shared_ptr cost_model =

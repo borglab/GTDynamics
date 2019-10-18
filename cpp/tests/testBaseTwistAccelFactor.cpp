@@ -22,9 +22,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test base acceleration factor
- */
+// Test base acceleration factor
 TEST(BaseTwistAccelFactor, error) {
   // nosie model
   noiseModel::Gaussian::shared_ptr cost_model =
@@ -48,9 +46,7 @@ TEST(BaseTwistAccelFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test base acceleration factor graph optimization
- */
+// Test base acceleration factor graph optimization
 TEST(BaseTwistAccelFactor, optimaization) {
   // nosie model
   noiseModel::Gaussian::shared_ptr cost_model =

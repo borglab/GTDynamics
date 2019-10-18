@@ -77,9 +77,7 @@ gtsam::noiseModel::Base::shared_ptr
     p_cost_model = noiseModel::Constrained::All(6);
 }  // namespace example
 
-/**
- * Test forward dynamics with gravity
- */
+// Test forward dynamics with gravity
 TEST(FD_factor_graph, optimization) {
   NonlinearFactorGraph graph;
   // add base pose factor
@@ -164,9 +162,7 @@ TEST(FD_factor_graph, optimization) {
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 }
 
-/**
- * Test inverse dynamics with gravity
- */
+// Test inverse dynamics with gravity
 TEST(ID_factor_graph, optimization) {
   NonlinearFactorGraph graph;
   // add base pose factor

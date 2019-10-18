@@ -20,9 +20,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test motion planner for DH_RR manipulator
- */
+// Test motion planner for DH_RR manipulator
 TEST(MotionPlanner, dh_rr) {
   // RR link example
   vector<DH_Link> dh_rr = {

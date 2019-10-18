@@ -50,9 +50,7 @@ Vector torque_ID = Vector::Zero(dof);
 }  // namespace example
 
 /* ************************************************************************/
-/**
- * Test forward dynamics with gravity in x direction, zero joint angles
- */
+// Test forward dynamics with gravity in x direction, zero joint angles
 TEST(ForwardDynamics, gravity_x) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -74,9 +72,7 @@ TEST(ForwardDynamics, gravity_x) {
 }
 
 /* ************************************************************************/
-/**
- * Test forward dynamics without gravity, torque at first joint
- */
+// Test forward dynamics without gravity, torque at first joint
 TEST(ForwardDynamics, torque1) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -99,9 +95,7 @@ TEST(ForwardDynamics, torque1) {
 }
 
 /* ************************************************************************/
-/**
- * Test inverse dynamics without gravity, torque at first joint
- */
+// Test inverse dynamics without gravity, torque at first joint
 TEST(InverseDynamics, torque1) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -123,9 +117,7 @@ TEST(InverseDynamics, torque1) {
 }
 
 /* ************************************************************************/
-/**
- * Test forward dynamics with gravity in x direction, torque at two joints
- */
+// Test forward dynamics with gravity in x direction, torque at two joints
 TEST(ForwardDynamics, torque_plus_gravity) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -148,9 +140,7 @@ TEST(ForwardDynamics, torque_plus_gravity) {
 }
 
 /* ************************************************************************/
-/**
- * Test inverse dynamics gravity in x direction, torque at first joint
- */
+// Test inverse dynamics gravity in x direction, torque at first joint
 TEST(InverseDynamics, torque_plus_gravity) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -172,10 +162,8 @@ TEST(InverseDynamics, torque_plus_gravity) {
 }
 
 /* ************************************************************************/
-/**
- * Test forward dynamics with gravity in x direction, torque at two joints, with
- * initial velocity
- */
+// Test forward dynamics with gravity in x direction, torque at two joints, with
+// initial velocity
 TEST(ForwardDynamics, torque_gravity_velocity) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),
@@ -199,10 +187,8 @@ TEST(ForwardDynamics, torque_gravity_velocity) {
 }
 
 /* ************************************************************************/
-/**
- * Test inverse dynamics with gravity in x direction, torque at two joints, with
- * initial velocity
- */
+// Test inverse dynamics with gravity in x direction, torque at two joints, with
+// initial velocity
 TEST(InverseDynamics, torque_gravity_velocity) {
   Vector initialJointAngles = Vector::Zero(example::dof),
          initialJointVelocities = Vector::Zero(example::dof),

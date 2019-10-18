@@ -18,23 +18,21 @@
 #include <vector>
 
 namespace manipulator {
-/* Shorthand symbol for linear factors */
-/* Shorthand for T_j, for twist accelerations on the j-th link. */
+/// Shorthand symbol for linear factors 
+/// Shorthand for T_j, for twist accelerations on the j-th link. 
 extern gtsam::Symbol T(int j);
-/* Shorthand for a_j, for joint accelerations on the j-th link. */
+/// Shorthand for a_j, for joint accelerations on the j-th link. 
 extern gtsam::Symbol a(int j);
-/* Shorthand for F_j, for wrenches on the j-th link. */
+/// Shorthand for F_j, for wrenches on the j-th link. 
 extern gtsam::Symbol F(int j);
-/* Shorthand for t_j, for torque on the j-th link. */
+/// Shorthand for t_j, for torque on the j-th link. 
 extern gtsam::Symbol t(int j);
-/* Shorthand for V_j, for 6D link twist vector on the j-th link. */
+/// Shorthand for V_j, for 6D link twist vector on the j-th link. 
 extern gtsam::Symbol V(int j);
-/* Shorthand for J_j, for all joint positions j. */
+/// Shorthand for J_j, for all joint positions j. 
 extern gtsam::Symbol J(int j);
 
-/**
- * Link is the base class for links taking different format of parameters
- */
+/// Link is the base class for links taking different format of parameters
 class Link {
  protected:
   char jointType_;
@@ -64,7 +62,7 @@ class Link {
       joint_type                 -- 'R': revolute,
                                     'P': prismatic
       mass                       -- mass of link
-      center_of_mass             -- center of mass location expressed
+      center_of_mass             -- center of mass frame expressed
                                     in link frame
       inertia                    -- inertia matrix
       screw_axis                 -- joint axis expressed in COM frame
@@ -119,7 +117,7 @@ class Link {
    * inertia                        -- principal inertias
    * screw_axis                     -- joint axis expressed in COM frame
    * jointEffortType                -- specify if this joint is actuated
-   *                                   or not 
+   *                                   or not
    * joint_lower_limit              -- joint angle lower limit
    * joint_upper_limit              -- joint angle upper limit
    * joint_limit_threshold          -- joint angle limit threshold
@@ -158,19 +156,19 @@ class Link {
         torqueLimit_(torque_limit),
         torqueLimitThreshold_(torque_limit_threshold) {}
 
-  /* Return screw axis. */
+  /// Return screw axis. 
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
 
-  /* Return link mass.*/
+  /// Return link mass.
   double mass() const { return mass_; }
 
-  /* Return center of mass (gtsam::Pose3) */
+  /// Return center of mass (gtsam::Pose3) 
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
-  /* Return inertia. */
+  /// Return inertia. 
   const gtsam::Matrix3 &inertia() const { return inertia_; }
 
-  /* Return general mass gtsam::Matrix */
+  /// Return general mass gtsam::Matrix 
   gtsam::Matrix6 inertiaMatrix() const {
     std::vector<gtsam::Matrix> gmm;
     gmm.push_back(inertia_);
@@ -178,47 +176,48 @@ class Link {
     return gtsam::diag(gmm);
   }
 
-  /* Return true if joint is actuated. */
+  /// Return true if joint is actuated. 
   bool isActuated() const { return isActuated_; }
 
-  // return spring coefficient
+  /// return spring coefficient
   double springCoefficient() const { return springCoefficient_; }
 
-  // return danmping coefficient
+  /// return danmping coefficient
   double dampingCoefficient() const { return dampingCoefficient_; }
 
-  /* Return joint angle lower limit. */
+  /// Return joint angle lower limit. 
   double jointLowerLimit() const { return jointLowerLimit_; }
 
-  /* Return joint angle upper limit. */
+  /// Return joint angle upper limit. 
   double jointUpperLimit() const { return jointUpperLimit_; }
 
-  /* Return joint angle limit threshold. */
+  /// Return joint angle limit threshold. 
   double jointLimitThreshold() const { return jointLimitThreshold_; }
 
-  /* Return joint velocity limit. */
+  /// Return joint velocity limit. 
   double velocityLimit() const { return velocityLimit_; }
 
-  /* Return joint velocity limit threshold. */
+  /// Return joint velocity limit threshold. 
   double velocityLimitThreshold() const { return velocityLimitThreshold_; }
 
-  /* Return joint acceleration limit. */
+  /// Return joint acceleration limit. 
   double accelerationLimit() const { return accelerationLimit_; }
 
-  /* Return joint acceleration limit threshold. */
+  /// Return joint acceleration limit threshold. 
   double accelerationLimitThreshold() const {
     return accelerationLimitThreshold_;
   }
 
-  /* Return joint torque limit. */
+  /// Return joint torque limit. 
   double torqueLimit() const { return torqueLimit_; }
 
-  /* Return joint torque limit threshold. */
+  /// Return joint torque limit threshold. 
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
   /** Return link transform of current link with respect to previous link
-   * (gtsam::Pose3). Keyword arguments: q -- optional generalized joint angle
-   * (default 0)
+   * (gtsam::Pose3).
+   *  Keyword arguments: q -- optional generalized joint angle
+   *                          (default 0)
    */
   virtual gtsam::Pose3 linkTransform(double q = 0) const {
     return gtsam::Pose3();
@@ -237,15 +236,17 @@ class Link {
   static boost::shared_ptr<gtsam::JacobianFactor> BaseTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel);
 
-  // convert unary factor on base acceleration to first link acceleration
-  // for forward dynamics
+  /** convert unary factor on base acceleration to first link acceleration
+   *  for forward dynamics
+   */
   boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j,
       double acceleration_j) const;
 
-  // convert unary factor on base acceleration to first link acceleration
-  // for forward dynamics
+  /** convert unary factor on base acceleration to first link acceleration
+    * for forward dynamics
+    */
   boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j) const;
@@ -258,7 +259,7 @@ class Link {
   static boost::shared_ptr<gtsam::JacobianFactor> ToolWrenchFactor(
       int N, const gtsam::Vector6 &external_wrench);
 
-  // convert unary factor on tool wrench to last link wrench
+  /// convert unary factor on tool wrench to last link wrench
   boost::shared_ptr<gtsam::JacobianFactor> lastWrenchFactor(
       const gtsam::Vector6 &external_wrench, int j,
       const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
@@ -266,8 +267,9 @@ class Link {
 
   /** Create single factor relating this link's twist with previous one.
       Keyword argument:
-          j -- index for this joint
-          jTi -- previous COM frame, expressed in this link's COM frame
+          j           -- index for this joint
+          jTi         -- previous COM frame, expressed
+                         in this link's COM frame
           joint_vel_j -- joint velocity for this link
    */
   boost::shared_ptr<gtsam::JacobianFactor> twistFactor(
@@ -275,10 +277,10 @@ class Link {
 
   /** Create wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          j -- index for this joint
+          j       -- index for this joint
           twist_j -- velocity twist for this link, in COM frame
-          kTj -- this COM frame, expressed in next link's COM frame
-          gravity  -- if given, will create gravity force. In link COM
+          kTj     -- this COM frame, expressed in next link's COM frame
+          gravity -- if given, will create gravity force. In link COM
      frame.
    */
   boost::shared_ptr<gtsam::JacobianFactor> wrenchFactor(
@@ -311,13 +313,16 @@ class Link {
   /** Create all factors linking this links dynamics with previous and next
      link.
      Keyword arguments:
-        j -- index for this joint
-        jTi -- previous COM frame, expressed in this link's COM frame
-        joint_vel_j -- joint velocity for this link
-        twist_j -- velocity twist for this link, in COM frame
-        torque_j -- torque at this link's joint
-        kTj -- this COM frame, expressed in next link's COM frame
-        gravity -- if given, will create gravity force. In link COM frame.
+        j            -- index for this joint
+        jTi          -- previous COM frame, expressed
+                        in this link's COM frame
+        joint_vel_j  -- joint velocity for this link
+        twist_j      -- velocity twist for this link, in COM frame
+        torque_j     -- torque at this link's joint
+        kTj          -- this COM frame, expressed
+                        in next link's COM frame
+        gravity      -- if given, will create gravity force
+                        in link COM frame.
      Will create several factors corresponding to Lynch & Park book:
           - twist acceleration, Equation 8.47, page 293
           - wrench balance, Equation 8.48, page 293
@@ -328,7 +333,7 @@ class Link {
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  // forward factor with the base and tool wrench taken away
+  /// forward factor with the base and tool wrench taken away
   gtsam::GaussianFactorGraph reducedForwardFactors(
       int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
@@ -337,13 +342,16 @@ class Link {
   /** Create all factors linking this links dynamics with previous and next
      link.
      Keyword arguments:
-        j -- index for this joint jTi -- previous COM frame,
-                                         expressed in this link's COM frame
-        joint_vel_j -- joint velocity for this link
-        twist_j -- velocity twist for this link, in COM frame
-        acceleration_j - acceleration at this link's joint
-        kTj -- this COM frame, expressed in next link's COM frame
-        gravity  -- if given, will create gravity force. In link COM frame.
+        j              -- index for this joint
+        jTi            -- previous COM frame expressed
+                          in this link's COM frame
+        joint_vel_j    -- joint velocity for this link
+        twist_j        -- velocity twist for this link in COM frame
+        acceleration_j -- acceleration at this link's joint
+        kTj            -- this COM frame, expressed
+                          in next link's COM frame
+        gravity        -- if given, will create gravity force
+                          in link COM frame.
         Will create several factors corresponding to Lynch & Park book:
           - twist acceleration, Equation 8.47, page 293
           - wrench balance, Equation 8.48, page 293
@@ -356,7 +364,7 @@ class Link {
       boost::optional<gtsam::Vector3 &> gravity = boost::none,
       double internal_torque = 0) const;
 
-  // inverse factor with the base and tool wrench taken away
+  /// inverse factor with the base and tool wrench taken away
   gtsam::GaussianFactorGraph reducedInverseFactors(
       int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
