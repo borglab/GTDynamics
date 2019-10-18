@@ -27,6 +27,11 @@ Arm<URDF_Link> getRobot() {
   double principal_inertia = 1.0 / 12 * 2 * 2;
   inertia << 0, 0, 0, 0, principal_inertia, 0, 0, 0, principal_inertia;
 
+  // the zero configuration is set to:
+  //      _
+  //     | |
+  // TTTTTTTTTTTTT
+
   vector<URDF_Link> urdf_rrr = {
       URDF_Link(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1),
                 'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, true, 0, 0),
@@ -37,16 +42,13 @@ Arm<URDF_Link> getRobot() {
   Pose3 base = Pose3();
   Pose3 tool = Pose3(Rot3(), Point3(2, 0, 0));
 
-  // get screw_axis for loop closure
+  // get screw_axis for loop closure, expressed in base frame
   auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(1, 0, 0));
   return Arm<URDF_Link>(urdf_rrr, base, tool, screw_axis, false, 0, 0);
 }
 
 auto robot = getRobot();
 auto dof = robot.numLinks() + 1;
-// required joint acceleration and applied torque at Inverse Dynamics
-Vector qAccel_ID = Vector::Zero(dof);
-Vector torque_ID = Vector::Zero(dof);
 }  // namespace example
 
 /* ************************************************************************/
@@ -66,6 +68,11 @@ TEST(ForwardDynamics, gravity_x) {
   auto actual_accelerations =
       example::robot.extractJointAcceleraions(results, example::dof);
 
+  // expected result is calculated from virtual work:
+  // suppose in a very short time interval delta_t, the angle moved is (1/2 * a
+  // * delta_t ^ 2), the velocity is (a * delta_t). The external work on the
+  // linkage should equal the amount of kinematic and potential energy gained
+  // for the robot
   auto expected_accelerations = Vector(4);
   expected_accelerations << -5.88, 5.88, -5.88, 5.88;
   EXPECT(assert_equal(expected_accelerations, actual_accelerations, 1e-6));
@@ -89,6 +96,7 @@ TEST(ForwardDynamics, torque1) {
   auto actual_accelerations =
       example::robot.extractJointAcceleraions(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_accelerations = Vector(4);
   expected_accelerations << 1.5, -1.5, 1.5, -1.5;
   EXPECT(assert_equal(expected_accelerations, actual_accelerations, 1e-6));
@@ -111,6 +119,7 @@ TEST(InverseDynamics, torque1) {
   VectorValues results = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_torques = Vector(4);
   expected_torques << 10, 0, 0, 0;
   EXPECT(assert_equal(expected_torques, actual_torques, 1e-6));
@@ -134,6 +143,7 @@ TEST(ForwardDynamics, torque_plus_gravity) {
   auto actual_accelerations =
       example::robot.extractJointAcceleraions(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_accelerations = Vector(4);
   expected_accelerations << -2.88, 2.88, -2.88, 2.88;
   EXPECT(assert_equal(expected_accelerations, actual_accelerations, 1e-6));
@@ -156,6 +166,7 @@ TEST(InverseDynamics, torque_plus_gravity) {
   VectorValues results = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_torques = Vector(4);
   expected_torques << 20, 0, 0, 0;
   EXPECT(assert_equal(expected_torques, actual_torques, 1e-6));
@@ -181,6 +192,7 @@ TEST(ForwardDynamics, torque_gravity_velocity) {
   auto actual_accelerations =
       example::robot.extractJointAcceleraions(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_accelerations = Vector(4);
   expected_accelerations << -2.88, 2.88, -2.88, 2.88;
   EXPECT(assert_equal(expected_accelerations, actual_accelerations, 1e-6));
@@ -205,6 +217,7 @@ TEST(InverseDynamics, torque_gravity_velocity) {
   VectorValues results = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(results, example::dof);
 
+  // expected result is calculated from virtual work
   auto expected_torques = Vector(4);
   expected_torques << 20, 0, 0, 0;
   EXPECT(assert_equal(expected_torques, actual_torques, 1e-6));
