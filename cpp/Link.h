@@ -68,7 +68,8 @@ class Link {
                                     in link frame
       inertia                    -- inertia matrix
       screw_axis                 -- joint axis expressed in COM frame
-      isActuated                 -- specify if this joint is actuated or not
+      isActuated                 -- specify if this joint is actuated
+                                    or not
       joint_lower_limit          -- joint angle lower limit
       joint_upper_limit          -- joint angle upper limit
       joint_limit_threshold      -- joint angle limit threshold
@@ -117,8 +118,9 @@ class Link {
    *                                   in link frame
    * inertia                        -- principal inertias
    * screw_axis                     -- joint axis expressed in COM frame
-   * jointEffortType                     -- specify if this joint is actuated or
-   * not joint_lower_limit              -- joint angle lower limit
+   * jointEffortType                -- specify if this joint is actuated
+   *                                   or not 
+   * joint_lower_limit              -- joint angle lower limit
    * joint_upper_limit              -- joint angle upper limit
    * joint_limit_threshold          -- joint angle limit threshold
    * velocityLimit                  -- joint velocity limit
