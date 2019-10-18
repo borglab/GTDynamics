@@ -41,7 +41,7 @@ TEST(IK_factor_graph, optimization) {
   auto dof = robot.numLinks();
 
   // get robot jTi list at rest
-  auto jMi = robot.jTi_list(Vector::Zero(dof));
+  auto jMi = robot.jTis(Vector::Zero(dof));
   // get base pose in world frame
   auto base_pose = robot.base();
   // get link COM pose at start

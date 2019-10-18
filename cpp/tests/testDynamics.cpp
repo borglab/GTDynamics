@@ -34,7 +34,7 @@ auto robot = Arm<DH_Link>(dh_rr);
 auto dof = robot.numLinks();
 
 // get robot jTi list at rest
-auto jMi = robot.jTi_list(Vector::Zero(dof));
+auto jMi = robot.jTis(Vector::Zero(dof));
 // get robot screw_axes for all links
 auto screw_axes = robot.screwAxes();
 

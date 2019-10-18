@@ -198,25 +198,19 @@ class Arm {
       const std::vector<gtsam::Pose3> &Ts,
       const gtsam::Vector &joint_velocities) const;
 
-  /** Calculate list of transforms from COM frame j-1 relative to COM j.
+  /** Calculate transforms from COM frame j-1 relative to COM j.
    * Keyword arguments:
    *     q -- joint angles (in rad).
-   *  Returns list of transforms, 2 more than number of links:
+   *  Returns vector of transforms, 2 more than number of links:
    *      - first transform is bT1, i.e. base expressed in link 1
-   *      - last transform is tTnc, i.e., link N COM frame expressed in tool
-   *        frame
+   *        If this is a chain,
+   *      - last transform is tTnc, i.e., link N COM frame
+   *        expressed in tool frame
+   *        If this is a loop
+   *      - last transform is nTb, i.e., link N COM frame
+   *        expressed in base frame
    */
-  std::vector<gtsam::Pose3> jTi_list(const gtsam::Vector &q) const;
-
-  /** Calculate list of transforms from COM frame j-1 relative to COM j.
-   * Keyword arguments:
-   *     q -- joint angles (in rad).
-   *  Returns list of transforms, 2 more than number of links:
-   *      - first transform is bT1, i.e. base expressed in link 1
-   *      - last transform is nTb, i.e., link N COM frame expressed in base
-   *        frame
-   */
-  std::vector<gtsam::Pose3> closedLoopjTi_list(const gtsam::Vector &q) const;
+  std::vector<gtsam::Pose3> jTis(const gtsam::Vector &q) const;
 
   /** Build factor graph for RR manipulator forward dynamics.
    * Keyword arguments:
