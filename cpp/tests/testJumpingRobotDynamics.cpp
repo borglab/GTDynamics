@@ -1,7 +1,7 @@
 /**
  * @file testJumpingRobotDynamics.cpp
- * @brief test forward dynamics of robotic manipulator with closed kinematic
- * loop
+ * @brief test jumping robot (planner robot with 5 links), actuated on the 2
+ * shoulder joints and 2 elbow joints loop
  * @Author: Yetong Zhang
  */
 
@@ -79,7 +79,6 @@ Arm<URDF_Link> getRobot() {
 }
 auto robot = getRobot();
 auto dof = robot.numLinks() + 1;
-// required joint acceleration and applied torque at Inverse Dynamics
 Vector qAccel_ID = Vector::Zero(dof);
 Vector torque_ID = Vector::Zero(dof);
 }  // namespace example
@@ -109,8 +108,9 @@ TEST(JumpingRobot, forward_dynamics) {
 
   auto expected_accelerations = Vector(6);
   double acc =
-      (torque3 - torque2 * 2 - (0.5 * example::m1 + 1.5 * example::m2 + 1.0 * example::m3) *
-                     9.8 * example::l * std::sin(theta)) /
+      (torque3 - torque2 * 2 -
+       (0.5 * example::m1 + 1.5 * example::m2 + 1.0 * example::m3) * 9.8 *
+           example::l * std::sin(theta)) /
       (std::pow(example::l, 2) *
            (1.0 / 4 * example::m1 +
             (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * example::m2 +
