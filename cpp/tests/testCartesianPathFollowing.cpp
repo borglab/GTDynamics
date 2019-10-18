@@ -30,9 +30,7 @@ vector<DH_Link> dh_rrr = {
             2, 0.3, 0.02, 0.2, 0.02, 50, 5)};
 }  // namespace example
 
-/**
- * Test circle path for DH_RRR manipulator
- */
+// Test circle path for DH_RRR manipulator
 TEST(MotionPlanner, rrr_link_square) {
   auto robot = Arm<DH_Link>(example::dh_rrr);
 
@@ -76,9 +74,7 @@ TEST(MotionPlanner, rrr_link_square) {
 #endif
 }
 
-/**
- * Test square path for DH_RRR manipulator
- */
+// Test square path for DH_RRR manipulator
 TEST(MotionPlanner, rrr_link_circle) {
   auto robot = Arm<DH_Link>(example::dh_rrr);
 

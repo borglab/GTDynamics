@@ -19,9 +19,7 @@ static const Vector6 ZERO6 = Vector6::Zero();
 DH_Link dh_link = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                           (Matrix(3, 3) << 0, 0, 0, 0, 1 / 6.0, 0, 0, 0, 1 / 6.0).finished());
 
-/**
- * Test factors for forward dynamics, middle link of stationary RRR example
- */
+// Test factors for forward dynamics, middle link of stationary RRR example
 TEST(Link, forward_factors) {
   // Create stationary state
   double v2 = 0;
@@ -47,9 +45,7 @@ TEST(Link, forward_factors) {
   EXPECT(assert_equal(factors.error(ground_truth), 0));
 }
 
-/**
- * Test factors for forward dynamics, middle link of stationary RRR example
- */
+// Test factors for forward dynamics, middle link of stationary RRR example
 TEST(Link, inverse_factors) {
   // Create stationary state
   double v2 = 0;

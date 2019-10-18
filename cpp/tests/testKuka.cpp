@@ -32,9 +32,7 @@ TEST(ObstacleSDFFactorArm, data) {
   sdf = SignedDistanceField(origin, cell_size, field);
 }
 
-/**
- * Test motion planner for kuka manipulator
- */
+// Test motion planner for kuka manipulator
 TEST(MotionPlanner, urdf_kuka) {
   // KUKA example
   vector<URDF_Link> kuka = {

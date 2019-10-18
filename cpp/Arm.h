@@ -52,9 +52,7 @@ struct DynamicsFactorGraphInput {
         externalWrench(external_wrench) {}
 };
 
-/**
- * Robotic arm of several links
- */
+/// Robotic arm of several link
 template <typename T>
 class Arm {
  private:
@@ -79,7 +77,7 @@ class Arm {
         base                    -- optional wT0 base frame in world frame
         tool                    -- optional tool frame in link N frame
         loopScrewAxis           -- screw axis for loop joint expressed
-                                   in last link frame
+                                   in base frame
         isLoopJointActuated     -- specifiy if loop joint is actuated
         loopSpringCoefficient   -- joint spring coefficient
         loopDampingCoefficient  -- joint damping coefficient
@@ -90,37 +88,37 @@ class Arm {
       bool isLoopJointActuated = true, double loopSpringCoefficient = 0,
       double loopDampingCoefficient = 0);
 
-  // return loop joint screw axis
+  /// return loop joint screw axis
   const gtsam::Vector6 &loopScrewAxis() const { return loopScrewAxis_; }
 
-  // return if loop joint is actuated
+  /// return if loop joint is actuated
   bool isLoopJointActuated() const { return isLoopJointActuated_; }
 
-  // return loop springCoefficient
+  /// return loop springCoefficient
   double loopSpringCoefficient() const { return loopSpringCoefficient_; }
 
-  // return loop dampingCoefficient
+  /// return loop dampingCoefficient
   double loopDampingCoefficient() const { return loopDampingCoefficient_; }
 
-  /* Return base pose in world frame */
+  /// Return base pose in world frame
   const gtsam::Pose3 &base() const { return base_; }
 
-  /* Return tool pose in link N frame */
+  /// Return tool pose in link N frame
   const gtsam::Pose3 &tool() const { return tool_; }
 
-  /* Return number of *moving* links */
+  /// Return number of *moving* links
   int numLinks() const { return links_.size(); }
 
-  /* Return the ith link */
+  /// Return the ith link
   const T &link(int i) const { return links_[i]; }
 
-  /* Return all joint lower limits */
+  /// Return all joint lower limits
   gtsam::Vector jointLowerLimits() const;
 
-  /* Return all joint uppper limits */
+  /// Return all joint uppper limits
   gtsam::Vector jointUpperLimits() const;
 
-  /* Return all joint limit thresholds */
+  /// Return all joint limit thresholds
   gtsam::Vector jointLimitThresholds() const;
 
   /** Calculate link transforms for all links
@@ -166,7 +164,7 @@ class Arm {
   /* Return screw axes for all joints, expressed in their COM frame. */
   std::vector<gtsam::Vector6> screwAxes() const { return screwAxes_; }
 
-  /* Return screw axes for all joints at rest configuration, expressed in world
+  /** Return screw axes for all joints at rest configuration, expressed in world
    * frame.
    */
   std::vector<gtsam::Vector6> spatialScrewAxes() const;
@@ -190,7 +188,7 @@ class Arm {
 
   /** Calculate velocity twists for all joints, expressed in their COM frame.
    * Keyword arguments:
-   *   Ts               -- link's center of mass frame 
+   *   Ts               -- link's center of mass frame
    *                       expressed in the world frame
    *   joint_vecocities -- joint angular velocities (in rad/s)
    */
@@ -198,15 +196,19 @@ class Arm {
       const std::vector<gtsam::Pose3> &Ts,
       const gtsam::Vector &joint_velocities) const;
 
-  /** Calculate list of transforms from COM frame j-1 relative to COM j.
+  /** Calculate transforms from COM frame j-1 relative to COM j.
    * Keyword arguments:
    *     q -- joint angles (in rad).
-   *  Returns list of transforms, 2 more than number of links:
+   *  Returns vector of transforms, 2 more than number of links:
    *      - first transform is bT1, i.e. base expressed in link 1
-   *      - last transform is tTnc, i.e., link N COM frame expressed in tool
-   *        frame
+   *        If this is a chain,
+   *      - last transform is tTnc, i.e., link N COM frame
+   *        expressed in tool frame
+   *        If this is a loop
+   *      - last transform is nTb, i.e., link N COM frame
+   *        expressed in base frame
    */
-  std::vector<gtsam::Pose3> jTi_list(const gtsam::Vector &q) const;
+  std::vector<gtsam::Pose3> jTis(const gtsam::Vector &q) const;
 
   /** Build factor graph for RR manipulator forward dynamics.
    * Keyword arguments:
@@ -219,8 +221,9 @@ class Arm {
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  /// forward dyanmics factor graph with base and tool wrench unary factors
-  /// reduced
+  /** forward dyanmics factor graph with base and tool wrench unary factors
+   *  reduced
+   */
   gtsam::GaussianFactorGraph reducedForwardDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -247,8 +250,9 @@ class Arm {
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  /// inverse dyanmics factor graph with base and tool wrench unary factors
-  /// reduced
+  /** inverse dyanmics factor graph with base and tool wrench unary factors
+   *  reduced
+   */
   gtsam::GaussianFactorGraph reducedInverseDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
@@ -275,18 +279,19 @@ class Arm {
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  /// hybrid dyanmics factor graph with base and tool wrench unary factors
-  /// reduced
+  /** hybrid dyanmics factor graph with base and tool wrench unary factors
+   *  reduced
+   */
   gtsam::GaussianFactorGraph reducedHybridDynamicsFactorGraph(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
-  /* Extract joint accelerations for all joints from gtsam::VectorValues. */
+  /// Extract joint accelerations for all joints from gtsam::VectorValues. 
   gtsam::Vector extractJointAcceleraions(
       const gtsam::VectorValues &result,
       boost::optional<int &> N = boost::none) const;
 
-  /* Extract torques for all joints from gtsam::VectorValues. */
+  /// Extract torques for all joints from gtsam::VectorValues. 
   gtsam::Vector extractTorques(const gtsam::VectorValues &result,
                                boost::optional<int &> N = boost::none) const;
 
@@ -303,15 +308,15 @@ class Arm {
       const gtsam::GaussianFactorGraph &dynamics_factor_graph) const;
 
   /** Calculate joint accelerations from manipulator state and torques.
-          See forwardDynamicsFactorGraph for input arguments.
-  */
+   * See forwardDynamicsFactorGraph for input arguments.
+   */
   gtsam::Vector forwardDynamics(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
 
   /** Calculate joint accelerations from manipulator state and torques.
-          See inverseDynamicsFactorGraph for input arguments.
-  */
+   *  See inverseDynamicsFactorGraph for input arguments.
+   */
   gtsam::Vector inverseDynamics(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
       boost::optional<gtsam::Vector3 &> gravity = boost::none) const;

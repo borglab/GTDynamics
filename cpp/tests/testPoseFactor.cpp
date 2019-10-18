@@ -32,9 +32,7 @@ Key pose_i_key = Symbol('p', 1), pose_j_key = Symbol('p', 2),
     qKey = Symbol('q', 0);
 }  // namespace example
 
-/**
- * Test twist factor for stationary case
- */
+// Test twist factor for stationary case
 TEST(PoseFactor, error) {
   // create functor
   Pose3 jMi = Pose3(Rot3(), Point3(-2, 0, 0));
@@ -67,9 +65,7 @@ TEST(PoseFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test breaking case
- */
+// Test breaking case
 TEST(PoseFactor, breaking) {
   // create functor
   Pose3 jMi = Pose3(Rot3(), Point3(-2, 0, 0));
@@ -92,9 +88,7 @@ TEST(PoseFactor, breaking) {
   EXPECT(assert_equal(pose_j, predictPose(pose_i, jointAngle), 1e-6));
 }
 
-/**
- * Test breaking case for rr link
- */
+// Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
   // RR link example
   vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
@@ -106,7 +100,7 @@ TEST(PoseFactor, breaking_rr) {
   auto dof = robot.numLinks();
 
   // get robot jTi list at rest
-  auto jMi = robot.jTi_list(Vector::Zero(dof));
+  auto jMi = robot.jTis(Vector::Zero(dof));
   // get base pose in world frame
   auto basePose = robot.base();
   // get robot screwAxes for all links

@@ -187,27 +187,27 @@ TEST(Arm, DH_RR) {
       assert_equal(actual_joint_coordinates, expected_joint_coordinates, 1e-6));
   /* ================================================================= */
 
-  /* ========================= test jTi_list ========================= */
+  /* ========================= test jTis ========================= */
   // Check zero joint angles
-  auto jTi_list = robot.jTi_list(QZ);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  auto jTis = robot.jTis(QZ);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(Rot3(), Point3(-1, 0, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(Rot3(), Point3(-2, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
 
   // Check vertical configuration
-  jTi_list = robot.jTi_list(Q1);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(R90.inverse(), Point3(-1, 0, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  jTis = robot.jTis(Q1);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(R90.inverse(), Point3(-1, 0, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(Rot3(), Point3(-2, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
 
   // Check double back configuration
-  jTi_list = robot.jTi_list(Q2);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(Rot3(), Point3(-1, 0, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(R180, Point3(0, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  jTis = robot.jTis(Q2);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(Rot3(), Point3(-1, 0, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(R180, Point3(0, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
   /* ================================================================= */
 
   /* ========================== test twists ========================== */
@@ -500,27 +500,27 @@ TEST(Arm, URDF_RR) {
   EXPECT(assert_equal(screw_axes[1], AXIS));
   /* ================================================================= */
 
-  /* ========================= test jTi_list ========================= */
+  /* ========================= test jTis ========================= */
   // Check zero joint angles
-  auto jTi_list = robot.jTi_list(QZ);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  auto jTis = robot.jTis(QZ);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(Rot3(), Point3(-3, 0, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(Rot3(), Point3(-2, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
 
   // Check vertical configuration
-  jTi_list = robot.jTi_list(Q1);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(R90.inverse(), Point3(-1, 2, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(Rot3(), Point3(-2, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  jTis = robot.jTis(Q1);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(R90.inverse(), Point3(-1, 2, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(Rot3(), Point3(-2, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
 
   // Check double back configuration
-  jTi_list = robot.jTi_list(Q2);
-  EXPECT(assert_equal(jTi_list.size(), 3));
-  EXPECT(assert_equal(jTi_list[0], Pose3(Rot3(), Point3(-3, 0, 0))));
-  EXPECT(assert_equal(jTi_list[1], Pose3(R180, Point3(0, 0, 0))));
-  EXPECT(assert_equal(jTi_list[2], Pose3(Rot3(), Point3(-1, 0, 0))));
+  jTis = robot.jTis(Q2);
+  EXPECT(assert_equal(jTis.size(), 3));
+  EXPECT(assert_equal(jTis[0], Pose3(Rot3(), Point3(-3, 0, 0))));
+  EXPECT(assert_equal(jTis[1], Pose3(R180, Point3(0, 0, 0))));
+  EXPECT(assert_equal(jTis[2], Pose3(Rot3(), Point3(-1, 0, 0))));
   /* ================================================================= */
 
   /* ========================== test twists ========================== */

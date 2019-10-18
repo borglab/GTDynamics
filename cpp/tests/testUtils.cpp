@@ -15,9 +15,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test unit_twist function
- */
+// Test unit_twist function
 TEST(utils, unit_twist) {
   Vector3 w(0, 0, 1);
   Vector3 p(1, 0, 0);
@@ -26,9 +24,7 @@ TEST(utils, unit_twist) {
   EXPECT(assert_equal(expected_twist, actual_twist, 1e-6));
 }
 
-/**
- * Test calculate system transition matrix for GP
- */
+// Test calculate system transition matrix for GP
 TEST(utils, calcPhi) {
   double t = 0.1;
   Matrix expected_phi =
@@ -37,9 +33,7 @@ TEST(utils, calcPhi) {
   EXPECT(assert_equal(expected_phi, actual_phi, 1e-6));
 }
 
-/**
- * Test calculate covariance matrix for GP
- */
+// Test calculate covariance matrix for GP
 TEST(utils, calcQ) {
   double t = 0.1;
   Matrix Qc = I_6x6;
@@ -55,9 +49,7 @@ TEST(utils, calcQ) {
   EXPECT(assert_equal(expected_Q, actual_Q, 1e-6));
 }
 
-/**
- * Test readFromTxt
- */
+// Test readFromTxt
 TEST(utils, readFromTxt) {
   Point3 expected_origin(-1, -1, -1), actual_origin;
   double expected_cell_size = 0.01, actual_cell_size;

@@ -24,9 +24,7 @@ using namespace std;
 using namespace gtsam;
 using namespace manipulator;
 
-/**
- * Test joint limit vector factor
- */
+// Test joint limit vector factor
 TEST(JointLimitVectorFactor, error) {
   // Create all factors
   // nosie model
@@ -68,9 +66,7 @@ TEST(JointLimitVectorFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test joint limit vector factor graph optimization
- */
+// Test joint limit vector factor graph optimization
 TEST(JointLimitVectorFactor, optimaization) {
   // settings
   noiseModel::Gaussian::shared_ptr cost_model =

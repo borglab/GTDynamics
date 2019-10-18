@@ -36,9 +36,7 @@ Key qKey = Symbol('q', 0), qVelKey = Symbol('j', 0), qAccelKey = Symbol('a', 0),
     twistAccel_j_key = Symbol('T', 1);
 }  // namespace example
 
-/**
- * Test twistAccel factor for stationary case
- */
+// Test twistAccel factor for stationary case
 TEST(TwistAccelFactor, error) {
   // Create all factors
   Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
@@ -73,9 +71,7 @@ TEST(TwistAccelFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test twistAccel factor for stationary case
- */
+// Test twistAccel factor for stationary case
 TEST(TwistAccelFactor, error_1) {
   // Create all factors
   Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));

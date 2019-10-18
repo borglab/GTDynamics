@@ -30,9 +30,7 @@ noiseModel::Gaussian::shared_ptr cost_model =
 Key pose_key = Symbol('p', 1);
 }  // namespace example
 
-/**
- * Test twist factor for stationary case
- */
+// Test twist factor for stationary case
 TEST(BasePoseFactor, error) {
   // Create factor
   Pose3 base_pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));

@@ -33,9 +33,7 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
     wrench_j_key = Symbol('W', 1), pKey = Symbol('p', 1);
 }  // namespace example
 
-/**
- * Test wrench factor for gravity compensation and non-zero twist case
- */
+// Test wrench factor for gravity compensation and non-zero twist case
 TEST(ToolWrenchFactor, error_1) {
   // Create all factors
   Pose3 tTn = Pose3(Rot3(), Point3(-1, 0, 0));
@@ -68,9 +66,7 @@ TEST(ToolWrenchFactor, error_1) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test wrench factor with gravity
- */
+// Test wrench factor with gravity
 TEST(ToolWrenchFactor, error_2) {
   // Create all factors
   Pose3 tTn = Pose3(Rot3(), Point3(-1, 0, 0));

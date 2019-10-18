@@ -49,9 +49,7 @@ Vector torque_ID = Vector::Zero(dof + 1);
 }  // namespace example
 
 /* ************************************************************************* */
-/**
- * Test inverse dynamics with gravity in y direction
- */
+// Test inverse dynamics with gravity in y direction
 TEST(ID_factor_graph, gravity_y) {
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),
@@ -70,16 +68,14 @@ TEST(ID_factor_graph, gravity_y) {
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
   Vector expected_qTorque = Vector::Zero(example::dof + 1);
-  expected_qTorque << -15.3492717, -7.49532381e-17, 2.37320893e-17, 1.52357895e-16, -30.8287271;
+  expected_qTorque << -15.3492717, 0, 0, 0, -19.9866815;
   EXPECT(assert_equal(expected_qTorque, actual_qTorque, 10e-6));
   example::torque_ID = actual_qTorque;
   example::qAccel_ID = known_qAccel;
 }
 
 /* ************************************************************************* */
-/**
- * Test forward dynamics with gravity in y direction
- */
+// Test forward dynamics with gravity in y direction
 TEST(FD_factor_graph, gravity_y) {
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),
@@ -103,9 +99,7 @@ TEST(FD_factor_graph, gravity_y) {
 }
 
 /* ************************************************************************* */
-/**
- * Test inverse dynamics with gravity in x direction
- */
+// Test inverse dynamics with gravity in x direction
 TEST(ID_factor_graph, gravity_x) {
   Vector3 gravity = (Vector(3) << 9.8, 0, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),
@@ -122,16 +116,14 @@ TEST(ID_factor_graph, gravity_x) {
   int N = example::dof+1;
   auto actual_qTorque = example::robot.extractTorques(result, N);
   Vector expected_qTorque = Vector::Zero(example::dof + 1);
-  expected_qTorque << 32.2696392, 6.30340537e-32, 2.77081645e-16, 0, -4.50611469;
+  expected_qTorque << 32.2696392, 0, 0, 0, -2.67740979;
   EXPECT(assert_equal(expected_qTorque, actual_qTorque, 10e-6));
   example::torque_ID = actual_qTorque;
   example::qAccel_ID = known_qAccel;
 }
 
 /* ************************************************************************* */
-/**
- * Test forward dynamics with gravity in x direction
- */
+// Test forward dynamics with gravity in x direction
 TEST(FD_factor_graph, gravity_x) {
   Vector3 gravity = (Vector(3) << 9.8, 0, 0).finished();
   Vector known_q = Vector::Zero(example::dof + 1),

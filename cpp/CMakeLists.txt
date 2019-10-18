@@ -14,3 +14,4 @@ set_target_properties(dynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 # Process subdirs
 add_subdirectory(tests)
+add_subdirectory(scripts)
