@@ -258,21 +258,19 @@ GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
   vector<Pose3> jTisVec = jTis(q);
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
 
   int j = 0;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].forwardFactors(j, jTisVec[i], joint_velocities[i],
-                                             twists_vec[i], torques[i], jTisVec[j],
-                                             g_in_body));
-    } else {
-      gfg.push_back(links_[i].forwardFactors(j, jTisVec[i], joint_velocities[i],
-                                             twists_vec[i], torques[i], jTisVec[j],
-                                             gravity));
-    }
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].forwardFactors(j, jTisVec[i], joint_velocities[i],
+                                           twists_vec[i], torques[i],
+                                           jTisVec[j], b_gravity));
   }
   // Add factor to enforce external wrench at tool
   gfg.push_back(Link::ToolWrenchFactor(N, external_wrench));
@@ -308,31 +306,25 @@ GaussianFactorGraph Arm<T>::reducedForwardDynamicsFactorGraph(
   gfg.push_back(links_[0].firstTwistAccelFactor(base_twist_accel, jTisVec[0],
       joint_velocities[0], twists_vec[0]));
 
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
+
   int j = 0;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].reducedForwardFactors(j, N, jTisVec[i], joint_velocities[i],
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].reducedForwardFactors(j, N, jTisVec[i], joint_velocities[i],
                                              twists_vec[i], torques[i], jTisVec[j],
-                                             g_in_body));
-    } else {
-      gfg.push_back(links_[i].reducedForwardFactors(j, N, jTisVec[i], joint_velocities[i],
-                                             twists_vec[i], torques[i], jTisVec[j],
-                                             gravity));
-    }
+                                             b_gravity));
   }
   // Add factor to enforce external wrench at tool
-  auto jRw = Ts[N-1].rotation().inverse();
-  if (gravity) {
-    auto g_in_body = jRw * (*gravity);
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], g_in_body));
-  } else {
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], gravity));
-  }
+  auto bRw = Ts[N-1].rotation().inverse();
+  b_gravity = bRw * w_gravity;
+  gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTisVec[N], b_gravity));
 
   return gfg;
 }
@@ -360,24 +352,24 @@ GaussianFactorGraph Arm<T>::closedLoopForwardDynamicsFactorGraph(
   // joint angle
   vector<Pose3> jTisVec = jTis(q);
 
-  Vector3 g_in_space = Vector3::Zero(), g_in_body;
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
   if (gravity) {
-    g_in_space = *gravity;
+    w_gravity = *gravity;
   }
 
   int j = 0;
   double jointTorque;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    g_in_body = jRw * g_in_space;
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
     // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
     jointTorque = torques[i] +
                   links_[i].dampingCoefficient() * joint_velocities[i] +
                   links_[i].springCoefficient() * q[i];
     gfg.push_back(links_[i].forwardFactors(j, jTisVec[i], joint_velocities[i],
                                            twists_vec[i], jointTorque, jTisVec[j],
-                                           g_in_body));
+                                           b_gravity));
   }
   // Add loop factor to enforce kinematic loop
   // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
@@ -414,21 +406,19 @@ GaussianFactorGraph Arm<T>::inverseDynamicsFactorGraph(
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
   vector<Pose3> jTisVec = jTis(q);
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
 
   int j = 0;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
       gfg.push_back(links_[i].inverseFactors(
           j, jTisVec[i], joint_velocities[i], twists_vec[i],
-          joint_accelerations[i], jTisVec[j], g_in_body));
-    } else {
-      gfg.push_back(links_[i].inverseFactors(
-          j, jTisVec[i], joint_velocities[i], twists_vec[i],
-          joint_accelerations[i], jTisVec[j], gravity));
-    }
+          joint_accelerations[i], jTisVec[j], b_gravity));
   }
   // Add factor to enforce external wrench at tool
   gfg.push_back(Link::ToolWrenchFactor(N, external_wrench));
@@ -463,31 +453,24 @@ GaussianFactorGraph Arm<T>::reducedInverseDynamicsFactorGraph(
   gfg.push_back(links_[0].firstTwistAccelFactor(base_twist_accel, jTisVec[0],
       joint_velocities[0], twists_vec[0], joint_accelerations[0]));
 
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
   int j = 0;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].reducedInverseFactors(
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].reducedInverseFactors(
           j, N, jTisVec[i], joint_velocities[i], twists_vec[i],
-          joint_accelerations[i], jTisVec[j], g_in_body));
-    } else {
-      gfg.push_back(links_[i].reducedInverseFactors(
-          j, N, jTisVec[i], joint_velocities[i], twists_vec[i],
-          joint_accelerations[i], jTisVec[j], gravity));
-    }
+          joint_accelerations[i], jTisVec[j], b_gravity));
   }
   // Add factor to enforce external wrench at tool
-  auto jRw = Ts[N-1].rotation().inverse();
-  if (gravity) {
-    auto g_in_body = jRw * (*gravity);
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], g_in_body));
-  } else {
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], gravity));
-  }
+  auto bRw = Ts[N-1].rotation().inverse();
+  b_gravity = bRw * w_gravity;
+  gfg.push_back(links_[N - 1].lastWrenchFactor(
+      external_wrench, N, twists_vec[N - 1], jTisVec[N], b_gravity));
 
   return gfg;
 }
@@ -514,17 +497,17 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
   vector<Pose3> jTisVec = jTis(q);
-  Vector3 g_in_space = Vector3::Zero(), g_in_body;
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
   if (gravity) {
-    g_in_space = *gravity;
+    w_gravity = *gravity;
   }
 
   int j = 0;
   double jointTorque;
   for (int i = 0; i < N; ++i) {
     j = i + 1;
-    auto jRw = Ts[i].rotation().inverse();
-    g_in_body = jRw * g_in_space;
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
 
     // damping torque = dampingCoefficient * joint_velocity + springCoefficient * jointAngle
     jointTorque = links_[i].dampingCoefficient() * joint_velocities[i] + links_[i].springCoefficient() * q[i];
@@ -535,7 +518,7 @@ GaussianFactorGraph Arm<T>::closedLoopInverseDynamicsFactorGraph(
 
     gfg.push_back(links_[i].inverseFactors(
         j, jTisVec[i], joint_velocities[i], twists_vec[i], joint_accelerations[i],
-        jTisVec[j], g_in_body, jointTorque));
+        jTisVec[j], b_gravity, jointTorque));
   }
 
   jointTorque = loopDampingCoefficient() * joint_velocities[N] + loopSpringCoefficient() * q[N];
@@ -575,35 +558,27 @@ GaussianFactorGraph Arm<T>::hybridDynamicsFactorGraph(
   // Configuration of link frame j-1 relative to link frame j for arbitrary
   // joint angle
   vector<Pose3> jTisVec = jTis(q);
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
   for (map_iter it = joint_accelerations.begin();
        it != joint_accelerations.end(); ++it) {
     int i = it->first;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].inverseFactors(
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].inverseFactors(
           i + 1, jTisVec[i], joint_velocities[i], twists_vec[i],
-          it->second, jTisVec[i + 1], g_in_body));
-    } else {
-      gfg.push_back(links_[i].inverseFactors(
-          i + 1, jTisVec[i], joint_velocities[i], twists_vec[i],
-          it->second, jTisVec[i + 1], gravity));
-    }
+          it->second, jTisVec[i + 1], b_gravity));
   }
 
   for (map_iter it = torques.begin(); it != torques.end(); ++it) {
     int i = it->first;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].forwardFactors(
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].forwardFactors(
           i + 1, jTisVec[i], joint_velocities[i], twists_vec[i], it->second,
-          jTisVec[i + 1], g_in_body));
-    } else {
-      gfg.push_back(links_[i].forwardFactors(i + 1, jTisVec[i],
-                                             joint_velocities[i], twists_vec[i],
-                                             it->second, jTisVec[i + 1], gravity));
-    }
+          jTisVec[i + 1], b_gravity));
   }
 
   // Add factor to enforce external wrench at tool
@@ -645,47 +620,34 @@ GaussianFactorGraph Arm<T>::reducedHybridDynamicsFactorGraph(
         base_twist_accel, jTisVec[0], joint_velocities[0], twists_vec[0]));
   }
   
+  Vector3 w_gravity = Vector3::Zero(), b_gravity;
+  if (gravity) {
+    w_gravity = *gravity;
+  }
   for (map_iter it = joint_accelerations.begin();
        it != joint_accelerations.end(); ++it) {
     int i = it->first;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].reducedInverseFactors(
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].reducedInverseFactors(
           i + 1, N, jTisVec[i], joint_velocities[i], twists_vec[i],
-          it->second, jTisVec[i + 1], g_in_body));
-    } else {
-      gfg.push_back(links_[i].reducedInverseFactors(
-          i + 1, N, jTisVec[i], joint_velocities[i], twists_vec[i],
-          it->second, jTisVec[i + 1], gravity));
-    }
+          it->second, jTisVec[i + 1], b_gravity));
   }
 
   for (map_iter it = torques.begin(); it != torques.end(); ++it) {
     int i = it->first;
-    auto jRw = Ts[i].rotation().inverse();
-    if (gravity) {
-      auto g_in_body = jRw * (*gravity);
-      gfg.push_back(links_[i].reducedForwardFactors(
+    auto bRw = Ts[i].rotation().inverse();
+    b_gravity = bRw * w_gravity;
+    gfg.push_back(links_[i].reducedForwardFactors(
           i + 1, N, jTisVec[i], joint_velocities[i], twists_vec[i], it->second,
-          jTisVec[i + 1], g_in_body));
-    } else {
-      gfg.push_back(links_[i].reducedForwardFactors(i + 1, N, jTisVec[i],
-                                             joint_velocities[i], twists_vec[i],
-                                             it->second, jTisVec[i + 1], gravity));
-    }
+          jTisVec[i + 1], b_gravity));
   }
 
   // Add factor to enforce external wrench at tool
-  auto jRw = Ts[N-1].rotation().inverse();
-  if (gravity) {
-    auto g_in_body = jRw * (*gravity);
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], g_in_body));
-  } else {
-    gfg.push_back(links_[N - 1].lastWrenchFactor(
-        external_wrench, N, twists_vec[N - 1], jTisVec[N], gravity));
-  }
+  auto bRw = Ts[N-1].rotation().inverse();
+  b_gravity = bRw * w_gravity;
+  gfg.push_back(links_[N - 1].lastWrenchFactor(
+        external_wrench, N, twists_vec[N - 1], jTisVec[N], b_gravity));
 
   return gfg;
 }
