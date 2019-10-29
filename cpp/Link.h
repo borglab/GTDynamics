@@ -141,6 +141,20 @@ class Link {
         torqueLimit_(torque_limit),
         torqueLimitThreshold_(torque_limit_threshold) {}
 
+  /// @name Testable
+  /// @{
+
+  /** print with optional string */
+  GTSAM_EXPORT void print(const std::string &s = "") const {
+      // TODO(manxie): complete and move to .cpp
+      std::cout << s << "DH_Link " << jointType_ << std::endl;
+  }
+
+  /** equals with an tolerance */
+  // GTSAM_EXPORT bool equals(const Point3 &p, double tol = 1e-9) const;
+
+  /// @}
+
   /* Return screw axis. */
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
 
