@@ -1,6 +1,3 @@
-class gtsam::Vector6;
-class gtsam::Vector3;
-class gtsam::Matrix6;
 class gtsam::Pose3;
 class gtsam::Point3;
 class gtsam::JacobianFactor;
@@ -16,10 +13,10 @@ namespace manipulator {
 
 virtual class Link {
   Link(size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
-       const Matrix& inertia, const gtsam::Vector6& screwAxis);
+       Matrix inertia, Vector screwAxis);
 
   Link(size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
-       const Matrix& inertia, const gtsam::Vector6& screwAxis,
+       Matrix inertia, Vector screwAxis,
        double joint_lower_limit, double joint_upper_limit,
        double joint_limit_threshold, double velocity_limit,
        double velocity_limit_threshold, double acceleration_limit,
@@ -27,10 +24,10 @@ virtual class Link {
        double torque_limit_threshold);
 
   Link(size_t joint_type, double mass, const gtsam::Point3& center_of_mass,
-       const Matrix& inertia, const gtsam::Vector6& screwAxis);
+       Matrix inertia, Vector screwAxis);
 
   Link(size_t joint_type, double mass, const gtsam::Point3& center_of_mass,
-       const Matrix& inertia, const gtsam::Vector6& screwAxis,
+       Matrix inertia, Vector screwAxis,
        double joint_lower_limit, double joint_upper_limit,
        double joint_limit_threshold, double velocity_limit,
        double velocity_limit_threshold, double acceleration_limit,
@@ -40,12 +37,12 @@ virtual class Link {
   // Testable
   void print(string s) const;
 
-  gtsam::Vector6 screwAxis() const;
+  Vector screwAxis() const;
   Matrix inertia() const;
   double mass() const;
   gtsam::Pose3 centerOfMass() const;
 
-  gtsam::Matrix6 inertiaMatrix() const;
+  Matrix inertiaMatrix() const;
 
   double jointLowerLimit() const;
 
@@ -68,40 +65,40 @@ virtual class Link {
   gtsam::Pose3 linkTransform(double q) const;
 
   static gtsam::JacobianFactor* BaseTwistAccelFactor(
-      const gtsam::Vector6& base_twist_accel);
+      Vector base_twist_accel);
 
   static gtsam::JacobianFactor* ToolWrenchFactor(
-      int N, const gtsam::Vector6& external_wrench);
+      int N, Vector external_wrench);
 
   gtsam::JacobianFactor* twistFactor(
       int j, const gtsam::Pose3& jTi, double joint_vel_j) const;
 
   gtsam::JacobianFactor* wrenchFactor(
-      int j, const gtsam::Vector6& twist_j, const gtsam::Pose3& kTj) const;
+      int j, Vector twist_j, const gtsam::Pose3& kTj) const;
   
-  gtsam::JacobianFactor* wrenchFactor(
-      int j, const gtsam::Vector6& twist_j, const gtsam::Pose3& kTj,
-      gtsam::Vector3& gravity) const;
+//   gtsam::JacobianFactor* wrenchFactor(
+//       int j, Vector twist_j, const gtsam::Pose3& kTj,
+//       Vector gravity) const;
 
   gtsam::GaussianFactorGraph forwardFactors(
       int j, const gtsam::Pose3& jTi, double joint_vel_j,
-      const gtsam::Vector6& twist_j, double torque_j, const gtsam::Pose3& kTj) const;
+      Vector twist_j, double torque_j, const gtsam::Pose3& kTj) const;
 
-    gtsam::GaussianFactorGraph forwardFactors(
-      int j, const gtsam::Pose3& jTi, double joint_vel_j,
-      const gtsam::Vector6& twist_j, double torque_j, const gtsam::Pose3& kTj,
-      gtsam::Vector3& gravity) const;
+    // gtsam::GaussianFactorGraph forwardFactors(
+    //   int j, const gtsam::Pose3& jTi, double joint_vel_j,
+    //   Vector twist_j, double torque_j, const gtsam::Pose3& kTj,
+    //   Vector gravity) const;
 
   gtsam::GaussianFactorGraph inverseFactors(
       int j, const gtsam::Pose3& jTi, double joint_vel_j,
-      const gtsam::Vector6& twist_j, double acceleration_j,
+      Vector twist_j, double acceleration_j,
       const gtsam::Pose3& kTj) const;
 
-  gtsam::GaussianFactorGraph inverseFactors(
-      int j, const gtsam::Pose3& jTi, double joint_vel_j,
-      const gtsam::Vector6& twist_j, double acceleration_j,
-      const gtsam::Pose3& kTj,
-      gtsam::Vector3& gravity) const;
+//   gtsam::GaussianFactorGraph inverseFactors(
+//       int j, const gtsam::Pose3& jTi, double joint_vel_j,
+//       Vector twist_j, double acceleration_j,
+//       const gtsam::Pose3& kTj,
+//       Vector gravity) const;
 
 };
 
@@ -113,7 +110,7 @@ virtual class DH_Link : manipulator::Link {
 
   DH_Link(double theta, double d, double a, double alpha, size_t joint_type,
           double mass, const gtsam::Point3& center_of_mass,
-          const Matrix& inertia, double joint_lower_limit,
+          Matrix inertia, double joint_lower_limit,
           double joint_upper_limit, double joint_limit_threshold,
           double velocity_limit, double velocity_limit_threshold,
           double acceleration_limit,
@@ -124,9 +121,9 @@ virtual class DH_Link : manipulator::Link {
 };
 
 virtual class URDF_Link : manipulator::Link {
-  URDF_Link(const gtsam::Pose3& origin, const gtsam::Vector3& axis,
+  URDF_Link(const gtsam::Pose3& origin, Vector axis,
             size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
-            const Matrix& inertia, double joint_lower_limit,
+            Matrix inertia, double joint_lower_limit,
             double joint_upper_limit, double joint_limit_threshold,
             double velocity_limit,
             double velocity_limit_threshold,
@@ -141,9 +138,9 @@ virtual class URDF_Link : manipulator::Link {
 virtual class JointLimitVectorFactor : gtsam::NoiseModelFactor {
   JointLimitVectorFactor(gtsam::Key pose_key,
                          const gtsam::noiseModel::Base* cost_model,
-                         const Vector& lower_limits,
-                         const Vector& upper_limits,
-                         const Vector& limit_thresholds);        
+                         Vector lower_limits,
+                         Vector upper_limits,
+                         Vector limit_thresholds);        
 };
 
 // TODO: add constructor to this class after fixing the std::vector problem.
@@ -166,62 +163,62 @@ virtual class Arm {
   Vector jointLimitThresholds() const;
 
 // //   std::vector<gtsam::Pose3> linkTransforms(
-// //       const Vector& q = Vector::Zero(1)) const;
+// //       Vector q = Vector::Zero(1)) const;
 
 // //   std::vector<gtsam::Pose3> forwardKinematics(
-// //       const Vector& q,
+// //       Vector q,
 // //       boost::optional<std::vector<gtsam::Matrix>& > J = boost::none) const;
 
 // //   std::vector<gtsam::Pose3> linkFrames(
-// //       const Vector& q = Vector::Zero(1)) const;
+// //       Vector q = Vector::Zero(1)) const;
 
 // //   std::vector<gtsam::Pose3> comFrames(
-// //       const Vector& q = Vector::Zero(1)) const;
+// //       Vector q = Vector::Zero(1)) const;
 
 // //   std::vector<gtsam::Pose3> transformPOE(
-// //       const Vector& q = Vector::Zero(1)) const;
+// //       Vector q = Vector::Zero(1)) const;
 
-// //   std::vector<gtsam::Vector6> screwAxes() const { return screwAxes_; }
+// //   std::vector<Vector> screwAxes() const { return screwAxes_; }
 
-// //   std::vector<gtsam::Vector6> spatialScrewAxes() const;
+// //   std::vector<Vector> spatialScrewAxes() const;
 
 // //   std::vector<gtsam::Matrix> spatialManipulatorJacobian(
-// //       const Vector& q) const;
+// //       Vector q) const;
 
 // //   std::vector<gtsam::Matrix> bodyManipulatorJacobian(
-// //       const Vector& q, const std::vector<gtsam::Pose3>& sTb) const;
+// //       Vector q, const std::vector<gtsam::Pose3>& sTb) const;
 
-// //   std::vector<gtsam::Vector6> twists(
+// //   std::vector<Vector> twists(
 // //       const std::vector<gtsam::Pose3>& Ts,
-// //       const Vector& joint_velocities) const;
+// //       Vector joint_velocities) const;
 
-// //   std::vector<gtsam::Pose3> jTi_list(const Vector& q) const;
-
-  gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& torques,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench) const;
+// //   std::vector<gtsam::Pose3> jTi_list(Vector q) const;
 
   gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& torques,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench,
-      gtsam::Vector3& gravity) const;
+      Vector q, Vector joint_velocities,
+      Vector torques,
+      Vector base_twist_accel,
+      Vector external_wrench) const;
+
+//   gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
+//       Vector q, Vector joint_velocities,
+//       Vector torques,
+//       Vector base_twist_accel,
+//       Vector external_wrench,
+//       Vector gravity) const;
 
   gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& joint_accelerations,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench) const;
+      Vector q, Vector joint_velocities,
+      Vector joint_accelerations,
+      Vector base_twist_accel,
+      Vector external_wrench) const;
 
-  gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& joint_accelerations,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench,
-      gtsam::Vector3& gravity) const;
+//   gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
+//       Vector q, Vector joint_velocities,
+//       Vector joint_accelerations,
+//       Vector base_twist_accel,
+//       Vector external_wrench,
+//       Vector gravity) const;
 
   Vector extractJointAcceleraions(
       const gtsam::VectorValues& result) const;
@@ -232,30 +229,30 @@ virtual class Arm {
       const gtsam::GaussianFactorGraph& dynamics_factor_graph) const;
 
   Vector forwardDynamics(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& torques,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench) const;
+      Vector q, Vector joint_velocities,
+      Vector torques,
+      Vector base_twist_accel,
+      Vector external_wrench) const;
 
-  Vector forwardDynamics(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& torques,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench,
-      gtsam::Vector3& gravity) const;
-
-  Vector inverseDynamics(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& joint_accelerations,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench) const;
+//   Vector forwardDynamics(
+//       Vector q, Vector joint_velocities,
+//       Vector torques,
+//       Vector base_twist_accel,
+//       Vector external_wrench,
+//       Vector gravity) const;
 
   Vector inverseDynamics(
-      const Vector& q, const Vector& joint_velocities,
-      const Vector& joint_accelerations,
-      const gtsam::Vector6& base_twist_accel,
-      const gtsam::Vector6& external_wrench,
-      gtsam::Vector3& gravity) const;
+      Vector q, Vector joint_velocities,
+      Vector joint_accelerations,
+      Vector base_twist_accel,
+      Vector external_wrench) const;
+
+//   Vector inverseDynamics(
+//       Vector q, Vector joint_velocities,
+//       Vector joint_accelerations,
+//       Vector base_twist_accel,
+//       Vector external_wrench,
+//       Vector gravity) const;
 
   manipulator::JointLimitVectorFactor jointLimitVectorFactor() const;
 
@@ -274,7 +271,7 @@ virtual class Arm {
       const gtsam::Values& init_values) const;
 
   Vector inverseKinematics(const gtsam::Pose3& goal_pose,
-                                  const Vector& init_q) const;
+                                  Vector init_q) const;
 };
 
 #include <DhArm.h>
@@ -315,14 +312,14 @@ virtual class BasePoseFactor : gtsam::NoiseModelFactor {
 virtual class BaseTwistAccelFactor : gtsam::NoiseModelFactor {   
     BaseTwistAccelFactor(gtsam::Key twistAccel_key_0,
                        const gtsam::noiseModel::Base* cost_model,
-                       const gtsam::Vector6& base_twistAccel);
+                       Vector base_twistAccel);
 };
 
 #include <BaseTwistFactor.h>
 virtual class BaseTwistFactor : gtsam::NoiseModelFactor {   
     BaseTwistFactor(gtsam::Key twist_key_0,
                   const gtsam::noiseModel::Base* cost_model,
-                  const gtsam::Vector6& base_twist);
+                  Vector base_twist);
 };
 
 #include <GaussianProcessPriorFactor.h>
@@ -360,7 +357,7 @@ virtual class JointLimitFactor : gtsam::NoiseModelFactor {
 virtual class PoseFactor : gtsam::NoiseModelFactor {   
     PoseFactor(gtsam::Key pose_key_i, gtsam::Key pose_key_j, gtsam::Key q_key,
              const gtsam::noiseModel::Base* cost_model,
-             const gtsam::Pose3& jMi, const gtsam::Vector6& screw_axis);
+             const gtsam::Pose3& jMi, Vector screw_axis);
 };
 
 #include <SignedDistanceField.h>
@@ -390,22 +387,22 @@ virtual class ToolWrenchFactor : gtsam::NoiseModelFactor {
     ToolWrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                    gtsam::Key wrench_key_j, gtsam::Key pose_key,
                    const gtsam::noiseModel::Base* cost_model,
-                   const gtsam::Pose3& tTn, const gtsam::Matrix6& inertia,
-                   const gtsam::Vector6& external_wrench);
+                   const gtsam::Pose3& tTn, Matrix inertia,
+                   Vector external_wrench);
 
-    ToolWrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                   gtsam::Key wrench_key_j, gtsam::Key pose_key,
-                   const gtsam::noiseModel::Base* cost_model,
-                   const gtsam::Pose3& tTn, const gtsam::Matrix6& inertia,
-                   const gtsam::Vector6& external_wrench,
-                   gtsam::Vector3& gravity);
+    // ToolWrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+    //                gtsam::Key wrench_key_j, gtsam::Key pose_key,
+    //                const gtsam::noiseModel::Base* cost_model,
+    //                const gtsam::Pose3& tTn, Matrix inertia,
+    //                Vector external_wrench,
+    //                Vector gravity);
 };
 
 #include <TorqueFactor.h>
 virtual class TorqueFactor : gtsam::NoiseModelFactor {   
     TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base* cost_model,
-               const gtsam::Vector6& screw_axis);
+               Vector screw_axis);
 };
 
 #include <TwistAccelFactor.h>
@@ -414,7 +411,7 @@ virtual class TwistAccelFactor : gtsam::NoiseModelFactor {
                    gtsam::Key twistAccel_key_j, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base* cost_model,
-                   const gtsam::Pose3& jMi, const gtsam::Vector6& screw_axis);
+                   const gtsam::Pose3& jMi, Vector screw_axis);
 };
 
 #include <TwistFactor.h>
@@ -422,7 +419,7 @@ virtual class TwistFactor : gtsam::NoiseModelFactor {
     TwistFactor(gtsam::Key twistI_key, gtsam::Key twistJ_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
               const gtsam::noiseModel::Base* cost_model,
-              const gtsam::Pose3& jMi, const gtsam::Vector6& screw_axis);
+              const gtsam::Pose3& jMi, Vector screw_axis);
 };
 
 #include <WrenchFactor.h>
@@ -431,16 +428,16 @@ virtual class WrenchFactor : gtsam::NoiseModelFactor {
                gtsam::Key wrench_key_j, gtsam::Key wrench_key_k,
                gtsam::Key pose_key, gtsam::Key q_key,
                const gtsam::noiseModel::Base* cost_model,
-               const gtsam::Pose3& kMj, const gtsam::Matrix6& inertia,
-               const gtsam::Vector6& screw_axis);
+               const gtsam::Pose3& kMj, Matrix inertia,
+               Vector screw_axis);
 
-    WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-               gtsam::Key wrench_key_j, gtsam::Key wrench_key_k,
-               gtsam::Key pose_key, gtsam::Key q_key,
-               const gtsam::noiseModel::Base* cost_model,
-               const gtsam::Pose3& kMj, const gtsam::Matrix6& inertia,
-               const gtsam::Vector6& screw_axis,
-               gtsam::Vector3& gravity);
+    // WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+    //            gtsam::Key wrench_key_j, gtsam::Key wrench_key_k,
+    //            gtsam::Key pose_key, gtsam::Key q_key,
+    //            const gtsam::noiseModel::Base* cost_model,
+    //            const gtsam::Pose3& kMj, Matrix inertia,
+    //            Vector screw_axis,
+    //            Vector gravity);
 };
 
 }
