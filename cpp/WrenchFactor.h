@@ -52,7 +52,7 @@ class WrenchFactor
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const gtsam::Pose3 &kMj, const gtsam::Matrix6 &inertia,
                const gtsam::Vector6 &screw_axis,
-               boost::optional<gtsam::Vector3 &> gravity = boost::none)
+               const boost::optional<gtsam::Vector3>& gravity = boost::none)
       : Base(cost_model, twist_key, twistAccel_key, wrench_key_j, wrench_key_k,
              pose_key, q_key),
         kMj_(kMj),

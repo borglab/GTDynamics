@@ -218,7 +218,7 @@ template <typename T>
 GaussianFactorGraph Arm<T>::forwardDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities, const Vector &torques,
     const Vector6 &base_twist_accel, const Vector6 &external_wrench,
-    boost::optional<Vector3 &> gravity) const {
+    const boost::optional<Vector3>& gravity) const {
   int N = numLinks();
   assert(q.size() == N);
   assert(joint_velocities.size() == N);
@@ -260,7 +260,7 @@ template <typename T>
 GaussianFactorGraph Arm<T>::inverseDynamicsFactorGraph(
     const Vector &q, const Vector &joint_velocities,
     const Vector &joint_accelerations, const Vector6 &base_twist_accel,
-    const Vector6 &external_wrench, boost::optional<Vector3 &> gravity) const {
+    const Vector6 &external_wrench, const boost::optional<Vector3>& gravity) const {
   int N = numLinks();
   assert(q.size() == N);
   assert(joint_velocities.size() == N);
@@ -329,7 +329,7 @@ Vector Arm<T>::forwardDynamics(const Vector &q, const Vector &joint_velocities,
                                const Vector &torques,
                                const Vector6 &base_twist_accel,
                                const Vector6 &external_wrench,
-                               boost::optional<Vector3 &> gravity) const {
+                               const boost::optional<Vector3>& gravity) const {
   GaussianFactorGraph factor_graph = forwardDynamicsFactorGraph(
       q, joint_velocities, torques, base_twist_accel, external_wrench, gravity);
   VectorValues result = factor_graph.optimize();
@@ -341,7 +341,7 @@ Vector Arm<T>::inverseDynamics(const Vector &q, const Vector &joint_velocities,
                                const Vector &joint_accelerations,
                                const Vector6 &base_twist_accel,
                                const Vector6 &external_wrench,
-                               boost::optional<Vector3 &> gravity) const {
+                               const boost::optional<Vector3>& gravity) const {
   GaussianFactorGraph factor_graph =
       inverseDynamicsFactorGraph(q, joint_velocities, joint_accelerations,
                                  base_twist_accel, external_wrench, gravity);

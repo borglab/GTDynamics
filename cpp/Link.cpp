@@ -52,7 +52,7 @@ boost::shared_ptr<JacobianFactor> Link::twistFactor(int j, const Pose3 &jTi,
 
 boost::shared_ptr<JacobianFactor>
 Link::wrenchFactor(int j, const Vector6 &twist_j, const Pose3 &kTj,
-                   boost::optional<Vector3 &> gravity) const {
+                   const boost::optional<Vector3>& gravity) const {
   // Wrench on this link is due to acceleration and reaction to next link.
   // We need inertia, coriolis forces, gravity, and an Adjoint map:
   Matrix6 ad_j = Pose3::adjointMap(twist_j);
@@ -78,7 +78,7 @@ Link::wrenchFactor(int j, const Vector6 &twist_j, const Pose3 &kTj,
 GaussianFactorGraph Link::forwardFactors(
     int j, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double torque_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    const boost::optional<Vector3>& gravity) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
 
   // Twist acceleration in this link as a function of previous and joint accel.
@@ -107,7 +107,7 @@ GaussianFactorGraph Link::forwardFactors(
 GaussianFactorGraph Link::inverseFactors(
     int j, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double acceleration_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    const boost::optional<Vector3>& gravity) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
 
   // Twist acceleration in this link as a function of previous and joint accel.

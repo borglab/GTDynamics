@@ -250,7 +250,7 @@ class Link {
    */
   boost::shared_ptr<gtsam::JacobianFactor> wrenchFactor(
       int j, const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /** Create all factors linking this links dynamics with previous and next
      link.
@@ -270,7 +270,7 @@ class Link {
   gtsam::GaussianFactorGraph forwardFactors(
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /** Create all factors linking this links dynamics with previous and next
      link.
@@ -291,7 +291,7 @@ class Link {
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
       const gtsam::Pose3 &kTj,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   virtual ~Link() = default;
 

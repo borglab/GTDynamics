@@ -164,7 +164,7 @@ class Arm {
       const gtsam::Vector &torques,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /** Build factor graph for RR manipulator inverse dynamics.
    * Keyword arguments:
@@ -182,7 +182,7 @@ class Arm {
       const gtsam::Vector &joint_accelerations,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /* Extract joint accelerations for all joints from gtsam::VectorValues. */
   gtsam::Vector extractJointAcceleraions(
@@ -211,7 +211,7 @@ class Arm {
       const gtsam::Vector &torques,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /** Calculate joint accelerations from manipulator state and torques.
           See idynamics_factor_graph for input arguments.
@@ -221,7 +221,7 @@ class Arm {
       const gtsam::Vector &joint_accelerations,
       const gtsam::Vector6 &base_twist_accel = gtsam::Vector6::Zero(),
       const gtsam::Vector6 &external_wrench = gtsam::Vector6::Zero(),
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
 
   /** joint limit vector factors
    * Returns joint limit factors.
