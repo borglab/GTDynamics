@@ -68,18 +68,6 @@ class URDF_Link : public Link {
         origin_(origin),
         axis_(axis) {}
 
-  /* Copy constructor */
-  URDF_Link(const URDF_Link &urdf_link)
-      : Link(urdf_link.jointType_, urdf_link.mass(), urdf_link.centerOfMass(),
-             urdf_link.inertia(), urdf_link.screwAxis(),
-             urdf_link.jointLowerLimit(), urdf_link.jointUpperLimit(),
-             urdf_link.jointLimitThreshold(), urdf_link.velocityLimit(),
-             urdf_link.velocityLimitThreshold(), urdf_link.accelerationLimit(),
-             urdf_link.accelerationLimitThreshold(), urdf_link.torqueLimit(),
-             urdf_link.torqueLimitThreshold()),
-        origin_(urdf_link.origin_),
-        axis_(urdf_link.axis_) {}
-
   /** Calculate link transform of current link with respect to previous link
   Keyword argument:
       q -- optional generalized joint angle (default 0)
@@ -98,7 +86,7 @@ class URDF_Link : public Link {
   double length() const { return origin_.translation().norm(); }
 
   /** Clone this URDF_Link */
-  virtual boost::shared_ptr<Link> clone() const {
+  boost::shared_ptr<Link> clone() const override {
       return boost::make_shared<URDF_Link>(*this); }
 };
 }  // namespace manipulator

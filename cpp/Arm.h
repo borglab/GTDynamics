@@ -41,13 +41,6 @@ class Arm {
   Arm(const std::vector<T> &links, const gtsam::Pose3 &base = gtsam::Pose3(),
       const gtsam::Pose3 &tool = gtsam::Pose3());
 
-  /* Copy constructor */
-  Arm(const Arm &arm)
-      : links_(arm.links_),
-        base_(arm.base_),
-        tool_(arm.tool_),
-        screwAxes_(arm.screwAxes_) {}
-
   /* Return base pose in world frame */
   const gtsam::Pose3 &base() const { return base_; }
 
@@ -279,4 +272,5 @@ class Arm {
   gtsam::Vector inverseKinematics(const gtsam::Pose3 &goal_pose,
                                   const gtsam::Vector &init_q) const;
 };
+
 }  // namespace manipulator
