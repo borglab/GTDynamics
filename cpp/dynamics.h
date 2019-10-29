@@ -1,7 +1,6 @@
 class gtsam::Vector6;
 class gtsam::Vector3;
 class gtsam::Matrix6;
-class gtsam::Matrix3;
 class gtsam::Pose3;
 class gtsam::Point3;
 class gtsam::JacobianFactor;
@@ -16,24 +15,33 @@ namespace manipulator {
 #include <Link.h>
 
 virtual class Link {
-  Link(char joint_type, double mass, const gtsam::Pose3& center_of_mass,
-       const gtsam::Matrix3& inertia, const gtsam::Vector6& screwAxis,
+  Link(size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
+       const Matrix& inertia, const gtsam::Vector6& screwAxis);
+
+  Link(size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
+       const Matrix& inertia, const gtsam::Vector6& screwAxis,
        double joint_lower_limit, double joint_upper_limit,
        double joint_limit_threshold, double velocity_limit,
        double velocity_limit_threshold, double acceleration_limit,
        double acceleration_limit_threshold, double torque_limit,
        double torque_limit_threshold);
 
-  Link(char joint_type, double mass, const gtsam::Point3& center_of_mass,
-       const gtsam::Matrix3& inertia, const gtsam::Vector6& screwAxis,
+  Link(size_t joint_type, double mass, const gtsam::Point3& center_of_mass,
+       const Matrix& inertia, const gtsam::Vector6& screwAxis);
+
+  Link(size_t joint_type, double mass, const gtsam::Point3& center_of_mass,
+       const Matrix& inertia, const gtsam::Vector6& screwAxis,
        double joint_lower_limit, double joint_upper_limit,
        double joint_limit_threshold, double velocity_limit,
        double velocity_limit_threshold, double acceleration_limit,
        double acceleration_limit_threshold, double torque_limit,
        double torque_limit_threshold);
+
+  // Testable
+  void print(string s) const;
 
   gtsam::Vector6 screwAxis() const;
-  gtsam::Matrix3 inertia() const;
+  Matrix inertia() const;
   double mass() const;
   gtsam::Pose3 centerOfMass() const;
 
@@ -100,9 +108,12 @@ virtual class Link {
 #include <DHLink.h>
 #include <URDFLink.h>
 virtual class DH_Link : manipulator::Link {
-  DH_Link(double theta, double d, double a, double alpha, char joint_type,
+  DH_Link(double theta, double d, double a, double alpha, size_t joint_type,
+          double mass, const gtsam::Point3& center_of_mass);
+
+  DH_Link(double theta, double d, double a, double alpha, size_t joint_type,
           double mass, const gtsam::Point3& center_of_mass,
-          const gtsam::Matrix3& inertia, double joint_lower_limit,
+          const Matrix& inertia, double joint_lower_limit,
           double joint_upper_limit, double joint_limit_threshold,
           double velocity_limit, double velocity_limit_threshold,
           double acceleration_limit,
@@ -114,8 +125,8 @@ virtual class DH_Link : manipulator::Link {
 
 virtual class URDF_Link : manipulator::Link {
   URDF_Link(const gtsam::Pose3& origin, const gtsam::Vector3& axis,
-            char joint_type, double mass, const gtsam::Pose3& center_of_mass,
-            const gtsam::Matrix3& inertia, double joint_lower_limit,
+            size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
+            const Matrix& inertia, double joint_lower_limit,
             double joint_upper_limit, double joint_limit_threshold,
             double velocity_limit,
             double velocity_limit_threshold,
@@ -142,7 +153,7 @@ virtual class PoseGoalFactor : gtsam::NoiseModelFactor {
 
 #include <Arm.h>
 template<T = {manipulator::DH_Link, manipulator::URDF_Link}>
-class Arm {
+virtual class Arm {
 //   Arm(const std::vector<T>& links, const gtsam::Pose3& base,
 //       const gtsam::Pose3& tool);
 
@@ -264,6 +275,33 @@ class Arm {
 
   Vector inverseKinematics(const gtsam::Pose3& goal_pose,
                                   const Vector& init_q) const;
+};
+
+#include <DhArm.h>
+// Actually a vector<DH_Link>
+class DH_LinkVector {
+  DH_LinkVector();
+//   DH_LinkVector(const DH_LinkVector& other);
+
+  // Note: no print function
+
+  // common STL methods
+  size_t size() const;
+  bool empty() const;
+  void clear();
+
+  // structure specific methods
+  manipulator::DH_Link at(size_t i) const;
+  manipulator::DH_Link front() const;
+  manipulator::DH_Link back() const;
+  void push_back(const manipulator::DH_Link& link) const;
+
+//   void serialize() const;
+};
+
+virtual class DhArm : manipulator::ArmDH_Link {
+  DhArm(const manipulator::DH_LinkVector& links, const gtsam::Pose3& base,
+      const gtsam::Pose3& tool);
 };
 
 #include <BasePoseFactor.h>
