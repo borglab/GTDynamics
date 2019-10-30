@@ -22,7 +22,7 @@ Symbol J(int j) { return Symbol('J', j); }
 /// @{
 
 /** print with optional string */
-void Link::print(const std::string &s = "") const {
+void Link::print(const std::string &s) const {
   std::cout << s << " Link joint type is " << jointType_ << std::endl;
   std::cout << " Link mass is " << mass_ << std::endl;
 }

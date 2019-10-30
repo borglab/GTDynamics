@@ -290,7 +290,7 @@ class Link {
   virtual ~Link() = default;
 
   /** Clone a factor (make a deep copy) */
-  boost::shared_ptr<Link> clone() const override {
+  virtual boost::shared_ptr<Link> clone() const {
       return boost::make_shared<Link>(*this); }
 };
 }  // namespace manipulator
