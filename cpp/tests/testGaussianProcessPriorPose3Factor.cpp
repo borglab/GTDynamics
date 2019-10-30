@@ -12,8 +12,8 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/nonlinear/factorTesting.h>
+#include <gtsam/slam/PriorFactor.h>
 
 #include <GaussianProcessPriorPose3Factor.h>
 
@@ -39,8 +39,7 @@ TEST(GaussianProcessPriorPose3Factor, Factor) {
   v1.setZero(), v1dot.setZero(), v2.setZero(), v2dot.setZero();
   Vector actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(p1, v1, v1dot, p2, v2, v2dot);
+  actual_errors = factor.evaluateError(p1, v1, v1dot, p2, v2, v2dot);
   expected_errors = Vector(18).setZero();
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct

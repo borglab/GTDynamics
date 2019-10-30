@@ -79,18 +79,18 @@ TEST(ObstacleSDFFactor, error) {
   Matrix actual_H, expected_H;
   auto actual_errors = factor.evaluateError(pose, actual_H);
   auto expected_sdf = (Vector(2) << sdf.getSignedDistance(Point3(0.45, 0, 0)),
-                       sdf.getSignedDistance(Point3(0.55,  0, 0)))
+                       sdf.getSignedDistance(Point3(0.55, 0, 0)))
                           .finished();
   auto expected_errors = convertSDFtoError(expected_sdf, epsilon + radius);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
-//   // when the signed distance is zero or out of range, numericalDerivative gets wrong result
-//   expected_H = numericalDerivative11(
-//       boost::function<Vector(const Pose3&)>(boost::bind(
-//           &ObstacleSDFFactor::evaluateError, factor, _1, boost::none)),
-//       pose, 1e-6);
+  //   // when the signed distance is zero or out of range, numericalDerivative
+  //   gets wrong result expected_H = numericalDerivative11(
+  //       boost::function<Vector(const Pose3&)>(boost::bind(
+  //           &ObstacleSDFFactor::evaluateError, factor, _1, boost::none)),
+  //       pose, 1e-6);
 
-//   EXPECT(assert_equal(expected_H, actual_H, 1e-6));
+  //   EXPECT(assert_equal(expected_H, actual_H, 1e-6));
 }
 
 /* main function */

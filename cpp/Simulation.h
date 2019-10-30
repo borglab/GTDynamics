@@ -40,7 +40,7 @@ class Simulation {
       : dt_(time_step),
         dt_2_(time_step * time_step),
         robot_(robot),
-        dof_(robot_.numLinks()+1),
+        dof_(robot_.numLinks() + 1),
         gravity_(gravity),
         jointAngles(initialJointAngles),
         jointVelocities(initialJointVelocities),

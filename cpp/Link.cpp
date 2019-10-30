@@ -64,10 +64,10 @@ boost::shared_ptr<JacobianFactor> Link::firstTwistAccelFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j *
   // acceleration_j
-  Vector6 rhs = ad_j * A_j * joint_vel_j +
-                jTi.AdjointMap() * base_twist_accel;
+  Vector6 rhs = ad_j * A_j * joint_vel_j + jTi.AdjointMap() * base_twist_accel;
   return boost::make_shared<gtsam::JacobianFactor>(
-      T(1), gtsam::I_6x6, a(1), -A_j, rhs, gtsam::noiseModel::Constrained::All(6));
+      T(1), gtsam::I_6x6, a(1), -A_j, rhs,
+      gtsam::noiseModel::Constrained::All(6));
 }
 
 boost::shared_ptr<JacobianFactor> Link::ToolWrenchFactor(
@@ -156,15 +156,16 @@ gtsam::GaussianFactorGraph Link::forwardLoopFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
   Vector6 rhs = ad_j * A_j * joint_vel_j;
-  factors.add(T(0), I_6x6, a(j), -A_j, T(j - 1),
-              -jTi.AdjointMap(), rhs, noiseModel::Constrained::All(6));
+  factors.add(T(0), I_6x6, a(j), -A_j, T(j - 1), -jTi.AdjointMap(), rhs,
+              noiseModel::Constrained::All(6));
 
   // add planar wrench factor to fix the indeterminate issue
   Matrix36 J_wrench;
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(),
+              noiseModel::Constrained::All(3));
 
   // add torque factor
   // Torque is always wrench projected on screw axis.
@@ -188,7 +189,7 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j + A_j * a(j)
   Vector6 rhs = ad_j * A_j * joint_vel_j + A_j * acceleration_j;
-  factors.add(T(0), I_6x6, T(j-1), -jTi.AdjointMap(), rhs,
+  factors.add(T(0), I_6x6, T(j - 1), -jTi.AdjointMap(), rhs,
               noiseModel::Constrained::All(6));
 
   // add planar wrench factor to fix the indeterminate issue
@@ -196,7 +197,8 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(),
+              noiseModel::Constrained::All(3));
 
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as

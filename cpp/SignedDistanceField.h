@@ -61,8 +61,7 @@ class SignedDistanceField {
 
   // constructor with no data for the wrapper
   SignedDistanceField(const gtsam::Point3& origin, double cell_size,
-                      size_t field_rows,
-      size_t field_cols, size_t field_z)
+                      size_t field_rows, size_t field_cols, size_t field_z)
       : origin_(origin),
         field_rows_(field_rows),
         field_cols_(field_cols),
@@ -159,7 +158,7 @@ class SignedDistanceField {
   /** gradient operator for tri-linear interpolation
    *  gradient regrads to float_index
    * not differentiable at index point
-  */
+   */
   inline gtsam::Vector3 gradient(const float_index& index) const {
     const double lr = floor(index.get<0>()), lc = floor(index.get<1>()),
                  lz = floor(index.get<2>());
@@ -225,7 +224,7 @@ class SignedDistanceField {
     std::cout << "field origin:     ";
     origin_.print();
     std::cout << "field resolution: " << cell_size_ << std::endl;
-    std::cout << "field size:       " << field_z_ << " x " << field_cols_ 
+    std::cout << "field size:       " << field_z_ << " x " << field_cols_
               << " y " << field_rows_ << std::endl;
   }
 

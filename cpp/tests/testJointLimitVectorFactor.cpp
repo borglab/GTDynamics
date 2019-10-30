@@ -11,8 +11,8 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/nonlinear/factorTesting.h>
+#include <gtsam/slam/PriorFactor.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -48,7 +48,7 @@ TEST(JointLimitVectorFactor, error) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   values.insert(0, conf);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
- 
+
   // Over lower limit
   conf = Vector2(-10.0, -10.0);
   actual_errors = factor.evaluateError(conf);

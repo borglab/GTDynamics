@@ -34,11 +34,11 @@ Arm<UrdfLink> getRobot() {
 
   vector<UrdfLink> urdf_rrr = {
       UrdfLink(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, true, 0, 0),
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, true, 0, 0),
       UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0),
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0),
       UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0)};
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0)};
   Pose3 base = Pose3();
   Pose3 tool = Pose3(Rot3(), Point3(2, 0, 0));
 

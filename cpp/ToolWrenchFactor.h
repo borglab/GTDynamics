@@ -48,7 +48,7 @@ class ToolWrenchFactor
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
                    const gtsam::Pose3 &tTn, const gtsam::Matrix6 &inertia,
                    const gtsam::Vector6 &external_wrench,
-                   const boost::optional<gtsam::Vector3>& gravity = boost::none)
+                   const boost::optional<gtsam::Vector3> &gravity = boost::none)
       : Base(cost_model, twist_key, twistAccel_key, wrench_key_j, pose_key),
         tTn_(tTn),
         inertia_(inertia),

@@ -50,15 +50,15 @@ class UrdfLink : public Link {
   * Note: angles are given in degrees, but converted to radians internally.
   */
   UrdfLink(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,
-            char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
-            const gtsam::Matrix3 &inertia, bool isActuated = true,
-            double springCoefficient = 0, double dampingCoefficient = 0,
-            double joint_lower_limit = -180, double joint_upper_limit = 180,
-            double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-            double velocity_limit_threshold = 0.0,
-            double acceleration_limit = 10000,
-            double acceleration_limit_threshold = 0.0,
-            double torque_limit = 10000, double torque_limit_threshold = 0.0)
+           char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
+           const gtsam::Matrix3 &inertia, bool isActuated = true,
+           double springCoefficient = 0, double dampingCoefficient = 0,
+           double joint_lower_limit = -180, double joint_upper_limit = 180,
+           double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+           double velocity_limit_threshold = 0.0,
+           double acceleration_limit = 10000,
+           double acceleration_limit_threshold = 0.0,
+           double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
              unit_twist(center_of_mass.rotation().inverse() * axis,
                         center_of_mass.inverse().translation().vector()),
@@ -90,6 +90,7 @@ class UrdfLink : public Link {
 
   /** Clone this UrdfLink */
   boost::shared_ptr<Link> clone() const override {
-      return boost::make_shared<UrdfLink>(*this); }
+    return boost::make_shared<UrdfLink>(*this);
+  }
 };
 }  // namespace manipulator

@@ -13,9 +13,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 #include <iostream>
 
 using namespace std;

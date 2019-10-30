@@ -52,7 +52,7 @@ class WrenchFactor
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const gtsam::Pose3 &kMj, const gtsam::Matrix6 &inertia,
                const gtsam::Vector6 &screw_axis,
-               const boost::optional<gtsam::Vector3>& gravity = boost::none)
+               const boost::optional<gtsam::Vector3> &gravity = boost::none)
       : Base(cost_model, twist_key, twistAccel_key, wrench_key_j, wrench_key_k,
              pose_key, q_key),
         kMj_(kMj),
@@ -75,11 +75,11 @@ class WrenchFactor
          v2 = twist(4), v3 = twist(5);
     gtsam::Matrix6 H_twist;
     H_twist << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
-         (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,                         //
-         (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,                         //
-         0, -m * v3, m * v2, 0, m * w3, -m * w2,                             //
-         m * v3, 0, -m * v1, -m * w3, 0, m * w1,                             //
-         -m * v2, m * v1, 0, m * w2, -m * w1, 0;
+        (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,         //
+        (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,         //
+        0, -m * v3, m * v2, 0, m * w3, -m * w2,             //
+        m * v3, 0, -m * v1, -m * w3, 0, m * w1,             //
+        -m * v2, m * v1, 0, m * w2, -m * w1, 0;
     return H_twist;
   }
 
@@ -147,7 +147,7 @@ class WrenchFactor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

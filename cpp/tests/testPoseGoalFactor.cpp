@@ -4,9 +4,9 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
+#include <Arm.h>
 #include <DhLink.h>
 #include <PoseGoalFactor.h>
-#include <Arm.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -31,8 +31,7 @@ vector<DhLink> dh_rr = {
     DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -5, 10, 2),
     DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -5, 10, 2)};
 auto robot = Arm<DhLink>(dh_rr, Pose3());
-auto jacobian =
-    boost::bind(&Arm<DhLink>::forwardKinematics, robot, _1, _2);
+auto jacobian = boost::bind(&Arm<DhLink>::forwardKinematics, robot, _1, _2);
 }  // namespace example
 
 // Test pose goal factor
@@ -44,7 +43,7 @@ TEST(PoseGoalFactor, error) {
   Vector joint_coordinates;
   Pose3 goal_pose;
   Vector6 actual_error, expected_error;
-  Values values;  
+  Values values;
   double diffDelta = 1e-7;
 
   // zero joint angles
@@ -57,7 +56,6 @@ TEST(PoseGoalFactor, error) {
   // Make sure linearization is correct
   values.insert(0, joint_coordinates);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
-
 
   // pi/4 joint angle
   joint_coordinates = Vector2(M_PI / 4, 0);

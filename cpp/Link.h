@@ -18,18 +18,18 @@
 #include <vector>
 
 namespace manipulator {
-/// Shorthand symbol for linear factors 
-/// Shorthand for T_j, for twist accelerations on the j-th link. 
+/// Shorthand symbol for linear factors
+/// Shorthand for T_j, for twist accelerations on the j-th link.
 extern gtsam::Symbol T(int j);
-/// Shorthand for a_j, for joint accelerations on the j-th link. 
+/// Shorthand for a_j, for joint accelerations on the j-th link.
 extern gtsam::Symbol a(int j);
-/// Shorthand for F_j, for wrenches on the j-th link. 
+/// Shorthand for F_j, for wrenches on the j-th link.
 extern gtsam::Symbol F(int j);
-/// Shorthand for t_j, for torque on the j-th link. 
+/// Shorthand for t_j, for torque on the j-th link.
 extern gtsam::Symbol t(int j);
-/// Shorthand for V_j, for 6D link twist vector on the j-th link. 
+/// Shorthand for V_j, for 6D link twist vector on the j-th link.
 extern gtsam::Symbol V(int j);
-/// Shorthand for J_j, for all joint positions j. 
+/// Shorthand for J_j, for all joint positions j.
 extern gtsam::Symbol J(int j);
 
 /// Link is the base class for links taking different format of parameters
@@ -170,13 +170,13 @@ class Link {
   /// Return link mass.
   double mass() const { return mass_; }
 
-  /// Return center of mass (gtsam::Pose3) 
+  /// Return center of mass (gtsam::Pose3)
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
-  /// Return inertia. 
+  /// Return inertia.
   const gtsam::Matrix3 &inertia() const { return inertia_; }
 
-  /// Return general mass gtsam::Matrix 
+  /// Return general mass gtsam::Matrix
   gtsam::Matrix6 inertiaMatrix() const {
     std::vector<gtsam::Matrix> gmm;
     gmm.push_back(inertia_);
@@ -184,7 +184,7 @@ class Link {
     return gtsam::diag(gmm);
   }
 
-  /// Return true if joint is actuated. 
+  /// Return true if joint is actuated.
   bool isActuated() const { return isActuated_; }
 
   /// return spring coefficient
@@ -193,33 +193,33 @@ class Link {
   /// return danmping coefficient
   double dampingCoefficient() const { return dampingCoefficient_; }
 
-  /// Return joint angle lower limit. 
+  /// Return joint angle lower limit.
   double jointLowerLimit() const { return jointLowerLimit_; }
 
-  /// Return joint angle upper limit. 
+  /// Return joint angle upper limit.
   double jointUpperLimit() const { return jointUpperLimit_; }
 
-  /// Return joint angle limit threshold. 
+  /// Return joint angle limit threshold.
   double jointLimitThreshold() const { return jointLimitThreshold_; }
 
-  /// Return joint velocity limit. 
+  /// Return joint velocity limit.
   double velocityLimit() const { return velocityLimit_; }
 
-  /// Return joint velocity limit threshold. 
+  /// Return joint velocity limit threshold.
   double velocityLimitThreshold() const { return velocityLimitThreshold_; }
 
-  /// Return joint acceleration limit. 
+  /// Return joint acceleration limit.
   double accelerationLimit() const { return accelerationLimit_; }
 
-  /// Return joint acceleration limit threshold. 
+  /// Return joint acceleration limit threshold.
   double accelerationLimitThreshold() const {
     return accelerationLimitThreshold_;
   }
 
-  /// Return joint torque limit. 
+  /// Return joint torque limit.
   double torqueLimit() const { return torqueLimit_; }
 
-  /// Return joint torque limit threshold. 
+  /// Return joint torque limit threshold.
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
   /** Return link transform of current link with respect to previous link
@@ -253,8 +253,8 @@ class Link {
       double acceleration_j) const;
 
   /** convert unary factor on base acceleration to first link acceleration
-    * for forward dynamics
-    */
+   * for forward dynamics
+   */
   boost::shared_ptr<gtsam::JacobianFactor> firstTwistAccelFactor(
       const gtsam::Vector6 &base_twist_accel, const gtsam::Pose3 &jTi,
       double joint_vel_j, const gtsam::Vector6 &twist_j) const;
@@ -271,7 +271,7 @@ class Link {
   boost::shared_ptr<gtsam::JacobianFactor> lastWrenchFactor(
       const gtsam::Vector6 &external_wrench, int j,
       const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Create single factor relating this link's twist with previous one.
       Keyword argument:
@@ -293,7 +293,7 @@ class Link {
    */
   boost::shared_ptr<gtsam::JacobianFactor> wrenchFactor(
       int j, const gtsam::Vector6 &twist_j, const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Create loop closure factor in forward dynamics
    *  for manipulator with kinematic loops
@@ -339,13 +339,13 @@ class Link {
   gtsam::GaussianFactorGraph forwardFactors(
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /// forward factor with the base and tool wrench taken away
   gtsam::GaussianFactorGraph reducedForwardFactors(
       int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double torque_j, const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Create all factors linking this links dynamics with previous and next
      link.
@@ -369,7 +369,7 @@ class Link {
       int j, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
       const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       double internal_torque = 0) const;
 
   /// inverse factor with the base and tool wrench taken away
@@ -377,13 +377,14 @@ class Link {
       int j, int N, const gtsam::Pose3 &jTi, double joint_vel_j,
       const gtsam::Vector6 &twist_j, double acceleration_j,
       const gtsam::Pose3 &kTj,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       double internal_torque = 0) const;
 
   virtual ~Link() = default;
 
   /** Clone a factor (make a deep copy) */
   virtual boost::shared_ptr<Link> clone() const {
-      return boost::make_shared<Link>(*this); }
+    return boost::make_shared<Link>(*this);
+  }
 };
 }  // namespace manipulator

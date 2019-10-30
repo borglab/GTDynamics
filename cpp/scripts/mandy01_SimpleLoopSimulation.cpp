@@ -11,8 +11,8 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 using namespace gtsam;
@@ -22,12 +22,12 @@ static const double HALF_PI = M_PI / 2;
 
 namespace example {
 vector<UrdfLink> urdf_rrr = {
-    UrdfLink(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1), 'R', 
-              1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, true, 0, 0),
-    UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 
-              1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, false, 0, 0),
-    UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 
-              1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, false, 0, 0)};
+    UrdfLink(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1), 'R',
+             1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, true, 0, 0),
+    UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R',
+             1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, false, 0, 0),
+    UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R',
+             1, Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, false, 0, 0)};
 Pose3 base = Pose3();
 Pose3 tool = Pose3(Rot3(), Point3(2, 0, 0));
 
@@ -52,7 +52,7 @@ TEST(Simulation, gravity_x) {
          known_torque = Vector::Zero(example::dof);
   Vector3 gravity = (Vector(3) << 9.8, 0, 0).finished();
   Simulation<UrdfLink> FDsim(time_step, example::robot, gravity,
-                              initialJointAngles, initialJointVelocities);
+                             initialJointAngles, initialJointVelocities);
   vector<Vector> jointAngles, jointVelocities, jointAccelerations, jointTorques;
   jointAngles.assign(total_steps, Vector::Zero(example::dof));
   jointVelocities.assign(total_steps, Vector::Zero(example::dof));
@@ -69,10 +69,14 @@ TEST(Simulation, gravity_x) {
     jointVelocities.push_back(FDsim.getJointVelocities());
     jointAccelerations.push_back(FDsim.getJointAccelerations());
     jointTorques.push_back(FDsim.getJointTorques());
-    q << std::setprecision(16) << FDsim.getJointAngles().transpose() << std::endl;
-    qVel << std::setprecision(16) << FDsim.getJointVelocities().transpose() << std::endl;
-    qAccel << std::setprecision(16) << FDsim.getJointAccelerations().transpose() << std::endl;
-    qTorque << std::setprecision(16) << FDsim.getJointTorques().transpose() << std::endl;
+    q << std::setprecision(16) << FDsim.getJointAngles().transpose()
+      << std::endl;
+    qVel << std::setprecision(16) << FDsim.getJointVelocities().transpose()
+         << std::endl;
+    qAccel << std::setprecision(16) << FDsim.getJointAccelerations().transpose()
+           << std::endl;
+    qTorque << std::setprecision(16) << FDsim.getJointTorques().transpose()
+            << std::endl;
   }
   q.close();
   qVel.close();

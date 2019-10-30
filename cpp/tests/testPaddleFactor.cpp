@@ -7,8 +7,8 @@
  */
 
 #include <PaddleFactor.h>
-#include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/nonlinear/expressionTesting.h>
+#include <gtsam/nonlinear/factorTesting.h>
 
 #include <CppUnitLite/TestHarness.h>
 
@@ -16,8 +16,7 @@ using namespace std;
 using namespace gtsam;
 
 /* ************************************************************************* */
-TEST(PaddleFactor, Creation)
-{
+TEST(PaddleFactor, Creation) {
   const Key key = 0;
   const double t = 0.25;
   const double omega = 0;
@@ -36,8 +35,7 @@ TEST(PaddleFactor, Creation)
 }
 
 /* ************************************************************************* */
-int main()
-{
+int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
 }

@@ -63,24 +63,24 @@ TEST(MotionPlanner, dh_puma) {
   // puma example
   vector<DhLink> dh_puma = {
       DhLink(0, 0.0000, 0.0000, +90, 'R', 0, Point3(0, 0, 0),
-              Vector3(0, 0.35, 0).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2, 0.02, 0.2,
-              0.02, 100, 5),
+             Vector3(0, 0.35, 0).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2,
+             0.02, 0.2, 0.02, 100, 5),
       DhLink(0, 0.4318, 0, 0.0, 'R', 17.40, Point3(-0.3638, 0.006, 0.2275),
-              Vector3(0.13, 0.524, 0.539).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2, 0.02,
-              0.2, 0.02, 100, 5),
+             Vector3(0.13, 0.524, 0.539).asDiagonal(), true, 0, 0, -180, 180, 2,
+             0.2, 0.02, 0.2, 0.02, 100, 5),
       DhLink(0, 0.0203, 0.15005, -90, 'R', 4.80,
-              Point3(-0.0203, -0.0141, 0.0700),
-              Vector3(0.066, 0.086, 0.0125).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2,
-              0.02, 0.2, 0.02, 100, 5),
+             Point3(-0.0203, -0.0141, 0.0700),
+             Vector3(0.066, 0.086, 0.0125).asDiagonal(), true, 0, 0, -180, 180,
+             2, 0.2, 0.02, 0.2, 0.02, 100, 5),
       DhLink(0, 0, 0.4318, +90, 'R', 0.82, Point3(-0.19, 0, 0),
-              Vector3(0.0018, 0.0013, 0.0018).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2,
-              0.02, 0.2, 0.02, 100, 5),
+             Vector3(0.0018, 0.0013, 0.0018).asDiagonal(), true, 0, 0, -180,
+             180, 2, 0.2, 0.02, 0.2, 0.02, 100, 5),
       DhLink(0, 0.0000, 0.0000, -90, 'R', 0.34, Point3(0, 0, 0),
-              Vector3(0.0003, 0.0004, 0.0003).asDiagonal(), true, 0, 0, -180, 180, 2, 0.2,
-              0.02, 0.2, 0.02, 100, 5),
+             Vector3(0.0003, 0.0004, 0.0003).asDiagonal(), true, 0, 0, -180,
+             180, 2, 0.2, 0.02, 0.2, 0.02, 100, 5),
       DhLink(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
-              Vector3(0.00015, 0.00015, 0.00004).asDiagonal(), true, 0, 0, -180, 180, 2,
-              0.2, 0.02, 0.2, 0.02, 100, 5)};
+             Vector3(0.00015, 0.00015, 0.00004).asDiagonal(), true, 0, 0, -180,
+             180, 2, 0.2, 0.02, 0.2, 0.02, 100, 5)};
   auto robot = Arm<DhLink>(dh_puma);
   auto poses = robot.comFrames();
   Vector3 gravity;
@@ -119,7 +119,8 @@ TEST(MotionPlanner, dh_puma) {
 
   MotionPlanner mp(opt);
   auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, Vector::Zero(dof),
-                                            boost::none, gravity, sdf, sphere_centers_all, radii);
+                                            boost::none, gravity, sdf,
+                                            sphere_centers_all, radii);
   auto init_values = mp.factorGraphInitialization(
       robot, pose_goal, Vector::Zero(dof), boost::none);
   auto results = mp.factorGraphOptimization(graph, init_values);

@@ -25,7 +25,7 @@ using namespace manipulator;
 
 namespace example {
 vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3),
-                         DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
+                        DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
 
 // Create Puma robot.
 auto robot = Arm<DhLink>(dh_rr, Pose3(), Pose3());
@@ -46,14 +46,15 @@ TEST(Arm, reducedForwardDynamics_1) {
   example::expected_joint_accelerations << -9.8, 19.6;
   DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
       example::joint_angles, example::joint_velocities, example::torques,
-          example::base_twist_accel, example::external_wrench);
+      example::base_twist_accel, example::external_wrench);
   GaussianFactorGraph factor_graph =
-      example::robot.reducedForwardDynamicsFactorGraph(
-          forwardDynamicsInput, gravity);
+      example::robot.reducedForwardDynamicsFactorGraph(forwardDynamicsInput,
+                                                       gravity);
 
   VectorValues result = factor_graph.optimize();
   auto actual_acceleration = example::robot.extractJointAcceleraions(result);
-  EXPECT(assert_equal(example::expected_joint_accelerations, actual_acceleration));
+  EXPECT(
+      assert_equal(example::expected_joint_accelerations, actual_acceleration));
 }
 
 /* ========= test case when an external wrench is applied ========== */
@@ -61,15 +62,15 @@ TEST(Arm, reducedForwardDynamics_2) {
   example::external_wrench << 0, 0, 0, 0, -2.5, 0;
   example::expected_joint_accelerations << 5, -20;
   DynamicsFactorGraphInput<Vector> forwardDynamicsInput(
-      example::joint_angles, example::joint_velocities,
-          example::torques, example::base_twist_accel,
-          example::external_wrench);
+      example::joint_angles, example::joint_velocities, example::torques,
+      example::base_twist_accel, example::external_wrench);
   GaussianFactorGraph factor_graph =
       example::robot.reducedForwardDynamicsFactorGraph(forwardDynamicsInput);
 
   VectorValues result = factor_graph.optimize();
   auto actual_acceleration = example::robot.extractJointAcceleraions(result);
-  EXPECT(assert_equal(example::expected_joint_accelerations, actual_acceleration));
+  EXPECT(
+      assert_equal(example::expected_joint_accelerations, actual_acceleration));
 }
 
 int main() {

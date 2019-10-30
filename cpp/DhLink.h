@@ -51,15 +51,15 @@ class DhLink : public Link {
   * Note: angles are given in degrees, but converted to radians internally.
   */
   DhLink(double theta, double d, double a, double alpha, char joint_type,
-          double mass, const gtsam::Point3 &center_of_mass,
-          const gtsam::Matrix3 &inertia = gtsam::I_3x3, bool isActuated = true,
-          double springCoefficient = 0, double dampingCoefficient = 0,
-          double joint_lower_limit = -180, double joint_upper_limit = 180,
-          double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-          double velocity_limit_threshold = 0.0,
-          double acceleration_limit = 10000,
-          double acceleration_limit_threshold = 0.0,
-          double torque_limit = 10000, double torque_limit_threshold = 0.0)
+         double mass, const gtsam::Point3 &center_of_mass,
+         const gtsam::Matrix3 &inertia = gtsam::I_3x3, bool isActuated = true,
+         double springCoefficient = 0, double dampingCoefficient = 0,
+         double joint_lower_limit = -180, double joint_upper_limit = 180,
+         double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+         double velocity_limit_threshold = 0.0,
+         double acceleration_limit = 10000,
+         double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
+         double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
              unit_twist(
                  gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
@@ -97,6 +97,7 @@ class DhLink : public Link {
 
   /** Clone this DhLink */
   boost::shared_ptr<Link> clone() const override {
-      return boost::make_shared<DhLink>(*this); }
+    return boost::make_shared<DhLink>(*this);
+  }
 };
 }  // namespace manipulator

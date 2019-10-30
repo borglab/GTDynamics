@@ -11,8 +11,8 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 using namespace gtsam;
@@ -42,38 +42,42 @@ using namespace manipulator;
 */
 namespace example {
 vector<UrdfLink> urdf_cassie = {
-    UrdfLink(Pose3(Rot3(), Point3(0.12, 0, 0.0045)), Vector3(0, 0, 1),
-        'R', 0.7578, Pose3(Rot3(), Point3(0.023, 0.03207, -0.002181)),
-        (Matrix(3, 3) << 0.001376, -0.00039744, -4.085e-05, -0.00039744,
-         0.0010335, -5.374e-05, -4.085e-05, -5.374e-05, 0.0021637)
-            .finished(), true, 0, -1, -2.8623, -0.64577),
-    UrdfLink(Pose3(Rot3(), Point3(0.06068, 0.04741, 0)),
-        Vector3(0, 0, 1), 'R', 0.577,
-        Pose3(Rot3(), Point3(0.18338, 0.001169, 0.0002123)),
-        (Matrix(3, 3) << 0.00035939, -0.00020981, 2.266e-05, -0.00020981,
-         0.014728, -1.2e-07, 2.266e-05, -1.2e-07, 0.014707)
-            .finished(), false, -1500, -0.1, -0.34907, 0.34907),
-    UrdfLink(Pose3(Rot3(), Point3(0.43476, 0.02, 0)), Vector3(0, 0, 1),
-        'R', 0.782,
-        Pose3(Rot3(), Point3(0.11046, -0.03058, -0.00131)),
-        (Matrix(3, 3) << 0.00039238, 0.00023651, -4.987e-05, 0.00023651,
-         0.013595, -4.82e-06, -4.987e-05, -4.82e-06, 0.013674)
-            .finished(), false, 0, -0.1, 0.87266, 2.9671),
-    UrdfLink(Pose3(Rot3::RzRyRx(-0.068943, -0.036956, 2.7207), Point3(-0.01269, -0.03059, 0.00092)),
-        Vector3(0, 0, 1), 'R', 0.126,
-        Pose3(Rot3(), Point3(0.081, 0.0022, 0)),
-        (Matrix(3, 3) << 2.959e-05, 7.15e-06, -6e-07, 7.15e-06, 0.00022231,
-         1e-07, -6e-07, 1e-07, 0.0002007)
-            .finished(), false, -1250, 0),
-    UrdfLink(Pose3(Rot3::RzRyRx(0.059906, 0.0587942, 0.603695), Point3(0.11877, -0.01, 0.069)),
-        Vector3(0, 0, 1), 'R', 0.157,
-        Pose3(Rot3(), Point3(0.2472, 0, 0)),
-        Vector3(0.000004, 0.014061, 0.014061).asDiagonal(), false, 0, 0)};
+    UrdfLink(Pose3(Rot3(), Point3(0.12, 0, 0.0045)), Vector3(0, 0, 1), 'R',
+             0.7578, Pose3(Rot3(), Point3(0.023, 0.03207, -0.002181)),
+             (Matrix(3, 3) << 0.001376, -0.00039744, -4.085e-05, -0.00039744,
+              0.0010335, -5.374e-05, -4.085e-05, -5.374e-05, 0.0021637)
+                 .finished(),
+             true, 0, -1, -2.8623, -0.64577),
+    UrdfLink(Pose3(Rot3(), Point3(0.06068, 0.04741, 0)), Vector3(0, 0, 1), 'R',
+             0.577, Pose3(Rot3(), Point3(0.18338, 0.001169, 0.0002123)),
+             (Matrix(3, 3) << 0.00035939, -0.00020981, 2.266e-05, -0.00020981,
+              0.014728, -1.2e-07, 2.266e-05, -1.2e-07, 0.014707)
+                 .finished(),
+             false, -1500, -0.1, -0.34907, 0.34907),
+    UrdfLink(Pose3(Rot3(), Point3(0.43476, 0.02, 0)), Vector3(0, 0, 1), 'R',
+             0.782, Pose3(Rot3(), Point3(0.11046, -0.03058, -0.00131)),
+             (Matrix(3, 3) << 0.00039238, 0.00023651, -4.987e-05, 0.00023651,
+              0.013595, -4.82e-06, -4.987e-05, -4.82e-06, 0.013674)
+                 .finished(),
+             false, 0, -0.1, 0.87266, 2.9671),
+    UrdfLink(Pose3(Rot3::RzRyRx(-0.068943, -0.036956, 2.7207),
+                   Point3(-0.01269, -0.03059, 0.00092)),
+             Vector3(0, 0, 1), 'R', 0.126,
+             Pose3(Rot3(), Point3(0.081, 0.0022, 0)),
+             (Matrix(3, 3) << 2.959e-05, 7.15e-06, -6e-07, 7.15e-06, 0.00022231,
+              1e-07, -6e-07, 1e-07, 0.0002007)
+                 .finished(),
+             false, -1250, 0),
+    UrdfLink(Pose3(Rot3::RzRyRx(0.059906, 0.0587942, 0.603695),
+                   Point3(0.11877, -0.01, 0.069)),
+             Vector3(0, 0, 1), 'R', 0.157, Pose3(Rot3(), Point3(0.2472, 0, 0)),
+             Vector3(0.000004, 0.014061, 0.014061).asDiagonal(), false, 0, 0)};
 
 Pose3 base = Pose3(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0));
 Pose3 tool = Pose3(Rot3(), Point3(0.5012, 0, 0));
 // get screw_axis for loop closure
-auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(0.2540, 0, 0)); //0.5012-0.2472
+auto screw_axis =
+    unit_twist(Vector3(0, 0, 1), Vector3(0.2540, 0, 0));  // 0.5012-0.2472
 auto robot = Arm<UrdfLink>(urdf_cassie, base, tool, screw_axis, false, 0, 0);
 auto dof = robot.numLinks() + 1;
 // required joint acceleration and applied torque at Inverse Dynamics
@@ -95,7 +99,7 @@ TEST(Simulation, gravity_x) {
   auto T = example::robot.forwardKinematics(initialJointAngles);
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
   Simulation<UrdfLink> FDsim(time_step, example::robot, gravity,
-                              initialJointAngles, initialJointVelocities);
+                             initialJointAngles, initialJointVelocities);
   vector<Vector> jointAngles, jointVelocities, jointAccelerations, jointTorques;
   jointAngles.assign(total_steps, Vector::Zero(example::dof));
   jointVelocities.assign(total_steps, Vector::Zero(example::dof));

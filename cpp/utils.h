@@ -93,7 +93,8 @@ gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
  *  radius   -- a vector of sphere radius for each link
  * return sphere centers expressed in COM frame of each link
  */
-std::vector<std::vector<gtsam::Point3>> sphereCenters(std::vector<double> lengths, std::vector<double> radii);
+std::vector<std::vector<gtsam::Point3>> sphereCenters(
+    std::vector<double> lengths, std::vector<double> radii);
 
 // save for visualization
 /** save optimization result for simulation
@@ -105,10 +106,10 @@ std::vector<std::vector<gtsam::Point3>> sphereCenters(std::vector<double> length
       dir           -- directory
  field
 */
-void saveForVisualization(std::vector<gtsam::Vector> &jointAngle,
-                          gtsam::Pose3 &goalPose,
-                          int dof, std::string &dir,
-                          boost::optional<manipulator::SignedDistanceField &> sdf = boost::none);
+void saveForVisualization(
+    std::vector<gtsam::Vector> &jointAngle, gtsam::Pose3 &goalPose, int dof,
+    std::string &dir,
+    boost::optional<manipulator::SignedDistanceField &> sdf = boost::none);
 
 /** generation circular path
  *  Keyword argument:
@@ -128,10 +129,11 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
 
-
 /** read a variable from a text file, and save to vector of matrix
  *  this is used for sdf
- * 
+ *
  */
-std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir, gtsam::Point3 &origin, double &cell_size);
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
+                                       gtsam::Point3 &origin,
+                                       double &cell_size);
 }  // namespace manipulator

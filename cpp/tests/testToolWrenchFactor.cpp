@@ -13,9 +13,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -25,8 +25,8 @@ using namespace manipulator;
 
 namespace example {
 // R link example
-DhLink dh_r = DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3,
-                       -180, 10, 180);
+DhLink dh_r =
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
@@ -52,8 +52,7 @@ TEST(ToolWrenchFactor, error_1) {
   Pose3 pose(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twist_accel, wrench_j, pose);
+  actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, pose);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
@@ -78,18 +77,18 @@ TEST(ToolWrenchFactor, error_2) {
   gravity << 0, -9.8, 0;
 
   ToolWrenchFactor factor(example::twist_key, example::twist_accel_key,
-                          example::wrench_j_key, example::pKey, example::cost_model, tTn,
-                          inertia, external_wrench, gravity);
+                          example::wrench_j_key, example::pKey,
+                          example::cost_model, tTn, inertia, external_wrench,
+                          gravity);
 
   Vector6 twist, twist_accel, wrench_j;
   twist << 0, 0, 0, 0, 0, 0;
   twist_accel << 0, 0, 0, 0, 0, 0;
   wrench_j << 0, 0, 0, 9.8, 0, 0;
-  Pose3 pose(Rot3::Rz(M_PI/2), Point3(0, 1, 0));
+  Pose3 pose(Rot3::Rz(M_PI / 2), Point3(0, 1, 0));
   Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twist_accel, wrench_j, pose);
+  actual_errors = factor.evaluateError(twist, twist_accel, wrench_j, pose);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 

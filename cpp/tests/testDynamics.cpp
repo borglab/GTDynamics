@@ -26,10 +26,9 @@ using namespace manipulator;
 
 namespace example {
 // RR link example
-vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                 Z_3x3, -180, 180, 2),
-                         DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                 Z_3x3, -180, 180, 2)};
+vector<DhLink> dh_rr = {
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2),
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2)};
 auto robot = Arm<DhLink>(dh_rr);
 auto dof = robot.numLinks();
 

@@ -111,7 +111,7 @@ class MotionPlanner {
       const Arm<Type> &robot, const gtsam::Pose3 &pose_goal,
       const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       boost::optional<SignedDistanceField &> sdf = boost::none,
       boost::optional<SphereCenters &> sphereCenters = boost::none,
       boost::optional<std::vector<double> &> radii = boost::none) const {

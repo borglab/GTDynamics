@@ -14,9 +14,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 
 #include <cmath>
 #include <iostream>
@@ -27,8 +27,8 @@ using namespace manipulator;
 
 namespace example {
 // R link example
-DhLink dh_r = DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3,
-                       -180, 10, 180);
+DhLink dh_r =
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
@@ -52,11 +52,11 @@ TEST(TwistAccelFactor, error) {
   Vector twist, twistAccel_i, twistAccel_j;
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twistAccel_i = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  twistAccel_j  = (Vector(6) <<  0, 0, 20, 7.07106781, 27.0710678, 0).finished();
+  twistAccel_j = (Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
   Vector6 actual_errors, expected_errors;
 
-  actual_errors = factor.evaluateError(
-      twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
+  actual_errors =
+      factor.evaluateError(twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
   expected_errors << 0, 0, 0, 0, 0, 0;
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
@@ -89,8 +89,8 @@ TEST(TwistAccelFactor, error_1) {
   twistAccel_j = (Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
   Vector6 actual_errors, expected_errors;
 
-  actual_errors = factor.evaluateError(
-      twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
+  actual_errors =
+      factor.evaluateError(twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
   expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));

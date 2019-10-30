@@ -3,8 +3,8 @@
  * @brief test forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#include <DhLink.h>
 #include <Arm.h>
+#include <DhLink.h>
 #include <PoseFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -14,9 +14,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -37,7 +37,7 @@ TEST(PoseFactor, error) {
   // create functor
   Pose3 jMi = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
-  screw_axis<< 0, 0, 1, 0, 1, 0;
+  screw_axis << 0, 0, 1, 0, 1, 0;
   PoseFunctor predictPose(jMi, screw_axis);
 
   // check prediction
@@ -91,10 +91,9 @@ TEST(PoseFactor, breaking) {
 // Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
   // RR link example
-  vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                   Z_3x3, -180, 180, 2),
-                           DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                   Z_3x3, -180, 180, 2)};
+  vector<DhLink> dh_rr = {
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2),
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2)};
   auto robot = Arm<DhLink>(dh_rr);
   Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
   auto dof = robot.numLinks();
@@ -115,7 +114,8 @@ TEST(PoseFactor, breaking_rr) {
   for (int k = 0; k < dof; ++k) {
     // create functor
     PoseFunctor predictPose(jMi[k], screwAxes[k]);
-    EXPECT(assert_equal(expectedPoses[k], predictPose(pose_i, jointAngles[k]), 1e-6));
+    EXPECT(assert_equal(expectedPoses[k], predictPose(pose_i, jointAngles[k]),
+                        1e-6));
     pose_i = expectedPoses[k];
   }
 }

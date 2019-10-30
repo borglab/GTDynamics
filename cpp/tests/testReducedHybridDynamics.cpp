@@ -25,7 +25,7 @@ using namespace manipulator;
 
 namespace example {
 vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3),
-                         DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
+                        DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
 
 // Create Puma robot.
 auto robot = Arm<DhLink>(dh_rr, Pose3(), Pose3());
@@ -48,18 +48,17 @@ TEST(Arm, reducedHybridDynamics_1) {
   example::torques << 0, 0;
   example::expected_joint_accelerations << 5, -20;
   example::expected_torques << 0, 0;
-  
+
   map<size_t, double> joint_accels, joint_torques;
   joint_accels.emplace(0, example::joint_accelerations[0]);
   joint_torques.emplace(1, example::torques[1]);
-  Arm<DhLink>::AngularVariablesPair givenVariablesPair(joint_accels, joint_torques);
-  DynamicsFactorGraphInput<Arm<DhLink>::AngularVariablesPair> hybridDynamicsInput(
-      example::joint_angles, example::joint_velocities,
-          givenVariablesPair, example::base_twist_accel,
-          example::external_wrench);
-  auto result =
-      example::robot.reducedHybridDynamics(
-          hybridDynamicsInput);
+  Arm<DhLink>::AngularVariablesPair givenVariablesPair(joint_accels,
+                                                       joint_torques);
+  DynamicsFactorGraphInput<Arm<DhLink>::AngularVariablesPair>
+      hybridDynamicsInput(example::joint_angles, example::joint_velocities,
+                          givenVariablesPair, example::base_twist_accel,
+                          example::external_wrench);
+  auto result = example::robot.reducedHybridDynamics(hybridDynamicsInput);
 
   map<size_t, double> expected_joint_accels, expected_joint_torques;
   expected_joint_accels.emplace(1, example::expected_joint_accelerations[1]);
@@ -75,19 +74,19 @@ TEST(Arm, reducedHybridDynamics_2) {
   example::torques << 0, 0;
   example::expected_joint_accelerations << -9.8, 19.6;
   example::expected_torques << 0, 0;
-  
+
   map<size_t, double> joint_accels, joint_torques;
   joint_accels.emplace(0, example::joint_accelerations[0]);
   joint_torques.emplace(1, example::torques[1]);
 
-  Arm<DhLink>::AngularVariablesPair givenVariablesPair(joint_accels, joint_torques);
-  DynamicsFactorGraphInput<Arm<DhLink>::AngularVariablesPair> hybridDynamicsInput(
-      example::joint_angles, example::joint_velocities,
-          givenVariablesPair, example::base_twist_accel,
-          example::external_wrench);
+  Arm<DhLink>::AngularVariablesPair givenVariablesPair(joint_accels,
+                                                       joint_torques);
+  DynamicsFactorGraphInput<Arm<DhLink>::AngularVariablesPair>
+      hybridDynamicsInput(example::joint_angles, example::joint_velocities,
+                          givenVariablesPair, example::base_twist_accel,
+                          example::external_wrench);
   auto result =
-      example::robot.reducedHybridDynamics(
-          hybridDynamicsInput, gravity);
+      example::robot.reducedHybridDynamics(hybridDynamicsInput, gravity);
 
   map<size_t, double> expected_joint_accels, expected_joint_torques;
   expected_joint_accels.emplace(1, example::expected_joint_accelerations[1]);
@@ -95,7 +94,6 @@ TEST(Arm, reducedHybridDynamics_2) {
   EXPECT(assert_equal(result.second[0], expected_joint_torques[0], 1e-5));
   EXPECT(assert_equal(result.first[1], expected_joint_accels[1], 1e-5));
 }
-
 
 int main() {
   TestResult tr;

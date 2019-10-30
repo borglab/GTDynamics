@@ -23,11 +23,11 @@ namespace example {
 // RR link example
 vector<DhLink> dh_rrr = {
     DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180,
-            2, 0.3, 0.02, 0.2, 0.02, 50, 5),
+           2, 0.3, 0.02, 0.2, 0.02, 50, 5),
     DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180,
-            2, 0.3, 0.02, 0.2, 0.02, 50, 5),
+           2, 0.3, 0.02, 0.2, 0.02, 50, 5),
     DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180,
-            2, 0.3, 0.02, 0.2, 0.02, 50, 5)};
+           2, 0.3, 0.02, 0.2, 0.02, 50, 5)};
 }  // namespace example
 
 // Test circle path for DH_RRR manipulator
@@ -54,8 +54,8 @@ TEST(MotionPlanner, rrr_link_square) {
   gravity << 0, -9.8, 0;
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
-  auto graph = mp.motionPlanningFactorGraph(
-      robot, pose_goal, q_init, cartesianPath, gravity);
+  auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, q_init,
+                                            cartesianPath, gravity);
   auto init_values =
       mp.factorGraphInitialization(robot, pose_goal, q_init, cartesianPath);
   auto results = mp.factorGraphOptimization(graph, init_values);
@@ -98,8 +98,8 @@ TEST(MotionPlanner, rrr_link_circle) {
   gravity << 0, -9.8, 0;
   // precomputed with inverse kinematics
   Vector q_init = (Vector(3) << -1.0472, 2.0944, -1.0472).finished();
-  auto graph = mp.motionPlanningFactorGraph(
-      robot, pose_goal, q_init, cartesianPath, gravity);
+  auto graph = mp.motionPlanningFactorGraph(robot, pose_goal, q_init,
+                                            cartesianPath, gravity);
   auto init_values =
       mp.factorGraphInitialization(robot, pose_goal, q_init, cartesianPath);
   auto results = mp.factorGraphOptimization(graph, init_values);

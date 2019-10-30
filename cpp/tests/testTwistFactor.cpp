@@ -13,9 +13,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -25,8 +25,8 @@ using namespace manipulator;
 
 namespace example {
 // R link example
-DhLink dh_r = DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3,
-                       -180, 10, 180);
+DhLink dh_r =
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
