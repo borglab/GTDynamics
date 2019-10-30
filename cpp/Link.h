@@ -145,13 +145,7 @@ class Link {
   /// @{
 
   /** print with optional string */
-  GTSAM_EXPORT void print(const std::string &s = "") const {
-      // TODO(manxie): complete and move to .cpp
-      std::cout << s << "DhLink " << jointType_ << std::endl;
-  }
-
-  /** equals with an tolerance */
-  // GTSAM_EXPORT bool equals(const Point3 &p, double tol = 1e-9) const;
+  GTSAM_EXPORT void print(const std::string &s = "") const;
 
   /// @}
 
