@@ -102,13 +102,13 @@ virtual class Link {
 
 };
 
-#include <DHLink.h>
-#include <URDFLink.h>
-virtual class DH_Link : manipulator::Link {
-  DH_Link(double theta, double d, double a, double alpha, size_t joint_type,
+#include <DhLink.h>
+#include <UrdfLink.h>
+virtual class DhLink : manipulator::Link {
+  DhLink(double theta, double d, double a, double alpha, size_t joint_type,
           double mass, const gtsam::Point3& center_of_mass);
 
-  DH_Link(double theta, double d, double a, double alpha, size_t joint_type,
+  DhLink(double theta, double d, double a, double alpha, size_t joint_type,
           double mass, const gtsam::Point3& center_of_mass,
           Matrix inertia, double joint_lower_limit,
           double joint_upper_limit, double joint_limit_threshold,
@@ -120,8 +120,8 @@ virtual class DH_Link : manipulator::Link {
   double length() const;
 };
 
-virtual class URDF_Link : manipulator::Link {
-  URDF_Link(const gtsam::Pose3& origin, Vector axis,
+virtual class UrdfLink : manipulator::Link {
+  UrdfLink(const gtsam::Pose3& origin, Vector axis,
             size_t joint_type, double mass, const gtsam::Pose3& center_of_mass,
             Matrix inertia, double joint_lower_limit,
             double joint_upper_limit, double joint_limit_threshold,
@@ -149,7 +149,7 @@ virtual class PoseGoalFactor : gtsam::NoiseModelFactor {
 };
 
 #include <Arm.h>
-template<T = {manipulator::DH_Link, manipulator::URDF_Link}>
+template<T = {manipulator::DhLink, manipulator::UrdfLink}>
 virtual class Arm {
 //   Arm(const std::vector<T>& links, const gtsam::Pose3& base,
 //       const gtsam::Pose3& tool);
@@ -275,10 +275,10 @@ virtual class Arm {
 };
 
 #include <DhArm.h>
-// Actually a vector<DH_Link>
-class DH_LinkVector {
-  DH_LinkVector();
-//   DH_LinkVector(const DH_LinkVector& other);
+// Actually a vector<DhLink>
+class DhLinkVector {
+  DhLinkVector();
+//   DhLinkVector(const DhLinkVector& other);
 
   // Note: no print function
 
@@ -288,16 +288,16 @@ class DH_LinkVector {
   void clear();
 
   // structure specific methods
-  manipulator::DH_Link at(size_t i) const;
-  manipulator::DH_Link front() const;
-  manipulator::DH_Link back() const;
-  void push_back(const manipulator::DH_Link& link) const;
+  manipulator::DhLink at(size_t i) const;
+  manipulator::DhLink front() const;
+  manipulator::DhLink back() const;
+  void push_back(const manipulator::DhLink& link) const;
 
 //   void serialize() const;
 };
 
-virtual class DhArm : manipulator::ArmDH_Link {
-  DhArm(const manipulator::DH_LinkVector& links, const gtsam::Pose3& base,
+virtual class DhArm : manipulator::ArmDhLink {
+  DhArm(const manipulator::DhLinkVector& links, const gtsam::Pose3& base,
       const gtsam::Pose3& tool);
 };
 

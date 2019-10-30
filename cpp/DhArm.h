@@ -7,15 +7,15 @@
 #pragma once
 
 #include <Arm.h>
-#include <DHLink.h>  // TODO(manxie): fix to DhLink (type *and* file)
+#include <DhLink.h> 
 
 #include <vector>
 
 namespace manipulator {
 
-using DH_LinkVector = std::vector<DH_Link>;
-class DhArm : public Arm<DH_Link> {
-  using Arm<DH_Link>::Arm;
+using DhLinkVector = std::vector<DhLink>;
+class DhArm : public Arm<DhLink> {
+  using Arm<DhLink>::Arm;
 };
 
 }  // namespace manipulator

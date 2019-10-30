@@ -12,8 +12,8 @@
 
 #include <Arm.h>
 #include <CppUnitLite/TestHarness.h>
-#include <DHLink.h>
-#include <URDFLink.h>
+#include <DhLink.h>
+#include <UrdfLink.h>
 
 using namespace std;
 using namespace gtsam;
@@ -36,13 +36,13 @@ Pose3 transform(double theta) {
 
 // Unit tests for dh link RR
 TEST(Arm, DH_RR) {
-  vector<DH_Link> dh_rr = {
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20),
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20)};
+  vector<DhLink> dh_rr = {
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20),
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 20)};
 
   // The joint screw axis, in the COM frame, is the same for both joints
   auto AXIS = unit_twist(Vector3(0, 0, 1), Vector3(-1, 0, 0));
-  auto robot = Arm<DH_Link>(dh_rr, Pose3());
+  auto robot = Arm<DhLink>(dh_rr, Pose3());
   int N = robot.numLinks();
 
   vector<Pose3> frames;
@@ -322,31 +322,31 @@ TEST(Arm, DH_RR) {
 
 // Unit tests for dh link Puma
 TEST(Arm, DH_PUMA) {
-  vector<DH_Link> dh_puma = {
-      DH_Link(0, 0.0000, 0.0000, +90, 'R', 0, Point3(0, 0, 0),
+  vector<DhLink> dh_puma = {
+      DhLink(0, 0.0000, 0.0000, +90, 'R', 0, Point3(0, 0, 0),
               Vector3(0, 0.35, 0).asDiagonal(), -180,
               180, 20),
-      DH_Link(0, 0.4318, 0, 0.0, 'R', 17.40, Point3(-0.3638, 0.006, 0.2275),
+      DhLink(0, 0.4318, 0, 0.0, 'R', 17.40, Point3(-0.3638, 0.006, 0.2275),
               Vector3(0.130, 0.524, 0.539).asDiagonal(),
               -180, 180, 20),
-      DH_Link(
+      DhLink(
           0, 0.0203, 0.15005, -90, 'R', 4.80, Point3(-0.0203, -0.0141, 0.0700),
           Vector3(0.066, 0.086, 0.0125).asDiagonal(),
           -180, 180, 20),
-      DH_Link(
+      DhLink(
           0, 0, 0.4318, +90, 'R', 0.82, Point3(0, 0.19, 0),
           Vector3(0.0018, 0.0013, 0.0018).asDiagonal(),
           -180, 180, 20),
-      DH_Link(
+      DhLink(
           0, 0.0000, 0.0000, -90, 'R', 0.34, Point3(0, 0, 0),
           Vector3(0.0003, 0.0004, 0.0003).asDiagonal(),
           -180, 180, 20),
-      DH_Link(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
+      DhLink(0, 0.0000, 0.0000, 0.0, 'R', 0.09, Point3(0, 0, 0.032),
               Vector3(0.00015, 0.00015, 0.00004).asDiagonal(),
               -180, 180, 20)};
 
   // Create Puma robot.
-  auto robot = Arm<DH_Link>(dh_puma, Pose3(), Pose3());
+  auto robot = Arm<DhLink>(dh_puma, Pose3(), Pose3());
   int N = robot.numLinks();
   vector<Pose3> frames;
 
@@ -418,15 +418,15 @@ TEST(Arm, DH_PUMA) {
 
 // Unit tests for urdf link RR
 TEST(Arm, URDF_RR) {
-  vector<URDF_Link> urdf_rr = {
-      URDF_Link(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
+  vector<UrdfLink> urdf_rr = {
+      UrdfLink(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
                 Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, -180, 180, 20),
-      URDF_Link(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
+      UrdfLink(Pose3(Rot3(), Point3(2, 0, 0)), Vector3(0, 0, 1), 'R', 1,
                 Pose3(Rot3(), Point3(1, 0, 0)), Z_3x3, -180, 180, 20)};
 
   // The joint screw axis, in the COM frame, is the same for both joints
   auto AXIS = unit_twist(Vector3(0, 0, 1), Vector3(-1, 0, 0));
-  auto robot = Arm<URDF_Link>(urdf_rr, Pose3(), Pose3(Rot3(), Point3(2, 0, 0)));
+  auto robot = Arm<UrdfLink>(urdf_rr, Pose3(), Pose3(Rot3(), Point3(2, 0, 0)));
   int N = robot.numLinks();
 
   vector<Pose3> frames;

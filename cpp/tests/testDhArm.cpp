@@ -5,7 +5,7 @@
  */
 
 #include <DhArm.h>
-#include <DHLink.h>
+#include <DhLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 
@@ -15,9 +15,9 @@ using namespace manipulator;
 
 // Unit tests for dh link RR
 TEST(DhArm, DH_RR) {
-  vector<DH_Link> dh_rr = {
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), I_3x3, -180, 180, 20),
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), I_3x3, -180, 180, 20)};
+  vector<DhLink> dh_rr = {
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), I_3x3, -180, 180, 20),
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), I_3x3, -180, 180, 20)};
 
   auto robot = DhArm(dh_rr, Pose3());
   EXPECT_LONGS_EQUAL(2, robot.numLinks());

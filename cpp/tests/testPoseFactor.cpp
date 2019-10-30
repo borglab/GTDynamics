@@ -3,7 +3,7 @@
  * @brief test forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#include <DHLink.h>
+#include <DhLink.h>
 #include <Arm.h>
 #include <PoseFactor.h>
 
@@ -97,11 +97,11 @@ TEST(PoseFactor, breaking) {
  */
 TEST(PoseFactor, breaking_rr) {
   // RR link example
-  vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
+  vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                    Z_3x3, -180, 180, 2),
-                           DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
+                           DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                    Z_3x3, -180, 180, 2)};
-  auto robot = Arm<DH_Link>(dh_rr);
+  auto robot = Arm<DhLink>(dh_rr);
   Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
   auto dof = robot.numLinks();
 

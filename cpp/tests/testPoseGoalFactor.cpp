@@ -4,7 +4,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include <DHLink.h>
+#include <DhLink.h>
 #include <PoseGoalFactor.h>
 #include <Arm.h>
 
@@ -27,12 +27,12 @@ using namespace manipulator;
 
 namespace example {
 // RR link example
-vector<DH_Link> dh_rr = {
-    DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2),
-    DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2)};
-auto robot = Arm<DH_Link>(dh_rr, Pose3());
+vector<DhLink> dh_rr = {
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2),
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2)};
+auto robot = Arm<DhLink>(dh_rr, Pose3());
 auto jacobian =
-    boost::bind(&Arm<DH_Link>::forwardKinematics, robot, _1, _2);
+    boost::bind(&Arm<DhLink>::forwardKinematics, robot, _1, _2);
 }  // namespace example
 
 /**

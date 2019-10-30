@@ -3,7 +3,7 @@
  * @brief test twist factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#include <DHLink.h>
+#include <DhLink.h>
 #include <TwistFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -25,7 +25,7 @@ using namespace manipulator;
 
 namespace example {
 // R link example
-DH_Link dh_r = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3,
+DhLink dh_r = DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3,
                        -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =

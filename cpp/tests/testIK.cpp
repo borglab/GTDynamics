@@ -6,7 +6,7 @@
 
 #include <Arm.h>
 #include <BasePoseFactor.h>
-#include <DHLink.h>
+#include <DhLink.h>
 #include <MotionPlanner.h>
 #include <PoseFactor.h>
 #include <ToolPoseFactor.h>
@@ -32,11 +32,11 @@ using namespace manipulator;
  */
 TEST(IK_factor_graph, optimization) {
   // RR link example
-  vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
+  vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                    Z_3x3, -180, 180, 2),
-                           DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
+                           DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
                                    Z_3x3, -180, 180, 2)};
-  auto robot = Arm<DH_Link>(dh_rr);
+  auto robot = Arm<DhLink>(dh_rr);
   Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
   auto dof = robot.numLinks();
 

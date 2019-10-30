@@ -5,8 +5,8 @@
  */
 
 #include <Arm.h>
-#include <DHLink.h>
-#include <URDFLink.h>
+#include <DhLink.h>
+#include <UrdfLink.h>
 
 #include <JointLimitFactor.h>
 #include <gtsam/inference/LabeledSymbol.h>
@@ -426,6 +426,6 @@ Vector Arm<T>::inverseKinematics(const Pose3 &goal_pose,
   return extractJointCooridinates(results);
 }
 
-template class Arm<DH_Link>;
-template class Arm<URDF_Link>;
+template class Arm<DhLink>;
+template class Arm<UrdfLink>;
 }  // namespace manipulator

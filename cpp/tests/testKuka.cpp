@@ -4,9 +4,9 @@
  * @Author: Mandy Xie
  */
 
-#include <DHLink.h>
+#include <DhLink.h>
 #include <MotionPlanner.h>
-#include <URDFLink.h>
+#include <UrdfLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -37,43 +37,43 @@ TEST(ObstacleSDFFactorArm, data) {
  */
 TEST(MotionPlanner, urdf_kuka) {
   // KUKA example
-  vector<URDF_Link> kuka = {
-      URDF_Link(Pose3(Rot3(), Point3(0, 0, 0.1575)), Vector3(0, 0, 1), 'R', 4,
+  vector<UrdfLink> kuka = {
+      UrdfLink(Pose3(Rot3(), Point3(0, 0, 0.1575)), Vector3(0, 0, 1), 'R', 4,
                 Pose3(Rot3(), Point3(0, -0.03, 0.12)),
                 Vector3(0.1, 0.09, 0.02).asDiagonal(),
                 -2.96705972839 * 180 / M_PI, 2.96705972839 * 180 / M_PI, 10,
                 0.5, 0.1),
-      URDF_Link(
+      UrdfLink(
           Pose3(Rot3::RzRyRx(1.57079632679, 0, 3.14159265359),
                 Point3(0, 0, 0.2025)),
           Vector3(0, 0, 1), 'R', 4, Pose3(Rot3(), Point3(0.0003, 0.059, 0.042)),
           Vector3(0.05, 0.018, 0.044).asDiagonal(), -2.09439510239 * 180 / M_PI,
           2.09439510239 * 180 / M_PI, 10, 0.5, 0.1),
-      URDF_Link(Pose3(Rot3::RzRyRx(1.57079632679, 0, 3.14159265359),
+      UrdfLink(Pose3(Rot3::RzRyRx(1.57079632679, 0, 3.14159265359),
                       Point3(0, 0.2045, 0)),
                 Vector3(0, 0, 1), 'R', 3, Pose3(Rot3(), Point3(0, 0.03, 0.13)),
                 Vector3(0.08, 0.075, 0.01).asDiagonal(),
                 -2.96705972839 * 180 / M_PI, 2.96705972839 * 180 / M_PI, 10,
                 0.5, 0.1),
-      URDF_Link(
+      UrdfLink(
           Pose3(Rot3::RzRyRx(1.57079632679, 0, 0), Point3(0, 0, 0.2155)),
           Vector3(0, 0, 1), 'R', 2.7, Pose3(Rot3(), Point3(0, 0.067, 0.034)),
           Vector3(0.03, 0.01, 0.029).asDiagonal(), -2.09439510239 * 180 / M_PI,
           2.09439510239 * 180 / M_PI, 10, 0.5, 0.1),
-      URDF_Link(Pose3(Rot3::RzRyRx(-1.57079632679, 3.14159265359, 0),
+      UrdfLink(Pose3(Rot3::RzRyRx(-1.57079632679, 3.14159265359, 0),
                       Point3(0, 0.1845, 0)),
                 Vector3(0, 0, 1), 'R', 1.7,
                 Pose3(Rot3(), Point3(0.0001, 0.021, 0.076)),
                 Vector3(0.02, 0.018, 0.005).asDiagonal(),
                 -2.09439510239 * 180 / M_PI, 2.09439510239 * 180 / M_PI, 10,
                 0.5, 0.1),
-      URDF_Link(Pose3(Rot3::RzRyRx(1.57079632679, 0, 0), Point3(0, 0, 0.2155)),
+      UrdfLink(Pose3(Rot3::RzRyRx(1.57079632679, 0, 0), Point3(0, 0, 0.2155)),
                 Vector3(0, 0, 1), 'R', 1.8,
                 Pose3(Rot3(), Point3(0, 0.0006, 0.0004)),
                 Vector3(0.005, 0.0036, 0.0047).asDiagonal(),
                 -2.09439510239 * 180 / M_PI, 2.09439510239 * 180 / M_PI, 10,
                 0.5, 0.1),
-      URDF_Link(Pose3(Rot3::RzRyRx(-1.57079632679, 3.14159265359, 0),
+      UrdfLink(Pose3(Rot3::RzRyRx(-1.57079632679, 3.14159265359, 0),
                       Point3(0, 0.081, 0)),
                 Vector3(0, 0, 1), 'R', 0.3, Pose3(Rot3(), Point3(0, 0, 0.02)),
                 Vector3(0.001, 0.001, 0.001).asDiagonal(),
@@ -81,7 +81,7 @@ TEST(MotionPlanner, urdf_kuka) {
                 0.5, 0.1)};
   Pose3 base = Pose3(Rot3(), Point3(-0.1, 0, 0.07)),
         tool = Pose3(Rot3(), Point3(0, 0, 0.04));
-  auto robot = Arm<URDF_Link>(kuka, base, tool);
+  auto robot = Arm<UrdfLink>(kuka, base, tool);
   auto poses = robot.comFrames();
   Vector3 gravity;
   gravity << 0, 0, -9.8;

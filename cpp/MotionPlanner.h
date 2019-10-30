@@ -96,7 +96,7 @@ class MotionPlanner {
   ~MotionPlanner() {}
 
   /** return nonlinear factor graph of all factors
-   *  template Type -- the link type of this robot, URDF_Link or DH_Link
+   *  template Type -- the link type of this robot, UrdfLink or DhLink
       Keyword arguments:
           robot                     -- robotic arm
           pose goal                 -- pose goal of manipulator end effector
@@ -221,7 +221,7 @@ class MotionPlanner {
   }
 
   /** initialization factor graph, return initial values for optimization
-   *  template Type -- the link type of this robot, URDF_Link or DH_Link
+   *  template Type -- the link type of this robot, UrdfLink or DhLink
       Keyword arguments:
           robot                     -- robotic arm
           pose goal                 -- pose goal of manipulator end effector
