@@ -16,6 +16,7 @@ set_target_properties(dynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 # Process subdirs
 add_subdirectory(tests)
+add_subdirectory(scripts)
 
 # Wrap
 # include(GtsamCythonWrap)
@@ -27,4 +28,3 @@ add_subdirectory(tests)
 #                                 ""
 #                                 )
 # #Optional: install_cython_scripts and install_cython_files. See GtsamCythonWrap.cmake.
-wrap_and_install_library("dynamics.h" "dynamics" "" "")

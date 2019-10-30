@@ -28,16 +28,14 @@ using namespace manipulator;
 namespace example {
 // RR link example
 vector<DhLink> dh_rr = {
-    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2),
-    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -5, 10, 2)};
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -5, 10, 2),
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -5, 10, 2)};
 auto robot = Arm<DhLink>(dh_rr, Pose3());
 auto jacobian =
     boost::bind(&Arm<DhLink>::forwardKinematics, robot, _1, _2);
 }  // namespace example
 
-/**
- * Test pose goal factor
- */
+// Test pose goal factor
 TEST(PoseGoalFactor, error) {
   // settings
   noiseModel::Gaussian::shared_ptr cost_model =

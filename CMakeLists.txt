@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.0)
 enable_testing()
 project(dynamics CXX C)
 
+# add_compile_options(
+# 	-faligned-new
+#    )
+
 #####################################
 # Find dependent libraries
 #####################################

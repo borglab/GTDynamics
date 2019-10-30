@@ -34,9 +34,7 @@ Key twist_i_key = Symbol('V', 1), twist_j_key = Symbol('V', 2),
     qKey = Symbol('q', 0), qVelKey = Symbol('j', 0);
 }  // namespace example
 
-/**
- * Test twist factor for stationary case
- */
+// Test twist factor for stationary case
 TEST(TwistFactor, error) {
   // Create all factors
   Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
