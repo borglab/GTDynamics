@@ -18,8 +18,19 @@ Symbol t(int j) { return Symbol('t', j); }
 Symbol V(int j) { return Symbol('V', j); }
 Symbol J(int j) { return Symbol('J', j); }
 
-boost::shared_ptr<JacobianFactor>
-Link::BaseTwistAccelFactor(const gtsam::Vector6 &base_twist_accel) {
+/// @name Testable
+/// @{
+
+/** print with optional string */
+void Link::print(const std::string &s) const {
+  std::cout << s << " Link joint type is " << jointType_ << std::endl;
+  std::cout << " Link mass is " << mass_ << std::endl;
+}
+
+/// @}
+
+boost::shared_ptr<JacobianFactor> Link::BaseTwistAccelFactor(
+    const gtsam::Vector6 &base_twist_accel) {
   return boost::make_shared<gtsam::JacobianFactor>(
       T(0), gtsam::I_6x6, base_twist_accel,
       gtsam::noiseModel::Constrained::All(6));
@@ -53,10 +64,10 @@ boost::shared_ptr<JacobianFactor> Link::firstTwistAccelFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j  + A_j *
   // acceleration_j
-  Vector6 rhs = ad_j * A_j * joint_vel_j +
-                jTi.AdjointMap() * base_twist_accel;
+  Vector6 rhs = ad_j * A_j * joint_vel_j + jTi.AdjointMap() * base_twist_accel;
   return boost::make_shared<gtsam::JacobianFactor>(
-      T(1), gtsam::I_6x6, a(1), -A_j, rhs, gtsam::noiseModel::Constrained::All(6));
+      T(1), gtsam::I_6x6, a(1), -A_j, rhs,
+      gtsam::noiseModel::Constrained::All(6));
 }
 
 boost::shared_ptr<JacobianFactor> Link::ToolWrenchFactor(
@@ -69,7 +80,7 @@ boost::shared_ptr<JacobianFactor> Link::ToolWrenchFactor(
 
 boost::shared_ptr<JacobianFactor> Link::lastWrenchFactor(
     const gtsam::Vector6 &external_wrench, int j, const Vector6 &twist_j,
-    const Pose3 &kTj, boost::optional<Vector3 &> gravity) const {
+    const Pose3 &kTj, const boost::optional<Vector3> &gravity) const {
   gttic_(Link_lastWrenchFactor);
   // Wrench on this link is due to acceleration and reaction to next link.
   // We need inertia, coriolis forces, gravity, and an Adjoint map:
@@ -91,14 +102,13 @@ boost::shared_ptr<JacobianFactor> Link::lastWrenchFactor(
 }
 
 boost::shared_ptr<JacobianFactor> Link::twistFactor(int j, const Pose3 &jTi,
-                                                   double joint_vel_j) const {
+                                                    double joint_vel_j) const {
   Vector6 A_j = screwAxis_;  // joint axis expressed in COM frame
   Vector6 joint_twist = A_j * joint_vel_j;
 
   if (j == 1) {
     return boost::make_shared<gtsam::JacobianFactor>(
-        V(j), I_6x6, joint_twist,
-        noiseModel::Constrained::All(6));
+        V(j), I_6x6, joint_twist, noiseModel::Constrained::All(6));
   } else {
     // Equation 8.45 in MR, page 292
     // V(j) - np.dot(jTi.AdjointMap(), V(j-1)) == joint_twist
@@ -108,9 +118,9 @@ boost::shared_ptr<JacobianFactor> Link::twistFactor(int j, const Pose3 &jTi,
   }
 }
 
-boost::shared_ptr<JacobianFactor>
-Link::wrenchFactor(int j, const Vector6 &twist_j, const Pose3 &kTj,
-                   boost::optional<Vector3 &> gravity) const {
+boost::shared_ptr<JacobianFactor> Link::wrenchFactor(
+    int j, const Vector6 &twist_j, const Pose3 &kTj,
+    const boost::optional<Vector3> &gravity) const {
   // Wrench on this link is due to acceleration and reaction to next link.
   // We need inertia, coriolis forces, gravity, and an Adjoint map:
   Matrix6 ad_j = Pose3::adjointMap(twist_j);
@@ -146,15 +156,16 @@ gtsam::GaussianFactorGraph Link::forwardLoopFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
   Vector6 rhs = ad_j * A_j * joint_vel_j;
-  factors.add(T(0), I_6x6, a(j), -A_j, T(j - 1),
-              -jTi.AdjointMap(), rhs, noiseModel::Constrained::All(6));
+  factors.add(T(0), I_6x6, a(j), -A_j, T(j - 1), -jTi.AdjointMap(), rhs,
+              noiseModel::Constrained::All(6));
 
   // add planar wrench factor to fix the indeterminate issue
   Matrix36 J_wrench;
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(),
+              noiseModel::Constrained::All(3));
 
   // add torque factor
   // Torque is always wrench projected on screw axis.
@@ -178,7 +189,7 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
   // Given the above Equation 8.47 can be written as
   // T(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j + A_j * a(j)
   Vector6 rhs = ad_j * A_j * joint_vel_j + A_j * acceleration_j;
-  factors.add(T(0), I_6x6, T(j-1), -jTi.AdjointMap(), rhs,
+  factors.add(T(0), I_6x6, T(j - 1), -jTi.AdjointMap(), rhs,
               noiseModel::Constrained::All(6));
 
   // add planar wrench factor to fix the indeterminate issue
@@ -186,7 +197,8 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
   J_wrench << 1, 0, 0, 0, 0, 0,  //
       0, 1, 0, 0, 0, 0,          //
       0, 0, 0, 0, 0, 1;
-  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(), noiseModel::Constrained::All(3));
+  factors.add(F(j), J_wrench, gtsam::Vector3::Zero(),
+              noiseModel::Constrained::All(3));
 
   // Torque is always wrench projected on screw axis.
   // Equation 8.49 can be written as
@@ -201,7 +213,7 @@ gtsam::GaussianFactorGraph Link::inverseLoopFactor(
 GaussianFactorGraph Link::forwardFactors(
     int j, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double torque_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    const boost::optional<Vector3> &gravity) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
 
   // Twist acceleration in this link as a function of previous and joint accel.
@@ -212,8 +224,8 @@ GaussianFactorGraph Link::forwardFactors(
   // Given the above Equation 8.47 can be written as
   // T(j) - A_j * a(j) - jTi.AdjointMap() * T(j-1) == ad_j * A_j * joint_vel_j
   Vector6 rhs = ad_j * A_j * joint_vel_j;
-  factors.add(T(j), I_6x6, a(j), -A_j, T(j - 1),
-              -jTi.AdjointMap(), rhs, noiseModel::Constrained::All(6));
+  factors.add(T(j), I_6x6, a(j), -A_j, T(j - 1), -jTi.AdjointMap(), rhs,
+              noiseModel::Constrained::All(6));
 
   // Wrench on this link is due to acceleration and reaction to next link.
   factors.push_back(wrenchFactor(j, twist_j, kTj, gravity));
@@ -230,7 +242,7 @@ GaussianFactorGraph Link::forwardFactors(
 GaussianFactorGraph Link::reducedForwardFactors(
     int j, int N, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double torque_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity) const {
+    const boost::optional<Vector3> &gravity) const {
   gttic_(Link_forwardFactors);
   GaussianFactorGraph factors = GaussianFactorGraph();
 
@@ -264,7 +276,7 @@ GaussianFactorGraph Link::reducedForwardFactors(
 GaussianFactorGraph Link::inverseFactors(
     int j, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double acceleration_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity, double internal_torque) const {
+    const boost::optional<Vector3> &gravity, double internal_torque) const {
   GaussianFactorGraph factors = GaussianFactorGraph();
 
   // Twist acceleration in this link as a function of previous and joint accel.
@@ -293,7 +305,7 @@ GaussianFactorGraph Link::inverseFactors(
 GaussianFactorGraph Link::reducedInverseFactors(
     int j, int N, const Pose3 &jTi, double joint_vel_j, const Vector6 &twist_j,
     double acceleration_j, const Pose3 &kTj,
-    boost::optional<Vector3 &> gravity, double internal_torque) const {
+    const boost::optional<Vector3> &gravity, double internal_torque) const {
   gttic_(Link_inverseFactors);
   GaussianFactorGraph factors = GaussianFactorGraph();
 

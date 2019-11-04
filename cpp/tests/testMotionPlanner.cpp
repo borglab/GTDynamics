@@ -4,9 +4,9 @@
  * @Author: Mandy Xie
  */
 
-#include <DHLink.h>
+#include <DhLink.h>
 #include <MotionPlanner.h>
-#include <URDFLink.h>
+#include <UrdfLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -23,12 +23,12 @@ using namespace manipulator;
 // Test motion planner for DH_RR manipulator
 TEST(MotionPlanner, dh_rr) {
   // RR link example
-  vector<DH_Link> dh_rr = {
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180, 2, 0.15,
-              0.02, 0.12, 0.02, 50, 5),
-      DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180, 2, 0.15,
-              0.02, 0.12, 0.02, 50, 5)};
-  auto robot = Arm<DH_Link>(dh_rr);
+  vector<DhLink> dh_rr = {
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180,
+             2, 0.15, 0.02, 0.12, 0.02, 50, 5),
+      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, true, 0, 0, -180, 180,
+             2, 0.15, 0.02, 0.12, 0.02, 50, 5)};
+  auto robot = Arm<DhLink>(dh_rr);
   Vector3 gravity;
   gravity << 0, -9.8, 0;
   Vector2 expected_q;

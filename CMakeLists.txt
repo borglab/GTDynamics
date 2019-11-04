@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 enable_testing()
 project(dynamics CXX C)
 
@@ -25,13 +25,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # Boost - same requirement as gtsam
 find_package(Boost 1.43 REQUIRED)
-find_package(Boost COMPONENTS filesystem REQUIRED)
-find_package(Boost COMPONENTS system REQUIRED)
-find_package(Boost COMPONENTS thread REQUIRED)
-find_package(Boost COMPONENTS program_options REQUIRED)
-find_package(Boost COMPONENTS serialization REQUIRED)
-find_package(Boost COMPONENTS regex REQUIRED)
-find_package(Boost COMPONENTS timer REQUIRED)
+find_package(Boost COMPONENTS filesystem system thread program_options serialization regex timer REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
 
@@ -48,3 +42,8 @@ endif()
 #####################################
 
 add_subdirectory(cpp)
+
+# for cython wrapper
+find_package(GTSAM REQUIRED) # Make sure gtsam's install folder is in your PATH
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
+

@@ -5,16 +5,16 @@
  */
 
 #include <Arm.h>
-#include <DHLink.h>
-#include <URDFLink.h>
+#include <DhLink.h>
+#include <UrdfLink.h>
 
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <gtsam/linear/VectorValues.h>
+#include <gtsam/inference/Factor.h>
 #include <gtsam/linear/GaussianBayesNet.h>
+#include <gtsam/linear/VectorValues.h>
 #include <gtsam/symbolic/SymbolicBayesNet.h>
 #include <gtsam/symbolic/SymbolicFactorGraph.h>
-#include <gtsam/inference/Factor.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <cmath>
@@ -24,12 +24,11 @@ using namespace gtsam;
 using namespace manipulator;
 
 namespace example {
-vector<DH_Link> dh_rr = {
-    DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3),
-    DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
+vector<DhLink> dh_rr = {DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3),
+                        DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3)};
 
 // Create Puma robot.
-auto robot = Arm<DH_Link>(dh_rr, Pose3(), Pose3());
+auto robot = Arm<DhLink>(dh_rr, Pose3(), Pose3());
 auto dof = robot.numLinks();
 Vector joint_angles = Vector::Zero(dof);
 Vector joint_velocities = Vector::Zero(dof);
@@ -51,8 +50,8 @@ TEST(Arm, reducedInverseDynamics_1) {
       example::joint_accelerations, example::base_twist_accel,
       example::external_wrench);
   GaussianFactorGraph factor_graph =
-      example::robot.reducedInverseDynamicsFactorGraph(
-          inverseDynamicsInput, gravity);
+      example::robot.reducedInverseDynamicsFactorGraph(inverseDynamicsInput,
+                                                       gravity);
 
   VectorValues result = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(result);
@@ -70,9 +69,8 @@ TEST(Arm, reducedInverseDynamics_2) {
       example::joint_accelerations, example::base_twist_accel,
       example::external_wrench);
   GaussianFactorGraph factor_graph =
-      example::robot.reducedInverseDynamicsFactorGraph(
-          inverseDynamicsInput);
- 
+      example::robot.reducedInverseDynamicsFactorGraph(inverseDynamicsInput);
+
   VectorValues result = factor_graph.optimize();
   auto actual_torques = example::robot.extractTorques(result);
   EXPECT(assert_equal(example::expected_torques, actual_torques));

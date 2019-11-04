@@ -34,7 +34,7 @@ class BasePoseFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    */
   BasePoseFactor(gtsam::Key pose_key_0,
                  const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                 const gtsam::Pose3 base_pose)
+                 const gtsam::Pose3 &base_pose)
       : Base(cost_model, pose_key_0), base_pose_(base_pose) {}
 
   virtual ~BasePoseFactor() {}

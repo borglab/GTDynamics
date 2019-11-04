@@ -219,14 +219,14 @@ class Arm {
    */
   gtsam::GaussianFactorGraph forwardDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** forward dyanmics factor graph with base and tool wrench unary factors
    *  reduced
    */
   gtsam::GaussianFactorGraph reducedForwardDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Build factor graph for closed loop manipulator forward dynamics.
    * Keyword arguments:
@@ -237,7 +237,7 @@ class Arm {
    */
   gtsam::GaussianFactorGraph closedLoopForwardDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Build factor graph for RR manipulator inverse dynamics.
    * Keyword arguments:
@@ -248,14 +248,14 @@ class Arm {
    */
   gtsam::GaussianFactorGraph inverseDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** inverse dyanmics factor graph with base and tool wrench unary factors
    *  reduced
    */
   gtsam::GaussianFactorGraph reducedInverseDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Build factor graph for closed loop manipulator inverse dynamics.
    * Keyword arguments:
@@ -266,7 +266,7 @@ class Arm {
    */
   gtsam::GaussianFactorGraph closedLoopInverseDynamicsFactorGraph(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Build factor graph for RR manipulator hybrid dynamics.
    * Keyword arguments:
@@ -277,21 +277,21 @@ class Arm {
    */
   gtsam::GaussianFactorGraph hybridDynamicsFactorGraph(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** hybrid dyanmics factor graph with base and tool wrench unary factors
    *  reduced
    */
   gtsam::GaussianFactorGraph reducedHybridDynamicsFactorGraph(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
-  /// Extract joint accelerations for all joints from gtsam::VectorValues. 
+  /// Extract joint accelerations for all joints from gtsam::VectorValues.
   gtsam::Vector extractJointAcceleraions(
       const gtsam::VectorValues &result,
       boost::optional<int &> N = boost::none) const;
 
-  /// Extract torques for all joints from gtsam::VectorValues. 
+  /// Extract torques for all joints from gtsam::VectorValues.
   gtsam::Vector extractTorques(const gtsam::VectorValues &result,
                                boost::optional<int &> N = boost::none) const;
 
@@ -312,26 +312,26 @@ class Arm {
    */
   gtsam::Vector forwardDynamics(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Calculate joint accelerations from manipulator state and torques.
    *  See inverseDynamicsFactorGraph for input arguments.
    */
   gtsam::Vector inverseDynamics(
       const DynamicsFactorGraphInput<gtsam::Vector> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** Calculate joint accelerations and torques for hybrid dynamics problem
    *  See hybridDynamicsFactorGraph for input arguments.
    */
   HybridResults hybridDynamics(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /// forward dyanmics with base and tool wrench unary factors reduced
   HybridResults reducedHybridDynamics(
       const DynamicsFactorGraphInput<AngularVariablesPair> &dynamicsInput,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none) const;
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
   /** joint limit vector factors
    * Returns joint limit factors.
@@ -382,4 +382,5 @@ class Arm {
   gtsam::Vector inverseKinematics(const gtsam::Pose3 &goal_pose,
                                   const gtsam::Vector &init_q) const;
 };
+
 }  // namespace manipulator

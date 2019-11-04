@@ -5,7 +5,7 @@
  */
 
 #include <Arm.h>
-#include <DHLink.h>
+#include <DhLink.h>
 #include <MotionPlanner.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -26,11 +26,10 @@ using namespace manipulator;
 
 namespace example {
 // RR link example
-vector<DH_Link> dh_rr = {DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                 Z_3x3),
-                         DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0),
-                                 Z_3x3)};
-auto robot = Arm<DH_Link>(dh_rr);
+vector<DhLink> dh_rr = {
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2),
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2)};
+auto robot = Arm<DhLink>(dh_rr);
 auto dof = robot.numLinks();
 
 // get robot jTi list at rest

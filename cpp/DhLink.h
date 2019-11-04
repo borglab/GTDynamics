@@ -1,5 +1,5 @@
 /**
- * @file  dh_link.h
+ * @file  DhLink.h
  * @brief link taking Denavit-Harternberg parameters
  * @Author: Frank Dellaert and Mandy Xie
  */
@@ -14,9 +14,9 @@
 namespace manipulator {
 
 /**
- * DH_Link is a link taking Denavit-Harternberg parameters
+ * DhLink is a link taking Denavit-Harternberg parameters
  */
-class DH_Link : public Link {
+class DhLink : public Link {
  private:
   double theta_;
   double d_;
@@ -50,16 +50,16 @@ class DH_Link : public Link {
      torqueLimitThreshold       -- torque limit threshold
   * Note: angles are given in degrees, but converted to radians internally.
   */
-  DH_Link(double theta, double d, double a, double alpha, char joint_type,
-          double mass, const gtsam::Point3 &center_of_mass,
-          const gtsam::Matrix3 &inertia, bool isActuated = true,
-          double springCoefficient = 0, double dampingCoefficient = 0,
-          double joint_lower_limit = -180, double joint_upper_limit = 180,
-          double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-          double velocity_limit_threshold = 0.0,
-          double acceleration_limit = 10000,
-          double acceleration_limit_threshold = 0.0,
-          double torque_limit = 10000, double torque_limit_threshold = 0.0)
+  DhLink(double theta, double d, double a, double alpha, char joint_type,
+         double mass, const gtsam::Point3 &center_of_mass,
+         const gtsam::Matrix3 &inertia = gtsam::I_3x3, bool isActuated = true,
+         double springCoefficient = 0, double dampingCoefficient = 0,
+         double joint_lower_limit = -180, double joint_upper_limit = 180,
+         double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+         double velocity_limit_threshold = 0.0,
+         double acceleration_limit = 10000,
+         double acceleration_limit_threshold = 0.0, double torque_limit = 10000,
+         double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
              unit_twist(
                  gtsam::Vector3(0, sin(radians(alpha)), cos(radians(alpha))),
@@ -75,7 +75,7 @@ class DH_Link : public Link {
         a_(a),
         alpha_(radians(alpha)) {}
 
-  /** Calculate link transform
+  /** Calculate link transform of current link with respect to previous link.
    * Keyword argument:
       q -- optional generalized joint angle (default 0)
    * Return Link transform.
@@ -94,5 +94,10 @@ class DH_Link : public Link {
 
   /* return approximate length of this link */
   double length() const { return sqrt(d_ * d_ + a_ * a_); }
+
+  /** Clone this DhLink */
+  boost::shared_ptr<Link> clone() const override {
+    return boost::make_shared<DhLink>(*this);
+  }
 };
 }  // namespace manipulator

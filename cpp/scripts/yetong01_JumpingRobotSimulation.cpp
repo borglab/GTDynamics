@@ -6,7 +6,7 @@
  */
 
 #include <Simulation.h>
-#include <URDFLink.h>
+#include <UrdfLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -32,7 +32,7 @@ double m3 = 0.54;
 double link_radius = 0.02;
 double l = 0.55;
 
-Arm<URDF_Link> getRobot() {
+Arm<UrdfLink> getRobot() {
   Vector link_length = Vector::Zero(num_links);
   Vector link_mass = Vector::Zero(num_links);
   link_length << l, l, l, l, l;
@@ -59,27 +59,27 @@ Arm<URDF_Link> getRobot() {
   //    | |
   // TTTTTTTTTT
 
-  vector<URDF_Link> urdf_jump = {
-      URDF_Link(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(2) / 2, 0, 0)),
-                Vector3(0, 0, 1), 'R', link_mass(0),
-                Pose3(Rot3(), Point3(link_length(0) / 2, 0, 0)),
-                link_inertia[0], false, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(0), Point3(link_length(0), 0, 0)),
-                Vector3(0, 0, 1), 'R', link_mass(1),
-                Pose3(Rot3(), Point3(link_length(1) / 2, 0, 0)),
-                link_inertia[1], true, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(1), 0, 0)),
-                Vector3(0, 0, 1), 'R', link_mass(2),
-                Pose3(Rot3(), Point3(link_length(2) / 2, 0, 0)),
-                link_inertia[2], true, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(2), 0, 0)),
-                Vector3(0, 0, 1), 'R', link_mass(3),
-                Pose3(Rot3(), Point3(link_length(3) / 2, 0, 0)),
-                link_inertia[3], true, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(0), Point3(link_length(3), 0, 0)),
-                Vector3(0, 0, 1), 'R', link_mass(4),
-                Pose3(Rot3(), Point3(link_length(4) / 2, 0, 0)),
-                link_inertia[4], true, 0, 0)};
+  vector<UrdfLink> urdf_jump = {
+      UrdfLink(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(2) / 2, 0, 0)),
+               Vector3(0, 0, 1), 'R', link_mass(0),
+               Pose3(Rot3(), Point3(link_length(0) / 2, 0, 0)), link_inertia[0],
+               false, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(0), Point3(link_length(0), 0, 0)),
+               Vector3(0, 0, 1), 'R', link_mass(1),
+               Pose3(Rot3(), Point3(link_length(1) / 2, 0, 0)), link_inertia[1],
+               true, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(1), 0, 0)),
+               Vector3(0, 0, 1), 'R', link_mass(2),
+               Pose3(Rot3(), Point3(link_length(2) / 2, 0, 0)), link_inertia[2],
+               true, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(M_PI / 2), Point3(link_length(2), 0, 0)),
+               Vector3(0, 0, 1), 'R', link_mass(3),
+               Pose3(Rot3(), Point3(link_length(3) / 2, 0, 0)), link_inertia[3],
+               true, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(0), Point3(link_length(3), 0, 0)),
+               Vector3(0, 0, 1), 'R', link_mass(4),
+               Pose3(Rot3(), Point3(link_length(4) / 2, 0, 0)), link_inertia[4],
+               true, 0, 0)};
 
   Pose3 base = Pose3();
   Pose3 tool = Pose3(Rot3(), Point3(2, 0, 0));
@@ -87,7 +87,7 @@ Arm<URDF_Link> getRobot() {
   // get screw_axis for loop closure, expressed in base frame
   auto screw_axis =
       unit_twist(Vector3(0, 0, 1), Vector3(-link_length(4) / 2, 0, 0));
-  return Arm<URDF_Link>(urdf_jump, base, tool, screw_axis, false, 0, 0);
+  return Arm<UrdfLink>(urdf_jump, base, tool, screw_axis, false, 0, 0);
 }
 auto robot = getRobot();
 auto dof = robot.numLinks() + 1;
@@ -111,8 +111,8 @@ TEST(Simulation, gravity_y) {
   initialJointAngles << -theta, 2 * theta, -theta, -theta, 2 * theta, -theta;
   known_torque << 0, torque2, torque3, torque3, torque2, 0;
 
-  Simulation<URDF_Link> FDsim(time_step, example::robot, gravity,
-                              initialJointAngles, initialJointVelocities);
+  Simulation<UrdfLink> FDsim(time_step, example::robot, gravity,
+                             initialJointAngles, initialJointVelocities);
   vector<Vector> jointAngles, jointVelocities, jointAccelerations, jointTorques;
   jointAngles.assign(total_steps, Vector::Zero(example::dof));
   jointVelocities.assign(total_steps, Vector::Zero(example::dof));

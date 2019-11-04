@@ -96,7 +96,7 @@ class MotionPlanner {
   ~MotionPlanner() {}
 
   /** return nonlinear factor graph of all factors
-   *  template Type -- the link type of this robot, URDF_Link or DH_Link
+   *  template Type -- the link type of this robot, UrdfLink or DhLink
       Keyword arguments:
           robot                     -- robotic arm
           pose goal                 -- pose goal of manipulator end effector
@@ -111,7 +111,7 @@ class MotionPlanner {
       const Arm<Type> &robot, const gtsam::Pose3 &pose_goal,
       const gtsam::Vector &q_init,
       boost::optional<std::vector<gtsam::Pose3> &> cartesian_path = boost::none,
-      boost::optional<gtsam::Vector3 &> gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       boost::optional<SignedDistanceField &> sdf = boost::none,
       boost::optional<SphereCenters &> sphereCenters = boost::none,
       boost::optional<std::vector<double> &> radii = boost::none) const {
@@ -221,7 +221,7 @@ class MotionPlanner {
   }
 
   /** initialization factor graph, return initial values for optimization
-   *  template Type -- the link type of this robot, URDF_Link or DH_Link
+   *  template Type -- the link type of this robot, UrdfLink or DhLink
       Keyword arguments:
           robot                     -- robotic arm
           pose goal                 -- pose goal of manipulator end effector

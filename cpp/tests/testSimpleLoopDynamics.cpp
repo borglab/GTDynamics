@@ -5,7 +5,7 @@
  */
 
 #include <Arm.h>
-#include <URDFLink.h>
+#include <UrdfLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -22,7 +22,7 @@ static const double HALF_PI = M_PI / 2;
 
 namespace example {
 
-Arm<URDF_Link> getRobot() {
+Arm<UrdfLink> getRobot() {
   gtsam::Matrix3 inertia;
   double principal_inertia = 1.0 / 12 * 2 * 2;
   inertia << 0, 0, 0, 0, principal_inertia, 0, 0, 0, principal_inertia;
@@ -32,19 +32,19 @@ Arm<URDF_Link> getRobot() {
   //     | |
   // TTTTTTTTTTTTT
 
-  vector<URDF_Link> urdf_rrr = {
-      URDF_Link(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, true, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0),
-      URDF_Link(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
-                'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0)};
+  vector<UrdfLink> urdf_rrr = {
+      UrdfLink(Pose3(Rot3::Rz(HALF_PI), Point3(-1, 0, 0)), Vector3(0, 0, 1),
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, true, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0),
+      UrdfLink(Pose3(Rot3::Rz(-HALF_PI), Point3(2, 0, 0)), Vector3(0, 0, 1),
+               'R', 1, Pose3(Rot3(), Point3(1, 0, 0)), inertia, false, 0, 0)};
   Pose3 base = Pose3();
   Pose3 tool = Pose3(Rot3(), Point3(2, 0, 0));
 
   // get screw_axis for loop closure, expressed in base frame
   auto screw_axis = unit_twist(Vector3(0, 0, 1), Vector3(1, 0, 0));
-  return Arm<URDF_Link>(urdf_rrr, base, tool, screw_axis, false, 0, 0);
+  return Arm<UrdfLink>(urdf_rrr, base, tool, screw_axis, false, 0, 0);
 }
 
 auto robot = getRobot();

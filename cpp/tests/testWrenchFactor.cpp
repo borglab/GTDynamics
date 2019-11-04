@@ -3,7 +3,7 @@
  * @brief test wrench factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#include <DHLink.h>
+#include <DhLink.h>
 #include <WrenchFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -13,9 +13,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
 
 #include <iostream>
 
@@ -25,7 +25,8 @@ using namespace manipulator;
 
 namespace example {
 // R link example
-DH_Link dh_r = DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3);
+DhLink dh_r =
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
@@ -131,7 +132,8 @@ TEST(WrenchFactor, error_3) {
   Vector6 twist, twist_accel, wrench_j, wrench_k;
   twist = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  wrench_j = (Vector(6) << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0).finished();
+  wrench_j = (Vector(6) << 0, 0, 7.07106781, -107.07106781 + 9.8, 7.07106781, 0)
+                 .finished();
   wrench_k = (Vector(6) << 0, 0, -10, 0, 10, 0).finished();
   Pose3 pose = Pose3(Rot3::Rz(M_PI / 2), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;

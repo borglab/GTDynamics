@@ -4,7 +4,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 #include <BasePoseFactor.h>
-#include <DHLink.h>
+#include <DhLink.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>

@@ -1,5 +1,5 @@
 /**
- * @file  urdf_link.h
+ * @file  UrdfLink.h
  * @brief URDF parameter link class, inheritate from Link class
  * taking universal robot discription format parameters.
  * @Author: Frank Dellaert and Mandy Xie
@@ -15,9 +15,9 @@
 namespace manipulator {
 
 /**
- * DH_Link is a link taking URDF parameters
+ * UrdfLink is a link taking URDF parameters
  */
-class URDF_Link : public Link {
+class UrdfLink : public Link {
  private:
   gtsam::Pose3 origin_;
   gtsam::Vector3 axis_;
@@ -49,16 +49,16 @@ class URDF_Link : public Link {
          torqueLimitThreshold        -- joint torque limit threshold
   * Note: angles are given in degrees, but converted to radians internally.
   */
-  URDF_Link(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,
-            char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
-            const gtsam::Matrix3 &inertia, bool isActuated = true,
-            double springCoefficient = 0, double dampingCoefficient = 0,
-            double joint_lower_limit = -180, double joint_upper_limit = 180,
-            double joint_limit_threshold = 0.0, double velocity_limit = 10000,
-            double velocity_limit_threshold = 0.0,
-            double acceleration_limit = 10000,
-            double acceleration_limit_threshold = 0.0,
-            double torque_limit = 10000, double torque_limit_threshold = 0.0)
+  UrdfLink(const gtsam::Pose3 &origin, const gtsam::Vector3 &axis,
+           char joint_type, double mass, const gtsam::Pose3 &center_of_mass,
+           const gtsam::Matrix3 &inertia, bool isActuated = true,
+           double springCoefficient = 0, double dampingCoefficient = 0,
+           double joint_lower_limit = -180, double joint_upper_limit = 180,
+           double joint_limit_threshold = 0.0, double velocity_limit = 10000,
+           double velocity_limit_threshold = 0.0,
+           double acceleration_limit = 10000,
+           double acceleration_limit_threshold = 0.0,
+           double torque_limit = 10000, double torque_limit_threshold = 0.0)
       : Link(joint_type, mass, center_of_mass, inertia,
              unit_twist(center_of_mass.rotation().inverse() * axis,
                         center_of_mass.inverse().translation().vector()),
@@ -71,7 +71,7 @@ class URDF_Link : public Link {
         origin_(origin),
         axis_(axis) {}
 
-  /** Calculate link transform
+  /** Calculate link transform of current link with respect to previous link
   Keyword argument:
       q -- optional generalized joint angle (default 0)
   Return Link transform.
@@ -87,5 +87,10 @@ class URDF_Link : public Link {
 
   /* return approximate length of the previous link*/
   double length() const { return origin_.translation().norm(); }
+
+  /** Clone this UrdfLink */
+  boost::shared_ptr<Link> clone() const override {
+    return boost::make_shared<UrdfLink>(*this);
+  }
 };
 }  // namespace manipulator

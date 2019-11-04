@@ -50,8 +50,8 @@ class OptimizerSetting {
   int max_iter;       // max iteration for stopping optimization
 
   /// collision checking setting
-  double epsilon;    // obstacle clearance
-  double obsSigma;   // obstacle cost model covariance
+  double epsilon;   // obstacle clearance
+  double obsSigma;  // obstacle cost model covariance
 
   // default constructor
   OptimizerSetting();
@@ -72,11 +72,11 @@ class OptimizerSetting {
 
   /// optimization settings
   // Gauss-Newton optimizer
-  void setGaussNewton() { opt_type = GaussNewton; }  
+  void setGaussNewton() { opt_type = GaussNewton; }
   // Levenberg-Marquart optimizer
-  void setLM() { opt_type = LM; }   
-  // Dog-Leg optimizer       
-  void setDogleg() { opt_type = Dogleg; }  
+  void setLM() { opt_type = LM; }
+  // Dog-Leg optimizer
+  void setDogleg() { opt_type = Dogleg; }
   // set relative error threshold
   void setRelativeThreshold(double thresh) { rel_thresh = thresh; }
   // set maximum iteration number

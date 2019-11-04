@@ -13,8 +13,8 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/nonlinear/factorTesting.h>
+#include <gtsam/slam/PriorFactor.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <iostream>
@@ -32,13 +32,11 @@ TEST(GaussianProcessPriorFactor, Factor) {
   Key qVel1_key = Symbol('v', 1), qVel2_key = Symbol('v', 2);
   Key qAccel1_key = Symbol('a', 1), qAccel2_key = Symbol('a', 2);
   GaussianProcessPriorFactor factor(q1_key, qVel1_key, qAccel1_key, q2_key,
-                                    qVel2_key, qAccel2_key, Qc_model,
-                                    delta_t);
+                                    qVel2_key, qAccel2_key, Qc_model, delta_t);
   double q1 = 0, qVel1 = 0, qAccel1 = 0, q2 = 0, qVel2 = 0, qAccel2 = 0;
   Vector3 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(q1, qVel1, qAccel1, q2, qVel2, qAccel2);
+  actual_errors = factor.evaluateError(q1, qVel1, qAccel1, q2, qVel2, qAccel2);
   expected_errors.setZero();
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));

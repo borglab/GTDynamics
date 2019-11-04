@@ -55,17 +55,18 @@ TEST(utils, readFromTxt) {
   double expected_cell_size = 0.01, actual_cell_size;
   vector<Matrix> expected_data, actual_data;
   Matrix3 mat1;
-  mat1 << 1, 2, 3, //
-      4, 5, 6, //
+  mat1 << 1, 2, 3,  //
+      4, 5, 6,      //
       7, 8, 9;
   Matrix3 mat2;
-  mat2 << 11, 22, 33, //
-      44, 55, 66, //
+  mat2 << 11, 22, 33,  //
+      44, 55, 66,      //
       77, 88, 99;
   expected_data.push_back(mat1);
   expected_data.push_back(mat2);
 
-  actual_data = readFromTxt("../../../matlab/dataset/test.txt", actual_origin, actual_cell_size);
+  actual_data = readFromTxt("../../../matlab/dataset/test.txt", actual_origin,
+                            actual_cell_size);
   EXPECT(assert_equal(expected_data, actual_data, 1e-6));
   EXPECT(assert_equal(expected_origin, actual_origin, 1e-6));
   EXPECT(assert_equal(expected_cell_size, actual_cell_size, 1e-6));
