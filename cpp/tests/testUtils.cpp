@@ -11,6 +11,10 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
+#include <string>
+#include <limits.h>
+#include <unistd.h>
+
 using namespace std;
 using namespace gtsam;
 using namespace manipulator;
@@ -47,6 +51,28 @@ TEST(utils, calcQ) {
 
   auto actual_Q = calcQ(Qc, t);
   EXPECT(assert_equal(expected_Q, actual_Q, 1e-6));
+}
+
+// Load a URDF file and ensure its joints and links were parsed correctly.
+TEST(utils, load_and_parse_urdf_file) {
+  // Load the file and parse URDF structure.
+  std::string simple_urdf_str = load_file_into_string("../../../urdfs/simple_urdf.urdf");
+  auto simple_urdf = get_urdf(simple_urdf_str);
+
+  // Check that physical and inertial properties were properly parsed..
+  EXPECT(assert_equal(2, simple_urdf->links_.size()));
+  EXPECT(assert_equal(1, simple_urdf->joints_.size()));
+
+  EXPECT(assert_equal(100, simple_urdf->links_["l1"]->inertial->mass));
+  EXPECT(assert_equal(15, simple_urdf->links_["l2"]->inertial->mass));
+
+  EXPECT(assert_equal(3, simple_urdf->links_["l1"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l1"]->inertial->iyy));
+  EXPECT(assert_equal(1, simple_urdf->links_["l1"]->inertial->izz));
+
+  EXPECT(assert_equal(1, simple_urdf->links_["l2"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l2"]->inertial->iyy));
+  EXPECT(assert_equal(3, simple_urdf->links_["l2"]->inertial->izz));
 }
 
 // Test readFromTxt

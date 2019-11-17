@@ -1,0 +1,3 @@
+[submodule "external/urdfdom"]
+	path = external/urdfdom
+	url = https://github.com/ros/urdfdom.git

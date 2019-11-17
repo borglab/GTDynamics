@@ -43,6 +43,9 @@ endif()
 
 add_subdirectory(cpp)
 
+# External subdirs.
+add_subdirectory(external/urdfdom)
+
 # for cython wrapper
 find_package(GTSAM REQUIRED) # Make sure gtsam's install folder is in your PATH
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")

@@ -157,6 +157,22 @@ vector<Pose3> square(int numOfWayPoints, double goalAngle, double length) {
   return path;
 }
 
+string load_file_into_string(const string rel_path) {
+  auto ss = std::ostringstream{};
+  std::ifstream file(rel_path);
+
+  if (!file.good())
+    throw std::runtime_error("File does not exist"); 
+
+  ss << file.rdbuf();
+  return ss.str();
+}
+
+urdf::ModelInterfaceSharedPtr get_urdf(string urdf_contents) {
+  urdf::ModelInterfaceSharedPtr urdf = urdf::parseURDF(urdf_contents);
+  return urdf;
+}
+
 std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
                                        double &cell_size) {
   vector<gtsam::Matrix> data;

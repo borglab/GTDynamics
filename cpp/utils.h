@@ -13,11 +13,15 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
+#include "urdf_parser/urdf_parser.h"
 
 #include <boost/optional.hpp>
 #include <cmath>
 #include <string>
 #include <vector>
+#include <sstream>
+#include <fstream>
+#include <stdexcept>
 
 namespace manipulator {
 
@@ -128,6 +132,18 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 */
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
+
+/** read text from a file.
+ * Keyword arguments:
+      rel_path         -- relative path to the file.
+ */
+std::string load_file_into_string(const std::string rel_path);
+
+/** obtain the urdf model from a string containing the contents of a .urdf file.
+ * Keywork arguments:
+      urdf_contents    -- a string containing the contents of the URDF file.
+ */
+urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
 
 /** read a variable from a text file, and save to vector of matrix
  *  this is used for sdf

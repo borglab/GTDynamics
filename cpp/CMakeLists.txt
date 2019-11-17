@@ -6,7 +6,7 @@ include(GtsamMatlabWrap)
 # Library sources
 file(GLOB sources "*.cpp" "*.h")
 add_library(dynamics SHARED ${sources})
-target_link_libraries(dynamics ${GTSAM_LIBS})
+target_link_libraries(dynamics ${GTSAM_LIBS} urdfdom_model urdfdom_world)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

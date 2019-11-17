@@ -1,0 +1,20 @@
+<robot name="floating_base_test">
+    <link name="l1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <mass value="100" />
+            <inertia ixx="3" ixy="0" ixz="0" iyy="2" iyz="0" izz="1"/>
+        </inertial>
+    </link>
+    <link name="l2">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <mass value="15" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="2" iyz="0" izz="3"/>
+        </inertial>
+    </link>
+    <joint name="j1" type="fixed">
+        <parent link="l1"/>
+        <child link="l2"/>
+    </joint>
+</robot>;
