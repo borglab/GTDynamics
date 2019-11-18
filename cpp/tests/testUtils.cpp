@@ -14,6 +14,7 @@
 #include <string>
 #include <limits.h>
 #include <unistd.h>
+#include <algorithm>
 
 using namespace std;
 using namespace gtsam;
@@ -56,7 +57,7 @@ TEST(utils, calcQ) {
 // Load a URDF file and ensure its joints and links were parsed correctly.
 TEST(utils, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
-  std::string simple_urdf_str = load_file_into_string("../../../urdfs/simple_urdf.urdf");
+  std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
   auto simple_urdf = get_urdf(simple_urdf_str);
 
   // Check that physical and inertial properties were properly parsed..
@@ -73,6 +74,59 @@ TEST(utils, load_and_parse_urdf_file) {
   EXPECT(assert_equal(1, simple_urdf->links_["l2"]->inertial->ixx));
   EXPECT(assert_equal(2, simple_urdf->links_["l2"]->inertial->iyy));
   EXPECT(assert_equal(3, simple_urdf->links_["l2"]->inertial->izz));
+}
+
+// Load a URDF file with a loop and ensure its joints and links were parsed correctly.
+TEST(utils, load_and_parse_urdf_file_with_loop) {
+  // Load the file and parse URDF structure.
+  std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf_loop.urdf");
+  auto simple_urdf = get_urdf(simple_urdf_str);
+
+  // Check that physical and inertial properties were properly parsed..
+  EXPECT(assert_equal(4, simple_urdf->links_.size()));
+  EXPECT(assert_equal(4, simple_urdf->joints_.size()));
+
+  EXPECT(assert_equal(100, simple_urdf->links_["l0"]->inertial->mass));
+  EXPECT(assert_equal(100, simple_urdf->links_["l1"]->inertial->mass));
+  EXPECT(assert_equal(15, simple_urdf->links_["l2"]->inertial->mass));
+  EXPECT(assert_equal(15, simple_urdf->links_["l3"]->inertial->mass));
+
+  EXPECT(assert_equal(3, simple_urdf->links_["l0"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l0"]->inertial->iyy));
+  EXPECT(assert_equal(1, simple_urdf->links_["l0"]->inertial->izz));
+
+  EXPECT(assert_equal(3, simple_urdf->links_["l1"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l1"]->inertial->iyy));
+  EXPECT(assert_equal(1, simple_urdf->links_["l1"]->inertial->izz));
+
+  EXPECT(assert_equal(1, simple_urdf->links_["l2"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l2"]->inertial->iyy));
+  EXPECT(assert_equal(3, simple_urdf->links_["l2"]->inertial->izz));
+
+  EXPECT(assert_equal(1, simple_urdf->links_["l3"]->inertial->ixx));
+  EXPECT(assert_equal(2, simple_urdf->links_["l3"]->inertial->iyy));
+  EXPECT(assert_equal(3, simple_urdf->links_["l3"]->inertial->izz));
+
+
+  EXPECT(assert_equal("j3", simple_urdf->links_["l3"]->parent_joint->name));
+
+  std::vector<std::string> l1_child_link_names;
+  for (auto it = simple_urdf->links_["l1"]->child_links.begin();
+        it != simple_urdf->links_["l1"]->child_links.end(); it++)
+    l1_child_link_names.push_back((*it)->name);
+
+  std::vector<std::string> l1_child_joint_names;
+  for (auto it = simple_urdf->links_["l1"]->child_joints.begin();
+        it != simple_urdf->links_["l1"]->child_joints.end(); it++)
+    l1_child_joint_names.push_back((*it)->name);
+  
+  // Check that l2 and l3 are children links of l1
+  EXPECT(assert_equal(1, std::count(l1_child_link_names.begin(), l1_child_link_names.end(), "l2")));
+  EXPECT(assert_equal(1, std::count(l1_child_link_names.begin(), l1_child_link_names.end(), "l3")));
+
+  // Check that j1 and j3 are children joints of l1.
+  EXPECT(assert_equal(1, std::count(l1_child_joint_names.begin(), l1_child_joint_names.end(), "j1")));
+  EXPECT(assert_equal(1, std::count(l1_child_joint_names.begin(), l1_child_joint_names.end(), "j3")));
 }
 
 // Test readFromTxt

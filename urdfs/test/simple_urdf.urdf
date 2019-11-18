@@ -1,3 +1,4 @@
+<!-- DO NOT MODIFY OR REMOVE -->
 <robot name="floating_base_test">
     <link name="l1">
         <inertial>
