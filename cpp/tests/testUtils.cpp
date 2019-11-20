@@ -1,7 +1,7 @@
 /**
  * @file  testUtils.cpp
  * @brief test utils functions
- * @Author: Mandy Xie
+ * @Author: Mandy Xie and Alejandro Escontrela
  */
 
 #include <gtsam/base/numericalDerivative.h>

@@ -1,7 +1,7 @@
 /**
  * @file  utils.h
  * @brief a few utilities
- * @Author: Frank Dellaert and Mandy Xie
+ * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #pragma once
@@ -140,7 +140,7 @@ std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
 std::string load_file_into_string(const std::string rel_path);
 
 /** obtain the urdf model from a string containing the contents of a .urdf file.
- * Keywork arguments:
+ * Keyword arguments:
       urdf_contents    -- a string containing the contents of the URDF file.
  */
 urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);

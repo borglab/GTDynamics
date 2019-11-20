@@ -1,7 +1,7 @@
 /**
  * @file  utils.cpp
  * @brief a few utilities
- * @Author: Frank Dellaert and Mandy Xie
+ * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include <utils.h>
