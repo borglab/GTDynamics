@@ -33,6 +33,7 @@ TEST(LinkJoint, constructor) {
     j1_params.name = "j1";
     j1_params.jointEffortType = robot::LinkJoint::JointEffortType::Actuated;
 
+    // Test constructor.
     LinkJointSharedPtr link_joint_strong = std::make_shared<LinkJoint>(
       LinkJoint(
         simple_urdf->joints_["j1"], j1_params.jointEffortType, j1_params.springCoefficient,
@@ -40,8 +41,13 @@ TEST(LinkJoint, constructor) {
         j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold, l1,
         l2_weak));
 
-    // LinkJoint first_joint = LinkJoint(, LinkJoint::JointEffortType::Actuated);
+    // Rest transform is equivalent to transform with q = 0.
+    EXPECT(assert_equal(link_joint_strong->pMc(), link_joint_strong->pTc(0)));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->pMc()));
 
+    // Test that parent to child link transform is correct for -pi/2 and pi/2.
+    EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(-M_PI / 2)));
+    EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(M_PI / 2)));
 }
 
 int main() {

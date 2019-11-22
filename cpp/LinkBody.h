@@ -14,7 +14,6 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
 
-
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -46,12 +45,6 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
   // to prevent circular references.
   std::vector<LinkJointWeakPtr> child_joints_;
   std::vector<LinkBodyWeakPtr> child_links_;
-
-//   uint linkIndex_;
-//   std::vector<uint> jointIndexes_;
-//   double mass_;
-//   gtsam::Pose3 centerOfMass_;
-//   gtsam::Matrix3 inertia_;
 
  public:
   LinkBody() {}
@@ -90,11 +83,11 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
 
   virtual ~LinkBody() = default;
 
-  std::shared_ptr<LinkBody> getSharedPtr(void) {
+  LinkBodySharedPtr getSharedPtr(void) {
       return shared_from_this(); 
   }
 
-  std::weak_ptr<LinkBody> getWeakPtr(void) {
+  LinkBodyWeakPtr getWeakPtr(void) {
       return shared_from_this();
   }
 
@@ -130,14 +123,8 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
       return parent_links_;
   }
 
-  /// Return link index
-//   uint linkIndex() const { return linkIndex_; }
-
   // Reutrn link name.
   std::string name() const { return name_; }
-
-  /// Return joint indexes
-//   const std::vector<uint> &jointIndexes() const { return jointIndexes_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
@@ -155,43 +142,5 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
     gmm.push_back(gtsam::I_3x3 * mass_);
     return gtsam::diag(gmm);
   }
-
-  /**
-   * Construct from mass, centerOfMass, and inertia
-   * Keyword arguments:
-   *  linkIndex                  -- index of this link
-   *  jointIndexes               -- all jointIndexs associate with
-   *                                this link taken as sourceLink
-      mass                       -- mass of link
-      centerOfMass               -- center of mass location expressed
-                                    in link frame
-      inertia                    -- inertia matrix
-   */
-//   LinkBody(uint linkIndex, std::vector<uint> jointIndexes, double mass,
-//            const gtsam::Pose3 &centerOfMass, const gtsam::Matrix3 &inertia)
-//       : linkIndex_(linkIndex),
-//         jointIndexes_(jointIndexes),
-//         mass_(mass),
-//         centerOfMass_(centerOfMass),
-//         inertia_(inertia) {}
-
-  /**
-   * Construct from joint_type, mass, centerOfMass, and inertia
-   * Keyword arguments:
-   * linkIndex                      -- index of this link
-   * jointIndexes                   -- all jointIndexs associate with
-   *                                   this link taken as sourceLink
-   * mass                           -- mass of link
-   * centerOfMass                   -- center of mass location expressed
-   *                                   in link frame
-   * inertia                        -- principal inertias
-   */
-//   LinkBody(uint linkIndex, std::vector<uint> jointIndexes, double mass,
-//            const gtsam::Point3 &centerOfMass, const gtsam::Matrix3 &inertia)
-//       : linkIndex_(linkIndex),
-//         jointIndexes_(jointIndexes),
-//         mass_(mass),
-//         centerOfMass_(gtsam::Pose3(gtsam::Rot3(), centerOfMass)),
-//         inertia_(inertia) {}
 };
 }  // namespace robot

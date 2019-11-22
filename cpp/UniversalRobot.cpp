@@ -49,9 +49,6 @@ LinkBodyJointPair extract_structure_from_urdf(
       jps = default_params;
     }
 
-    // TODO(aescontrela): Make LinkJoint constructor that takes the 
-    // urdf::LinkSharedPtr object, the parent link, the child link, and computes 
-    // requires attributes.
     // Construct LinkJoint and insert into name_to_link_joint.
     robot::LinkJointSharedPtr link_joint_strong = std::make_shared<robot::LinkJoint>(
       robot::LinkJoint(

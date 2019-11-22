@@ -65,8 +65,6 @@ TEST(LinkBody, constructor) {
     EXPECT(assert_equal(first_link.name(), second_link.getParentLinks()[0]->name()));
 
     first_link.addChildLink(std::make_shared<LinkBody>(second_link));
-
-    // TODO(aescontrela): Add child joint once LinkBody is set up.
 }
 
 int main() {

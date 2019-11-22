@@ -8,7 +8,7 @@
 
 #include <utils.h>
 
-
+#include <LinkBody.h>
 #include <LinkTypes.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -25,11 +25,9 @@
 
 // TODO(aescontrela): Verify that the `effort` parameter refers to the max torque/force
 // applied at the joint.
-// TODO(aescontrela): Add pMc transform.
-// TODO(aescontrela): Add screw axis.
 namespace robot {
 /**
- * LinkBody is the base class for links taking different format of parameters
+ * LinkJoint is the base class for a joint connecting two LinkBody objects.
  */
 class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
  public:
@@ -43,12 +41,22 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
 
  private:
 
+  // This joint's name, as described in the URDF file.
   std::string name_;
 
   char jointType_;
   JointEffortType jointEffortType_;
 
+  // Rotational axis for 'R' jointType_ (revolute joint). Translational
+  // direction for 'P' jointType_ (prismatic joint).
   gtsam::Vector3 axis_;
+  // x-y-z and r-p-y coords of link frame w.r.t.
+  // the former link frame.
+  gtsam::Pose3 origin_;
+  // Rest transform to link frame from source link frame at rest.
+  gtsam::Pose3 pMc_;
+  // Joint axis expressed in COM frame of dest link
+  gtsam::Vector6 screwAxis_;
 
   double jointLowerLimit_;
   double jointUpperLimit_;
@@ -65,13 +73,6 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
 
   double torqueLimit_;
   double torqueLimitThreshold_;
-
-  uint jointIndex_;
-  uint sourceLinkIndex_;
-  uint destLinkIndex_;
-
-  gtsam::Pose3 pMc_;
-  gtsam::Vector6 screwAxis_;
 
   // Parent link.
   LinkBodySharedPtr parent_link_;
@@ -107,6 +108,18 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
                 jointEffortType_(joint_effort_type),
                 axis_(gtsam::Vector3(urdf_joint_ptr->axis.x, urdf_joint_ptr->axis.y,
                   urdf_joint_ptr->axis.z)),
+                origin_(gtsam::Pose3(
+                  gtsam::Rot3(gtsam::Quaternion(
+                    urdf_joint_ptr->parent_to_joint_origin_transform.rotation.w,
+                    urdf_joint_ptr->parent_to_joint_origin_transform.rotation.x,
+                    urdf_joint_ptr->parent_to_joint_origin_transform.rotation.y,
+                    urdf_joint_ptr->parent_to_joint_origin_transform.rotation.z
+                    )),
+                  gtsam::Point3(
+                    urdf_joint_ptr->parent_to_joint_origin_transform.position.x,
+                    urdf_joint_ptr->parent_to_joint_origin_transform.position.y,
+                    urdf_joint_ptr->parent_to_joint_origin_transform.position.z
+                ))),
                 jointLowerLimit_(urdf_joint_ptr->limits->lower),
                 jointUpperLimit_(urdf_joint_ptr->limits->upper),
                 jointLimitThreshold_(jointLimitThreshold),
@@ -124,73 +137,25 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
         } else if (urdf_joint_ptr->type == urdf::Joint::REVOLUTE) {
             jointType_ = 'R';
         }
+
+        if (jointType_ == 'R') {
+          pMc_ = origin_ *
+                gtsam::Pose3(gtsam::Rot3::Rodrigues(axis_ * 0), gtsam::Point3());
+        } else {
+          pMc_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
+        }
+
+        LinkBodySharedPtr child_link_strong_ = child_link_.lock();
+        screwAxis_ = manipulator::unit_twist(
+          child_link_strong_->centerOfMass().rotation().inverse() * axis_,
+          child_link_strong_->centerOfMass().translation().vector());
     }
 
-  /**
-   * Construct from jointType, source link, dest links,
-   * Keyword arguments:
-      jointType                  -- 'R': revolute,
-                                    'P': prismatic
-      jointEffortType_           -- joint effort type
-      sourceLinkIndex            -- index of source link
-      destLinkIndex             -- index dest link
-      axis                       -- for 'R' joint, rotational axis
-                                    for 'P' joint, translational direction
-      pMc                        -- dest link frame w.r.t. source
-                                    link frame at rest
-      screwAxis                  -- joint axis expressed in
-                                    COM frame of dest link
-      sprintCoefficient          -- spring coefficient for Impedence joint
-      dampCoefficient            -- damping coefficient for others
-      jointLowerLimit            -- joint angle lower limit
-      jointUpperLimit            -- joint angle upper limit
-      jointLimitThreshold        -- joint angle limit threshold
-      velocityLimit              -- joint velocity limit
-      velocityLimitThreshold     -- joint velocity limit threshold
-      accelerationLimit          -- joint acceleration limit
-      accelerationLimitThreshold -- joint acceleration limit threshold
-      torqueLimit                -- joint torque limit
-      torqueLimitThreshold       -- joint torque limit threshold
-    * Note: joint angle limits are given in radians.
-   */
-  // LinkJoint(char jointType, JointEffortType jointEffortType, uint jointIndex,
-  //           uint sourceLinkIndex, uint destLinkIndex, const gtsam::Vector3 axis,
-  //           const gtsam::Pose3 &pMc, const gtsam::Vector6 &screwAxis,
-  //           double springCoefficient = 0, double dampCoefficient = 0,
-  //           double jointLowerLimit = -M_PI, double jointUpperLimit = M_PI,
-  //           double jointLimitThreshold = 0.0, double velocity_limit = 10000,
-  //           double velocity_limit_threshold = 0.0,
-  //           double acceleration_limit = 10000,
-  //           double acceleration_limit_threshold = 0.0,
-  //           double torque_limit = 10000, double torque_limit_threshold = 0.0)
-  //     : jointType_(jointType),
-  //       jointEffortType_(jointEffortType),
-  //       jointIndex_(jointIndex),
-  //       sourceLinkIndex_(sourceLinkIndex),
-  //       destLinkIndex_(destLinkIndex),
-  //       axis_(axis),
-  //       pMc_(pMc),
-  //       screwAxis_(screwAxis),
-  //       springCoefficient_(springCoefficient),
-  //       dampCoefficient_(dampCoefficient),
-  //       jointLowerLimit_(jointLowerLimit),
-  //       jointUpperLimit_(jointUpperLimit),
-  //       jointLimitThreshold_(jointLimitThreshold),
-  //       velocityLimit_(velocity_limit),
-  //       velocityLimitThreshold_(velocity_limit_threshold),
-  //       accelerationLimit_(acceleration_limit),
-  //       accelerationLimitThreshold_(acceleration_limit_threshold),
-  //       torqueLimit_(torque_limit),
-  //       torqueLimitThreshold_(torque_limit_threshold) {}
+  /// Return a shared ptr to this joint.
+  LinkJointSharedPtr getSharedPtr() { return shared_from_this(); }
 
-  std::shared_ptr<LinkJoint> getSharedPtr(void) {
-      // return std::make_shared<LinkBody>(this);
-      return shared_from_this();
-  }
-
-  std::weak_ptr<LinkJoint> getWeakPtr(void) {
-      return shared_from_this();
-  }
+  /// Return a weak ptr to this joint.
+  LinkJointWeakPtr getWeakPtr() { return shared_from_this(); }
 
   // Return joint name.
   std::string name() const { return name_; }
@@ -201,23 +166,18 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
 
-  /// Return joint index
-  uint jointIndex() const { return jointIndex_; }
+  /// Return the joint axis. Rotational axis for revolute and translation
+  /// direction for prismatic.
+  gtsam::Vector3 axis() const { return axis_; }
 
-  /// Return sourceLink index
-  uint sourceLinkIndex() const { return sourceLinkIndex_; };
+  // x-y-z and r-p-y coords of link frame w.r.t. the former link frame.
+  gtsam::Pose3 origin() const { return origin_; }
 
-  /// Return destLink index
-  uint destLinkIndex() const { return destLinkIndex_; };
+  /// Return transfrom of dest link frame w.r.t. source link frame at rest
+  gtsam::Pose3 pMc() const { return pMc_; }
 
   /// Return screw axis.
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }
-
-  /// Return joint spring coefficient
-  double springCoefficient() const { return springCoefficient_; }
-
-  /// Return joint damping coefficient
-  double dampCoefficient() const { return dampCoefficient_; }
 
   /// Return joint angle lower limit.
   double jointLowerLimit() const { return jointLowerLimit_; }
@@ -227,6 +187,12 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
 
   /// Return joint angle limit threshold.
   double jointLimitThreshold() const { return jointLimitThreshold_; }
+
+  /// Return joint damping coefficient
+  double dampCoefficient() const { return dampCoefficient_; }
+
+  /// Return joint spring coefficient
+  double springCoefficient() const { return springCoefficient_; }
 
   /// Return joint velocity limit.
   double velocityLimit() const { return velocityLimit_; }
@@ -248,8 +214,11 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
   /// Return joint torque limit threshold.
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
-  /// Return transfrom of dest link frame w.r.t. source link frame at rest
-  gtsam::Pose3 pMc() const { return pMc_; }
+  /// Return a shared ptr to the parent link.
+  LinkBodySharedPtr parentLink() { return parent_link_; } 
+
+  /// Return a weak ptr to the child link.
+  LinkBodyWeakPtr childLink() { return child_link_; }
 
   /** Return transfrom of dest link frame w.r.t. source link frame at any joint
    *  angle
@@ -266,17 +235,15 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
 };
 
 struct LinkJointParams {
-  std::string name; // Name of this joint.
+  std::string name; // Name of this joint as described in the URDF file.
 
   LinkJoint::JointEffortType jointEffortType = LinkJoint::JointEffortType::Actuated;
-  double springCoefficient = 0;
-  double jointLimitThreshold = 0.0;
-  double velocityLimitThreshold = 0.0;
-  double accelerationLimit = 10000;
-  double accelerationLimitThreshold = 0.0;
-  double torqueLimitThreshold = 0.0;
+  double springCoefficient = 0; // spring coefficient for Impedence joint.
+  double jointLimitThreshold = 0.0; // joint angle limit threshold.
+  double velocityLimitThreshold = 0.0; // joint velocity limit threshold.
+  double accelerationLimit = 10000; // joint acceleration limit.
+  double accelerationLimitThreshold = 0.0; // joint acceleration limit threshold.
+  double torqueLimitThreshold = 0.0; // joint torque limit threshold.
 };
 
 }  // namespace robot
-
-
