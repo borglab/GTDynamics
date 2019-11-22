@@ -37,7 +37,7 @@ typedef std::pair<std::vector<robot::LinkBodySharedPtr>,
                   std::vector<robot::LinkJointSharedPtr>> LinkBodyJointPair;
 LinkBodyJointPair extract_structure_from_urdf(
     const urdf::ModelInterfaceSharedPtr urdf_ptr,
-    const boost::optional<std::vector<robot::LinkJointParams>> joint_params);
+    const boost::optional<std::vector<robot::LinkJointParams>> joint_params = boost::none);
 
 class UniversalRobot {
 
