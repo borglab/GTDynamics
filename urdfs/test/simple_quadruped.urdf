@@ -1,0 +1,553 @@
+<?xml version="1.0"?>
+<robot name="sam">
+
+  <!-- Floating Base Link-->
+  <link name="base_link">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.3 0.15 0.035"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.3 0.15 0.035"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Front Left Leg Links  -->
+  <link name="fl_hip">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.01875"/>
+      <geometry>
+        <cylinder length="0.025" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <material>
+      <color rgba="1 0 0 0.5"/>
+    </material>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fl_upper_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .075 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fl_lower_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.0125"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .05 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.075" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fl_foot">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </collision>
+    
+  </link>
+
+  <!-- Front Right Leg Links  -->
+  <link name="fr_hip">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.01875"/>
+      <geometry>
+        <cylinder length="0.025" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <material>
+      <color rgba="1 0 0 0.5"/>
+    </material>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fr_upper_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .075 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fr_lower_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.0125"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .05 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.075" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="fr_foot">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </collision>
+    
+  </link>
+
+  <!-- Rear Left Leg Links  -->
+  <link name="rl_hip">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.01875"/>
+      <geometry>
+        <cylinder length="0.025" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <material>
+      <color rgba="1 0 0 0.5"/>
+    </material>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rl_upper_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .075 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rl_lower_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.0125"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .05 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.075" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rl_foot">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </collision>
+    
+  </link>
+
+  <!-- Rear Right Leg Links  -->
+  <link name="rr_hip">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.01875"/>
+      <geometry>
+        <cylinder length="0.025" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <material>
+      <color rgba="1 0 0 0.5"/>
+    </material>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rr_upper_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.025"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .075 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.1" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rr_lower_leg">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder length="0.0125" radius="0.0125"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 .05 0" rpy="-1.57 0 0"/>
+      <geometry>
+        <cylinder length="0.075" radius="0.00625"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.075" radius="0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="rr_foot">
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="5"/>
+    </inertial>
+
+    <visual>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <geometry>
+        <sphere radius="0.00625"/>
+      </geometry>
+    </collision>
+    
+  </link>
+
+  <!-- Joints floating base to front left leg -->
+  <joint name="base_link_to_fl_hip" type="revolute">
+    <parent link="base_link"/>
+    <child link="fl_hip"/>
+
+    <origin xyz="0.15625 0.06 0" rpy = "0 1.57 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1" />
+  </joint>
+
+  <joint name="fl_hip_to_upper_leg" type="revolute">
+    <parent link="fl_hip"/>
+    <child link="fl_upper_leg"/>
+
+    <origin xyz="0 .0125 0.03125" rpy="-1.57 0 -1.57"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="fl_upper_leg_to_lower_leg" type="revolute">
+    <parent link="fl_upper_leg"/>
+    <child link="fl_lower_leg"/>
+
+    <origin xyz="0 0.125 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="fl_lower_leg_to_foot" type="fixed">
+    <parent link="fl_lower_leg"/>
+    <child link="fl_foot"/>
+
+    <origin xyz="0 0.0875 0"/>
+  </joint>
+
+  <!-- Joints floating base to front right leg -->
+  <joint name="base_link_to_fr_hip" type="revolute">
+    <parent link="base_link"/>
+    <child link="fr_hip"/>
+
+    <origin xyz="0.15625 -0.06 0" rpy = "0 1.57 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1" />
+  </joint>
+
+  <joint name="fr_hip_to_upper_leg" type="revolute">
+    <parent link="fr_hip"/>
+    <child link="fr_upper_leg"/>
+
+    <origin xyz="0 -.0125 0.03125" rpy="-1.57 0 -1.57"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="fr_upper_leg_to_lower_leg" type="revolute">
+    <parent link="fr_upper_leg"/>
+    <child link="fr_lower_leg"/>
+
+    <origin xyz="0 0.125 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="fr_lower_leg_to_foot" type="fixed">
+    <parent link="fr_lower_leg"/>
+    <child link="fr_foot"/>
+
+    <origin xyz="0 0.0875 0"/>
+  </joint>
+
+  <!-- Joints floating base to rear left leg -->
+  <joint name="base_link_to_rl_hip" type="revolute">
+    <parent link="base_link"/>
+    <child link="rl_hip"/>
+
+    <origin xyz="-0.15625 0.06 0" rpy = "0 1.57 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1" />
+  </joint>
+
+  <joint name="rl_hip_to_upper_leg" type="revolute">
+    <parent link="rl_hip"/>
+    <child link="rl_upper_leg"/>
+
+    <origin xyz="0 .0125 -0.03125" rpy="-1.57 0 -1.57"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="rl_upper_leg_to_lower_leg" type="revolute">
+    <parent link="rl_upper_leg"/>
+    <child link="rl_lower_leg"/>
+
+    <origin xyz="0 0.125 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="rl_lower_leg_to_foot" type="fixed">
+    <parent link="rl_lower_leg"/>
+    <child link="rl_foot"/>
+
+    <origin xyz="0 0.0875 0"/>
+  </joint>
+
+  <!-- Joints floating base to rear right leg -->
+  <joint name="base_link_to_rr_hip" type="revolute">
+    <parent link="base_link"/>
+    <child link="rr_hip"/>
+
+    <origin xyz="-0.15625 -0.06 0" rpy = "0 1.57 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1" />
+  </joint>
+
+  <joint name="rr_hip_to_upper_leg" type="revolute">
+    <parent link="rr_hip"/>
+    <child link="rr_upper_leg"/>
+
+    <origin xyz="0 -.0125 -0.03125" rpy="-1.57 0 -1.57"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="rr_upper_leg_to_lower_leg" type="revolute">
+    <parent link="rr_upper_leg"/>
+    <child link="rr_lower_leg"/>
+
+    <origin xyz="0 0.125 0"/>
+    <limit lower="-1.57" upper="1.57" />
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="rr_lower_leg_to_foot" type="fixed">
+    <parent link="rr_lower_leg"/>
+    <child link="rr_foot"/>
+
+    <origin xyz="0 0.0875 0"/>
+  </joint>
+</robot>
