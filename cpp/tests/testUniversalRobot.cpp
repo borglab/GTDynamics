@@ -223,8 +223,10 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     std::string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
     auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
 
-    // Initialize UniversalRobot instance using urdf::ModelInterfacePtr.
-    UniversalRobot simple_robot = UniversalRobot(simple_urdf, Pose3());
+    LinkBodyJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf);
+
+    // Initialize UniversalRobot instance using LinkBody and LinkJoint instances.
+    UniversalRobot simple_robot = UniversalRobot(urdf_bodies_and_joints, "l1", Pose3());
 
     // Check that number of links and joints in the UniversalRobot instance is correct.
     // EXPECT(assert_equal(2, simple_robot.numLinks()));

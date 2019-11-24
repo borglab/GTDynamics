@@ -1,6 +1,14 @@
+<!--
+Author: Alejandro Escontrela
+
+A simple quadruped URDF to be used for testing purposes. The robot has 12
+revolute joints. Each leg contains 3 revolute joints: A hip
+abduction/adduction (HAA) joint, a hip flexion/extension (HFE) joint, and a
+knee flexion extension (KFE) joint.
+-->
+
 <?xml version="1.0"?>
 <robot name="sam">
-
   <!-- Floating Base Link-->
   <link name="base_link">
     <inertial>
@@ -114,7 +122,6 @@
         <sphere radius="0.00625"/>
       </geometry>
     </collision>
-    
   </link>
 
   <!-- Front Right Leg Links  -->
@@ -212,7 +219,6 @@
         <sphere radius="0.00625"/>
       </geometry>
     </collision>
-    
   </link>
 
   <!-- Rear Left Leg Links  -->
@@ -408,7 +414,6 @@
         <sphere radius="0.00625"/>
       </geometry>
     </collision>
-    
   </link>
 
   <!-- Joints floating base to front left leg -->
