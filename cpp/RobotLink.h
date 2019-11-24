@@ -1,12 +1,12 @@
 /**
- * @file  LinkBody.h
+ * @file  RobotLink.h
  * @brief only link part of a manipulator, does not include joint part
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #pragma once
 
-#include <LinkTypes.h>
+#include <RobotTypes.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -25,9 +25,9 @@
 
 namespace robot {
 /**
- * LinkBody is the base class for links taking different format of parameters
+ * RobotLink is the base class for links taking different format of parameters
  */
-class LinkBody : public std::enable_shared_from_this<LinkBody> {
+class RobotLink : public std::enable_shared_from_this<RobotLink> {
  private:
 
   std::string name_;
@@ -38,19 +38,19 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
   gtsam::Matrix3 inertia_;
 
   // Parent information.
-  std::vector<LinkBodySharedPtr> parent_links_;
-  std::vector<LinkJointSharedPtr> parent_joints_;
+  std::vector<RobotLinkSharedPtr> parent_links_;
+  std::vector<RobotJointSharedPtr> parent_joints_;
 
   // Child information. References to child objects are stored as weak pointers
   // to prevent circular references.
-  std::vector<LinkJointWeakPtr> child_joints_;
-  std::vector<LinkBodyWeakPtr> child_links_;
+  std::vector<RobotJointWeakPtr> child_joints_;
+  std::vector<RobotLinkWeakPtr> child_links_;
 
  public:
-  LinkBody() {}
+  RobotLink() {}
   
   /**
-   * Create LinkBody from a urdf::LinkSharedPtr instance, as described in 
+   * Create RobotLink from a urdf::LinkSharedPtr instance, as described in 
    * ROS/urdfdom_headers:
    * https://github.com/ros/urdfdom_headers/blob/master/urdf_model/include/urdf_model/link.h
    * 
@@ -59,7 +59,7 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
    *   parent_link     -- link connected to this link via the parent joint.
    *   parent_joint    -- joint which connects this link to the parent link.
    */
-  LinkBody(urdf::LinkSharedPtr urdf_link_ptr) 
+  RobotLink(urdf::LinkSharedPtr urdf_link_ptr) 
       : name_(urdf_link_ptr->name), mass_(urdf_link_ptr->inertial->mass),
         centerOfMass_(gtsam::Pose3(
             gtsam::Rot3(
@@ -81,45 +81,45 @@ class LinkBody : public std::enable_shared_from_this<LinkBody> {
             urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->iyy, urdf_link_ptr->inertial->iyz,
             urdf_link_ptr->inertial->ixz, urdf_link_ptr->inertial->iyz, urdf_link_ptr->inertial->izz).finished()) {}
 
-  virtual ~LinkBody() = default;
+  virtual ~RobotLink() = default;
 
-  LinkBodySharedPtr getSharedPtr(void) {
+  RobotLinkSharedPtr getSharedPtr(void) {
       return shared_from_this(); 
   }
 
-  LinkBodyWeakPtr getWeakPtr(void) {
+  RobotLinkWeakPtr getWeakPtr(void) {
       return shared_from_this();
   }
 
-  void addChildJoint(LinkJointWeakPtr child_joint_ptr) {
+  void addChildJoint(RobotJointWeakPtr child_joint_ptr) {
       child_joints_.push_back(child_joint_ptr);
   }
 
-  void addChildLink(LinkBodyWeakPtr child_link_ptr) {
+  void addChildLink(RobotLinkWeakPtr child_link_ptr) {
       child_links_.push_back(child_link_ptr);
   }
 
-  void addParentJoint(LinkJointSharedPtr parent_joint_ptr) {
+  void addParentJoint(RobotJointSharedPtr parent_joint_ptr) {
       parent_joints_.push_back(parent_joint_ptr);
   }
 
-  void addParentLink(LinkBodySharedPtr parent_link_ptr) {
+  void addParentLink(RobotLinkSharedPtr parent_link_ptr) {
       parent_links_.push_back(parent_link_ptr);
   }
 
-  std::vector<LinkJointWeakPtr> getChildJoints(void) {
+  std::vector<RobotJointWeakPtr> getChildJoints(void) {
       return child_joints_;
   }
 
-  std::vector<LinkBodyWeakPtr> getChildLinks(void) {
+  std::vector<RobotLinkWeakPtr> getChildLinks(void) {
       return child_links_;
   }
 
-  std::vector<LinkJointSharedPtr> getParentJoints(void) {
+  std::vector<RobotJointSharedPtr> getParentJoints(void) {
       return parent_joints_;
   }
 
-  std::vector<LinkBodySharedPtr> getParentLinks(void) {
+  std::vector<RobotLinkSharedPtr> getParentLinks(void) {
       return parent_links_;
   }
 

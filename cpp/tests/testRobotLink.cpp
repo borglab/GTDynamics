@@ -1,10 +1,10 @@
 /**
- * @file  testLinkBody.cpp
- * @brief test LinkBody class
+ * @file  testRobotLink.cpp
+ * @brief test RobotLink class
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include <LinkBody.h>
+#include <RobotLink.h>
 #include <utils.h>
 
 #include <gtsam/base/Testable.h>
@@ -20,14 +20,14 @@ using namespace gtsam;
 
 /**
  * 
- * construct a LinkBody and ensure all values are as expected.
+ * construct a RobotLink and ensure all values are as expected.
  */
-TEST(LinkBody, constructor) {
+TEST(RobotLink, constructor) {
     std::string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
     auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
 
     // Initialize UniversalRobot instance using urdf::ModelInterfacePtr.
-    LinkBody first_link = LinkBody(simple_urdf->links_["l1"]);
+    RobotLink first_link = RobotLink(simple_urdf->links_["l1"]);
 
     EXPECT(assert_equal("l1", first_link.name()));
     EXPECT(assert_equal(100, first_link.mass()));
@@ -57,14 +57,14 @@ TEST(LinkBody, constructor) {
     EXPECT(assert_equal(0, first_link.getChildJoints().size()));
 
     // Add child link.
-    LinkBody second_link = LinkBody(simple_urdf->links_["l2"]);
+    RobotLink second_link = RobotLink(simple_urdf->links_["l2"]);
     
-    second_link.addParentLink(std::make_shared<LinkBody>(first_link));
+    second_link.addParentLink(std::make_shared<RobotLink>(first_link));
 
     // Check that the second link's parent is link 1.
     EXPECT(assert_equal(first_link.name(), second_link.getParentLinks()[0]->name()));
 
-    first_link.addChildLink(std::make_shared<LinkBody>(second_link));
+    first_link.addChildLink(std::make_shared<RobotLink>(second_link));
 }
 
 int main() {

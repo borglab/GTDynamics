@@ -4,14 +4,14 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-// TODO(aescontrela): implement LinkBody getLinkByName(std::string name) and 
-//  LinkJoint getJointByName(std::string name) methods.
+// TODO(aescontrela): implement RobotLink getLinkByName(std::string name) and 
+//  RobotJoint getJointByName(std::string name) methods.
 
 #pragma once
 
-#include <LinkTypes.h>
-#include <LinkBody.h>
-#include <LinkJoint.h>
+#include <RobotTypes.h>
+#include <RobotLink.h>
+#include <RobotJoint.h>
 
 #include <boost/optional.hpp>
 
@@ -30,51 +30,51 @@
 
 namespace robot {
 
-/** Construct all LinkBody and LinkJoint objects from an input urdf::ModelInterfaceSharedPtr.
+/** Construct all RobotLink and RobotJoint objects from an input urdf::ModelInterfaceSharedPtr.
  * Keyword arguments:
  *    urdf_ptr         -- a shared pointer to a urdf::ModelInterface object.
  *    joint_params     -- a vector contanining optional params for joints.
  * 
  */
-typedef std::pair<std::vector<robot::LinkBodySharedPtr>,
-                  std::vector<robot::LinkJointSharedPtr>> LinkBodyJointPair;
-LinkBodyJointPair extract_structure_from_urdf(
+typedef std::pair<std::vector<robot::RobotLinkSharedPtr>,
+                  std::vector<robot::RobotJointSharedPtr>> RobotRobotJointPair;
+RobotRobotJointPair extract_structure_from_urdf(
     const urdf::ModelInterfaceSharedPtr urdf_ptr,
-    const boost::optional<std::vector<robot::LinkJointParams>> joint_params = boost::none);
+    const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none);
 
 class UniversalRobot {
 
 private:
-    std::vector<LinkBodySharedPtr> link_bodies_;
-    std::vector<LinkJointSharedPtr> link_joints_;
+    std::vector<RobotLinkSharedPtr> link_bodies_;
+    std::vector<RobotJointSharedPtr> link_joints_;
     
     // The robot's world position specified via a single link.
     std::string base_name_;
     gtsam::Pose3 base_;
 
     // For quicker/easier access to links and joints.
-    std::map<std::string, robot::LinkBodySharedPtr> name_to_link_body_;
-    std::map<std::string, robot::LinkJointSharedPtr> name_to_link_joint_;
+    std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body_;
+    std::map<std::string, robot::RobotJointSharedPtr> name_to_link_joint_;
 
 
 public:
     /**
      * Construct a robot structure using a URDF model interface.
      * Keyword Arguments:
-     *  robot_links_and_joints    -- LinkBodyJointPair containing links and joints.
+     *  robot_links_and_joints    -- RobotRobotJointPair containing links and joints.
      *  base          -- wT0 transform from parent link to world frame.
      */    
-    UniversalRobot(const LinkBodyJointPair urdf_links_and_joints,
+    UniversalRobot(const RobotRobotJointPair urdf_links_and_joints,
                    const std::string base_name, const gtsam::Pose3 &base);
 
     /// Return parent link pose in world frame.
     const gtsam::Pose3& base() const;
 
     /// Return the link corresponding to the input string.
-    LinkBodySharedPtr getLinkByName(std::string name);
+    RobotLinkSharedPtr getLinkByName(std::string name);
 
     /// Return the joint corresponding to the input string.
-    LinkJointSharedPtr getJointByName(std::string name);
+    RobotJointSharedPtr getJointByName(std::string name);
 
     /// Return number of *moving* links.
     int numLinks() const;

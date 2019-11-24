@@ -1,5 +1,5 @@
 /**
- * @file  LinkTypes.h
+ * @file  RobotTypes.h
  * @brief Link smart pointer types.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
@@ -17,9 +17,9 @@ typedef std::weak_ptr<Class> Class##WeakPtr
 
 namespace robot {
 
-LINK_TYPEDEF_CLASS_POINTER(LinkBody);
-LINK_TYPEDEF_CLASS_POINTER(LinkJoint);
-struct LinkJointParams;
+LINK_TYPEDEF_CLASS_POINTER(RobotLink);
+LINK_TYPEDEF_CLASS_POINTER(RobotJoint);
+struct RobotJointParams;
 
 } // namespace robot.
 

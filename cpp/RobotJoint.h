@@ -1,5 +1,5 @@
 /**
- * @file  LinkJoint.h
+ * @file  RobotJoint.h
  * @brief only joint part of a manipulator
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
@@ -8,8 +8,8 @@
 
 #include <utils.h>
 
-#include <LinkBody.h>
-#include <LinkTypes.h>
+#include <RobotLink.h>
+#include <RobotTypes.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/base/Matrix.h>
@@ -27,9 +27,9 @@
 // applied at the joint.
 namespace robot {
 /**
- * LinkJoint is the base class for a joint connecting two LinkBody objects.
+ * RobotJoint is the base class for a joint connecting two RobotLink objects.
  */
-class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
+class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
  public:
  
   /** joint effort types
@@ -75,16 +75,16 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
   double torqueLimitThreshold_;
 
   // Parent link.
-  LinkBodySharedPtr parent_link_;
+  RobotLinkSharedPtr parent_link_;
 
   // Child link. References to child objects are stored as weak pointers
   // to prevent circular references.
-  LinkBodyWeakPtr child_link_;
+  RobotLinkWeakPtr child_link_;
   
  public:
-  LinkJoint() {}
+  RobotJoint() {}
     /**
-     * Create LinkJoint from a urdf::JointSharedPtr instance, as described in
+     * Create RobotJoint from a urdf::JointSharedPtr instance, as described in
      * ROS/urdfdom_headers:
      * https://github.com/ros/urdfdom_headers/blob/master/urdf_model/include/urdf_model/joint.h
      * 
@@ -97,13 +97,13 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
      *   accelerationLimit          -- joint acceleration limit
      *   accelerationLimitThreshold -- joint acceleration limit threshold
      *   torqueLimitThreshold       -- joint torque limit threshold
-     *   parent_link                -- shared pointer to the parent LinkBody.
-     *   child_link                 -- weak pointer to the child LinkBody.
+     *   parent_link                -- shared pointer to the parent RobotLink.
+     *   child_link                 -- weak pointer to the child RobotLink.
      */
-    LinkJoint(urdf::JointSharedPtr urdf_joint_ptr, JointEffortType joint_effort_type,
+    RobotJoint(urdf::JointSharedPtr urdf_joint_ptr, JointEffortType joint_effort_type,
               double springCoefficient, double jointLimitThreshold,
               double velocityLimitThreshold, double accelerationLimit, double accelerationLimitThreshold,
-              double torqueLimitThreshold, LinkBodySharedPtr parent_link, LinkBodyWeakPtr child_link) 
+              double torqueLimitThreshold, RobotLinkSharedPtr parent_link, RobotLinkWeakPtr child_link) 
               : name_(urdf_joint_ptr->name),
                 jointEffortType_(joint_effort_type),
                 axis_(gtsam::Vector3(urdf_joint_ptr->axis.x, urdf_joint_ptr->axis.y,
@@ -145,17 +145,17 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
           pMc_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
         }
 
-        LinkBodySharedPtr child_link_strong_ = child_link_.lock();
+        RobotLinkSharedPtr child_link_strong_ = child_link_.lock();
         screwAxis_ = manipulator::unit_twist(
           child_link_strong_->centerOfMass().rotation().inverse() * axis_,
           child_link_strong_->centerOfMass().translation().vector());
     }
 
   /// Return a shared ptr to this joint.
-  LinkJointSharedPtr getSharedPtr() { return shared_from_this(); }
+  RobotJointSharedPtr getSharedPtr() { return shared_from_this(); }
 
   /// Return a weak ptr to this joint.
-  LinkJointWeakPtr getWeakPtr() { return shared_from_this(); }
+  RobotJointWeakPtr getWeakPtr() { return shared_from_this(); }
 
   // Return joint name.
   std::string name() const { return name_; }
@@ -215,10 +215,10 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
   /// Return a shared ptr to the parent link.
-  LinkBodySharedPtr parentLink() { return parent_link_; } 
+  RobotLinkSharedPtr parentLink() { return parent_link_; } 
 
   /// Return a weak ptr to the child link.
-  LinkBodyWeakPtr childLink() { return child_link_; }
+  RobotLinkWeakPtr childLink() { return child_link_; }
 
   /** Return transfrom of dest link frame w.r.t. source link frame at any joint
    *  angle
@@ -231,13 +231,13 @@ class LinkJoint : public std::enable_shared_from_this<LinkJoint>{
     return pMc_ * gtsam::Pose3::Expmap(screwAxis * q);
   }
 
-  virtual ~LinkJoint() = default;
+  virtual ~RobotJoint() = default;
 };
 
-struct LinkJointParams {
+struct RobotJointParams {
   std::string name; // Name of this joint as described in the URDF file.
 
-  LinkJoint::JointEffortType jointEffortType = LinkJoint::JointEffortType::Actuated;
+  RobotJoint::JointEffortType jointEffortType = RobotJoint::JointEffortType::Actuated;
   double springCoefficient = 0; // spring coefficient for Impedence joint.
   double jointLimitThreshold = 0.0; // joint angle limit threshold.
   double velocityLimitThreshold = 0.0; // joint velocity limit threshold.

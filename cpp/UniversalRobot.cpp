@@ -12,36 +12,36 @@ using namespace gtsam;
 
 namespace robot {
 
-LinkBodyJointPair extract_structure_from_urdf(
+RobotRobotJointPair extract_structure_from_urdf(
     const urdf::ModelInterfaceSharedPtr urdf_ptr,
-    const boost::optional<std::vector<robot::LinkJointParams>> joint_params) {
+    const boost::optional<std::vector<robot::RobotJointParams>> joint_params) {
   
-  std::map<std::string, robot::LinkBodySharedPtr> name_to_link_body;
-  std::map<std::string, robot::LinkJointSharedPtr> name_to_link_joint;
+  std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body;
+  std::map<std::string, robot::RobotJointSharedPtr> name_to_link_joint;
 
-  // Loop through all links in the urdf interface and construct LinkBody objects
+  // Loop through all links in the urdf interface and construct RobotLink objects
   // without parents or children.
   for (auto&& link : urdf_ptr->links_)
     name_to_link_body.insert(std::make_pair(
       link.first,
-      std::make_shared<robot::LinkBody>(robot::LinkBody(std::get<1>(link)))
+      std::make_shared<robot::RobotLink>(robot::RobotLink(std::get<1>(link)))
     ));
 
-  robot::LinkJointParams default_params;
+  robot::RobotJointParams default_params;
 
-  // Create LinkJoint objects and update list of parent and child links/joints.
+  // Create RobotJoint objects and update list of parent and child links/joints.
   for (auto&& joint : urdf_ptr->joints_) {
 
-    robot::LinkBodySharedPtr parent_link_strong = name_to_link_body[(joint.second)->parent_link_name];
-    robot::LinkBodySharedPtr child_link_strong = name_to_link_body[(joint.second)->child_link_name];
-    robot::LinkBodyWeakPtr child_link_weak = name_to_link_body[(joint.second)->child_link_name]->getWeakPtr();
+    robot::RobotLinkSharedPtr parent_link_strong = name_to_link_body[(joint.second)->parent_link_name];
+    robot::RobotLinkSharedPtr child_link_strong = name_to_link_body[(joint.second)->child_link_name];
+    robot::RobotLinkWeakPtr child_link_weak = name_to_link_body[(joint.second)->child_link_name]->getWeakPtr();
 
     // Obtain joint params.
-    robot::LinkJointParams jps;
+    robot::RobotJointParams jps;
     if (joint_params) {
       auto jparams = std::find_if(
         joint_params.get().begin(), joint_params.get().end(),
-        [=] (const robot::LinkJointParams & jps) {
+        [=] (const robot::RobotJointParams & jps) {
           return (jps.name == joint.first);
       });
       jps = jparams == joint_params.get().end() ? default_params : *jparams;
@@ -49,36 +49,36 @@ LinkBodyJointPair extract_structure_from_urdf(
       jps = default_params;
     }
 
-    // Construct LinkJoint and insert into name_to_link_joint.
-    robot::LinkJointSharedPtr link_joint_strong = std::make_shared<robot::LinkJoint>(
-      robot::LinkJoint(
+    // Construct RobotJoint and insert into name_to_link_joint.
+    robot::RobotJointSharedPtr link_joint_strong = std::make_shared<robot::RobotJoint>(
+      robot::RobotJoint(
         joint.second, jps.jointEffortType, jps.springCoefficient,
         jps.jointLimitThreshold, jps.velocityLimitThreshold, jps.accelerationLimit,
         jps.accelerationLimitThreshold, jps.torqueLimitThreshold, parent_link_strong,
         child_link_weak));
 
     name_to_link_joint.insert(std::make_pair(joint.first, link_joint_strong));
-    robot::LinkJointWeakPtr link_joint_weak = link_joint_strong->getWeakPtr();
+    robot::RobotJointWeakPtr link_joint_weak = link_joint_strong->getWeakPtr();
 
-    // Update list of parent and child links/joints for each LinkBody.
+    // Update list of parent and child links/joints for each RobotLink.
     parent_link_strong->addChildLink(child_link_weak);
     parent_link_strong->addChildJoint(link_joint_weak);
     child_link_strong->addParentLink(parent_link_strong);
     child_link_strong->addParentJoint(link_joint_strong);
   }
 
-  std::vector<robot::LinkBodySharedPtr> link_bodies;
+  std::vector<robot::RobotLinkSharedPtr> link_bodies;
   for (auto name_link_pair : name_to_link_body)
     link_bodies.push_back(name_link_pair.second);
 
-  std::vector<robot::LinkJointSharedPtr> link_joints;
+  std::vector<robot::RobotJointSharedPtr> link_joints;
   for (auto name_joint_pair : name_to_link_joint)
     link_joints.push_back(name_joint_pair.second);
 
   return std::make_pair(link_bodies, link_joints);
 }
 
-UniversalRobot::UniversalRobot(const LinkBodyJointPair urdf_links_and_joints,
+UniversalRobot::UniversalRobot(const RobotRobotJointPair urdf_links_and_joints,
                                const std::string base_name,
                                const gtsam::Pose3 &base)
                                : link_bodies_(urdf_links_and_joints.first),
@@ -96,11 +96,11 @@ UniversalRobot::UniversalRobot(const LinkBodyJointPair urdf_links_and_joints,
 
 const gtsam::Pose3& UniversalRobot::base() const { return base_; }
 
-LinkBodySharedPtr UniversalRobot::getLinkByName(std::string name) {
+RobotLinkSharedPtr UniversalRobot::getLinkByName(std::string name) {
   return name_to_link_body_[name];
 }
 
-LinkJointSharedPtr UniversalRobot::getJointByName(std::string name) {
+RobotJointSharedPtr UniversalRobot::getJointByName(std::string name) {
   return name_to_link_joint_[name];
 }
 
@@ -182,7 +182,7 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::linkT
 }
 
 gtsam::Pose3 UniversalRobot::cTpCOM(std::string name, double q) {
-  LinkJointSharedPtr link_joint = name_to_link_joint_[name];
+  RobotJointSharedPtr link_joint = name_to_link_joint_[name];
   gtsam::Pose3 pTcom = link_joint->parentLink()->centerOfMass();
   gtsam::Pose3 cTcom = link_joint->childLink().lock()->centerOfMass();
 
@@ -257,13 +257,13 @@ std::map<std::string, gtsam::Pose3> UniversalRobot::COMFrames(
   // Initial transform.
   com_frames.insert(std::make_pair(base_name_, base_));
 
-  std::vector<LinkJointWeakPtr> joints_to_visit = getLinkByName(
+  std::vector<RobotJointWeakPtr> joints_to_visit = getLinkByName(
     base_name_)->getChildJoints();
   std::vector<std::string> joints_visited;
   
   while (joints_to_visit.size()) {
 
-    LinkJointSharedPtr curr_joint = joints_to_visit.back().lock();
+    RobotJointSharedPtr curr_joint = joints_to_visit.back().lock();
     joints_to_visit.pop_back();
 
     if (std::find(joints_visited.begin(), joints_visited.end(),
@@ -273,8 +273,8 @@ std::map<std::string, gtsam::Pose3> UniversalRobot::COMFrames(
     else
       joints_visited.push_back(curr_joint->name());
     
-    LinkBodySharedPtr p_link = curr_joint->parentLink();
-    LinkBodySharedPtr c_link = curr_joint->childLink().lock();
+    RobotLinkSharedPtr p_link = curr_joint->parentLink();
+    RobotLinkSharedPtr c_link = curr_joint->childLink().lock();
 
     double q = 0.0;
     if (joint_name_to_angle) {
