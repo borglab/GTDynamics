@@ -123,6 +123,20 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
       return parent_links_;
   }
 
+  std::vector<RobotJointSharedPtr> getJoints(void) {
+      std::vector<RobotJointSharedPtr> parent_joints = getParentJoints();
+      std::vector<RobotJointWeakPtr> child_joints_weak = getChildJoints();
+      
+      std::vector<RobotJointSharedPtr> child_joints;
+      for (auto&& child_joint : child_joints_weak)
+        child_joints.push_back(child_joint.lock());
+    
+      parent_joints.insert(parent_joints.begin(), child_joints.begin(),
+        child_joints.end());
+    
+      return parent_joints;
+  }
+
   // Reutrn link name.
   std::string name() const { return name_; }
 

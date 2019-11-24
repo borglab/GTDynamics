@@ -1,6 +1,6 @@
 /**
  * @file  RobotTypes.h
- * @brief Link smart pointer types.
+ * @brief Robot smart pointer types.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
