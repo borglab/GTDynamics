@@ -23,6 +23,7 @@
 #include <urdf_model/model.h>
 
 #include <stdexcept>
+#include <sstream>
 #include <vector>
 
 // TODO(aescontrela): Add `const` to instance methods that don't modify the object's
@@ -49,6 +50,8 @@ private:
     std::vector<RobotJointSharedPtr> link_joints_;
     
     // The robot's world position specified via a single link.
+    // TODO(aescontrela): Remove these instance variables. Base pose not
+    // required to construct kinodynamic FG.
     std::string base_name_;
     gtsam::Pose3 base_;
 
@@ -64,11 +67,18 @@ public:
      *  robot_links_and_joints    -- RobotRobotJointPair containing links and joints.
      *  base          -- wT0 transform from parent link to world frame.
      */    
-    UniversalRobot(const RobotRobotJointPair urdf_links_and_joints,
-                   const std::string base_name, const gtsam::Pose3 &base);
+    UniversalRobot(const RobotRobotJointPair urdf_links_and_joints);
 
     /// Return parent link pose in world frame.
-    const gtsam::Pose3& base() const;
+    // TODO(aescontrela): Remove these instance variables. Base pose not
+    // required to construct kinodynamic FG.
+    // const gtsam::Pose3& base() const;
+
+    /// Return this robot's links.
+    std::vector<RobotLinkSharedPtr> links();
+
+    /// Return this robot's joints.
+    std::vector<RobotJointSharedPtr> joints();
 
     /// Return the link corresponding to the input string.
     RobotLinkSharedPtr getLinkByName(std::string name);
@@ -96,6 +106,9 @@ public:
 
     /// Return all joint limit thresholds.
     std::map<std::string, double> jointLimitThresholds() const;
+
+    /// Returns the joint connecting the links l1 and l2.
+    RobotJointSharedPtr getJointBetweenLinks(std::string l1, std::string l2);
 
     /** Calculate link transforms for all links. 
      * 
@@ -130,17 +143,26 @@ public:
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     ) const;
     
-    /** Calculate the transform from the destination link COM to the source
-     * link COM frame of a particular joint.
+    /** Calculate the transform from the child link COM to the parent
+     * link COM frame in the parent link frame.
      * 
      * Keyword arguments:
      *   name -- the joint's name.
      *   q    -- joint angle (in rad).
      */
-    gtsam::Pose3 cTpCOM(std::string name, double q);
+    gtsam::Pose3 cTpCOM(std::string name, boost::optional<double> q = boost::none);
 
-    /** Calculate transforms from the destination link COM frame to the source
-     * link COM frame for all the joints.
+    /** Calculate the transform from the child link COM to the parent
+     * link COM frame in the child link frame.
+     * 
+     * Keyword arguments:
+     *   name -- the joint's name.
+     *   q    -- joint angle (in rad).
+     */
+    // gtsam::Pose3 cTpCOM_c(std::string name, boost::optional<double> q = boost::none);
+
+    /** Calculate transforms from the child link COM frame to the parent
+     * link COM frame in the parent link frame for all the joints.
      * 
      * In the following case, l2 is the destination link while l0 and l1 are
      * the source links:
@@ -169,18 +191,6 @@ public:
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     );
     
-    /**
-     * Return each link's center of mass frame at rest, in the world frame.
-     * 
-     * Return value is a map from the link name to the world frame COM pose.
-     * 
-     * Keyword arguments:
-     *   joint_name_to_angle -- Optional map from joint name to desired angle.
-     */
-    std::map<std::string, gtsam::Pose3> COMFrames(
-        boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
-    );
-
     /** Calculate list of transforms from COM frame j-1 relative to COM j.
      * 
      * In the following case, l2 is the destination link while l0 and l1 are
@@ -207,15 +217,27 @@ public:
      * Keyword arguments:
      *   joint_name_to_angle -- Map from joint name to desired angle.
      */
-    std::map<std::string, std::map<std::string, gtsam::Pose3>> jTiTransforms(
-        boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
-    );
+    // std::map<std::string, std::map<std::string, gtsam::Pose3>> jTiTransforms(
+    //     boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
+    // );
+
+    /**
+     * Return each link's center of mass frame at rest, in the world frame.
+     * 
+     * Return value is a map from the link name to the world frame COM pose.
+     * 
+     * Keyword arguments:
+     *   joint_name_to_angle -- Optional map from joint name to desired angle.
+     */
+    // std::map<std::string, gtsam::Pose3> COMFrames(
+    //     boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
+    // );
     
     /** Return screw axes for all joints at rest configuration, expressed in
      * world frame. Return value is a map from joint name to spatial screw
      * axis.
      */
-    std::map<std::string, gtsam::Vector6> spatialScrewAxes();
+    // std::map<std::string, gtsam::Vector6> spatialScrewAxes();
 
     /** Calculate the rigid body transformation which takes the joint frames
      * from its reference configuration to the current configuration for the
@@ -224,9 +246,9 @@ public:
      * Keyword arguments:
      *   joint_name_to_angle -- Optional map from joint name to desired angle.
      */
-    std::map<std::string, gtsam::Pose3> transformPOE(
-         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
-    ) const;
+    // std::map<std::string, gtsam::Pose3> transformPOE(
+    //      boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
+    // ) const;
 
     /** Calculate spatial manipulator jacobian and joint poses.
      * 
@@ -264,8 +286,8 @@ public:
      *   cost_model -- noise model.
      *   i          -- timestep index.
      */
-    gtsam::NonlinearFactorGraph jointLimitFactors(
-      const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
+    // gtsam::NonlinearFactorGraph jointLimitFactors(
+    //   const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
 
 };    
 } // namespace UniversalRobot

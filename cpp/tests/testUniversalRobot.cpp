@@ -55,12 +55,14 @@ TEST(UniversalRobot, test_extract_structure_from_urdf) {
   EXPECT(assert_equal(0, (*l1_it)->getParentJoints().size()));
   EXPECT(assert_equal(1, (*l1_it)->getChildLinks().size()));
   EXPECT(assert_equal(1, (*l1_it)->getChildJoints().size()));
+  EXPECT(assert_equal(1, (*l1_it)->getJoints().size()));
 
   EXPECT(assert_equal(0, l2_it == linkBodies.end()));
   EXPECT(assert_equal(1, (*l2_it)->getParentLinks().size()));
   EXPECT(assert_equal(1, (*l2_it)->getParentJoints().size()));
   EXPECT(assert_equal(1, (*l1_it)->getChildLinks().size()));
   EXPECT(assert_equal(0, (*l2_it)->getChildJoints().size()));
+  EXPECT(assert_equal(1, (*l2_it)->getJoints().size()));
 
   robot::RobotLinkWeakPtr l2_weak = (*l1_it)->getChildLinks()[0];
   EXPECT(assert_equal("l2", l2_weak.lock()->name()));
@@ -108,6 +110,7 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   EXPECT(assert_equal(2, l1->getParentJoints().size()));
   EXPECT(assert_equal(1, l1->getChildLinks().size()));
   EXPECT(assert_equal(1, l1->getChildJoints().size()));
+  EXPECT(assert_equal(3, l1->getJoints().size()));
 
   // Check that l1's parent links are l0 and l4, its parent joints are j0 and j4, child
   // link is l2, and child joint is j1.
@@ -142,6 +145,7 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   EXPECT(assert_equal(1, l2->getParentJoints().size()));
   EXPECT(assert_equal(1, l2->getChildLinks().size()));
   EXPECT(assert_equal(1, l2->getChildJoints().size()));
+  EXPECT(assert_equal(2, l2->getJoints().size()));
 
   // Check that l2's parent link is l1, its parent joint is j1, child
   // link is l3, and child joint is j2.
@@ -168,6 +172,7 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   EXPECT(assert_equal(1, l3->getParentJoints().size()));
   EXPECT(assert_equal(1, l3->getChildLinks().size()));
   EXPECT(assert_equal(1, l3->getChildJoints().size()));
+  EXPECT(assert_equal(2, l3->getJoints().size()));
 
   // Check that l3's parent link is l2, its parent joint is j2, child
   // link is l4, and child joint is j3.
@@ -194,6 +199,7 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   EXPECT(assert_equal(1, l4->getParentJoints().size()));
   EXPECT(assert_equal(1, l4->getChildLinks().size()));
   EXPECT(assert_equal(1, l4->getChildJoints().size()));
+  EXPECT(assert_equal(2, l4->getJoints().size()));
 
   // Check that l4's parent link is l3, its parent joint is j3, child
   // link is l1, and child joint is j4.
@@ -220,47 +226,120 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
 // that all transforms, link/joint properties, etc. are correct.
 TEST(UniversalRobot, instantiate_from_urdf) {
     // Load urdf file into urdf::ModelInterfacePtr
-    std::string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
+    string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
     auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
 
     RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf);
 
     // Initialize UniversalRobot instance using RobotLink and RobotJoint instances.
-    UniversalRobot simple_robot = UniversalRobot(urdf_bodies_and_joints, "l1", Pose3());
+    UniversalRobot simple_robot = UniversalRobot(urdf_bodies_and_joints);
 
     // Check that number of links and joints in the UniversalRobot instance is correct.
-    // EXPECT(assert_equal(2, simple_robot.numLinks()));
-    // EXPECT(assert_equal(1, simple_robot.numJoints()));
+    EXPECT(assert_equal(2, simple_robot.links().size()));
+    EXPECT(assert_equal(1, simple_robot.joints().size()));
 
-    // This robot contains no loops.
-    // EXPECT(assert_equal(0, simple_robot.numLoops()));
+    // This robot has a single screw axis (at joint j1).
+    map<string, Vector6> screw_axes = simple_robot.screwAxes();
+    EXPECT(assert_equal(1, screw_axes.size()));
 
-    // Check rest configuration transforms (q = 0).
-    // check here.
+    EXPECT(assert_equal(
+      "l1",
+      simple_robot.getLinkByName("l1")->name()
+    ));
+    EXPECT(assert_equal(
+      "l2",
+      simple_robot.getLinkByName("l2")->name()
+    ));
+    EXPECT(assert_equal(
+      "j1",
+      simple_robot.getJointByName("j1")->name()
+    ));
 
-    // Ensure that link properties are correct.
-    // check all links here.
+    // Test joint limit utility methods.
+    map<string, double> joint_lower_limits = simple_robot.jointLowerLimits();
+    map<string, double> joint_upper_limits = simple_robot.jointUpperLimits();
+    map<string, double> joint_limit_thresholds = simple_robot.jointLimitThresholds();
 
-    // Ensure that joint properties are correct.
-    // check all joints here.
+    EXPECT(assert_equal(1, joint_lower_limits.size()));
+    EXPECT(assert_equal(1, joint_upper_limits.size()));
+    EXPECT(assert_equal(1, joint_limit_thresholds.size()));
 
-    // Test jTi_list.
+    EXPECT(assert_equal(-1.57, joint_lower_limits["j1"]));
+    EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
+    EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
 
-    // Test cTp_com_list.
+    // Check link transforms at rest.
+    map<string, map<string, Pose3>> rest_link_transforms = simple_robot.linkTransforms();
+    EXPECT(assert_equal(2,rest_link_transforms.size()));
+    EXPECT(assert_equal(0,rest_link_transforms["l1"].size()));
+    EXPECT(assert_equal(1,rest_link_transforms["l2"].size()));
 
-    // Test screw axes.
+    EXPECT(assert_equal(
+      Pose3(Rot3(I_3x3), Point3(0, 0, 2)),
+      rest_link_transforms["l2"]["l1"]
+    ));
 
-    // Test spatial screw axes.
+    // Check link transforms with joint angle.
+    map<string, double> joint_name_to_angle = { {"j1", M_PI / 4} };
+    map<string, map<string, Pose3>> link_transforms = simple_robot.linkTransforms(
+      joint_name_to_angle);
 
-    // Test transform poe.
+    EXPECT(assert_equal(
+      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0, 2)),
+      link_transforms["l2"]["l1"]
+    ));
 
-    // Test spatial jacobian.
+    // Check cTpCOM: transform from parent link COM frame to child link COM
+    // frame in parent link COM frame.
+    Pose3 l2Tl1COM_rest = simple_robot.cTpCOM("j1");
 
-    // Test body jacobian.
+    EXPECT(assert_equal(
+      Pose3(Rot3(), Point3(0, 0, -2)),
+      l2Tl1COM_rest
+    ));
 
-    // Test inverse kinematics.
+    // Check cTpCOM with joint angle value.
+    Pose3 l2Tl1COM = simple_robot.cTpCOM("j1", -M_PI / 4);
 
-    // Test length.
+    EXPECT(assert_equal(
+      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
+      l2Tl1COM, 1e-4
+    ));
+
+    // Check cTpCOM map at rest.
+    map<string, map<string, Pose3>> rest_cTp_COMs = simple_robot.cTpCOMs();
+
+    EXPECT(assert_equal(1, rest_cTp_COMs.size()));
+    EXPECT(assert_equal(1, rest_cTp_COMs["l2"].size()));
+    EXPECT(assert_equal(l2Tl1COM_rest, rest_cTp_COMs["l2"]["l1"]));
+
+    // Check cTpCOM map with joint angle value.
+    map<string, double> joint_name_to_angle_2 = { {"j1", -M_PI / 4} };
+    map<string, map<string, Pose3>> cTp_COMs = simple_robot.cTpCOMs(joint_name_to_angle_2);
+
+    EXPECT(assert_equal(1, cTp_COMs.size()));
+    EXPECT(assert_equal(1, cTp_COMs["l2"].size()));
+    EXPECT(assert_equal(l2Tl1COM, cTp_COMs["l2"]["l1"]));
+
+    // Test jTi transforms at rest.
+    // map<string, map<string, Pose3>> rest_jTi_transforms = simple_robot.jTiTransforms();
+    // EXPECT(assert_equal(1, rest_jTi_transforms.size()));
+    // EXPECT(assert_equal(1, rest_jTi_transforms["l2"].size()));
+    // EXPECT(assert_equal(
+    //   Pose3(Rot3(), Point3(0, 0, -2)),
+    //   rest_jTi_transforms["l2"]["l1"]
+    // ));
+
+    // // Check jTi transforms with joint angle value.
+    // map<string, map<string, Pose3>> jTi_transforms = simple_robot.jTiTransforms(
+    //   joint_name_to_angle_2);
+    // EXPECT(assert_equal(1, jTi_transforms.size()));
+    // EXPECT(assert_equal(1, jTi_transforms["l2"].size()));
+    // EXPECT(assert_equal(
+    //   Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1 - 0.7071)),
+    //   jTi_transforms["l2"]["l1"], 1e-3
+    // ));
+
 }
 
 int main() {
