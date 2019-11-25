@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <JointLimitFactor.h>
+
 #include <RobotTypes.h>
 #include <RobotLink.h>
 #include <RobotJoint.h>
@@ -144,22 +146,13 @@ public:
     ) const;
     
     /** Calculate the transform from the child link COM to the parent
-     * link COM frame in the parent link frame.
+     * link COM frame in the child link COM frame.
      * 
      * Keyword arguments:
      *   name -- the joint's name.
      *   q    -- joint angle (in rad).
      */
     gtsam::Pose3 cTpCOM(std::string name, boost::optional<double> q = boost::none);
-
-    /** Calculate the transform from the child link COM to the parent
-     * link COM frame in the child link frame.
-     * 
-     * Keyword arguments:
-     *   name -- the joint's name.
-     *   q    -- joint angle (in rad).
-     */
-    // gtsam::Pose3 cTpCOM_c(std::string name, boost::optional<double> q = boost::none);
 
     /** Calculate transforms from the child link COM frame to the parent
      * link COM frame in the parent link frame for all the joints.
@@ -191,6 +184,24 @@ public:
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     );
     
+    /** Returns joint limit factors.
+     * 
+     * Keyword arguments:
+     *   cost_model -- noise model.
+     *   i          -- timestep index.
+     */
+    gtsam::NonlinearFactorGraph jointLimitFactors(
+      const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
+
+    /** Calculate the transform from the child link COM to the parent
+     * link COM frame in the child link frame.
+     * 
+     * Keyword arguments:
+     *   name -- the joint's name.
+     *   q    -- joint angle (in rad).
+     */
+    // gtsam::Pose3 cTpCOM_c(std::string name, boost::optional<double> q = boost::none);
+
     /** Calculate list of transforms from COM frame j-1 relative to COM j.
      * 
      * In the following case, l2 is the destination link while l0 and l1 are
@@ -279,15 +290,6 @@ public:
      */
     // gtsam::Vector inverseKinematics(
     //     const gtsam::Pose3 &poseGoal, const gtsam::Vector &init_q) const;
-
-    /** Returns joint limit factor.
-     * 
-     * Keyword arguments:
-     *   cost_model -- noise model.
-     *   i          -- timestep index.
-     */
-    // gtsam::NonlinearFactorGraph jointLimitFactors(
-    //   const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
 
 };    
 } // namespace UniversalRobot

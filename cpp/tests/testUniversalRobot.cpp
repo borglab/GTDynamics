@@ -321,6 +321,17 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     EXPECT(assert_equal(1, cTp_COMs["l2"].size()));
     EXPECT(assert_equal(l2Tl1COM, cTp_COMs["l2"]["l1"]));
 
+    // Construct nonlinear factor graph with joint limit factors.
+    gtsam::NonlinearFactorGraph joint_limit_factors = simple_robot.jointLimitFactors(
+      gtsam::noiseModel::Isotropic::Sigma(1, 0.01), 1
+    );
+
+    // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
+    EXPECT(assert_equal(
+      (long) simple_robot.joints().size() * 4, 
+      joint_limit_factors.keys().size()
+    ));
+
     // Test jTi transforms at rest.
     // map<string, map<string, Pose3>> rest_jTi_transforms = simple_robot.jTiTransforms();
     // EXPECT(assert_equal(1, rest_jTi_transforms.size()));

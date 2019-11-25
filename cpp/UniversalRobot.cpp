@@ -81,13 +81,22 @@ RobotRobotJointPair extract_structure_from_urdf(
 UniversalRobot::UniversalRobot(const RobotRobotJointPair urdf_links_and_joints)
                                : link_bodies_(urdf_links_and_joints.first),
                                  link_joints_(urdf_links_and_joints.second) {
-  for (auto&& link_body : link_bodies_)
+
+  unsigned char curr_id = 1;
+  
+  for (auto&& link_body : link_bodies_) {
     name_to_link_body_.insert(std::make_pair(
       link_body->name(), link_body));
+    link_body->setID(curr_id++);
+  }
+    
   
   for (auto&& link_joint : link_joints_)
+  {
     name_to_link_joint_.insert(std::make_pair(
       link_joint->name(), link_joint));
+    link_joint->setID(curr_id++);
+  }
 }
 
 // const gtsam::Pose3& UniversalRobot::base() const { return base_; }
@@ -221,18 +230,6 @@ gtsam::Pose3 UniversalRobot::cTpCOM(std::string name, boost::optional<double> q)
   return pTc_com.between(pTcom);
 }
 
-// gtsam::Pose3 UniversalRobot::cTpCOM_c(std::string name, boost::optional<double> q) {
-
-//   double q_ = q ? q.get() : 0.0;
-
-//   RobotJointSharedPtr link_joint = name_to_link_joint_[name];
-//   gtsam::Pose3 pTcom = link_joint->parentLink()->centerOfMass();
-//   gtsam::Pose3 cTcom = link_joint->childLink().lock()->centerOfMass();
-
-//   gtsam::Pose3 cTp_com = link_joint->pTc(q_).inverse() * pTcom;
-//   return cTcom.between(cTp_com);
-// }
-
 std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCOMs(
         boost::optional<std::map<std::string, double>> joint_name_to_angle) {
 
@@ -266,6 +263,51 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCO
   }
   return cTp_COMs;
 }
+
+gtsam::NonlinearFactorGraph UniversalRobot::jointLimitFactors(
+    const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const {
+  gtsam::NonlinearFactorGraph graph;
+
+  for (auto&& link_joint : link_joints_) {
+    // Add joint angle limit factor.
+    graph.add(manipulator::JointLimitFactor(
+      gtsam::LabeledSymbol('q', link_joint->getID(), i), cost_model,
+      link_joint->jointLowerLimit(), link_joint->jointUpperLimit(),
+      link_joint->jointLimitThreshold())); 
+
+    // Add joint velocity limit factors.
+    graph.add(manipulator::JointLimitFactor(
+      gtsam::LabeledSymbol('v', link_joint->getID(), i), cost_model,
+      -link_joint->velocityLimit(), link_joint->velocityLimit(),
+      link_joint->velocityLimitThreshold()));
+
+    // Add joint acceleration limit factors.
+    graph.add(manipulator::JointLimitFactor(
+      gtsam::LabeledSymbol('a', link_joint->getID(), i), cost_model,
+      -link_joint->accelerationLimit(), link_joint->accelerationLimit(),
+      link_joint->accelerationLimitThreshold()));
+
+    // Add joint torque limit factors.
+    graph.add(manipulator::JointLimitFactor(
+      gtsam::LabeledSymbol('T', link_joint->getID(), i), cost_model,
+      -link_joint->torqueLimit(), link_joint->torqueLimit(),
+      link_joint->torqueLimitThreshold()));
+  }
+
+  return graph;
+}
+
+// gtsam::Pose3 UniversalRobot::cTpCOM_c(std::string name, boost::optional<double> q) {
+
+//   double q_ = q ? q.get() : 0.0;
+
+//   RobotJointSharedPtr link_joint = name_to_link_joint_[name];
+//   gtsam::Pose3 pTcom = link_joint->parentLink()->centerOfMass();
+//   gtsam::Pose3 cTcom = link_joint->childLink().lock()->centerOfMass();
+
+//   gtsam::Pose3 cTp_com = link_joint->pTc(q_).inverse() * pTcom;
+//   return cTcom.between(cTp_com);
+// }
 
 // std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::jTiTransforms(
 //         boost::optional<std::map<std::string, double>> joint_name_to_angle) {
