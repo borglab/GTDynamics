@@ -78,7 +78,7 @@ RobotRobotJointPair extract_structure_from_urdf(
   return std::make_pair(link_bodies, link_joints);
 }
 
-UniversalRobot::UniversalRobot(const RobotRobotJointPair urdf_links_and_joints)
+UniversalRobot::UniversalRobot(RobotRobotJointPair urdf_links_and_joints)
                                : link_bodies_(urdf_links_and_joints.first),
                                  link_joints_(urdf_links_and_joints.second) {
 
@@ -99,7 +99,30 @@ UniversalRobot::UniversalRobot(const RobotRobotJointPair urdf_links_and_joints)
   }
 }
 
-// const gtsam::Pose3& UniversalRobot::base() const { return base_; }
+UniversalRobot::UniversalRobot(const std::string urdf_file_path) {
+  std::string urdf_str = manipulator::load_file_into_string(urdf_file_path);
+  auto urdf = manipulator::get_urdf(urdf_str);
+  RobotRobotJointPair robot_parts = extract_structure_from_urdf(urdf);
+
+  link_bodies_ = robot_parts.first;
+  link_joints_ = robot_parts.second;
+
+  unsigned char curr_id = 1;
+  
+  for (auto&& link_body : link_bodies_) {
+    name_to_link_body_.insert(std::make_pair(
+      link_body->name(), link_body));
+    link_body->setID(curr_id++);
+  }
+    
+  
+  for (auto&& link_joint : link_joints_)
+  {
+    name_to_link_joint_.insert(std::make_pair(
+      link_joint->name(), link_joint));
+    link_joint->setID(curr_id++);
+  }
+}
 
 std::vector<RobotLinkSharedPtr> UniversalRobot::links() { return link_bodies_; }
 

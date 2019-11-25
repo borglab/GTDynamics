@@ -353,6 +353,16 @@ TEST(UniversalRobot, instantiate_from_urdf) {
 
 }
 
+TEST(UniversalRobot, instantiate_from_urdf_file) {
+
+  // Initialize UniversalRobot instance using RobotLink and RobotJoint instances.
+  UniversalRobot four_bar = UniversalRobot("../../../urdfs/test/four_bar_linkage.urdf");
+
+  // Check that number of links and joints in the UniversalRobot instance is correct.
+  EXPECT(assert_equal(5, four_bar.links().size()));
+  EXPECT(assert_equal(5, four_bar.joints().size()));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

@@ -15,6 +15,8 @@
 #include <RobotLink.h>
 #include <RobotJoint.h>
 
+#include <utils.h>
+
 #include <boost/optional.hpp>
 
 #include <gtsam/inference/Symbol.h>
@@ -50,12 +52,6 @@ class UniversalRobot {
 private:
     std::vector<RobotLinkSharedPtr> link_bodies_;
     std::vector<RobotJointSharedPtr> link_joints_;
-    
-    // The robot's world position specified via a single link.
-    // TODO(aescontrela): Remove these instance variables. Base pose not
-    // required to construct kinodynamic FG.
-    std::string base_name_;
-    gtsam::Pose3 base_;
 
     // For quicker/easier access to links and joints.
     std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body_;
@@ -67,14 +63,16 @@ public:
      * Construct a robot structure using a URDF model interface.
      * Keyword Arguments:
      *  robot_links_and_joints    -- RobotRobotJointPair containing links and joints.
-     *  base          -- wT0 transform from parent link to world frame.
+     * 
      */    
-    UniversalRobot(const RobotRobotJointPair urdf_links_and_joints);
+    UniversalRobot(RobotRobotJointPair urdf_links_and_joints);
 
-    /// Return parent link pose in world frame.
-    // TODO(aescontrela): Remove these instance variables. Base pose not
-    // required to construct kinodynamic FG.
-    // const gtsam::Pose3& base() const;
+    /** Construct a robot structure directly from a urdf file.
+     * 
+     * Keyword Arguments:
+     *  urdf_file_path -- path to the file.
+     */
+    UniversalRobot(const std::string urdf_file_path);
 
     /// Return this robot's links.
     std::vector<RobotLinkSharedPtr> links();
