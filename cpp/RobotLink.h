@@ -32,6 +32,8 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   std::string name_;
 
+  unsigned char id_ = 0;
+
   // Inertial elements.
   double mass_;
   gtsam::Pose3 centerOfMass_;
@@ -89,6 +91,19 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   RobotLinkWeakPtr getWeakPtr(void) {
       return shared_from_this();
+  }
+
+  void setID(unsigned char id) {
+      if (id == 0)
+          throw std::runtime_error("ID cannot be 0");
+      id_ = id;
+  }
+
+  unsigned char getID() {
+      if (id_ == 0)
+          throw std::runtime_error(
+              "Calling getID on a link whose ID has not been set");
+      return id_;
   }
 
   void addChildJoint(RobotJointWeakPtr child_joint_ptr) {

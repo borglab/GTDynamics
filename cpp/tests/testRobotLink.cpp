@@ -65,6 +65,11 @@ TEST(RobotLink, constructor) {
     EXPECT(assert_equal(first_link.name(), second_link.getParentLinks()[0]->name()));
 
     first_link.addChildLink(std::make_shared<RobotLink>(second_link));
+
+    // Test that ID is set correctly.
+    unsigned char id = 'a';
+    first_link.setID(id);
+    EXPECT(assert_equal((double) first_link.getID(), (double) id));
 }
 
 int main() {

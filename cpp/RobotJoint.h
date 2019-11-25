@@ -44,6 +44,8 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   // This joint's name, as described in the URDF file.
   std::string name_;
 
+  unsigned char id_;
+
   char jointType_;
   JointEffortType jointEffortType_;
 
@@ -156,6 +158,19 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
 
   /// Return a weak ptr to this joint.
   RobotJointWeakPtr getWeakPtr() { return shared_from_this(); }
+
+  void setID(unsigned char id) {
+      if (id == 0)
+          throw std::runtime_error("ID cannot be 0");
+      id_ = id;
+  }
+
+  unsigned char getID() {
+      if (id_ == 0)
+          throw std::runtime_error(
+              "Calling getID on a link whose ID has not been set");
+      return id_;
+  }
 
   // Return joint name.
   std::string name() const { return name_; }

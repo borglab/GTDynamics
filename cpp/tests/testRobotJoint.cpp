@@ -48,6 +48,11 @@ TEST(RobotJoint, constructor) {
     // Test that parent to child link transform is correct for -pi/2 and pi/2.
     EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(-M_PI / 2)));
     EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(M_PI / 2)));
+
+    // Test that ID is set correctly.
+    unsigned char id = 'a';
+    link_joint_strong->setID(id);
+    EXPECT(assert_equal((double) link_joint_strong->getID(), (double) id));
 }
 
 int main() {
