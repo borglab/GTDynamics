@@ -17,7 +17,7 @@
 #include <iostream>
 #include <vector>
 
-namespace manipulator {
+namespace robot {
 
 /** WrenchEquivalenceFactor is a six-way nonlinear factor which enforces relation
  * between wrenches on this link and the next link*/
@@ -54,7 +54,7 @@ class WrenchEquivalenceFactor
  private:
   /* calculate joint coordinate q jacobian */
   gtsam::Matrix61 qJacobian_(double q, const gtsam::Vector6 &wrench_2) const {
-    auto H = AdjointMapJacobianQ(q, kMj_, screw_axis_);
+    auto H = manipulator::AdjointMapJacobianQ(q, kMj_, screw_axis_);
     return H.transpose() * wrench_2;
   }
 
@@ -111,4 +111,4 @@ class WrenchEquivalenceFactor
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace manipulator
+}  // namespace robot
