@@ -107,6 +107,8 @@ public:
     opt_.q_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.qv_cost_model = gtsam::noiseModel::Constrained::All(1);
 
+    opt_.setJointLimitCostModel(1e-3);
+
     opt_.setLM();
   }
   ~DynamicsGraphBuilder() {}
@@ -121,6 +123,10 @@ public:
     NonlinearFactorGraph graph;
 
     int t = 0;
+
+    // Add joint factors to limit angle, velocity, acceleration, and torque.
+    graph.push_back(robot.jointLimitFactors(opt_.jl_cost_model, t));
+  
     // add factors corresponding to links
     for (const auto& link : robot.links()) {
       const auto &connected_joints = link->getJoints();

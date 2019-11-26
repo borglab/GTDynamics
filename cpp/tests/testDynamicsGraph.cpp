@@ -120,13 +120,13 @@ TEST(FD_factor_graph, optimization) {
 TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
   UniversalRobot four_bar = UniversalRobot("../../../urdfs/test/four_bar_linkage.urdf");
 
-    Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
-           wrenches = Vector6::Zero();
-    Vector q = Vector::Zero(four_bar.numJoints());
-    Vector v = Vector::Zero(four_bar.numJoints());
-    Vector a = Vector::Zero(four_bar.numJoints());
-    Vector torque = Vector::Zero(four_bar.numJoints());
-    Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
+          wrenches = Vector6::Zero();
+  Vector q = Vector::Zero(four_bar.numJoints());
+  Vector v = Vector::Zero(four_bar.numJoints());
+  Vector a = Vector::Zero(four_bar.numJoints());
+  Vector torque = Vector::Zero(four_bar.numJoints());
+  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
@@ -143,7 +143,6 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
   Values init_values;
   for (auto link: four_bar.links()) {
     int i = link -> getID();
-
     init_values.insert(PoseKey(i, 0), Pose3());
     init_values.insert(TwistKey(i, 0), twists);
     init_values.insert(TwistAccelKey(i, 0), accels);
@@ -168,7 +167,7 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
         cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
       }
       cout << "\n";
-  }
+    }
   }
   
   // A planar four bar linkage in 3D space should throw an ILS error with the
