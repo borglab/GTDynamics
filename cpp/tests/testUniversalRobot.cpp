@@ -331,36 +331,87 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       (long) simple_robot.joints().size() * 4, 
       joint_limit_factors.keys().size()
     ));
-
-    // Test jTi transforms at rest.
-    // map<string, map<string, Pose3>> rest_jTi_transforms = simple_robot.jTiTransforms();
-    // EXPECT(assert_equal(1, rest_jTi_transforms.size()));
-    // EXPECT(assert_equal(1, rest_jTi_transforms["l2"].size()));
-    // EXPECT(assert_equal(
-    //   Pose3(Rot3(), Point3(0, 0, -2)),
-    //   rest_jTi_transforms["l2"]["l1"]
-    // ));
-
-    // // Check jTi transforms with joint angle value.
-    // map<string, map<string, Pose3>> jTi_transforms = simple_robot.jTiTransforms(
-    //   joint_name_to_angle_2);
-    // EXPECT(assert_equal(1, jTi_transforms.size()));
-    // EXPECT(assert_equal(1, jTi_transforms["l2"].size()));
-    // EXPECT(assert_equal(
-    //   Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1 - 0.7071)),
-    //   jTi_transforms["l2"]["l1"], 1e-3
-    // ));
-
 }
 
 TEST(UniversalRobot, instantiate_from_urdf_file) {
 
-  // Initialize UniversalRobot instance using RobotLink and RobotJoint instances.
+  // Initialize UniversalRobot instance from a file.
   UniversalRobot four_bar = UniversalRobot("../../../urdfs/test/four_bar_linkage.urdf");
 
   // Check that number of links and joints in the UniversalRobot instance is correct.
   EXPECT(assert_equal(5, four_bar.links().size()));
   EXPECT(assert_equal(5, four_bar.joints().size()));
+
+  // This robot has a single screw axis (at joint j1).
+  map<string, Vector6> screw_axes = four_bar.screwAxes();
+  EXPECT(assert_equal(5, screw_axes.size()));
+
+  // Test getLinkByName(...) and getJointByName(...)
+  EXPECT(assert_equal("l0", four_bar.getLinkByName("l0")->name()));
+  EXPECT(assert_equal("l1", four_bar.getLinkByName("l1")->name()));
+  EXPECT(assert_equal("l2", four_bar.getLinkByName("l2")->name()));
+  EXPECT(assert_equal("l3", four_bar.getLinkByName("l3")->name()));
+  EXPECT(assert_equal("l4", four_bar.getLinkByName("l4")->name()));
+  EXPECT(assert_equal("j0", four_bar.getJointByName("j0")->name()));
+  EXPECT(assert_equal("j1", four_bar.getJointByName("j1")->name()));
+  EXPECT(assert_equal("j2", four_bar.getJointByName("j2")->name()));
+  EXPECT(assert_equal("j3", four_bar.getJointByName("j3")->name()));
+  EXPECT(assert_equal("j4", four_bar.getJointByName("j4")->name()));
+
+  // Test joint limit utility methods.
+  map<string, double> joint_lower_limits = four_bar.jointLowerLimits();
+  map<string, double> joint_upper_limits = four_bar.jointUpperLimits();
+  map<string, double> joint_limit_thresholds = four_bar.jointLimitThresholds();
+
+  EXPECT(assert_equal(5, joint_lower_limits.size()));
+  EXPECT(assert_equal(5, joint_upper_limits.size()));
+  EXPECT(assert_equal(5, joint_limit_thresholds.size()));
+
+  EXPECT(assert_equal(-1.57, joint_lower_limits["j1"]));
+  EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
+  EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
+
+  // Check link transforms at rest.
+  map<string, map<string, Pose3>> rest_link_transforms = four_bar.linkTransforms();
+  EXPECT(assert_equal(5, rest_link_transforms.size()));
+  EXPECT(assert_equal(0, rest_link_transforms["l0"].size()));
+  // l1 is both the child of l0 and l4.
+  EXPECT(assert_equal(2, rest_link_transforms["l1"].size()));
+  EXPECT(assert_equal(1, rest_link_transforms["l2"].size()));
+  EXPECT(assert_equal(1, rest_link_transforms["l3"].size()));
+  EXPECT(assert_equal(1, rest_link_transforms["l4"].size()));
+
+  EXPECT(assert_equal(
+    Pose3(Rot3(I_3x3), Point3(0, 0, 0)),
+    rest_link_transforms["l1"]["l0"], 1e-3
+  ));
+  EXPECT(assert_equal(
+    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
+    rest_link_transforms["l1"]["l4"], 1e-3
+  ));
+  EXPECT(assert_equal(
+    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
+    rest_link_transforms["l2"]["l1"], 1e-3
+  ));
+  EXPECT(assert_equal(
+    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
+    rest_link_transforms["l3"]["l2"], 1e-3
+  ));
+  EXPECT(assert_equal(
+    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
+    rest_link_transforms["l4"]["l3"], 1e-3
+  ));
+
+  // Construct nonlinear factor graph with joint limit factors.
+  gtsam::NonlinearFactorGraph joint_limit_factors = four_bar.jointLimitFactors(
+    gtsam::noiseModel::Isotropic::Sigma(1, 0.01), 1
+  );
+
+  // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
+  EXPECT(assert_equal(
+    (long) four_bar.joints().size() * 4, 
+    joint_limit_factors.keys().size()
+  ));
 }
 
 int main() {
