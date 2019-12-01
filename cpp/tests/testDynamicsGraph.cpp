@@ -1,7 +1,7 @@
 /**
- * @file  testDynamics.cpp
+ * @file  testDynamicsGraph.cpp
  * @brief test forward and inverse dynamics factor graph
- * @Author: Mandy Xie
+ * @Author: Yetong Zhang
  */
 
 #include <DynamicsGraph.h>

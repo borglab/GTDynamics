@@ -22,8 +22,8 @@ using namespace gtsam;
 // and transforms.
 TEST(UniversalRobot, test_extract_structure_from_urdf) {
   // Obtain urdf::ModelInterfaceSharedPtr from sample urdf file.
-  std::string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
-  auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
+  std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
+  auto simple_urdf = get_urdf(simple_urdf_str);
 
   // Obtain RobotLink and JointBody objects from ModelInterfaceSharedPtr.
   std::vector<robot::RobotJointParams> joint_params;
@@ -81,9 +81,9 @@ TEST(UniversalRobot, test_extract_structure_from_urdf) {
 // children, and transforms.
 TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   // Obtain urdf::ModelInterfaceSharedPtr from sample urdf file.
-  std::string four_bar_urdf_str = manipulator::load_file_into_string(
+  std::string four_bar_urdf_str = load_file_into_string(
     "../../../urdfs/test/four_bar_linkage.urdf");
-  auto four_bar_urdf = manipulator::get_urdf(four_bar_urdf_str);
+  auto four_bar_urdf = get_urdf(four_bar_urdf_str);
 
   // Obtain RobotLink and JointBody objects from ModelInterfaceSharedPtr.
   RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(four_bar_urdf);
@@ -226,8 +226,8 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
 // that all transforms, link/joint properties, etc. are correct.
 TEST(UniversalRobot, instantiate_from_urdf) {
     // Load urdf file into urdf::ModelInterfacePtr
-    string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
-    auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
+    string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
+    auto simple_urdf = get_urdf(simple_urdf_str);
 
     RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf);
 

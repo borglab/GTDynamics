@@ -4,7 +4,9 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
+#include "RobotTypes.h"
 #include <UniversalRobot.h>
+#include <queue>
 
 // using namespace robot;
 using namespace std;
@@ -90,38 +92,53 @@ UniversalRobot::UniversalRobot(RobotRobotJointPair urdf_links_and_joints)
     link_body->setID(curr_id++);
   }
     
-  
+  curr_id = 1;
   for (auto&& link_joint : link_joints_)
   {
     name_to_link_joint_.insert(std::make_pair(
       link_joint->name(), link_joint));
     link_joint->setID(curr_id++);
   }
+
+  // calculate the com pose for all links
+  // find the link with no parent
+  RobotLinkSharedPtr parent_link;
+  for (auto&& link_body : link_bodies_) {
+    if (link_body->getParentJoints().size()==0) {
+      parent_link = link_body;
+    }
+  }
+  parent_link -> setPose(Pose3::identity());
+
+  // bfs to set the pose
+  std::queue<RobotLinkSharedPtr> q;
+  q.push(parent_link);
+  while (!q.empty()) {
+    auto this_link = q.front();
+    q.pop();
+    for (auto&& joint : this_link->getChildJoints()) {
+      auto next_joint = joint.lock();
+      auto next_link = next_joint->childLink().lock();
+      // check if is the first parent
+      if (next_link->getParentJoints()[0]->name()==next_joint->name()) {
+        if (next_link->isPoseSet()) {
+          throw(std::runtime_error("repeat setting pose for Link" + next_link->name()));
+        }
+        next_link -> setPose(next_joint->pMc() * this_link->getLinkPose());
+        q.push(next_link);
+      }
+    }
+  }
+
+  // set the transform for joints
+  for (auto&& joint : link_joints_) {
+    joint -> setTransform();
+  }
+
 }
 
-UniversalRobot::UniversalRobot(const std::string urdf_file_path) {
-  std::string urdf_str = manipulator::load_file_into_string(urdf_file_path);
-  auto urdf = manipulator::get_urdf(urdf_str);
-  RobotRobotJointPair robot_parts = extract_structure_from_urdf(urdf);
-
-  link_bodies_ = robot_parts.first;
-  link_joints_ = robot_parts.second;
-
-  unsigned char curr_id = 1;
-  
-  for (auto&& link_body : link_bodies_) {
-    name_to_link_body_.insert(std::make_pair(
-      link_body->name(), link_body));
-    link_body->setID(curr_id++);
-  }
-    
-  
-  for (auto&& link_joint : link_joints_)
-  {
-    name_to_link_joint_.insert(std::make_pair(
-      link_joint->name(), link_joint));
-    link_joint->setID(curr_id++);
-  }
+UniversalRobot::UniversalRobot(const std::string urdf_file_path) : 
+  UniversalRobot(extract_structure_from_urdf(get_urdf(load_file_into_string(urdf_file_path)))) {
 }
 
 std::vector<RobotLinkSharedPtr> UniversalRobot::links() { return link_bodies_; }

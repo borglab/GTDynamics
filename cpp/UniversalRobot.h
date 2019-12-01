@@ -52,6 +52,7 @@ class UniversalRobot {
 private:
     std::vector<RobotLinkSharedPtr> link_bodies_;
     std::vector<RobotJointSharedPtr> link_joints_;
+    std::vector<RobotJointSharedPtr> contact_joints_;
 
     // For quicker/easier access to links and joints.
     std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body_;

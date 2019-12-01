@@ -125,7 +125,7 @@ public:
     int t = 0;
 
     // Add joint factors to limit angle, velocity, acceleration, and torque.
-    graph.push_back(robot.jointLimitFactors(opt_.jl_cost_model, t));
+    // graph.push_back(robot.jointLimitFactors(opt_.jl_cost_model, t));
   
     // add factors corresponding to links
     for (const auto& link : robot.links()) {

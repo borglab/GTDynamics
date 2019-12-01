@@ -133,6 +133,16 @@ std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
 
+/** read a variable from a text file, and save to vector of matrix
+ *  this is used for sdf
+ *
+ */
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
+                                       gtsam::Point3 &origin,
+                                       double &cell_size);
+}  // namespace manipulator
+
+namespace robot {
 /** read text from a file.
  * Keyword arguments:
       rel_path         -- relative path to the file.
@@ -144,12 +154,4 @@ std::string load_file_into_string(const std::string rel_path);
       urdf_contents    -- a string containing the contents of the URDF file.
  */
 urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
-
-/** read a variable from a text file, and save to vector of matrix
- *  this is used for sdf
- *
- */
-std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
-                                       gtsam::Point3 &origin,
-                                       double &cell_size);
-}  // namespace manipulator
+}  // namespace robot

@@ -22,8 +22,8 @@ using namespace gtsam;
  * construct a RobotJoint and ensure all values are as expected.
  */
 TEST(RobotJoint, constructor) {
-    std::string simple_urdf_str = manipulator::load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
-    auto simple_urdf = manipulator::get_urdf(simple_urdf_str);
+    std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
+    auto simple_urdf = get_urdf(simple_urdf_str);
 
     RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(simple_urdf->links_["l1"]));
     RobotLinkSharedPtr l2 = std::make_shared<RobotLink>(RobotLink(simple_urdf->links_["l2"]));

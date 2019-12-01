@@ -19,6 +19,7 @@
 using namespace std;
 using namespace gtsam;
 using namespace manipulator;
+using namespace robot;
 
 // Test unit_twist function
 TEST(utils, unit_twist) {

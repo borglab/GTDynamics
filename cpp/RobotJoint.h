@@ -57,6 +57,8 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   gtsam::Pose3 origin_;
   // Rest transform to link frame from source link frame at rest.
   gtsam::Pose3 pMc_;
+  // Rest transform to com link frame from com source link frame at rest.
+  gtsam::Pose3 com_pMc_;
   // Joint axis expressed in COM frame of dest link
   gtsam::Vector6 screwAxis_;
 
@@ -172,6 +174,12 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
       return id_;
   }
 
+  // set com and link transform from parent to child link
+  void setTransform() {
+    com_pMc_ = parent_link_->getComPose().inverse() * child_link_.lock()->getComPose();
+    pMc_ = parent_link_->getLinkPose().inverse() * child_link_.lock()->getLinkPose();
+  }
+
   // Return joint name.
   std::string name() const { return name_; }
 
@@ -190,6 +198,9 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
 
   /// Return transfrom of dest link frame w.r.t. source link frame at rest
   gtsam::Pose3 pMc() const { return pMc_; }
+
+  /// Return transform of dest link com frame w.r.t source link com frame at rest
+  const gtsam::Pose3& pMcCom() const { return com_pMc_; }
 
   /// Return screw axis.
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }

@@ -39,6 +39,10 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
+  gtsam::Pose3 link_pose_;
+  gtsam::Pose3 com_pose_;
+  bool pose_set_;
+
   // Parent information.
   std::vector<RobotLinkSharedPtr> parent_links_;
   std::vector<RobotJointSharedPtr> parent_joints_;
@@ -120,6 +124,24 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   void addParentLink(RobotLinkSharedPtr parent_link_ptr) {
       parent_links_.push_back(parent_link_ptr);
+  }
+
+  void setPose(const gtsam::Pose3& link_pose) {
+    link_pose_ = link_pose;
+    com_pose_ = link_pose_ * centerOfMass_ ;
+    pose_set_ = true;
+  }
+
+  const gtsam::Pose3& getLinkPose() {
+    return link_pose_;
+  }
+
+  const gtsam::Pose3& getComPose() {
+    return com_pose_;
+  }
+
+  bool isPoseSet() {
+    return pose_set_;
   }
 
   std::vector<RobotJointWeakPtr> getChildJoints(void) {
