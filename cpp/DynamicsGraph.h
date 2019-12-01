@@ -177,24 +177,24 @@ public:
       // add pose factor
       graph.add(manipulator::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
                                         JointAngleKey(j, t), opt_.p_cost_model,
-                                        joint->pMc(), joint->screwAxis()));
+                                        joint->pMcCom(), joint->screwAxis()));
 
       // add twist factor
       graph.add(manipulator::TwistFactor(TwistKey(i1, t), TwistKey(i2, t),
                                          JointAngleKey(j, t), JointVelKey(j, t),
-                                         opt_.v_cost_model, joint->pMc(),
+                                         opt_.v_cost_model, joint->pMcCom(),
                                          joint->screwAxis()));
 
       // add twist acceleration factor
       graph.add(manipulator::TwistAccelFactor(
           TwistKey(i2, t), TwistAccelKey(i1, t), TwistAccelKey(i2, t),
           JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
-          opt_.a_cost_model, joint->pMc(), joint->screwAxis()));
+          opt_.a_cost_model, joint->pMcCom(), joint->screwAxis()));
 
       // add wrench equivalence factor
       graph.add(WrenchEquivalenceFactor(
           WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
-          opt_.f_cost_model, joint->pMc(), joint->screwAxis()));
+          opt_.f_cost_model, joint->pMcCom(), joint->screwAxis()));
 
       // add torque factor
       graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
