@@ -31,6 +31,7 @@ using namespace gtsam;
 int DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE = 1;
 int DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE = 0;
 
+// print the info of links and joints of the robot
 void print_robot(UniversalRobot& this_robot) {
   for (const auto& link: this_robot.links()) {
     cout<<link->name() << ":\n";
@@ -44,6 +45,17 @@ void print_robot(UniversalRobot& this_robot) {
     cout<<"\tscrew axis: " << joint->screwAxis().transpose() << "\n";
     cout<<"\tpMc: " << joint->pMc().rotation().rpy().transpose() << ", " << joint->pMc().translation() << "\n";
     cout<<"\tpMc_com: " << joint->pMcCom().rotation().rpy().transpose() << ", " << joint->pMcCom().translation() << "\n";
+  }
+}
+
+// print the factors of the factor graph
+void print_graph(const NonlinearFactorGraph& graph) {
+  for (auto& factor: graph) {
+    for (auto& key: factor->keys()) {
+      auto symb = LabeledSymbol(key);
+      cout << symb.chr() << int(symb.label()) << "_" << symb.index() << "\t";
+    }
+    cout << "\n";
   }
 }
 
@@ -97,13 +109,7 @@ TEST(FD_factor_graph, optimization) {
 
   // graph.print("", MultiRobotKeyFormatter);
   if(DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
-    for (auto& factor: graph) {
-      for (auto& key: factor->keys()) {
-        auto symb = LabeledSymbol(key);
-        cout << symb.chr() << int(symb.label()) << "_" << symb.index() << "\t";
-      }
-      cout << "\n";
-    }
+    print_graph(graph);
   }
   
 
