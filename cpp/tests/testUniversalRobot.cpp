@@ -256,14 +256,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       simple_robot.getJointByName("j1")->name()
     ));
 
-    // Test joint screw axis
-    Vector6 screw_axis_j1;
-    screw_axis_j1 << 1, 0, 0, 0, -1, 0;
-    EXPECT(assert_equal(
-      simple_robot.joints()[0]->screwAxis(),
-      screw_axis_j1
-    ))
-
     // Test joint limit utility methods.
     map<string, double> joint_lower_limits = simple_robot.jointLowerLimits();
     map<string, double> joint_upper_limits = simple_robot.jointUpperLimits();

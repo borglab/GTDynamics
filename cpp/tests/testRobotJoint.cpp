@@ -53,6 +53,15 @@ TEST(RobotJoint, constructor) {
     unsigned char id = 'a';
     link_joint_strong->setID(id);
     EXPECT(assert_equal((double) link_joint_strong->getID(), (double) id));
+
+    // Test joint screw axis
+    Vector6 screw_axis_j1;
+    screw_axis_j1 << 1, 0, 0, 0, -1, 0;
+    EXPECT(assert_equal(
+      link_joint_strong->screwAxis(),
+      screw_axis_j1
+    ))
+
 }
 
 int main() {
