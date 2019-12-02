@@ -1,0 +1,37 @@
+<!-- DO NOT MODIFY OR REMOVE -->
+<robot name="floating_base_test">
+    <link name="l1">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <mass value="1" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+        </inertial>
+    </link>
+    <link name="l2">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <mass value="1" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
+        </inertial>
+    </link>
+    <joint name="j1" type="revolute">
+        <parent link="l1"/>
+        <child link="l2"/>
+        <axis xyz="1 0 0"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="0.5"/>
+        <origin rpy="1.5707963267948966 0 0" xyz="0 0 2"/>
+    </joint>
+</robot>

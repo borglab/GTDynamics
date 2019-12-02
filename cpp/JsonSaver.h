@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/PriorFactor.h>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -53,7 +54,7 @@ class JsonSaver
 public:
     typedef std::pair<std::string, std::string> AttributeType;
     typedef boost::shared_ptr<gtsam::Value> ValuePtr;
-    typedef std::map<std::string, gtsam::Vector3> LocationType;
+    typedef std::map<Key, gtsam::Vector3> LocationType;
     const static std::string kQuote_;
 
     /**
@@ -213,6 +214,12 @@ public:
     GetMeasurement(const gtsam::NonlinearFactor::shared_ptr& factor)
     {
         std::stringstream ss;
+        if (const manipulator::TorqueFactor* f =
+                dynamic_cast<const manipulator::TorqueFactor*>(&(*factor)))
+        {
+            ss << GetVector(f->getScrewAxis().transpose());
+        }
+
         return ss.str();
     }
 
@@ -224,7 +231,19 @@ public:
     static inline std::string
     GetType(const gtsam::NonlinearFactor::shared_ptr& factor)
     {
-        if (dynamic_cast<const robot::WrenchFactor2*>(&(*factor)))
+        if (dynamic_cast<const robot::WrenchFactor1*>(&(*factor)))
+        {
+            return "Wrench";
+        }
+        else if (dynamic_cast<const robot::WrenchFactor2*>(&(*factor)))
+        {
+            return "Wrench";
+        }
+        else if (dynamic_cast<const robot::WrenchFactor3*>(&(*factor)))
+        {
+            return "Wrench";
+        }
+        else if (dynamic_cast<const robot::WrenchFactor4*>(&(*factor)))
         {
             return "Wrench";
         }
@@ -248,9 +267,21 @@ public:
         {
             return "WrenchEq";
         }
+        else if (dynamic_cast<const PriorFactor<double>*>(&(*factor)))
+        {
+            return "Prior";
+        }
+        else if (dynamic_cast<const PriorFactor<Vector>*>(&(*factor)))
+        {
+            return "Prior";
+        }
+        else if (dynamic_cast<const PriorFactor<Pose3>*>(&(*factor)))
+        {
+            return "PriorPose";
+        }
         else
         {
-            return typeid(*factor).name();
+            return typeid(factor).name();
         }
     }
 
@@ -308,7 +339,7 @@ public:
             }
             else
             {
-                ss << typeid(*noise_model).name();
+                ss << typeid(noise_model).name();
             }
         }
         return ss.str();
@@ -349,20 +380,20 @@ public:
     /**
      * @brief get the location of the variable
      * @param[in] locations     manually specified locations
-     * @param[in] name          variable name
+     * @param[in] key           variable key
      * @param[in] value         value of varible
      * @return                  a string displaying the location
      */
     static inline std::string GetLocation(const LocationType& locations,
-                                          const std::string& name,
+                                          const gtsam::Key& key,
                                           const gtsam::Value& value)
     {
         std::stringstream ss;
         if (locations.size() > 0)
         {
-            if (locations.find(name) != locations.end())
+            if (locations.find(key) != locations.end())
             {
-                ss << GetVector(locations.at(name));
+                ss << GetVector(locations.at(key));
             }
         }
         else
@@ -409,7 +440,7 @@ public:
                                     Quoted(GetValue(values.at(key))));
 
             // location
-            const auto loc_str = GetLocation(locations, name, values.at(key));
+            const auto loc_str = GetLocation(locations, key, values.at(key));
             if (loc_str != "")
             {
                 attributes.emplace_back(Quoted("location"), loc_str);
@@ -480,7 +511,7 @@ public:
     static inline void SaveFactorGraph(
         const NonlinearFactorGraph& graph, std::ostream& stm,
         const gtsam::Values& values = gtsam::Values(),
-        const LocationType& locations = std::map<std::string, gtsam::Vector3>())
+        const LocationType& locations = LocationType())
     {
         std::vector<std::string> variable_strings;
         std::vector<std::string> factor_strings;
@@ -621,7 +652,7 @@ public:
 
             // location
             const auto loc_str = JsonSaver::GetLocation(
-                locations, name, *(storage_.at(key).back()));
+                locations, key, *(storage_.at(key).back()));
             if (loc_str != "")
             {
                 attributes.emplace_back(JsonSaver::Quoted("location"), loc_str);
@@ -640,7 +671,7 @@ public:
     void SaveFactorGraphSequence(const NonlinearFactorGraph& graph, std::ostream& stm,
                                  const gtsam::Values& values = gtsam::Values(),
                                  const JsonSaver::LocationType& locations =
-                                     std::map<std::string, gtsam::Vector3>())
+                                     JsonSaver::LocationType())
     {
         std::vector<std::string> variable_strings;
         std::vector<std::string> factor_strings;

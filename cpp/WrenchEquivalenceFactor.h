@@ -76,6 +76,12 @@ class WrenchEquivalenceFactor
 
     gtsam::Vector6 error = wrench_1 + T_21.AdjointMap().transpose() * wrench_2;
 
+    // std::cout << "T21: " << T_21 << "\n";
+    // std::cout << "T21 Adjoint: \n" << T_21.AdjointMap().transpose() << "\n";
+    // std::cout << "Wrench1: " << wrench_1.transpose() << "\n";
+    // std::cout << "Wrench2: " << wrench_2.transpose() << "\n";
+    // std::cout << "Wrench2 transformed: " << (T_21.AdjointMap().transpose() * wrench_2).transpose() << "\n";
+
     if (H_wrench_1) {
       *H_wrench_1 = gtsam::I_6x6;
     }

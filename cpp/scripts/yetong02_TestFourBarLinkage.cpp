@@ -75,7 +75,7 @@ void print_values(const Values& result) {
 TEST(FD_factor_graph, optimization) {
 
   // Load the robot from urdf file
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
+  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf_eq_mass.urdf");
   print_robot(simple_robot);
 
   Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
@@ -101,7 +101,12 @@ TEST(FD_factor_graph, optimization) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
+    if (j==1) {
+      graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
+    }
+    else {
+      graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    }
   }
 
   // set initial values
@@ -134,23 +139,44 @@ TEST(FD_factor_graph, optimization) {
   optimizer.optimize();
   Values result = optimizer.values();
 
-  if (DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
-    for (auto& key: result.keys()) {
-      auto symb = LabeledSymbol(key);
-      cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
-      result.at(key).print();
-      cout << "\n";
-    }
-    // result.print();
 
-    cout << "error: " << graph.error(result) << "\n";
-    ofstream json_file;
-    json_file.open ("../../../visualization/factor_graph.json");
-    JsonSaver::SaveFactorGraph(graph, json_file, result);
-    json_file.close();
+  for (auto& key: result.keys()) {
+    auto symb = LabeledSymbol(key);
+    cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
+    result.at(key).print();
+    cout << "\n";
   }
 
+  // set the factor graph display locations
+  int t = 0;
+  JsonSaver::LocationType locations;
+  for (auto link: simple_robot.links()) {
+    int i = link -> getID();
+    locations[PoseKey(i, t)] = (Vector(3) << i, 0, 0).finished();
+    locations[TwistKey(i, t)] = (Vector(3) << i, 1, 0).finished();
+    locations[TwistAccelKey(i, t)] = (Vector(3) << i, 2, 0).finished();
+  }
+
+  for (auto joint: simple_robot.joints()) {
+    int j = joint -> getID();
+    locations[JointAngleKey(j, t)] = (Vector(3) << j + 0.5 , 0.5, 0).finished();
+    locations[JointVelKey(j, t)] = (Vector(3) << j + 0.5 , 1.5, 0).finished();
+    locations[JointAccelKey(j, t)] = (Vector(3) << j + 0.5 , 2.5, 0).finished();
+    int i1 = joint -> parentLink()  ->getID();
+    int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
+    locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
+    locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
+    locations[TorqueKey(j, t)] = (Vector(3) << j + 0.5 , 4.5, 0).finished();
+  }
+
+  cout << "error: " << graph.error(result) << "\n";
+  ofstream json_file;
+  json_file.open ("../../../visualization/factor_graph.json");
+  JsonSaver::SaveFactorGraph(graph, json_file, result, locations);
+  json_file.close();
 }
+
+
 
 int main() {
   TestResult tr;

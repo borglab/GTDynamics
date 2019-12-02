@@ -42,39 +42,39 @@ gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
                               t); // a hack here for a key with 3 numbers
 }
 
-/* Shorthand for T_i_t, for torque on the i-th link at time t. */
-gtsam::LabeledSymbol TorqueKey(int i, int t) {
-  return gtsam::LabeledSymbol('T', i, t);
+/* Shorthand for T_j_t, for torque on the j-th joint at time t. */
+gtsam::LabeledSymbol TorqueKey(int j, int t) {
+  return gtsam::LabeledSymbol('T', j, t);
 }
 
-/* Shorthand for p_j_i, for COM pose on the j-th link at time i. */
-gtsam::LabeledSymbol PoseKey(int j, int i) {
-  return gtsam::LabeledSymbol('p', j, i);
+/* Shorthand for p_i_t, for COM pose on the i-th link at time t. */
+gtsam::LabeledSymbol PoseKey(int i, int t) {
+  return gtsam::LabeledSymbol('p', i, t);
 }
 
-/* Shorthand for V_j_i, for 6D link twist vector on the j-th link. */
-gtsam::LabeledSymbol TwistKey(int j, int i) {
-  return gtsam::LabeledSymbol('V', j, i);
+/* Shorthand for V_i_t, for 6D link twist vector on the i-th link. */
+gtsam::LabeledSymbol TwistKey(int i, int t) {
+  return gtsam::LabeledSymbol('V', i, t);
 }
 
-/* Shorthand for A_j_i, for twist accelerations on the j-th link at time i. */
-gtsam::LabeledSymbol TwistAccelKey(int j, int i) {
-  return gtsam::LabeledSymbol('A', j, i);
+/* Shorthand for A_i_t, for twist accelerations on the i-th link at time t. */
+gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
+  return gtsam::LabeledSymbol('A', i, t);
 }
 
-/* Shorthand for q_j_i, for j-th joint angle at time i. */
-gtsam::LabeledSymbol JointAngleKey(int j, int i) {
-  return gtsam::LabeledSymbol('q', j, i);
+/* Shorthand for q_j_t, for j-th joint angle at time t. */
+gtsam::LabeledSymbol JointAngleKey(int j, int t) {
+  return gtsam::LabeledSymbol('q', j, t);
 }
 
-/* Shorthand for v_j_i, for j-th joint velocity at time i. */
-gtsam::LabeledSymbol JointVelKey(int j, int i) {
-  return gtsam::LabeledSymbol('v', j, i);
+/* Shorthand for v_j_t, for j-th joint velocity at time t. */
+gtsam::LabeledSymbol JointVelKey(int j, int t) {
+  return gtsam::LabeledSymbol('v', j, t);
 }
 
-/* Shorthand for a_j_i, for j-th joint acceleration at time i. */
-gtsam::LabeledSymbol JointAccelKey(int j, int i) {
-  return gtsam::LabeledSymbol('a', j, i);
+/* Shorthand for a_j_t, for j-th joint acceleration at time t. */
+gtsam::LabeledSymbol JointAccelKey(int j, int t) {
+  return gtsam::LabeledSymbol('a', j, t);
 }
 
 /**

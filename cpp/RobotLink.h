@@ -191,6 +191,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     std::vector<gtsam::Matrix> gmm;
     gmm.push_back(inertia_);
     gmm.push_back(gtsam::I_3x3 * mass_);
+
     return gtsam::diag(gmm);
   }
 };

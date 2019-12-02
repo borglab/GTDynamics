@@ -1,9 +1,10 @@
 /**
- * @file  testWrenchFactor.cpp
- * @brief test wrench factor
- * @Author: Frank Dellaert and Mandy Xie
+ * @file  testWrenchFactors.cpp
+ * @brief test wrench factors
+ * @Author: Yetong Zhang
  */
-#include <DHLink.h>
+#include "DhLink.h"
+#include <DhLink.h>
 #include <WrenchFactors.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -22,11 +23,12 @@
 using namespace std;
 using namespace gtsam;
 using namespace manipulator;
+using namespace robot;
 
 namespace example {
 // R link example
-DH_Link dh_r =
-    DH_Link(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
+DhLink dh_r =
+    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
 // nosie model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
