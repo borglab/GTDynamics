@@ -55,6 +55,8 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   // x-y-z and r-p-y coords of link frame w.r.t.
   // the former link frame.
   gtsam::Pose3 origin_;
+  // Rest transform to joint frame from source link frame at rest.
+  gtsam::Pose3 pMj_;
   // Rest transform to link frame from source link frame at rest.
   gtsam::Pose3 pMc_;
   // Rest transform to com link frame from com source link frame at rest.
@@ -143,10 +145,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
         }
 
         if (jointType_ == 'R') {
-          pMc_ = origin_ *
+          pMj_ = origin_ *
                 gtsam::Pose3(gtsam::Rot3::Rodrigues(axis_ * 0), gtsam::Point3());
         } else {
-          pMc_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
+          pMj_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
         }
 
         RobotLinkSharedPtr child_link_strong_ = child_link_.lock();
@@ -175,10 +177,17 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
       return id_;
   }
 
-  // set com and link transform from parent to child link
+  // set com and link transform from parent to child link, set screw axis
   void setTransform() {
     com_pMc_ = parent_link_->getComPose().inverse() * child_link_.lock()->getComPose();
     pMc_ = parent_link_->getLinkPose().inverse() * child_link_.lock()->getLinkPose();
+    screwAxis_ = manipulator::unit_twist(
+    child_link_.lock() -> centerOfMass().rotation().inverse() * pMc_.rotation().inverse() * axis_,
+    child_link_.lock() -> centerOfMass().inverse() * pMc_.inverse() * pMj_.translation());
+
+    std::cout << "axis:\n" << child_link_.lock() -> centerOfMass().rotation().inverse() * pMc_.rotation().inverse() * axis_ << "\n";
+    std::cout << "p:\n" << child_link_.lock() -> centerOfMass().inverse() * pMc_.inverse() * pMj_.translation() << "\n";
+
   }
 
   // Return joint name.
@@ -192,13 +201,16 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
 
   /// Return the joint axis. Rotational axis for revolute and translation
   /// direction for prismatic.
-  gtsam::Vector3 axis() const { return axis_; }
+  const gtsam::Vector3& axis() const { return axis_; }
 
   // x-y-z and r-p-y coords of link frame w.r.t. the former link frame.
-  gtsam::Pose3 origin() const { return origin_; }
+  const gtsam::Pose3& origin() const { return origin_; }
+
+  /// Return transfrom of joint frame w.r.t. source link frame at rest
+  const gtsam::Pose3& pMj() const { return pMj_; }
 
   /// Return transfrom of dest link frame w.r.t. source link frame at rest
-  gtsam::Pose3 pMc() const { return pMc_; }
+  const gtsam::Pose3& pMc() const { return pMc_; }
 
   /// Return transfrom of parent link frame w.r.t. child link frame at rest
   gtsam::Pose3 cMp() const { return pMc_.inverse(); }

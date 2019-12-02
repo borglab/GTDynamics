@@ -61,6 +61,41 @@ void print_graph(const NonlinearFactorGraph& graph) {
   }
 }
 
+// using radial location to locate the variables
+gtsam::Vector3 radial_location(double r, int i) {
+  if (i==1) {
+    return (Vector(3) << r, 0, 0).finished();
+  }
+  else if (i==2) {
+    return (Vector(3) << 0, -r, 0).finished();
+  }
+  else if (i==3) {
+    return (Vector(3) << -r, 0, 0).finished();
+  }
+  else if (i==4) {
+    return (Vector(3) << 0, r, 0).finished();
+  }
+  return (Vector(3) << 0, 0, 0).finished();
+}
+
+// using radial location to locate the variables
+gtsam::Vector3 corner_location(double r, int j) {
+  r = r * 0.7;
+  if (j==1) {
+    return (Vector(3) << r, -r, 0).finished();
+  }
+  else if (j==2) {
+    return (Vector(3) << -r, -r, 0).finished();
+  }
+  else if (j==3) {
+    return (Vector(3) << -r, r, 0).finished();
+  }
+  else if (j==4) {
+    return (Vector(3) << r, r, 0).finished();
+  }
+  return (Vector(3) << 0, 0, 0).finished();
+}
+
 // print the values
 void print_values(const Values& result) {
       for (auto& key: result.keys()) {
@@ -75,7 +110,7 @@ void print_values(const Values& result) {
 TEST(FD_factor_graph, optimization) {
 
   // Load the robot from urdf file
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf_eq_mass.urdf");
+  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
   print_robot(simple_robot);
 
   Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
@@ -101,7 +136,7 @@ TEST(FD_factor_graph, optimization) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    if (j==1) {
+    if ((j==1) || (j==3)) {
       graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
     }
     else {
@@ -150,23 +185,42 @@ TEST(FD_factor_graph, optimization) {
   // set the factor graph display locations
   int t = 0;
   JsonSaver::LocationType locations;
+  // for (auto link: simple_robot.links()) {
+  //   int i = link -> getID();
+  //   locations[PoseKey(i, t)] = (Vector(3) << i, 0, 0).finished();
+  //   locations[TwistKey(i, t)] = (Vector(3) << i, 1, 0).finished();
+  //   locations[TwistAccelKey(i, t)] = (Vector(3) << i, 2, 0).finished();
+  // }
+
+  // for (auto joint: simple_robot.joints()) {
+  //   int j = joint -> getID();
+  //   locations[JointAngleKey(j, t)] = (Vector(3) << j + 0.5 , 0.5, 0).finished();
+  //   locations[JointVelKey(j, t)] = (Vector(3) << j + 0.5 , 1.5, 0).finished();
+  //   locations[JointAccelKey(j, t)] = (Vector(3) << j + 0.5 , 2.5, 0).finished();
+  //   int i1 = joint -> parentLink()  ->getID();
+  //   int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
+  //   locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
+  //   locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
+  //   locations[TorqueKey(j, t)] = (Vector(3) << j + 0.5 , 4.5, 0).finished();
+  // }
+
   for (auto link: simple_robot.links()) {
     int i = link -> getID();
-    locations[PoseKey(i, t)] = (Vector(3) << i, 0, 0).finished();
-    locations[TwistKey(i, t)] = (Vector(3) << i, 1, 0).finished();
-    locations[TwistAccelKey(i, t)] = (Vector(3) << i, 2, 0).finished();
+    locations[PoseKey(i, t)] = radial_location(5, i);
+    locations[TwistKey(i, t)] = radial_location(4, i);
+    locations[TwistAccelKey(i, t)] = radial_location(3, i);
   }
 
   for (auto joint: simple_robot.joints()) {
     int j = joint -> getID();
-    locations[JointAngleKey(j, t)] = (Vector(3) << j + 0.5 , 0.5, 0).finished();
-    locations[JointVelKey(j, t)] = (Vector(3) << j + 0.5 , 1.5, 0).finished();
-    locations[JointAccelKey(j, t)] = (Vector(3) << j + 0.5 , 2.5, 0).finished();
-    int i1 = joint -> parentLink()  ->getID();
-    int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
-    locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
-    locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
-    locations[TorqueKey(j, t)] = (Vector(3) << j + 0.5 , 4.5, 0).finished();
+    locations[JointAngleKey(j, t)] = corner_location(5, j);
+    locations[JointVelKey(j, t)] = corner_location(4, j);
+    locations[JointAccelKey(j, t)] = corner_location(3, j);
+    // int i1 = joint -> parentLink()  ->getID();
+    // int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
+    // locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
+    // locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
+    locations[TorqueKey(j, t)] = corner_location(1, j);
   }
 
   cout << "error: " << graph.error(result) << "\n";

@@ -4,29 +4,29 @@
     <link name="l1">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 1" />
-            <mass value="100" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
     </link>
     <link name="l2">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 1" />
-            <mass value="100" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
     </link>
     <link name="l3">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 1" />
-            <mass value="11005" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
     </link>
     <link name="l4">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 1" />
-            <mass value="100" />
-            <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+            <mass value="1" />
+            <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
     </link>
 

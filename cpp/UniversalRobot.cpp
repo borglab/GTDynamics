@@ -124,7 +124,7 @@ UniversalRobot::UniversalRobot(RobotRobotJointPair urdf_links_and_joints)
         if (next_link->isPoseSet()) {
           throw(std::runtime_error("repeat setting pose for Link" + next_link->name()));
         }
-        next_link -> setPose(next_joint->pMc() * this_link->getLinkPose());
+        next_link -> setPose(next_joint->pMj() * this_link->getLinkPose());
         q.push(next_link);
       }
     }
