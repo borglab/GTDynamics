@@ -17,6 +17,8 @@
 #include <TwistFactor.h>
 #include <WrenchEquivalenceFactor.h>
 #include <WrenchFactors.h>
+#include <WrenchPlanarFactor.h>
+#include <gtsam/linear/NoiseModel.h>
 #include <iostream>
 #include <utils.h>
 
@@ -118,7 +120,8 @@ public:
 
   gtsam::NonlinearFactorGraph dynamics_factor_graph(
       UniversalRobot &robot, // add const here, add to links() function
-      const boost::optional<gtsam::Vector3> &gravity = boost::none) const {
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> plannar_axis = boost::none) const {
     using namespace gtsam;
     NonlinearFactorGraph graph;
 
@@ -177,29 +180,34 @@ public:
       // add pose factor
       graph.add(manipulator::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
                                         JointAngleKey(j, t), opt_.p_cost_model,
-                                        joint->pMcCom(), joint->screwAxis()));
+                                        joint->cMpCom(), joint->screwAxis()));
 
       // add twist factor
       graph.add(manipulator::TwistFactor(TwistKey(i1, t), TwistKey(i2, t),
                                          JointAngleKey(j, t), JointVelKey(j, t),
-                                         opt_.v_cost_model, joint->pMcCom(),
+                                         opt_.v_cost_model, joint->cMpCom(),
                                          joint->screwAxis()));
 
       // add twist acceleration factor
       graph.add(manipulator::TwistAccelFactor(
           TwistKey(i2, t), TwistAccelKey(i1, t), TwistAccelKey(i2, t),
           JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
-          opt_.a_cost_model, joint->pMcCom(), joint->screwAxis()));
+          opt_.a_cost_model, joint->cMpCom(), joint->screwAxis()));
 
       // add wrench equivalence factor
       graph.add(WrenchEquivalenceFactor(
           WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
-          opt_.f_cost_model, joint->pMcCom(), joint->screwAxis()));
+          opt_.f_cost_model, joint->cMpCom(), joint->screwAxis()));
 
       // add torque factor
       graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
                                           opt_.t_cost_model,
                                           joint->screwAxis()));
+
+      if (plannar_axis) {
+        graph.add(WrenchPlanarFactor(WrenchKey(i2, j, t), gtsam::noiseModel::Constrained::All(3), *plannar_axis));
+        // graph.add(WrenchPlanarFactor(WrenchKey(i1, j, t), gtsam::noiseModel::Constrained::All(3), *plannar_axis));
+      }
     }
     return graph;
   }

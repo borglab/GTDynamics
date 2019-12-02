@@ -59,12 +59,21 @@ void print_graph(const NonlinearFactorGraph& graph) {
   }
 }
 
+// print the values
+void print_values(const Values& result) {
+      for (auto& key: result.keys()) {
+      auto symb = LabeledSymbol(key);
+      cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
+      result.at(key).print();
+      cout << "\n";
+    }
+}
+
 // Test forward dynamics with gravity
 TEST(FD_factor_graph, optimization) {
 
   // Load the robot from urdf file
   UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
-
   print_robot(simple_robot);
 
   Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
@@ -74,60 +83,72 @@ TEST(FD_factor_graph, optimization) {
   Vector a = Vector::Zero(simple_robot.numJoints());
   Vector torque = Vector::Zero(simple_robot.numJoints());
   Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
-  NonlinearFactorGraph graph = graph_builder.dynamics_factor_graph(simple_robot, gravity);
+  NonlinearFactorGraph graph = graph_builder.dynamics_factor_graph(simple_robot, gravity, planar_axis);
 
   // specify known values
-  graph.add(PriorFactor<Pose3>(PoseKey(1, 0), Pose3(), noiseModel::Constrained::All(6)));
-  graph.add(PriorFactor<Vector6>(TwistKey(1, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
-  graph.add(PriorFactor<double>(JointAngleKey(3, 0), 0, noiseModel::Constrained::All(1)));
-  graph.add(PriorFactor<double>(JointVelKey(3, 0), 0, noiseModel::Constrained::All(1)));
-  graph.add(PriorFactor<double>(TorqueKey(3, 0), 0, noiseModel::Constrained::All(1)));
+  for (auto link: simple_robot.links()) {
+    int i = link -> getID();
+    graph.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
+    graph.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
 
-  // // set initial values
-  // Values init_values;
-  // for (auto link: simple_robot.links()) {
-  //   int i = link -> getID();
+    // graph.add(PriorFactor<Vector6>(TwistAccelKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
+  }
+  for (auto joint: simple_robot.joints()) {
+    int j = joint -> getID();
+    graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    
+    // graph.add(PriorFactor<double>(JointAccelKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    // graph.add(PriorFactor<Vector6>(WrenchKey(joint->parentLink()->getID(), j, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
+    // graph.add(PriorFactor<Vector6>(WrenchKey(joint->childLink().lock()->getID(), j, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
+  }
 
-  //   init_values.insert(PoseKey(i, 0), Pose3());
-  //   init_values.insert(TwistKey(i, 0), twists);
-  //   init_values.insert(TwistAccelKey(i, 0), accels);
-  // }
-  // for (auto joint: simple_robot.joints()) {
-  //   int j = joint -> getID();
-  //   init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0), wrenches);
-  //   init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0), wrenches);
-  //   Vector torque0 = Vector::Zero(simple_robot.numJoints());
-  //   torque0 << 1;
-  //   init_values.insert(TorqueKey(j, 0), torque0[0]);
-  //   init_values.insert(JointAngleKey(j, 0), q[0]);
-  //   init_values.insert(JointVelKey(j, 0), v[0]);
-  //   init_values.insert(JointAccelKey(j, 0), a[0]);
-  // }
+  // set initial values
+  Values init_values;
+  for (auto link: simple_robot.links()) {
+    int i = link -> getID();
+    init_values.insert(PoseKey(i, 0), link -> getComPose());
+    init_values.insert(TwistKey(i, 0), twists);
+    init_values.insert(TwistAccelKey(i, 0), accels);
+  }
+  for (auto joint: simple_robot.joints()) {
+    int j = joint -> getID();
+    init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0), wrenches);
+    init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0), wrenches);
+    Vector torque0 = Vector::Zero(1);
+    // torque0 << 1;
+    init_values.insert(TorqueKey(j, 0), torque0[0]);
+    init_values.insert(JointAngleKey(j, 0), q[0]);
+    init_values.insert(JointVelKey(j, 0), v[0]);
+    init_values.insert(JointAccelKey(j, 0), a[0]);
+  }
+  print_values(init_values);
 
   // graph.print("", MultiRobotKeyFormatter);
   if(DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
     print_graph(graph);
   }
-  
 
-  // GaussNewtonOptimizer optimizer(graph, init_values);
-  // optimizer.optimize();
-  // Values result = optimizer.values();
+  GaussNewtonOptimizer optimizer(graph, init_values);
+  optimizer.optimize();
+  Values result = optimizer.values();
 
-  // if (DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
-  //   for (auto& key: result.keys()) {
-  //     auto symb = LabeledSymbol(key);
-  //     cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
-  //     result.at(key).print();
-  //     cout << "\n";
-  //   }
-  //   // result.print();
+  if (DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
+    for (auto& key: result.keys()) {
+      auto symb = LabeledSymbol(key);
+      cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
+      result.at(key).print();
+      cout << "\n";
+    }
+    // result.print();
 
-  //   cout << "error: " << graph.error(result) << "\n";
-  // }
+    cout << "error: " << graph.error(result) << "\n";
+  }
 
 }
 
