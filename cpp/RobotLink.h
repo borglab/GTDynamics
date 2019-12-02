@@ -39,9 +39,13 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
+  // pose elements
   gtsam::Pose3 link_pose_;
   gtsam::Pose3 com_pose_;
   bool pose_set_;
+
+  // option to fix the link, used for ground link
+  bool is_fixed_;
 
   // Parent information.
   std::vector<RobotLinkSharedPtr> parent_links_;
@@ -67,6 +71,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
    */
   RobotLink(urdf::LinkSharedPtr urdf_link_ptr) 
       : name_(urdf_link_ptr->name), mass_(urdf_link_ptr->inertial->mass),
+        pose_set_(false), is_fixed_(false), 
         centerOfMass_(gtsam::Pose3(
             gtsam::Rot3(
                 gtsam::Quaternion(
@@ -142,6 +147,18 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   bool isPoseSet() {
     return pose_set_;
+  }
+
+  bool isFixed() {
+    return is_fixed_;
+  }
+
+  void fix() {
+    is_fixed_ = true;
+  }
+
+  void unfix() {
+    is_fixed_ = false;
   }
 
   std::vector<RobotJointWeakPtr> getChildJoints(void) {

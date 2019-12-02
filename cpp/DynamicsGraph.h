@@ -127,49 +127,54 @@ public:
 
     // add factors corresponding to links
     for (const auto &link : robot.links()) {
-      const auto &connected_joints = link->getJoints();
       int i = link->getID();
-      if (connected_joints.size() == 0) {
-        graph.add(WrenchFactor0(TwistKey(i, t), TwistAccelKey(i, t),
-                                PoseKey(i, t), opt_.f_cost_model,
-                                link->inertiaMatrix(), gravity));
-      } else if (connected_joints.size() == 1) {
-        graph.add(WrenchFactor1(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
-                                link->inertiaMatrix(), gravity));
-      } else if (connected_joints.size() == 2) {
-        graph.add(WrenchFactor2(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
-                                link->inertiaMatrix(), gravity));
-      } else if (connected_joints.size() == 3) {
-        graph.add(WrenchFactor3(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
-                                WrenchKey(i, connected_joints[2]->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
-                                link->inertiaMatrix(), gravity));
-      } else if (connected_joints.size() == 4) {
-        graph.add(WrenchFactor4(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
-                                WrenchKey(i, connected_joints[2]->getID(), t),
-                                WrenchKey(i, connected_joints[3]->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
-                                link->inertiaMatrix(), gravity));
-      } else {
-        throw std::runtime_error("Wrench factor not defined");
+      if (link->isFixed()) {
+        graph.add(PriorFactor<Vector6>(TwistAccelKey(i, t), Vector6::Zero(), noiseModel::Constrained::All(6)));
+      }
+      else {
+        const auto &connected_joints = link->getJoints();
+        if (connected_joints.size() == 0) {
+          graph.add(WrenchFactor0(TwistKey(i, t), TwistAccelKey(i, t),
+                                  PoseKey(i, t), opt_.f_cost_model,
+                                  link->inertiaMatrix(), gravity));
+        } else if (connected_joints.size() == 1) {
+          graph.add(WrenchFactor1(TwistKey(i, t), TwistAccelKey(i, t),
+                                  WrenchKey(i, connected_joints[0]->getID(), t),
+                                  PoseKey(i, t), opt_.f_cost_model,
+                                  link->inertiaMatrix(), gravity));
+        } else if (connected_joints.size() == 2) {
+          graph.add(WrenchFactor2(TwistKey(i, t), TwistAccelKey(i, t),
+                                  WrenchKey(i, connected_joints[0]->getID(), t),
+                                  WrenchKey(i, connected_joints[1]->getID(), t),
+                                  PoseKey(i, t), opt_.f_cost_model,
+                                  link->inertiaMatrix(), gravity));
+        } else if (connected_joints.size() == 3) {
+          graph.add(WrenchFactor3(TwistKey(i, t), TwistAccelKey(i, t),
+                                  WrenchKey(i, connected_joints[0]->getID(), t),
+                                  WrenchKey(i, connected_joints[1]->getID(), t),
+                                  WrenchKey(i, connected_joints[2]->getID(), t),
+                                  PoseKey(i, t), opt_.f_cost_model,
+                                  link->inertiaMatrix(), gravity));
+        } else if (connected_joints.size() == 4) {
+          graph.add(WrenchFactor4(TwistKey(i, t), TwistAccelKey(i, t),
+                                  WrenchKey(i, connected_joints[0]->getID(), t),
+                                  WrenchKey(i, connected_joints[1]->getID(), t),
+                                  WrenchKey(i, connected_joints[2]->getID(), t),
+                                  WrenchKey(i, connected_joints[3]->getID(), t),
+                                  PoseKey(i, t), opt_.f_cost_model,
+                                  link->inertiaMatrix(), gravity));
+        } else {
+          throw std::runtime_error("Wrench factor not defined");
+        }
       }
     }
 
     // add factors corresponding to joints
     for (const auto &joint : robot.joints()) {
       const auto &link_1 = joint->parentLink();
-      const auto &link_2 = joint->childLink();
+      const auto &link_2 = joint->childLink().lock();
       int i1 = link_1->getID();
-      int i2 = link_2.lock()->getID(); // cannot use methods for a weak ptr?
+      int i2 = link_2->getID(); // cannot use methods for a weak ptr?
       int j = joint->getID();
       // add pose factor
       graph.add(manipulator::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
@@ -189,9 +194,11 @@ public:
           opt_.a_cost_model, joint->cMpCom(), joint->screwAxis()));
 
       // add wrench equivalence factor
-      graph.add(WrenchEquivalenceFactor(
-          WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
-          opt_.f_cost_model, joint->cMpCom(), joint->screwAxis()));
+      if (!link_1->isFixed() && !link_2->isFixed()) {
+        graph.add(WrenchEquivalenceFactor(
+            WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
+            opt_.f_cost_model, joint->cMpCom(), joint->screwAxis()));
+      }
 
       // add torque factor
       graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),

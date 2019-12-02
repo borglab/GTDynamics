@@ -111,6 +111,8 @@ TEST(FD_factor_graph, optimization) {
 
   // Load the robot from urdf file
   UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
+  simple_robot.getLinkByName("l1")->fix();
+
   print_robot(simple_robot);
 
   Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
@@ -136,7 +138,7 @@ TEST(FD_factor_graph, optimization) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    if ((j==1) || (j==3)) {
+    if (j==1) {
       graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
     }
     else {
