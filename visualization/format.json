@@ -1,0 +1,39 @@
+[
+// list of variables
+[
+	// each variable
+	{
+		// "name": some string
+		// "value": currently some string (will not need this in future)
+		// "value_history": values in history of each optimization step
+		// "value_types": The meaning of each value
+		// "location": we can specify the default displayed location of the variable
+		// "covariance": the covariance on the varaible (which is not implementd in `json_saver.h` yet)
+		"name":"b10", 
+		"value":"Acc: [3.06009e-07, -1.678e-07, 2.49986e-07] Angular: [1.53203e-07, -1.15617e-07, 1.4349e-07]", // some string
+		"value_history":[[-3.97681e-08, 2.23427e-07, -1.47834e-07, 3.3889e-07, 4.7348e-08, 3.76261e-07],[6.03343e-07, 4.0405e-07, 5.33892e-07, 2.19985e-07, -1.14955e-07, 1.91175e-07],[6.53414e-07, 6.09189e-07, 6.58533e-07, 2.39551e-07, -1.27373e-07, 2.01768e-07],[1.70633e-07, -2.06835e-07, 1.36178e-07, 1.61507e-07, -1.01938e-07, 1.50633e-07],[8.68103e-07, -3.94388e-07, 7.84764e-07, 1.03119e-07, -1.83913e-07, 1.02337e-07],[4.87809e-07, -3.135e-07, 5.12404e-07, 1.28152e-07, -1.41848e-07, 1.23394e-07],[4.12209e-07, -2.37499e-08, 3.965e-07, 1.51824e-07, -1.27725e-07, 1.42141e-07],[8.20746e-08, -3.1488e-07, 1.11821e-07, 1.47964e-07, -1.0001e-07, 1.38393e-07],[-5.14499e-08, 5.95039e-08, -8.77915e-08, 1.70806e-07, -7.8972e-08, 1.60058e-07],[1.42145e-07, -1.61998e-07, 1.13955e-07, 1.56623e-07, -9.89151e-08, 1.45713e-07],[3.06009e-07, -1.678e-07, 2.49986e-07, 1.53203e-07, -1.15617e-07, 1.4349e-07]],
+		"value_types":["acc_x","acc_y","acc_z","angular_v_row","angular_v_pitch","angular_v_yaw"],
+		"location":[0, 3, 0]
+	}
+],
+// list of factors
+[
+	// each factor
+	{
+		// "name": some string
+		// "type": type of factor (e.g. "projection factor")
+		// "variables": name of varibles that the factor connect to
+		// "measurement": the measurement value corresponding to that factor (e.g. a projection factor should have measurement as pixel location [u, v])
+		// "noise": noise model of the factor
+		// "whitened error": can directly get the error from the whitenederror function in gtsam
+		// "error": can directly get the error from the error function in gtsam
+		"name":"Factor58",
+		"type":"N5gtsam21LinearContainerFactorE",
+		"variables":["x5","x13","l10"],
+		"measurement":"N5gtsam21LinearContainerFactorE",
+		"noise":"",
+		"whitened error":"",
+		"error":1.5638e-10
+	}
+]
+]

@@ -1,0 +1,586 @@
+[
+[
+{
+"name":"A1_0",
+"value":"-5.88337e-19            0            0            0  2.17429e-19  7.01041e-20"
+},
+{
+"name":"A2_0",
+"value":"-5.88337e-19            0            0            0  6.58441e-19 -8.05766e-19"
+},
+{
+"name":"A3_0",
+"value":"-5.88337e-19            0            0            0 -2.17429e-19 -1.24678e-18"
+},
+{
+"name":"A4_0",
+"value":"-1.60267e-18            0            0            0  3.55887e-19 -3.70908e-19"
+},
+{
+"name":"F11_0",
+"value":"         -1           0           0           0 4.44352e-18 4.01711e-17"
+},
+{
+"name":"F14_0",
+"value":"           1            0            0            0  1.72994e-17 -3.31607e-17"
+},
+{
+"name":"F21_0",
+"value":"           1            0            0            0 -4.01711e-17  4.44352e-18"
+},
+{
+"name":"F22_0",
+"value":"         -1           0           0           0 5.00478e-17  -1.653e-17"
+},
+{
+"name":"F32_0",
+"value":"          1           0           0           0   1.653e-17 5.00478e-17"
+},
+{
+"name":"F33_0",
+"value":"          -1            0            0            0 -1.97914e-17 -6.87494e-17"
+},
+{
+"name":"F43_0",
+"value":"           1            0            0            0  6.87494e-17 -1.97914e-17"
+},
+{
+"name":"F44_0",
+"value":"          -1            0            0            0 -3.31607e-17 -1.72994e-17"
+},
+{
+"name":"T1_0",
+"value":"1"
+},
+{
+"name":"T2_0",
+"value":"1"
+},
+{
+"name":"T3_0",
+"value":"1"
+},
+{
+"name":"T4_0",
+"value":"1"
+},
+{
+"name":"V1_0",
+"value":"0 0 0 0 0 0"
+},
+{
+"name":"V2_0",
+"value":"0 0 0 0 0 0"
+},
+{
+"name":"V3_0",
+"value":"0 0 0 0 0 0"
+},
+{
+"name":"V4_0",
+"value":"0 0 0 0 0 0"
+},
+{
+"name":"a1_0",
+"value":"-7.70372e-33"
+},
+{
+"name":"a2_0",
+"value":"-1.54074e-32"
+},
+{
+"name":"a3_0",
+"value":"-1.01433e-18"
+},
+{
+"name":"a4_0",
+"value":"1.01433e-18"
+},
+{
+"name":"p1_0",
+"value":"Translation: [0, 3.88578e-16, 1]' Rotation rpy: [1.66533e-16, -0, 0]",
+"location":[0, 3.88578e-16, 1]
+},
+{
+"name":"p2_0",
+"value":"Translation: [0, -1, 2]' Rotation rpy: [1.5708, -0, 0]",
+"location":[0, -1, 2]
+},
+{
+"name":"p3_0",
+"value":"Translation: [0, -2, 1]' Rotation rpy: [3.14159, -0, 0]",
+"location":[0, -2, 1]
+},
+{
+"name":"p4_0",
+"value":"Translation: [0, -1, -4.89686e-12]' Rotation rpy: [-1.5708, -0, 0]",
+"location":[0, -1, -4.89686e-12]
+},
+{
+"name":"q1_0",
+"value":"-2.498e-16"
+},
+{
+"name":"q2_0",
+"value":"2.77556e-17"
+},
+{
+"name":"q3_0",
+"value":"0"
+},
+{
+"name":"q4_0",
+"value":"1.66533e-16"
+},
+{
+"name":"v1_0",
+"value":"0"
+},
+{
+"name":"v2_0",
+"value":"0"
+},
+{
+"name":"v3_0",
+"value":"0"
+},
+{
+"name":"v4_0",
+"value":"0"
+}
+],
+[
+{
+"name":"Factor0",
+"type":"Wrench",
+"variables":["V1_0","A1_0","F11_0","F14_0","p1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, -2.46519e-32]",
+"error":3.03858e-61
+},
+{
+"name":"Factor1",
+"type":"Wrench",
+"variables":["V2_0","A2_0","F22_0","F21_0","p2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -4.31408e-32, -4.62223e-33]",
+"error":9.41248e-61
+},
+{
+"name":"Factor2",
+"type":"Wrench",
+"variables":["V3_0","A3_0","F33_0","F32_0","p3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 3.38964e-32, -1.2326e-32]",
+"error":6.50446e-61
+},
+{
+"name":"Factor3",
+"type":"Wrench",
+"variables":["V4_0","A4_0","F43_0","F44_0","p4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -1.78726e-31, 2.46519e-32]",
+"error":1.62754e-59
+},
+{
+"name":"Factor4",
+"type":"Pose",
+"variables":["p1_0","p2_0","q1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor5",
+"type":"Twist",
+"variables":["V1_0","V2_0","q1_0","v1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor6",
+"type":"TwistAccel",
+"variables":["V2_0","A1_0","A2_0","q1_0","v1_0","a1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -1.54074e-33, -9.05187e-33]",
+"error":4.21551e-62
+},
+{
+"name":"Factor7",
+"type":"WrenchEq",
+"variables":["F11_0","F21_0","q1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 2.6963e-32, 1.84889e-32]",
+"error":5.34422e-61
+},
+{
+"name":"Factor8",
+"type":"Torque",
+"variables":["F21_0","T1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[0]",
+"error":0
+},
+{
+"name":"Factor9",
+"type":"N5robot18WrenchPlanarFactorE",
+"variables":["F21_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000]",
+"whitened error":"[0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor10",
+"type":"Pose",
+"variables":["p2_0","p3_0","q2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 2.22045e-16]",
+"error":2.46519e-29
+},
+{
+"name":"Factor11",
+"type":"Twist",
+"variables":["V2_0","V3_0","q2_0","v2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor12",
+"type":"TwistAccel",
+"variables":["V3_0","A2_0","A3_0","q2_0","v2_0","a2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[2.31112e-33, 0, 0, 0, 1.54074e-33, 2.50371e-33]",
+"error":6.99185e-63
+},
+{
+"name":"Factor13",
+"type":"WrenchEq",
+"variables":["F22_0","F32_0","q2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -1.84889e-32, -1.54074e-32]",
+"error":2.89615e-61
+},
+{
+"name":"Factor14",
+"type":"Torque",
+"variables":["F32_0","T2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[0]",
+"error":0
+},
+{
+"name":"Factor15",
+"type":"N5robot18WrenchPlanarFactorE",
+"variables":["F32_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000]",
+"whitened error":"[0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor16",
+"type":"Pose",
+"variables":["p3_0","p4_0","q3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[-5.55112e-17, 0, 0, 0, -1.11022e-16, 2.22045e-16]",
+"error":3.23556e-29
+},
+{
+"name":"Factor17",
+"type":"Twist",
+"variables":["V3_0","V4_0","q3_0","v3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor18",
+"type":"TwistAccel",
+"variables":["V4_0","A3_0","A4_0","q3_0","v3_0","a3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[2.31112e-33, 0, 0, 0, 4.62223e-33, -2.60001e-33]",
+"error":1.67332e-62
+},
+{
+"name":"Factor19",
+"type":"WrenchEq",
+"variables":["F33_0","F43_0","q3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[-1.11022e-16, 0, 0, 0, 0, 4.93038e-32]",
+"error":6.16298e-30
+},
+{
+"name":"Factor20",
+"type":"Torque",
+"variables":["F43_0","T3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-1.11022e-16]",
+"error":6.16298e-30
+},
+{
+"name":"Factor21",
+"type":"N5robot18WrenchPlanarFactorE",
+"variables":["F43_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000]",
+"whitened error":"[0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor22",
+"type":"Pose",
+"variables":["p1_0","p4_0","q4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 1.11022e-16, 4.44089e-16]",
+"error":1.04771e-28
+},
+{
+"name":"Factor23",
+"type":"Twist",
+"variables":["V1_0","V4_0","q4_0","v4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor24",
+"type":"TwistAccel",
+"variables":["V4_0","A1_0","A4_0","q4_0","v4_0","a4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -4.42964e-33, -3.88556e-32]",
+"error":7.64691e-61
+},
+{
+"name":"Factor25",
+"type":"WrenchEq",
+"variables":["F14_0","F44_0","q4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -8.62817e-32, 1.84889e-32]",
+"error":3.89318e-60
+},
+{
+"name":"Factor26",
+"type":"Torque",
+"variables":["F44_0","T4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[0]",
+"error":0
+},
+{
+"name":"Factor27",
+"type":"N5robot18WrenchPlanarFactorE",
+"variables":["F44_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000]",
+"whitened error":"[0, 0, 0]",
+"error":0
+},
+{
+"name":"Factor28",
+"type":"N5gtsam11PriorFactorINS_5Pose3EEE",
+"variables":["p1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[1.66533e-16, 0, 0, 0, 3.88578e-16, -0]",
+"error":8.93631e-29
+},
+{
+"name":"Factor29",
+"type":"N5gtsam11PriorFactorIN5Eigen6MatrixIdLi6ELi1ELi0ELi6ELi1EEEEE",
+"variables":["V1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -0, -0]",
+"error":0
+},
+{
+"name":"Factor30",
+"type":"N5gtsam11PriorFactorINS_5Pose3EEE",
+"variables":["p2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[-8.32667e-17, 0, 0, 0, -0, -0]",
+"error":3.46667e-30
+},
+{
+"name":"Factor31",
+"type":"N5gtsam11PriorFactorIN5Eigen6MatrixIdLi6ELi1ELi0ELi6ELi1EEEEE",
+"variables":["V2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -0, -0]",
+"error":0
+},
+{
+"name":"Factor32",
+"type":"N5gtsam11PriorFactorINS_5Pose3EEE",
+"variables":["p3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[-5.55112e-17, 0, 0, 0, -0, -0]",
+"error":1.54074e-30
+},
+{
+"name":"Factor33",
+"type":"N5gtsam11PriorFactorIN5Eigen6MatrixIdLi6ELi1ELi0ELi6ELi1EEEEE",
+"variables":["V3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -0, -0]",
+"error":0
+},
+{
+"name":"Factor34",
+"type":"N5gtsam11PriorFactorINS_5Pose3EEE",
+"variables":["p4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, 2.22045e-16, 2.22045e-16]",
+"error":4.93038e-29
+},
+{
+"name":"Factor35",
+"type":"N5gtsam11PriorFactorIN5Eigen6MatrixIdLi6ELi1ELi0ELi6ELi1EEEEE",
+"variables":["V4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000, 1000, 1000, 1000, 1000, 1000]",
+"whitened error":"[0, 0, 0, 0, -0, -0]",
+"error":0
+},
+{
+"name":"Factor36",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["q1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-2.498e-16]",
+"error":3.12001e-29
+},
+{
+"name":"Factor37",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["v1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor38",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["T1_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor39",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["q2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[2.77556e-17]",
+"error":3.85186e-31
+},
+{
+"name":"Factor40",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["v2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor41",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["T2_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor42",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["q3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor43",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["v3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor44",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["T3_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor45",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["q4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[1.66533e-16]",
+"error":1.38667e-29
+},
+{
+"name":"Factor46",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["v4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+},
+{
+"name":"Factor47",
+"type":"N5gtsam11PriorFactorIdEE",
+"variables":["T4_0"],
+"measurement":"",
+"noise":"constrained mus:[1000]",
+"whitened error":"[-0]",
+"error":0
+}
+]
+]

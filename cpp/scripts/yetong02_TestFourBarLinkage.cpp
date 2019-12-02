@@ -11,6 +11,7 @@
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <utils.h>
+#include <JsonSaver.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -23,6 +24,7 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace robot;
@@ -82,7 +84,7 @@ TEST(FD_factor_graph, optimization) {
   Vector v = Vector::Zero(simple_robot.numJoints());
   Vector a = Vector::Zero(simple_robot.numJoints());
   Vector torque = Vector::Zero(simple_robot.numJoints());
-  Vector3 gravity = (Vector(3) << 0, -9.8, 0).finished();
+  Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
   Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
 
   // build the dynamics factor graph
@@ -99,7 +101,7 @@ TEST(FD_factor_graph, optimization) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
   }
 
   // set initial values
@@ -142,6 +144,10 @@ TEST(FD_factor_graph, optimization) {
     // result.print();
 
     cout << "error: " << graph.error(result) << "\n";
+    ofstream json_file;
+    json_file.open ("../../../visualization/factor_graph.json");
+    JsonSaver::SaveFactorGraph(graph, json_file, result);
+    json_file.close();
   }
 
 }
