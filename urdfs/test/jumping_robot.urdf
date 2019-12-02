@@ -1,0 +1,112 @@
+<!-- DO NOT MODIFY OR REMOVE -->
+<robot name="jumping_robot">
+
+    <!-- Links in the four bar. -->
+    <link name="l1">
+        <visual>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <geometry>
+                <cylinder length="0.55" radius="0.02"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <mass value="0.31" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="2" iyz="0" izz="0"/>
+        </inertial>
+    </link>
+    <link name="l2">
+        <visual>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <geometry>
+                <cylinder length="0.55" radius="0.02"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <mass value="0.28" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="2" iyz="0" izz="0"/>
+        </inertial>
+    </link>
+    <link name="l3">
+        <visual>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <geometry>
+                <cylinder length="0.55" radius="0.02"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <mass value="0.54" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="2" iyz="0" izz="0"/>
+        </inertial>
+    </link>
+    <link name="l4">
+        <visual>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <geometry>
+                <cylinder length="0.55" radius="0.02"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <mass value="0.28" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="2" iyz="0" izz="0"/>
+        </inertial>
+    </link>
+    <link name="l5">
+        <visual>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <geometry>
+                <cylinder length="0.55" radius="0.02"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.275 0 0" />
+            <mass value="0.31" />
+            <inertia ixx="0" ixy="0" ixz="0" iyy="2" iyz="0" izz="0"/>
+        </inertial>
+    </link>
+
+    <!-- Root link to four bar linkage joint. -->
+    <joint name="j1" type="revolute">
+        <parent link="l1"/>
+        <child link="l2"/>
+        <axis xyz="0 0 1"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="0" upper="0" velocity="0.5"/>
+        <origin rpy="0 0 1.57079632679" xyz="0.275 0 0"/>
+    </joint>
+    <joint name="j2" type="revolute">
+        <parent link="l2"/>
+        <child link="l2l3"/>
+        <axis xyz="0 0 1"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="0.5"/>
+        <origin rpy="0 0 0" xyz="0.55 0 0"/>
+    </joint>
+    <joint name="j3" type="revolute">
+        <parent link="l2"/>
+        <child link="l3"/>
+        <axis xyz="0 0 1"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="0.5"/>
+        <origin rpy="0 0 1.57079632679" xyz="0.55 0 0"/>
+    </joint>
+    <joint name="j4" type="revolute">
+        <parent link="l3"/>
+        <child link="l4"/>
+        <axis xyz="0 0 1"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="0.5"/>
+        <origin rpy="1.57079632679 0 0" xyz="0.55 0 0"/>
+    </joint>
+    <joint name="j5" type="revolute">
+        <parent link="l4"/>
+        <child link="l1"/>
+        <axis xyz="0 0 1"/>
+        <dynamics damping="500"/>
+        <limit effort="1000.0" lower="-1.57" upper="1.57" velocity="0.5"/>
+        <origin rpy="0 0 0" xyz="0.55 0 0"/>
+    </joint>
+</robot>

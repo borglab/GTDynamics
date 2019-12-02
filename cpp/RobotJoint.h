@@ -59,7 +59,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   gtsam::Pose3 pMc_;
   // Rest transform to com link frame from com source link frame at rest.
   gtsam::Pose3 com_pMc_;
-  // Joint axis expressed in COM frame of dest link
+  // Joint axis expressed in COM frame of child link
   gtsam::Vector6 screwAxis_;
 
   double jointLowerLimit_;
@@ -152,7 +152,8 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
         RobotLinkSharedPtr child_link_strong_ = child_link_.lock();
         screwAxis_ = manipulator::unit_twist(
           child_link_strong_->centerOfMass().rotation().inverse() * axis_,
-          child_link_strong_->centerOfMass().translation().vector());
+          child_link_strong_->centerOfMass().rotation().inverse() * 
+            (-child_link_strong_->centerOfMass().translation().vector()));
     }
 
   /// Return a shared ptr to this joint.
@@ -199,8 +200,28 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   /// Return transfrom of dest link frame w.r.t. source link frame at rest
   gtsam::Pose3 pMc() const { return pMc_; }
 
-  /// Return transform of dest link com frame w.r.t source link com frame at rest
-  const gtsam::Pose3& pMcCom() const { return com_pMc_; }
+  /// Return transfrom of parent link frame w.r.t. child link frame at rest
+  gtsam::Pose3 cMp() const { return pMc_.inverse(); }
+
+  /// Return transform of child link com frame w.r.t parent link com frame
+  gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none) const {
+    if (q) {
+      return com_pMc_ * gtsam::Pose3::Expmap(screwAxis_ * (*q));
+    }
+    else {
+      return com_pMc_;
+    }
+  }
+
+  /// Return transform of child link com frame w.r.t parent link com frame
+  gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none) const {
+    if (q) {
+      return gtsam::Pose3::Expmap(screwAxis_ * (*q)).inverse() * (com_pMc_.inverse());
+    }
+    else {
+      return com_pMc_.inverse();
+    }
+  }
 
   /// Return screw axis.
   const gtsam::Vector6 &screwAxis() const { return screwAxis_; }

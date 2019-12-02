@@ -4,6 +4,7 @@
  * @Author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
+#include <CppUnitLite/Test.h>
 #include <UniversalRobot.h>
 #include <utils.h>
 
@@ -255,6 +256,14 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       simple_robot.getJointByName("j1")->name()
     ));
 
+    // Test joint screw axis
+    Vector6 screw_axis_j1;
+    screw_axis_j1 << 1, 0, 0, 0, -1, 0;
+    EXPECT(assert_equal(
+      simple_robot.joints()[0]->screwAxis(),
+      screw_axis_j1
+    ))
+
     // Test joint limit utility methods.
     map<string, double> joint_lower_limits = simple_robot.jointLowerLimits();
     map<string, double> joint_upper_limits = simple_robot.jointUpperLimits();
@@ -279,6 +288,16 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       rest_link_transforms["l2"]["l1"]
     ));
 
+    EXPECT(assert_equal(
+      Pose3(Rot3(), Point3(0, 0, 2)),
+      simple_robot.joints()[0]->pMc()
+    ));
+
+    EXPECT(assert_equal(
+      Pose3(Rot3(), Point3(0, 0, -2)),
+      simple_robot.joints()[0]->cMp()
+    ));
+
     // Check link transforms with joint angle.
     map<string, double> joint_name_to_angle = { {"j1", M_PI / 4} };
     map<string, map<string, Pose3>> link_transforms = simple_robot.linkTransforms(
@@ -298,12 +317,32 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       l2Tl1COM_rest
     ));
 
+    EXPECT(assert_equal(
+      Pose3(Rot3(), Point3(0, 0, -2)),
+      simple_robot.joints()[0]->cMpCom()
+    ));
+
+    EXPECT(assert_equal(
+      Pose3(Rot3(), Point3(0, 0, 2)),
+      simple_robot.joints()[0]->pMcCom()
+    ));
+
     // Check cTpCOM with joint angle value.
     Pose3 l2Tl1COM = simple_robot.cTpCOM("j1", -M_PI / 4);
 
     EXPECT(assert_equal(
       Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
       l2Tl1COM, 1e-4
+    ));
+
+    EXPECT(assert_equal(
+      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
+      simple_robot.joints()[0]->cMpCom(-M_PI / 4), 1e-4
+    ));
+
+    EXPECT(assert_equal(
+      Pose3(Rot3::Rx(-M_PI / 4), Point3(0, 0.7071, 1.7071)),
+      simple_robot.joints()[0]->pMcCom(-M_PI / 4), 1e-4
     ));
 
     // Check cTpCOM map at rest.
