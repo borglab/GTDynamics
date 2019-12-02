@@ -351,17 +351,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     EXPECT(assert_equal(1, cTp_COMs.size()));
     EXPECT(assert_equal(1, cTp_COMs["l2"].size()));
     EXPECT(assert_equal(l2Tl1COM, cTp_COMs["l2"]["l1"]));
-
-    // Construct nonlinear factor graph with joint limit factors.
-    gtsam::NonlinearFactorGraph joint_limit_factors = simple_robot.jointLimitFactors(
-      gtsam::noiseModel::Isotropic::Sigma(1, 0.01), 1
-    );
-
-    // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
-    EXPECT(assert_equal(
-      (long) simple_robot.joints().size() * 4, 
-      joint_limit_factors.keys().size()
-    ));
 }
 
 TEST(UniversalRobot, instantiate_from_urdf_file) {
@@ -431,17 +420,6 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
   EXPECT(assert_equal(
     Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
     rest_link_transforms["l4"]["l3"], 1e-3
-  ));
-
-  // Construct nonlinear factor graph with joint limit factors.
-  gtsam::NonlinearFactorGraph joint_limit_factors = four_bar.jointLimitFactors(
-    gtsam::noiseModel::Isotropic::Sigma(1, 0.01), 1
-  );
-
-  // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
-  EXPECT(assert_equal(
-    (long) four_bar.joints().size() * 4, 
-    joint_limit_factors.keys().size()
   ));
 }
 

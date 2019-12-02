@@ -150,6 +150,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
         } else {
           pMj_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
         }
+        pMc_ = pMj_;
 
         RobotLinkSharedPtr child_link_strong_ = child_link_.lock();
         screwAxis_ = manipulator::unit_twist(
@@ -184,10 +185,6 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
     screwAxis_ = manipulator::unit_twist(
     child_link_.lock() -> centerOfMass().rotation().inverse() * pMc_.rotation().inverse() * axis_,
     child_link_.lock() -> centerOfMass().inverse() * pMc_.inverse() * pMj_.translation());
-
-    std::cout << "axis:\n" << child_link_.lock() -> centerOfMass().rotation().inverse() * pMc_.rotation().inverse() * axis_ << "\n";
-    std::cout << "p:\n" << child_link_.lock() -> centerOfMass().inverse() * pMc_.inverse() * pMj_.translation() << "\n";
-
   }
 
   // Return joint name.

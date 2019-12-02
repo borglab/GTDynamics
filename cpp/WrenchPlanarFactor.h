@@ -25,39 +25,43 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
 private:
   typedef WrenchPlanarFactor This;
   typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
-  gtsam::Vector3 plannar_axis_;
+  gtsam::Matrix36 H_wrench_;
 
 public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
-          inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+          planar_axis        -- axis of the plane
    */
   WrenchPlanarFactor(gtsam::Key wrench_key,
                       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                      gtsam::Vector3 plannar_axis)
-      : Base(cost_model, wrench_key), plannar_axis_(plannar_axis) {}
-  virtual ~WrenchPlanarFactor() {}
+                      gtsam::Vector3 planar_axis)
+      : Base(cost_model, wrench_key) {
+    if (planar_axis[0] == 1) {  // x axis
+      H_wrench_ << 0, 1, 0, 0, 0, 0,
+                  0, 0, 1, 0, 0, 0,
+                  0, 0, 0, 1, 0, 0;
+    }
+    else if (planar_axis[1] == 1) {   // y axis
+      H_wrench_ << 1, 0, 0, 0, 0, 0,
+                  0, 0, 1, 0, 0, 0,
+                  0, 0, 0, 0, 1, 0;
+    }
+    else if (planar_axis[2] == 1) {   // z axis
+      H_wrench_ << 1, 0, 0, 0, 0, 0,
+                  0, 1, 0, 0, 0, 0,
+                  0, 0, 0, 0, 0, 1;
+    }
+  }
+  virtual ~WrenchPlanarFactor() {
+  }
 
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_j      -- wrench on this link
-          wrench_k      -- wrench from the next link
+          wrench      -- wrench on the link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none) const override {
-
-    gtsam::Matrix36 H_wrench_;
-    H_wrench_ << 0, 1, 0, 0, 0, 0,            //
-                 0, 0, 1, 0, 0, 0,            //
-                 0, 0, 0, 1, 0, 0;
 
     gtsam::Vector3 error = H_wrench_ * wrench;
 

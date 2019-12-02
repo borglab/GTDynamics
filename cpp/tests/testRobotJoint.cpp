@@ -42,8 +42,8 @@ TEST(RobotJoint, constructor) {
         l2_weak));
 
     // Rest transform is equivalent to transform with q = 0.
-    EXPECT(assert_equal(link_joint_strong->pMc(), link_joint_strong->pTc(0)));
-    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->pMc()));
+    EXPECT(assert_equal(link_joint_strong->pMj(), link_joint_strong->pTc(0)));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->pMj()));
 
     // Test that parent to child link transform is correct for -pi/2 and pi/2.
     EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(-M_PI / 2)));

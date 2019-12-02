@@ -263,6 +263,10 @@ public:
         {
             return "Torque";
         }
+        else if (dynamic_cast<const robot::WrenchPlanarFactor*>(&(*factor)))
+        {
+            return "WrenchPlanar";
+        }
         else if (dynamic_cast<const robot::WrenchEquivalenceFactor*>(&(*factor)))
         {
             return "WrenchEq";
