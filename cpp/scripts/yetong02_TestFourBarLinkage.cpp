@@ -94,18 +94,12 @@ TEST(FD_factor_graph, optimization) {
     int i = link -> getID();
     graph.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
     graph.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
-
-    // graph.add(PriorFactor<Vector6>(TwistAccelKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
   }
   for (auto joint: simple_robot.joints()) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    
-    // graph.add(PriorFactor<double>(JointAccelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    // graph.add(PriorFactor<Vector6>(WrenchKey(joint->parentLink()->getID(), j, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
-    // graph.add(PriorFactor<Vector6>(WrenchKey(joint->childLink().lock()->getID(), j, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
   }
 
   // set initial values

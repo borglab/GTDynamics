@@ -59,16 +59,7 @@ public:
                  0, 0, 1, 0, 0, 0,            //
                  0, 0, 0, 1, 0, 0;
 
-    // gtsam::Matrix6 H_wrench_;
-    // H_wrench_ << 1, 0, 0, 0, 0, 0,            //
-    //              0, 1, 0, 0, 0, 0,            //
-    //              0, 0, 1, 0, 0, 0,            //
-    //              0, 0, 0, 1, 0, 0,            //
-    //              0, 0, 0, 0, 1, 0,            //
-    //              0, 0, 0, 0, 0, 1;
-
     gtsam::Vector3 error = H_wrench_ * wrench;
-    // gtsam::Vector6 error = H_wrench_ * wrench;
 
     if (H_wrench) {
       *H_wrench = H_wrench_;
