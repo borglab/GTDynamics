@@ -5,13 +5,10 @@
  */
 #pragma once
 
-// #include <GaussianProcessPriorFactor.h>
-// #include <GaussianProcessPriorPose3Factor.h>
-// #include <JointLimitFactor.h>
+#include <JointLimitFactor.h>
 #include <OptimizerSetting.h>
 #include <PoseFactor.h>
 #include <ToolPoseFactor.h>
-// #include <ToolWrenchFactor.h>
 #include <TorqueFactor.h>
 #include <TwistAccelFactor.h>
 #include <TwistFactor.h>
@@ -38,9 +35,11 @@
 
 namespace robot {
 
-/* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t. */
+/* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t.
+ */
 gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
-  return gtsam::LabeledSymbol('F', i*10+j, t); // a hack here for a key with 3 numbers
+  return gtsam::LabeledSymbol('F', i * 10 + j,
+                              t); // a hack here for a key with 3 numbers
 }
 
 /* Shorthand for T_i_t, for torque on the i-th link at time t. */
@@ -87,12 +86,8 @@ private:
   manipulator::OptimizerSetting opt_;
 
 public:
-  using SphereCenters = std::vector<std::vector<gtsam::Point3>>;
-
   /**
    * Constructor
-   * Keyword arguments:
-   *  opt  -- optimizer setting
    */
   explicit DynamicsGraphBuilder() {
     opt_ = manipulator::OptimizerSetting();
@@ -115,23 +110,23 @@ public:
   }
   ~DynamicsGraphBuilder() {}
 
-  /** return nonlinear factor graph of all factors
+  /** return nonlinear factor graph of all dynamics factors
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+     gravity                    -- gravity in world frame
+     plannar_axis               -- the axis of the plane, used only in case of a
+  planar robot
    */
-
-  gtsam::NonlinearFactorGraph dynamics_factor_graph(
-      UniversalRobot &robot, // add const here, add to links() function
+  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+      UniversalRobot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> plannar_axis = boost::none) const {
     using namespace gtsam;
     NonlinearFactorGraph graph;
 
-    int t = 0;
-
-    // Add joint factors to limit angle, velocity, acceleration, and torque.
-    // graph.push_back(robot.jointLimitFactors(opt_.jl_cost_model, t));
-  
     // add factors corresponding to links
-    for (const auto& link : robot.links()) {
+    for (const auto &link : robot.links()) {
       const auto &connected_joints = link->getJoints();
       int i = link->getID();
       if (connected_joints.size() == 0) {
@@ -165,7 +160,6 @@ public:
                                 PoseKey(i, t), opt_.f_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else {
-        // std::cout<<"Wrench factor not defined\n";
         throw std::runtime_error("Wrench factor not defined");
       }
     }
@@ -204,10 +198,49 @@ public:
                                           opt_.t_cost_model,
                                           joint->screwAxis()));
 
+      // add planar wrench factor
       if (plannar_axis) {
-        graph.add(WrenchPlanarFactor(WrenchKey(i2, j, t), gtsam::noiseModel::Constrained::All(3), *plannar_axis));
-        // graph.add(WrenchPlanarFactor(WrenchKey(i1, j, t), gtsam::noiseModel::Constrained::All(3), *plannar_axis));
+        graph.add(WrenchPlanarFactor(WrenchKey(i2, j, t),
+                                     gtsam::noiseModel::Constrained::All(3),
+                                     *plannar_axis));
       }
+    }
+    return graph;
+  }
+
+  /** return joint factors to limit angle, velocity, acceleration, and torque
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+   */
+  gtsam::NonlinearFactorGraph jointLimitFactors(UniversalRobot &robot,
+                                                const int t) const {
+
+    gtsam::NonlinearFactorGraph graph;
+    for (auto &&link_joint : robot.joints()) {
+      // Add joint angle limit factor.
+      graph.add(manipulator::JointLimitFactor(
+          gtsam::LabeledSymbol('q', link_joint->getID(), t), opt_.jl_cost_model,
+          link_joint->jointLowerLimit(), link_joint->jointUpperLimit(),
+          link_joint->jointLimitThreshold()));
+
+      // Add joint velocity limit factors.
+      graph.add(manipulator::JointLimitFactor(
+          gtsam::LabeledSymbol('v', link_joint->getID(), t), opt_.jl_cost_model,
+          -link_joint->velocityLimit(), link_joint->velocityLimit(),
+          link_joint->velocityLimitThreshold()));
+
+      // Add joint acceleration limit factors.
+      graph.add(manipulator::JointLimitFactor(
+          gtsam::LabeledSymbol('a', link_joint->getID(), t), opt_.jl_cost_model,
+          -link_joint->accelerationLimit(), link_joint->accelerationLimit(),
+          link_joint->accelerationLimitThreshold()));
+
+      // Add joint torque limit factors.
+      graph.add(manipulator::JointLimitFactor(
+          gtsam::LabeledSymbol('T', link_joint->getID(), t), opt_.jl_cost_model,
+          -link_joint->torqueLimit(), link_joint->torqueLimit(),
+          link_joint->torqueLimitThreshold()));
     }
     return graph;
   }

@@ -304,36 +304,4 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCO
   return cTp_COMs;
 }
 
-gtsam::NonlinearFactorGraph UniversalRobot::jointLimitFactors(
-    const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const {
-  gtsam::NonlinearFactorGraph graph;
-
-  for (auto&& link_joint : link_joints_) {
-    // Add joint angle limit factor.
-    graph.add(manipulator::JointLimitFactor(
-      gtsam::LabeledSymbol('q', link_joint->getID(), i), cost_model,
-      link_joint->jointLowerLimit(), link_joint->jointUpperLimit(),
-      link_joint->jointLimitThreshold())); 
-
-    // Add joint velocity limit factors.
-    graph.add(manipulator::JointLimitFactor(
-      gtsam::LabeledSymbol('v', link_joint->getID(), i), cost_model,
-      -link_joint->velocityLimit(), link_joint->velocityLimit(),
-      link_joint->velocityLimitThreshold()));
-
-    // Add joint acceleration limit factors.
-    graph.add(manipulator::JointLimitFactor(
-      gtsam::LabeledSymbol('a', link_joint->getID(), i), cost_model,
-      -link_joint->accelerationLimit(), link_joint->accelerationLimit(),
-      link_joint->accelerationLimitThreshold()));
-
-    // Add joint torque limit factors.
-    graph.add(manipulator::JointLimitFactor(
-      gtsam::LabeledSymbol('T', link_joint->getID(), i), cost_model,
-      -link_joint->torqueLimit(), link_joint->torqueLimit(),
-      link_joint->torqueLimitThreshold()));
-  }
-
-  return graph;
-}
 } // namespace robot.

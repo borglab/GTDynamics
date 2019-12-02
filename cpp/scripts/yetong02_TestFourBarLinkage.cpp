@@ -87,7 +87,7 @@ TEST(FD_factor_graph, optimization) {
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
-  NonlinearFactorGraph graph = graph_builder.dynamics_factor_graph(simple_robot, gravity, planar_axis);
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity, planar_axis);
 
   // specify known values
   for (auto link: simple_robot.links()) {

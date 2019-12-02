@@ -183,13 +183,5 @@ public:
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     );
     
-    /** Returns joint limit factors.
-     * 
-     * Keyword arguments:
-     *   cost_model -- noise model.
-     *   i          -- timestep index.
-     */
-    gtsam::NonlinearFactorGraph jointLimitFactors(
-      const gtsam::noiseModel::Base::shared_ptr &cost_model, int i) const;
 };    
 } // namespace UniversalRobot

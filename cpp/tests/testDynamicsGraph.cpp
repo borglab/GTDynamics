@@ -48,7 +48,7 @@ TEST(FD_factor_graph, optimization) {
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
-  NonlinearFactorGraph graph = graph_builder.dynamics_factor_graph(simple_robot, gravity);
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity);
 
   // specify known values
   graph.add(PriorFactor<Pose3>(PoseKey(1, 0), Pose3(), noiseModel::Constrained::All(6)));
@@ -130,7 +130,7 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
-  NonlinearFactorGraph graph = graph_builder.dynamics_factor_graph(four_bar, gravity);
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(four_bar, 0, gravity);
 
   // specify known values
   graph.add(PriorFactor<Pose3>(PoseKey(1, 0), Pose3(), noiseModel::Constrained::All(6)));
