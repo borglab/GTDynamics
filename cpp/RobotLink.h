@@ -40,9 +40,9 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   gtsam::Matrix3 inertia_;
 
   // pose elements
-  gtsam::Pose3 link_pose_;
-  gtsam::Pose3 com_pose_;
-  bool pose_set_;
+  gtsam::Pose3 link_pose_;  // pose of link expressed in root link frame
+  gtsam::Pose3 com_pose_;   // com pose of link expressed in root link frame
+  bool pose_set_;           // indicate whether the pose has been set
 
   // option to fix the link, used for ground link
   bool is_fixed_;
@@ -71,7 +71,6 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
    */
   RobotLink(urdf::LinkSharedPtr urdf_link_ptr) 
       : name_(urdf_link_ptr->name), mass_(urdf_link_ptr->inertial->mass),
-        pose_set_(false), is_fixed_(false), 
         centerOfMass_(gtsam::Pose3(
             gtsam::Rot3(
                 gtsam::Quaternion(
@@ -90,7 +89,8 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
         inertia_((gtsam::Matrix(3,3) << 
             urdf_link_ptr->inertial->ixx, urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->ixz,
             urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->iyy, urdf_link_ptr->inertial->iyz,
-            urdf_link_ptr->inertial->ixz, urdf_link_ptr->inertial->iyz, urdf_link_ptr->inertial->izz).finished()) {}
+            urdf_link_ptr->inertial->ixz, urdf_link_ptr->inertial->iyz, urdf_link_ptr->inertial->izz).finished()),
+        pose_set_(false), is_fixed_(false){}
 
   virtual ~RobotLink() = default;
 

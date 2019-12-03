@@ -145,22 +145,24 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
   NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity, planar_axis);
 
   // specify known values
+  NonlinearFactorGraph prior_factors;
   for (auto link: simple_robot.links()) {
     int i = link -> getID();
-    graph.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
-    graph.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
+    prior_factors.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
+    prior_factors.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
   }
   for (auto joint: simple_robot.joints()) {
     int j = joint -> getID();
-    graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    prior_factors.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    prior_factors.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
     if ((j==1) || (j==3)) {
-      graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
+      prior_factors.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
     }
     else {
-      graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
+      prior_factors.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
     }
   }
+  graph.add(prior_factors);
 
   // set initial values
   Values init_values;
@@ -180,17 +182,6 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
     init_values.insert(JointVelKey(j, 0), v[0]);
     init_values.insert(JointAccelKey(j, 0), a[0]);
   }
-
-  if (DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE) {
-    cout << "Four bar linkage factor graph:" << endl;
-    for (auto& factor: graph) {
-      for (auto& key: factor->keys()) {
-        auto symb = LabeledSymbol(key);
-        cout << symb.chr() << int(symb.label()) << "_" << symb.index() << " ";
-      }
-      cout << "\n";
-    }
-  }
   
   GaussNewtonOptimizer optimizer(graph, init_values);
   optimizer.optimize();
@@ -204,10 +195,12 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
 
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 
-  // // A planar four bar linkage in 3D space should throw an ILS error with the
-  // // constraints specified.
-  // GaussNewtonOptimizer optimizer(graph, init_values);
-  // THROWS_EXCEPTION(optimizer.optimize());
+  // A planar four bar linkage in 3D space should throw an ILS error with the
+  // constraints specified.
+  graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity);
+  graph.add(prior_factors);
+  GaussNewtonOptimizer optimizer1(graph, init_values);
+  THROWS_EXCEPTION(optimizer1.optimize());
 }
 
 int main() {

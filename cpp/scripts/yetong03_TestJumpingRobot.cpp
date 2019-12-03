@@ -1,5 +1,5 @@
 /**
- * @file  testDynamicsGraph.cpp
+ * @file  testJumpingRobot.cpp
  * @brief test forward dynamics for four-bar linkage
  * @Author: Yetong Zhang
  */
@@ -110,8 +110,8 @@ void print_values(const Values& result) {
 TEST(FD_factor_graph, optimization) {
 
   // Load the robot from urdf file
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
-  simple_robot.getLinkByName("l1")->fix();
+  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/jumping_robot.urdf");
+  simple_robot.getLinkByName("l0")->fix();
 
   print_robot(simple_robot);
 
@@ -121,7 +121,7 @@ TEST(FD_factor_graph, optimization) {
   Vector v = Vector::Zero(simple_robot.numJoints());
   Vector a = Vector::Zero(simple_robot.numJoints());
   Vector torque = Vector::Zero(simple_robot.numJoints());
-  Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
+  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
   Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
 
   // build the dynamics factor graph
@@ -134,16 +134,21 @@ TEST(FD_factor_graph, optimization) {
     graph.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
     graph.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
   }
+
+  double torque3 = 0;
+  double torque2 = 0.5;
+  Vector torques = (Vector(6)<<0, torque2, torque3, torque3, torque2, 0).finished();
   for (auto joint: simple_robot.joints()) {
     int j = joint -> getID();
     graph.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
     graph.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    if (j==1) {
-      graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
-    }
-    else {
-      graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
-    }
+    graph.add(PriorFactor<double>(TorqueKey(j, 0), torques[j-1], noiseModel::Constrained::All(1)));
+    // if (j==1) {
+    //   graph.add(PriorFactor<double>(TorqueKey(j, 0), 1, noiseModel::Constrained::All(1)));
+    // }
+    // else {
+    //   graph.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    // }
   }
 
   // set initial values
@@ -159,15 +164,12 @@ TEST(FD_factor_graph, optimization) {
     init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0), wrenches);
     init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0), wrenches);
     Vector torque0 = Vector::Zero(1);
-    // torque0 << 1;
     init_values.insert(TorqueKey(j, 0), torque0[0]);
     init_values.insert(JointAngleKey(j, 0), q[0]);
     init_values.insert(JointVelKey(j, 0), v[0]);
     init_values.insert(JointAccelKey(j, 0), a[0]);
   }
-  print_values(init_values);
 
-  // graph.print("", MultiRobotKeyFormatter);
   if(DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE) {
     print_graph(graph);
   }
@@ -187,49 +189,70 @@ TEST(FD_factor_graph, optimization) {
   // set the factor graph display locations
   int t = 0;
   JsonSaver::LocationType locations;
-  // for (auto link: simple_robot.links()) {
-  //   int i = link -> getID();
-  //   locations[PoseKey(i, t)] = (Vector(3) << i, 0, 0).finished();
-  //   locations[TwistKey(i, t)] = (Vector(3) << i, 1, 0).finished();
-  //   locations[TwistAccelKey(i, t)] = (Vector(3) << i, 2, 0).finished();
-  // }
-
-  // for (auto joint: simple_robot.joints()) {
-  //   int j = joint -> getID();
-  //   locations[JointAngleKey(j, t)] = (Vector(3) << j + 0.5 , 0.5, 0).finished();
-  //   locations[JointVelKey(j, t)] = (Vector(3) << j + 0.5 , 1.5, 0).finished();
-  //   locations[JointAccelKey(j, t)] = (Vector(3) << j + 0.5 , 2.5, 0).finished();
-  //   int i1 = joint -> parentLink()  ->getID();
-  //   int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
-  //   locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
-  //   locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
-  //   locations[TorqueKey(j, t)] = (Vector(3) << j + 0.5 , 4.5, 0).finished();
-  // }
-
   for (auto link: simple_robot.links()) {
     int i = link -> getID();
-    locations[PoseKey(i, t)] = radial_location(5, i);
-    locations[TwistKey(i, t)] = radial_location(4, i);
-    locations[TwistAccelKey(i, t)] = radial_location(3, i);
+    locations[PoseKey(i, t)] = (Vector(3) << i, 0, 0).finished();
+    locations[TwistKey(i, t)] = (Vector(3) << i, 1, 0).finished();
+    locations[TwistAccelKey(i, t)] = (Vector(3) << i, 2, 0).finished();
   }
 
   for (auto joint: simple_robot.joints()) {
     int j = joint -> getID();
-    locations[JointAngleKey(j, t)] = corner_location(5, j);
-    locations[JointVelKey(j, t)] = corner_location(4, j);
-    locations[JointAccelKey(j, t)] = corner_location(3, j);
-    // int i1 = joint -> parentLink()  ->getID();
-    // int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
-    // locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
-    // locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
-    locations[TorqueKey(j, t)] = corner_location(1, j);
+    locations[JointAngleKey(j, t)] = (Vector(3) << j + 0.5 , 0.5, 0).finished();
+    locations[JointVelKey(j, t)] = (Vector(3) << j + 0.5 , 1.5, 0).finished();
+    locations[JointAccelKey(j, t)] = (Vector(3) << j + 0.5 , 2.5, 0).finished();
+    int i1 = joint -> parentLink()  ->getID();
+    int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
+    locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
+    locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
+    locations[TorqueKey(j, t)] = (Vector(3) << j + 0.5 , 4.5, 0).finished();
   }
+
+  // for (auto link: simple_robot.links()) {
+  //   int i = link -> getID();
+  //   locations[PoseKey(i, t)] = radial_location(5, i);
+  //   locations[TwistKey(i, t)] = radial_location(4, i);
+  //   locations[TwistAccelKey(i, t)] = radial_location(3, i);
+  // }
+
+  // for (auto joint: simple_robot.joints()) {
+  //   int j = joint -> getID();
+  //   locations[JointAngleKey(j, t)] = corner_location(5, j);
+  //   locations[JointVelKey(j, t)] = corner_location(4, j);
+  //   locations[JointAccelKey(j, t)] = corner_location(3, j);
+  //   // int i1 = joint -> parentLink()  ->getID();
+  //   // int i2 = joint -> childLink().lock()->getID(); // cannot use methods for a weak ptr?
+  //   // locations[WrenchKey(i1, j, t)] = (Vector(3) << j + 0.25 , 3.5, 0).finished();
+  //   // locations[WrenchKey(i2, j, t)] = (Vector(3) << j + 0.75 , 3.5, 0).finished();
+  //   locations[TorqueKey(j, t)] = corner_location(1, j);
+  // }
 
   cout << "error: " << graph.error(result) << "\n";
   ofstream json_file;
   json_file.open ("../../../visualization/factor_graph.json");
   JsonSaver::SaveFactorGraph(graph, json_file, result, locations);
   json_file.close();
+
+  // check acceleration
+  auto expected_qAccel = Vector(6);
+  double m1 = 0.31;
+  double m2 = 0.28;
+  double m3 = 0.54;
+  double link_radius = 0.02;
+  double l = 0.55;
+  double theta = 0.0 / 180.0 * M_PI;
+  double acc =
+      (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l * std::sin(theta)) /
+      (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) * m3) +
+       (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0 / 12 * m2));
+  expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
+
+  Vector actual_qAccel = Vector::Zero(simple_robot.numJoints());
+  for (int j = 1; j <= simple_robot.numJoints(); ++j) {
+    actual_qAccel[j - 1] = result.atDouble(JointAccelKey(j, 0));
+  }
+  EXPECT(assert_equal(expected_qAccel, actual_qAccel));
+
 }
 
 

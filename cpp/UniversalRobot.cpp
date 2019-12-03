@@ -102,30 +102,30 @@ UniversalRobot::UniversalRobot(RobotRobotJointPair urdf_links_and_joints)
 
   // calculate the com pose for all links
   // find the link with no parent
-  RobotLinkSharedPtr parent_link;
+  RobotLinkSharedPtr root_link;
   for (auto&& link_body : link_bodies_) {
     if (link_body->getParentJoints().size()==0) {
-      parent_link = link_body;
+      root_link = link_body;
     }
   }
-  parent_link -> setPose(Pose3::identity());
+  root_link -> setPose(Pose3::identity());
 
   // bfs to set the pose
   std::queue<RobotLinkSharedPtr> q;
-  q.push(parent_link);
+  q.push(root_link);
   while (!q.empty()) {
-    auto this_link = q.front();
+    auto parent_link = q.front();
     q.pop();
-    for (auto&& joint : this_link->getChildJoints()) {
-      auto next_joint = joint.lock();
-      auto next_link = next_joint->childLink().lock();
+    for (auto&& joint : parent_link->getChildJoints()) {
+      auto joint_ptr = joint.lock();
+      auto child_link = joint_ptr->childLink().lock();
       // check if is the first parent
-      if (next_link->getParentJoints()[0]->name()==next_joint->name()) {
-        if (next_link->isPoseSet()) {
-          throw(std::runtime_error("repeat setting pose for Link" + next_link->name()));
+      if (child_link->getParentJoints()[0]->name()==joint_ptr->name()) {
+        if (child_link->isPoseSet()) {
+          throw(std::runtime_error("repeat setting pose for Link" + child_link->name()));
         }
-        next_link -> setPose(next_joint->pMj() * this_link->getLinkPose());
-        q.push(next_link);
+        child_link -> setPose(parent_link->getLinkPose() * joint_ptr->pMj());
+        q.push(child_link);
       }
     }
   }
