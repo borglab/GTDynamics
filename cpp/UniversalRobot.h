@@ -76,10 +76,10 @@ public:
     UniversalRobot(const std::string urdf_file_path);
 
     /// Return this robot's links.
-    std::vector<RobotLinkSharedPtr> links();
+    std::vector<RobotLinkSharedPtr> links() const;
 
     /// Return this robot's joints.
-    std::vector<RobotJointSharedPtr> joints();
+    std::vector<RobotJointSharedPtr> joints() const;
 
     /// Return the link corresponding to the input string.
     RobotLinkSharedPtr getLinkByName(std::string name);

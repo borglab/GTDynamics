@@ -141,9 +141,9 @@ UniversalRobot::UniversalRobot(const std::string urdf_file_path) :
   UniversalRobot(extract_structure_from_urdf(get_urdf(load_file_into_string(urdf_file_path)))) {
 }
 
-std::vector<RobotLinkSharedPtr> UniversalRobot::links() { return link_bodies_; }
+std::vector<RobotLinkSharedPtr> UniversalRobot::links() const { return link_bodies_; }
 
-std::vector<RobotJointSharedPtr> UniversalRobot::joints() { return link_joints_; }
+std::vector<RobotJointSharedPtr> UniversalRobot::joints() const { return link_joints_; }
 
 RobotLinkSharedPtr UniversalRobot::getLinkByName(std::string name) {
   return name_to_link_body_[name];

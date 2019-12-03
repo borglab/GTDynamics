@@ -33,7 +33,7 @@ int DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE = 0;
 
 
 // Test forward dynamics with gravity
-TEST(FD_factor_graph, optimization) {
+TEST(FD_factor_graph, simple_robot) {
 
   // Load the robot from urdf file
   UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf_eq_mass.urdf");
@@ -65,23 +65,7 @@ TEST(FD_factor_graph, optimization) {
   }
 
   // set initial values
-  Values init_values;
-  for (auto link: simple_robot.links()) {
-    int i = link -> getID();
-    init_values.insert(PoseKey(i, 0), link -> getComPose());
-    init_values.insert(TwistKey(i, 0), twists);
-    init_values.insert(TwistAccelKey(i, 0), accels);
-  }
-  for (auto joint: simple_robot.joints()) {
-    int j = joint -> getID();
-    init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0), wrenches);
-    init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0), wrenches);
-    Vector torque0 = Vector::Zero(1);
-    init_values.insert(TorqueKey(j, 0), torque0[0]);
-    init_values.insert(JointAngleKey(j, 0), q[0]);
-    init_values.insert(JointVelKey(j, 0), v[0]);
-    init_values.insert(JointAccelKey(j, 0), a[0]);
-  }
+  Values init_values = DynamicsGraphBuilder::zeroValues(simple_robot, 0);
 
   // using Guassian Newton optimizer
   GaussNewtonOptimizer optimizer(graph, init_values);
@@ -127,22 +111,15 @@ TEST(FD_factor_graph, optimization) {
 
 }
 
-TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
+TEST(FD_FACTOR_GRAPH, four_bar_linkage) {
   // Load the robot from urdf file
   UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
-
-  Vector twists = Vector6::Zero(), accels = Vector6::Zero(),
-      wrenches = Vector6::Zero();
-  Vector q = Vector::Zero(simple_robot.numJoints());
-  Vector v = Vector::Zero(simple_robot.numJoints());
-  Vector a = Vector::Zero(simple_robot.numJoints());
   Vector torque = Vector::Zero(simple_robot.numJoints());
   Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
   Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
 
   // build the dynamics factor graph
   auto graph_builder = DynamicsGraphBuilder();
-  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity, planar_axis);
 
   // specify known values
   NonlinearFactorGraph prior_factors;
@@ -162,27 +139,14 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
       prior_factors.add(PriorFactor<double>(TorqueKey(j, 0), 0, noiseModel::Constrained::All(1)));
     }
   }
-  graph.add(prior_factors);
 
   // set initial values
-  Values init_values;
-  for (auto link: simple_robot.links()) {
-    int i = link -> getID();
-    init_values.insert(PoseKey(i, 0), link -> getComPose());
-    init_values.insert(TwistKey(i, 0), twists);
-    init_values.insert(TwistAccelKey(i, 0), accels);
-  }
-  for (auto joint: simple_robot.joints()) {
-    int j = joint -> getID();
-    init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0), wrenches);
-    init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0), wrenches);
-    Vector torque0 = Vector::Zero(1);
-    init_values.insert(TorqueKey(j, 0), torque0[0]);
-    init_values.insert(JointAngleKey(j, 0), q[0]);
-    init_values.insert(JointVelKey(j, 0), v[0]);
-    init_values.insert(JointAccelKey(j, 0), a[0]);
-  }
+  Values init_values = DynamicsGraphBuilder::zeroValues(simple_robot, 0);
   
+  // test the four bar linkage in the free-floating scenario
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity, planar_axis);
+  graph.add(prior_factors);
+
   GaussNewtonOptimizer optimizer(graph, init_values);
   optimizer.optimize();
   Values result = optimizer.values();
@@ -201,6 +165,80 @@ TEST(FD_FACTOR_GRAPH, four_bar_optimization) {
   graph.add(prior_factors);
   GaussNewtonOptimizer optimizer1(graph, init_values);
   THROWS_EXCEPTION(optimizer1.optimize());
+
+  // test the condition when we fix link "l1"
+  simple_robot.getLinkByName("l1")->fix();
+  graph = graph_builder.dynamicsFactorGraph(simple_robot, 0, gravity, planar_axis);
+  graph.add(prior_factors);
+  GaussNewtonOptimizer optimizer2(graph, init_values);
+  optimizer2.optimize();
+  result = optimizer2.values();
+  actual_qAccel = Vector::Zero(simple_robot.numJoints());
+  for (int j = 1; j <= simple_robot.numJoints(); ++j) {
+    actual_qAccel[j - 1] = result.atDouble(JointAccelKey(j, 0));
+  }
+  expected_qAccel = (Vector(4)<<0.25, -0.25, 0.25, -0.25).finished();
+  EXPECT(assert_equal(expected_qAccel, actual_qAccel));
+}
+
+TEST(FD_FACTOR_GRAPH, jumping_robot) {
+  // Load the robot from urdf file
+  UniversalRobot jumping_robot = UniversalRobot("../../../urdfs/test/jumping_robot.urdf");
+  jumping_robot.getLinkByName("l0")->fix();
+  Vector torque = Vector::Zero(jumping_robot.numJoints());
+  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
+  Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
+
+  // build the dynamics factor graph
+  auto graph_builder = DynamicsGraphBuilder();
+
+  // specify known values
+  NonlinearFactorGraph prior_factors;
+  for (auto link: jumping_robot.links()) {
+    int i = link -> getID();
+    prior_factors.add(PriorFactor<Pose3>(PoseKey(i, 0), link -> getComPose(), noiseModel::Constrained::All(6)));
+    prior_factors.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
+  }
+
+  double torque3 = 0;
+  double torque2 = 0.5;
+  Vector torques = (Vector(6)<<0, torque2, torque3, torque3, torque2, 0).finished();
+  for (auto joint: jumping_robot.joints()) {
+    int j = joint -> getID();
+    prior_factors.add(PriorFactor<double>(JointAngleKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    prior_factors.add(PriorFactor<double>(JointVelKey(j, 0), 0, noiseModel::Constrained::All(1)));
+    prior_factors.add(PriorFactor<double>(TorqueKey(j, 0), torques[j-1], noiseModel::Constrained::All(1)));
+  }
+
+  // set initial values
+  Values init_values = DynamicsGraphBuilder::zeroValues(jumping_robot, 0);
+  
+  // test jumping robot FD
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(jumping_robot, 0, gravity, planar_axis);
+  graph.add(prior_factors);
+  GaussNewtonOptimizer optimizer(graph, init_values);
+  optimizer.optimize();
+  Values result = optimizer.values();
+
+  // check acceleration
+  auto expected_qAccel = Vector(6);
+  double m1 = 0.31;
+  double m2 = 0.28;
+  double m3 = 0.54;
+  double link_radius = 0.02;
+  double l = 0.55;
+  double theta = 0.0 / 180.0 * M_PI;
+  double acc =
+      (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l * std::sin(theta)) /
+      (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) * m3) +
+       (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0 / 12 * m2));
+  expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
+
+  Vector actual_qAccel = Vector::Zero(jumping_robot.numJoints());
+  for (int j = 1; j <= jumping_robot.numJoints(); ++j) {
+    actual_qAccel[j - 1] = result.atDouble(JointAccelKey(j, 0));
+  }
+  EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 }
 
 int main() {

@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include <IntegrationFactor.h>
 #include <JointLimitFactor.h>
 #include <OptimizerSetting.h>
 #include <PoseFactor.h>
@@ -77,6 +78,9 @@ gtsam::LabeledSymbol JointAccelKey(int j, int t) {
   return gtsam::LabeledSymbol('a', j, t);
 }
 
+/* Shorthand for t_k, for duration for timestep dt_k. */
+gtsam::LabeledSymbol TimeKey(int k) { return gtsam::LabeledSymbol('t', 0, k); }
+
 /**
  * DynamicsGraphBuilder is a class which builds a factor graph to do kinodynamic
  * motion planning
@@ -103,7 +107,6 @@ public:
     opt_.tf_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.q_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.qv_cost_model = gtsam::noiseModel::Constrained::All(1);
-
     opt_.setJointLimitCostModel(1e-3);
 
     opt_.setLM();
@@ -119,19 +122,19 @@ public:
   planar robot
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
-      UniversalRobot &robot, const int t,
+      const UniversalRobot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> plannar_axis = boost::none) const {
     using namespace gtsam;
     NonlinearFactorGraph graph;
 
     // add factors corresponding to links
-    for (const auto &link : robot.links()) {
+    for (auto &&link : robot.links()) {
       int i = link->getID();
       if (link->isFixed()) {
-        graph.add(PriorFactor<Vector6>(TwistAccelKey(i, t), Vector6::Zero(), noiseModel::Constrained::All(6)));
-      }
-      else {
+        graph.add(PriorFactor<Vector6>(TwistAccelKey(i, t), Vector6::Zero(),
+                                       noiseModel::Constrained::All(6)));
+      } else {
         const auto &connected_joints = link->getJoints();
         if (connected_joints.size() == 0) {
           graph.add(WrenchFactor0(TwistKey(i, t), TwistAccelKey(i, t),
@@ -170,7 +173,7 @@ public:
     }
 
     // add factors corresponding to joints
-    for (const auto &joint : robot.joints()) {
+    for (auto &&joint : robot.joints()) {
       const auto &link_1 = joint->parentLink();
       const auto &link_2 = joint->childLink().lock();
       int i1 = link_1->getID();
@@ -215,41 +218,115 @@ public:
     return graph;
   }
 
+  /** return integration factors on joint angles and velocities from time step t
+  to t+1
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+     dt                         -- duration of each timestep
+   */
+  gtsam::NonlinearFactorGraph integrationFactors(const UniversalRobot &robot,
+                                                 const int t, const double dt) {
+    gtsam::NonlinearFactorGraph graph;
+    for (auto &&joint : robot.joints()) {
+      int j = joint->getID();
+      graph.add(IntegrationFactor(JointAngleKey(j, t), JointVelKey(j, t),
+                                  JointAccelKey(j, t), JointAngleKey(j, t + 1),
+                                  JointVelKey(j, t + 1),
+                                  gtsam::noiseModel::Constrained::All(2), dt));
+    }
+    return graph;
+  }
+
+  /** return soft integration factors on joint angles and velocities from time
+  step t to t+1
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+   */
+  gtsam::NonlinearFactorGraph
+  softIntegrationFactors(const UniversalRobot &robot, const int t) {
+    gtsam::NonlinearFactorGraph graph;
+    for (auto &&joint : robot.joints()) {
+      int j = joint->getID();
+      graph.add(SoftIntegrationFactor(
+          JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
+          JointAngleKey(j, t + 1), JointVelKey(j, t + 1), TimeKey(t),
+          gtsam::noiseModel::Constrained::All(2)));
+    }
+    return graph;
+  }
+
   /** return joint factors to limit angle, velocity, acceleration, and torque
   * Keyword arguments:
      robot                      -- the robot
      t                          -- time step
    */
-  gtsam::NonlinearFactorGraph jointLimitFactors(UniversalRobot &robot,
+  gtsam::NonlinearFactorGraph jointLimitFactors(const UniversalRobot &robot,
                                                 const int t) const {
 
     gtsam::NonlinearFactorGraph graph;
-    for (auto &&link_joint : robot.joints()) {
+    for (auto &&joint : robot.joints()) {
+      int j = joint->getID();
       // Add joint angle limit factor.
       graph.add(manipulator::JointLimitFactor(
-          gtsam::LabeledSymbol('q', link_joint->getID(), t), opt_.jl_cost_model,
-          link_joint->jointLowerLimit(), link_joint->jointUpperLimit(),
-          link_joint->jointLimitThreshold()));
+          gtsam::LabeledSymbol('q', j, t), opt_.jl_cost_model,
+          joint->jointLowerLimit(), joint->jointUpperLimit(),
+          joint->jointLimitThreshold()));
 
       // Add joint velocity limit factors.
       graph.add(manipulator::JointLimitFactor(
-          gtsam::LabeledSymbol('v', link_joint->getID(), t), opt_.jl_cost_model,
-          -link_joint->velocityLimit(), link_joint->velocityLimit(),
-          link_joint->velocityLimitThreshold()));
+          gtsam::LabeledSymbol('v', j, t), opt_.jl_cost_model,
+          -joint->velocityLimit(), joint->velocityLimit(),
+          joint->velocityLimitThreshold()));
 
       // Add joint acceleration limit factors.
       graph.add(manipulator::JointLimitFactor(
-          gtsam::LabeledSymbol('a', link_joint->getID(), t), opt_.jl_cost_model,
-          -link_joint->accelerationLimit(), link_joint->accelerationLimit(),
-          link_joint->accelerationLimitThreshold()));
+          gtsam::LabeledSymbol('a', j, t), opt_.jl_cost_model,
+          -joint->accelerationLimit(), joint->accelerationLimit(),
+          joint->accelerationLimitThreshold()));
 
       // Add joint torque limit factors.
       graph.add(manipulator::JointLimitFactor(
-          gtsam::LabeledSymbol('T', link_joint->getID(), t), opt_.jl_cost_model,
-          -link_joint->torqueLimit(), link_joint->torqueLimit(),
-          link_joint->torqueLimitThreshold()));
+          gtsam::LabeledSymbol('T', j, t), opt_.jl_cost_model,
+          -joint->torqueLimit(), joint->torqueLimit(),
+          joint->torqueLimitThreshold()));
     }
     return graph;
+  }
+
+  /** return zero values for all variables for initial value of optimization
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+   */
+  static gtsam::Values zeroValues(const UniversalRobot &robot, const int t) {
+    gtsam::Vector zero_twists = gtsam::Vector6::Zero(), 
+                  zero_accels = gtsam::Vector6::Zero(),
+                  zero_wrenches = gtsam::Vector6::Zero(),
+                  zero_torque = gtsam::Vector1::Zero(),
+                  zero_q = gtsam::Vector1::Zero(),
+                  zero_v = gtsam::Vector1::Zero(),
+                  zero_a = gtsam::Vector1::Zero();
+    gtsam::Values init_values;
+    for (auto& link : robot.links()) {
+      int i = link->getID();
+      init_values.insert(PoseKey(i, 0), link->getComPose());
+      init_values.insert(TwistKey(i, 0), zero_twists);
+      init_values.insert(TwistAccelKey(i, 0), zero_accels);
+    }
+    for (auto& joint : robot.joints()) {
+      int j = joint->getID();
+      init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0),
+                         zero_wrenches);
+      init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0),
+                         zero_wrenches);
+      init_values.insert(TorqueKey(j, 0), zero_torque[0]);
+      init_values.insert(JointAngleKey(j, 0), zero_q[0]);
+      init_values.insert(JointVelKey(j, 0), zero_v[0]);
+      init_values.insert(JointAccelKey(j, 0), zero_a[0]);
+    }
+    return init_values;
   }
 };
 
