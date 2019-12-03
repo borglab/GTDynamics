@@ -52,9 +52,6 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   // Rotational axis for 'R' jointType_ (revolute joint). Translational
   // direction for 'P' jointType_ (prismatic joint).
   gtsam::Vector3 axis_;
-  // x-y-z and r-p-y coords of link frame w.r.t.
-  // the former link frame.
-  gtsam::Pose3 origin_;
   // Rest transform to joint frame from source link frame at rest.
   gtsam::Pose3 pMj_;
   // Rest transform to link frame from source link frame at rest.
@@ -114,7 +111,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
                 jointEffortType_(joint_effort_type),
                 axis_(gtsam::Vector3(urdf_joint_ptr->axis.x, urdf_joint_ptr->axis.y,
                   urdf_joint_ptr->axis.z)),
-                origin_(gtsam::Pose3(
+                pMj_(gtsam::Pose3(
                   gtsam::Rot3(gtsam::Quaternion(
                     urdf_joint_ptr->parent_to_joint_origin_transform.rotation.w,
                     urdf_joint_ptr->parent_to_joint_origin_transform.rotation.x,
@@ -125,7 +122,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
                     urdf_joint_ptr->parent_to_joint_origin_transform.position.x,
                     urdf_joint_ptr->parent_to_joint_origin_transform.position.y,
                     urdf_joint_ptr->parent_to_joint_origin_transform.position.z
-                ))),
+                ))), pMc_(pMj_),
                 jointLowerLimit_(urdf_joint_ptr->limits->lower),
                 jointUpperLimit_(urdf_joint_ptr->limits->upper),
                 jointLimitThreshold_(jointLimitThreshold),
@@ -143,14 +140,6 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
         } else if (urdf_joint_ptr->type == urdf::Joint::REVOLUTE) {
             jointType_ = 'R';
         }
-
-        if (jointType_ == 'R') {
-          pMj_ = origin_ *
-                gtsam::Pose3(gtsam::Rot3::Rodrigues(axis_ * 0), gtsam::Point3());
-        } else {
-          pMj_ = origin_ * gtsam::Pose3(gtsam::Rot3(), axis_ * 0);
-        }
-        pMc_ = pMj_;
 
         RobotLinkSharedPtr child_link_strong_ = child_link_.lock();
         screwAxis_ = manipulator::unit_twist(
@@ -200,13 +189,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
   /// direction for prismatic.
   const gtsam::Vector3& axis() const { return axis_; }
 
-  // x-y-z and r-p-y coords of link frame w.r.t. the former link frame.
-  const gtsam::Pose3& origin() const { return origin_; }
-
-  /// Return transfrom of joint frame w.r.t. source link frame at rest
+  /// Return transfrom of joint frame w.r.t. parent link frame at rest
   const gtsam::Pose3& pMj() const { return pMj_; }
 
-  /// Return transfrom of dest link frame w.r.t. source link frame at rest
+  /// Return transfrom of child link frame w.r.t. parent link frame at rest
   const gtsam::Pose3& pMc() const { return pMc_; }
 
   /// Return transfrom of parent link frame w.r.t. child link frame at rest
@@ -222,7 +208,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint>{
     }
   }
 
-  /// Return transform of child link com frame w.r.t parent link com frame
+  /// Return transform of parent link com frame w.r.t child link com frame
   gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none) const {
     if (q) {
       return gtsam::Pose3::Expmap(screwAxis_ * (*q)).inverse() * (com_pMc_.inverse());
