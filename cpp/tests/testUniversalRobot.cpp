@@ -423,6 +423,15 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
   ));
 }
 
+TEST(UniversalRobot, removeLink) {
+  // Initialize UniversalRobot instance from a file.
+  UniversalRobot four_bar = UniversalRobot("../../../urdfs/test/four_bar_linkage_pure.urdf");
+  four_bar.removeLink(four_bar.getLinkByName("l2"));
+  EXPECT(four_bar.numLinks() == 3);
+  EXPECT(four_bar.numJoints() == 2);
+  EXPECT(four_bar.getLinkByName("l1")->getJoints().size() == 1);
+  EXPECT(four_bar.getLinkByName("l3")->getJoints().size() == 1);
+}
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

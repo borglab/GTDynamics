@@ -301,7 +301,7 @@ public:
      t                          -- time step
    */
   static gtsam::Values zeroValues(const UniversalRobot &robot, const int t) {
-    gtsam::Vector zero_twists = gtsam::Vector6::Zero(), 
+    gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
                   zero_accels = gtsam::Vector6::Zero(),
                   zero_wrenches = gtsam::Vector6::Zero(),
                   zero_torque = gtsam::Vector1::Zero(),
@@ -309,18 +309,23 @@ public:
                   zero_v = gtsam::Vector1::Zero(),
                   zero_a = gtsam::Vector1::Zero();
     gtsam::Values init_values;
-    for (auto& link : robot.links()) {
+    for (auto &link : robot.links()) {
       int i = link->getID();
       init_values.insert(PoseKey(i, 0), link->getComPose());
       init_values.insert(TwistKey(i, 0), zero_twists);
       init_values.insert(TwistAccelKey(i, 0), zero_accels);
     }
-    for (auto& joint : robot.joints()) {
+    for (auto &joint : robot.joints()) {
       int j = joint->getID();
-      init_values.insert(WrenchKey(joint->parentLink()->getID(), j, 0),
-                         zero_wrenches);
-      init_values.insert(WrenchKey(joint->childLink().lock()->getID(), j, 0),
-                         zero_wrenches);
+      auto parent_link = joint->parentLink();
+      auto child_link = joint->childLink().lock();
+      if (!parent_link->isFixed()) {
+        init_values.insert(WrenchKey(parent_link->getID(), j, 0),
+                           zero_wrenches);
+      }
+      if (!child_link->isFixed()) {
+        init_values.insert(WrenchKey(child_link->getID(), j, 0), zero_wrenches);
+      }
       init_values.insert(TorqueKey(j, 0), zero_torque[0]);
       init_values.insert(JointAngleKey(j, 0), zero_q[0]);
       init_values.insert(JointVelKey(j, 0), zero_v[0]);

@@ -145,6 +145,34 @@ std::vector<RobotLinkSharedPtr> UniversalRobot::links() const { return link_bodi
 
 std::vector<RobotJointSharedPtr> UniversalRobot::joints() const { return link_joints_; }
 
+void UniversalRobot::removeLink(RobotLinkSharedPtr link) {
+  // remove all joints associated to the link
+  for (auto && joint: link->getJoints()) {
+    removeJoint(joint);
+  } 
+  
+  // remove link from link_bodies_ and name_to_link_body_
+  auto it = std::find(link_bodies_.begin(), link_bodies_.end(), link);
+  link_bodies_.erase(it);
+  name_to_link_body_.erase(link->name());
+}
+
+void UniversalRobot::removeJoint(RobotJointSharedPtr joint) {
+  auto parent_link = joint->parentLink();
+  auto child_link = joint->childLink().lock();
+
+  // In parent link, remove the joint and child link
+  parent_link->removeChildJoint(joint, child_link);
+
+  // In all child link, remove the joint and parent link
+  child_link->removeParentJoint(joint, parent_link);
+
+  // Remove the joint from link_joints_ and name_to_link_joint_
+  auto it = std::find(link_joints_.begin(), link_joints_.end(), joint);
+  link_joints_.erase(it);
+  name_to_link_joint_.erase(joint->name());
+}
+
 RobotLinkSharedPtr UniversalRobot::getLinkByName(std::string name) {
   return name_to_link_body_[name];
 }
@@ -302,6 +330,27 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCO
     ));
   }
   return cTp_COMs;
+}
+
+void UniversalRobot::printRobot() const {
+    for (const auto& link: link_bodies_) {
+        std::cout<<link->name() << ":\n";
+        std::cout<<"\tlink pose: " << link->getLinkPose().rotation().rpy().transpose() << ", " << link->getLinkPose().translation() << "\n";
+        std::cout<<"\tcom pose: " << link->getComPose().rotation().rpy().transpose() << ", " << link->getComPose().translation() << "\n";
+        std::cout << "\tjoints: ";
+        for (const auto& joint: link->getJoints()) {
+          std::cout << joint->name() << " ";
+        }
+        std::cout << "\n";
+    }
+
+    for (const auto& joint: link_joints_) {
+        std::cout << joint->name() << ":\n";
+        std::cout<<"\tparent: " << joint->parentLink()->name() << "\tchild: " << joint->childLink().lock()->name() << "\n";
+        std::cout<<"\tscrew axis: " << joint->screwAxis().transpose() << "\n";
+        std::cout<<"\tpMc: " << joint->pMc().rotation().rpy().transpose() << ", " << joint->pMc().translation() << "\n";
+        std::cout<<"\tpMc_com: " << joint->pMcCom().rotation().rpy().transpose() << ", " << joint->pMcCom().translation() << "\n";
+    }
 }
 
 } // namespace robot.

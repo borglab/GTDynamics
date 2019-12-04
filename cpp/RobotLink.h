@@ -7,6 +7,7 @@
 #pragma once
 
 #include <RobotTypes.h>
+// #include <RobotJoint.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -100,6 +101,29 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   RobotLinkWeakPtr getWeakPtr(void) {
       return shared_from_this();
+  }
+
+  // remove the parent joint and corresponding parent link
+  void removeParentJoint(RobotJointSharedPtr joint, RobotLinkSharedPtr parent_link) {
+    parent_joints_.erase(std::find(parent_joints_.begin(), parent_joints_.end(), joint));
+    parent_links_.erase(std::find(parent_links_.begin(), parent_links_.end(), parent_link));
+  }
+
+  // remove the child joint and corresponding child link
+  void removeChildJoint(RobotJointSharedPtr joint, RobotLinkSharedPtr child_link) {
+    for (auto joint_it = child_joints_.begin(); joint_it != child_joints_.end(); joint_it++) {
+      if ((*joint_it).lock() == joint) {
+        child_joints_.erase(joint_it);
+        break;
+      }
+    }
+
+    for (auto link_it = child_links_.begin(); link_it != child_links_.end(); link_it++) {
+      if ((*link_it).lock() == child_link) {
+        child_links_.erase(link_it);
+        break;
+      }
+    }
   }
 
   void setID(unsigned char id) {

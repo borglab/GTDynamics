@@ -52,7 +52,6 @@ class UniversalRobot {
 private:
     std::vector<RobotLinkSharedPtr> link_bodies_;
     std::vector<RobotJointSharedPtr> link_joints_;
-    std::vector<RobotJointSharedPtr> contact_joints_;
 
     // For quicker/easier access to links and joints.
     std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body_;
@@ -80,6 +79,12 @@ public:
 
     /// Return this robot's joints.
     std::vector<RobotJointSharedPtr> joints() const;
+
+    /// remove specified link from the robot
+    void removeLink(RobotLinkSharedPtr link);
+
+    /// remove specified joint from the robot
+    void removeJoint(RobotJointSharedPtr joint);
 
     /// Return the link corresponding to the input string.
     RobotLinkSharedPtr getLinkByName(std::string name);
@@ -182,6 +187,8 @@ public:
     std::map<std::string, std::map<std::string, gtsam::Pose3>> cTpCOMs(
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     );
-    
+
+    // print links and joints of the robot, for debug purposes
+    void printRobot() const;
 };    
 } // namespace UniversalRobot
