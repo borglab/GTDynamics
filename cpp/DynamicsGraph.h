@@ -399,7 +399,7 @@ public:
         char ch = symb.chr();
         int index = symb.label();
         int t = symb.index();
-        if (ch=='f'){
+        if (ch=='F'){
           std::cout << ch << int(index/16) << index % 16 << "_" << t << "\t";
         }
         else { std::cout << ch << index << "_" << t << "\t";}

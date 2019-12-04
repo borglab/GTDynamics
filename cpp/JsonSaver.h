@@ -104,7 +104,15 @@ public:
     {
         std::stringstream ss;
         auto symb = LabeledSymbol(key);
-        ss << symb.chr() << int(symb.label()) << "_" << symb.index();
+        char ch = symb.chr();
+        int index = symb.label();
+        int t = symb.index();
+        if (ch=='F'){
+          ss << ch << int(index/16) << index % 16 << "_" << t;
+        }
+        else {
+            ss << ch << index << "_" << t;
+        }
         return ss.str();
     }
 
