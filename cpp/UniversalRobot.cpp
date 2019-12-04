@@ -124,7 +124,7 @@ UniversalRobot::UniversalRobot(RobotRobotJointPair urdf_links_and_joints)
         if (child_link->isPoseSet()) {
           throw(std::runtime_error("repeat setting pose for Link" + child_link->name()));
         }
-        child_link -> setPose(parent_link->getLinkPose() * joint_ptr->pMj());
+        child_link -> setPose(parent_link->getLinkPose() * joint_ptr->Mpj());
         q.push(child_link);
       }
     }
@@ -274,7 +274,7 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::linkT
 
       parent_to_link_transforms.insert(std::make_pair(
         link_parent_joint->parentLink()->name(),
-        link_parent_joint->pTc(q)
+        link_parent_joint->Tpc(q)
       ));
     }
 
@@ -284,24 +284,24 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::linkT
   return link_transforms;
 }
 
-gtsam::Pose3 UniversalRobot::cTpCOM(std::string name, boost::optional<double> q) {
+gtsam::Pose3 UniversalRobot::TcpCOM(std::string name, boost::optional<double> q) {
 
   double q_ = q ? q.get() : 0.0;
 
   RobotJointSharedPtr link_joint = name_to_link_joint_[name];
-  gtsam::Pose3 pTcom = link_joint->parentLink()->centerOfMass();
+  gtsam::Pose3 Tpcom = link_joint->parentLink()->centerOfMass();
   gtsam::Pose3 cTcom = link_joint->childLink().lock()->centerOfMass();
 
-  // Return relative pose between pTc_com and pTcom,
-  // in pTc_com coordinate frame.
-  gtsam::Pose3 pTc_com = link_joint->pTc(q_) * cTcom;
-  return pTc_com.between(pTcom);
+  // Return relative pose between Tpc_com and Tpcom,
+  // in Tpc_com coordinate frame.
+  gtsam::Pose3 Tpc_com = link_joint->Tpc(q_) * cTcom;
+  return Tpc_com.between(Tpcom);
 }
 
-std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCOMs(
+std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::TcpCOMs(
         boost::optional<std::map<std::string, double>> joint_name_to_angle) {
 
-  std::map<std::string, std::map<std::string, gtsam::Pose3>> cTp_COMs;
+  std::map<std::string, std::map<std::string, gtsam::Pose3>> Tcp_COMs;
 
   std::map<std::string, double> q_map;
   if (joint_name_to_angle)
@@ -311,9 +311,9 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCO
   {
     // Insert map to contain transform from parent link to child link if not already
     // present.
-    if (cTp_COMs.find(link_joint->childLink().lock()->name()) == cTp_COMs.end()) {
+    if (Tcp_COMs.find(link_joint->childLink().lock()->name()) == Tcp_COMs.end()) {
       std::map<std::string, gtsam::Pose3> link_to_parent_transforms;
-      cTp_COMs.insert(std::make_pair(
+      Tcp_COMs.insert(std::make_pair(
         link_joint->childLink().lock()->name(),
         link_to_parent_transforms));
     }
@@ -324,12 +324,12 @@ std::map<std::string, std::map<std::string, gtsam::Pose3>> UniversalRobot::cTpCO
         q = q_map[link_joint->name()];
     }
 
-    cTp_COMs[link_joint->childLink().lock()->name()].insert(std::make_pair(
+    Tcp_COMs[link_joint->childLink().lock()->name()].insert(std::make_pair(
       link_joint->parentLink()->name(),
-      cTpCOM(link_joint->name(), q)
+      TcpCOM(link_joint->name(), q)
     ));
   }
-  return cTp_COMs;
+  return Tcp_COMs;
 }
 
 void UniversalRobot::printRobot() const {
@@ -348,8 +348,8 @@ void UniversalRobot::printRobot() const {
         std::cout << joint->name() << ":\n";
         std::cout<<"\tparent: " << joint->parentLink()->name() << "\tchild: " << joint->childLink().lock()->name() << "\n";
         std::cout<<"\tscrew axis: " << joint->screwAxis().transpose() << "\n";
-        std::cout<<"\tpMc: " << joint->pMc().rotation().rpy().transpose() << ", " << joint->pMc().translation() << "\n";
-        std::cout<<"\tpMc_com: " << joint->pMcCom().rotation().rpy().transpose() << ", " << joint->pMcCom().translation() << "\n";
+        std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", " << joint->Mpc().translation() << "\n";
+        std::cout<<"\tMpc_com: " << joint->MpcCom().rotation().rpy().transpose() << ", " << joint->MpcCom().translation() << "\n";
     }
 }
 

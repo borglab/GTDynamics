@@ -42,12 +42,12 @@ TEST(RobotJoint, constructor) {
         l2_weak));
 
     // Rest transform is equivalent to transform with q = 0.
-    EXPECT(assert_equal(link_joint_strong->pMj(), link_joint_strong->pTc(0)));
-    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->pMj()));
+    EXPECT(assert_equal(link_joint_strong->Mpj(), link_joint_strong->Tpc(0)));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->Mpj()));
 
     // Test that parent to child link transform is correct for -pi/2 and pi/2.
-    EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(-M_PI / 2)));
-    EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)), link_joint_strong->pTc(M_PI / 2)));
+    EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->Tpc(-M_PI / 2)));
+    EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)), link_joint_strong->Tpc(M_PI / 2)));
 
     // Test that ID is set correctly.
     unsigned char id = 'a';

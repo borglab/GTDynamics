@@ -7,7 +7,6 @@
 #pragma once
 
 #include <RobotTypes.h>
-// #include <RobotJoint.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -47,6 +46,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   // option to fix the link, used for ground link
   bool is_fixed_;
+  gtsam::Pose3 fixed_pose_;
 
   // Parent information.
   std::vector<RobotLinkSharedPtr> parent_links_;
@@ -169,6 +169,10 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     return com_pose_;
   }
 
+  const gtsam::Pose3& getFixedPose() {
+    return fixed_pose_;
+  }
+
   bool isPoseSet() {
     return pose_set_;
   }
@@ -177,8 +181,15 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     return is_fixed_;
   }
 
-  void fix() {
+  // fix the link to fixed_pose, if fixed_pose not specify, fix the link to default pose
+  void fix(const boost::optional<gtsam::Pose3&> fixed_pose = boost::none) {
     is_fixed_ = true;
+    if (fixed_pose) {
+      fixed_pose_ = *fixed_pose;
+    }
+    else {
+      fixed_pose_ = com_pose_;
+    }
   }
 
   void unfix() {

@@ -156,7 +156,7 @@ public:
      *   name -- the joint's name.
      *   q    -- joint angle (in rad).
      */
-    gtsam::Pose3 cTpCOM(std::string name, boost::optional<double> q = boost::none);
+    gtsam::Pose3 TcpCOM(std::string name, boost::optional<double> q = boost::none);
 
     /** Calculate transforms from the child link COM frame to the parent
      * link COM frame in the parent link frame for all the joints.
@@ -184,7 +184,7 @@ public:
      * Keyword arguments:
      *   joint_name_to_angle -- Map from joint name to desired angle.
      */
-    std::map<std::string, std::map<std::string, gtsam::Pose3>> cTpCOMs(
+    std::map<std::string, std::map<std::string, gtsam::Pose3>> TcpCOMs(
         boost::optional<std::map<std::string, double>> joint_name_to_angle = boost::none
     );
 

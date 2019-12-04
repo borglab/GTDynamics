@@ -5,22 +5,27 @@
  */
 #pragma once
 
-#include <UniversalRobot.h>
 #include <DynamicsGraph.h>
+#include <UniversalRobot.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
+#include <boost/optional.hpp>
 
 namespace robot {
 /**
  * Simulator is a class which simulate robot arm motion using forward
  * dynamics
  */
-template <typename T>
 class Simulator {
- private:
+private:
   UniversalRobot robot_;
-  gtsam::Vector3 gravity_;
+  int t_;
+  DynamicsGraphBuilder graph_builder_;
   gtsam::Vector qs_, vs_, as_, torques_;
+  boost::optional<gtsam::Vector3> gravity_;
+  boost::optional<gtsam::Vector3> planar_axis_;
 
- public:
+public:
   /**
    * Constructor
    * Keyword arguments:
@@ -28,38 +33,70 @@ class Simulator {
    *  robot                    -- robotic manipulator
    *  initialJointAngles       -- initial joint angles
    *  initialJointVelocities   -- initial joint velocities
+   *  initialConditions        -- condition to specify for the first timestep
    */
-  Simulator(const UniversalRobot &robot,
-             const gtsam::Vector3 &gravity,
-             const gtsam::Vector &initialJointAngles,
-             const gtsam::Vector &initialJointVelocities)
-      : robot_(robot),
-        gravity_(gravity),
-        qs_(initialJointAngles),
-        vs_(initialJointVelocities),
+  Simulator(
+      const UniversalRobot &robot, const gtsam::Vector &initialJointAngles,
+      const gtsam::Vector &initialJointVelocities,
+      //  const boost::optional<gtsam::Values> &initialConditions = boost::none,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
+      : robot_(robot), t_(0), graph_builder_(DynamicsGraphBuilder()),
+        qs_(initialJointAngles), vs_(initialJointVelocities),
         as_(gtsam::Vector::Zero(robot.numJoints())),
-        torques_(gtsam::Vector::Zero(robot.numJoints())) {}
+        torques_(gtsam::Vector::Zero(robot.numJoints())), gravity_(gravity),
+        planar_axis_(planar_axis) {}
   ~Simulator() {}
 
-  // reset the configuraiton of robot
-  void resetRobot(const UniversalRobot &robot) {
+  // compute forward dynamics for one step, and update the joint accelerations
+  void forwardDynamics(const gtsam::Vector &known_torques) {
+    // construct Dynamics Factor Graph
+    gtsam::NonlinearFactorGraph graph =
+        graph_builder_.dynamicsFactorGraph(robot_, t_, gravity_, planar_axis_);
+
+    // add prior factors
+    graph.add(graph_builder_.forwardDynamicsPriors(robot_, t_, qs_, vs_,
+                                                   known_torques));
+
+    // optimize factor graph
+    gtsam::Values init_values = DynamicsGraphBuilder::zeroValues(robot_, t_);
+
+    gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+    optimizer.optimize();
+    gtsam::Values result = optimizer.values();
+
+    // DynamicsGraphBuilder::saveGraph("../../../visualization/factor_graph.json",
+    //                                 graph, result, robot_, t_, false);
+    // update values
+    torques_ = known_torques;
+    as_ = DynamicsGraphBuilder::jointAccels(robot_, result, t_);
+  }
+
+  void integration(const double dt) {
+    auto vs_new = vs_ + dt * as_;
+    auto qs_new = qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2);
+    vs_ = vs_new;
+    qs_ = qs_new;
   }
 
   // simulation for one step with given torques
-  void step(const gtsam::Vector &known_torques) {
+  void step(const gtsam::Vector &known_torques, const double dt) {
+    t_++;
+    integration(dt);
+    forwardDynamics(known_torques);
   }
 
   /// return joint angle values
-  gtsam::Vector getJointAngles() { return qs_; }
+  const gtsam::Vector &getJointAngles() const { return qs_; }
 
   /// return joint velocity values
-  gtsam::Vector getJointVelocities() { return vs_; }
+  const gtsam::Vector &getJointVelocities() const { return vs_; }
 
   /// return joint acceleration values
-  gtsam::Vector getJointAccelerations() { return as_; }
+  const gtsam::Vector &getJointAccelerations() const { return as_; }
 
   /// return joint torque values
-  gtsam::Vector getJointTorques() { return torques_; }
+  const gtsam::Vector &getJointTorques() const { return torques_; }
 };
 
-}  // namespace manipulator
+} // namespace robot

@@ -282,12 +282,12 @@ TEST(UniversalRobot, instantiate_from_urdf) {
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, 2)),
-      simple_robot.joints()[0]->pMc()
+      simple_robot.joints()[0]->Mpc()
     ));
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, -2)),
-      simple_robot.joints()[0]->cMp()
+      simple_robot.joints()[0]->Mcp()
     ));
 
     // Check link transforms with joint angle.
@@ -300,9 +300,9 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       link_transforms["l2"]["l1"]
     ));
 
-    // Check cTpCOM: transform from parent link COM frame to child link COM
+    // Check TcpCOM: transform from parent link COM frame to child link COM
     // frame in parent link COM frame.
-    Pose3 l2Tl1COM_rest = simple_robot.cTpCOM("j1");
+    Pose3 l2Tl1COM_rest = simple_robot.TcpCOM("j1");
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, -2)),
@@ -311,16 +311,16 @@ TEST(UniversalRobot, instantiate_from_urdf) {
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, -2)),
-      simple_robot.joints()[0]->cMpCom()
+      simple_robot.joints()[0]->McpCom()
     ));
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, 2)),
-      simple_robot.joints()[0]->pMcCom()
+      simple_robot.joints()[0]->MpcCom()
     ));
 
-    // Check cTpCOM with joint angle value.
-    Pose3 l2Tl1COM = simple_robot.cTpCOM("j1", -M_PI / 4);
+    // Check TcpCOM with joint angle value.
+    Pose3 l2Tl1COM = simple_robot.TcpCOM("j1", -M_PI / 4);
 
     EXPECT(assert_equal(
       Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
@@ -329,28 +329,28 @@ TEST(UniversalRobot, instantiate_from_urdf) {
 
     EXPECT(assert_equal(
       Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
-      simple_robot.joints()[0]->cMpCom(-M_PI / 4), 1e-4
+      simple_robot.joints()[0]->McpCom(-M_PI / 4), 1e-4
     ));
 
     EXPECT(assert_equal(
       Pose3(Rot3::Rx(-M_PI / 4), Point3(0, 0.7071, 1.7071)),
-      simple_robot.joints()[0]->pMcCom(-M_PI / 4), 1e-4
+      simple_robot.joints()[0]->MpcCom(-M_PI / 4), 1e-4
     ));
 
-    // Check cTpCOM map at rest.
-    map<string, map<string, Pose3>> rest_cTp_COMs = simple_robot.cTpCOMs();
+    // Check TcpCOM map at rest.
+    map<string, map<string, Pose3>> rest_Tcp_COMs = simple_robot.TcpCOMs();
 
-    EXPECT(assert_equal(1, rest_cTp_COMs.size()));
-    EXPECT(assert_equal(1, rest_cTp_COMs["l2"].size()));
-    EXPECT(assert_equal(l2Tl1COM_rest, rest_cTp_COMs["l2"]["l1"]));
+    EXPECT(assert_equal(1, rest_Tcp_COMs.size()));
+    EXPECT(assert_equal(1, rest_Tcp_COMs["l2"].size()));
+    EXPECT(assert_equal(l2Tl1COM_rest, rest_Tcp_COMs["l2"]["l1"]));
 
-    // Check cTpCOM map with joint angle value.
+    // Check TcpCOM map with joint angle value.
     map<string, double> joint_name_to_angle_2 = { {"j1", -M_PI / 4} };
-    map<string, map<string, Pose3>> cTp_COMs = simple_robot.cTpCOMs(joint_name_to_angle_2);
+    map<string, map<string, Pose3>> Tcp_COMs = simple_robot.TcpCOMs(joint_name_to_angle_2);
 
-    EXPECT(assert_equal(1, cTp_COMs.size()));
-    EXPECT(assert_equal(1, cTp_COMs["l2"].size()));
-    EXPECT(assert_equal(l2Tl1COM, cTp_COMs["l2"]["l1"]));
+    EXPECT(assert_equal(1, Tcp_COMs.size()));
+    EXPECT(assert_equal(1, Tcp_COMs["l2"].size()));
+    EXPECT(assert_equal(l2Tl1COM, Tcp_COMs["l2"]["l1"]));
 }
 
 TEST(UniversalRobot, instantiate_from_urdf_file) {
