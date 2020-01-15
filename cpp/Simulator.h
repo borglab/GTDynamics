@@ -24,6 +24,7 @@ private:
   gtsam::Vector qs_, vs_, as_, torques_;
   boost::optional<gtsam::Vector3> gravity_;
   boost::optional<gtsam::Vector3> planar_axis_;
+  gtsam::Values results_;
 
 public:
   /**
@@ -61,9 +62,14 @@ public:
     // optimize factor graph
     gtsam::Values init_values = DynamicsGraphBuilder::zeroValues(robot_, t_);
 
+    // DynamicsGraphBuilder::print_graph(graph);
+    // DynamicsGraphBuilder::print_values(init_values);
+
     gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
     optimizer.optimize();
-    gtsam::Values result = optimizer.values();
+
+    auto result = optimizer.values();
+    results_.insert(result);
 
     // DynamicsGraphBuilder::saveGraph("../../../visualization/factor_graph.json",
     //                                 graph, result, robot_, t_, false);
@@ -72,18 +78,38 @@ public:
     as_ = DynamicsGraphBuilder::jointAccels(robot_, result, t_);
   }
 
+  // void print_values () {
+  //   std::cout << "values: " << as_ << "\t" << vs_ << "\t" << qs_ << "\n";
+  // }
+
   void integration(const double dt) {
-    auto vs_new = vs_ + dt * as_;
-    auto qs_new = qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2);
+    gtsam::Vector vs_new = vs_ + dt * as_;
+    gtsam::Vector qs_new = qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2);
+    // std::cout << qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2) << "\n";
+    // std::cout << "vs_new: " << vs_new << "\n";
+    // std::cout << "qs_new: " << qs_new << "\n";
+    // print_values();
+
     vs_ = vs_new;
     qs_ = qs_new;
+
+    // print_values();
+    // std::cout << "==============================================================\n";
   }
 
   // simulation for one step with given torques
   void step(const gtsam::Vector &known_torques, const double dt) {
-    t_++;
-    integration(dt);
     forwardDynamics(known_torques);
+    integration(dt);
+    t_++;
+  }
+
+  // simulation for the specified sequence of torques
+  gtsam::Values simulate(const std::vector<gtsam::Vector> torques_seq, const double dt) {
+    for (const gtsam::Vector& known_torques: torques_seq) {
+      step(known_torques, dt);
+    }
+    return results_;
   }
 
   /// return joint angle values
