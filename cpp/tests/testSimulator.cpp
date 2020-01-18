@@ -4,6 +4,7 @@
  * @Author: Yetong Zhang
  */
 
+#include <RobotModels.h>
 #include <Simulator.h>
 #include <UniversalRobot.h>
 #include <gtsam/geometry/Point3.h>
@@ -27,40 +28,6 @@
 using namespace std;
 using namespace robot;
 using namespace gtsam;
-
-namespace jumping_robot
-{
-UniversalRobot getJumpingRobot()
-{
-  UniversalRobot jumping_robot = UniversalRobot("../../../urdfs/test/jumping_robot.urdf");
-  jumping_robot.getLinkByName("l0")->fix();
-  return jumping_robot;
-}
-// Load the robot from urdf file
-UniversalRobot my_robot = getJumpingRobot();
-Vector torque = Vector::Zero(my_robot.numJoints());
-Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
-} // namespace jumping_robot
-
-namespace simple_urdf
-{
-UniversalRobot getSimpleUrdf()
-{
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf.urdf");
-  simple_robot.getLinkByName("l1")->fix();
-  return simple_robot;
-}
-UniversalRobot my_robot = getSimpleUrdf();
-Vector torque = Vector::Zero(my_robot.numJoints());
-Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
-} // namespace simple_urdf
-
 
 TEST(SimulatorFD, jumping_robot)
 {
@@ -94,8 +61,8 @@ TEST(Simulate, simple_urdf)
   using namespace simple_urdf;
   auto simulator = Simulator(my_robot, joint_angles, joint_vels, gravity, planar_axis);
   Vector torques = (Vector(1) << 1).finished();
-  int num_steps = 100 + 1;
-  double dt = 0.01;
+  int num_steps = 1 + 1;
+  double dt = 1;
   vector<Vector> torques_seq(num_steps, torques);
   auto results = simulator.simulate(torques_seq, dt);
   vector<Vector> joint_angles_seq;

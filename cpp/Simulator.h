@@ -78,23 +78,12 @@ public:
     as_ = DynamicsGraphBuilder::jointAccels(robot_, result, t_);
   }
 
-  // void print_values () {
-  //   std::cout << "values: " << as_ << "\t" << vs_ << "\t" << qs_ << "\n";
-  // }
-
+  // integrate through a time step
   void integration(const double dt) {
-    gtsam::Vector vs_new = vs_ + dt * as_;
-    gtsam::Vector qs_new = qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2);
-    // std::cout << qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2) << "\n";
-    // std::cout << "vs_new: " << vs_new << "\n";
-    // std::cout << "qs_new: " << qs_new << "\n";
-    // print_values();
-
+    gtsam::Vector vs_new = (vs_ + dt * as_).eval();
+    gtsam::Vector qs_new = (qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2)).eval();
     vs_ = vs_new;
     qs_ = qs_new;
-
-    // print_values();
-    // std::cout << "==============================================================\n";
   }
 
   // simulation for one step with given torques
