@@ -1,3 +1,6 @@
 [submodule "ThirdParty/urdfdom"]
 	path = ThirdParty/urdfdom
 	url = https://github.com/ros/urdfdom.git
+[submodule "ThirdParty/urdfdom_headers"]
+	path = ThirdParty/urdfdom_headers
+	url = https://github.com/ros/urdfdom_headers.git
