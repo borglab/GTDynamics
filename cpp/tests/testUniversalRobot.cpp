@@ -269,17 +269,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
     EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
 
-    // Check link transforms at rest.
-    map<string, map<string, Pose3>> rest_link_transforms = simple_robot.linkTransforms();
-    EXPECT(assert_equal(2,rest_link_transforms.size()));
-    EXPECT(assert_equal(0,rest_link_transforms["l1"].size()));
-    EXPECT(assert_equal(1,rest_link_transforms["l2"].size()));
-
-    EXPECT(assert_equal(
-      Pose3(Rot3(I_3x3), Point3(0, 0, 2)),
-      rest_link_transforms["l2"]["l1"]
-    ));
-
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, 2)),
       simple_robot.joints()[0]->Mpc()
@@ -288,25 +277,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, -2)),
       simple_robot.joints()[0]->Mcp()
-    ));
-
-    // Check link transforms with joint angle.
-    map<string, double> joint_name_to_angle = { {"j1", M_PI / 4} };
-    map<string, map<string, Pose3>> link_transforms = simple_robot.linkTransforms(
-      joint_name_to_angle);
-
-    EXPECT(assert_equal(
-      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0, 2)),
-      link_transforms["l2"]["l1"]
-    ));
-
-    // Check TcpCOM: transform from parent link COM frame to child link COM
-    // frame in parent link COM frame.
-    Pose3 l2Tl1COM_rest = simple_robot.TcpCOM("j1");
-
-    EXPECT(assert_equal(
-      Pose3(Rot3(), Point3(0, 0, -2)),
-      l2Tl1COM_rest
     ));
 
     EXPECT(assert_equal(
@@ -318,39 +288,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       Pose3(Rot3(), Point3(0, 0, 2)),
       simple_robot.joints()[0]->MpcCom()
     ));
-
-    // Check TcpCOM with joint angle value.
-    Pose3 l2Tl1COM = simple_robot.TcpCOM("j1", -M_PI / 4);
-
-    EXPECT(assert_equal(
-      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
-      l2Tl1COM, 1e-4
-    ));
-
-    EXPECT(assert_equal(
-      Pose3(Rot3::Rx(M_PI / 4), Point3(0, 0.7071, -1.7071)),
-      simple_robot.joints()[0]->McpCom(-M_PI / 4), 1e-4
-    ));
-
-    EXPECT(assert_equal(
-      Pose3(Rot3::Rx(-M_PI / 4), Point3(0, 0.7071, 1.7071)),
-      simple_robot.joints()[0]->MpcCom(-M_PI / 4), 1e-4
-    ));
-
-    // Check TcpCOM map at rest.
-    map<string, map<string, Pose3>> rest_Tcp_COMs = simple_robot.TcpCOMs();
-
-    EXPECT(assert_equal(1, rest_Tcp_COMs.size()));
-    EXPECT(assert_equal(1, rest_Tcp_COMs["l2"].size()));
-    EXPECT(assert_equal(l2Tl1COM_rest, rest_Tcp_COMs["l2"]["l1"]));
-
-    // Check TcpCOM map with joint angle value.
-    map<string, double> joint_name_to_angle_2 = { {"j1", -M_PI / 4} };
-    map<string, map<string, Pose3>> Tcp_COMs = simple_robot.TcpCOMs(joint_name_to_angle_2);
-
-    EXPECT(assert_equal(1, Tcp_COMs.size()));
-    EXPECT(assert_equal(1, Tcp_COMs["l2"].size()));
-    EXPECT(assert_equal(l2Tl1COM, Tcp_COMs["l2"]["l1"]));
 }
 
 TEST(UniversalRobot, instantiate_from_urdf_file) {
@@ -390,37 +327,6 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
   EXPECT(assert_equal(-1.57, joint_lower_limits["j1"]));
   EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
   EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
-
-  // Check link transforms at rest.
-  map<string, map<string, Pose3>> rest_link_transforms = four_bar.linkTransforms();
-  EXPECT(assert_equal(5, rest_link_transforms.size()));
-  EXPECT(assert_equal(0, rest_link_transforms["l0"].size()));
-  // l1 is both the child of l0 and l4.
-  EXPECT(assert_equal(2, rest_link_transforms["l1"].size()));
-  EXPECT(assert_equal(1, rest_link_transforms["l2"].size()));
-  EXPECT(assert_equal(1, rest_link_transforms["l3"].size()));
-  EXPECT(assert_equal(1, rest_link_transforms["l4"].size()));
-
-  EXPECT(assert_equal(
-    Pose3(Rot3(I_3x3), Point3(0, 0, 0)),
-    rest_link_transforms["l1"]["l0"], 1e-3
-  ));
-  EXPECT(assert_equal(
-    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
-    rest_link_transforms["l1"]["l4"], 1e-3
-  ));
-  EXPECT(assert_equal(
-    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
-    rest_link_transforms["l2"]["l1"], 1e-3
-  ));
-  EXPECT(assert_equal(
-    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
-    rest_link_transforms["l3"]["l2"], 1e-3
-  ));
-  EXPECT(assert_equal(
-    Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)),
-    rest_link_transforms["l4"]["l3"], 1e-3
-  ));
 }
 
 TEST(UniversalRobot, removeLink) {
