@@ -176,10 +176,7 @@ TEST(collocationFactors, simple_urdf)
   NonlinearFactorGraph trapezoidal_graph;
   trapezoidal_graph.add(graph_builder.collocationFactors(my_robot, t, dt, DynamicsGraphBuilder::CollocationScheme::Trapezoidal));
   trapezoidal_graph.add(prior_factors);
-
-  GaussNewtonOptimizer trapezoidal_optimizer(trapezoidal_graph, init_values);
-  trapezoidal_optimizer.optimize();
-  Values trapezoidal_result = trapezoidal_optimizer.values();
+  Values trapezoidal_result = graph_builder.optimize(trapezoidal_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   EXPECT(assert_equal(2.75, trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
   EXPECT(assert_equal(2.5, trapezoidal_result.atDouble(JointVelKey(j, t + 1))));
@@ -188,15 +185,33 @@ TEST(collocationFactors, simple_urdf)
   NonlinearFactorGraph euler_graph;
   euler_graph.add(graph_builder.collocationFactors(my_robot, t, dt, DynamicsGraphBuilder::CollocationScheme::Euler));
   euler_graph.add(prior_factors);
-
-  GaussNewtonOptimizer euler_optimizer(euler_graph, init_values);
-  euler_optimizer.optimize();
-  Values euler_result = euler_optimizer.values();
+  Values euler_result = graph_builder.optimize(euler_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   EXPECT(assert_equal(2.0, euler_result.atDouble(JointAngleKey(j, t + 1))));
   EXPECT(assert_equal(2.0, euler_result.atDouble(JointVelKey(j, t + 1))));
 
-  // TODO: test the scenario with dt as a variable
+  // test the scenario with dt as a variable
+  int phase = 0;
+  init_values.insert(TimeKey(phase), double(0));
+  prior_factors.add(PriorFactor<double>(TimeKey(phase), dt, gtsam::noiseModel::Constrained::All(1)));
+
+  // multi-phase euler
+  NonlinearFactorGraph mp_euler_graph;
+  mp_euler_graph.add(graph_builder.multiPhaseCollocationFactors(my_robot, t, phase, DynamicsGraphBuilder::CollocationScheme::Euler));
+  mp_euler_graph.add(prior_factors);
+  Values mp_euler_result = graph_builder.optimize(mp_euler_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
+
+  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAngleKey(j, t + 1))));
+  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointVelKey(j, t + 1))));
+
+  // multi-phase trapezoidal
+  NonlinearFactorGraph mp_trapezoidal_graph;
+  mp_trapezoidal_graph.add(graph_builder.collocationFactors(my_robot, t, dt, DynamicsGraphBuilder::CollocationScheme::Trapezoidal));
+  mp_trapezoidal_graph.add(prior_factors);
+  Values mp_trapezoidal_result = graph_builder.optimize(mp_trapezoidal_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
+
+  EXPECT(assert_equal(2.75, mp_trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
+  EXPECT(assert_equal(2.5, mp_trapezoidal_result.atDouble(JointVelKey(j, t + 1))));
 }
 
 // test forward dynamics of a trajectory
@@ -218,12 +233,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass)
   Values init_values = DynamicsGraphBuilder::zeroValuesTrajectory(my_robot, num_steps);
 
   // test Euler
-  NonlinearFactorGraph euler_graph = graph_builder.dynamicsTrajectoryFG(my_robot, num_steps, dt, DynamicsGraphBuilder::CollocationScheme::Euler, gravity, planar_axis);
+  NonlinearFactorGraph euler_graph = graph_builder.trajectoryFG(my_robot, num_steps, dt, DynamicsGraphBuilder::CollocationScheme::Euler, gravity, planar_axis);
   euler_graph.add(graph_builder.trajectoryFDPriors(my_robot, num_steps, joint_angles, joint_vels, torques_seq));
-
-  GaussNewtonOptimizer euler_optimizer(euler_graph, init_values);
-  euler_optimizer.optimize();
-  Values euler_result = euler_optimizer.values();
+  Values euler_result = graph_builder.optimize(euler_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   EXPECT(assert_equal(0.0, euler_result.atDouble(JointAngleKey(j, 1))));
   EXPECT(assert_equal(1.0, euler_result.atDouble(JointVelKey(j, 1))));
@@ -233,12 +245,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass)
   EXPECT(assert_equal(3.0, euler_result.atDouble(JointAccelKey(j, 2))));
 
   // test trapezoidal
-  NonlinearFactorGraph trapezoidal_graph = graph_builder.dynamicsTrajectoryFG(my_robot, num_steps, dt, DynamicsGraphBuilder::CollocationScheme::Trapezoidal, gravity, planar_axis);
+  NonlinearFactorGraph trapezoidal_graph = graph_builder.trajectoryFG(my_robot, num_steps, dt, DynamicsGraphBuilder::CollocationScheme::Trapezoidal, gravity, planar_axis);
   trapezoidal_graph.add(graph_builder.trajectoryFDPriors(my_robot, num_steps, joint_angles, joint_vels, torques_seq));
-
-  GaussNewtonOptimizer trapezoidal_optimizer(trapezoidal_graph, init_values);
-  trapezoidal_optimizer.optimize();
-  Values trapezoidal_result = trapezoidal_optimizer.values();
+  Values trapezoidal_result = graph_builder.optimize(trapezoidal_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   EXPECT(assert_equal(0.75, trapezoidal_result.atDouble(JointAngleKey(j, 1))));
   EXPECT(assert_equal(1.5, trapezoidal_result.atDouble(JointVelKey(j, 1))));
@@ -247,7 +256,50 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass)
   EXPECT(assert_equal(4.0, trapezoidal_result.atDouble(JointVelKey(j, 2))));
   EXPECT(assert_equal(3.0, trapezoidal_result.atDouble(JointAccelKey(j, 2))));
 
-  // TODO: test the scenario with dt as a variable
+  // test the scenario with dt as a variable
+  vector<int> phase_steps {1,1};
+  double dt0 = 1;
+  double dt1 = 2;
+  NonlinearFactorGraph mp_prior_graph = graph_builder.trajectoryFDPriors(my_robot, num_steps, joint_angles, joint_vels, torques_seq);
+  mp_prior_graph.add(PriorFactor<double>(TimeKey(0), dt0, gtsam::noiseModel::Constrained::All(1)));
+  mp_prior_graph.add(PriorFactor<double>(TimeKey(1), dt1, gtsam::noiseModel::Constrained::All(1)));
+  init_values = DynamicsGraphBuilder::zeroValuesTrajectory(my_robot, num_steps, 2);
+
+  // multi-phase Euler
+  NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(my_robot, phase_steps, DynamicsGraphBuilder::CollocationScheme::Euler, gravity, planar_axis);
+  mp_euler_graph.add(mp_prior_graph);
+  Values mp_euler_result =graph_builder.optimize(mp_euler_graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
+
+  // t        0   1   2
+  // dt         1   2
+  // torque   1   2   3
+  // q        0   0   2
+  // v        0   1   5
+  // a        1   2   3
+  EXPECT(assert_equal(0.0, mp_euler_result.atDouble(JointAngleKey(j, 1))));
+  EXPECT(assert_equal(1.0, mp_euler_result.atDouble(JointVelKey(j, 1))));
+  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAccelKey(j, 1))));
+  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAngleKey(j, 2))));
+  EXPECT(assert_equal(5.0, mp_euler_result.atDouble(JointVelKey(j, 2))));
+  EXPECT(assert_equal(3.0, mp_euler_result.atDouble(JointAccelKey(j, 2))));
+
+  // multi-phase Trapezoidal
+  NonlinearFactorGraph mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(my_robot, phase_steps, DynamicsGraphBuilder::CollocationScheme::Trapezoidal, gravity, planar_axis);
+  mp_trapezoidal_graph.add(mp_prior_graph);
+  Values mp_trapezoidal_result =graph_builder.optimize(mp_trapezoidal_graph, init_values, DynamicsGraphBuilder::OptimizerType::PDL);
+
+  // t        0     1     2
+  // dt          1     2
+  // torque   1     2     3
+  // q        0     0.75  8.75
+  // v        0     1.5   6.5
+  // a        1     2     3
+  EXPECT(assert_equal(0.75, mp_trapezoidal_result.atDouble(JointAngleKey(j, 1))));
+  EXPECT(assert_equal(1.5, mp_trapezoidal_result.atDouble(JointVelKey(j, 1))));
+  EXPECT(assert_equal(2.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 1))));
+  EXPECT(assert_equal(8.75, mp_trapezoidal_result.atDouble(JointAngleKey(j, 2))));
+  EXPECT(assert_equal(6.5, mp_trapezoidal_result.atDouble(JointVelKey(j, 2))));
+  EXPECT(assert_equal(3.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 2))));
 }
 
 

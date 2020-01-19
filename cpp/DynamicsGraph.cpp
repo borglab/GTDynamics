@@ -135,7 +135,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
     return graph;
 }
 
-gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsTrajectoryFG(
+gtsam::NonlinearFactorGraph DynamicsGraphBuilder::trajectoryFG(
     const UniversalRobot &robot, const int num_steps, const double dt,
     const DynamicsGraphBuilder::CollocationScheme collocation,
     const boost::optional<gtsam::Vector3> &gravity,
@@ -148,6 +148,26 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsTrajectoryFG(
         if (t < num_steps)
         {
             graph.add(collocationFactors(robot, t, dt, collocation));
+        }
+    }
+    return graph;
+}
+
+gtsam::NonlinearFactorGraph DynamicsGraphBuilder::multiPhaseTrajectoryFG(
+    const UniversalRobot &robot, const std::vector<int> &phase_steps,
+    const DynamicsGraphBuilder::CollocationScheme collocation,
+    const boost::optional<gtsam::Vector3> &gravity,
+    const boost::optional<gtsam::Vector3> &plannar_axis) const
+{
+    NonlinearFactorGraph graph;
+    int t = 0;
+    graph.add(dynamicsFactorGraph(robot, t, gravity, plannar_axis));
+
+    for (int phase = 0; phase < phase_steps.size(); phase++) {
+        for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
+            graph.add(multiPhaseCollocationFactors(robot, t, phase, collocation));
+            t++;
+            graph.add(dynamicsFactorGraph(robot, t, gravity, plannar_axis));
         }
     }
     return graph;
@@ -185,32 +205,50 @@ gtsam::ExpressionFactorGraph DynamicsGraphBuilder::collocationFactors(
     return graph;
 }
 
-gtsam::NonlinearFactorGraph DynamicsGraphBuilder::integrationFactors(const UniversalRobot &robot,
-                                                                     const int t, const double dt)
-{
-    gtsam::NonlinearFactorGraph graph;
-    for (auto &&joint : robot.joints())
-    {
-        int j = joint->getID();
-        graph.add(IntegrationFactor(JointAngleKey(j, t), JointVelKey(j, t),
-                                    JointAccelKey(j, t), JointAngleKey(j, t + 1),
-                                    JointVelKey(j, t + 1),
-                                    gtsam::noiseModel::Constrained::All(2), dt));
-    }
-    return graph;
+// the * operator for doubles in expression factor does not work well yet
+double multDouble(const double& d1, const double& d2, OptionalJacobian<1, 1> H1,
+                  OptionalJacobian<1, 1> H2) {
+  if (H1)
+    *H1 = I_1x1 * d2;
+  if (H2)
+    *H2 = I_1x1 * d1;
+  return d1 * d2;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraphBuilder::softIntegrationFactors(const UniversalRobot &robot, const int t)
+gtsam::ExpressionFactorGraph DynamicsGraphBuilder::multiPhaseCollocationFactors(const UniversalRobot &robot,
+                                                                            const int t, const int phase,
+                                                                            const CollocationScheme collocation) const
 {
-    gtsam::NonlinearFactorGraph graph;
+    ExpressionFactorGraph graph;
+    Double_ phase_expr = Double_(TimeKey(phase));
     for (auto &&joint : robot.joints())
     {
         int j = joint->getID();
-        graph.add(SoftIntegrationFactor(
-            JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
-            JointAngleKey(j, t + 1), JointVelKey(j, t + 1), TimeKey(t),
-            gtsam::noiseModel::Constrained::All(2)));
+        Double_ q0_expr = Double_(JointAngleKey(j, t));
+        Double_ q1_expr = Double_(JointAngleKey(j, t + 1));
+        Double_ v0_expr = Double_(JointVelKey(j, t));
+        Double_ v1_expr = Double_(JointVelKey(j, t + 1));
+        Double_ a0_expr = Double_(JointAccelKey(j, t));
+        Double_ a1_expr = Double_(JointAccelKey(j, t + 1));
+
+        if (collocation == CollocationScheme::Euler) {
+            Double_ v0dt(multDouble, phase_expr, v0_expr);
+            Double_ a0dt(multDouble, phase_expr, a0_expr);
+            graph.addExpressionFactor(q0_expr + v0dt - q1_expr, double(0), gtsam::noiseModel::Constrained::All(1));
+            graph.addExpressionFactor(v0_expr + a0dt - v1_expr, double(0), gtsam::noiseModel::Constrained::All(1));
+        }
+        else if (collocation == CollocationScheme::Trapezoidal) {
+            Double_ v0dt(multDouble, phase_expr, v0_expr);
+            Double_ a0dt(multDouble, phase_expr, a0_expr);
+            Double_ v1dt(multDouble, phase_expr, v1_expr);
+            Double_ a1dt(multDouble, phase_expr, a1_expr);
+            graph.addExpressionFactor(q0_expr + 0.5 * v0dt + 0.5 * v1dt - q1_expr, double(0), gtsam::noiseModel::Constrained::All(1));
+            graph.addExpressionFactor(v0_expr + 0.5 * a0dt + 0.5 * a1dt - v1_expr, double(0), gtsam::noiseModel::Constrained::All(1));
+        }
+        else {
+            throw std::runtime_error("runge-kutta and hermite-simpson not implemented yet");
+        }
+
     }
     return graph;
 }
@@ -388,14 +426,44 @@ gtsam::Values DynamicsGraphBuilder::zeroValues(const UniversalRobot &robot, cons
     return zero_values;
 }
 
-gtsam::Values DynamicsGraphBuilder::zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps) {
+gtsam::Values DynamicsGraphBuilder::zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps, const int num_phases)
+{
     Values zero_values;
-    for (int t=0; t<=num_steps; t++) {
+    for (int t = 0; t <= num_steps; t++)
+    {
         zero_values.insert(zeroValues(robot, t));
+    }
+    if (num_phases > 0) {
+        for (int phase =0; phase <= num_phases; phase++) {
+            zero_values.insert(TimeKey(phase), double(0));
+        }
     }
     return zero_values;
 }
 
+gtsam::Values DynamicsGraphBuilder::optimize(
+    const gtsam::NonlinearFactorGraph &graph,
+    const gtsam::Values &init_values, OptimizerType optim_type) const
+{
+    if (optim_type == OptimizerType::GaussNewton) {
+        GaussNewtonOptimizer optimizer(graph, init_values);
+        optimizer.optimize();
+        return optimizer.values();
+    }
+    else if (optim_type == OptimizerType::LM) {
+        LevenbergMarquardtOptimizer optimizer(graph, init_values);
+        optimizer.optimize();
+        return optimizer.values();
+    }
+    else if (optim_type == OptimizerType::PDL) {
+        DoglegOptimizer optimizer(graph, init_values);
+        optimizer.optimize();
+        return optimizer.values();
+    }
+    else {
+        throw std::runtime_error("optimizer not implemented yet");
+    }
+}
 
 void print_key(const gtsam::Key &key)
 {

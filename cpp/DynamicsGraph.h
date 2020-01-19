@@ -5,7 +5,6 @@
  */
 #pragma once
 
-#include <IntegrationFactor.h>
 #include <JointLimitFactor.h>
 #include <JsonSaver.h>
 #include <OptimizerSetting.h>
@@ -139,6 +138,13 @@ public:
     HermiteSimpson
   };
 
+  enum OptimizerType
+  {
+    GaussNewton,
+    LM,
+    PDL
+  };
+
   /** return nonlinear factor graph of all dynamics factors
   * Keyword arguments:
      robot                      -- the robot
@@ -160,8 +166,22 @@ public:
      gravity                    -- gravity in world frame
      plannar_axis               -- axis of the plane, used only for planar robot
    */
-  gtsam::NonlinearFactorGraph dynamicsTrajectoryFG(
+  gtsam::NonlinearFactorGraph trajectoryFG(
       const UniversalRobot &robot, const int num_steps, const double dt,
+      const CollocationScheme collocation,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &plannar_axis = boost::none) const;
+
+  /** return nonlinear factor graph of the entire trajectory for multi-phase
+  * Keyword arguments:
+     robot                      -- the robot
+     phase_steps                -- number of time steps for each phase
+     collocation                -- the collocation scheme
+     gravity                    -- gravity in world frame
+     plannar_axis               -- axis of the plane, used only for planar robot
+   */
+  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
+      const UniversalRobot &robot, const std::vector<int> &phase_steps,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &plannar_axis = boost::none) const;
@@ -177,24 +197,18 @@ public:
                                                   const int t, const double dt,
                                                   const CollocationScheme collocation) const;
 
-  /** return integration factors on joint angles and velocities from time step t
-  to t+1
-  * Keyword arguments:
-     robot                      -- the robot
-     t                          -- time step
-     dt                         -- duration of each timestep
-   */
-  gtsam::NonlinearFactorGraph integrationFactors(const UniversalRobot &robot,
-                                                 const int t, const double dt);
 
-  /** return soft integration factors on joint angles and velocities from time
-  step t to t+1
+  /** return collocation factors on angles and velocities from time step t to t+1, with dt as a varaible
   * Keyword arguments:
      robot                      -- the robot
      t                          -- time step
+     phase                      -- the phase of the timestep
+     collocation                -- collocation scheme chosen
    */
-  gtsam::NonlinearFactorGraph
-  softIntegrationFactors(const UniversalRobot &robot, const int t);
+  gtsam::ExpressionFactorGraph multiPhaseCollocationFactors(const UniversalRobot &robot,
+                                                  const int t, const int phase,
+                                                  const CollocationScheme collocation) const;
+
 
   /** return joint factors to limit angle, velocity, acceleration, and torque
   * Keyword arguments:
@@ -257,8 +271,19 @@ public:
   * Keyword arguments:
      robot                      -- the robot
      num_steps                  -- total time steps
+     num_phases                 -- number of phases, -1 for not using multi-phase
    */
-  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps);
+  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps, const int num_phases=-1);
+
+  /** optimize factor graph
+  * Keyword arguments:
+     graph                      -- nonlinear factor graph 
+     init_values                -- initial values for optimization
+     optim_type                 -- choice of optimizer type
+   */
+  gtsam::Values optimize(
+      const gtsam::NonlinearFactorGraph &graph,
+      const gtsam::Values &init_values, OptimizerType optim_type) const;
 
   // print the factors of the factor graph
   static void print_graph(const gtsam::NonlinearFactorGraph &graph);
