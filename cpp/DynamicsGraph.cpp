@@ -220,7 +220,7 @@ gtsam::ExpressionFactorGraph DynamicsGraphBuilder::multiPhaseCollocationFactors(
                                                                             const CollocationScheme collocation) const
 {
     ExpressionFactorGraph graph;
-    Double_ phase_expr = Double_(TimeKey(phase));
+    Double_ phase_expr = Double_(PhaseKey(phase));
     for (auto &&joint : robot.joints())
     {
         int j = joint->getID();
@@ -435,7 +435,7 @@ gtsam::Values DynamicsGraphBuilder::zeroValuesTrajectory(const UniversalRobot &r
     }
     if (num_phases > 0) {
         for (int phase =0; phase <= num_phases; phase++) {
-            zero_values.insert(TimeKey(phase), double(0));
+            zero_values.insert(PhaseKey(phase), double(0));
         }
     }
     return zero_values;
@@ -443,7 +443,7 @@ gtsam::Values DynamicsGraphBuilder::zeroValuesTrajectory(const UniversalRobot &r
 
 gtsam::Values DynamicsGraphBuilder::optimize(
     const gtsam::NonlinearFactorGraph &graph,
-    const gtsam::Values &init_values, OptimizerType optim_type) const
+    const gtsam::Values &init_values, OptimizerType optim_type)
 {
     if (optim_type == OptimizerType::GaussNewton) {
         GaussNewtonOptimizer optimizer(graph, init_values);
@@ -473,12 +473,25 @@ void print_key(const gtsam::Key &key)
     int t = symb.index();
     if (ch == 'F')
     {
-        std::cout << ch << int(index / 16) << index % 16 << "_" << t << "\t";
+        std::cout << ch << int(index / 16) << index % 16 << "_" << t;
+    }
+    else if (ch == 't')
+    {
+        if (index == 0) { // phase key
+            std::cout << "dt" << t;
+        }
+        else if (index == 1) { // time key
+            std::cout << "t" << t;
+        }
+        else { // time to open valve
+            std::cout << "ti" << t;
+        }
     }
     else
     {
-        std::cout << ch << index << "_" << t << "\t";
+        std::cout << ch << index << "_" << t;
     }
+    std::cout << "\t";
 }
 
 // print the factors of the factor graph

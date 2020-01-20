@@ -93,8 +93,17 @@ gtsam::LabeledSymbol JointAccelKey(int j, int t)
   return gtsam::LabeledSymbol('a', j, t);
 }
 
-/* Shorthand for t_k, for duration for timestep dt_k. */
-gtsam::LabeledSymbol TimeKey(int k) { return gtsam::LabeledSymbol('t', 0, k); }
+/* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
+gtsam::LabeledSymbol PhaseKey(int k) 
+{ 
+  return gtsam::LabeledSymbol('t', 0, k);
+}
+
+/* Shorthand for t_t, time at time step t. */
+gtsam::LabeledSymbol TimeKey(int t)
+{
+  return gtsam::LabeledSymbol('t', 1, t);
+}
 
 /**
  * DynamicsGraphBuilder is a class which builds a factor graph to do kinodynamic
@@ -281,9 +290,9 @@ public:
      init_values                -- initial values for optimization
      optim_type                 -- choice of optimizer type
    */
-  gtsam::Values optimize(
+  static gtsam::Values optimize(
       const gtsam::NonlinearFactorGraph &graph,
-      const gtsam::Values &init_values, OptimizerType optim_type) const;
+      const gtsam::Values &init_values, OptimizerType optim_type);
 
   // print the factors of the factor graph
   static void print_graph(const gtsam::NonlinearFactorGraph &graph);

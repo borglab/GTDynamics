@@ -179,8 +179,8 @@ TEST(collocationFactors, simple_urdf)
 
   // test the scenario with dt as a variable
   int phase = 0;
-  init_values.insert(TimeKey(phase), double(0));
-  prior_factors.add(PriorFactor<double>(TimeKey(phase), dt, gtsam::noiseModel::Constrained::All(1)));
+  init_values.insert(PhaseKey(phase), double(0));
+  prior_factors.add(PriorFactor<double>(PhaseKey(phase), dt, gtsam::noiseModel::Constrained::All(1)));
 
   // multi-phase euler
   NonlinearFactorGraph mp_euler_graph;
@@ -248,8 +248,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass)
   double dt0 = 1;
   double dt1 = 2;
   NonlinearFactorGraph mp_prior_graph = graph_builder.trajectoryFDPriors(my_robot, num_steps, joint_angles, joint_vels, torques_seq);
-  mp_prior_graph.add(PriorFactor<double>(TimeKey(0), dt0, gtsam::noiseModel::Constrained::All(1)));
-  mp_prior_graph.add(PriorFactor<double>(TimeKey(1), dt1, gtsam::noiseModel::Constrained::All(1)));
+  mp_prior_graph.add(PriorFactor<double>(PhaseKey(0), dt0, gtsam::noiseModel::Constrained::All(1)));
+  mp_prior_graph.add(PriorFactor<double>(PhaseKey(1), dt1, gtsam::noiseModel::Constrained::All(1)));
   init_values = DynamicsGraphBuilder::zeroValuesTrajectory(my_robot, num_steps, 2);
 
   // multi-phase Euler
