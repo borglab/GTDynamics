@@ -50,11 +50,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass)
     graph.add(PriorFactor<Vector6>(TwistKey(i, 0), Vector6::Zero(), noiseModel::Constrained::All(6)));
   }
 
-  // optimize
-  Values init_values = DynamicsGraphBuilder::zeroValues(my_robot, 0);
-  GaussNewtonOptimizer optimizer(graph, init_values);
-  optimizer.optimize();
-  Values result = optimizer.values();
+  Values result = graph_builder.optimize(graph, DynamicsGraphBuilder::zeroValues(my_robot, 0), DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   Vector actual_qAccel = DynamicsGraphBuilder::jointAccels(my_robot, result, 0);
   Vector expected_qAccel = (Vector(1) << 4).finished();
@@ -85,9 +81,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage)
   Values init_values = DynamicsGraphBuilder::zeroValues(my_robot, 0);
 
   // test the four bar linkage FD in the free-floating scenario
-  GaussNewtonOptimizer optimizer(graph, init_values);
-  optimizer.optimize();
-  Values result = optimizer.values();
+  Values result = graph_builder.optimize(graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
   Vector actual_qAccel = DynamicsGraphBuilder::jointAccels(my_robot, result, 0);
   Vector expected_qAccel = (Vector(4) << 1, -1, 1, -1).finished();
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
@@ -104,9 +98,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage)
   graph = graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(prior_factors);
 
-  GaussNewtonOptimizer optimizer2(graph, init_values);
-  optimizer2.optimize();
-  result = optimizer2.values();
+  result = graph_builder.optimize(graph, init_values, DynamicsGraphBuilder::OptimizerType::GaussNewton);
   actual_qAccel = DynamicsGraphBuilder::jointAccels(my_robot, result, 0);
   expected_qAccel = (Vector(4) << 0.25, -0.25, 0.25, -0.25).finished();
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
@@ -124,13 +116,8 @@ TEST(dynamicsFactorGraph_FD, jumping_robot)
   NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(graph_builder.forwardDynamicsPriors(my_robot, 0, joint_angles, joint_vels, torques));
 
-  // set initial values
-  Values init_values = DynamicsGraphBuilder::zeroValues(my_robot, 0);
-
   // test jumping robot FD
-  GaussNewtonOptimizer optimizer(graph, init_values);
-  optimizer.optimize();
-  Values result = optimizer.values();
+  Values result = graph_builder.optimize(graph, DynamicsGraphBuilder::zeroValues(my_robot, 0), DynamicsGraphBuilder::OptimizerType::GaussNewton);
 
   // check acceleration
   auto expected_qAccel = Vector(6);
