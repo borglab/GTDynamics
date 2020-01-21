@@ -33,7 +33,7 @@ TEST(ContactKinematicsPoseFactor, error) {
   using namespace simple_urdf;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Constrained::All(6);
+      gtsam::noiseModel::Gaussian::Covariance(I_1x1);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
@@ -51,7 +51,7 @@ TEST(ContactKinematicsPoseFactor, error) {
       factor.evaluateError(
           gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.))
       ),
-      (gtsam::Vector(6) << 0, 0, 0, 0, 0, 3).finished()
+      (gtsam::Vector(1) << 3).finished()
   ));
 
   // Leg oriented down with contact 1m away from the ground.
@@ -59,7 +59,7 @@ TEST(ContactKinematicsPoseFactor, error) {
       factor.evaluateError(
           gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))
       ),
-      (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished()
+      (gtsam::Vector(1) << 1).finished()
   ));
 
   // Contact touching the ground.
@@ -67,8 +67,40 @@ TEST(ContactKinematicsPoseFactor, error) {
       factor.evaluateError(
           gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))
       ),
-      (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished()
+      (gtsam::Vector(1) << 0).finished()
   ));
+
+  // Check that Jacobian computation is correct by comparison to finite differences.
+
+  // Rotation and translation.
+  gtsam::Values values_a;
+  values_a.insert(
+      pose_key,
+    gtsam::Pose3(
+        gtsam::Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
+        gtsam::Point3(4., 3., 3.))
+  );
+  EXPECT_CORRECT_FACTOR_JACOBIANS(
+      factor,
+      values_a,
+      1e-7, // Step used when computing numerical derivative jacobians.
+      1e-3 // Tolerance.
+  );
+
+  // Pure translation.
+  gtsam::Values values_b;
+  values_b.insert(
+      pose_key,
+    gtsam::Pose3(
+        gtsam::Rot3(),
+        gtsam::Point3(4., 3., 3.))
+  );
+  EXPECT_CORRECT_FACTOR_JACOBIANS(
+      factor,
+      values_b,
+      1e-7, // Step used when computing numerical derivative jacobians.
+      1e-3 // Tolerance.
+  );
 }
 
 /**
@@ -80,7 +112,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   using namespace simple_urdf;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Constrained::All(6);
+      gtsam::noiseModel::Constrained::All(1);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
@@ -124,7 +156,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
 
   EXPECT(assert_equal(
       factor.evaluateError(link_pose_optimized),
-      (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished(),
+      (gtsam::Vector(1) << 0).finished(),
       1e-3
   ));
 }

@@ -29,7 +29,7 @@ class ContactKinematicsPoseFactor
   typedef gtsam::NoiseModelFactor1<gtsam::Pose3> Base;
   gtsam::Pose3 cTcom_;
 
-  int up_axis_;
+  gtsam::Matrix13 H_err_;
 
  public:
   /** Contact kinematics factor for link end to remain in contact with the ground.
@@ -49,11 +49,11 @@ class ContactKinematicsPoseFactor
         cTcom_(cTcom) {
 
     if (gravity[0] != 0)
-      up_axis_ = 0;  // x.
+      H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
     else if (gravity[1] != 0)
-      up_axis_ = 1;  // y.
+      H_err_ = (gtsam::Matrix13() << 0, 1, 0).finished();  // y.
     else
-      up_axis_ = 2;  // z.
+      H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
   }
   virtual ~ContactKinematicsPoseFactor() {} 
 
@@ -66,23 +66,20 @@ class ContactKinematicsPoseFactor
       const gtsam::Pose3 &pose,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
 
-      // Translate from the com frame to the link end frame, represented
-      // in spatial coords.
-      gtsam::Pose3 cTs =  pose * cTcom_.inverse();
+      // Change contact reference frame from com to spatial.
+      gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
+      
+      // Obtain translation component and corresponding jacobian.
+      gtsam::Matrix36 H_trans;
+      gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
 
-      gtsam::Pose3 contactTrans(gtsam::Rot3(), cTs.translation());
+      // Compute the error.
+      gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
 
-      gtsam::Point3 goal_trans;
-      if (up_axis_ == 0)
-        goal_trans = gtsam::Point3(0, cTs.translation()[1], cTs.translation()[2]);
-      else if (up_axis_ == 1)
-        goal_trans = gtsam::Point3(cTs.translation()[0], 0, cTs.translation()[2]);
-      else
-        goal_trans = gtsam::Point3(cTs.translation()[0], cTs.translation()[1], 0);
-
-      gtsam::Pose3 goal_pose(gtsam::Rot3(), goal_trans);
-
-      gtsam::Vector error = goal_pose.logmap(contactTrans, H_pose);
+      // Compute the jacobian.
+      if (H_pose)
+        *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+      
       return error;
   }
 
@@ -96,7 +93,7 @@ class ContactKinematicsPoseFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "wrench equivalence factor" << std::endl;
+    std::cout << s << "Contact kinematics pose factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
@@ -106,7 +103,7 @@ class ContactKinematicsPoseFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
 }  // namespace robot
