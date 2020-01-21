@@ -66,6 +66,11 @@ TEST(RobotLink, constructor) {
 
     first_link.addChildLink(std::make_shared<RobotLink>(second_link));
 
+    // Check transform to link-end frame from link frame. leTl
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), first_link.leTl()));
+    // Check transform to link-end frame from link com frame. leTl_com
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.leTl_com()));
+
     // Test that ID is set correctly.
     unsigned char id = 'a';
     first_link.setID(id);
