@@ -235,18 +235,11 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   /// Return center of mass (gtsam::Pose3)
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
-  /// Return the frame at the link's end in the link frame. Note that this is
-  /// approximate and is useful primarily for cylindrical links.
-  gtsam::Pose3 leTl() const {
-    // leTl_com * l_comTl = leTl
-    return leTl_com() * centerOfMass_;
-  }
-
   /// Return the frame at link's end in the link com frame.
   gtsam::Pose3 leTl_com() const {
-    gtsam::Pose3 leTl_com = gtsam::Pose3(
+    gtsam::Pose3 l_comTle = gtsam::Pose3(
     gtsam::Rot3::identity(), centerOfMass_.translation());
-    return leTl_com;
+    return l_comTle.inverse();
   }
 
   /// Return inertia.

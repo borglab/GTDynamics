@@ -18,14 +18,24 @@ namespace robot
 gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
     const UniversalRobot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
-    const boost::optional<gtsam::Vector3> &plannar_axis) const
+    const boost::optional<gtsam::Vector3> &plannar_axis,
+    const boost::optional<std::vector<uint>> &contacts) const
 {
 
     NonlinearFactorGraph graph;
 
+    std::vector<uint> contacts_;
+    if (contacts)
+        contacts_ = contacts.get();
+    else
+        contacts_ = std::vector<uint>(robot.numLinks(), 0);
+
     // add factors corresponding to links
-    for (auto &&link : robot.links())
+    // for (auto &&link : robot.links())
+    for (int idx = 0; idx < robot.numLinks(); idx++)
     {
+        auto link = robot.links()[idx];
+
         int i = link->getID();
         if (link->isFixed())
         {
@@ -38,50 +48,56 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
         }
         else
         {
+            // Get all wrench keys associated with this link.
             const auto &connected_joints = link->getJoints();
-            if (connected_joints.size() == 0)
-            {
+            std::vector<gtsam::LabeledSymbol> wrenches;
+            for (auto &&joint : connected_joints)
+                wrenches.push_back(WrenchKey(i, joint->getID(), t));
+            if (contacts_[idx])
+                wrenches.push_back(ContactWrenchKey(i, t));
+
+            // Create wrench factor for this link.
+            if (wrenches.size() == 0)
                 graph.add(WrenchFactor0(TwistKey(i, t), TwistAccelKey(i, t),
                                         PoseKey(i, t), opt_.f_cost_model,
                                         link->inertiaMatrix(), gravity));
-            }
-            else if (connected_joints.size() == 1)
-            {
+            else if (wrenches.size() == 1)
                 graph.add(WrenchFactor1(TwistKey(i, t), TwistAccelKey(i, t),
-                                        WrenchKey(i, connected_joints[0]->getID(), t),
+                                        wrenches[0],
                                         PoseKey(i, t), opt_.f_cost_model,
                                         link->inertiaMatrix(), gravity));
-            }
-            else if (connected_joints.size() == 2)
-            {
+            else if (wrenches.size() == 2)
                 graph.add(WrenchFactor2(TwistKey(i, t), TwistAccelKey(i, t),
-                                        WrenchKey(i, connected_joints[0]->getID(), t),
-                                        WrenchKey(i, connected_joints[1]->getID(), t),
+                                        wrenches[0], wrenches[1],
                                         PoseKey(i, t), opt_.f_cost_model,
                                         link->inertiaMatrix(), gravity));
-            }
-            else if (connected_joints.size() == 3)
-            {
+            else if (wrenches.size() == 3)
                 graph.add(WrenchFactor3(TwistKey(i, t), TwistAccelKey(i, t),
-                                        WrenchKey(i, connected_joints[0]->getID(), t),
-                                        WrenchKey(i, connected_joints[1]->getID(), t),
-                                        WrenchKey(i, connected_joints[2]->getID(), t),
+                                        wrenches[0], wrenches[1], wrenches[2],
                                         PoseKey(i, t), opt_.f_cost_model,
                                         link->inertiaMatrix(), gravity));
-            }
-            else if (connected_joints.size() == 4)
-            {
+            else if (wrenches.size() == 4)
                 graph.add(WrenchFactor4(TwistKey(i, t), TwistAccelKey(i, t),
-                                        WrenchKey(i, connected_joints[0]->getID(), t),
-                                        WrenchKey(i, connected_joints[1]->getID(), t),
-                                        WrenchKey(i, connected_joints[2]->getID(), t),
-                                        WrenchKey(i, connected_joints[3]->getID(), t),
+                                        wrenches[0], wrenches[1],
+                                        wrenches[2], wrenches[3],
                                         PoseKey(i, t), opt_.f_cost_model,
                                         link->inertiaMatrix(), gravity));
-            }
             else
-            {
                 throw std::runtime_error("Wrench factor not defined");
+
+            // Enforce contact kinematics and contact dynamics for link in
+            // contact.
+            if (contacts_[idx]) {
+                ContactKinematicsTwistFactor(TwistKey(i, t),
+                    gtsam::noiseModel::Constrained::All(3),
+                    link->leTl_com());
+                ContactKinematicsAccelFactor(TwistAccelKey(i, t),
+                    gtsam::noiseModel::Constrained::All(3),
+                    link->leTl_com());
+                ContactKinematicsPoseFactor(PoseKey(i, t),
+                    gtsam::noiseModel::Constrained::All(6),
+                    link->leTl_com(),
+                    (gtsam::Vector(3) << 0, 0, -9.8).finished());
             }
         }
     }

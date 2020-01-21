@@ -16,6 +16,9 @@
 #include <WrenchEquivalenceFactor.h>
 #include <WrenchFactors.h>
 #include <WrenchPlanarFactor.h>
+#include <ContactKinematicsTwistFactor.h>
+#include <ContactKinematicsAccelFactor.h>
+#include <ContactKinematicsPoseFactor.h>
 #include <cmath>
 #include <gtsam/linear/NoiseModel.h>
 #include <iostream>
@@ -49,6 +52,12 @@ gtsam::LabeledSymbol WrenchKey(int i, int j, int t)
 {
   return gtsam::LabeledSymbol('F', i * 16 + j,
                               t); // a hack here for a key with 3 numbers
+}
+
+/* Shorthand for C_i_t, for contact wrench on i-th link at time t.*/
+gtsam::LabeledSymbol ContactWrenchKey(int i, int t)
+{
+  return gtsam::LabeledSymbol('C', i, t);
 }
 
 /* Shorthand for T_j_t, for torque on the j-th joint at time t. */
@@ -160,11 +169,14 @@ public:
      t                          -- time step
      gravity                    -- gravity in world frame
      plannar_axis               -- axis of the plane, used only for planar robot
+     contacts                   -- vector of length num_links where 1 denotes
+        contact link and 0 denotes no contact.
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const UniversalRobot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &plannar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &plannar_axis = boost::none,
+      const boost::optional<std::vector<uint>> &contacts = boost::none) const;
 
   /** return nonlinear factor graph of the entire trajectory
   * Keyword arguments:
