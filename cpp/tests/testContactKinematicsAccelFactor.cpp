@@ -33,7 +33,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   using namespace simple_urdf;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Constrained::All(6);
+      gtsam::noiseModel::Gaussian::Covariance(I_3x3);
 
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('A', 0, 0);
 
@@ -80,6 +80,14 @@ TEST(ContactKinematicsAccelFactor, error) {
       gtsam::norm_2(factor.evaluateError(link_accel_angular_linear)),
       std::sqrt(std::pow(2, 2) + std::pow(4, 2))
   ));
+
+  // Make sure linearization is correct
+  gtsam::Values values;
+  gtsam::Vector6 link_accel = (
+      gtsam::Vector(6) << 1, 2, 4, 4, 9, 3).finished();
+  values.insert(twist_accel_key, link_accel);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 /**
