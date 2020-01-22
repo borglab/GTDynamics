@@ -19,6 +19,7 @@
 #include <ContactKinematicsTwistFactor.h>
 #include <ContactKinematicsAccelFactor.h>
 #include <ContactKinematicsPoseFactor.h>
+#include <ContactDynamicsMomentFactor.h>
 #include <cmath>
 #include <gtsam/linear/NoiseModel.h>
 #include <iostream>

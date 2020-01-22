@@ -98,6 +98,9 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
                     gtsam::noiseModel::Constrained::All(1),
                     link->leTl_com(),
                     (gtsam::Vector(3) << 0, 0, -9.8).finished());
+                ContactDynamicsMomentFactor(ContactWrenchKey(i, t),
+                    gtsam::noiseModel::Constrained::All(3),
+                    link->leTl_com());
             }
         }
     }
