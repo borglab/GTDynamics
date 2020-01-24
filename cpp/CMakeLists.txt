@@ -9,6 +9,8 @@ add_library(dynamics SHARED ${sources})
 target_link_libraries(dynamics ${GTSAM_LIBS} urdfdom_model urdfdom_world)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/factors)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/universal_robot)
 
 # Install library
 install(TARGETS dynamics LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
@@ -17,6 +19,7 @@ set_target_properties(dynamics PROPERTIES LINKER_LANGUAGE CXX)
 # Process subdirs
 add_subdirectory(tests)
 add_subdirectory(scripts)
+add_subdirectory(factors)
 
 # Wrap
 # include(GtsamCythonWrap)

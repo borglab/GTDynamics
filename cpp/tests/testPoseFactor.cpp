@@ -3,9 +3,10 @@
  * @brief test forward kinematics factor
  * @Author: Frank Dellaert and Mandy Xie
  */
-#include <Arm.h>
-#include <DhLink.h>
+
 #include <PoseFactor.h>
+
+#include <RobotModels.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -90,34 +91,24 @@ TEST(PoseFactor, breaking) {
 
 // Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
-  // RR link example
-  vector<DhLink> dh_rr = {
-      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2),
-      DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 180, 2)};
-  auto robot = Arm<DhLink>(dh_rr);
-  Pose3 pose_goal(Pose3(Rot3::Rz(M_PI / 2), Point3(0, 4, 0)));
-  auto dof = robot.numLinks();
 
-  // get robot jTi list at rest
-  auto jMi = robot.jTis(Vector::Zero(dof));
-  // get base pose in world frame
-  auto basePose = robot.base();
-  // get robot screwAxes for all links
-  auto screwAxes = robot.screwAxes();
-  // joint angles value
-  Vector2 jointAngles(M_PI / 2, 0);
-  // get link COM expected poses
-  auto expectedPoses = robot.comFrames(jointAngles);
+  // Evaluate PoseFunctor on an RR link.
+  using namespace simple_urdf_zero_inertia;
 
-  Pose3 pose_i = basePose;
+  gtsam::Pose3 base_pose = gtsam::Pose3(
+    gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0));
+  
+  double joint_angle = M_PI / 4;
 
-  for (int k = 0; k < dof; ++k) {
-    // create functor
-    PoseFunctor predictPose(jMi[k], screwAxes[k]);
-    EXPECT(assert_equal(expectedPoses[k], predictPose(pose_i, jointAngles[k]),
-                        1e-6));
-    pose_i = expectedPoses[k];
-  }
+  gtsam::Vector6 screw_axis = my_robot.screwAxes()["j1"];
+  gtsam::Pose3 jMi = my_robot.getJointByName("j1")->McpCom();
+
+  PoseFunctor predictPose(jMi, screw_axis);
+
+  EXPECT(assert_equal(
+    my_robot.getJointByName("j1")->MpcCom(joint_angle), 
+    predictPose(base_pose, joint_angle),
+    1e-6));
 }
 
 int main() {

@@ -4,7 +4,6 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include <DhLink.h>
 #include <TorqueFactor.h>
 
 #include <gtsam/base/numericalDerivative.h>
@@ -25,10 +24,8 @@ using namespace gtsam;
 using namespace manipulator;
 
 namespace example {
-// R link example
-DhLink dh_r =
-    DhLink(0, 0, 2, 0, 'R', 1, Point3(-1, 0, 0), Z_3x3, -180, 10, 180);
-// nosie model
+
+// noise model
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_1x1);
 Key torque_key = Symbol('t', 1), wrench_key = Symbol('F', 1);
