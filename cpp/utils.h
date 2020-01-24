@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <SignedDistanceField.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
@@ -99,21 +97,6 @@ gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
  */
 std::vector<std::vector<gtsam::Point3>> sphereCenters(
     std::vector<double> lengths, std::vector<double> radii);
-
-// save for visualization
-/** save optimization result for simulation
- *  Keyword argument:
- *    jointAngle    -- joint angle trajectory
- *    goalPose      -- goal pose
- *    sdf           -- obstacle signed distance field, optional
- *    dof           -- degree of freedom
-      dir           -- directory
- field
-*/
-void saveForVisualization(
-    std::vector<gtsam::Vector> &jointAngle, gtsam::Pose3 &goalPose, int dof,
-    std::string &dir,
-    boost::optional<manipulator::SignedDistanceField &> sdf = boost::none);
 
 /** generation circular path
  *  Keyword argument:

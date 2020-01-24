@@ -10,7 +10,6 @@
 #include <JointLimitFactor.h>
 #include <OptimizerSetting.h>
 #include <PoseFactor.h>
-#include <ToolPoseFactor.h>
 #include <TorqueFactor.h>
 #include <TwistAccelFactor.h>
 #include <TwistFactor.h>
