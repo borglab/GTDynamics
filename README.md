@@ -1,18 +1,35 @@
-# dynamics
-Dynamics with factor graphs
-===================================================
-Vrep Simulation
------
-To use the remote API functionanlity in Python script, you will need following 3 items, which are located in V-REP's installation directory, under programming/remoteApiBindings/python:
-- vrep.py
-- vrepConst.py
-- remoteApi.so, remoteApi.dylib, remoteApi.dll (depending on your target platform)
+# GTdynamics
 
-# Using the wrapper in MATLAB
+### Full kinodynamics motion planning for arbitrary robot configurations with factor graphs.
+<!-- =================================================== -->
 
-Open MATLAB and add the `gtsam_toolbox` to the MATLAB path (by default, cmake prefix is /usr/local, change it to your prefix if you customized it)
+GTdynamics is a library which allows the user to express the full kinodynamics constraints of an arbitrary robot configuration on a factor graph. Given an initial pose, these constraints - along with additional objective functions - can be used to pose a trajectory optimization problem.
 
-```matlab
-addpath('/usr/local/gtsam_toolbox')
+## Dependencies
+
+### macOS
+* [`GTSAM4`](https://github.com/borglab/gtsam)
+* [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
+```
+$ # Install homebrew.
+$ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+$ # Download sdformat to your preferred location.
+$ brew tap osrf/simulation
+$ brew install sdformat8
 ```
 
+## Installing
+```
+git clone <REPO_URL>
+cd gtdynamics
+mkdir build; cd build
+cmake ../
+make
+sudo make install
+```
+
+## Running tests
+
+```
+make check
+```
