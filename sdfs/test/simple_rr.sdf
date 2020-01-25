@@ -1,6 +1,7 @@
 <sdf version='1.6'>
 <world name='default'>
   <model name='simple_rr_sdf'>
+    <plugin name='set_joint_velocity_plugin' filename='libSetJointVelocityPlugin.so'/>
     <!-- A simple rr robot with three links and two revolute joints -->
 
 
@@ -128,8 +129,6 @@
       <axis>
         <xyz>0 0 1</xyz>
         <limit>
-          <lower>-2.96706</lower>
-          <upper>2.96706</upper>
           <effort>300</effort>
           <velocity>10</velocity>
         </limit>
@@ -144,13 +143,12 @@
     </joint>
 
     <joint name='joint_2' type='revolute'>
+      <pose frame=''>0 0 0.8 0 -0 0</pose>
       <child>link_2</child>
       <parent>link_1</parent>
       <axis>
         <xyz>0 1 0</xyz>
         <limit>
-          <lower>-2.96706</lower>
-          <upper>2.96706</upper>
           <effort>300</effort>
           <velocity>10</velocity>
         </limit>
