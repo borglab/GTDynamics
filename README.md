@@ -9,9 +9,14 @@ GTdynamics is a library which allows the user to express the full kinodynamics c
 
 * [`GTSAM4`](https://github.com/borglab/gtsam)
 
+* [`Gazebo`](http://gazebosim.org/)
+```bash
+$ curl -sSL http://get.gazebosim.org | sh
+```
+
 ### macOS
 * [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
-```
+```bash
 $ # Install homebrew.
 $ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 $ # Download sdformat to your preferred location.
@@ -21,7 +26,7 @@ $ brew install sdformat8
 
 ### Ubuntu
 * [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
-```
+```bash
 $ # Install homebrew (for linux).
 $ sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
 $ # Download sdformat to your preferred location.
@@ -30,17 +35,17 @@ $ brew install sdformat8
 ```
 
 ## Installing
-```
-git clone <REPO_URL>
-cd gtdynamics
-mkdir build; cd build
-cmake ../
-make
-sudo make install
+```bash
+$ git clone <REPO_URL>
+$ cd gtdynamics
+$ mkdir build; cd build
+$ cmake ../
+$ make
+$ sudo make install
 ```
 
 ## Running tests
 
-```
-make check
+```bash
+$ make check
 ```
