@@ -12,6 +12,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 #include "urdf_parser/urdf_parser.h"
+#include <sdf/sdf.hh>
 
 #include <boost/optional.hpp>
 #include <cmath>
@@ -137,4 +138,14 @@ std::string load_file_into_string(const std::string rel_path);
       urdf_contents    -- a string containing the contents of the URDF file.
  */
 urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
+
+/** obtain the sdf ElementPtr associated with the robot model.
+ * Keyword arguments:
+ *    sdf_file_path    -- a string containing the absolute to the sdf file.
+ *    model_name       -- name of the robot we care about. Must be specified in
+        case a world file is specified.
+*/
+sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 }  // namespace robot
+
+

@@ -33,7 +33,7 @@ TEST(UniversalRobot, test_extract_structure_from_urdf) {
   j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
   joint_params.push_back(j1_params);
 
-  RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf, 
+  RobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf, 
     boost::optional<std::vector<robot::RobotJointParams>>(joint_params));
   std::vector<robot::RobotLinkSharedPtr> linkBodies = urdf_bodies_and_joints.first;
   std::vector<robot::RobotJointSharedPtr> RobotJoints = urdf_bodies_and_joints.second;
@@ -87,7 +87,7 @@ TEST(UniversalRobot, test_extract_structure_with_loop_from_urdf) {
   auto four_bar_urdf = get_urdf(four_bar_urdf_str);
 
   // Obtain RobotLink and JointBody objects from ModelInterfaceSharedPtr.
-  RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(four_bar_urdf);
+  RobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(four_bar_urdf);
   std::vector<robot::RobotLinkSharedPtr> linkBodies = urdf_bodies_and_joints.first;
   std::vector<robot::RobotJointSharedPtr> RobotJoints = urdf_bodies_and_joints.second;
 
@@ -230,7 +230,7 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
     auto simple_urdf = get_urdf(simple_urdf_str);
 
-    RobotRobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf);
+    RobotJointPair urdf_bodies_and_joints = extract_structure_from_urdf(simple_urdf);
 
     // Initialize UniversalRobot instance using RobotLink and RobotJoint instances.
     UniversalRobot simple_robot = UniversalRobot(urdf_bodies_and_joints);

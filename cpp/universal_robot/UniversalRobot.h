@@ -42,10 +42,31 @@ namespace robot {
  * 
  */
 typedef std::pair<std::vector<robot::RobotLinkSharedPtr>,
-                  std::vector<robot::RobotJointSharedPtr>> RobotRobotJointPair;
-RobotRobotJointPair extract_structure_from_urdf(
+                  std::vector<robot::RobotJointSharedPtr>> RobotJointPair;
+RobotJointPair extract_structure_from_urdf(
     const urdf::ModelInterfaceSharedPtr urdf_ptr,
     const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none);
+
+/** Construct all RobotLink and RobotJoint objects from an input sdf::ElementPtr.
+ * Keyword arguments:
+ *    sdf_ptr          -- a shared pointer to a sdf::ElementPtr containing the
+        robot model.
+ *    joint_params     -- a vector contanining optional params for joints.
+ * 
+ */
+RobotJointPair extract_structure_from_sdf(
+    const sdf::Model sdf,
+    const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none);
+
+/** Construct all RobotLink and RobotJoint objects from an input urdf or sdf file.
+ * Keyword arguments:
+ *    file_path    -- absolute path to the urdf or sdf file containing the robot description.
+ *    joint_params -- a vector containing optional params for joints.
+*/
+RobotJointPair extract_structure_from_file(
+    const std::string file_path,
+    const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none
+);
 
 class UniversalRobot {
 
@@ -62,17 +83,17 @@ public:
     /**
      * Construct a robot structure using a URDF model interface.
      * Keyword Arguments:
-     *  robot_links_and_joints    -- RobotRobotJointPair containing links and joints.
+     *  robot_links_and_joints    -- RobotJointPair containing links and joints.
      * 
      */    
-    UniversalRobot(RobotRobotJointPair urdf_links_and_joints);
+    UniversalRobot(RobotJointPair links_and_joints);
 
-    /** Construct a robot structure directly from a urdf file.
+    /** Construct a robot structure directly from a urdf or sdf file.
      * 
      * Keyword Arguments:
-     *  urdf_file_path -- path to the file.
+     *  file_path -- path to the file.
      */
-    UniversalRobot(const std::string urdf_file_path);
+    UniversalRobot(const std::string file_path);
 
     /// Return this robot's links.
     std::vector<RobotLinkSharedPtr> links() const;

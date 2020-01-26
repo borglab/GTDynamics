@@ -130,6 +130,41 @@ TEST(utils, load_and_parse_urdf_file_with_loop) {
   EXPECT(assert_equal(1, std::count(l1_child_joint_names.begin(), l1_child_joint_names.end(), "j3")));
 }
 
+TEST(utils, load_and_parse_sdf_file) {
+  std::string simple_sdf_path = "../../../sdfs/test/simple.sdf";
+  auto simple_sdf = get_sdf(simple_sdf_path);
+
+  std::cout << simple_sdf.Name() << std::endl;
+
+  EXPECT(assert_equal(1, simple_sdf.LinkCount()));
+  EXPECT(assert_equal(0, simple_sdf.JointCount()));
+}
+
+TEST(utils, load_and_parse_sdf_world_file) {
+  std::string simple_sdf_path = "../../../sdfs/test/simple_rr.sdf";
+  auto simple_sdf = get_sdf(simple_sdf_path, "simple_rr_sdf");
+
+  std::cout << simple_sdf.Name() << std::endl;
+
+  EXPECT(assert_equal(3, simple_sdf.LinkCount()));
+  EXPECT(assert_equal(3, simple_sdf.JointCount()));
+
+  sdf::Link l0 = *simple_sdf.LinkByName("link_0");
+  sdf::Link l1 = *simple_sdf.LinkByName("link_1");
+
+  EXPECT(assert_equal(0.05, l0.Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(0.06, l0.Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(0.03, l0.Inertial().Moi()(2, 2)));
+
+  EXPECT(assert_equal(0.05, l1.Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(0.06, l1.Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(0.03, l1.Inertial().Moi()(2, 2)));
+
+
+  // std::cout << l1.Inertial().Moi()(0, 0) << std::endl;
+
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
