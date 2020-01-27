@@ -18,6 +18,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <urdf_model/link.h>
+#include <sdf/sdf.hh>
 
 #include <string>
 #include <vector>
@@ -38,6 +39,12 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   double mass_;
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
+
+  // SDF Elements.
+  // TODO(aescontrela3): Refactor URDF constructor to use this same notation.
+  gtsam::Pose3 Twl_; // Link frame defined in the world frame.
+  gtsam::Pose3 Tlcom_; // CoM frame defined in the link frame.
+  gtsam::Pose3 Twcom_; // CoM frame defined in the world frame.
 
   // pose elements
   gtsam::Pose3 link_pose_;  // pose of link expressed in root link frame
@@ -61,14 +68,12 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   RobotLink() {}
   
   /**
-   * Create RobotLink from a urdf::LinkSharedPtr instance, as described in 
-   * ROS/urdfdom_headers:
+   * Initialize RobotLink's inertial properties with a urdf::LinkSharedPtr instance, 
+   * as described in ROS/urdfdom_headers:
    * https://github.com/ros/urdfdom_headers/blob/master/urdf_model/include/urdf_model/link.h
    * 
    * Keyword arguments:
    *   urdf_link_ptr   -- (ptr to) object containing relevant link information.
-   *   parent_link     -- link connected to this link via the parent joint.
-   *   parent_joint    -- joint which connects this link to the parent link.
    */
   RobotLink(urdf::LinkSharedPtr urdf_link_ptr) 
       : name_(urdf_link_ptr->name), mass_(urdf_link_ptr->inertial->mass),
@@ -91,7 +96,61 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
             urdf_link_ptr->inertial->ixx, urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->ixz,
             urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->iyy, urdf_link_ptr->inertial->iyz,
             urdf_link_ptr->inertial->ixz, urdf_link_ptr->inertial->iyz, urdf_link_ptr->inertial->izz).finished()),
-        pose_set_(false), is_fixed_(false){}
+        pose_set_(false), is_fixed_(false) {
+    
+
+
+  }
+  
+  /** 
+   * Initialize RobotLink's inertial properties with a sdf::Link instance, as
+   * described in the sdformat8 documentation: 
+   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
+   * 
+   * Keyword arguments:
+   *    sdf_link -- sdf::Link object containing link information.
+   */
+  RobotLink(sdf::Link sdf_link)
+      : name_(sdf_link.Name()),
+        mass_(sdf_link.Inertial().MassMatrix().Mass()),
+        inertia_((gtsam::Matrix(3,3) <<
+          sdf_link.Inertial().Moi()(0, 0), sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
+          sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1), sdf_link.Inertial().Moi()(1, 2),
+          sdf_link.Inertial().Moi()(2, 0), sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2)
+        ).finished()),
+        Twl_(gtsam::Pose3(
+          gtsam::Rot3(
+            gtsam::Quaternion(
+              sdf_link.Pose().Rot().W(),
+              sdf_link.Pose().Rot().X(),
+              sdf_link.Pose().Rot().Y(),
+              sdf_link.Pose().Rot().Z()
+            )
+          ),
+          gtsam::Point3(
+            sdf_link.Pose().Pos()[0],
+            sdf_link.Pose().Pos()[1],
+            sdf_link.Pose().Pos()[2]
+          )
+        )),
+        Tlcom_(gtsam::Pose3(
+          gtsam::Rot3(
+            gtsam::Quaternion(
+              sdf_link.Inertial().Pose().Rot().W(),
+              sdf_link.Inertial().Pose().Rot().X(),
+              sdf_link.Inertial().Pose().Rot().Y(),
+              sdf_link.Inertial().Pose().Rot().Z()
+            )
+          ),
+          gtsam::Point3(
+            sdf_link.Inertial().Pose().Pos()[0],
+            sdf_link.Inertial().Pose().Pos()[1],
+            sdf_link.Inertial().Pose().Pos()[2]
+          )
+        )),
+        Twcom_(Twl_ * Tlcom_),
+        pose_set_(true), is_fixed_(false)
+        {}
 
   virtual ~RobotLink() = default;
 
@@ -160,6 +219,10 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     com_pose_ = link_pose_ * centerOfMass_ ;
     pose_set_ = true;
   }
+
+  const gtsam::Pose3& Twl() { return Twl_; }
+  const gtsam::Pose3& Tlcom() { return Tlcom_; }
+  const gtsam::Pose3& Twcom() { return Twcom_; }
 
   const gtsam::Pose3& getLinkPose() {
     return link_pose_;

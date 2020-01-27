@@ -182,7 +182,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::multiPhaseTrajectoryFG(
     int t = 0;
     graph.add(dynamicsFactorGraph(robot, t, gravity, plannar_axis));
 
-    for (int phase = 0; phase < phase_steps.size(); phase++) {
+    for (uint phase = 0; phase < phase_steps.size(); phase++) {
         for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
             graph.add(multiPhaseCollocationFactors(robot, t, phase, collocation));
             t++;

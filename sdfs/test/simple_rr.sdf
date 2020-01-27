@@ -124,6 +124,7 @@
     </link>
 
     <joint name='joint_1' type='revolute'>
+      <pose frame=''>0 0 0.2 0 -0 0</pose>
       <child>link_1</child>
       <parent>link_0</parent>
       <axis>

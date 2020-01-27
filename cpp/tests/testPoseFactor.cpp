@@ -100,7 +100,7 @@ TEST(PoseFactor, breaking_rr) {
   
   double joint_angle = M_PI / 4;
 
-  gtsam::Vector6 screw_axis = my_robot.screwAxes()["j1"];
+  gtsam::Vector6 screw_axis = my_robot.getJointByName("j1")->screwAxis();
   gtsam::Pose3 jMi = my_robot.getJointByName("j1")->McpCom();
 
   PoseFunctor predictPose(jMi, screw_axis);

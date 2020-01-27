@@ -239,10 +239,6 @@ TEST(UniversalRobot, instantiate_from_urdf) {
     EXPECT(assert_equal(2, simple_robot.links().size()));
     EXPECT(assert_equal(1, simple_robot.joints().size()));
 
-    // This robot has a single screw axis (at joint j1).
-    map<string, Vector6> screw_axes = simple_robot.screwAxes();
-    EXPECT(assert_equal(1, screw_axes.size()));
-
     EXPECT(assert_equal(
       "l1",
       simple_robot.getLinkByName("l1")->name()
@@ -256,28 +252,22 @@ TEST(UniversalRobot, instantiate_from_urdf) {
       simple_robot.getJointByName("j1")->name()
     ));
 
-    // Test joint limit utility methods.
-    map<string, double> joint_lower_limits = simple_robot.jointLowerLimits();
-    map<string, double> joint_upper_limits = simple_robot.jointUpperLimits();
-    map<string, double> joint_limit_thresholds = simple_robot.jointLimitThresholds();
-
-    EXPECT(assert_equal(1, joint_lower_limits.size()));
-    EXPECT(assert_equal(1, joint_upper_limits.size()));
-    EXPECT(assert_equal(1, joint_limit_thresholds.size()));
-
-    EXPECT(assert_equal(-1.57, joint_lower_limits["j1"]));
-    EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
-    EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
-
     EXPECT(assert_equal(
-      Pose3(Rot3(), Point3(0, 0, 2)),
-      simple_robot.joints()[0]->Mpc()
-    ));
-
+      -1.57, simple_robot.getJointByName("j1")->jointLowerLimit()));
     EXPECT(assert_equal(
-      Pose3(Rot3(), Point3(0, 0, -2)),
-      simple_robot.joints()[0]->Mcp()
-    ));
+      1.57, simple_robot.getJointByName("j1")->jointUpperLimit()));
+    EXPECT(assert_equal(
+      0.0, simple_robot.getJointByName("j1")->jointLimitThreshold()));
+
+    // EXPECT(assert_equal(
+    //   Pose3(Rot3(), Point3(0, 0, 2)),
+    //   simple_robot.joints()[0]->Mpc()
+    // ));
+
+    // EXPECT(assert_equal(
+    //   Pose3(Rot3(), Point3(0, 0, -2)),
+    //   simple_robot.joints()[0]->Mcp()
+    // ));
 
     EXPECT(assert_equal(
       Pose3(Rot3(), Point3(0, 0, -2)),
@@ -299,10 +289,6 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
   EXPECT(assert_equal(5, four_bar.links().size()));
   EXPECT(assert_equal(5, four_bar.joints().size()));
 
-  // This robot has a single screw axis (at joint j1).
-  map<string, Vector6> screw_axes = four_bar.screwAxes();
-  EXPECT(assert_equal(5, screw_axes.size()));
-
   // Test getLinkByName(...) and getJointByName(...)
   EXPECT(assert_equal("l0", four_bar.getLinkByName("l0")->name()));
   EXPECT(assert_equal("l1", four_bar.getLinkByName("l1")->name()));
@@ -315,18 +301,40 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
   EXPECT(assert_equal("j3", four_bar.getJointByName("j3")->name()));
   EXPECT(assert_equal("j4", four_bar.getJointByName("j4")->name()));
 
-  // Test joint limit utility methods.
-  map<string, double> joint_lower_limits = four_bar.jointLowerLimits();
-  map<string, double> joint_upper_limits = four_bar.jointUpperLimits();
-  map<string, double> joint_limit_thresholds = four_bar.jointLimitThresholds();
+  EXPECT(assert_equal(
+    -1.57, four_bar.getJointByName("j1")->jointLowerLimit()));
+  EXPECT(assert_equal(
+    1.57, four_bar.getJointByName("j1")->jointUpperLimit()));
+  EXPECT(assert_equal(
+    0.0, four_bar.getJointByName("j1")->jointLimitThreshold()));
+}
 
-  EXPECT(assert_equal(5, joint_lower_limits.size()));
-  EXPECT(assert_equal(5, joint_upper_limits.size()));
-  EXPECT(assert_equal(5, joint_limit_thresholds.size()));
+TEST(UniversalRobot, instantiate_from_sdf_file) {
 
-  EXPECT(assert_equal(-1.57, joint_lower_limits["j1"]));
-  EXPECT(assert_equal(1.57, joint_upper_limits["j1"]));
-  EXPECT(assert_equal(0.0, joint_limit_thresholds["j1"]));
+  // Initialize UniversalRobot instance from a file.
+  UniversalRobot simple_rr = UniversalRobot("../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+
+  // // Check that number of links and joints in the UniversalRobot instance is correct.
+  EXPECT(assert_equal(3, simple_rr.links().size()));
+  EXPECT(assert_equal(2, simple_rr.joints().size()));
+
+  // Test getLinkByName(...) and getJointByName(...)
+  EXPECT(assert_equal("link_0", simple_rr.getLinkByName("link_0")->name()));
+  EXPECT(assert_equal("link_1", simple_rr.getLinkByName("link_1")->name()));
+  EXPECT(assert_equal("link_2", simple_rr.getLinkByName("link_2")->name()));
+
+  EXPECT(assert_equal("joint_1", simple_rr.getJointByName("joint_1")->name()));
+  EXPECT(assert_equal("joint_2", simple_rr.getJointByName("joint_2")->name()));
+
+  EXPECT(assert_equal(
+    -1e16, simple_rr.getJointByName("joint_1")->jointLowerLimit()));
+  
+  EXPECT(assert_equal(
+    1e16, simple_rr.getJointByName("joint_1")->jointUpperLimit()));
+  
+  EXPECT(assert_equal(
+    0.0, simple_rr.getJointByName("joint_1")->jointLimitThreshold()));
+
 }
 
 TEST(UniversalRobot, removeLink) {

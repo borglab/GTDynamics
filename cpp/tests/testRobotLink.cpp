@@ -20,9 +20,9 @@ using namespace gtsam;
 
 /**
  * 
- * construct a RobotLink and ensure all values are as expected.
+ * construct a RobotLink via urdf link and ensure all values are as expected.
  */
-TEST(RobotLink, constructor) {
+TEST(RobotLink, urdf_constructor) {
     std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
     auto simple_urdf = get_urdf(simple_urdf_str);
 
@@ -73,6 +73,45 @@ TEST(RobotLink, constructor) {
     unsigned char id = 'a';
     first_link.setID(id);
     EXPECT(assert_equal((double) first_link.getID(), (double) id));
+}
+
+TEST(RobotLink, sdf_constructor) {
+    auto model = get_sdf("../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+
+    RobotLink l0 = RobotLink(*model.LinkByName("link_0"));
+    RobotLink l1 = RobotLink(*model.LinkByName("link_1"));
+
+    // Both link frames are defined in the world frame.
+    EXPECT(assert_equal(gtsam::Pose3::identity(), l0.Twl()));
+    EXPECT(assert_equal(gtsam::Pose3::identity(), l1.Twl()));
+
+    // Verify center of mass defined in the link frame is correct.
+    EXPECT(assert_equal(
+        gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1)),
+        l0.Tlcom()));
+    EXPECT(assert_equal(
+        gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5)),
+        l1.Tlcom()));
+
+    // Verify center of mass defined in the world frame is correct.
+    EXPECT(assert_equal(
+        gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1)),
+        l0.Twcom()));
+    EXPECT(assert_equal(
+        gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5)),
+        l1.Twcom()));
+
+    // Verify that mass is correct.
+    EXPECT(assert_equal(0.01, l0.mass()));
+    EXPECT(assert_equal(0.01, l1.mass()));
+
+    // Verify that inertia elements are correct.
+    EXPECT(assert_equal(
+        (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+        l0.inertia()));
+    EXPECT(assert_equal(
+        (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+        l1.inertia()));
 }
 
 int main() {

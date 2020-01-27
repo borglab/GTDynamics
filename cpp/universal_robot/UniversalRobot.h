@@ -65,6 +65,7 @@ RobotJointPair extract_structure_from_sdf(
 */
 RobotJointPair extract_structure_from_file(
     const std::string file_path,
+    const std::string model_name,
     const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none
 );
 
@@ -93,7 +94,7 @@ public:
      * Keyword Arguments:
      *  file_path -- path to the file.
      */
-    UniversalRobot(const std::string file_path);
+    UniversalRobot(const std::string file_path, std::string model_name = "");
 
     /// Return this robot's links.
     std::vector<RobotLinkSharedPtr> links() const;
@@ -118,21 +119,6 @@ public:
 
     /// Return number of joints.
     int numJoints() const;
-
-    /// Return each link's length.
-    std::map<std::string, double> lengths() const;
-
-    /// Return each joint's screw axis in their COM frame.
-    std::map<std::string, gtsam::Vector6> screwAxes() const;
-
-    /// Return all joint lower limits.
-    std::map<std::string, double> jointLowerLimits() const;
-
-    /// Return all joint upper limits.
-    std::map<std::string, double> jointUpperLimits() const;
-
-    /// Return all joint limit thresholds.
-    std::map<std::string, double> jointLimitThresholds() const;
 
     /// Returns the joint connecting the links l1 and l2.
     RobotJointSharedPtr getJointBetweenLinks(std::string l1, std::string l2);
