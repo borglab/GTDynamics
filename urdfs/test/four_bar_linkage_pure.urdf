@@ -7,6 +7,12 @@
             <mass value="1" />
             <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
     </link>
     <link name="l2">
         <inertial>
@@ -14,6 +20,12 @@
             <mass value="1" />
             <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
     </link>
     <link name="l3">
         <inertial>
@@ -21,6 +33,12 @@
             <mass value="1" />
             <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
     </link>
     <link name="l4">
         <inertial>
@@ -28,6 +46,12 @@
             <mass value="1" />
             <inertia ixx="1" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
         </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 1" />
+            <geometry>
+                <cylinder length="2" radius="0.2"/>
+            </geometry>
+        </visual>
     </link>
 
     <!-- Joints. These joints form a loop. -->

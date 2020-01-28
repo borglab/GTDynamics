@@ -11,7 +11,7 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
-#include "urdf_parser/urdf_parser.h"
+// #include "urdf_parser/urdf_parser.h"
 #include <sdf/sdf.hh>
 
 #include <boost/optional.hpp>
@@ -137,7 +137,7 @@ std::string load_file_into_string(const std::string rel_path);
  * Keyword arguments:
       urdf_contents    -- a string containing the contents of the URDF file.
  */
-urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
+// urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
 
 /** obtain the sdf ElementPtr associated with the robot model.
  * Keyword arguments:

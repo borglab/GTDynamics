@@ -23,7 +23,8 @@ endforeach()
 
 add_library(dynamics SHARED ${sources})
 
-target_link_libraries(dynamics ${GTSAM_LIBS} urdfdom_model urdfdom_world ${SDFormat_LIBRARIES})
+# target_link_libraries(dynamics ${GTSAM_LIBS} urdfdom_model urdfdom_world ${SDFormat_LIBRARIES})
+target_link_libraries(dynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
 target_include_directories(dynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
 
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})

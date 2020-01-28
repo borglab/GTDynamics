@@ -44,7 +44,7 @@ endif()
 add_subdirectory(cpp)
 
 # External subdirs.
-add_subdirectory(ThirdParty/urdfdom)
+# add_subdirectory(ThirdParty/urdfdom)
 
 # for cython wrapper
 find_package(GTSAM REQUIRED) # Make sure gtsam's install folder is in your PATH
