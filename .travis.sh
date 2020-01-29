@@ -6,6 +6,8 @@ function configure()
   set -e   # Make sure any error makes the script to return an error code
   set -x   # echo
 
+  PATH=/usr/local/lib:${PATH}
+
   SOURCE_DIR=`pwd`
 
   # Build GTSAM.
@@ -14,7 +16,6 @@ function configure()
 
   GTSAM_DIR=`pwd`
   BUILD_DIR=build
-
   #env
   git clean -fd || true
   rm -fr $BUILD_DIR || true
@@ -66,7 +67,7 @@ function finish ()
 # compile the code with the intent of populating the cache
 function build ()
 {
-  export GTSAM_BUILD_EXAMPLES_ALWAYS=ON
+  export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
   export GTSAM_BUILD_TESTS=OFF
 
   configure
@@ -80,7 +81,7 @@ function build ()
 function test ()
 {
   export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
-  export GTSAM_BUILD_TESTS=ON
+  export GTSAM_BUILD_TESTS=OFF
 
   configure
 
