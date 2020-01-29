@@ -6,6 +6,8 @@ function configure()
   set -e   # Make sure any error makes the script to return an error code
   set -x   # echo
 
+  BASE_DIR=`pwd`
+
   git clone https://github.com/borglab/gtsam.git
   cd gtsam
 
@@ -32,6 +34,8 @@ function configure()
       -DGTSAM_ALLOW_DEPRECATED_SINCE_V4=${GTSAM_ALLOW_DEPRECATED_SINCE_V4:-OFF} \
       -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
       -DCMAKE_VERBOSE_MAKEFILE=ON
+  
+  cd $BASE_DIR
 }
 
 
