@@ -2,7 +2,7 @@ enable_testing()
 include(GtsamMatlabWrap)
 
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS trajectory_optimization universal_robot factors utils)
+set(SOURCE_SUBDIRS kinodynamics universal_robot factors utils)
 
 # Create dynamics library and link source and header files.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -39,4 +39,4 @@ set_target_properties(dynamics PROPERTIES LINKER_LANGUAGE CXX)
 add_subdirectory(tests)
 add_subdirectory(scripts)
 add_subdirectory(factors)
-add_subdirectory(trajectory_optimization)
+add_subdirectory(kinodynamics)

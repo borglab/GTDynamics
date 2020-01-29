@@ -4,12 +4,7 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-// TODO(aescontrela): implement RobotLink getLinkByName(std::string name) and 
-//  RobotJoint getJointByName(std::string name) methods.
-
 #pragma once
-
-#include <JointLimitFactor.h>
 
 #include <RobotTypes.h>
 #include <RobotLink.h>

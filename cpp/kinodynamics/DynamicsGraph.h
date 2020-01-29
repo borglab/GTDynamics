@@ -4,9 +4,6 @@
  * @Author: Yetong Zhang, Alejandro Escontrela
  */
 #pragma once
-
-#include <JointLimitFactor.h>
-#include <JsonSaver.h>
 #include <OptimizerSetting.h>
 #include <PoseFactor.h>
 #include <TorqueFactor.h>
@@ -15,10 +12,6 @@
 #include <WrenchEquivalenceFactor.h>
 #include <WrenchFactors.h>
 #include <WrenchPlanarFactor.h>
-#include <ContactKinematicsTwistFactor.h>
-#include <ContactKinematicsAccelFactor.h>
-#include <ContactKinematicsPoseFactor.h>
-#include <ContactDynamicsMomentFactor.h>
 #include <cmath>
 #include <gtsam/linear/NoiseModel.h>
 #include <iostream>
@@ -52,12 +45,6 @@ gtsam::LabeledSymbol WrenchKey(int i, int j, int t)
 {
   return gtsam::LabeledSymbol('F', i * 16 + j,
                               t); // a hack here for a key with 3 numbers
-}
-
-/* Shorthand for C_i_t, for contact wrench on i-th link at time t.*/
-gtsam::LabeledSymbol ContactWrenchKey(int i, int t)
-{
-  return gtsam::LabeledSymbol('C', i, t);
 }
 
 /* Shorthand for T_j_t, for torque on the j-th joint at time t. */
@@ -142,19 +129,10 @@ public:
     opt_.tf_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.q_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.qv_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.setJointLimitCostModel(1e-3);
 
     opt_.setLM();
   }
   ~DynamicsGraphBuilder() {}
-
-  enum CollocationScheme
-  {
-    Euler,
-    RungeKutta,
-    Trapezoidal,
-    HermiteSimpson
-  };
 
   enum OptimizerType
   {
@@ -169,75 +147,12 @@ public:
      t                          -- time step
      gravity                    -- gravity in world frame
      plannar_axis               -- axis of the plane, used only for planar robot
-     contacts                   -- vector of length num_links where 1 denotes
-        contact link and 0 denotes no contact.
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const UniversalRobot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &plannar_axis = boost::none,
-      const boost::optional<std::vector<uint>> &contacts = boost::none) const;
-
-  /** return nonlinear factor graph of the entire trajectory
-  * Keyword arguments:
-     robot                      -- the robot
-     num_steps                  -- total time steps
-     dt                         -- duration of each time step
-     collocation                -- the collocation scheme
-     gravity                    -- gravity in world frame
-     plannar_axis               -- axis of the plane, used only for planar robot
-   */
-  gtsam::NonlinearFactorGraph trajectoryFG(
-      const UniversalRobot &robot, const int num_steps, const double dt,
-      const CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &plannar_axis = boost::none) const;
 
-  /** return nonlinear factor graph of the entire trajectory for multi-phase
-  * Keyword arguments:
-     robot                      -- the robot
-     phase_steps                -- number of time steps for each phase
-     collocation                -- the collocation scheme
-     gravity                    -- gravity in world frame
-     plannar_axis               -- axis of the plane, used only for planar robot
-   */
-  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const UniversalRobot &robot, const std::vector<int> &phase_steps,
-      const CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &plannar_axis = boost::none) const;
-
-  /** return collocation factors on angles and velocities from time step t to t+1
-  * Keyword arguments:
-     robot                      -- the robot
-     t                          -- time step
-     dt                         -- duration of each timestep
-     collocation                -- collocation scheme chosen
-   */
-  gtsam::ExpressionFactorGraph collocationFactors(const UniversalRobot &robot,
-                                                  const int t, const double dt,
-                                                  const CollocationScheme collocation) const;
-
-
-  /** return collocation factors on angles and velocities from time step t to t+1, with dt as a varaible
-  * Keyword arguments:
-     robot                      -- the robot
-     t                          -- time step
-     phase                      -- the phase of the timestep
-     collocation                -- collocation scheme chosen
-   */
-  gtsam::ExpressionFactorGraph multiPhaseCollocationFactors(const UniversalRobot &robot,
-                                                  const int t, const int phase,
-                                                  const CollocationScheme collocation) const;
-
-
-  /** return joint factors to limit angle, velocity, acceleration, and torque
-  * Keyword arguments:
-     robot                      -- the robot
-     t                          -- time step
-   */
-  gtsam::NonlinearFactorGraph jointLimitFactors(const UniversalRobot &robot,
-                                                const int t) const;
 
   /** return prior factors of torque, angle, velocity
   * Keyword arguments:
@@ -253,19 +168,6 @@ public:
                         const gtsam::Vector &joint_vels,
                         const gtsam::Vector &torques) const;
 
-  /** return prior factors of initial state, torques along trajectory
-  * Keyword arguments:
-     robot                      -- the robot
-     num_steps                  -- total time steps
-     joint_angles               -- joint angles specified in order of joints
-     joint_vels                 -- joint velocites specified in order of joints
-     torques_seq                -- joint torques along the trajectory
-   */
-  gtsam::NonlinearFactorGraph
-  trajectoryFDPriors(const UniversalRobot &robot, const int num_steps,
-                     const gtsam::Vector &joint_angles,
-                     const gtsam::Vector &joint_vels,
-                     const std::vector<gtsam::Vector> &torques_seq) const;
 
   /** return the joint accelerations
   * Keyword arguments:
@@ -288,13 +190,6 @@ public:
    */
   static gtsam::Values zeroValues(const UniversalRobot &robot, const int t);
 
-  /** return zero values of the trajectory for initial value of optimization
-  * Keyword arguments:
-     robot                      -- the robot
-     num_steps                  -- total time steps
-     num_phases                 -- number of phases, -1 for not using multi-phase
-   */
-  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps, const int num_phases=-1);
 
   /** optimize factor graph
   * Keyword arguments:
@@ -311,21 +206,6 @@ public:
 
   // print the values
   static void print_values(const gtsam::Values &values);
-
-  /** save factor graph in json format for visualization
-  * Keyword arguments:
-     file_path                  -- path of the json file to store the graph
-     graph                      -- factor graph
-     values                     -- values of variables in factor graph
-     robot                      -- the robot
-     t                          -- time step
-     radial                     -- option to display in radial format
-   */
-  static void saveGraph(const std::string &file_path,
-                        const gtsam::NonlinearFactorGraph &graph,
-                        const gtsam::Values &values,
-                        const UniversalRobot &robot, const int t,
-                        bool radial = false);
 };
 
 } // namespace robot
