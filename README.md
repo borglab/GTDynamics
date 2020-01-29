@@ -1,6 +1,6 @@
 # GTDynamics
 
-### Full kinodynamics motion planning for arbitrary robot configurations with factor graphs.
+### Full kinodynamics for arbitrary robot configurations with factor graphs.
 <!-- =================================================== -->
 
 GTdynamics is a library which allows the user to express the full kinodynamics constraints of an arbitrary robot configuration on a factor graph. Given an initial pose, these constraints - along with additional objective functions - can be used to pose a trajectory optimization problem.
