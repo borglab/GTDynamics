@@ -29,32 +29,33 @@ using namespace std;
 using namespace robot;
 using namespace gtsam;
 
-TEST(SimulatorFD, jumping_robot)
-{
-  using namespace jumping_robot;
-  auto simulator = Simulator(my_robot, joint_angles, joint_vels, gravity, planar_axis);
+// TEST(SimulatorFD, jumping_robot)
+// {
+//   using namespace jumping_robot;
+//   std::cout << "loaded jumping robot!" << std::endl;
+//   auto simulator = Simulator(my_robot, joint_angles, joint_vels, gravity, planar_axis);
 
-  double torque3 = 0;
-  double torque2 = 0.5;
-  Vector torques = (Vector(6) << 0, torque2, torque3, torque3, torque2, 0).finished();
-  simulator.forwardDynamics(torques);
-  Vector actual_qAccel = simulator.getJointAccelerations();
+//   double torque3 = 0;
+//   double torque2 = 0.5;
+//   Vector torques = (Vector(6) << 0, torque2, torque3, torque3, torque2, 0).finished();
+//   simulator.forwardDynamics(torques);
+//   Vector actual_qAccel = simulator.getJointAccelerations();
 
-  // check acceleration
-  auto expected_qAccel = Vector(6);
-  double m1 = 0.31;
-  double m2 = 0.28;
-  double m3 = 0.54;
-  double link_radius = 0.02;
-  double l = 0.55;
-  double theta = 0.0 / 180.0 * M_PI;
-  double acc =
-      (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l * std::sin(theta)) /
-      (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) * m3) +
-       (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0 / 12 * m2));
-  expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
-  EXPECT(assert_equal(expected_qAccel, actual_qAccel));
-}
+//   // check acceleration
+//   auto expected_qAccel = Vector(6);
+//   double m1 = 0.31;
+//   double m2 = 0.28;
+//   double m3 = 0.54;
+//   double link_radius = 0.02;
+//   double l = 0.55;
+//   double theta = 0.0 / 180.0 * M_PI;
+//   double acc =
+//       (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l * std::sin(theta)) /
+//       (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) * m3) +
+//        (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0 / 12 * m2));
+//   expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
+//   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
+// }
 
 TEST(Simulate, simple_urdf)
 {

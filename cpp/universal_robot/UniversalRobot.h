@@ -25,7 +25,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-// #include <urdf_model/model.h>
 
 #include <stdexcept>
 #include <sstream>
@@ -44,9 +43,6 @@ namespace robot {
  */
 typedef std::pair<std::vector<robot::RobotLinkSharedPtr>,
                   std::vector<robot::RobotJointSharedPtr>> RobotJointPair;
-// RobotJointPair extract_structure_from_urdf(
-//     const urdf::ModelInterfaceSharedPtr urdf_ptr,
-//     const boost::optional<std::vector<robot::RobotJointParams>> joint_params = boost::none);
 
 /** Construct all RobotLink and RobotJoint objects from an input sdf::ElementPtr.
  * Keyword arguments:
@@ -120,9 +116,6 @@ public:
 
     /// Return number of joints.
     int numJoints() const;
-
-    /// Returns the joint connecting the links l1 and l2.
-    RobotJointSharedPtr getJointBetweenLinks(std::string l1, std::string l2);
 
     // print links and joints of the robot, for debug purposes
     void printRobot() const;

@@ -23,17 +23,16 @@ using namespace gtsam;
  * construct a RobotLink via urdf link and ensure all values are as expected.
  */
 TEST(RobotLink, urdf_constructor) {
-    std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
-    auto simple_urdf = get_urdf(simple_urdf_str);
+    auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
 
     // Initialize UniversalRobot instance using urdf::ModelInterfacePtr.
-    RobotLink first_link = RobotLink(simple_urdf->links_["l1"]);
+    RobotLink first_link = RobotLink(*simple_urdf.LinkByName("l1"));
 
     EXPECT(assert_equal("l1", first_link.name()));
     EXPECT(assert_equal(100, first_link.mass()));
 
     // Check center of mass.
-    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.centerOfMass()));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.Tlcom()));
 
     // Check inertia.
     EXPECT(assert_equal(
@@ -57,7 +56,7 @@ TEST(RobotLink, urdf_constructor) {
     EXPECT(assert_equal(0, first_link.getChildJoints().size()));
 
     // Add child link.
-    RobotLink second_link = RobotLink(simple_urdf->links_["l2"]);
+    RobotLink second_link = RobotLink(*simple_urdf.LinkByName("l2"));
     
     second_link.addParentLink(std::make_shared<RobotLink>(first_link));
 
@@ -65,6 +64,9 @@ TEST(RobotLink, urdf_constructor) {
     EXPECT(assert_equal(first_link.name(), second_link.getParentLinks()[0]->name()));
 
     first_link.addChildLink(std::make_shared<RobotLink>(second_link));
+
+    // Assert correct center of mass in link frame.
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.Tlcom()));
 
     // Check transform to link-end frame from link com frame. leTl_com
     EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, -1)), first_link.leTl_com()));

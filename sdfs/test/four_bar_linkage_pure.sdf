@@ -157,8 +157,8 @@
       </axis>
     </joint>
     <joint name='j4' type='revolute'>
-      <child>l4</child>
-      <parent>l1</parent>
+      <child>l1</child>
+      <parent>l4</parent>
       <axis>
         <xyz>1 0 0</xyz>
         <limit>

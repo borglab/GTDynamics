@@ -17,7 +17,6 @@
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <urdf_model/link.h>
 #include <sdf/sdf.hh>
 
 #include <string>
@@ -41,15 +40,9 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   gtsam::Matrix3 inertia_;
 
   // SDF Elements.
-  // TODO(aescontrela3): Refactor URDF constructor to use this same notation.
   gtsam::Pose3 Twl_; // Link frame defined in the world frame.
   gtsam::Pose3 Tlcom_; // CoM frame defined in the link frame.
   gtsam::Pose3 Twcom_; // CoM frame defined in the world frame.
-
-  // pose elements
-  gtsam::Pose3 link_pose_;  // pose of link expressed in root link frame
-  gtsam::Pose3 com_pose_;   // com pose of link expressed in root link frame
-  bool pose_set_;           // indicate whether the pose has been set
 
   // option to fix the link, used for ground link
   bool is_fixed_;
@@ -66,41 +59,6 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
  public:
   RobotLink() {}
-  
-  /**
-   * Initialize RobotLink's inertial properties with a urdf::LinkSharedPtr instance, 
-   * as described in ROS/urdfdom_headers:
-   * https://github.com/ros/urdfdom_headers/blob/master/urdf_model/include/urdf_model/link.h
-   * 
-   * Keyword arguments:
-   *   urdf_link_ptr   -- (ptr to) object containing relevant link information.
-   */
-  RobotLink(urdf::LinkSharedPtr urdf_link_ptr) 
-      : name_(urdf_link_ptr->name), mass_(urdf_link_ptr->inertial->mass),
-        centerOfMass_(gtsam::Pose3(
-            gtsam::Rot3(
-                gtsam::Quaternion(
-                    urdf_link_ptr->inertial->origin.rotation.w,
-                    urdf_link_ptr->inertial->origin.rotation.x,
-                    urdf_link_ptr->inertial->origin.rotation.y,
-                    urdf_link_ptr->inertial->origin.rotation.z
-                )
-            ), 
-            gtsam::Point3(
-                urdf_link_ptr->inertial->origin.position.x,
-                urdf_link_ptr->inertial->origin.position.y,
-                urdf_link_ptr->inertial->origin.position.z
-            )
-        )),
-        inertia_((gtsam::Matrix(3,3) << 
-            urdf_link_ptr->inertial->ixx, urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->ixz,
-            urdf_link_ptr->inertial->ixy, urdf_link_ptr->inertial->iyy, urdf_link_ptr->inertial->iyz,
-            urdf_link_ptr->inertial->ixz, urdf_link_ptr->inertial->iyz, urdf_link_ptr->inertial->izz).finished()),
-        pose_set_(false), is_fixed_(false) {
-    
-
-
-  }
   
   /** 
    * Initialize RobotLink's inertial properties with a sdf::Link instance, as
@@ -149,8 +107,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
           )
         )),
         Twcom_(Twl_ * Tlcom_),
-        pose_set_(true), is_fixed_(false)
-        {}
+        is_fixed_(false) {}
 
   virtual ~RobotLink() = default;
 
@@ -198,6 +155,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
       return id_;
   }
 
+  // TODO(aescontrela): Kill the children and the parents. Just remove them entirely?
   void addChildJoint(RobotJointWeakPtr child_joint_ptr) {
       child_joints_.push_back(child_joint_ptr);
   }
@@ -214,30 +172,12 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
       parent_links_.push_back(parent_link_ptr);
   }
 
-  void setPose(const gtsam::Pose3& link_pose) {
-    link_pose_ = link_pose;
-    com_pose_ = link_pose_ * centerOfMass_ ;
-    pose_set_ = true;
-  }
-
   const gtsam::Pose3& Twl() { return Twl_; }
   const gtsam::Pose3& Tlcom() { return Tlcom_; }
   const gtsam::Pose3& Twcom() { return Twcom_; }
 
-  const gtsam::Pose3& getLinkPose() {
-    return link_pose_;
-  }
-
-  const gtsam::Pose3& getComPose() {
-    return com_pose_;
-  }
-
   const gtsam::Pose3& getFixedPose() {
     return fixed_pose_;
-  }
-
-  bool isPoseSet() {
-    return pose_set_;
   }
 
   bool isFixed() {
@@ -247,18 +187,14 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   // fix the link to fixed_pose, if fixed_pose not specify, fix the link to default pose
   void fix(const boost::optional<gtsam::Pose3&> fixed_pose = boost::none) {
     is_fixed_ = true;
-    if (fixed_pose) {
-      fixed_pose_ = *fixed_pose;
-    }
-    else {
-      fixed_pose_ = com_pose_;
-    }
+    fixed_pose_ = fixed_pose ? *fixed_pose : Twcom_;
   }
 
   void unfix() {
     is_fixed_ = false;
   }
 
+  // TODO(aescontrela): Remove these.
   std::vector<RobotJointWeakPtr> getChildJoints(void) {
       return child_joints_;
   }
@@ -299,9 +235,10 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
   /// Return the frame at link's end in the link com frame.
+  // TODO(aescontrela): Comment this better. Nuke this later.
   gtsam::Pose3 leTl_com() const {
     gtsam::Pose3 l_comTle = gtsam::Pose3(
-    gtsam::Rot3::identity(), centerOfMass_.translation());
+    gtsam::Rot3::identity(), Tlcom_.translation());
     return l_comTle.inverse();
   }
 

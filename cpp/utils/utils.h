@@ -11,7 +11,6 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
-// #include "urdf_parser/urdf_parser.h"
 #include <sdf/sdf.hh>
 
 #include <boost/optional.hpp>
@@ -127,18 +126,6 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
 }  // namespace manipulator
 
 namespace robot {
-/** read text from a file.
- * Keyword arguments:
-      rel_path         -- relative path to the file.
- */
-std::string load_file_into_string(const std::string rel_path);
-
-/** obtain the urdf model from a string containing the contents of a .urdf file.
- * Keyword arguments:
-      urdf_contents    -- a string containing the contents of the URDF file.
- */
-// urdf::ModelInterfaceSharedPtr get_urdf(std::string urdf_contents);
-
 /** obtain the sdf ElementPtr associated with the robot model.
  * Keyword arguments:
  *    sdf_file_path    -- a string containing the absolute to the sdf file.

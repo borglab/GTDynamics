@@ -158,21 +158,6 @@ std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
 
 
 namespace robot {
-string load_file_into_string(const string rel_path) {
-  auto ss = std::ostringstream{};
-  std::ifstream file(rel_path);
-
-  if (!file.good())
-    throw std::runtime_error("File does not exist"); 
-
-  ss << file.rdbuf();
-  return ss.str();
-}
-
-// urdf::ModelInterfaceSharedPtr get_urdf(string urdf_contents) {
-//   urdf::ModelInterfaceSharedPtr urdf = urdf::parseURDF(urdf_contents);
-//   return urdf;
-// }
 
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   auto sdf = sdf::readFile(sdf_file_path);

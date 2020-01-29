@@ -31,7 +31,6 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
         contacts_ = std::vector<uint>(robot.numLinks(), 0);
 
     // add factors corresponding to links
-    // for (auto &&link : robot.links())
     for (int idx = 0; idx < robot.numLinks(); idx++)
     {
         auto link = robot.links()[idx];
@@ -131,12 +130,9 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
             opt_.a_cost_model, joint->McpCom(), joint->screwAxis()));
 
         // add wrench equivalence factor
-        if (!link_1->isFixed() && !link_2->isFixed())
-        {
-            graph.add(WrenchEquivalenceFactor(
-                WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
-                opt_.f_cost_model, joint->McpCom(), joint->screwAxis()));
-        }
+        graph.add(WrenchEquivalenceFactor(
+            WrenchKey(i1, j, t), WrenchKey(i2, j, t), JointAngleKey(j, t),
+            opt_.f_cost_model, joint->McpCom(), joint->screwAxis()));
 
         // add torque factor
         graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
@@ -419,7 +415,7 @@ gtsam::Values DynamicsGraphBuilder::zeroValues(const UniversalRobot &robot, cons
     for (auto &link : robot.links())
     {
         int i = link->getID();
-        zero_values.insert(PoseKey(i, t), link->getComPose());
+        zero_values.insert(PoseKey(i, t), link->Twcom());
         zero_values.insert(TwistKey(i, t), zero_twists);
         zero_values.insert(TwistAccelKey(i, t), zero_accels);
     }
@@ -428,15 +424,8 @@ gtsam::Values DynamicsGraphBuilder::zeroValues(const UniversalRobot &robot, cons
         int j = joint->getID();
         auto parent_link = joint->parentLink();
         auto child_link = joint->childLink().lock();
-        if (!parent_link->isFixed())
-        {
-            zero_values.insert(WrenchKey(parent_link->getID(), j, t),
-                               zero_wrenches);
-        }
-        if (!child_link->isFixed())
-        {
-            zero_values.insert(WrenchKey(child_link->getID(), j, t), zero_wrenches);
-        }
+        zero_values.insert(WrenchKey(parent_link->getID(), j, t), zero_wrenches);
+        zero_values.insert(WrenchKey(child_link->getID(), j, t), zero_wrenches);
         zero_values.insert(TorqueKey(j, t), zero_torque[0]);
         zero_values.insert(JointAngleKey(j, t), zero_q[0]);
         zero_values.insert(JointVelKey(j, t), zero_v[0]);
@@ -520,7 +509,7 @@ void DynamicsGraphBuilder::print_values(const gtsam::Values &values)
     {
         print_key(key);
         std::cout << "\n";
-        // values.at(key).print();
+        values.at(key).print();
         std::cout << "\n";
     }
 }

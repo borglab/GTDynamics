@@ -23,11 +23,11 @@ using namespace gtsam;
  * construct a RobotJoint and ensure all values are as expected.
  */
 TEST(RobotJoint, urdf_constructor) {
-    std::string simple_urdf_str = load_file_into_string("../../../urdfs/test/simple_urdf.urdf");
-    auto simple_urdf = get_urdf(simple_urdf_str);
+    auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
 
-    RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(simple_urdf->links_["l1"]));
-    RobotLinkSharedPtr l2 = std::make_shared<RobotLink>(RobotLink(simple_urdf->links_["l2"]));
+    RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l1")));
+    RobotLinkSharedPtr l2 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l2")));
+
     RobotLinkWeakPtr l2_weak = l2->getWeakPtr();
 
     robot::RobotJointParams j1_params;
@@ -35,34 +35,33 @@ TEST(RobotJoint, urdf_constructor) {
     j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
 
     // Test constructor.
-    RobotJointSharedPtr link_joint_strong = std::make_shared<RobotJoint>(
+    RobotJointSharedPtr j1 = std::make_shared<RobotJoint>(
       RobotJoint(
-        simple_urdf->joints_["j1"], j1_params.jointEffortType, j1_params.springCoefficient,
+        *simple_urdf.JointByName("j1"), j1_params.jointEffortType, j1_params.springCoefficient,
         j1_params.jointLimitThreshold, j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
         j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold, l1,
         l2_weak));
 
     // Rest transform is equivalent to transform with q = 0.
-    // EXPECT(assert_equal(link_joint_strong->Mpj(), link_joint_strong->Tpc(0)));
-    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), link_joint_strong->Mpj()));
-
-    // Test that parent to child link transform is correct for -pi/2 and pi/2.
-    // EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 0, 2)), link_joint_strong->Tpc(-M_PI / 2)));
-    // EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, 0, 2)), link_joint_strong->Tpc(M_PI / 2)));
-
-    // Test that ID is set correctly.
-    unsigned char id = 'a';
-    link_joint_strong->setID(id);
-    EXPECT(assert_equal((double) link_joint_strong->getID(), (double) id));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, -1)), j1->Tjpcom()));
+    EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), j1->Tjccom()));
 
     // Test joint screw axis
     Vector6 screw_axis_j1;
     screw_axis_j1 << 1, 0, 0, 0, -1, 0;
     EXPECT(assert_equal(
-      link_joint_strong->screwAxis(),
+      j1->screwAxis(),
       screw_axis_j1
-    ))
+    ));
 
+    // Test that parent to child link transform is correct for -pi/2 and pi/2.
+    EXPECT(assert_equal(Pose3(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1)), j1->MpcCom(-M_PI / 2)));
+    EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI / 2), Point3(0, -1, 1)), j1->MpcCom(M_PI / 2)));
+
+    // Test that ID is set correctly.
+    unsigned char id = 'a';
+    j1->setID(id);
+    EXPECT(assert_equal((double) j1->getID(), (double) id));
 }
 
 TEST(RobotJoint, sdf_constructor) {
