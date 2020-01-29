@@ -1,4 +1,4 @@
-# GTdynamics
+# GTDynamics
 
 ### Full kinodynamics motion planning for arbitrary robot configurations with factor graphs.
 <!-- =================================================== -->
@@ -8,11 +8,6 @@ GTdynamics is a library which allows the user to express the full kinodynamics c
 ## Dependencies
 
 * [`GTSAM4`](https://github.com/borglab/gtsam)
-
-* [`Gazebo`](http://gazebosim.org/)
-```bash
-$ curl -sSL http://get.gazebosim.org | sh
-```
 
 ### macOS
 * [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
