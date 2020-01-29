@@ -1,17 +1,11 @@
+/**
+ * @file  forward_dynamics_simple.cpp
+ * @brief Simple forward dynamics optimization for a two link robot with one revolute joint.
+ * @Author: Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
+ */
+
 #include <RobotModels.h>
 #include <DynamicsGraph.h>
-#include <UniversalRobot.h>
-#include <gtsam/geometry/Point3.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/inference/LabeledSymbol.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <utils.h>
-
-#include <gtsam/base/numericalDerivative.h>
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -19,37 +13,36 @@
 
 #include <iostream>
 
-TEST(DynamicsGraph, forward_dynamics_rr) {
+TEST(DynamicsGraph, forward_dynamics_r) {
 
+    // Load the simple robot and fix the first link's pose.
     using namespace simple_urdf;
-
-    robot::DynamicsGraphBuilder dg_builder = robot::DynamicsGraphBuilder();
-
     my_robot.getLinkByName("l1")->fix();
 
+    // Build a factor graph with all the kinodynamics constraints.
+    robot::DynamicsGraphBuilder dg_builder = robot::DynamicsGraphBuilder();
     gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
-    gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
-
     gtsam::NonlinearFactorGraph dfg = dg_builder.dynamicsFactorGraph(
         my_robot, 0, gravity, planar_axis);
 
-    gtsam::Vector theta = (gtsam::Vector(2) << 0, 0).finished();
-    gtsam::Vector theta_dot = (gtsam::Vector(2) << 0, 0).finished();
-    gtsam::Vector tau = (gtsam::Vector(2) << 0, 0).finished();
+    // Specify the priors and add them to the factor graph.
+    gtsam::Vector theta = (gtsam::Vector(1) << 0).finished();
+    gtsam::Vector theta_dot = (gtsam::Vector(1) << 0).finished();
+    gtsam::Vector tau = (gtsam::Vector(1) << 0).finished();
     gtsam::NonlinearFactorGraph fd_priors = dg_builder.forwardDynamicsPriors(
         my_robot, 0, theta, theta_dot, tau);
-
     dfg.add(fd_priors);
 
+    // Obtain solution initialization.
     gtsam::Values init_values = dg_builder.zeroValues(my_robot, 0);
 
+    // Compute the forward dynamics.
     gtsam::Values results = dg_builder.optimize(dfg, init_values,
-        robot::DynamicsGraphBuilder::OptimizerType::GaussNewton);
+        robot::DynamicsGraphBuilder::OptimizerType::LM);
 
+    // Print the resulting values and compute error.
     dg_builder.print_values(results);
-
     std::cout << "Optimization error: " << dfg.error(results) << std::endl;
-
 }
 
 int main()
