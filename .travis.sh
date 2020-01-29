@@ -6,9 +6,12 @@ function configure()
   set -e   # Make sure any error makes the script to return an error code
   set -x   # echo
 
+  git clone https://github.com/borglab/gtsam.git
+  cd gtsam
+
   SOURCE_DIR=`pwd`
   BUILD_DIR=build
-
+  
   #env
   git clean -fd || true
   rm -fr $BUILD_DIR || true
@@ -49,9 +52,6 @@ function build ()
 
   configure
 
-
-  git clone https://github.com/borglab/gtsam.git
-  cd gtsam
   make -j2
 
   finish
