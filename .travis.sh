@@ -66,7 +66,7 @@ function finish ()
 # compile the code with the intent of populating the cache
 function build ()
 {
-  export GTSAM_BUILD_EXAMPLES_ALWAYS=ON
+  export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
   export GTSAM_BUILD_TESTS=OFF
 
   configure
@@ -80,7 +80,7 @@ function build ()
 function test ()
 {
   export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
-  export GTSAM_BUILD_TESTS=ON
+  export GTSAM_BUILD_TESTS=OFF
 
   configure
 
