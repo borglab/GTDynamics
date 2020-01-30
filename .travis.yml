@@ -25,6 +25,7 @@ install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PATH="/usr/local/opt/ccache/libexec:$PATH" ; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew tap osrf/simulation && brew install sdformat8 ; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" ; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then echo 'export PATH="$HOME/.linuxbrew/bin:$PATH"' >>~/.bash_profile ; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then brew tap osrf/simulation && brew install sdformat8 ; fi
 
 # We first do the compile stage specified below, then the matrix expansion specified after.
@@ -45,31 +46,18 @@ jobs:
 # on Mac, GCC
   - stage: compile
     os: osx
-    compiler: gcc
-    env: CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
-    script: bash .travis.sh -b
-  - stage: compile
-    os: osx
+    osx_image: xcode10.2
     compiler: gcc
     env: CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -b
 # on Mac, CLANG
   - stage: compile
     os: osx
-    compiler: clang
-    env: CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
-    script: bash .travis.sh -b
-  - stage: compile
-    os: osx
+    osx_image: xcode10.2
     compiler: clang
     env: CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -b
 # on Linux, GCC
-  - stage: compile
-    os: linux
-    compiler: gcc
-    env: CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
-    script: bash .travis.sh -b
   - stage: compile
     os: linux
     compiler: gcc
@@ -79,49 +67,32 @@ jobs:
   - stage: compile
     os: linux
     compiler: clang
-    env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
-    script: bash .travis.sh -b
-  - stage: compile
-    os: linux
-    compiler: clang
     env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -b
-# on Linux, with deprecated ON to make sure that path still compiles/tests
-  - stage: special
-    os: linux
-    compiler: clang
-    env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF GTSAM_ALLOW_DEPRECATED_SINCE_V4=ON
     script: bash .travis.sh -b
 # -------- STAGE 2: TESTS -----------
 # on Mac, GCC
   - stage: test
     os: osx
-    compiler: clang
+    osx_image: xcode10.2
+    compiler: gcc
     env: CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -t
+# on Mac, CLANG
   - stage: test
     os: osx
+    osx_image: xcode10.2
     compiler: clang
-    env: CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
+    env: CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -t
+# on Linux, GCC
   - stage: test
     os: linux
     compiler: gcc
     env: CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -t
-  - stage: test
-    os: linux
-    compiler: gcc
-    env: CMAKE_BUILD_TYPE=Debug GTSAM_BUILD_UNSTABLE=OFF
-    script: bash .travis.sh -t
+# on Linux, CLANG
   - stage: test
     os: linux
     compiler: clang
     env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -t
-# on Linux, with quaternions ON to make sure that path still compiles/tests
-  - stage: special
-    os: linux
-    compiler: clang
-    env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release GTSAM_BUILD_UNSTABLE=OFF GTSAM_USE_QUATERNIONS=ON
     script: bash .travis.sh -t
