@@ -71,29 +71,29 @@ jobs:
     env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release
     script: bash .travis.sh -b
 # -------- STAGE 2: TESTS -----------
-# on Mac, GCC
-  - stage: test
-    os: osx
-    osx_image: xcode10.2
-    compiler: gcc
-    env: CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -t
-# on Mac, CLANG
-  - stage: test
-    os: osx
-    osx_image: xcode10.2
-    compiler: clang
-    env: CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -t
-# on Linux, GCC
-  - stage: test
-    os: linux
-    compiler: gcc
-    env: CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -t
-# on Linux, CLANG
-  - stage: test
-    os: linux
-    compiler: clang
-    env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release
-    script: bash .travis.sh -t
+# # on Mac, GCC
+#   - stage: test
+#     os: osx
+#     osx_image: xcode10.2
+#     compiler: gcc
+#     env: CMAKE_BUILD_TYPE=Release
+#     script: bash .travis.sh -t
+# # on Mac, CLANG
+#   - stage: test
+#     os: osx
+#     osx_image: xcode10.2
+#     compiler: clang
+#     env: CMAKE_BUILD_TYPE=Release
+#     script: bash .travis.sh -t
+# # on Linux, GCC
+#   - stage: test
+#     os: linux
+#     compiler: gcc
+#     env: CMAKE_BUILD_TYPE=Release
+#     script: bash .travis.sh -t
+# # on Linux, CLANG
+#   - stage: test
+#     os: linux
+#     compiler: clang
+#     env: CC=clang-9 CXX=clang++-9 CMAKE_BUILD_TYPE=Release
+#     script: bash .travis.sh -t

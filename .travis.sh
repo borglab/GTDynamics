@@ -84,9 +84,7 @@ function test ()
   export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
   export GTSAM_BUILD_TESTS=OFF
 
-#   configure
-  build
-  cd $BUILD_DIR
+  configure
 
   # Actual build:
   make -j2 check
