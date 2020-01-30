@@ -6,6 +6,8 @@ function configure()
   set -e   # Make sure any error makes the script to return an error code
   set -x   # echo
 
+  PATH=/usr/local/lib:${PATH}
+
   SOURCE_DIR=`pwd`
 
   # Build GTSAM.
