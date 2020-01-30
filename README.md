@@ -32,7 +32,7 @@ $ brew install sdformat8
 ## Installing
 ```bash
 $ git clone https://github.com/borglab/GTDynamics.git
-$ cd gtdynamics
+$ cd GTDynamics
 $ mkdir build; cd build
 $ cmake ../
 $ make
