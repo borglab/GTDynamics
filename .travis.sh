@@ -84,7 +84,8 @@ function test ()
   export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
   export GTSAM_BUILD_TESTS=OFF
 
-  configure
+#   configure
+  build
 
   # Actual build:
   make -j2 check
