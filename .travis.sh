@@ -36,7 +36,7 @@ function configure()
       -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
       -DCMAKE_VERBOSE_MAKEFILE=ON
     
-  make install
+  make install -j2
   
   # Build GTDynamics.
   cd $SOURCE_DIR
