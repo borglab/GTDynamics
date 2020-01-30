@@ -14,11 +14,7 @@ function configure()
 
   GTSAM_DIR=`pwd`
   BUILD_DIR=build
-<<<<<<< HEAD
-
-=======
   
->>>>>>> eaba990d9b129e11a8fd3635cfa17e28a78ef0d2
   #env
   git clean -fd || true
   rm -fr $BUILD_DIR || true
