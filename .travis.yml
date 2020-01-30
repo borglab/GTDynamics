@@ -25,7 +25,7 @@ install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PATH="/usr/local/opt/ccache/libexec:$PATH" ; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew tap osrf/simulation && brew install sdformat8 ; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" ; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then echo 'export PATH="$HOME/.linuxbrew/bin:$PATH"' >>~/.bash_profile ; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv) ; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then brew tap osrf/simulation && brew install sdformat8 ; fi
 
 # We first do the compile stage specified below, then the matrix expansion specified after.
