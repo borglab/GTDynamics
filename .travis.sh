@@ -6,12 +6,13 @@ function configure()
   set -e   # Make sure any error makes the script to return an error code
   set -x   # echo
 
-  BASE_DIR=`pwd`
+  SOURCE_DIR=`pwd`
 
+  # Build GTSAM.
   git clone https://github.com/borglab/gtsam.git
   cd gtsam
 
-  SOURCE_DIR=`pwd`
+  GTSAM_DIR=`pwd`
   BUILD_DIR=build
   
   #env
@@ -25,7 +26,7 @@ function configure()
   fi
 
   # GTSAM_BUILD_WITH_MARCH_NATIVE=OFF: to avoid crashes in builder VMs
-  cmake $SOURCE_DIR \
+  cmake $GTSAM_DIR \
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Debug} \
       -DGTSAM_BUILD_TESTS=${GTSAM_BUILD_TESTS:-OFF} \
       -DGTSAM_BUILD_UNSTABLE=${GTSAM_BUILD_UNSTABLE:-ON} \
@@ -35,7 +36,19 @@ function configure()
       -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
       -DCMAKE_VERBOSE_MAKEFILE=ON
   
-  cd $BASE_DIR
+  # Build GTDynamics.
+  cd $SOURCE_DIR
+
+  git clean -fd || true
+  rm -fr $BUILD_DIR || true
+  mkdir $BUILD_DIR && cd $BUILD_DIR
+
+  if [ ! -z "$GCC_VERSION" ]; then
+    export CC=gcc-$GCC_VERSION
+    export CXX=g++-$GCC_VERSION
+  fi
+
+  cmake $SOURCE_DIR
 }
 
 
