@@ -86,6 +86,7 @@ function test ()
 
 #   configure
   build
+  cd $BUILD_DIR
 
   # Actual build:
   make -j2 check
