@@ -1,9 +1,9 @@
 # GTDynamics
 
-### Full kinodynamics for arbitrary robot configurations with factor graphs.
+### Full kinodynamics constraints for arbitrary robot configurations with factor graphs.
 <!-- =================================================== -->
 
-GTdynamics is a library which allows the user to express the full kinodynamics constraints of an arbitrary robot configuration on a factor graph. Given an initial pose, these constraints - along with additional objective functions - can be used to pose a trajectory optimization problem.
+GTDynamics is a library that allows the user to express the full kinodynamics constraints of an arbitrary robot configuration on a factor graph. These constraints can be used to solve the forward and inverse dynamics problems.
 
 ## Dependencies
 
@@ -31,8 +31,8 @@ $ brew install sdformat8
 
 ## Installing
 ```bash
-$ git clone <REPO_URL>
-$ cd gtdynamics
+$ git clone https://github.com/borglab/GTDynamics.git
+$ cd GTDynamics
 $ mkdir build; cd build
 $ cmake ../
 $ make
@@ -43,4 +43,16 @@ $ sudo make install
 
 ```bash
 $ make check
+```
+
+## Citing this work
+
+The core paper behind this work is:
+```
+@misc{1911.10065,
+    Author = {Mandy Xie and Frank Dellaert},
+    Title = {A Unified Method for Solving Inverse, Forward, and Hybrid Manipulator Dynamics using Factor Graphs},
+    Year = {2019},
+    Eprint = {arXiv:1911.10065},
+}
 ```
