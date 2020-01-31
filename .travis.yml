@@ -18,8 +18,8 @@ addons:
     - libboost-all-dev
     - libtinyxml-dev
 
-before_install:
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update          ; fi
+# before_install:
+#   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update          ; fi
 
 install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then HOMEBREW_NO_AUTO_UPDATE=1 brew install ccache  ; fi
