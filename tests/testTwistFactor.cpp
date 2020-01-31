@@ -1,9 +1,15 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  testTwistFactor.cpp
- * @brief test twist factor
+ * @brief Test twist factor.
  * @Author: Frank Dellaert and Mandy Xie
  */
-// #include <DhLink.h>
 
 #include <CppUnitLite/TestHarness.h>
 #include <TwistFactor.h>
@@ -18,37 +24,38 @@
 
 #include <iostream>
 
-using namespace std;
-using namespace gtsam;
-using namespace manipulator;
+using gtsam::assert_equal;
 
 namespace example {
-noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(I_6x6);
-Key twist_i_key = Symbol('V', 1), twist_j_key = Symbol('V', 2),
-    qKey = Symbol('q', 0), qVelKey = Symbol('j', 0);
+gtsam::noiseModel::Gaussian::shared_ptr cost_model =
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+gtsam::Key twist_i_key = gtsam::Symbol('V', 1),
+           twist_j_key = gtsam::Symbol('V', 2), qKey = gtsam::Symbol('q', 0),
+           qVelKey = gtsam::Symbol('j', 0);
 }  // namespace example
 
 // Test twist factor for stationary case
 TEST(TwistFactor, error) {
   // Create all factors
-  Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
-  Vector6 screw_axis;
+  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
+  gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TwistFactor factor(example::twist_i_key, example::twist_j_key, example::qKey,
-                     example::qVelKey, example::cost_model, jMi, screw_axis);
+  manipulator::TwistFactor factor(example::twist_i_key, example::twist_j_key,
+                                  example::qKey, example::qVelKey,
+                                  example::cost_model, jMi, screw_axis);
   double q = M_PI / 4, qVel = 10;
-  Vector twist_i, twist_j;
-  twist_i = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  twist_j = (Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
-  Vector6 actual_errors, expected_errors;
+  gtsam::Vector twist_i, twist_j;
+  twist_i = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
+  twist_j =
+      (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
+  gtsam::Vector6 actual_errors, expected_errors;
 
   actual_errors = factor.evaluateError(twist_i, twist_j, q, qVel);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  Values values;
+  gtsam::Values values;
   values.insert(example::qKey, q);
   values.insert(example::qVelKey, qVel);
   values.insert(example::twist_i_key, twist_i);

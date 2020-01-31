@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  TwistAccelFactor.h
  * @brief twist acceleration factor, common between forward and inverse
@@ -13,9 +20,10 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <utils.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
+
+#include <boost/optional.hpp>
 
 namespace manipulator {
 
@@ -131,7 +139,7 @@ class TwistAccelFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }

@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  PoseFactor.h
- * @brief forward kinematics factor
+ * @brief Forward kinematics factor.
  * @Author: Frank Dellaert and Mandy Xie
  */
 
@@ -119,7 +126,7 @@ class PoseFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }

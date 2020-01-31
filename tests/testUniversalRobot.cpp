@@ -1,7 +1,14 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file testUniversalRobot.cpp
- * @brief test UniversalRobot instance methods and integration test with various
- * URDF configurations
+ * @brief Test UniversalRobot instance methods and integration test with various
+ * URDF/SDF configurations.
  * @Author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
@@ -13,9 +20,9 @@
 #include <gtsam/linear/VectorValues.h>
 #include <utils.h>
 
-using namespace std;
-using namespace robot;
-using namespace gtsam;
+using gtsam::assert_equal;
+using robot::get_sdf, robot::UniversalRobot, robot::RobotJointPair,
+    robot::extract_structure_from_sdf;
 
 // Constructs RobotLink and RobotJoint objects from an input urdf:ModelInterface
 // pointer and checks that constructed values have correct parents, children,
@@ -111,10 +118,10 @@ TEST(UniversalRobot, instantiate_from_urdf) {
   EXPECT(assert_equal(
       0.0, simple_robot.getJointByName("j1")->jointLimitThreshold()));
 
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, -2)),
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
                       simple_robot.joints()[0]->McpCom()));
 
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)),
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
                       simple_robot.joints()[0]->MpcCom()));
 }
 

@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  testTwistAccelFactor.cpp
- * @brief test twistAccel factor
+ * @brief Test twistAccel factor.
  * @Author: Frank Dellaert and Mandy Xie
  */
 
@@ -18,37 +25,37 @@
 #include <cmath>
 #include <iostream>
 
-using namespace std;
-using namespace gtsam;
-using namespace manipulator;
+using gtsam::assert_equal;
 
 namespace example {
 
 // noise model
-noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(I_6x6);
-Key qKey = Symbol('q', 0), qVelKey = Symbol('j', 0), qAccelKey = Symbol('a', 0),
-    twistKey = Symbol('V', 0), twistAccel_i_key = Symbol('T', 0),
-    twistAccel_j_key = Symbol('T', 1);
+gtsam::noiseModel::Gaussian::shared_ptr cost_model =
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+gtsam::Key qKey = gtsam::Symbol('q', 0), qVelKey = gtsam::Symbol('j', 0),
+           qAccelKey = gtsam::Symbol('a', 0), twistKey = gtsam::Symbol('V', 0),
+           twistAccel_i_key = gtsam::Symbol('T', 0),
+           twistAccel_j_key = gtsam::Symbol('T', 1);
 }  // namespace example
 
 // Test twistAccel factor for stationary case
 TEST(TwistAccelFactor, error) {
   // Create all factors
-  Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
-  Vector6 screw_axis;
+  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
+  gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TwistAccelFactor factor(example::twistKey, example::twistAccel_i_key,
-                          example::twistAccel_j_key, example::qKey,
-                          example::qVelKey, example::qAccelKey,
-                          example::cost_model, jMi, screw_axis);
+  manipulator::TwistAccelFactor factor(
+      example::twistKey, example::twistAccel_i_key, example::twistAccel_j_key,
+      example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
+      jMi, screw_axis);
   double q = M_PI / 4, qVel = 10, qAccel = 10;
-  Vector twist, twistAccel_i, twistAccel_j;
-  twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  twistAccel_i = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  twistAccel_j = (Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
-  Vector6 actual_errors, expected_errors;
+  gtsam::Vector twist, twistAccel_i, twistAccel_j;
+  twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  twistAccel_i = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
+  twistAccel_j =
+      (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
+  gtsam::Vector6 actual_errors, expected_errors;
 
   actual_errors =
       factor.evaluateError(twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
@@ -56,7 +63,7 @@ TEST(TwistAccelFactor, error) {
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  Values values;
+  gtsam::Values values;
   values.insert(example::qKey, q);
   values.insert(example::qVelKey, qVel);
   values.insert(example::qAccelKey, qAccel);
@@ -70,27 +77,27 @@ TEST(TwistAccelFactor, error) {
 // Test twistAccel factor for stationary case
 TEST(TwistAccelFactor, error_1) {
   // Create all factors
-  Pose3 jMi = Pose3(Rot3(), Point3(-1, 0, 0));
-  Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
+  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
+  gtsam::Vector6 screw_axis = (gtsam::Vector(6) << 0, 0, 1, 0, 1, 0).finished();
 
-  TwistAccelFactor factor(example::twistKey, example::twistAccel_i_key,
-                          example::twistAccel_j_key, example::qKey,
-                          example::qVelKey, example::qAccelKey,
-                          example::cost_model, jMi, screw_axis);
+  manipulator::TwistAccelFactor factor(
+      example::twistKey, example::twistAccel_i_key, example::twistAccel_j_key,
+      example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
+      jMi, screw_axis);
   double q = 0, qVel = 0, qAccel = -9.8;
-  Vector6 twist, twistAccel_i, twistAccel_j;
-  twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  twistAccel_i = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
-  twistAccel_j = (Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
-  Vector6 actual_errors, expected_errors;
+  gtsam::Vector6 twist, twistAccel_i, twistAccel_j;
+  twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  twistAccel_i = (gtsam::Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
+  twistAccel_j = (gtsam::Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
+  gtsam::Vector6 actual_errors, expected_errors;
 
   actual_errors =
       factor.evaluateError(twist, twistAccel_i, twistAccel_j, q, qVel, qAccel);
-  expected_errors = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+  expected_errors = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  Values values;
+  gtsam::Values values;
   values.insert(example::qKey, q);
   values.insert(example::qVelKey, qVel);
   values.insert(example::qAccelKey, qAccel);

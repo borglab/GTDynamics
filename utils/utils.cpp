@@ -1,60 +1,69 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
- * @file  utils.cpp
- * @brief a few utilities
+ * @file  utils.h
+ * @brief Utility methods.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include <utils.h>
 
-using namespace std;
-using namespace gtsam;
+// using namespace std;
+// using namespace gtsam;
 
 namespace manipulator {
 
-Vector6 unit_twist(const Vector3 &w, const Vector3 &p) {
-  Vector6 unit_twist;
+gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p) {
+  gtsam::Vector6 unit_twist;
   unit_twist << w, p.cross(w);
   return unit_twist;
 }
 
 double radians(double degree) { return degree * M_PI / 180; }
 
-Vector radians(const Vector &degree) {
-  Vector radian(degree.size());
+gtsam::Vector radians(const gtsam::Vector &degree) {
+  gtsam::Vector radian(degree.size());
   for (int i = 0; i < degree.size(); ++i) {
     radian(i) = radians(degree(i));
   }
   return radian;
 }
 
-Matrix6 AdjointMapJacobianQ(double q, const Pose3 &jMi,
-                            const Vector6 &screw_axis) {
+gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
+                                   const gtsam::Vector6 &screw_axis) {
   // taking opposite value of screw_axis_ is because
   // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
-  Vector3 w = -screw_axis.head<3>();
-  Vector3 v = -screw_axis.tail<3>();
-  Pose3 kTj = Pose3::Expmap(-screw_axis * q) * jMi;
-  auto w_skew = skewSymmetric(w);
-  Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
-  Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  Vector3 H_T = H_expo * (jMi.translation().vector() - w_skew * v) +
-                w * w.transpose() * v;
-  Matrix3 H_TR = skewSymmetric(H_T) * kTj.rotation().matrix() +
-                 skewSymmetric(kTj.translation().vector()) * H_R;
-  Matrix6 H = Z_6x6;
-  insertSub(H, H_R, 0, 0);
-  insertSub(H, H_TR, 3, 0);
-  insertSub(H, H_R, 3, 3);
+  gtsam::Vector3 w = -screw_axis.head<3>();
+  gtsam::Vector3 v = -screw_axis.tail<3>();
+  gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis * q) * jMi;
+  auto w_skew = gtsam::skewSymmetric(w);
+  gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
+  gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
+  gtsam::Vector3 H_T = H_expo * (jMi.translation().vector() - w_skew * v) +
+                       w * w.transpose() * v;
+  gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
+                        gtsam::skewSymmetric(kTj.translation().vector()) * H_R;
+  gtsam::Matrix6 H = gtsam::Z_6x6;
+  gtsam::insertSub(H, H_R, 0, 0);
+  gtsam::insertSub(H, H_TR, 3, 0);
+  gtsam::insertSub(H, H_R, 3, 3);
   return H;
 }
 
-Matrix getQc(const SharedNoiseModel Qc_model) {
-  noiseModel::Gaussian *Gassian_model =
-      dynamic_cast<noiseModel::Gaussian *>(Qc_model.get());
+gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model) {
+  gtsam::noiseModel::Gaussian *Gassian_model =
+      dynamic_cast<gtsam::noiseModel::Gaussian *>(Qc_model.get());
   return (Gassian_model->R().transpose() * Gassian_model->R()).inverse();
 }
 
-Vector q_trajectory(int i, int total_step, Vector &start_q, Vector &end_q) {
+gtsam::Vector q_trajectory(int i, int total_step,
+                           gtsam::Vector &start_q,  // NOLINT
+                           gtsam::Vector &end_q) {  // NOLINT
   if (total_step > 1) {
     return start_q + (end_q - start_q) * i / (total_step - 1);
   } else {
@@ -62,21 +71,21 @@ Vector q_trajectory(int i, int total_step, Vector &start_q, Vector &end_q) {
   }
 }
 
-vector<vector<Point3>> sphereCenters(vector<double> lengths,
-                                     vector<double> radii) {
-  vector<vector<Point3>> shpere_centers_all;
+std::vector<std::vector<gtsam::Point3>> sphereCenters(
+    std::vector<double> lengths, std::vector<double> radii) {
+  std::vector<std::vector<gtsam::Point3>> shpere_centers_all;
   int dof = lengths.size();
   for (int j = 0; j < dof; ++j) {
-    vector<Point3> sphere_centers;
+    std::vector<gtsam::Point3> sphere_centers;
     if (lengths[j] == 0) {
-      sphere_centers.assign(1, Point3());
+      sphere_centers.assign(1, gtsam::Point3());
     } else {
       int num = ceil(lengths[j] / radii[j]);
       double distance = lengths[j] / num;
       for (int i = 0; i < num; ++i) {
         // get sphere center expressed in link COM frame
         sphere_centers.push_back(
-            Point3((i + 0.5) * distance - 0.5 * lengths[j], 0, 0));
+            gtsam::Point3((i + 0.5) * distance - 0.5 * lengths[j], 0, 0));
       }
     }
     shpere_centers_all.push_back(sphere_centers);
@@ -84,25 +93,28 @@ vector<vector<Point3>> sphereCenters(vector<double> lengths,
   return shpere_centers_all;
 }
 
-vector<Pose3> circle(int numOfWayPoints, double goalAngle, double radius) {
+std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
+                                 double radius) {
   double angle_step = goalAngle / (numOfWayPoints - 1);
   double angle = 0.0;
-  vector<Pose3> path;
-  Pose3 waypose;
+  std::vector<gtsam::Pose3> path;
+  gtsam::Pose3 waypose;
   for (int i = 0; i < numOfWayPoints; ++i) {
     angle = angle_step * i;
-    waypose = Pose3(Rot3::Rz(angle),
-                    Point3(radius * cos(angle), radius * sin(angle), 0));
+    waypose = gtsam::Pose3(
+        gtsam::Rot3::Rz(angle),
+        gtsam::Point3(radius * cos(angle), radius * sin(angle), 0));
     path.push_back(waypose);
   }
   return path;
 }
 
-vector<Pose3> square(int numOfWayPoints, double goalAngle, double length) {
+std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
+                                 double length) {
   double angle_step = goalAngle / (numOfWayPoints - 1);
   double angle = 0.0;
-  vector<Pose3> path;
-  Pose3 waypose;
+  std::vector<gtsam::Pose3> path;
+  gtsam::Pose3 waypose;
   double x = 0.0, y = 0.0;
   for (int i = 0; i < numOfWayPoints; ++i) {
     angle = angle_step * i;
@@ -113,16 +125,17 @@ vector<Pose3> square(int numOfWayPoints, double goalAngle, double length) {
       y = length;
       x = y / tan(angle);
     }
-    waypose = Pose3(Rot3::Rz(angle), Point3(x, y, 0));
+    waypose = gtsam::Pose3(gtsam::Rot3::Rz(angle), gtsam::Point3(x, y, 0));
     path.push_back(waypose);
   }
   return path;
 }
 
-std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
-                                       double &cell_size) {
-  vector<gtsam::Matrix> data;
-  ifstream is;
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
+                                       gtsam::Point3 &origin,  // NOLINT
+                                       double &cell_size) {    // NOLINT
+  std::vector<gtsam::Matrix> data;
+  std::ifstream is;
   is.open(mat_dir);
   if (!is.is_open()) {
     std::cout << "failed to open file" << std::endl;
@@ -130,7 +143,7 @@ std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
     // read origin of sdf
     double x, y, z;
     is >> x >> y >> z;
-    origin = Point3(x, y, z);
+    origin = gtsam::Point3(x, y, z);
 
     // read cell size of sdf
     is >> cell_size;
@@ -141,7 +154,7 @@ std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
 
     // read filed data
     for (int k = 0; k < field_z; ++k) {
-      Matrix data_slice = Matrix::Zero(field_rows, field_cols);
+      gtsam::Matrix data_slice = gtsam::Matrix::Zero(field_rows, field_cols);
       for (int i = 0; i < field_rows; ++i) {
         for (int j = 0; j < field_cols; ++j) {
           is >> data_slice(i, j);

@@ -1,11 +1,18 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  RobotTypes.h
  * @brief Robot smart pointer types.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef LINK_MODEL_TYPES_H
-#define LINK_MODEL_TYPES_H
+#ifndef UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#define UNIVERSAL_ROBOT_ROBOTTYPES_H_
 
 #include <memory>
 
@@ -23,4 +30,4 @@ struct RobotJointParams;
 
 }  // namespace robot.
 
-#endif
+#endif  // UNIVERSAL_ROBOT_ROBOTTYPES_H_

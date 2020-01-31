@@ -1,28 +1,27 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  RobotLink.h
+ * @brief only link part of a manipulator, does not include joint part
+ * @Author: Yetong Zhang and Alejandro Escontrela
+ */
+
+#pragma once
+
 #include <DynamicsGraph.h>
 #include <UniversalRobot.h>
 
-using namespace std;
-using namespace robot;
-using namespace gtsam;
+#include <string>
 
-// namespace jumping_robot
-// {
-// UniversalRobot getJumpingRobot()
-// {
-//   std::cout << "constructing" << std::endl;
-//   UniversalRobot jumping_robot =
-//   UniversalRobot("../../../sdfs/test/jumping_robot.sdf"); std::cout <<
-//   "constructed" << std::endl;
-//   // jumping_robot.getLinkByName("l0")->fix();
-//   return jumping_robot;
-// }
-// // Load the robot from urdf file
-// UniversalRobot my_robot = getJumpingRobot();
-// Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
-// Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-// Vector joint_angles = Vector::Zero(my_robot.numJoints());
-// Vector joint_vels = Vector::Zero(my_robot.numJoints());
-// } // namespace jumping_robot
+// using namespace std;
+// using namespace robot;
+// using namespace gtsam;
+using robot::UniversalRobot;
 
 namespace four_bar_linkage {
 UniversalRobot getFourBar() {
@@ -32,10 +31,10 @@ UniversalRobot getFourBar() {
 }
 // Load the robot from urdf file
 UniversalRobot my_robot = getFourBar();
-Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace four_bar_linkage
 
 namespace simple_urdf {
@@ -46,10 +45,10 @@ UniversalRobot getSimpleUrdf() {
   return simple_robot;
 }
 UniversalRobot my_robot = getSimpleUrdf();
-Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace simple_urdf
 
 namespace simple_urdf_zero_inertia {
@@ -60,10 +59,10 @@ UniversalRobot getSimpleUrdf() {
   return simple_robot;
 }
 UniversalRobot my_robot = getSimpleUrdf();
-Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace simple_urdf_zero_inertia
 
 namespace simple_urdf_eq_mass {
@@ -73,8 +72,8 @@ UniversalRobot getSimpleUrdfEqMass() {
   return simple_robot;
 }
 UniversalRobot my_robot = getSimpleUrdfEqMass();
-Vector3 gravity = (Vector(3) << 0, 0, 0).finished();
-Vector3 planar_axis = (Vector(3) << 1, 0, 0).finished();
-Vector joint_angles = Vector::Zero(my_robot.numJoints());
-Vector joint_vels = Vector::Zero(my_robot.numJoints());
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace simple_urdf_eq_mass

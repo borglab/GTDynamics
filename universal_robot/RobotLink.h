@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  RobotLink.h
  * @brief only link part of a manipulator, does not include joint part
@@ -12,13 +19,14 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+#include <sdf/sdf.hh>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <memory>
-#include <sdf/sdf.hh>
-#include <string>
-#include <vector>
 
 namespace robot {
 /**
@@ -64,7 +72,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
    * Keyword arguments:
    *    sdf_link -- sdf::Link object containing link information.
    */
-  RobotLink(sdf::Link sdf_link)
+  explicit RobotLink(sdf::Link sdf_link)
       : name_(sdf_link.Name()),
         mass_(sdf_link.Inertial().MassMatrix().Mass()),
         inertia_(

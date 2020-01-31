@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  utils.h
- * @brief a few utilities
+ * @brief Utility methods.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
@@ -12,14 +19,16 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <boost/optional.hpp>
+#include <sdf/sdf.hh>
+
 #include <cmath>
 #include <fstream>
-#include <sdf/sdf.hh>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <boost/optional.hpp>
 
 namespace manipulator {
 
@@ -85,8 +94,10 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
         start_q     -- start value of variable q
         end_q       -- end value of variable q
 */
-gtsam::Vector q_trajectory(int i, int total_step, gtsam::Vector &start_q,
-                           gtsam::Vector &end_q);
+gtsam::Vector q_trajectory(
+    int i, int total_step,
+    gtsam::Vector &start_q,  // NOLINT
+    gtsam::Vector &end_q);  // NOLINT
 
 /** calculate center of spheres used to represent this link for collision
  *  check
@@ -120,9 +131,10 @@ std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
  *  this is used for sdf
  *
  */
-std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
-                                       gtsam::Point3 &origin,
-                                       double &cell_size);
+std::vector<gtsam::Matrix> readFromTxt(
+    std::string mat_dir,
+    gtsam::Point3 &origin,  // NOLINT
+    double &cell_size);  // NOLINT
 }  // namespace manipulator
 
 namespace robot {

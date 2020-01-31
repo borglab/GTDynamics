@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  testTorqueFactor.cpp
- * @brief test torque factor
+ * @brief Test torque factor.
  * @Author: Frank Dellaert and Mandy Xie
  */
 
@@ -17,35 +24,34 @@
 
 #include <iostream>
 
-using namespace std;
-using namespace gtsam;
-using namespace manipulator;
+using gtsam::assert_equal;
 
 namespace example {
 
 // noise model
-noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(I_1x1);
-Key torque_key = Symbol('t', 1), wrench_key = Symbol('F', 1);
+gtsam::noiseModel::Gaussian::shared_ptr cost_model =
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+gtsam::Key torque_key = gtsam::Symbol('t', 1),
+           wrench_key = gtsam::Symbol('F', 1);
 }  // namespace example
 
 // Test Torque factor for stationary case
 TEST(TorqueFactor, error) {
   // Create all factors
-  Vector6 screw_axis;
+  gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TorqueFactor factor(example::wrench_key, example::torque_key,
-                      example::cost_model, screw_axis);
+  manipulator::TorqueFactor factor(example::wrench_key, example::torque_key,
+                                   example::cost_model, screw_axis);
   double torque = 20;
-  Vector wrench = (Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  Vector1 actual_errors, expected_errors;
+  gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
+  gtsam::Vector1 actual_errors, expected_errors;
 
   actual_errors = factor.evaluateError(wrench, torque);
-  expected_errors = Vector1(0);
+  expected_errors = gtsam::Vector1(0);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  Values values;
+  gtsam::Values values;
   values.insert(example::torque_key, torque);
   values.insert(example::wrench_key, wrench);
   double diffDelta = 1e-7;

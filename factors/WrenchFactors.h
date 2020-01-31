@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  WrenchFactor.h
- * @brief wrench balance factor, common between forward and inverse dynamics.
+ * @brief Wrench balance factor, common between forward and inverse dynamics.
  * @Author: Frank Dellaert, Mandy Xie and Yetong Zhang
  */
 
@@ -17,11 +24,13 @@
 #include <gtsam/nonlinear/Values.h>
 #include <utils.h>
 
+#include <iostream>
+#include <vector>
+#include <string>
+
 #include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
-#include <iostream>
-#include <vector>
 
 namespace robot {
 
@@ -140,7 +149,7 @@ class WrenchFactor0
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
@@ -266,7 +275,7 @@ class WrenchFactor1
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
@@ -401,7 +410,7 @@ class WrenchFactor2
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
   }
@@ -541,7 +550,7 @@ class WrenchFactor3
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }
@@ -645,7 +654,7 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+  void serialize(ARCHIVE const &ar, const unsigned int /*version*/) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
@@ -791,7 +800,7 @@ class WrenchFactor4
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }

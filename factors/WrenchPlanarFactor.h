@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  WrenchPlanarFactor.h
- * @brief wrench balance factor, common between forward and inverse dynamics.
+ * @brief Wrench balance factor, common between forward and inverse dynamics.
  * @Author: Yetong Zhang
  */
 
@@ -12,9 +19,10 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <utils.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <vector>
+#include <string>
+#include <boost/optional.hpp>
 
 namespace robot {
 
@@ -79,7 +87,7 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }

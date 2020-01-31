@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  testRobotLink.cpp
- * @brief test RobotLink class
+ * @brief Test RobotLink class.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
@@ -11,13 +18,11 @@
 #include <gtsam/linear/VectorValues.h>
 #include <utils.h>
 
-using namespace std;
-using namespace robot;
-using namespace gtsam;
+using gtsam::assert_equal;
+using robot::get_sdf, robot::RobotLink;
 
 /**
- *
- * construct a RobotLink via urdf link and ensure all values are as expected.
+ * Construct a RobotLink via urdf link and ensure all values are as expected.
  */
 TEST(RobotLink, urdf_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -29,7 +34,8 @@ TEST(RobotLink, urdf_constructor) {
   EXPECT(assert_equal(100, first_link.mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.Tlcom()));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
+                      first_link.Tlcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -59,15 +65,18 @@ TEST(RobotLink, urdf_constructor) {
   first_link.addChildLink(std::make_shared<RobotLink>(second_link));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), first_link.Tlcom()));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
+                      first_link.Tlcom()));
 
   // Check transform to link-end frame from link com frame. leTl_com
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, -1)), first_link.leTl_com()));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
+                      first_link.leTl_com()));
 
   // Test that ID is set correctly.
   unsigned char id = 'a';
   first_link.setID(id);
-  EXPECT(assert_equal((double)first_link.getID(), (double)id));
+  EXPECT(assert_equal(static_cast<double>(first_link.getID()),
+                      static_cast<double>(id)));
 }
 
 TEST(RobotLink, sdf_constructor) {

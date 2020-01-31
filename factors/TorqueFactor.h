@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  TorqueFactor.h
- * @brief toque factor, common between forward and inverse dynamics.
+ * @brief Torque factor, common between forward and inverse dynamics.
  * @Author: Frank Dellaert and Mandy Xie
  */
 
@@ -11,9 +18,10 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
+
+#include <boost/optional.hpp>
 
 namespace manipulator {
 
@@ -80,7 +88,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }

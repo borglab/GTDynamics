@@ -1,18 +1,26 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file UniversalRobot.h
  * @brief Robot structure.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include <UniversalRobot.h>
+#include "universal_robot/UniversalRobot.h"
 
 #include <queue>
+#include <memory>
+#include <algorithm>
 
 #include "RobotTypes.h"
 
-// using namespace robot;
-using namespace std;
-using namespace gtsam;
+// using namespace std;
+// using namespace gtsam;
 
 namespace robot {
 

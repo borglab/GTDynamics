@@ -1,16 +1,19 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
- * @file  DynamicsGraph.cpp
- * @brief dynamics factor graph
- * @Author: Yetong Zhang, Alejandro Escontrela
+ * @file DynamicsGraphBuilder.h
+ * @brief Builds a dynamics graph from a UniversalRobot object.
+ * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#include "DynamicsGraph.h"
+#include "dynamics/DynamicsGraph.h"
 
-using namespace std;
-using namespace gtsam;
-
-using namespace std;
-using namespace gtsam;
+#include <vector>
 
 namespace robot {
 
@@ -18,7 +21,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
     const UniversalRobot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &plannar_axis) const {
-  NonlinearFactorGraph graph;
+  gtsam::NonlinearFactorGraph graph;
 
   // add factors corresponding to links
   for (int idx = 0; idx < robot.numLinks(); idx++) {
@@ -26,12 +29,15 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactorGraph(
 
     int i = link->getID();
     if (link->isFixed()) {
-      graph.add(PriorFactor<Pose3>(PoseKey(i, t), link->getFixedPose(),
-                                   noiseModel::Constrained::All(6)));
-      graph.add(PriorFactor<Vector6>(TwistKey(i, t), Vector6::Zero(),
-                                     noiseModel::Constrained::All(6)));
-      graph.add(PriorFactor<Vector6>(TwistAccelKey(i, t), Vector6::Zero(),
-                                     noiseModel::Constrained::All(6)));
+      graph.add(gtsam::PriorFactor<gtsam::Pose3>(
+          PoseKey(i, t), link->getFixedPose(),
+          gtsam::noiseModel::Constrained::All(6)));
+      graph.add(gtsam::PriorFactor<gtsam::Vector6>(
+          TwistKey(i, t), gtsam::Vector6::Zero(),
+          gtsam::noiseModel::Constrained::All(6)));
+      graph.add(gtsam::PriorFactor<gtsam::Vector6>(
+          TwistAccelKey(i, t), gtsam::Vector6::Zero(),
+          gtsam::noiseModel::Constrained::All(6)));
     } else {
       // Get all wrench keys associated with this link.
       const auto &connected_joints = link->getJoints();
@@ -203,15 +209,15 @@ gtsam::Values DynamicsGraphBuilder::optimize(
     const gtsam::NonlinearFactorGraph &graph, const gtsam::Values &init_values,
     OptimizerType optim_type) {
   if (optim_type == OptimizerType::GaussNewton) {
-    GaussNewtonOptimizer optimizer(graph, init_values);
+    gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
     optimizer.optimize();
     return optimizer.values();
   } else if (optim_type == OptimizerType::LM) {
-    LevenbergMarquardtOptimizer optimizer(graph, init_values);
+    gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values);
     optimizer.optimize();
     return optimizer.values();
   } else if (optim_type == OptimizerType::PDL) {
-    DoglegOptimizer optimizer(graph, init_values);
+    gtsam::DoglegOptimizer optimizer(graph, init_values);
     optimizer.optimize();
     return optimizer.values();
   } else {

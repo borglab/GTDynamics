@@ -1,6 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  OptimizerSetting.h
- * @brief factor graph optimizer setting
+ * @brief Factor graph optimizer settings.
  * @Author: Mandy Xie
  */
 
@@ -68,7 +75,7 @@ class OptimizerSetting {
   void setJointLimitCostModel(const double sigma);
   void setQcModel(const gtsam::Matrix &Qc);
   void setQcModelPose3(const gtsam::Matrix &Qc);
-  void setObstacleCostModel(const double sigma) { obsSigma = sigma; };
+  void setObstacleCostModel(const double sigma) { obsSigma = sigma; }
 
   /// optimization settings
   // Gauss-Newton optimizer

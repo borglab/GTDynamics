@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  forward_dynamics_simple.cpp
  * @brief Simple forward dynamics optimization for a two link robot with one
@@ -15,7 +22,7 @@
 
 TEST(DynamicsGraph, forward_dynamics_r) {
   // Load the simple robot and fix the first link's pose.
-  using namespace simple_urdf;
+  using simple_urdf::my_robot, simple_urdf::planar_axis;
   my_robot.getLinkByName("l1")->fix();
 
   // Build a factor graph with all the kinodynamics constraints.

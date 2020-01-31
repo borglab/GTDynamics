@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file UniversalRobot.h
  * @brief Robot structure.
@@ -16,11 +23,16 @@
 #include <gtsam/nonlinear/Values.h>
 #include <utils.h>
 
-#include <boost/optional.hpp>
 #include <sdf/parser_urdf.hh>
+
+#include <map>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
+
+#include <boost/optional.hpp>
 
 // TODO(aescontrela): Add `const` to instance methods that don't modify the
 // object's data members.
@@ -60,6 +72,12 @@ RobotJointPair extract_structure_from_file(
     const boost::optional<std::vector<robot::RobotJointParams>> joint_params =
         boost::none);
 
+/**
+ * UniversalRobot is used to create a representation of a robot's
+ * inertial/dynamic properties from a URDF/SDF file. The resulting object
+ * provides getters for the robot's various joints and links, which can then
+ * be fed into an optimization pipeline.
+ */
 class UniversalRobot {
  private:
   std::vector<RobotLinkSharedPtr> link_bodies_;
@@ -76,14 +94,15 @@ class UniversalRobot {
    *  robot_links_and_joints    -- RobotJointPair containing links and joints.
    *
    */
-  UniversalRobot(RobotJointPair links_and_joints);
+  explicit UniversalRobot(RobotJointPair links_and_joints);
 
   /** Construct a robot structure directly from a urdf or sdf file.
    *
    * Keyword Arguments:
    *  file_path -- path to the file.
    */
-  UniversalRobot(const std::string file_path, std::string model_name = "");
+  explicit UniversalRobot(const std::string file_path,
+                          std::string model_name = "");
 
   /// Return this robot's links.
   std::vector<RobotLinkSharedPtr> links() const;

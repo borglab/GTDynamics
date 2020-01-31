@@ -1,9 +1,18 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
- * @file  DynamicsGraphBuilder.h
- * @brief robot arm motion planner using nonlinear factor graph
- * @Author: Yetong Zhang, Alejandro Escontrela
+ * @file DynamicsGraphBuilder.h
+ * @brief Builds a dynamics graph from a UniversalRobot object.
+ * @author Yetong Zhang, Alejandro Escontrela
  */
+
 #pragma once
+
 #include <OptimizerSetting.h>
 #include <PoseFactor.h>
 #include <RobotJoint.h>
@@ -95,7 +104,7 @@ class DynamicsGraphBuilder {
   /**
    * Constructor
    */
-  explicit DynamicsGraphBuilder() {
+  DynamicsGraphBuilder() {
     opt_ = manipulator::OptimizerSetting();
     // set all dynamics related factors to be constrained
     opt_.bp_cost_model = gtsam::noiseModel::Constrained::All(6);
