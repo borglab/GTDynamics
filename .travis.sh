@@ -67,9 +67,6 @@ function finish ()
 # compile the code with the intent of populating the cache
 function build ()
 {
-  export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
-  export GTSAM_BUILD_TESTS=OFF
-
   configure
 
   sudo make -j2
@@ -80,9 +77,6 @@ function build ()
 # run the tests
 function test ()
 {
-  export GTSAM_BUILD_EXAMPLES_ALWAYS=OFF
-  export GTSAM_BUILD_TESTS=OFF
-
   configure
 
   # Actual build:
