@@ -60,9 +60,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);
   }
 
-  gtsam::Vector6 getScrewAxis() const {
-    return screw_axis_;
-  }
+  gtsam::Vector6 getScrewAxis() const { return screw_axis_; }
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

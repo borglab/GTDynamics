@@ -6,12 +6,11 @@
 
 #pragma once
 
-#include <utils.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <utils.h>
 
 #include <boost/optional.hpp>
 #include <iostream>
@@ -19,14 +18,13 @@
 
 namespace robot {
 
-/** WrenchEquivalenceFactor is a six-way nonlinear factor which enforces relation
- * between wrenches on this link and the next link*/
+/** WrenchEquivalenceFactor is a six-way nonlinear factor which enforces
+ * relation between wrenches on this link and the next link*/
 class WrenchEquivalenceFactor
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> {
  private:
   typedef WrenchEquivalenceFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double>
-      Base;
+  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector6 screw_axis_;
@@ -43,9 +41,10 @@ class WrenchEquivalenceFactor
           - wrench balance, Equation 8.48, page 293
    */
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-               gtsam::Key q_key,
-               const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Pose3 &kMj, const gtsam::Vector6 &screw_axis)
+                          gtsam::Key q_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const gtsam::Pose3 &kMj,
+                          const gtsam::Vector6 &screw_axis)
       : Base(cost_model, wrench_key_1, wrench_key_2, q_key),
         kMj_(kMj),
         screw_axis_(screw_axis) {}
@@ -80,7 +79,8 @@ class WrenchEquivalenceFactor
     // std::cout << "T21 Adjoint: \n" << T_21.AdjointMap().transpose() << "\n";
     // std::cout << "Wrench1: " << wrench_1.transpose() << "\n";
     // std::cout << "Wrench2: " << wrench_2.transpose() << "\n";
-    // std::cout << "Wrench2 transformed: " << (T_21.AdjointMap().transpose() * wrench_2).transpose() << "\n";
+    // std::cout << "Wrench2 transformed: " << (T_21.AdjointMap().transpose() *
+    // wrench_2).transpose() << "\n";
 
     if (H_wrench_1) {
       *H_wrench_1 = gtsam::I_6x6;
@@ -95,7 +95,7 @@ class WrenchEquivalenceFactor
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }

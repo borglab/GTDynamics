@@ -156,30 +156,26 @@ std::vector<gtsam::Matrix> readFromTxt(string mat_dir, Point3 &origin,
 
 }  // namespace manipulator
 
-
 namespace robot {
 
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   auto sdf = sdf::readFile(sdf_file_path);
-  
+
   sdf::Model model = sdf::Model();
   model.Load(sdf->Root()->GetElement("model"));
 
   // Check whether this is a world file, in which case we have to first
   // access the world element then check whether one of its child models
   // corresponds to model_name.
-  if (model.Name() != "__default__")
-    return model;
+  if (model.Name() != "__default__") return model;
 
   // Load the world element.
   sdf::World world = sdf::World();
   world.Load(sdf->Root()->GetElement("world"));
 
-  for (uint i = 0; i < world.ModelCount(); i++)
-  {
+  for (uint i = 0; i < world.ModelCount(); i++) {
     sdf::Model curr_model = *world.ModelByIndex(i);
-    if (curr_model.Name() == model_name)
-      return curr_model;
+    if (curr_model.Name() == model_name) return curr_model;
   }
 
   throw std::runtime_error("Model not found.");

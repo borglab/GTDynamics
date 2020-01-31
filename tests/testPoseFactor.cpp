@@ -4,20 +4,17 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
+#include <CppUnitLite/TestHarness.h>
 #include <PoseFactor.h>
-
 #include <RobotModels.h>
-
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 
 #include <iostream>
 
@@ -91,13 +88,12 @@ TEST(PoseFactor, breaking) {
 
 // Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
-
   // Evaluate PoseFunctor on an RR link.
   using namespace simple_urdf_zero_inertia;
 
-  gtsam::Pose3 base_pose = gtsam::Pose3(
-    gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0));
-  
+  gtsam::Pose3 base_pose =
+      gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0));
+
   double joint_angle = M_PI / 4;
 
   gtsam::Vector6 screw_axis = my_robot.getJointByName("j1")->screwAxis();
@@ -105,10 +101,8 @@ TEST(PoseFactor, breaking_rr) {
 
   PoseFunctor predictPose(jMi, screw_axis);
 
-  EXPECT(assert_equal(
-    my_robot.getJointByName("j1")->MpcCom(joint_angle), 
-    predictPose(base_pose, joint_angle),
-    1e-6));
+  EXPECT(assert_equal(my_robot.getJointByName("j1")->MpcCom(joint_angle),
+                      predictPose(base_pose, joint_angle), 1e-6));
 }
 
 int main() {

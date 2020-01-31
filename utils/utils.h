@@ -11,15 +11,15 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <sdf/sdf.hh>
 
 #include <boost/optional.hpp>
 #include <cmath>
+#include <fstream>
+#include <sdf/sdf.hh>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <fstream>
-#include <stdexcept>
 
 namespace manipulator {
 
@@ -134,5 +134,3 @@ namespace robot {
 */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 }  // namespace robot
-
-

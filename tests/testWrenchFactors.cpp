@@ -4,20 +4,17 @@
  * @Author: Yetong Zhang
  */
 
+#include <CppUnitLite/TestHarness.h>
 #include <RobotModels.h>
-
 #include <WrenchFactors.h>
-
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 
 #include <iostream>
 
@@ -31,7 +28,7 @@ namespace example {
 
 using namespace simple_urdf_zero_inertia;
 
-auto inertia = my_robot.links()[0]->inertiaMatrix();
+auto inertia = my_robot.links()[0] -> inertiaMatrix();
 
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);
@@ -43,16 +40,15 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
 
 // Test wrench factor for stationary case with gravity
 TEST(WrenchFactor2, error_1) {
-
   cout << "Inertia Matrix:" << endl << example::inertia << endl;
   // Create all factors
   Vector3 gravity;
   gravity << 0, -9.8, 0;
 
   WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
-                      example::wrench_1_key, example::wrench_2_key,
-                      example::pKey, example::cost_model,
-                      example::inertia, gravity);
+                       example::wrench_1_key, example::wrench_2_key,
+                       example::pKey, example::cost_model, example::inertia,
+                       gravity);
   Vector twist, twist_accel, wrench_1, wrench_2;
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -83,10 +79,9 @@ TEST(WrenchFactor3, error_1) {
   gravity << 0, -9.8, 0;
 
   WrenchFactor3 factor(example::twist_key, example::twist_accel_key,
-                      example::wrench_1_key, example::wrench_2_key, 
-                      example::wrench_3_key,
-                      example::pKey, example::cost_model,
-                      example::inertia, gravity);
+                       example::wrench_1_key, example::wrench_2_key,
+                       example::wrench_3_key, example::pKey,
+                       example::cost_model, example::inertia, gravity);
   Vector twist, twist_accel, wrench_1, wrench_2, wrench_3;
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -96,8 +91,8 @@ TEST(WrenchFactor3, error_1) {
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twist_accel, wrench_1, wrench_2, wrench_3, pose);
+  actual_errors = factor.evaluateError(twist, twist_accel, wrench_1, wrench_2,
+                                       wrench_3, pose);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
@@ -118,11 +113,10 @@ TEST(WrenchFactor4, error_1) {
   Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  WrenchFactor4 factor(example::twist_key, example::twist_accel_key,
-                      example::wrench_1_key, example::wrench_2_key, 
-                      example::wrench_3_key, example::wrench_4_key, 
-                      example::pKey, example::cost_model,
-                      example::inertia, gravity);
+  WrenchFactor4 factor(
+      example::twist_key, example::twist_accel_key, example::wrench_1_key,
+      example::wrench_2_key, example::wrench_3_key, example::wrench_4_key,
+      example::pKey, example::cost_model, example::inertia, gravity);
   Vector twist, twist_accel, wrench_1, wrench_2, wrench_3, wrench_4;
   twist = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twist_accel = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -133,8 +127,8 @@ TEST(WrenchFactor4, error_1) {
   Pose3 pose = Pose3(Rot3(), Point3(1, 0, 0));
   Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twist_accel, wrench_1, wrench_2, wrench_3, wrench_4, pose);
+  actual_errors = factor.evaluateError(twist, twist_accel, wrench_1, wrench_2,
+                                       wrench_3, wrench_4, pose);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
@@ -150,15 +144,13 @@ TEST(WrenchFactor4, error_1) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-
 // Test wrench factor for non-zero twist case, zero joint angle
 TEST(WrenchFactor2, error_2) {
   // Create all factors
 
   WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
-                      example::wrench_1_key, example::wrench_2_key,
-                      example::pKey, example::cost_model,
-                      example::inertia);
+                       example::wrench_1_key, example::wrench_2_key,
+                       example::pKey, example::cost_model, example::inertia);
 
   Vector6 twist, twist_accel, wrench_1, wrench_2;
   twist = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();

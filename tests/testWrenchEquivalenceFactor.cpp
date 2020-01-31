@@ -3,9 +3,10 @@
  * @brief test wrench factor
  * @Author: Yetong Zhang
  */
+#include <CppUnitLite/TestHarness.h>
 #include <WrenchEquivalenceFactor.h>
-
-#include <cmath>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -13,10 +14,7 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-#include <CppUnitLite/TestHarness.h>
-
+#include <cmath>
 #include <iostream>
 
 using namespace std;
@@ -41,7 +39,8 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
 //   Vector6 screw_axis;
 //   screw_axis << 0, 0, 1, 0, 1, 0;
 
-//   WrenchEquivalenceFactor factor(example::wrench_j_key, example::wrench_k_key,
+//   WrenchEquivalenceFactor factor(example::wrench_j_key,
+//   example::wrench_k_key,
 //                       example::qKey, example::cost_model, kMj, screw_axis);
 //   double q = 0;
 //   Vector wrench_j, wrench_k;
@@ -71,7 +70,8 @@ Key twist_key = Symbol('V', 1), twist_accel_key = Symbol('T', 1),
 //   Vector6 screw_axis;
 //   screw_axis << 0, 0, 1, 0, 1, 0;
 
-//   WrenchEquivalenceFactor factor(example::wrench_j_key, example::wrench_k_key,
+//   WrenchEquivalenceFactor factor(example::wrench_j_key,
+//   example::wrench_k_key,
 //                       example::qKey, example::cost_model, kMj, screw_axis);
 //   double q = -M_PI_2;
 //   Vector wrench_j, wrench_k;
@@ -102,15 +102,15 @@ TEST(WrenchEquivalenceFactor, error_3) {
   screw_axis << 1, 0, 0, 0, -1, 0;
 
   WrenchEquivalenceFactor factor(example::wrench_j_key, example::wrench_k_key,
-                      example::qKey, example::cost_model, kMj, screw_axis);
+                                 example::qKey, example::cost_model, kMj,
+                                 screw_axis);
   double q = 0;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
   wrench_k = (Vector(6) << -1, 0, 0, 0, 0, 0).finished();
   Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(wrench_j, wrench_k, q);
+  actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct

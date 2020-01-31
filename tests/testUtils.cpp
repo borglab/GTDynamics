@@ -4,17 +4,16 @@
  * @Author: Mandy Xie and Alejandro Escontrela
  */
 
-#include <gtsam/base/numericalDerivative.h>
-#include <utils.h>
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include <string>
+#include <gtsam/base/numericalDerivative.h>
 #include <limits.h>
 #include <unistd.h>
+#include <utils.h>
+
 #include <algorithm>
+#include <string>
 
 using namespace std;
 using namespace gtsam;
@@ -64,8 +63,10 @@ TEST(utils, load_and_parse_urdf_file) {
   EXPECT(assert_equal(2, simple_urdf.LinkCount()));
   EXPECT(assert_equal(1, simple_urdf.JointCount()));
 
-  EXPECT(assert_equal(100, simple_urdf.LinkByName("l1")->Inertial().MassMatrix().Mass()));
-  EXPECT(assert_equal(15, simple_urdf.LinkByName("l2")->Inertial().MassMatrix().Mass()));
+  EXPECT(assert_equal(
+      100, simple_urdf.LinkByName("l1")->Inertial().MassMatrix().Mass()));
+  EXPECT(assert_equal(
+      15, simple_urdf.LinkByName("l2")->Inertial().MassMatrix().Mass()));
 
   EXPECT(assert_equal(3, simple_urdf.LinkByName("l1")->Inertial().Moi()(0, 0)));
   EXPECT(assert_equal(2, simple_urdf.LinkByName("l1")->Inertial().Moi()(1, 1)));
@@ -77,7 +78,6 @@ TEST(utils, load_and_parse_urdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_file) {
-  
   auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
@@ -85,7 +85,8 @@ TEST(utils, load_and_parse_sdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_world_file) {
-  auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto simple_sdf =
+      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
   EXPECT(assert_equal(3, simple_sdf.JointCount()));

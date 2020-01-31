@@ -3,18 +3,16 @@
  * @brief test wrench planar factor
  * @Author: Yetong Zhang
  */
+#include <CppUnitLite/TestHarness.h>
 #include <WrenchPlanarFactor.h>
-
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 
 #include <iostream>
 
@@ -34,7 +32,8 @@ TEST(WrenchPlanarFactor, x_axis) {
   // Create all factors
   Vector3 planar_axis;
   planar_axis << 1, 0, 0;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   Vector wrench = (Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   Vector3 actual_errors, expected_errors;
@@ -54,7 +53,8 @@ TEST(WrenchPlanarFactor, y_axis) {
   // Create all factors
   Vector3 planar_axis;
   planar_axis << 0, 1, 0;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   Vector wrench = (Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   Vector3 actual_errors, expected_errors;
@@ -74,7 +74,8 @@ TEST(WrenchPlanarFactor, z_axis) {
   // Create all factors
   Vector3 planar_axis;
   planar_axis << 0, 0, 1;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   Vector wrench = (Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   Vector3 actual_errors, expected_errors;
