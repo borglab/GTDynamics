@@ -50,9 +50,7 @@ class WrenchFactor0
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
           inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
           gravity    -- if given, will create gravity wrench. In link
      COM frame. Will create factor corresponding to Lynch & Park book:
           - wrench balance, Equation 8.48, page 293
@@ -92,9 +90,9 @@ class WrenchFactor0
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on this link
+          twsit         -- twist of this link
+          twsit_accel   -- twist acceleration of this link
+          pose          -- pose of this link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -172,9 +170,7 @@ class WrenchFactor1
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
           inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
           gravity    -- if given, will create gravity wrench. In link
      COM frame. Will create factor corresponding to Lynch & Park book:
           - wrench balance, Equation 8.48, page 293
@@ -214,9 +210,10 @@ class WrenchFactor1
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on this link
+          twsit         -- twist of this link
+          twsit_accel   -- twist acceleration of this link
+          pose          -- pose of this link
+          wrench_1      -- 1st wrench on this link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -299,9 +296,7 @@ class WrenchFactor2
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
           inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
           gravity    -- if given, will create gravity wrench. In link
      COM frame. Will create factor corresponding to Lynch & Park book:
           - wrench balance, Equation 8.48, page 293
@@ -343,10 +338,11 @@ class WrenchFactor2
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on this link
-          wrench_2      -- wrench from the next link
+          twsit         -- twist of this link
+          twsit_accel   -- twist acceleration of this link
+          pose          -- pose of this link
+          wrench_1      -- 1st wrench on this link
+          wrench_2      -- 2nd wrench on this link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -435,9 +431,7 @@ class WrenchFactor3
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
           inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
           gravity    -- if given, will create gravity wrench. In link
      COM frame. Will create factor corresponding to Lynch & Park book:
           - wrench balance, Equation 8.48, page 293
@@ -479,10 +473,12 @@ class WrenchFactor3
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on this link
-          wrench_2      -- wrench from the next link
+          twsit         -- twist of this link
+          twsit_accel   -- twist acceleration of this link
+          pose          -- pose of this link
+          wrench_1      -- 1st wrench on this link
+          wrench_2      -- 2nd wrench on this link
+          wrench_3      -- 3rd wrench on this link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -679,9 +675,7 @@ class WrenchFactor4
  public:
   /** wrench balance factor, common between forward and inverse dynamics.
       Keyword argument:
-          kMj        -- this COM frame, expressed in next link's COM frame
           inertia    -- moment of inertia and mass for this link
-          screw_axis -- screw axis expressed in kth link's COM frame
           gravity    -- if given, will create gravity wrench. In link
      COM frame. Will create factor corresponding to Lynch & Park book:
           - wrench balance, Equation 8.48, page 293
@@ -724,10 +718,13 @@ class WrenchFactor4
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on this link
-          wrench_2      -- wrench from the next link
+          twsit         -- twist of this link
+          twsit_accel   -- twist acceleration of this link
+          pose          -- pose of this link
+          wrench_1      -- 1st wrench on this link
+          wrench_2      -- 2nd wrench on this link
+          wrench_3      -- 3rd wrench on this link
+          wrench_4      -- 4th wrench on this link
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
@@ -801,7 +798,7 @@ class WrenchFactor4
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor7", boost::serialization::base_object<Base>(*this));
   }
 };
 

@@ -7,7 +7,7 @@
 
 /**
  * @file  WrenchPlanarFactor.h
- * @brief Wrench balance factor, common between forward and inverse dynamics.
+ * @brief Wrench planar factor, enforce the wrench to be planar.
  * @Author: Yetong Zhang
  */
 
@@ -23,8 +23,8 @@
 
 namespace robot {
 
-/** WrenchPlanarFactor is a six-way nonlinear factor which enforces relation
- * between wrenches on this link and the next link*/
+/** WrenchPlanarFactor is a one-way nonlinear factor which enforces the
+ * wrench to be planar*/
 class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
   typedef WrenchPlanarFactor This;
@@ -32,7 +32,7 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   gtsam::Matrix36 H_wrench_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
+  /** Constructor
       Keyword argument:
           planar_axis        -- axis of the plane
    */
@@ -50,7 +50,7 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
   virtual ~WrenchPlanarFactor() {}
 
-  /** evaluate wrench balance errors
+  /** evaluate error
       Keyword argument:
           wrench      -- wrench on the link
   */

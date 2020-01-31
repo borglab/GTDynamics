@@ -7,7 +7,7 @@
 
 /**
  * @file  RobotLink.h
- * @brief only link part of a manipulator, does not include joint part
+ * @brief only link part of a robot, does not include joint part
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
@@ -102,8 +102,10 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   virtual ~RobotLink() = default;
 
+  // return a shared pointer of the link
   RobotLinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
 
+  // return a weak pointer of the link
   RobotLinkWeakPtr getWeakPtr(void) { return shared_from_this(); }
 
   // remove the parent joint and corresponding parent link
@@ -135,11 +137,13 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     }
   }
 
+  // set ID for the link
   void setID(unsigned char id) {
     if (id == 0) throw std::runtime_error("ID cannot be 0");
     id_ = id;
   }
 
+  // return ID of the link
   unsigned char getID() {
     if (id_ == 0)
       throw std::runtime_error(
@@ -147,30 +151,39 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     return id_;
   }
 
-  // TODO(aescontrela): Kill the children and the parents. Just remove them
-  // entirely?
+  // add child joint to the link
   void addChildJoint(RobotJointWeakPtr child_joint_ptr) {
     child_joints_.push_back(child_joint_ptr);
   }
 
+  // add child link to the link
   void addChildLink(RobotLinkWeakPtr child_link_ptr) {
     child_links_.push_back(child_link_ptr);
   }
 
+  // add parent joint to the link
   void addParentJoint(RobotJointSharedPtr parent_joint_ptr) {
     parent_joints_.push_back(parent_joint_ptr);
   }
 
+  // add parent link to the link
   void addParentLink(RobotLinkSharedPtr parent_link_ptr) {
     parent_links_.push_back(parent_link_ptr);
   }
 
+  // transform from link to world frame
   const gtsam::Pose3& Twl() { return Twl_; }
+
+  // transfrom from link com frame to link frame
   const gtsam::Pose3& Tlcom() { return Tlcom_; }
+
+  // transform from link com frame to world frame
   const gtsam::Pose3& Twcom() { return Twcom_; }
 
+  // the fixed pose of the link
   const gtsam::Pose3& getFixedPose() { return fixed_pose_; }
 
+  // whether the link is fixed
   bool isFixed() { return is_fixed_; }
 
   // fix the link to fixed_pose, if fixed_pose not specify, fix the link to
@@ -180,19 +193,24 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     fixed_pose_ = fixed_pose ? *fixed_pose : Twcom_;
   }
 
+  // unfix the link
   void unfix() { is_fixed_ = false; }
 
-  // TODO(aescontrela): Remove these.
+  // return child joints of the link
   std::vector<RobotJointWeakPtr> getChildJoints(void) { return child_joints_; }
 
+  // return child links of the link
   std::vector<RobotLinkWeakPtr> getChildLinks(void) { return child_links_; }
 
+  // return parent joints of the link
   std::vector<RobotJointSharedPtr> getParentJoints(void) {
     return parent_joints_;
   }
 
+  // return parent links of the link
   std::vector<RobotLinkSharedPtr> getParentLinks(void) { return parent_links_; }
 
+  // return all joints of the link
   std::vector<RobotJointSharedPtr> getJoints(void) {
     std::vector<RobotJointSharedPtr> parent_joints = getParentJoints();
     std::vector<RobotJointWeakPtr> child_joints_weak = getChildJoints();
@@ -217,7 +235,6 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   const gtsam::Pose3& centerOfMass() const { return centerOfMass_; }
 
   /// Return the frame at link's end in the link com frame.
-  // TODO(aescontrela): Comment this better. Nuke this later.
   gtsam::Pose3 leTl_com() const {
     gtsam::Pose3 l_comTle =
         gtsam::Pose3(gtsam::Rot3::identity(), Tlcom_.translation());

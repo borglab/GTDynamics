@@ -143,9 +143,11 @@ class DynamicsGraphBuilder {
   static gtsam::Vector jointAccels(const UniversalRobot &robot,
                                    const gtsam::Values &result, const int t);
 
+  /* retirm joint velocities. */
   static gtsam::Vector jointVels(const UniversalRobot &robot,
                                  const gtsam::Values &result, const int t);
 
+  /* retirm joint angles. */
   static gtsam::Vector jointAngles(const UniversalRobot &robot,
                                    const gtsam::Values &result, const int t);
 
