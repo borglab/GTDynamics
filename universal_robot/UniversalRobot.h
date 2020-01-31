@@ -16,26 +16,16 @@
 #include <RobotJoint.h>
 #include <RobotLink.h>
 #include <RobotTypes.h>
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <utils.h>
 
 #include <sdf/parser_urdf.hh>
 
 #include <map>
-#include <sstream>
-#include <stdexcept>
+
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <boost/optional.hpp>
-
-// TODO(aescontrela): Add `const` to instance methods that don't modify the
-// object's data members.
 
 namespace robot {
 

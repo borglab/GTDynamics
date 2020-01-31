@@ -13,7 +13,26 @@
 
 #include "dynamics/DynamicsGraph.h"
 
+#include <PoseFactor.h>
+#include <TorqueFactor.h>
+#include <TwistAccelFactor.h>
+#include <TwistFactor.h>
+#include <WrenchEquivalenceFactor.h>
+#include <WrenchFactors.h>
+#include <WrenchPlanarFactor.h>
+
+#include <gtsam/base/numericalDerivative.h>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/nonlinear/expressions.h>
+#include <gtsam/slam/PriorFactor.h>
+
+#include <utils.h>
+
 #include <vector>
+#include <iostream>
 
 namespace robot {
 

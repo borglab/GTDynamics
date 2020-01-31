@@ -20,7 +20,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <utils.h>
 
-#include <iostream>
 #include <string>
 
 namespace manipulator {

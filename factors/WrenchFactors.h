@@ -24,7 +24,6 @@
 #include <gtsam/nonlinear/Values.h>
 #include <utils.h>
 
-#include <iostream>
 #include <vector>
 #include <string>
 

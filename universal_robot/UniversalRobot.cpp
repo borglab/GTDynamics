@@ -13,14 +13,16 @@
 
 #include "universal_robot/UniversalRobot.h"
 
+#include <gtsam/geometry/Pose3.h>
+#include <utils.h>
+
+#include <stdexcept>
+#include <sstream>
 #include <queue>
 #include <memory>
 #include <algorithm>
 
 #include "RobotTypes.h"
-
-// using namespace std;
-// using namespace gtsam;
 
 namespace robot {
 

@@ -13,8 +13,7 @@
 
 #include <utils.h>
 
-// using namespace std;
-// using namespace gtsam;
+#include <stdexcept>
 
 namespace manipulator {
 

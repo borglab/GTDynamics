@@ -15,12 +15,9 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <utils.h>
 
-#include <iostream>
-#include <vector>
 #include <string>
 #include <boost/optional.hpp>
 

@@ -14,33 +14,18 @@
 #pragma once
 
 #include <OptimizerSetting.h>
-#include <PoseFactor.h>
-#include <RobotJoint.h>
-#include <RobotLink.h>
-#include <TorqueFactor.h>
-#include <TwistAccelFactor.h>
-#include <TwistFactor.h>
 #include <UniversalRobot.h>
-#include <WrenchEquivalenceFactor.h>
-#include <WrenchFactors.h>
-#include <WrenchPlanarFactor.h>
-#include <gtsam/base/numericalDerivative.h>
+
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/DoglegOptimizer.h>
-#include <gtsam/nonlinear/ExpressionFactorGraph.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/nonlinear/expressions.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <utils.h>
+
+#include <cmath>
+#include <iosfwd>
 
 #include <boost/optional.hpp>
-#include <cmath>
-#include <fstream>
-#include <iostream>
 
 namespace robot {
 
