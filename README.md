@@ -1,7 +1,9 @@
 # GTDynamics
 
-### Full kinodynamics constraints for arbitrary robot configurations with factor graphs.
+### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
 <!-- =================================================== -->
+
+![](https://api.travis-ci.com/Alescontrela/GTDynamics.svg?token=V6isP7NT7qX4qsBuX1sY&branch=feature/universal_factor_graph_public)
 
 GTDynamics is a library that allows the user to express the full kinodynamics constraints of an arbitrary robot configuration on a factor graph. These constraints can be used to solve the forward and inverse dynamics problems.
 
