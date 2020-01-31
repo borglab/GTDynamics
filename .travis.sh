@@ -51,7 +51,7 @@ function configure()
     export CXX=g++-$GCC_VERSION
   fi
 
-  cmake $SOURCE_DIR
+  sudo cmake $SOURCE_DIR
 }
 
 
@@ -86,7 +86,7 @@ function test ()
   configure
 
   # Actual build:
-  make -j2 check
+  sudo make -j2 check
 
   finish
 }
