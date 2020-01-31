@@ -40,7 +40,7 @@ find_package(GTSAM REQUIRED) # Make sure gtsam's install folder is in your PATH
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
-find_package(sdformat8 EXACT REQUIRED)
+find_package(sdformat8 REQUIRED)
 
 #####################################
 # Dynamics library
