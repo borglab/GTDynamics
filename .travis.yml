@@ -32,8 +32,8 @@ install:
 # We first do the compile stage specified below, then the matrix expansion specified after.
 stages:
   - compile
-  - test
-  - special
+  # - test
+  # - special
 
 env:
   global:
