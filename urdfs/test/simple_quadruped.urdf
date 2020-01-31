@@ -1,6 +1,4 @@
 <!--
-Author: Alejandro Escontrela
-
 A simple quadruped URDF to be used for testing purposes. The robot has 12
 revolute joints. Each leg contains 3 revolute joints: A hip
 abduction/adduction (HAA) joint, a hip flexion/extension (HFE) joint, and a
