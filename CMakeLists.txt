@@ -51,7 +51,7 @@ add_definitions( -DURDF_PATH="${PROJECT_SOURCE_DIR}/urdfs" )
 add_definitions( -DSDF_PATH="${PROJECT_SOURCE_DIR}/sdfs" )
 
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS kinodynamics universal_robot factors utils)
+set(SOURCE_SUBDIRS dynamics universal_robot factors utils)
 
 # Create dynamics library and link source and header files.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
