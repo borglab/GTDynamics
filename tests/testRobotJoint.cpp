@@ -23,7 +23,7 @@ using namespace gtsam;
  * construct a RobotJoint and ensure all values are as expected.
  */
 TEST(RobotJoint, urdf_constructor) {
-    auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
+    auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
     RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l1")));
     RobotLinkSharedPtr l2 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l2")));
@@ -65,7 +65,7 @@ TEST(RobotJoint, urdf_constructor) {
 }
 
 TEST(RobotJoint, sdf_constructor) {
-  auto model = get_sdf("../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+  auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   RobotLinkSharedPtr l0 = std::make_shared<RobotLink>(RobotLink(*model.LinkByName("link_0")));
   RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(*model.LinkByName("link_1")));

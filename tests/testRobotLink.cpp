@@ -13,7 +13,6 @@
 
 #include <CppUnitLite/TestHarness.h>
 
-
 using namespace std;
 using namespace robot;
 using namespace gtsam;
@@ -23,7 +22,7 @@ using namespace gtsam;
  * construct a RobotLink via urdf link and ensure all values are as expected.
  */
 TEST(RobotLink, urdf_constructor) {
-    auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
+    auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
     // Initialize UniversalRobot instance using urdf::ModelInterfacePtr.
     RobotLink first_link = RobotLink(*simple_urdf.LinkByName("l1"));
@@ -78,7 +77,7 @@ TEST(RobotLink, urdf_constructor) {
 }
 
 TEST(RobotLink, sdf_constructor) {
-    auto model = get_sdf("../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+    auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
     RobotLink l0 = RobotLink(*model.LinkByName("link_0"));
     RobotLink l1 = RobotLink(*model.LinkByName("link_1"));

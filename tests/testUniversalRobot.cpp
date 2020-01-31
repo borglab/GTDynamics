@@ -23,7 +23,7 @@ using namespace gtsam;
 // and transforms.
 TEST(UniversalRobot, test_extract_structure_from_urdf) {
   // Obtain urdf::ModelInterfaceSharedPtr from sample urdf file.
-  auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
+  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Obtain RobotLink and JointBody objects from ModelInterfaceSharedPtr.
   std::vector<robot::RobotJointParams> joint_params;
@@ -80,7 +80,7 @@ TEST(UniversalRobot, test_extract_structure_from_urdf) {
 // that all transforms, link/joint properties, etc. are correct.
 TEST(UniversalRobot, instantiate_from_urdf) {
     // Load urdf file into sdf::Model
-    auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
+    auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
     RobotJointPair urdf_bodies_and_joints = extract_structure_from_sdf(simple_urdf);
 
@@ -124,7 +124,7 @@ TEST(UniversalRobot, instantiate_from_urdf) {
 
 TEST(UniversalRobot, instantiate_from_simple_urdf_file) {
   // Initialize UniversalRobot instance from a file.
-  UniversalRobot simple = UniversalRobot("../../../urdfs/test/simple_urdf.urdf");
+  auto simple = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Check that number of links and joints in the UniversalRobot instance is correct.
   EXPECT(assert_equal(2, simple.links().size()));
@@ -146,7 +146,7 @@ TEST(UniversalRobot, instantiate_from_simple_urdf_file) {
 TEST(UniversalRobot, instantiate_from_urdf_file) {
 
   // Initialize UniversalRobot instance from a file.
-  UniversalRobot four_bar = UniversalRobot("../../../sdfs/test/four_bar_linkage.sdf");
+  UniversalRobot four_bar = UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
 
   // Check that number of links and joints in the UniversalRobot instance is correct.
   EXPECT(assert_equal(5, four_bar.links().size()));
@@ -175,7 +175,7 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
 TEST(UniversalRobot, instantiate_from_sdf_file) {
 
   // Initialize UniversalRobot instance from a file.
-  UniversalRobot simple_rr = UniversalRobot("../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+  UniversalRobot simple_rr = UniversalRobot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   // // Check that number of links and joints in the UniversalRobot instance is correct.
   EXPECT(assert_equal(3, simple_rr.links().size()));
@@ -202,7 +202,7 @@ TEST(UniversalRobot, instantiate_from_sdf_file) {
 
 TEST(UniversalRobot, removeLink) {
   // Initialize UniversalRobot instance from a file.
-  UniversalRobot four_bar = UniversalRobot("../../../sdfs/test/four_bar_linkage_pure.sdf");
+  UniversalRobot four_bar = UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.removeLink(four_bar.getLinkByName("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
@@ -212,7 +212,7 @@ TEST(UniversalRobot, removeLink) {
 
 TEST(UniversalRobot, jumping_robot) {
   // Initialize UniversalRobot instance from a file.
-  UniversalRobot jumping_robot = UniversalRobot("../../../urdfs/test/jumping_robot.urdf");
+  UniversalRobot jumping_robot = UniversalRobot(std::string(URDF_PATH) + "/test/jumping_robot.urdf");
   // jumping_robot.getLinkByName("l0")->fix();
 }
 

@@ -58,7 +58,7 @@ TEST(utils, calcQ) {
 // Load a URDF file and ensure its joints and links were parsed correctly.
 TEST(utils, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
-  auto simple_urdf = get_sdf("../../../urdfs/test/simple_urdf.urdf");
+  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Check that physical and inertial properties were properly parsed..
   EXPECT(assert_equal(2, simple_urdf.LinkCount()));
@@ -77,16 +77,15 @@ TEST(utils, load_and_parse_urdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_file) {
-  std::string simple_sdf_path = "../../../sdfs/test/simple.sdf";
-  auto simple_sdf = get_sdf(simple_sdf_path);
+  
+  auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));
 }
 
 TEST(utils, load_and_parse_sdf_world_file) {
-  std::string simple_sdf_path = "../../../sdfs/test/simple_rr.sdf";
-  auto simple_sdf = get_sdf(simple_sdf_path, "simple_rr_sdf");
+  auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
   EXPECT(assert_equal(3, simple_sdf.JointCount()));

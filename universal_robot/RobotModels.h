@@ -27,7 +27,7 @@ namespace four_bar_linkage
 {
 UniversalRobot getFourBar()
 {
-  UniversalRobot four_bar = UniversalRobot("../../../sdfs/test/four_bar_linkage_pure.sdf");
+  UniversalRobot four_bar = UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   return four_bar;
 }
 // Load the robot from urdf file
@@ -43,7 +43,7 @@ namespace simple_urdf
 {
 UniversalRobot getSimpleUrdf()
 {
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf.urdf");
+  UniversalRobot simple_robot = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -58,7 +58,7 @@ namespace simple_urdf_zero_inertia
 {
 UniversalRobot getSimpleUrdf()
 {
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf_zero_inertia.urdf");
+  UniversalRobot simple_robot = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -73,7 +73,7 @@ namespace simple_urdf_eq_mass
 {
 UniversalRobot getSimpleUrdfEqMass()
 {
-  UniversalRobot simple_robot = UniversalRobot("../../../urdfs/test/simple_urdf_eq_mass.urdf");
+  UniversalRobot simple_robot = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf_eq_mass.urdf");
   return simple_robot;
 }
 UniversalRobot my_robot = getSimpleUrdfEqMass();
