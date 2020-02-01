@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  ContactKinematicsPoseFactor.h
  * @brief Factor to enforce zero height at the contact point.
@@ -13,9 +20,10 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <vector>
+#include <string>
+#include <boost/optional.hpp>
 
 namespace robot {
 
@@ -32,22 +40,18 @@ class ContactKinematicsPoseFactor
   gtsam::Matrix13 H_err_;
 
  public:
-  /** Contact kinematics factor for link end to remain in contact with the ground.
-      Keyword argument:
-          pose_key   -- The key corresponding to the link's Com pose.
-          cost_model -- Noise model associated with this factor.
-          cTcom      -- Static transform from link com to link end (where
-            contact is made).
-          gravity    -- Gravity vector in the spatial frame. Used to calculate
-            the "up" direction.
+  /** Contact kinematics factor for link end to remain in contact with the
+     ground. Keyword argument: pose_key   -- The key corresponding to the link's
+     Com pose. cost_model -- Noise model associated with this factor. cTcom --
+     Static transform from link com to link end (where contact is made). gravity
+     -- Gravity vector in the spatial frame. Used to calculate the "up"
+     direction.
    */
-  ContactKinematicsPoseFactor(gtsam::Key pose_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const gtsam::Pose3 &cTcom,
-                          const gtsam::Vector3 &gravity)
-      : Base(cost_model, pose_key),
-        cTcom_(cTcom) {
-
+  ContactKinematicsPoseFactor(
+      gtsam::Key pose_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity)
+      : Base(cost_model, pose_key), cTcom_(cTcom) {
     if (gravity[0] != 0)
       H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
     else if (gravity[1] != 0)
@@ -55,7 +59,7 @@ class ContactKinematicsPoseFactor
     else
       H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
   }
-  virtual ~ContactKinematicsPoseFactor() {} 
+  virtual ~ContactKinematicsPoseFactor() {}
 
  public:
   /** Evaluate contact errors.
@@ -65,26 +69,24 @@ class ContactKinematicsPoseFactor
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
+    // Change contact reference frame from com to spatial.
+    gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
 
-      // Change contact reference frame from com to spatial.
-      gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
-      
-      // Obtain translation component and corresponding jacobian.
-      gtsam::Matrix36 H_trans;
-      gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
+    // Obtain translation component and corresponding jacobian.
+    gtsam::Matrix36 H_trans;
+    gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
 
-      // Compute the error.
-      gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
+    // Compute the error.
+    gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
 
-      // Compute the jacobian.
-      if (H_pose)
-        *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
-      
-      return error;
+    // Compute the jacobian.
+    if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+
+    return error;
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -101,7 +103,7 @@ class ContactKinematicsPoseFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
