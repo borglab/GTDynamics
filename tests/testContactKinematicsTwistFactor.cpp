@@ -94,7 +94,7 @@ TEST(ContactKinematicsTwistFactor, error) {
  * velocity at the contact point.
  **/
 TEST(ContactKinematicsTwistFactor, optimization) {
-  using simple_urdf::robot;
+  using simple_urdf::my_robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Constrained::All(3);
