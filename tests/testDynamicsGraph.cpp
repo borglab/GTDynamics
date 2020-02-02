@@ -141,6 +141,39 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 }
 
+// test jumping robot
+TEST(dynamicsFactorGraph_FD, jumping_robot)
+{
+  using namespace jumping_robot;
+  double torque3 = 0;
+  double torque2 = 0.5;
+  Vector torques = (Vector(6) << 0, torque2, torque3, torque3, torque2, 0).finished();
+
+  // build the dynamics factor graph
+  auto graph_builder = DynamicsGraphBuilder();
+  NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
+  graph.add(graph_builder.forwardDynamicsPriors(my_robot, 0, joint_angles, joint_vels, torques));
+
+  // test jumping robot FD
+  Values result = graph_builder.optimize(graph, DynamicsGraphBuilder::zeroValues(my_robot, 0), DynamicsGraphBuilder::OptimizerType::GaussNewton);
+
+  // check acceleration
+  auto expected_qAccel = Vector(6);
+  double m1 = 0.31;
+  double m2 = 0.28;
+  double m3 = 0.54;
+  double link_radius = 0.02;
+  double l = 0.55;
+  double theta = 0.0 / 180.0 * M_PI;
+  double acc =
+      (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l * std::sin(theta)) /
+      (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 * std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) * m3) +
+       (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0 / 12 * m2));
+  expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
+  Vector actual_qAccel = DynamicsGraphBuilder::jointAccels(my_robot, result, 0);
+  EXPECT(assert_equal(expected_qAccel, actual_qAccel));
+}
+
 TEST(collocationFactors, simple_urdf) {
   using simple_urdf::my_robot;
   double dt = 1;
