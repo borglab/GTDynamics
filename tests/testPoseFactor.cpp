@@ -103,12 +103,13 @@ TEST(PoseFactor, breaking_rr) {
 
   double joint_angle = M_PI / 4;
 
-  gtsam::Vector6 screw_axis = my_robot.getJointByName("j1")->screwAxis();
-  gtsam::Pose3 jMi = my_robot.getJointByName("j1")->McpCom();
-
+  auto l2 = my_robot.getLinkByName("l2");
+  auto j1 = my_robot.getJointByName("j1");
+  gtsam::Vector6 screw_axis = j1->screwAxis(l2);
+  gtsam::Pose3 jMi = j1->transformTo(l2);
   manipulator::PoseFunctor predictPose(jMi, screw_axis);
 
-  EXPECT(assert_equal(my_robot.getJointByName("j1")->MpcCom(joint_angle),
+  EXPECT(assert_equal(j1->transformFrom(l2, joint_angle),
                       predictPose(base_pose, joint_angle), 1e-6));
 }
 

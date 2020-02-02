@@ -58,7 +58,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::qFactors(
   }
 
   for (auto &&joint : robot.joints()) {
-    const auto &link_1 = joint->parentLink();
+    const auto &link_1 = joint->parentLink().lock();
     const auto &link_2 = joint->childLink().lock();
     int i1 = link_1->getID();
     int i2 = link_2->getID();
@@ -66,7 +66,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::qFactors(
     // add pose factor
     graph.add(manipulator::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
                                       JointAngleKey(j, t), opt_.p_cost_model,
-                                      joint->McpCom(), joint->screwAxis()));
+                                      joint->transformTo(link_2), joint->screwAxis(link_2)));
   }
   return graph;
 }
@@ -83,7 +83,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::vFactors(
   }
 
   for (auto &&joint : robot.joints()) {
-    const auto &link_1 = joint->parentLink();
+    const auto &link_1 = joint->parentLink().lock();
     const auto &link_2 = joint->childLink().lock();
     int i1 = link_1->getID();
     int i2 = link_2->getID();
@@ -91,8 +91,8 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::vFactors(
     // add twist factor
     graph.add(manipulator::TwistFactor(TwistKey(i1, t), TwistKey(i2, t),
                                        JointAngleKey(j, t), JointVelKey(j, t),
-                                       opt_.v_cost_model, joint->McpCom(),
-                                       joint->screwAxis()));
+                                       opt_.v_cost_model, joint->transformTo(link_2),
+                                       joint->screwAxis(link_2)));
   }
   return graph;
 }
@@ -109,7 +109,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::aFactors(
   }
 
   for (auto &&joint : robot.joints()) {
-    const auto &link_1 = joint->parentLink();
+    const auto &link_1 = joint->parentLink().lock();
     const auto &link_2 = joint->childLink().lock();
     int i1 = link_1->getID();
     int i2 = link_2->getID();
@@ -118,7 +118,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::aFactors(
     graph.add(manipulator::TwistAccelFactor(
         TwistKey(i2, t), TwistAccelKey(i1, t), TwistAccelKey(i2, t),
         JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
-        opt_.a_cost_model, joint->McpCom(), joint->screwAxis()));
+        opt_.a_cost_model, joint->transformTo(link_2), joint->screwAxis(link_2)));
   }
   return graph;
 }
@@ -138,28 +138,28 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 1) {
         graph.add(WrenchFactor1(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
+                                WrenchKey(i, connected_joints[0].lock()->getID(), t),
                                 PoseKey(i, t), opt_.f_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 2) {
         graph.add(WrenchFactor2(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
+                                WrenchKey(i, connected_joints[0].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[1].lock()->getID(), t),
                                 PoseKey(i, t), opt_.f_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 3) {
         graph.add(WrenchFactor3(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
-                                WrenchKey(i, connected_joints[2]->getID(), t),
+                                WrenchKey(i, connected_joints[0].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[1].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[2].lock()->getID(), t),
                                 PoseKey(i, t), opt_.f_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 4) {
         graph.add(WrenchFactor4(TwistKey(i, t), TwistAccelKey(i, t),
-                                WrenchKey(i, connected_joints[0]->getID(), t),
-                                WrenchKey(i, connected_joints[1]->getID(), t),
-                                WrenchKey(i, connected_joints[2]->getID(), t),
-                                WrenchKey(i, connected_joints[3]->getID(), t),
+                                WrenchKey(i, connected_joints[0].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[1].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[2].lock()->getID(), t),
+                                WrenchKey(i, connected_joints[3].lock()->getID(), t),
                                 PoseKey(i, t), opt_.f_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else {
@@ -169,7 +169,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
   }
 
   for (auto &&joint : robot.joints()) {
-    const auto &link_1 = joint->parentLink();
+    const auto &link_1 = joint->parentLink().lock();
     const auto &link_2 = joint->childLink().lock();
     int i1 = link_1->getID();
     int i2 = link_2->getID();
@@ -179,12 +179,12 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
     // {
     graph.add(WrenchEquivalenceFactor(WrenchKey(i1, j, t), WrenchKey(i2, j, t),
                                       JointAngleKey(j, t), opt_.f_cost_model,
-                                      joint->McpCom(), joint->screwAxis()));
+                                      joint->transformTo(link_2), joint->screwAxis(link_2)));
     // }
 
     // add torque factor
     graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
-                                        opt_.t_cost_model, joint->screwAxis()));
+                                        opt_.t_cost_model, joint->screwAxis(link_2)));
 
     // add planar wrench factor
     if (planar_axis) {
@@ -457,7 +457,7 @@ gtsam::Values DynamicsGraphBuilder::zeroValues(const UniversalRobot &robot,
   }
   for (auto &joint : robot.joints()) {
     int j = joint->getID();
-    auto parent_link = joint->parentLink();
+    auto parent_link = joint->parentLink().lock();
     auto child_link = joint->childLink().lock();
     zero_values.insert(WrenchKey(parent_link->getID(), j, t), zero_wrenches);
     zero_values.insert(WrenchKey(child_link->getID(), j, t), zero_wrenches);

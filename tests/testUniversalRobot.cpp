@@ -21,131 +21,50 @@
 #include <utils.h>
 
 using gtsam::assert_equal;
-using robot::get_sdf, robot::UniversalRobot, robot::RobotJointPair,
+using robot::get_sdf, robot::UniversalRobot, robot::LinkJointPair,
     robot::extract_structure_from_sdf;
-
-// Constructs RobotLink and RobotJoint objects from an input urdf:ModelInterface
-// pointer and checks that constructed values have correct parents, children,
-// and transforms.
-TEST(UniversalRobot, test_extract_structure_from_urdf) {
-  // Obtain urdf::ModelInterfaceSharedPtr from sample urdf file.
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-
-  // Obtain RobotLink and JointBody objects from ModelInterfaceSharedPtr.
-  std::vector<robot::RobotJointParams> joint_params;
-  robot::RobotJointParams j1_params;
-  j1_params.name = "j1";
-  j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
-  joint_params.push_back(j1_params);
-
-  RobotJointPair urdf_bodies_and_joints = extract_structure_from_sdf(
-      simple_urdf,
-      boost::optional<std::vector<robot::RobotJointParams>>(joint_params));
-  std::vector<robot::RobotLinkSharedPtr> linkBodies =
-      urdf_bodies_and_joints.first;
-  std::vector<robot::RobotJointSharedPtr> RobotJoints =
-      urdf_bodies_and_joints.second;
-
-  EXPECT(assert_equal(2, linkBodies.size()));
-  EXPECT(assert_equal(1, RobotJoints.size()));
-
-  // Ensure that link l1 has link l2 listed as a child link and j1 listed as
-  // a child joint. Ensure that link l2 has link l1 lsited as a parent link
-  // and j1 listed as a parent joint.
-  auto l1_it = std::find_if(linkBodies.begin(), linkBodies.end(),
-                            [=](const robot::RobotLinkSharedPtr& link) {
-                              return (link->name() == "l1");
-                            });
-  auto l2_it = std::find_if(linkBodies.begin(), linkBodies.end(),
-                            [=](const robot::RobotLinkSharedPtr& link) {
-                              return (link->name() == "l2");
-                            });
-
-  EXPECT(assert_equal(0, l1_it == linkBodies.end()));
-  EXPECT(assert_equal(0, (*l1_it)->getParentLinks().size()));
-  EXPECT(assert_equal(0, (*l1_it)->getParentJoints().size()));
-  EXPECT(assert_equal(1, (*l1_it)->getChildLinks().size()));
-  EXPECT(assert_equal(1, (*l1_it)->getChildJoints().size()));
-  EXPECT(assert_equal(1, (*l1_it)->getJoints().size()));
-
-  EXPECT(assert_equal(0, l2_it == linkBodies.end()));
-  EXPECT(assert_equal(1, (*l2_it)->getParentLinks().size()));
-  EXPECT(assert_equal(1, (*l2_it)->getParentJoints().size()));
-  EXPECT(assert_equal(1, (*l1_it)->getChildLinks().size()));
-  EXPECT(assert_equal(0, (*l2_it)->getChildJoints().size()));
-  EXPECT(assert_equal(1, (*l2_it)->getJoints().size()));
-
-  robot::RobotLinkWeakPtr l2_weak = (*l1_it)->getChildLinks()[0];
-  EXPECT(assert_equal("l2", l2_weak.lock()->name()));
-  EXPECT(assert_equal("l1", ((*l2_it)->getParentLinks()[0])->name()));
-
-  auto j1_it = std::find_if(RobotJoints.begin(), RobotJoints.end(),
-                            [=](const robot::RobotJointSharedPtr& joint) {
-                              return (joint->name() == "j1");
-                            });
-  EXPECT(assert_equal(0, j1_it == RobotJoints.end()));
-  EXPECT(assert_equal("j1", (*j1_it)->name()));
-  EXPECT(assert_equal(
-      0, j1_params.jointEffortType != (*j1_it)->jointEffortType()));
-}
 
 // Initialize a UniversalRobot with "urdfs/test/simple_urdf.urdf" and make sure
 // that all transforms, link/joint properties, etc. are correct.
-TEST(UniversalRobot, instantiate_from_urdf) {
+TEST(UniversalRobot, simple_urdf) {
   // Load urdf file into sdf::Model
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  RobotJointPair urdf_bodies_and_joints =
-      extract_structure_from_sdf(simple_urdf);
+  LinkJointPair links_and_joints = extract_structure_from_sdf(simple_urdf);
+  robot::LinkMap name_to_link = links_and_joints.first;
+  robot::JointMap name_to_joint = links_and_joints.second;
+  EXPECT(assert_equal(2, name_to_link.size()));
+  EXPECT(assert_equal(1, name_to_joint.size()));
+
+  robot::RobotLinkConstSharedPtr l1 = name_to_link.at("l1");
+  robot::RobotLinkConstSharedPtr l2 = name_to_link.at("l2");
+  robot::RobotJointSharedPtr j1 = name_to_joint.at("j1");
+  EXPECT(assert_equal(1, l1->getJoints().size()));
+  EXPECT(assert_equal(1, l2->getJoints().size()));
+  EXPECT(l1->getID() == 0);
+  EXPECT(l2->getID() == 1);
+  EXPECT(j1->getID() == 0);
 
   // Initialize UniversalRobot instance using RobotLink and RobotJoint
   // instances.
-  UniversalRobot simple_robot = UniversalRobot(urdf_bodies_and_joints);
+  UniversalRobot simple_robot = UniversalRobot(links_and_joints);
 
   // Check that number of links and joints in the UniversalRobot instance is
   // correct.
   EXPECT(assert_equal(2, simple_robot.links().size()));
   EXPECT(assert_equal(1, simple_robot.joints().size()));
-
-  EXPECT(assert_equal("l1", simple_robot.getLinkByName("l1")->name()));
-  EXPECT(assert_equal("l2", simple_robot.getLinkByName("l2")->name()));
-  EXPECT(assert_equal("j1", simple_robot.getJointByName("j1")->name()));
-
-  EXPECT(assert_equal(-1.57,
-                      simple_robot.getJointByName("j1")->jointLowerLimit()));
-  EXPECT(
-      assert_equal(1.57, simple_robot.getJointByName("j1")->jointUpperLimit()));
-  EXPECT(assert_equal(
-      0.0, simple_robot.getJointByName("j1")->jointLimitThreshold()));
+  EXPECT(simple_robot.links()[0] == l1);
+  EXPECT(simple_robot.links()[1] == l2);
+  EXPECT(simple_robot.joints()[0] == j1);
 
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      simple_robot.joints()[0]->McpCom()));
-
+                      j1->transformTo(j1->childLink())));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      simple_robot.joints()[0]->MpcCom()));
+                      j1->transformFrom(j1->childLink())));
 }
 
-TEST(UniversalRobot, instantiate_from_simple_urdf_file) {
-  // Initialize UniversalRobot instance from a file.
-  auto simple =
-      UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  // Check that number of links and joints in the UniversalRobot instance is
-  // correct.
-  EXPECT(assert_equal(2, simple.links().size()));
-  EXPECT(assert_equal(1, simple.joints().size()));
-
-  // Test getLinkByName(...) and getJointByName(...)
-  EXPECT(assert_equal("l1", simple.getLinkByName("l1")->name()));
-  EXPECT(assert_equal("l2", simple.getLinkByName("l2")->name()));
-  EXPECT(assert_equal("j1", simple.getJointByName("j1")->name()));
-
-  EXPECT(assert_equal(-1.57, simple.getJointByName("j1")->jointLowerLimit()));
-  EXPECT(assert_equal(1.57, simple.getJointByName("j1")->jointUpperLimit()));
-  EXPECT(assert_equal(0.0, simple.getJointByName("j1")->jointLimitThreshold()));
-}
-
-TEST(UniversalRobot, instantiate_from_urdf_file) {
+TEST(UniversalRobot, four_bar_sdf) {
   // Initialize UniversalRobot instance from a file.
   UniversalRobot four_bar =
       UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
@@ -173,7 +92,7 @@ TEST(UniversalRobot, instantiate_from_urdf_file) {
       assert_equal(0.0, four_bar.getJointByName("j1")->jointLimitThreshold()));
 }
 
-TEST(UniversalRobot, instantiate_from_sdf_file) {
+TEST(UniversalRobot, simple_rr_sdf) {
   // Initialize UniversalRobot instance from a file.
   UniversalRobot simple_rr = UniversalRobot(
       std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
@@ -210,13 +129,6 @@ TEST(UniversalRobot, removeLink) {
   EXPECT(four_bar.numJoints() == 2);
   EXPECT(four_bar.getLinkByName("l1")->getJoints().size() == 1);
   EXPECT(four_bar.getLinkByName("l3")->getJoints().size() == 1);
-}
-
-TEST(UniversalRobot, jumping_robot) {
-  // Initialize UniversalRobot instance from a file.
-  UniversalRobot jumping_robot =
-      UniversalRobot(std::string(URDF_PATH) + "/test/jumping_robot.urdf");
-  // jumping_robot.getLinkByName("l0")->fix();
 }
 
 int main() {

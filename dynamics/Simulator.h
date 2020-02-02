@@ -80,7 +80,7 @@ class Simulator {
     }
     for (auto &joint : robot_.joints()) {
       int j = joint->getID();
-      auto parent_link = joint->parentLink();
+      auto parent_link = joint->parentLink().lock();
       auto child_link = joint->childLink().lock();
       if (!parent_link->isFixed()) {
         values.insert(WrenchKey(parent_link->getID(), j, t),

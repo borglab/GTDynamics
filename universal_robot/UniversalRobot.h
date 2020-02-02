@@ -35,9 +35,10 @@ namespace robot {
  * contanining optional params for joints.
  *
  */
-typedef std::pair<std::vector<robot::RobotLinkSharedPtr>,
-                  std::vector<robot::RobotJointSharedPtr>>
-    RobotJointPair;
+
+typedef std::map<std::string, robot::RobotLinkSharedPtr> LinkMap;
+typedef std::map<std::string, robot::RobotJointSharedPtr> JointMap;
+typedef std::pair<LinkMap, JointMap> LinkJointPair;
 
 /** Construct all RobotLink and RobotJoint objects from an input
  sdf::ElementPtr.
@@ -47,7 +48,7 @@ typedef std::pair<std::vector<robot::RobotLinkSharedPtr>,
  *    joint_params     -- a vector contanining optional params for joints.
  *
  */
-RobotJointPair extract_structure_from_sdf(
+LinkJointPair extract_structure_from_sdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<robot::RobotJointParams>> joint_params =
         boost::none);
@@ -57,7 +58,7 @@ RobotJointPair extract_structure_from_sdf(
  * file containing the robot description. joint_params -- a vector containing
  * optional params for joints.
  */
-RobotJointPair extract_structure_from_file(
+LinkJointPair extract_structure_from_file(
     const std::string file_path, const std::string model_name,
     const boost::optional<std::vector<robot::RobotJointParams>> joint_params =
         boost::none);
@@ -70,21 +71,19 @@ RobotJointPair extract_structure_from_file(
  */
 class UniversalRobot {
  private:
-  std::vector<RobotLinkSharedPtr> link_bodies_;
-  std::vector<RobotJointSharedPtr> link_joints_;
 
   // For quicker/easier access to links and joints.
-  std::map<std::string, robot::RobotLinkSharedPtr> name_to_link_body_;
-  std::map<std::string, robot::RobotJointSharedPtr> name_to_link_joint_;
+  LinkMap name_to_link_;
+  JointMap name_to_joint_;
 
  public:
   /**
    * Construct a robot structure using a URDF model interface.
    * Keyword Arguments:
-   *  robot_links_and_joints    -- RobotJointPair containing links and joints.
+   *  robot_links_and_joints    -- LinkJointPair containing links and joints.
    *
    */
-  explicit UniversalRobot(RobotJointPair links_and_joints);
+  explicit UniversalRobot(LinkJointPair links_and_joints);
 
   /** Construct a robot structure directly from a urdf or sdf file.
    *
@@ -107,10 +106,10 @@ class UniversalRobot {
   void removeJoint(RobotJointSharedPtr joint);
 
   /// Return the link corresponding to the input string.
-  RobotLinkSharedPtr getLinkByName(std::string name);
+  RobotLinkSharedPtr getLinkByName(std::string name) const;
 
   /// Return the joint corresponding to the input string.
-  RobotJointSharedPtr getJointByName(std::string name);
+  RobotJointSharedPtr getJointByName(std::string name) const;
 
   /// Return number of *moving* links.
   int numLinks() const;

@@ -36,7 +36,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
  private:
   std::string name_;
 
-  unsigned char id_ = 0;
+  int id_ = -1;
 
   // Inertial elements.
   double mass_;
@@ -52,14 +52,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  // Parent information.
-  std::vector<RobotLinkSharedPtr> parent_links_;
-  std::vector<RobotJointSharedPtr> parent_joints_;
-
-  // Child information. References to child objects are stored as weak pointers
-  // to prevent circular references.
-  std::vector<RobotJointWeakPtr> child_joints_;
-  std::vector<RobotLinkWeakPtr> child_links_;
+  std::vector<RobotJointWeakPtr> joints_;  // joints connected to the link
 
  public:
   RobotLink() {}
@@ -108,30 +101,11 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   // return a weak pointer of the link
   RobotLinkWeakPtr getWeakPtr(void) { return shared_from_this(); }
 
-  // remove the parent joint and corresponding parent link
-  void removeParentJoint(RobotJointSharedPtr joint,
-                         RobotLinkSharedPtr parent_link) {
-    parent_joints_.erase(
-        std::find(parent_joints_.begin(), parent_joints_.end(), joint));
-    parent_links_.erase(
-        std::find(parent_links_.begin(), parent_links_.end(), parent_link));
-  }
-
-  // remove the child joint and corresponding child link
-  void removeChildJoint(RobotJointSharedPtr joint,
-                        RobotLinkSharedPtr child_link) {
-    for (auto joint_it = child_joints_.begin(); joint_it != child_joints_.end();
-         joint_it++) {
-      if ((*joint_it).lock() == joint) {
-        child_joints_.erase(joint_it);
-        break;
-      }
-    }
-
-    for (auto link_it = child_links_.begin(); link_it != child_links_.end();
-         link_it++) {
-      if ((*link_it).lock() == child_link) {
-        child_links_.erase(link_it);
+  // remove the joint
+  void removeJoint(RobotJointWeakPtr joint) {
+    for (auto joint_it = joints_.begin(); joint_it != joints_.end(); joint_it++) {
+      if ((*joint_it).lock() == joint.lock()) {
+        joints_.erase(joint_it);
         break;
       }
     }
@@ -139,36 +113,21 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
 
   // set ID for the link
   void setID(unsigned char id) {
-    if (id == 0) throw std::runtime_error("ID cannot be 0");
+    // if (id == 0) throw std::runtime_error("ID cannot be 0");
     id_ = id;
   }
 
   // return ID of the link
-  unsigned char getID() {
-    if (id_ == 0)
+  int getID() const {
+    if (id_ == -1)
       throw std::runtime_error(
           "Calling getID on a link whose ID has not been set");
     return id_;
   }
 
-  // add child joint to the link
-  void addChildJoint(RobotJointWeakPtr child_joint_ptr) {
-    child_joints_.push_back(child_joint_ptr);
-  }
-
-  // add child link to the link
-  void addChildLink(RobotLinkWeakPtr child_link_ptr) {
-    child_links_.push_back(child_link_ptr);
-  }
-
-  // add parent joint to the link
-  void addParentJoint(RobotJointSharedPtr parent_joint_ptr) {
-    parent_joints_.push_back(parent_joint_ptr);
-  }
-
-  // add parent link to the link
-  void addParentLink(RobotLinkSharedPtr parent_link_ptr) {
-    parent_links_.push_back(parent_link_ptr);
+  // add joint to the link
+  void addJoint(RobotJointWeakPtr joint_ptr) {
+    joints_.push_back(joint_ptr);
   }
 
   // transform from link to world frame
@@ -196,34 +155,8 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   // unfix the link
   void unfix() { is_fixed_ = false; }
 
-  // return child joints of the link
-  std::vector<RobotJointWeakPtr> getChildJoints(void) { return child_joints_; }
-
-  // return child links of the link
-  std::vector<RobotLinkWeakPtr> getChildLinks(void) { return child_links_; }
-
-  // return parent joints of the link
-  std::vector<RobotJointSharedPtr> getParentJoints(void) {
-    return parent_joints_;
-  }
-
-  // return parent links of the link
-  std::vector<RobotLinkSharedPtr> getParentLinks(void) { return parent_links_; }
-
   // return all joints of the link
-  std::vector<RobotJointSharedPtr> getJoints(void) {
-    std::vector<RobotJointSharedPtr> parent_joints = getParentJoints();
-    std::vector<RobotJointWeakPtr> child_joints_weak = getChildJoints();
-
-    std::vector<RobotJointSharedPtr> child_joints;
-    for (auto&& child_joint : child_joints_weak)
-      child_joints.push_back(child_joint.lock());
-
-    parent_joints.insert(parent_joints.begin(), child_joints.begin(),
-                         child_joints.end());
-
-    return parent_joints;
-  }
+  const std::vector<RobotJointWeakPtr>& getJoints(void) const { return joints_; }
 
   // Reutrn link name.
   std::string name() const { return name_; }
@@ -249,7 +182,6 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     std::vector<gtsam::Matrix> gmm;
     gmm.push_back(inertia_);
     gmm.push_back(gtsam::I_3x3 * mass_);
-
     return gtsam::diag(gmm);
   }
 };
