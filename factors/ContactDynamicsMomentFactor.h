@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  ContactDynamicsMomentFactor.h
  * @brief Factor to enforce moment at the contact point.
@@ -13,9 +20,10 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <vector>
+#include <string>
+#include <boost/optional.hpp>
 
 namespace robot {
 
@@ -37,16 +45,16 @@ class ContactDynamicsMomentFactor
           cost_model -- gtsam::noiseModel for this factor.
           cTcom      -- Contact frame expressed in com frame.
    */
-  ContactDynamicsMomentFactor(gtsam::Key contact_wrench_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const gtsam::Pose3 &cTcom)
-      : Base(cost_model, contact_wrench_key),
-        cTcom_(cTcom) {
-    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0,
-                                              0, 1, 0, 0, 0, 0,
-                                              0, 0, 1, 0, 0, 0).finished();
+  ContactDynamicsMomentFactor(
+      gtsam::Key contact_wrench_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const gtsam::Pose3 &cTcom)
+      : Base(cost_model, contact_wrench_key), cTcom_(cTcom) {
+    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+                         0, 0, 0, 1, 0, 0, 0)
+                            .finished();
   }
-  virtual ~ContactDynamicsMomentFactor() {} 
+  virtual ~ContactDynamicsMomentFactor() {}
 
  public:
   /** Evaluate contact point moment errors.
@@ -55,19 +63,20 @@ class ContactDynamicsMomentFactor
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &contact_wrench,
-      boost::optional<gtsam::Matrix &> H_contact_wrench = boost::none) const override {
+      boost::optional<gtsam::Matrix &> H_contact_wrench =
+          boost::none) const override {
+    // Transform the twist from the link COM frame to the contact frame.
+    gtsam::Vector3 error =
+        H_contact_wrench_ * cTcom_.AdjointMap() * contact_wrench;
 
-      // Transform the twist from the link COM frame to the contact frame.
-      gtsam::Vector3 error = H_contact_wrench_ * cTcom_.AdjointMap() * contact_wrench;
+    if (H_contact_wrench)
+      *H_contact_wrench = H_contact_wrench_ * cTcom_.AdjointMap();
 
-      if (H_contact_wrench)
-        *H_contact_wrench = H_contact_wrench_ * cTcom_.AdjointMap();
-
-      return error;
+    return error;
   }
 
   // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override{
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
@@ -84,7 +93,7 @@ class ContactDynamicsMomentFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }

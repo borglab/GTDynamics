@@ -24,12 +24,13 @@
 
 #include <cmath>
 #include <iosfwd>
-
+#include <vector>
+#include <string>
 #include <boost/optional.hpp>
 
 namespace robot {
 
-// TODO: can we not use inline here?
+// TODO(aescontrela3, yetongumich): can we not use inline here?
 
 /* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t.
  */
@@ -39,8 +40,7 @@ inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
 }
 
 /* Shorthand for C_i_t, for contact wrench on i-th link at time t.*/
-inline gtsam::LabeledSymbol ContactWrenchKey(int i, int t)
-{
+inline gtsam::LabeledSymbol ContactWrenchKey(int i, int t) {
   return gtsam::LabeledSymbol('C', i, t);
 }
 
@@ -80,10 +80,14 @@ inline gtsam::LabeledSymbol JointAccelKey(int j, int t) {
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
-inline gtsam::LabeledSymbol PhaseKey(int k) { return gtsam::LabeledSymbol('t', 0, k); }
+inline gtsam::LabeledSymbol PhaseKey(int k) {
+  return gtsam::LabeledSymbol('t', 0, k);
+}
 
 /* Shorthand for t_t, time at time step t. */
-inline gtsam::LabeledSymbol TimeKey(int t) { return gtsam::LabeledSymbol('t', 1, t); }
+inline gtsam::LabeledSymbol TimeKey(int t) {
+  return gtsam::LabeledSymbol('t', 1, t);
+}
 
 /**
  * DynamicsGraphBuilder is a class which builds a factor graph to do kinodynamic
@@ -116,28 +120,21 @@ class DynamicsGraphBuilder {
   }
   ~DynamicsGraphBuilder() {}
 
-
-  enum CollocationScheme
-  {
-    Euler,
-    RungeKutta,
-    Trapezoidal,
-    HermiteSimpson
-  };
+  enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
   enum OptimizerType { GaussNewton, LM, PDL };
 
   /* return q-level nonlinear factor graph (pose related factors) */
-  gtsam::NonlinearFactorGraph qFactors(
-      const UniversalRobot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph qFactors(const UniversalRobot &robot,
+                                       const int t) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
-  gtsam::NonlinearFactorGraph vFactors(
-      const UniversalRobot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph vFactors(const UniversalRobot &robot,
+                                       const int t) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
-  gtsam::NonlinearFactorGraph aFactors(
-      const UniversalRobot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph aFactors(const UniversalRobot &robot,
+                                       const int t) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
@@ -173,7 +170,6 @@ class DynamicsGraphBuilder {
       const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
       const gtsam::Vector &torques) const;
 
-
   /** return prior factors of initial state, torques along trajectory
   * Keyword arguments:
      robot                      -- the robot
@@ -182,11 +178,10 @@ class DynamicsGraphBuilder {
      joint_vels                 -- joint velocites specified in order of joints
      torques_seq                -- joint torques along the trajectory
    */
-  gtsam::NonlinearFactorGraph
-  trajectoryFDPriors(const UniversalRobot &robot, const int num_steps,
-                     const gtsam::Vector &joint_angles,
-                     const gtsam::Vector &joint_vels,
-                     const std::vector<gtsam::Vector> &torques_seq) const;
+  gtsam::NonlinearFactorGraph trajectoryFDPriors(
+      const UniversalRobot &robot, const int num_steps,
+      const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
+      const std::vector<gtsam::Vector> &torques_seq) const;
 
   /** return nonlinear factor graph of the entire trajectory
   * Keyword arguments:
@@ -207,10 +202,10 @@ class DynamicsGraphBuilder {
   * Keyword arguments:
      robots                     -- the robot configuration for each phase
      phase_steps                -- number of time steps for each phase
-     transition_graphs          -- dynamcis graph for each transition timestep (including guardian factors)
-     collocation                -- the collocation scheme
-     gravity                    -- gravity in world frame
-     planar_axis                -- axis of the plane, used only for planar robot
+     transition_graphs          -- dynamcis graph for each transition timestep
+  (including guardian factors) collocation                -- the collocation
+  scheme gravity                    -- gravity in world frame planar_axis --
+  axis of the plane, used only for planar robot
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<UniversalRobot> &robots,
@@ -220,37 +215,29 @@ class DynamicsGraphBuilder {
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
-  /** return collocation factors on angles and velocities from time step t to t+1
+  /** return collocation factors on angles and velocities from time step t to
+  t+1
   * Keyword arguments:
      robot                      -- the robot
      t                          -- time step
      dt                         -- duration of each timestep
      collocation                -- collocation scheme chosen
    */
-  gtsam::NonlinearFactorGraph collocationFactors(const UniversalRobot &robot,
-                                                  const int t, const double dt,
-                                                  const CollocationScheme collocation) const;
+  gtsam::NonlinearFactorGraph collocationFactors(
+      const UniversalRobot &robot, const int t, const double dt,
+      const CollocationScheme collocation) const;
 
-  /** return collocation factors on angles and velocities from time step t to t+1, with dt as a varaible
+  /** return collocation factors on angles and velocities from time step t to
+  t+1, with dt as a varaible
   * Keyword arguments:
      robot                      -- the robot
      t                          -- time step
      phase                      -- the phase of the timestep
      collocation                -- collocation scheme chosen
    */
-  gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(const UniversalRobot &robot,
-                                                            const int t, const int phase,
-                                                            const CollocationScheme collocation) const;
-
-
-
-
-
-
-
-
-
-
+  gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
+      const UniversalRobot &robot, const int t, const int phase,
+      const CollocationScheme collocation) const;
 
   /** return the joint accelerations
   * Keyword arguments:
@@ -279,10 +266,12 @@ class DynamicsGraphBuilder {
   * Keyword arguments:
      robot                      -- the robot
      num_steps                  -- total time steps
-     num_phases                 -- number of phases, -1 for not using multi-phase
+     num_phases                 -- number of phases, -1 for not using
+  multi-phase
    */
-  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot, const int num_steps, const int num_phases = -1);
-
+  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot,
+                                            const int num_steps,
+                                            const int num_phases = -1);
 
   /** optimize factor graph
   * Keyword arguments:
@@ -299,7 +288,6 @@ class DynamicsGraphBuilder {
 
   // print the values
   static void print_values(const gtsam::Values &values);
-
 
   /** save factor graph in json format for visualization
   * Keyword arguments:
@@ -319,9 +307,8 @@ class DynamicsGraphBuilder {
   static void saveGraphMultiSteps(const std::string &file_path,
                                   const gtsam::NonlinearFactorGraph &graph,
                                   const gtsam::Values &values,
-                                  const UniversalRobot &robot, const int num_steps,
-                                  bool radial = false);
-
+                                  const UniversalRobot &robot,
+                                  const int num_steps, bool radial = false);
 };
 
 }  // namespace robot
