@@ -630,6 +630,33 @@ gtsam::Vector DynamicsGraphBuilder::jointAngles(const UniversalRobot &robot,
   return joint_angles;
 }
 
+gtsam::Vector DynamicsGraphBuilder::jointTorques(const UniversalRobot &robot,
+                                                const gtsam::Values &result,
+                                                const int t) {
+  gtsam::Vector joint_torques = gtsam::Vector::Zero(robot.numJoints());
+  auto joints = robot.joints();
+  for (int idx = 0; idx < robot.numJoints(); idx++) {
+    auto joint = joints[idx];
+    int j = joint->getID();
+    joint_torques[idx] = result.atDouble(TorqueKey(j, t));
+  }
+  return joint_torques;
+}
+
+UniversalRobot::JointValues DynamicsGraphBuilder::jointAccelsMap(const UniversalRobot &robot,
+                                                const gtsam::Values &result,
+                                                const int t) {
+  UniversalRobot::JointValues joint_accels;
+
+  for (RobotJointSharedPtr joint: robot.joints()) {
+    int j = joint->getID();
+    std::string name = joint->name();
+    joint_accels[name] = result.atDouble(JointAccelKey(j, t));
+  }
+  return joint_accels;
+}
+
+
 gtsam::Values DynamicsGraphBuilder::zeroValues(const UniversalRobot &robot,
                                                const int t) {
   gtsam::Vector zero_twists = gtsam::Vector6::Zero(),

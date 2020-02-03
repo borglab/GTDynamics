@@ -77,6 +77,10 @@ class UniversalRobot {
   JointMap name_to_joint_;
 
  public:
+
+  /** Default Constructor */
+  explicit UniversalRobot() {}
+
   /**
    * Construct a robot structure using a URDF model interface.
    * Keyword Arguments:
