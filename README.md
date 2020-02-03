@@ -31,6 +31,8 @@ $ brew tap osrf/simulation
 $ brew install sdformat8
 ```
 
+If issues arise when installing dependencies for sdformat, reference the following [tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) to install sdformat from source.
+
 ## Installing
 ```bash
 $ git clone https://github.com/borglab/GTDynamics.git
