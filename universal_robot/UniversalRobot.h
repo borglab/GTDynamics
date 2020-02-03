@@ -119,5 +119,26 @@ class UniversalRobot {
 
   // print links and joints of the robot, for debug purposes
   void printRobot() const;
+
+  typedef std::map<std::string, double> JointValues;
+  typedef std::map<std::string, gtsam::Pose3> LinkPoses;
+  typedef std::map<std::string, gtsam::Vector6> LinkTwists;
+  typedef std::pair<LinkPoses, LinkTwists> FKResults;
+  
+  /**
+   * calculate forward kinematics.
+   * Keyword Arguments:
+   *    joint_angles      -- joint angles for all joints
+   *    joint_vels        -- joint velocities for all joints
+   *    prior_link_name   -- name of link with known pose & twist
+   *    prior_link_pose   -- pose of the known link
+   *    prior_link_twist  -- twist of the konwn link
+   * return poses and twists of all links
+   */
+  FKResults forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
+                              const boost::optional<std::string> prior_link_name = boost::none, 
+                              const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none, 
+                              const boost::optional<gtsam::Vector6>  &prior_link_twist = boost::none) const;
+
 };
 }  // namespace robot

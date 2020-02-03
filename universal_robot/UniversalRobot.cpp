@@ -206,4 +206,80 @@ void UniversalRobot::printRobot() const {
   }
 }
 
+UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
+                              const boost::optional<std::string> prior_link_name, 
+                              const boost::optional<gtsam::Pose3> &prior_link_pose, 
+                              const boost::optional<gtsam::Vector6>  &prior_link_twist) const
+{
+  LinkPoses link_poses;
+  LinkTwists link_twists;
+
+  // link_poses["aa"] = gtsam::Pose3();
+
+  //// set root link
+  robot::RobotLinkSharedPtr root_link;
+  // check fixed links
+  for (robot::RobotLinkSharedPtr link: links())
+  {
+    if (link->isFixed())
+    {
+      root_link = link;
+      link_poses[link->name()] = link->getFixedPose();
+      link_twists[link->name()] = gtsam::Vector6::Zero();
+    }
+  }
+  if (prior_link_name) {
+    root_link = getLinkByName(*prior_link_name);
+    link_poses[*prior_link_name] = *prior_link_pose;
+    link_twists[*prior_link_name] = *prior_link_twist;
+  }
+  if (link_poses.size() == 0)
+  {
+    throw std::runtime_error("cannot find a fixed link");
+  }
+
+  //// bfs to set the pose
+  std::queue<RobotLinkSharedPtr> q;
+  q.push(root_link);
+  int loop_count = 0;
+  while (!q.empty()) {
+    auto link1 = q.front();
+    gtsam::Pose3 T_w1 = link_poses.at(link1->name());
+    gtsam::Vector6 V_1 = link_twists.at(link1->name());
+    q.pop();
+    for (robot::RobotJointWeakPtr joint : link1->getJoints()) {
+      robot::RobotJointSharedPtr joint_ptr = joint.lock();
+      // get the other link
+      RobotLinkSharedPtr link2 = joint_ptr->otherLink(link1).lock();
+      // calculate the pose and twist of link2
+      double joint_angle = joint_angles.at(joint_ptr->name());
+      double joint_vel = joint_vels.at(joint_ptr->name());
+      gtsam::Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
+      gtsam::Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
+      gtsam::Pose3 T_w2 = T_w1 * T_12;
+      gtsam::Vector6 S_2 = joint_ptr->screwAxis(link2);
+      gtsam::Vector6 V_2 = T_21.AdjointMap() * V_1 + S_2 * joint_vel;
+
+      // check if link 2 is already assigned
+      if (link_poses.find(link2->name())==link_poses.end()) {
+        // add to link_poses & link_twists
+        link_poses[link2->name()] = T_w2;
+        link_twists[link2->name()] = V_2;
+        // push link2 to queue
+        q.push(link2);
+      }
+      else { // link 2 is already assigned
+        gtsam::assert_equal(T_w2, link_poses.at(link2->name()));
+        gtsam::assert_equal(V_2, link_twists.at(link2->name()));
+      }
+    }
+    if (loop_count++ > 100000)
+    {
+      throw std::runtime_error("infinite loop in bfs");
+    }
+  }
+  return FKResults(link_poses, link_twists);
+}
+
+
 }  // namespace robot.

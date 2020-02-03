@@ -131,6 +131,69 @@ TEST(UniversalRobot, removeLink) {
   EXPECT(four_bar.getLinkByName("l3")->getJoints().size() == 1);
 }
 
+TEST(UniversalRobot, forwardKinematics) {
+  UniversalRobot simple_robot = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+
+  UniversalRobot::JointValues joint_angles, joint_vels;
+  joint_angles["j1"] = 0;
+  joint_vels["j1"] = 0;
+
+  // not fixing a link would cause an exception
+  THROWS_EXCEPTION(simple_robot.forwardKinematics(joint_angles, joint_vels));
+
+  // test fk at rest
+  simple_robot.getLinkByName("l1")->fix();
+  UniversalRobot::FKResults fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
+  UniversalRobot::LinkPoses poses = fk_results.first;
+  UniversalRobot::LinkTwists twists = fk_results.second;
+
+  gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
+  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 3));
+  gtsam::Vector6 V_l1_rest, V_l2_rest;
+  V_l1_rest << 0, 0, 0, 0, 0, 0;
+  V_l2_rest << 0, 0, 0, 0, 0, 0;
+
+  EXPECT(assert_equal(T_wl1_rest, poses.at("l1")));
+  EXPECT(assert_equal(T_wl2_rest, poses.at("l2")));
+  EXPECT(assert_equal(V_l1_rest, twists.at("l1")));
+  EXPECT(assert_equal(V_l2_rest, twists.at("l2")));
+
+  // test fk with moving joint and fixed base
+  joint_angles["j1"] = M_PI_2;
+  joint_vels["j1"] = 1;
+
+  fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
+  poses = fk_results.first;
+  twists = fk_results.second;
+
+  gtsam::Pose3 T_wl1_move(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
+  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
+  gtsam::Vector6 V_l1_move, V_l2_move;
+  V_l1_move << 0, 0, 0, 0, 0, 0;
+  V_l2_move << 1, 0, 0, 0, -1, 0;
+  EXPECT(assert_equal(T_wl1_move, poses.at("l1")));
+  EXPECT(assert_equal(T_wl2_move, poses.at("l2")));
+  EXPECT(assert_equal(V_l1_move, twists.at("l1")));
+  EXPECT(assert_equal(V_l2_move, twists.at("l2")));
+
+  // test fk with moving joint and moving base
+  simple_robot.getLinkByName("l1")->unfix();
+  gtsam::Pose3 T_wl1_float(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, 1, 1));
+  gtsam::Pose3 T_wl2_float(gtsam::Rot3::Rx(0), gtsam::Point3(0, 2, 2));
+  gtsam::Vector6 V_l1_float, V_l2_float;
+  V_l1_float << 1, 0, 0, 0, -1, 0;
+  V_l2_float << 2, 0, 0, 0, -2, 2;
+
+  std::string prior_link_name = "l1";
+  fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels, prior_link_name, T_wl1_float, V_l1_float);
+  poses = fk_results.first;
+  twists = fk_results.second;
+  EXPECT(assert_equal(T_wl1_float, poses.at("l1")));
+  EXPECT(assert_equal(T_wl2_float, poses.at("l2")));
+  EXPECT(assert_equal(V_l1_float, twists.at("l1")));
+  EXPECT(assert_equal(V_l2_float, twists.at("l2")));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
