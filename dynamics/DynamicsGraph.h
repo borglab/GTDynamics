@@ -290,12 +290,24 @@ class DynamicsGraphBuilder {
   static gtsam::Vector jointAccels(const UniversalRobot &robot,
                                    const gtsam::Values &result, const int t);
 
-  /* retirm joint velocities. */
+  /* return joint velocities. */
   static gtsam::Vector jointVels(const UniversalRobot &robot,
                                  const gtsam::Values &result, const int t);
 
-  /* retirm joint angles. */
+  /* return joint angles. */
   static gtsam::Vector jointAngles(const UniversalRobot &robot,
+                                   const gtsam::Values &result, const int t);
+
+  /* return joint torques. */
+  static gtsam::Vector jointTorques(const UniversalRobot &robot,
+                                   const gtsam::Values &result, const int t);
+
+  /** return the joint accelerations as std::map<name, acceleration>
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+   */
+  static UniversalRobot::JointValues jointAccelsMap(const UniversalRobot &robot,
                                    const gtsam::Values &result, const int t);
 
   /** return zero values for all variables for initial value of optimization
