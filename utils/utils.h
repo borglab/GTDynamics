@@ -140,7 +140,7 @@ namespace robot {
  * Keyword arguments:
  *    sdf_file_path    -- a string containing the absolute to the sdf file.
  *    model_name       -- name of the robot we care about. Must be specified in
-        case a world file is specified.
+        case sdf_file_path points to a world file.
 */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 }  // namespace robot

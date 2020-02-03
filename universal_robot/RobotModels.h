@@ -18,6 +18,8 @@
 
 #include <string>
 
+// TODO(aescontrela): The entire program shouldn't crash when a single file doesn't load.
+
 // using namespace std;
 // using namespace robot;
 // using namespace gtsam;
@@ -78,10 +80,8 @@ gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace simple_urdf_eq_mass
 
-namespace jumping_robot
-{
-UniversalRobot getJumpingRobot()
-{
+namespace jumping_robot {
+UniversalRobot getJumpingRobot() {
   UniversalRobot jumping_robot = 
       UniversalRobot(std::string(SDF_PATH) + "/test/jumping_robot.sdf");
   jumping_robot.getLinkByName("l0")->fix();
@@ -94,3 +94,18 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 } // namespace jumping_robot
+
+namespace three_link {
+UniversalRobot getThreeLink() {
+  UniversalRobot three_link = 
+      UniversalRobot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  three_link.getLinkByName("link_0")->fix();
+  return three_link;
+}
+// Load the robot from sdf file
+UniversalRobot my_robot = getThreeLink();
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
+} // namespace three_link

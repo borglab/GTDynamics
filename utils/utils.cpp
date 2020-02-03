@@ -190,6 +190,7 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
     if (curr_model.Name() == model_name) return curr_model;
   }
 
+  // TODO(aescontrela): Make this error message more clear.
   throw std::runtime_error("Model not found.");
 }
 
