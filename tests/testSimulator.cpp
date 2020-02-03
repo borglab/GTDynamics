@@ -25,67 +25,38 @@
 
 #include <iostream>
 
-// TEST(SimulatorFD, jumping_robot)
-// {
-//   using namespace jumping_robot;
-//   auto simulator = Simulator(my_robot, joint_angles, joint_vels, gravity,
-//   planar_axis);
+TEST(Simulate, simple_urdf)
+{
+  using simple_urdf::my_robot, simple_urdf::gravity, simple_urdf::planar_axis;
+  using std::vector;
+  using gtsam::assert_equal;
+  UniversalRobot::JointValues joint_angles, joint_vels, torques;
+  joint_angles["j1"] = 0;
+  joint_vels["j1"] = 0;
+  torques["j1"] = 1;
+  auto simulator = robot::Simulator(my_robot, joint_angles, joint_vels, gravity, planar_axis);
 
-//   double torque3 = 0;
-//   double torque2 = 0.5;
-//   Vector torques = (Vector(6) << 0, torque2, torque3, torque3, torque2,
-//   0).finished(); simulator.forwardDynamics(torques); Vector actual_qAccel =
-//   simulator.getJointAccelerations();
+  int num_steps = 1 + 1;
+  double dt = 1;
+  vector<UniversalRobot::JointValues> torques_seq(num_steps, torques);
+  auto results = simulator.simulate(torques_seq, dt);
 
-//   // check acceleration
-//   auto expected_qAccel = Vector(6);
-//   double m1 = 0.31;
-//   double m2 = 0.28;
-//   double m3 = 0.54;
-//   double link_radius = 0.02;
-//   double l = 0.55;
-//   double theta = 0.0 / 180.0 * M_PI;
-//   double acc =
-//       (torque3 - torque2 * 2 - (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * 9.8 * l *
-//       std::sin(theta)) / (std::pow(l, 2) * (1.0 / 4 * m1 + (1.0 / 4 + 2 *
-//       std::pow(std::sin(theta), 2)) * m2 + 2 * std::pow(std::sin(theta), 2) *
-//       m3) +
-//        (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) * (1.0 / 12 * m1 + 1.0
-//        / 12 * m2));
-//   expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
-//   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
-// }
+  int t = 1;
+  gtsam::Vector qs = robot::DynamicsGraphBuilder::jointAngles(my_robot, results, t);
+  gtsam::Vector vs = robot::DynamicsGraphBuilder::jointVels(my_robot, results, t);
+  gtsam::Vector as = robot::DynamicsGraphBuilder::jointAccels(my_robot, results, t);
 
-// TEST(Simulate, simple_urdf)
-// {
-//   using namespace simple_urdf;
-//   auto simulator = Simulator(my_robot, joint_angles, joint_vels, gravity,
-//   planar_axis); Vector torques = (Vector(1) << 1).finished(); int num_steps =
-//   1 + 1; double dt = 1; vector<Vector> torques_seq(num_steps, torques); auto
-//   results = simulator.simulate(torques_seq, dt); vector<Vector>
-//   joint_angles_seq; vector<Vector> joint_vels_seq; vector<Vector>
-//   joint_accels_seq; for (int t=0; t<num_steps; t++) {
-//     joint_angles_seq.emplace_back(DynamicsGraphBuilder::jointAngles(my_robot,
-//     results, t));
-//     joint_vels_seq.emplace_back(DynamicsGraphBuilder::jointVels(my_robot,
-//     results, t));
-//     joint_accels_seq.emplace_back(DynamicsGraphBuilder::jointAccels(my_robot,
-//     results, t));
-//     // cout << t << "\t" << joint_angles_seq.back() << "\t" <<
-//     joint_vels_seq.back() << "\t" << joint_accels_seq.back() << "\n";
-//   }
+  double acceleration = 0.0625;
+  double expected_qAccel = acceleration;
+  double expected_qVel = acceleration * dt;
+  double expected_qAngle = acceleration * 0.5 * dt * dt;
+  EXPECT(assert_equal(expected_qAngle, qs[0]));
+  EXPECT(assert_equal(expected_qVel, vs[0]));
+  EXPECT(assert_equal(expected_qAccel, as[0]));
+}
 
-//   double acceleration = 0.0625;
-//   Vector expected_qAccel = (Vector(1) << acceleration).finished();
-//   Vector expected_qVel = (Vector(1) << acceleration * 1.0).finished();
-//   Vector expected_qAngle = (Vector(1) << acceleration * 0.5 * 1.0
-//   * 1.0).finished(); EXPECT(assert_equal(expected_qAccel,
-//   joint_accels_seq.back())); EXPECT(assert_equal(expected_qVel,
-//   joint_vels_seq.back())); EXPECT(assert_equal(expected_qAngle,
-//   joint_angles_seq.back()));
-// }
-
-int main() {
+int main()
+{
   TestResult tr;
   return TestRegistry::runAllTests(tr);
 }

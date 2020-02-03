@@ -30,10 +30,10 @@ class Simulator {
   UniversalRobot robot_;
   int t_;
   DynamicsGraphBuilder graph_builder_;
-  gtsam::Vector initial_angles_, initial_vels_;
+  UniversalRobot::JointValues initial_angles_, initial_vels_;
   boost::optional<gtsam::Vector3> gravity_;
   boost::optional<gtsam::Vector3> planar_axis_;
-  gtsam::Vector qs_, vs_, as_;
+  UniversalRobot::JointValues qs_, vs_, as_;
   gtsam::Values results_;
 
  public:
@@ -42,19 +42,19 @@ class Simulator {
    * Keyword arguments:
    *  time_step                -- Simulator time step
    *  robot                    -- robotic manipulator
-   *  initialJointAngles       -- initial joint angles
-   *  initialJointVelocities   -- initial joint velocities
+   *  initial_angels           -- initial joint angles
+   *  initial_vels             -- initial joint velocities
    */
   Simulator(const UniversalRobot &robot,
-            const gtsam::Vector &initialJointAngles,
-            const gtsam::Vector &initialJointVelocities,
+            const UniversalRobot::JointValues &initial_angles,
+            const UniversalRobot::JointValues &initial_vels,
             const boost::optional<gtsam::Vector3> &gravity = boost::none,
             const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
       : robot_(robot),
         t_(0),
         graph_builder_(DynamicsGraphBuilder()),
-        initial_angles_(initialJointAngles),
-        initial_vels_(initialJointVelocities),
+        initial_angles_(initial_angles),
+        initial_vels_(initial_vels),
         gravity_(gravity),
         planar_axis_(planar_axis) {
     reset();
@@ -66,36 +66,8 @@ class Simulator {
     t_ = t;
     qs_ = initial_angles_;
     vs_ = initial_vels_;
-    as_ = gtsam::Vector::Zero(robot_.numJoints());
+    as_ = UniversalRobot::JointValues();
     results_ = gtsam::Values();
-  }
-
-  gtsam::Values getInitValuesFromPrev(const int t) {
-    gtsam::Values values;
-    for (auto &link : robot_.links()) {
-      int i = link->getID();
-      values.insert(PoseKey(i, t), results_.at(PoseKey(i, t - 1)));
-      values.insert(TwistKey(i, t), results_.at(TwistKey(i, t - 1)));
-      values.insert(TwistAccelKey(i, t), results_.at(TwistAccelKey(i, t - 1)));
-    }
-    for (auto &joint : robot_.joints()) {
-      int j = joint->getID();
-      auto parent_link = joint->parentLink().lock();
-      auto child_link = joint->childLink().lock();
-      if (!parent_link->isFixed()) {
-        values.insert(WrenchKey(parent_link->getID(), j, t),
-                      results_.at(WrenchKey(parent_link->getID(), j, t - 1)));
-      }
-      if (!child_link->isFixed()) {
-        values.insert(WrenchKey(child_link->getID(), j, t),
-                      results_.at(WrenchKey(child_link->getID(), j, t - 1)));
-      }
-      values.insert(TorqueKey(j, t), results_.at(TorqueKey(j, t - 1)));
-      values.insert(JointAngleKey(j, t), results_.at(JointAngleKey(j, t - 1)));
-      values.insert(JointVelKey(j, t), results_.at(JointVelKey(j, t - 1)));
-      values.insert(JointAccelKey(j, t), results_.at(JointAccelKey(j, t - 1)));
-    }
-    return values;
   }
 
   /**
@@ -103,48 +75,14 @@ class Simulator {
    * values to results_ Keyword arguments: torques                   -- torques
    * for the time step
    */
-  void forwardDynamics(const gtsam::Vector &torques) {
-    gtsam::Values result;
-    if (results_.size() == 0) {  // first step
-      gtsam::NonlinearFactorGraph graph = graph_builder_.dynamicsFactorGraph(
-          robot_, t_, gravity_, planar_axis_);
-      gtsam::Values init_values = graph_builder_.zeroValues(robot_, t_);
-      result = graph_builder_.optimize(graph, init_values,
-                                       DynamicsGraphBuilder::OptimizerType::LM);
-      // result = graph_builder_.iterativeSolveFD(robot_, t_, qs_, vs_, torques,
-      // gravity_, planar_axis_);
-    } else {
-      gtsam::NonlinearFactorGraph graph = graph_builder_.dynamicsFactorGraph(
-          robot_, t_, gravity_, planar_axis_);
-      graph.add(
-          graph_builder_.forwardDynamicsPriors(robot_, t_, qs_, vs_, torques));
-      // gtsam::Values init_values = DynamicsGraphBuilder::zeroValues(robot_,
-      // t_);
-      gtsam::Values init_values = getInitValuesFromPrev(t_);
-      result = graph_builder_.optimize(graph, init_values,
-                                       DynamicsGraphBuilder::OptimizerType::LM);
-
-      // make sure the optimization converge to global minimum
-      double error = graph.error(result);
-      if (error > 1) {
-        result = graph_builder_.optimize(
-            graph, init_values, DynamicsGraphBuilder::OptimizerType::PDL);
-        error = graph.error(result);
-        if (error > 1) {
-          std::cout << "t= " << t_ << "\terror= " << error << "\n";
-          throw std::runtime_error("Fail to optimize for dynamics graph");
-        }
-      }
-    }
-
+  void forwardDynamics(const UniversalRobot::JointValues &torques) {
+    
+    auto fk_results = robot_.forwardKinematics(qs_, vs_);
+    gtsam::Values result = graph_builder_.linearSolveFD(robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
     results_.insert(result);
 
-    // DynamicsGraphBuilder::saveGraphMultiSteps("../../../visualization/factor_graph.json",
-    // graph, result, robot_, t_, false); std::cout << "error " <<
-    // graph.error(result) << "\n";
-
-    // update values
-    as_ = DynamicsGraphBuilder::jointAccels(robot_, result, t_);
+    // update accelerations
+    as_ = DynamicsGraphBuilder::jointAccelsMap(robot_, result, t_);
   }
 
   /**
@@ -154,10 +92,13 @@ class Simulator {
    *  dt                        -- duration for the time step
    */
   void integration(const double dt) {
-    gtsam::Vector vs_new = (vs_ + dt * as_).eval();
-    // gtsam::Vector qs_new = (qs_ + dt * vs_).eval();
-    gtsam::Vector qs_new =
-        (qs_ + dt * vs_ + 0.5 * as_ * std::pow(dt, 2)).eval();
+    UniversalRobot::JointValues vs_new, qs_new;
+    for (RobotJointSharedPtr joint : robot_.joints())
+    {
+        std::string name = joint->name();
+        vs_new[name] = vs_.at(name) + dt * as_.at(name);
+        qs_new[name] = qs_.at(name) + dt * vs_.at(name) + 0.5 * as_.at(name) * std::pow(dt, 2);
+    }
     vs_ = vs_new;
     qs_ = qs_new;
   }
@@ -167,29 +108,29 @@ class Simulator {
    * result_ Keyword arguments: torques                   -- torques for the
    * time step dt                        -- duration for the time step
    */
-  void step(const gtsam::Vector &torques, const double dt) {
+  void step(const UniversalRobot::JointValues &torques, const double dt) {
     forwardDynamics(torques);
     integration(dt);
     t_++;
   }
 
   /* simulation for the specified sequence of torques */
-  gtsam::Values simulate(const std::vector<gtsam::Vector> torques_seq,
+  gtsam::Values simulate(const std::vector<UniversalRobot::JointValues> torques_seq,
                          const double dt) {
-    for (const gtsam::Vector &torques : torques_seq) {
+    for (const UniversalRobot::JointValues &torques : torques_seq) {
       step(torques, dt);
     }
     return results_;
   }
 
   /* return joint angle values. */
-  const gtsam::Vector &getJointAngles() const { return qs_; }
+  const UniversalRobot::JointValues &getJointAngles() const { return qs_; }
 
   /* return joint velocity values. */
-  const gtsam::Vector &getJointVelocities() const { return vs_; }
+  const UniversalRobot::JointValues &getJointVelocities() const { return vs_; }
 
   /* return joint acceleration values. */
-  const gtsam::Vector &getJointAccelerations() const { return as_; }
+  const UniversalRobot::JointValues &getJointAccelerations() const { return as_; }
 
   /* return all values during simulation. */
   const gtsam::Values &getValues() const { return results_; }
