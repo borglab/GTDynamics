@@ -124,6 +124,49 @@ class DynamicsGraphBuilder {
 
   enum OptimizerType { GaussNewton, LM, PDL };
 
+  /** return linear factor graph of all dynamics factors
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+     joint_angles               -- joint angles
+     joint_vels                 -- joint velocities
+     fk_results                 -- forward kinematics results
+     gravity                    -- gravity in world frame
+     planar_axis                -- axis of the plane, used only for planar robot
+   */
+  static gtsam::GaussianFactorGraph linearDynamicsGraph(const UniversalRobot &robot, const int t,
+                                                        const UniversalRobot::JointValues& joint_angles,
+                                                        const UniversalRobot::JointValues& joint_vels,
+                                                        const UniversalRobot::FKResults &fk_results,
+                                                        const boost::optional<gtsam::Vector3> &gravity = boost::none,
+                                                        const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+
+  /* return linear factor graph with priors on torques */
+  static gtsam::GaussianFactorGraph linearFDPriors(const UniversalRobot &robot,
+                                                   const int t, 
+                                                   const UniversalRobot::JointValues& torque_values);
+
+  /** sovle forward kinodynamics using linear factor graph, return values of all variables
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+     joint_angles               -- std::map <joint name, angle>
+     joint_vels                 -- std::map <joint name, velocity>
+     torques                    -- std::map <joint name, torque>
+     fk_results                 -- forward kinematics results
+     gravity                    -- gravity in world frame
+     planar_axis                -- axis of the plane, used only for planar robot
+  * return values of all variables
+  */
+  static gtsam::Values linearSolveFD(const UniversalRobot &robot, const int t,
+                                     const UniversalRobot::JointValues& joint_angles,
+                                     const UniversalRobot::JointValues& joint_vels,
+                                     const UniversalRobot::JointValues& torques,
+                                     const UniversalRobot::FKResults &fk_results,
+                                     const boost::optional<gtsam::Vector3> &gravity = boost::none,
+                                     const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+
+
   /* return q-level nonlinear factor graph (pose related factors) */
   gtsam::NonlinearFactorGraph qFactors(const UniversalRobot &robot,
                                        const int t) const;

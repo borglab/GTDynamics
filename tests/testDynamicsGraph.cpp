@@ -49,6 +49,31 @@ using robot::TwistKey;
 using robot::WrenchKey;
 using std::vector;
 
+// Test linear dynamics graph of a two-link robot, base fixed, with gravity
+TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass)
+{
+  using namespace simple_urdf_eq_mass;
+  Vector torques = Vector::Ones(my_robot.numJoints());
+
+  auto graph_builder = DynamicsGraphBuilder();
+  int t = 0;
+  robot::UniversalRobot::JointValues joint_angles, joint_vels, joint_torques;
+  joint_angles["j1"] = 0;
+  joint_vels["j1"] = 0;
+  joint_torques["j1"] = 1;
+  std::string prior_link_name = "l1";
+  auto l1 = my_robot.getLinkByName(prior_link_name);
+  gtsam::Vector6 V_l1 = gtsam::Vector6::Zero();
+  auto fk_results = my_robot.forwardKinematics(joint_angles, joint_vels, prior_link_name, l1->Twcom(), V_l1);
+
+  Values result = graph_builder.linearSolveFD(my_robot, t, joint_angles, joint_vels, joint_torques, fk_results, gravity, planar_axis);
+  
+  int j = my_robot.joints()[0]->getID();
+  gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
+  EXPECT(assert_equal(4.0, result.atDouble(JointAccelKey(j, t)), 1e-3));
+}
+
+
 // Test forward dynamics with gravity of a two-link robot, with base link fixed
 TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   using simple_urdf_eq_mass::my_robot, simple_urdf_eq_mass::gravity,
