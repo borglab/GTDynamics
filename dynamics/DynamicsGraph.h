@@ -95,14 +95,14 @@ inline gtsam::LabeledSymbol TimeKey(int t) {
  */
 class DynamicsGraphBuilder {
  private:
-  manipulator::OptimizerSetting opt_;
+  OptimizerSetting opt_;
 
  public:
   /**
    * Constructor
    */
   DynamicsGraphBuilder() {
-    opt_ = manipulator::OptimizerSetting();
+    opt_ = OptimizerSetting();
     // set all dynamics related factors to be constrained
     opt_.bp_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.bv_cost_model = gtsam::noiseModel::Constrained::All(6);
@@ -111,13 +111,21 @@ class DynamicsGraphBuilder {
     opt_.v_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.a_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.f_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.tf_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.q_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.qv_cost_model = gtsam::noiseModel::Constrained::All(1);
-
-    opt_.setLM();
+    opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);
+    opt_.prior_q_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_qv_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_qa_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_t_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.q_col_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.v_col_cost_model = gtsam::noiseModel::Constrained::All(1);
   }
+
+  DynamicsGraphBuilder(const OptimizerSetting& opt) : opt_(opt)
+  {
+  }
+
   ~DynamicsGraphBuilder() {}
 
   enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };

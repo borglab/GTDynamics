@@ -245,7 +245,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::qFactors(
     int i = link->getID();
     if (link->isFixed()) {
       graph.add(PriorFactor<Pose3>(PoseKey(i, t), link->getFixedPose(),
-                                   gtsam::noiseModel::Constrained::All(6)));
+                                   opt_.bp_cost_model));
     }
   }
 
@@ -270,7 +270,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::vFactors(
     int i = link->getID();
     if (link->isFixed()) {
       graph.add(PriorFactor<Vector6>(TwistKey(i, t), Vector6::Zero(),
-                                     gtsam::noiseModel::Constrained::All(6)));
+                                     opt_.bv_cost_model));
     }
   }
 
@@ -296,7 +296,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::aFactors(
     int i = link->getID();
     if (link->isFixed()) {
       graph.add(PriorFactor<Vector6>(TwistAccelKey(i, t), Vector6::Zero(),
-                                     gtsam::noiseModel::Constrained::All(6)));
+                                     opt_.ba_cost_model));
     }
   }
 
@@ -326,25 +326,25 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
       const auto &connected_joints = link->getJoints();
       if (connected_joints.size() == 0) {
         graph.add(WrenchFactor0(TwistKey(i, t), TwistAccelKey(i, t),
-                                PoseKey(i, t), opt_.f_cost_model,
+                                PoseKey(i, t), opt_.fa_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 1) {
         graph.add(WrenchFactor1(TwistKey(i, t), TwistAccelKey(i, t),
                                 WrenchKey(i, connected_joints[0].lock()->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
+                                PoseKey(i, t), opt_.fa_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 2) {
         graph.add(WrenchFactor2(TwistKey(i, t), TwistAccelKey(i, t),
                                 WrenchKey(i, connected_joints[0].lock()->getID(), t),
                                 WrenchKey(i, connected_joints[1].lock()->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
+                                PoseKey(i, t), opt_.fa_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 3) {
         graph.add(WrenchFactor3(TwistKey(i, t), TwistAccelKey(i, t),
                                 WrenchKey(i, connected_joints[0].lock()->getID(), t),
                                 WrenchKey(i, connected_joints[1].lock()->getID(), t),
                                 WrenchKey(i, connected_joints[2].lock()->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
+                                PoseKey(i, t), opt_.fa_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else if (connected_joints.size() == 4) {
         graph.add(WrenchFactor4(TwistKey(i, t), TwistAccelKey(i, t),
@@ -352,7 +352,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
                                 WrenchKey(i, connected_joints[1].lock()->getID(), t),
                                 WrenchKey(i, connected_joints[2].lock()->getID(), t),
                                 WrenchKey(i, connected_joints[3].lock()->getID(), t),
-                                PoseKey(i, t), opt_.f_cost_model,
+                                PoseKey(i, t), opt_.fa_cost_model,
                                 link->inertiaMatrix(), gravity));
       } else {
         throw std::runtime_error("Wrench factor not defined");
@@ -380,8 +380,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
 
     // add planar wrench factor
     if (planar_axis) {
-      graph.add(WrenchPlanarFactor(WrenchKey(i2, j, t),
-                                   gtsam::noiseModel::Constrained::All(3),
+      graph.add(WrenchPlanarFactor(WrenchKey(i2, j, t), opt_.planar_cost_model,
                                    *planar_axis));
     }
   }
@@ -471,17 +470,17 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::collocationFactors(
     switch (collocation) {
       case CollocationScheme::Euler:
         graph.addExpressionFactor(q0_expr + dt * v0_expr - q1_expr, 0.0,
-                                  gtsam::noiseModel::Constrained::All(1));
+                                  opt_.q_col_cost_model);
         graph.addExpressionFactor(v0_expr + dt * a0_expr - v1_expr, 0.0,
-                                  gtsam::noiseModel::Constrained::All(1));
+                                  opt_.v_col_cost_model);
         break;
       case CollocationScheme::Trapezoidal:
         graph.addExpressionFactor(
             q0_expr + 0.5 * dt * v0_expr + 0.5 * dt * v1_expr - q1_expr,
-            0.0, gtsam::noiseModel::Constrained::All(1));
+            0.0, opt_.q_col_cost_model);
         graph.addExpressionFactor(
             v0_expr + 0.5 * dt * a0_expr + 0.5 * dt * a1_expr - v1_expr,
-            0.0, gtsam::noiseModel::Constrained::All(1));
+            0.0, opt_.v_col_cost_model);
         break;
       default:
         throw std::runtime_error(
@@ -521,20 +520,18 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::multiPhaseCollocationFactors(
       Double_ v0dt(multDouble, phase_expr, v0_expr);
       Double_ a0dt(multDouble, phase_expr, a0_expr);
       graph.addExpressionFactor(q0_expr + v0dt - q1_expr, 0.0,
-                                gtsam::noiseModel::Constrained::All(1));
+                                opt_.q_col_cost_model);
       graph.addExpressionFactor(v0_expr + a0dt - v1_expr, 0.0,
-                                gtsam::noiseModel::Constrained::All(1));
+                                opt_.v_col_cost_model);
     } else if (collocation == CollocationScheme::Trapezoidal) {
       Double_ v0dt(multDouble, phase_expr, v0_expr);
       Double_ a0dt(multDouble, phase_expr, a0_expr);
       Double_ v1dt(multDouble, phase_expr, v1_expr);
       Double_ a1dt(multDouble, phase_expr, a1_expr);
       graph.addExpressionFactor(q0_expr + 0.5 * v0dt + 0.5 * v1dt - q1_expr,
-                                0.0,
-                                gtsam::noiseModel::Constrained::All(1));
+                                0.0, opt_.q_col_cost_model);
       graph.addExpressionFactor(v0_expr + 0.5 * a0dt + 0.5 * a1dt - v1_expr,
-                                0.0,
-                                gtsam::noiseModel::Constrained::All(1));
+                                0.0, opt_.v_col_cost_model);
     } else {
       throw std::runtime_error(
           "runge-kutta and hermite-simpson not implemented yet");
@@ -555,12 +552,12 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::forwardDynamicsPriors(
     int j = joint->getID();
     graph.add(
         gtsam::PriorFactor<double>(JointAngleKey(j, t), joint_angles[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_q_cost_model));
     graph.add(
         gtsam::PriorFactor<double>(JointVelKey(j, t), joint_vels[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_qv_cost_model));
     graph.add(gtsam::PriorFactor<double>(
-        TorqueKey(j, t), torques[idx], gtsam::noiseModel::Constrained::All(1)));
+        TorqueKey(j, t), torques[idx], opt_.prior_t_cost_model));
   }
   return graph;
 }
@@ -575,17 +572,17 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::trajectoryFDPriors(
     int j = joints[idx]->getID();
     graph.add(
         gtsam::PriorFactor<double>(JointAngleKey(j, 0), joint_angles[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_q_cost_model));
     graph.add(
         gtsam::PriorFactor<double>(JointVelKey(j, 0), joint_vels[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_qv_cost_model));
   }
   for (int t = 0; t <= num_steps; t++) {
     for (int idx = 0; idx < robot.numJoints(); idx++) {
       int j = joints[idx]->getID();
       graph.add(
           gtsam::PriorFactor<double>(TorqueKey(j, t), torques_seq[t][idx],
-                                     gtsam::noiseModel::Constrained::All(1)));
+                                     opt_.prior_t_cost_model));
     }
   }
 
