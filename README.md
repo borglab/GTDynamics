@@ -55,7 +55,7 @@ The core paper behind this work is:
 ```
 @misc{1911.10065,
     Author = {Mandy Xie and Frank Dellaert},
-    Title = {A Unified Method for Solving Inverse, Forward, and Hybrid Manipulator Dynamics using Factor Graphs},
+    Title = {A Unified Method for Solving Inverse, Forward, and Hybrid Robot Dynamics using Factor Graphs},
     Year = {2019},
     Eprint = {arXiv:1911.10065},
 }

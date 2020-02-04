@@ -234,8 +234,8 @@ public:
     GetMeasurement(const gtsam::NonlinearFactor::shared_ptr& factor)
     {
         std::stringstream ss;
-        if (const manipulator::TorqueFactor* f =
-                dynamic_cast<const manipulator::TorqueFactor*>(&(*factor)))
+        if (const robot::TorqueFactor* f =
+                dynamic_cast<const robot::TorqueFactor*>(&(*factor)))
         {
             ss << GetVector(f->getScrewAxis().transpose());
         }
@@ -281,19 +281,19 @@ public:
         {
             return "Wrench";
         }
-        else if (dynamic_cast<const manipulator::PoseFactor*>(&(*factor)))
+        else if (dynamic_cast<const robot::PoseFactor*>(&(*factor)))
         {
             return "Pose";
         }
-        else if (dynamic_cast<const manipulator::TwistFactor*>(&(*factor)))
+        else if (dynamic_cast<const robot::TwistFactor*>(&(*factor)))
         {
             return "Twist";
         }
-        else if (dynamic_cast<const manipulator::TwistAccelFactor*>(&(*factor)))
+        else if (dynamic_cast<const robot::TwistAccelFactor*>(&(*factor)))
         {
             return "TwistAccel";
         }
-        else if (dynamic_cast<const manipulator::TorqueFactor*>(&(*factor)))
+        else if (dynamic_cast<const robot::TorqueFactor*>(&(*factor)))
         {
             return "Torque";
         }

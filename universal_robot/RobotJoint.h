@@ -182,10 +182,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
     Tjccom_ = Twj_.inverse() * child_link->Twcom();
     com_Mpc_ = parent_link->Twcom().inverse() * child_link->Twcom();
 
-    pScrewAxis_ = manipulator::unit_twist(
+    pScrewAxis_ = robot::unit_twist(
         Tjpcom_.rotation().inverse() * -axis_,
         Tjpcom_.rotation().inverse() * (-Tjpcom_.translation().vector()));
-    cScrewAxis_ = manipulator::unit_twist(
+    cScrewAxis_ = robot::unit_twist(
         Tjccom_.rotation().inverse() * axis_,
         Tjccom_.rotation().inverse() * (-Tjccom_.translation().vector()));
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {

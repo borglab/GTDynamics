@@ -15,7 +15,7 @@
 
 #include <stdexcept>
 
-namespace manipulator {
+namespace robot {
 
 gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p) {
   gtsam::Vector6 unit_twist;
@@ -166,7 +166,7 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
   return data;
 }
 
-}  // namespace manipulator
+}  // namespace robot
 
 namespace robot {
 

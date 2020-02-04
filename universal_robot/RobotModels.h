@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RobotLink.h
- * @brief only link part of a manipulator, does not include joint part
+ * @file  RobotModels.h
+ * @brief robot models for tests
  * @Author: Yetong Zhang and Alejandro Escontrela
  */
 

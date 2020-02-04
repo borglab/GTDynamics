@@ -41,7 +41,7 @@ class Simulator {
    * Constructor
    * Keyword arguments:
    *  time_step                -- Simulator time step
-   *  robot                    -- robotic manipulator
+   *  robot                    -- robotic robot
    *  initial_angels           -- initial joint angles
    *  initial_vels             -- initial joint velocities
    */

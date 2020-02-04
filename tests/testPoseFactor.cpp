@@ -41,7 +41,7 @@ TEST(PoseFactor, error) {
   gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  manipulator::PoseFunctor predictPose(jMi, screw_axis);
+  robot::PoseFunctor predictPose(jMi, screw_axis);
 
   // check prediction
   double jointAngle = 0;
@@ -50,7 +50,7 @@ TEST(PoseFactor, error) {
   EXPECT(assert_equal(pose_j, predictPose(pose_i, jointAngle), 1e-6));
 
   // Create factor
-  manipulator::PoseFactor factor(example::pose_i_key, example::pose_j_key,
+  robot::PoseFactor factor(example::pose_i_key, example::pose_j_key,
                                  example::qKey, example::cost_model, jMi,
                                  screw_axis);
 
@@ -76,7 +76,7 @@ TEST(PoseFactor, breaking) {
   gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  manipulator::PoseFunctor predictPose(jMi, screw_axis);
+  robot::PoseFunctor predictPose(jMi, screw_axis);
 
   double jointAngle;
   gtsam::Pose3 pose_i, pose_j;
@@ -107,7 +107,7 @@ TEST(PoseFactor, breaking_rr) {
   auto j1 = my_robot.getJointByName("j1");
   gtsam::Vector6 screw_axis = j1->screwAxis(l2);
   gtsam::Pose3 jMi = j1->transformTo(l2);
-  manipulator::PoseFunctor predictPose(jMi, screw_axis);
+  robot::PoseFunctor predictPose(jMi, screw_axis);
 
   EXPECT(assert_equal(j1->transformFrom(l2, joint_angle),
                       predictPose(base_pose, joint_angle), 1e-6));

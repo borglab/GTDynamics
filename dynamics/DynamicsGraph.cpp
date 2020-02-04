@@ -256,7 +256,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::qFactors(
     int i2 = link_2->getID();
     int j = joint->getID();
     // add pose factor
-    graph.add(manipulator::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
+    graph.add(robot::PoseFactor(PoseKey(i1, t), PoseKey(i2, t),
                                       JointAngleKey(j, t), opt_.p_cost_model,
                                       joint->transformTo(link_2), joint->screwAxis(link_2)));
   }
@@ -281,7 +281,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::vFactors(
     int i2 = link_2->getID();
     int j = joint->getID();
     // add twist factor
-    graph.add(manipulator::TwistFactor(TwistKey(i1, t), TwistKey(i2, t),
+    graph.add(robot::TwistFactor(TwistKey(i1, t), TwistKey(i2, t),
                                        JointAngleKey(j, t), JointVelKey(j, t),
                                        opt_.v_cost_model, joint->transformTo(link_2),
                                        joint->screwAxis(link_2)));
@@ -307,7 +307,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::aFactors(
     int i2 = link_2->getID();
     int j = joint->getID();
     // add twist acceleration factor
-    graph.add(manipulator::TwistAccelFactor(
+    graph.add(robot::TwistAccelFactor(
         TwistKey(i2, t), TwistAccelKey(i1, t), TwistAccelKey(i2, t),
         JointAngleKey(j, t), JointVelKey(j, t), JointAccelKey(j, t),
         opt_.a_cost_model, joint->transformTo(link_2), joint->screwAxis(link_2)));
@@ -375,7 +375,7 @@ gtsam::NonlinearFactorGraph DynamicsGraphBuilder::dynamicsFactors(
     // }
 
     // add torque factor
-    graph.add(manipulator::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
+    graph.add(robot::TorqueFactor(WrenchKey(i2, j, t), TorqueKey(j, t),
                                         opt_.t_cost_model, joint->screwAxis(link_2)));
 
     // add planar wrench factor

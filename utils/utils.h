@@ -28,7 +28,7 @@
 
 #include <boost/optional.hpp>
 
-namespace manipulator {
+namespace robot {
 
 /** Create unit twist for axis direction
     Keyword argument:
@@ -133,7 +133,7 @@ std::vector<gtsam::Matrix> readFromTxt(
     std::string mat_dir,
     gtsam::Point3 &origin,  // NOLINT
     double &cell_size);  // NOLINT
-}  // namespace manipulator
+}  // namespace robot
 
 namespace robot {
 /** obtain the sdf ElementPtr associated with the robot model.

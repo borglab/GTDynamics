@@ -41,7 +41,7 @@ TEST(TwistFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  manipulator::TwistFactor factor(example::twist_i_key, example::twist_j_key,
+  robot::TwistFactor factor(example::twist_i_key, example::twist_j_key,
                                   example::qKey, example::qVelKey,
                                   example::cost_model, jMi, screw_axis);
   double q = M_PI / 4, qVel = 10;

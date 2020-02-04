@@ -21,7 +21,7 @@
 
 #include <boost/optional.hpp>
 
-namespace manipulator {
+namespace robot {
 
 /** TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link*/
@@ -91,4 +91,4 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace manipulator
+}  // namespace robot

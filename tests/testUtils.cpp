@@ -30,7 +30,7 @@ TEST(utils, unit_twist) {
   gtsam::Vector3 p(1, 0, 0);
   gtsam::Vector6 expected_twist =
       (gtsam::Vector(6) << 0, 0, 1, 0, -1, 0).finished();
-  auto actual_twist = manipulator::unit_twist(w, p);
+  auto actual_twist = robot::unit_twist(w, p);
   EXPECT(assert_equal(expected_twist, actual_twist, 1e-6));
 }
 
@@ -39,7 +39,7 @@ TEST(utils, calcPhi) {
   double t = 0.1;
   gtsam::Matrix expected_phi =
       (gtsam::Matrix(3, 3) << 1, t, 0.5 * t * t, 0, 1, t, 0, 0, 1).finished();
-  auto actual_phi = manipulator::calcPhi(t);
+  auto actual_phi = robot::calcPhi(t);
   EXPECT(assert_equal(expected_phi, actual_phi, 1e-6));
 }
 
@@ -56,7 +56,7 @@ TEST(utils, calcQ) {
        1.0 / 2 * pow(t, 2.0) * Qc, t * Qc)
           .finished();
 
-  auto actual_Q = manipulator::calcQ(Qc, t);
+  auto actual_Q = robot::calcQ(Qc, t);
   EXPECT(assert_equal(expected_Q, actual_Q, 1e-6));
 }
 
