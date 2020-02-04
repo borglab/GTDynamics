@@ -24,6 +24,7 @@
 #include <WrenchEquivalenceFactor.h>
 #include <WrenchFactors.h>
 #include <WrenchPlanarFactor.h>
+#include <JsonSaver.h>
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
@@ -761,6 +762,125 @@ void DynamicsGraphBuilder::print_graph(
     }
     std::cout << "\n";
   }
+}
+
+// using radial location to locate the variables
+gtsam::Vector3 radial_location(double r, double i, int n)
+{
+    double theta = M_PI * 2 / n * i;
+    double x = r * cos(theta);
+    double y = r * sin(theta);
+    return (gtsam::Vector(3) << x, y, 0).finished();
+}
+
+// using radial location to locate the variables
+gtsam::Vector3 corner_location(double r, double j, int n)
+{
+    double theta = M_PI * 2 / n * (j + 0.5);
+    double x = r * cos(theta);
+    double y = r * sin(theta);
+    return (gtsam::Vector(3) << x, y, 0).finished();
+}
+
+gtsam::JsonSaver::LocationType get_locations(const UniversalRobot &robot, const int t,
+                                             bool radial)
+{
+    gtsam::JsonSaver::LocationType locations;
+
+    if (radial)
+    {
+        int n = robot.numLinks();
+        for (auto &link : robot.links())
+        {
+            int i = link->getID();
+            locations[PoseKey(i, t)] = radial_location(2, i, n);
+            locations[TwistKey(i, t)] = radial_location(3, i, n);
+            locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
+        }
+
+        for (auto &joint : robot.joints())
+        {
+            int j = joint->getID();
+            locations[JointAngleKey(j, t)] = corner_location(2.5, j, n);
+            locations[JointVelKey(j, t)] = corner_location(3.5, j, n);
+            locations[JointAccelKey(j, t)] = corner_location(4.5, j, n);
+            locations[TorqueKey(j, t)] = corner_location(6, j, n);
+            int i1 = joint->parentLink().lock()->getID();
+            int i2 = joint->childLink().lock()->getID();
+            locations[WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
+            locations[WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
+        }
+    }
+    else
+    {
+        for (auto &link : robot.links())
+        {
+            int i = link->getID();
+            locations[PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
+            locations[TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
+            locations[TwistAccelKey(i, t)] =
+                (gtsam::Vector(3) << i, 2, 0).finished();
+        }
+
+        for (auto &joint : robot.joints())
+        {
+            int j = joint->getID();
+            locations[JointAngleKey(j, t)] =
+                (gtsam::Vector(3) << j + 0.5, 0.5, 0).finished();
+            locations[JointVelKey(j, t)] =
+                (gtsam::Vector(3) << j + 0.5, 1.5, 0).finished();
+            locations[JointAccelKey(j, t)] =
+                (gtsam::Vector(3) << j + 0.5, 2.5, 0).finished();
+            int i1 = joint->parentLink().lock()->getID();
+            int i2 = joint->childLink().lock()->getID();
+            locations[WrenchKey(i1, j, t)] =
+                (gtsam::Vector(3) << j + 0.25, 3.5, 0).finished();
+            locations[WrenchKey(i2, j, t)] =
+                (gtsam::Vector(3) << j + 0.75, 3.5, 0).finished();
+            locations[TorqueKey(j, t)] =
+                (gtsam::Vector(3) << j + 0.5, 4.5, 0).finished();
+        }
+    }
+    return locations;
+}
+
+void DynamicsGraphBuilder::saveGraph(const std::string &file_path,
+                                     const gtsam::NonlinearFactorGraph &graph,
+                                     const gtsam::Values &values,
+                                     const UniversalRobot &robot, const int t,
+                                     bool radial)
+{
+    std::ofstream json_file;
+    json_file.open(file_path);
+    gtsam::JsonSaver::LocationType locations = get_locations(robot, t, radial);
+    gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+    json_file.close();
+}
+
+void DynamicsGraphBuilder::saveGraphMultiSteps(const std::string &file_path,
+                                               const gtsam::NonlinearFactorGraph &graph,
+                                               const gtsam::Values &values,
+                                               const UniversalRobot &robot, const int num_steps,
+                                               bool radial)
+{
+    std::ofstream json_file;
+    json_file.open(file_path);
+    gtsam::JsonSaver::LocationType locations;
+
+    for (int t = 0; t <= num_steps; t++)
+    {
+        gtsam::JsonSaver::LocationType locations_t = get_locations(robot, t, radial);
+        gtsam::Vector offset = (gtsam::Vector(3) << 20.0 * t, 0, 0).finished();
+        for (auto it = locations_t.begin(); it != locations_t.end(); it++)
+        {
+            auto key = it->first;
+            locations_t[key] = locations_t[key] + offset;
+        }
+        locations.insert(locations_t.begin(), locations_t.end());
+    }
+
+    gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+    json_file.close();
 }
 
 }  // namespace robot
