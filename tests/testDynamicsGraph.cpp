@@ -91,11 +91,9 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   for (auto link : my_robot.links()) {
     int i = link->getID();
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-        robot::PoseKey(i, 0), link->Twcom(),
-        gtsam::noiseModel::Constrained::All(6)));
+        robot::PoseKey(i, 0), link->Twcom(), graph_builder.opt().bp_cost_model));
     graph.add(gtsam::PriorFactor<gtsam::Vector6>(
-        robot::TwistKey(i, 0), gtsam::Vector6::Zero(),
-        gtsam::noiseModel::Constrained::All(6)));
+        robot::TwistKey(i, 0), gtsam::Vector6::Zero(), graph_builder.opt().bv_cost_model));
   }
 
   gtsam::Values result = graph_builder.optimize(
@@ -127,10 +125,10 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
     int i = link->getID();
     prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         robot::PoseKey(i, 0), link->Twcom(),
-        gtsam::noiseModel::Constrained::All(6)));
+        graph_builder.opt().bp_cost_model));
     prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
         robot::TwistKey(i, 0), gtsam::Vector6::Zero(),
-        gtsam::noiseModel::Constrained::All(6)));
+        graph_builder.opt().bv_cost_model));
   }
 
   gtsam::NonlinearFactorGraph graph =
@@ -200,6 +198,7 @@ TEST(dynamicsFactorGraph_FD, jumping_robot)
 }
 
 TEST(collocationFactors, simple_urdf) {
+  auto graph_builder = DynamicsGraphBuilder();
   using simple_urdf::my_robot;
   double dt = 1;
   int t = 0;
@@ -207,15 +206,13 @@ TEST(collocationFactors, simple_urdf) {
 
   NonlinearFactorGraph prior_factors;
   prior_factors.add(PriorFactor<double>(
-      JointAngleKey(j, t), 1, gtsam::noiseModel::Constrained::All(1)));
+      JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointVelKey(j, t), 1, gtsam::noiseModel::Constrained::All(1)));
+      JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointAccelKey(j, t), 1, gtsam::noiseModel::Constrained::All(1)));
+      JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointAccelKey(j, t + 1), 2, gtsam::noiseModel::Constrained::All(1)));
-
-  auto graph_builder = DynamicsGraphBuilder();
+      JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
 
   Values init_values;
   init_values.insert(JointAngleKey(j, t), 0.0);
@@ -254,7 +251,7 @@ TEST(collocationFactors, simple_urdf) {
   int phase = 0;
   init_values.insert(PhaseKey(phase), 0.0);
   prior_factors.add(PriorFactor<double>(
-      PhaseKey(phase), dt, gtsam::noiseModel::Constrained::All(1)));
+      PhaseKey(phase), dt, graph_builder.opt().time_cost_model));
 
   // multi-phase euler
   NonlinearFactorGraph mp_euler_graph;
@@ -348,9 +345,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   NonlinearFactorGraph mp_prior_graph = graph_builder.trajectoryFDPriors(
       my_robot, num_steps, joint_angles, joint_vels, torques_seq);
   mp_prior_graph.add(PriorFactor<double>(
-      PhaseKey(0), dt0, gtsam::noiseModel::Constrained::All(1)));
+      PhaseKey(0), dt0, graph_builder.opt().time_cost_model));
   mp_prior_graph.add(PriorFactor<double>(
-      PhaseKey(1), dt1, gtsam::noiseModel::Constrained::All(1)));
+      PhaseKey(1), dt1, graph_builder.opt().time_cost_model));
   init_values =
       DynamicsGraphBuilder::zeroValuesTrajectory(my_robot, num_steps, 2);
 

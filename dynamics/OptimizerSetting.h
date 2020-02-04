@@ -37,13 +37,18 @@ class OptimizerSetting {
       f_cost_model,                                   // wrench equivalence factor
       fa_cost_model,                                  // wrench factor
       t_cost_model,                                   // torque factor
+      cp_cost_model,                                  // contact pose
+      cv_cost_model,                                  // contact twist
+      ca_cost_model,                                  // contact acceleration
+      cm_cost_model,                                  // contact moment
       planar_cost_model,
       prior_q_cost_model,   // joint angle prior factor
       prior_qv_cost_model,  // joint velocity prior factor
       prior_qa_cost_model,  // joint acceleration prior factor
       prior_t_cost_model,   // joint torque prior factor
       q_col_cost_model,
-      v_col_cost_model;
+      v_col_cost_model,
+      time_cost_model;
     //   tf_cost_model,  // tool wrench factor
     //   tp_cost_model,  // tool pose factor
     //   jl_cost_model;  // joint limit factor

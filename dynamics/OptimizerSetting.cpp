@@ -26,6 +26,10 @@ OptimizerSetting::OptimizerSetting()
       f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
       fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
       t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      cp_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      cv_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
+      ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
+      cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
       planar_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
       prior_q_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       prior_qv_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
@@ -33,6 +37,7 @@ OptimizerSetting::OptimizerSetting()
       prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       rel_thresh(1e-2),
       max_iter(50) {}
 
