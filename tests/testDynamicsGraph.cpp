@@ -98,9 +98,8 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
         graph_builder.opt().bv_cost_model));
   }
 
-  gtsam::Values result = graph_builder.optimize(
-      graph, DynamicsGraph::zeroValues(my_robot, 0),
-      DynamicsGraph::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer(graph, DynamicsGraph::zeroValues(my_robot, 0));
+  Values result = optimizer.optimize();
 
   gtsam::Vector actual_qAccel =
       DynamicsGraph::jointAccels(my_robot, result, 0);
@@ -140,8 +139,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   gtsam::Values init_values = DynamicsGraph::zeroValues(my_robot, 0);
 
   // test the four bar linkage FD in the free-floating scenario
-  gtsam::Values result = graph_builder.optimize(
-      graph, init_values, DynamicsGraph::OptimizerType::LM);
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+  Values result = optimizer.optimize();
   gtsam::Vector actual_qAccel =
       DynamicsGraph::jointAccels(my_robot, result, 0);
   gtsam::Vector expected_qAccel = (gtsam::Vector(4) << 1, -1, 1, -1).finished();
@@ -159,8 +158,9 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   graph = graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(prior_factors);
 
-  result = graph_builder.optimize(
-      graph, init_values, DynamicsGraph::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer2(graph, init_values);
+  result = optimizer2.optimize();
+
   actual_qAccel = DynamicsGraph::jointAccels(my_robot, result, 0);
   expected_qAccel = (gtsam::Vector(4) << 0.25, -0.25, 0.25, -0.25).finished();
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
@@ -182,9 +182,8 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
                                                 joint_vels, torques));
 
   // test jumping robot FD
-  Values result = graph_builder.optimize(
-      graph, DynamicsGraph::zeroValues(my_robot, 0),
-      DynamicsGraph::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer(graph, DynamicsGraph::zeroValues(my_robot, 0));
+  Values result = optimizer.optimize();
 
   // check acceleration
   auto expected_qAccel = Vector(6);
@@ -237,9 +236,9 @@ TEST(collocationFactors, simple_urdf) {
   trapezoidal_graph.add(graph_builder.collocationFactors(
       my_robot, t, dt, DynamicsGraph::CollocationScheme::Trapezoidal));
   trapezoidal_graph.add(prior_factors);
-  Values trapezoidal_result =
-      graph_builder.optimize(trapezoidal_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_t(trapezoidal_graph, init_values);
+  Values trapezoidal_result = optimizer_t.optimize();
 
   EXPECT(
       assert_equal(2.75, trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
@@ -250,9 +249,9 @@ TEST(collocationFactors, simple_urdf) {
   euler_graph.add(graph_builder.collocationFactors(
       my_robot, t, dt, DynamicsGraph::CollocationScheme::Euler));
   euler_graph.add(prior_factors);
-  Values euler_result =
-      graph_builder.optimize(euler_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
+  Values euler_result = optimizer_e.optimize();
 
   EXPECT(assert_equal(2.0, euler_result.atDouble(JointAngleKey(j, t + 1))));
   EXPECT(assert_equal(2.0, euler_result.atDouble(JointVelKey(j, t + 1))));
@@ -268,9 +267,9 @@ TEST(collocationFactors, simple_urdf) {
   mp_euler_graph.add(graph_builder.multiPhaseCollocationFactors(
       my_robot, t, phase, DynamicsGraph::CollocationScheme::Euler));
   mp_euler_graph.add(prior_factors);
-  Values mp_euler_result =
-      graph_builder.optimize(mp_euler_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
+  Values mp_euler_result = optimizer_mpe.optimize();
 
   EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAngleKey(j, t + 1))));
   EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointVelKey(j, t + 1))));
@@ -280,9 +279,9 @@ TEST(collocationFactors, simple_urdf) {
   mp_trapezoidal_graph.add(graph_builder.collocationFactors(
       my_robot, t, dt, DynamicsGraph::CollocationScheme::Trapezoidal));
   mp_trapezoidal_graph.add(prior_factors);
-  Values mp_trapezoidal_result =
-      graph_builder.optimize(mp_trapezoidal_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph, init_values);
+  Values mp_trapezoidal_result = optimizer_mpt.optimize();
 
   EXPECT(assert_equal(2.75,
                       mp_trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
@@ -315,9 +314,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
       gravity, planar_axis);
   euler_graph.add(graph_builder.trajectoryFDPriors(
       my_robot, num_steps, joint_angles, joint_vels, torques_seq));
-  Values euler_result =
-      graph_builder.optimize(euler_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
+  Values euler_result = optimizer_e.optimize();
 
   EXPECT(assert_equal(0.0, euler_result.atDouble(JointAngleKey(j, 1))));
   EXPECT(assert_equal(1.0, euler_result.atDouble(JointVelKey(j, 1))));
@@ -333,9 +332,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
       planar_axis);
   trapezoidal_graph.add(graph_builder.trajectoryFDPriors(
       my_robot, num_steps, joint_angles, joint_vels, torques_seq));
-  Values trapezoidal_result =
-      graph_builder.optimize(trapezoidal_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+
+  gtsam::GaussNewtonOptimizer optimizer_t(trapezoidal_graph, init_values);
+  Values trapezoidal_result = optimizer_t.optimize();
 
   EXPECT(assert_equal(0.75, trapezoidal_result.atDouble(JointAngleKey(j, 1))));
   EXPECT(assert_equal(1.5, trapezoidal_result.atDouble(JointVelKey(j, 1))));
@@ -366,9 +365,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
       robots, phase_steps, transition_graphs,
       DynamicsGraph::CollocationScheme::Euler, gravity, planar_axis);
   mp_euler_graph.add(mp_prior_graph);
-  Values mp_euler_result =
-      graph_builder.optimize(mp_euler_graph, init_values,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
+  Values mp_euler_result = optimizer_mpe.optimize();
 
   // t        0   1   2
   // dt         1   2
@@ -390,9 +388,9 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
           DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
           planar_axis);
   mp_trapezoidal_graph.add(mp_prior_graph);
-  Values mp_trapezoidal_result =
-      graph_builder.optimize(mp_trapezoidal_graph, mp_euler_result,
-                             DynamicsGraph::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph, mp_euler_result);
+  Values mp_trapezoidal_result = optimizer_mpt.optimize();
+
   // t        0     1     2
   // dt          1     2
   // torque   1     2     3

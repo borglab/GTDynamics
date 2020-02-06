@@ -364,22 +364,10 @@ class DynamicsGraph {
                                             const int num_steps,
                                             const int num_phases = -1);
 
-  /** optimize factor graph
-  * Keyword arguments:
-     graph                      -- nonlinear factor graph 
-     init_values                -- initial values for optimization
-     optim_type                 -- choice of optimizer type
-     debug                      -- option to print error summaries
-   */
-  static gtsam::Values optimize(
-      const gtsam::NonlinearFactorGraph &graph,
-      const gtsam::Values &init_values, OptimizerType optim_type,
-      const bool debug = false);
-
-  // print the factors of the factor graph
+  /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
 
-  // print the values
+  /* print the values */
   static void printValues(const gtsam::Values &values);
 
   /** save factor graph in json format for visualization
@@ -397,12 +385,22 @@ class DynamicsGraph {
                         const Robot &robot, const int t,
                         bool radial = false);
 
+  /** save factor graph of multiple time steps in json format
+  * Keyword arguments:
+     file_path                  -- path of the json file to store the graph
+     graph                      -- factor graph
+     values                     -- values of variables in factor graph
+     robot                      -- the robot
+     num_steps                  -- number of time steps
+     radial                     -- option to display in radial format
+   */
   static void saveGraphMultiSteps(const std::string &file_path,
                                   const gtsam::NonlinearFactorGraph &graph,
                                   const gtsam::Values &values,
                                   const Robot &robot,
                                   const int num_steps, bool radial = false);
 
+  /* return the optimizer setting. */
   const OptimizerSetting& opt() const
   {
     return opt_;

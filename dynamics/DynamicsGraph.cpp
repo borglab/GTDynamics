@@ -25,12 +25,8 @@
 #include <WrenchFactors.h>
 #include <WrenchPlanarFactor.h>
 #include <JsonSaver.h>
-
 #include <gtsam/base/numericalDerivative.h>
-#include <gtsam/nonlinear/DoglegOptimizer.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
@@ -720,46 +716,6 @@ gtsam::Values DynamicsGraph::zeroValuesTrajectory(
     }
   }
   return zero_values;
-}
-
-gtsam::Values DynamicsGraph::optimize(
-    const gtsam::NonlinearFactorGraph &graph,
-    const gtsam::Values &init_values,
-    OptimizerType optim_type,
-    const bool debug)
-{
-    if (optim_type == OptimizerType::GaussNewton)
-    {
-        gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
-        optimizer.optimize();
-        return optimizer.values();
-    }
-    else if (optim_type == OptimizerType::LM)
-    {
-        auto params = gtsam::LevenbergMarquardtParams();
-        if (debug)
-        {
-            params.setVerbosityLM("SUMMARY");
-        }
-        gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
-        optimizer.optimize();
-        return optimizer.values();
-    }
-    else if (optim_type == OptimizerType::PDL)
-    {
-        auto params = gtsam::DoglegParams();
-        if (debug)
-        {
-            params.setVerbosityDL("VERBOSE");
-        }
-        gtsam::DoglegOptimizer optimizer(graph, init_values, params);
-        optimizer.optimize();
-        return optimizer.values();
-    }
-    else
-    {
-        throw std::runtime_error("optimizer not implemented yet");
-    }
 }
 
 void printKey(const gtsam::Key &key) {

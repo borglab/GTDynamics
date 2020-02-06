@@ -17,6 +17,7 @@
 #include <RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <iostream>
 
@@ -43,8 +44,8 @@ TEST(DynamicsGraph, forward_dynamics_r) {
   gtsam::Values init_values = dg_builder.zeroValues(my_robot, 0);
 
   // Compute the forward dynamics.
-  gtsam::Values results = dg_builder.optimize(
-      dfg, init_values, gtdynamics::DynamicsGraph::OptimizerType::LM);
+  gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);
+  gtsam::Values results = optimizer.optimize();
 
   // Print the resulting values and compute error.
   dg_builder.printValues(results);
