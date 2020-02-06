@@ -17,6 +17,7 @@
 #include <ContactKinematicsAccelFactor.h>
 #include <ContactKinematicsPoseFactor.h>
 #include <ContactKinematicsTwistFactor.h>
+#include <JointLimitFactor.h>
 #include <PoseFactor.h>
 #include <TorqueFactor.h>
 #include <TwistAccelFactor.h>
@@ -583,6 +584,41 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFDPriors(
   }
 
   return graph;
+}
+
+gtsam::NonlinearFactorGraph 
+DynamicsGraph::jointLimitFactors(const Robot &robot,
+                                 const int t) const
+{
+    gtsam::NonlinearFactorGraph graph;
+    for (JointSharedPtr joint : robot.joints())
+    {
+        int j = joint->getID();
+        // Add joint angle limit factor.
+        graph.add(JointLimitFactor(
+            JointAngleKey(j, t), opt_.jl_cost_model,
+            joint->jointLowerLimit(), joint->jointUpperLimit(),
+            joint->jointLimitThreshold()));
+
+        // Add joint velocity limit factors.
+        graph.add(JointLimitFactor(
+            JointVelKey(j, t), opt_.jl_cost_model,
+            -joint->velocityLimit(), joint->velocityLimit(),
+            joint->velocityLimitThreshold()));
+
+        // Add joint acceleration limit factors.
+        graph.add(JointLimitFactor(
+            JointAccelKey(j, t), opt_.jl_cost_model,
+            -joint->accelerationLimit(), joint->accelerationLimit(),
+            joint->accelerationLimitThreshold()));
+
+        // Add joint torque limit factors.
+        graph.add(JointLimitFactor(
+            TorqueKey(j, t), opt_.jl_cost_model,
+            -joint->torqueLimit(), joint->torqueLimit(),
+            joint->torqueLimitThreshold()));
+    }
+    return graph;
 }
 
 gtsam::NonlinearFactorGraph

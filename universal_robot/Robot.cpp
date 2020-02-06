@@ -249,7 +249,6 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
     q.pop();
     for (gtdynamics::JointSharedPtr joint : link1->getJoints()) {
       gtdynamics::JointSharedPtr joint_ptr = joint;
-      // get the other link
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
@@ -262,15 +261,17 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
 
       // check if link 2 is already assigned
       if (link_poses.find(link2->name())==link_poses.end()) {
-        // add to link_poses & link_twists
         link_poses[link2->name()] = T_w2;
         link_twists[link2->name()] = V_2;
-        // push link2 to queue
         q.push(link2);
       }
       else { // link 2 is already assigned
-        gtsam::assert_equal(T_w2, link_poses.at(link2->name()));
-        gtsam::assert_equal(V_2, link_twists.at(link2->name()));
+        gtsam::Pose3 T_w2_prev = link_poses.at(link2->name());
+        gtsam::Vector6 V_2_prev = link_twists.at(link2->name());
+        if (!(T_w2.equals(T_w2_prev, 1e-6) &&  V_2 == V_2_prev))
+        {
+          throw std::runtime_error("inconsistent joint angles detected in forward kinematics");
+        }
       }
     }
     if (loop_count++ > 100000)

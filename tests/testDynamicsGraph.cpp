@@ -409,6 +409,17 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
       assert_equal(3.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 2))));
 }
 
+// check joint limit factors
+TEST(jointlimitFactors, simple_urdf)
+{
+  using simple_urdf::my_robot;
+  auto graph_builder = DynamicsGraph();
+  NonlinearFactorGraph joint_limit_factors = graph_builder.jointLimitFactors(my_robot, 0);
+
+  // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
+  EXPECT(assert_equal((long)my_robot.joints().size() * 4, joint_limit_factors.keys().size()));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

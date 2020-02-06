@@ -82,20 +82,18 @@ class Robot {
   explicit Robot() {}
 
   /**
-   * Construct a robot structure using a URDF model interface.
+   * Constructor.
    * Keyword Arguments:
    *  robot_links_and_joints    -- LinkJointPair containing links and joints.
-   *
    */
   explicit Robot(LinkJointPair links_and_joints);
 
-  /** Construct a robot structure directly from a urdf or sdf file.
+  /** Constructor from a urdf or sdf file.
    *
    * Keyword Arguments:
    *  file_path -- path to the file.
    */
-  explicit Robot(const std::string file_path,
-                          std::string model_name = "");
+  explicit Robot(const std::string file_path, std::string model_name = "");
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;
@@ -124,13 +122,21 @@ class Robot {
   // print links and joints of the robot, for debug purposes
   void printRobot() const;
 
+  // map from joint name to joint angle/vel/accel/torque
   typedef std::map<std::string, double> JointValues;
+
+  // map from link name to link pose
   typedef std::map<std::string, gtsam::Pose3> LinkPoses;
+
+  // map from link name to link twist
   typedef std::map<std::string, gtsam::Vector6> LinkTwists;
+
+  // type for storing forward kinematics results
   typedef std::pair<LinkPoses, LinkTwists> FKResults;
   
   /**
-   * calculate forward kinematics.
+   * calculate forward kinematics by performing bfs in the link-joint graph
+   * (will throw an error when invalid joint angle specification detected)
    * Keyword Arguments:
    *    joint_angles      -- joint angles for all joints
    *    joint_vels        -- joint velocities for all joints

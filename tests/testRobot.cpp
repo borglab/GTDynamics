@@ -194,6 +194,38 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_float, twists.at("l2")));
 }
 
+// test fk for a four bar linkage (loopy)
+TEST(forwardKinematics, four_bar)
+{  
+  Robot four_bar =
+      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+  four_bar.getLinkByName("l1") -> fix();
+
+  Robot::JointValues joint_angles, joint_vels;
+  for (gtdynamics::JointSharedPtr joint: four_bar.joints())
+  {
+    joint_angles[joint->name()] = 0;
+    joint_vels[joint->name()] = 0;
+  }
+  Robot::FKResults fk_results = four_bar.forwardKinematics(joint_angles, joint_vels);
+  Robot::LinkPoses poses = fk_results.first;
+  Robot::LinkTwists twists = fk_results.second;
+  gtsam::Vector6 V_4;
+  V_4 << 0, 0, 0, 0, 0, 0;
+  gtsam::Pose3 T_4(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, -1, 0));
+  EXPECT(assert_equal(V_4, twists.at("l4"), 1e-6));
+  // TODO(yetong): check why this error is large
+  EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3)); 
+
+  // incorrect specficiation of joint angles;
+  Robot::JointValues wrong_angles = joint_angles;
+  Robot::JointValues wrong_vels = joint_vels;
+  wrong_angles["j1"] = 1;
+  wrong_vels["j1"] = 1;
+  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles, joint_vels));
+  THROWS_EXCEPTION(four_bar.forwardKinematics(joint_angles, wrong_vels));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

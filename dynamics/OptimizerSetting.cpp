@@ -38,6 +38,7 @@ OptimizerSetting::OptimizerSetting()
       q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       rel_thresh(1e-2),
       max_iter(50) {}
 
