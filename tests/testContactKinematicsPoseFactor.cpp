@@ -47,7 +47,7 @@ TEST(ContactKinematicsPoseFactor, error) {
   // Transform from the robot com to the link end.
   gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsPoseFactor factor(
+  gtdynamics::ContactKinematicsPoseFactor factor(
       pose_key, cost_model, leTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
@@ -107,7 +107,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   // Transform from the robot com to the link end.
   gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsPoseFactor factor(
+  gtdynamics::ContactKinematicsPoseFactor factor(
       pose_key, cost_model, leTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
 

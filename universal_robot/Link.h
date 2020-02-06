@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RobotLink.h
+ * @file  Link.h
  * @brief only link part of a robot, does not include joint part
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
@@ -28,11 +28,11 @@
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 
-namespace robot {
+namespace gtdynamics {
 /**
- * RobotLink is the base class for links taking different format of parameters
+ * Link is the base class for links taking different format of parameters
  */
-class RobotLink : public std::enable_shared_from_this<RobotLink> {
+class Link : public std::enable_shared_from_this<Link> {
  private:
   std::string name_;
 
@@ -52,20 +52,20 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  std::vector<RobotJointWeakPtr> joints_;  // joints connected to the link
+  std::vector<JointWeakPtr> joints_;  // joints connected to the link
 
  public:
-  RobotLink() {}
+  Link() {}
 
   /**
-   * Initialize RobotLink's inertial properties with a sdf::Link instance, as
+   * Initialize Link's inertial properties with a sdf::Link instance, as
    * described in the sdformat8 documentation:
    * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
    *
    * Keyword arguments:
    *    sdf_link -- sdf::Link object containing link information.
    */
-  explicit RobotLink(sdf::Link sdf_link)
+  explicit Link(sdf::Link sdf_link)
       : name_(sdf_link.Name()),
         mass_(sdf_link.Inertial().MassMatrix().Mass()),
         inertia_(
@@ -93,16 +93,16 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
         Twcom_(Twl_ * Tlcom_),
         is_fixed_(false) {}
 
-  virtual ~RobotLink() = default;
+  virtual ~Link() = default;
 
   // return a shared pointer of the link
-  RobotLinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
+  LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
 
   // return a weak pointer of the link
-  RobotLinkWeakPtr getWeakPtr(void) { return shared_from_this(); }
+  LinkWeakPtr getWeakPtr(void) { return shared_from_this(); }
 
   // remove the joint
-  void removeJoint(RobotJointWeakPtr joint) {
+  void removeJoint(JointWeakPtr joint) {
     for (auto joint_it = joints_.begin(); joint_it != joints_.end(); joint_it++) {
       if ((*joint_it).lock() == joint.lock()) {
         joints_.erase(joint_it);
@@ -126,7 +126,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   }
 
   // add joint to the link
-  void addJoint(RobotJointWeakPtr joint_ptr) {
+  void addJoint(JointWeakPtr joint_ptr) {
     joints_.push_back(joint_ptr);
   }
 
@@ -156,7 +156,7 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
   void unfix() { is_fixed_ = false; }
 
   // return all joints of the link
-  const std::vector<RobotJointWeakPtr>& getJoints(void) const { return joints_; }
+  const std::vector<JointWeakPtr>& getJoints(void) const { return joints_; }
 
   // Reutrn link name.
   std::string name() const { return name_; }
@@ -185,4 +185,4 @@ class RobotLink : public std::enable_shared_from_this<RobotLink> {
     return gtsam::diag(gmm);
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

@@ -15,7 +15,7 @@
 
 #include <gtsam/linear/NoiseModel.h>
 
-namespace robot {
+namespace gtdynamics {
 
 /**
  * OptimizerSetting is a class used to set parameters for motion planner
@@ -88,4 +88,4 @@ class OptimizerSetting {
   // set maximum iteration number
   void setMaxIteration(size_t iter) { max_iter = iter; }
 };
-}  // namespace robot
+}  // namespace gtdynamics

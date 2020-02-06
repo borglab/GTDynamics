@@ -24,7 +24,7 @@
 
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** TwistAccelFactor is a six-way nonlinear factor which enforces relation
  * between acceleration on previous link and this link*/
@@ -143,4 +143,4 @@ class TwistAccelFactor
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

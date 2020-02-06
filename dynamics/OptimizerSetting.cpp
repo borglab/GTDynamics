@@ -14,7 +14,7 @@
 #include "dynamics/OptimizerSetting.h"
 
 
-namespace robot {
+namespace gtdynamics {
 
 OptimizerSetting::OptimizerSetting()
     : bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.00001)),
@@ -44,4 +44,4 @@ OptimizerSetting::OptimizerSetting()
 // void OptimizerSetting::setQcModelPose3(const gtsam::Matrix &Qc) {
 //   Qc_model_pose3 = gtsam::noiseModel::Gaussian::Covariance(Qc);
 // }
-}  // namespace robot
+}  // namespace gtdynamics

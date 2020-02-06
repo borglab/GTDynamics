@@ -46,7 +46,7 @@ TEST(ContactKinematicsTwistFactor, error) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
+  gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // A link with zero linear/angular velocity at its CoM should have a
   // stationary contact point.
@@ -104,7 +104,7 @@ TEST(ContactKinematicsTwistFactor, optimization) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
+  gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // Initial link twist.
   gtsam::Vector6 link_twist_init =

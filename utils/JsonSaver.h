@@ -234,8 +234,8 @@ public:
     GetMeasurement(const gtsam::NonlinearFactor::shared_ptr& factor)
     {
         std::stringstream ss;
-        if (const robot::TorqueFactor* f =
-                dynamic_cast<const robot::TorqueFactor*>(&(*factor)))
+        if (const gtdynamics::TorqueFactor* f =
+                dynamic_cast<const gtdynamics::TorqueFactor*>(&(*factor)))
         {
             ss << GetVector(f->getScrewAxis().transpose());
         }
@@ -265,43 +265,43 @@ public:
     static inline std::string
     GetType(const gtsam::NonlinearFactor::shared_ptr& factor)
     {
-        if (dynamic_cast<const robot::WrenchFactor1*>(&(*factor)))
+        if (dynamic_cast<const gtdynamics::WrenchFactor1*>(&(*factor)))
         {
             return "Wrench";
         }
-        else if (dynamic_cast<const robot::WrenchFactor2*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::WrenchFactor2*>(&(*factor)))
         {
             return "Wrench";
         }
-        else if (dynamic_cast<const robot::WrenchFactor3*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::WrenchFactor3*>(&(*factor)))
         {
             return "Wrench";
         }
-        else if (dynamic_cast<const robot::WrenchFactor4*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::WrenchFactor4*>(&(*factor)))
         {
             return "Wrench";
         }
-        else if (dynamic_cast<const robot::PoseFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::PoseFactor*>(&(*factor)))
         {
             return "Pose";
         }
-        else if (dynamic_cast<const robot::TwistFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::TwistFactor*>(&(*factor)))
         {
             return "Twist";
         }
-        else if (dynamic_cast<const robot::TwistAccelFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::TwistAccelFactor*>(&(*factor)))
         {
             return "TwistAccel";
         }
-        else if (dynamic_cast<const robot::TorqueFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::TorqueFactor*>(&(*factor)))
         {
             return "Torque";
         }
-        else if (dynamic_cast<const robot::WrenchPlanarFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::WrenchPlanarFactor*>(&(*factor)))
         {
             return "WrenchPlanar";
         }
-        else if (dynamic_cast<const robot::WrenchEquivalenceFactor*>(&(*factor)))
+        else if (dynamic_cast<const gtdynamics::WrenchEquivalenceFactor*>(&(*factor)))
         {
             return "WrenchEq";
         }

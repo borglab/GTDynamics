@@ -6,14 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RobotJoint.h
+ * @file  Joint.h
  * @brief Representation of a robot joint.
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang
  */
 
 #pragma once
 
-#include <RobotLink.h>
+#include <Link.h>
 #include <RobotTypes.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -26,11 +26,11 @@
 #include <string>
 #include <vector>
 
-namespace robot {
+namespace gtdynamics {
 /**
- * RobotJoint is the base class for a joint connecting two RobotLink objects.
+ * Joint is the base class for a joint connecting two Link objects.
  */
-class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
+class Joint : public std::enable_shared_from_this<Joint> {
  public:
   /** joint effort types
    * Actuated: motor powered
@@ -68,8 +68,8 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   double torqueLimit_;
   double torqueLimitThreshold_;
 
-  RobotLinkWeakPtr parent_link_;
-  RobotLinkWeakPtr child_link_;
+  LinkWeakPtr parent_link_;
+  LinkWeakPtr child_link_;
 
   // SDF Elements.
   gtsam::Pose3 Twj_;  // Joint frame defined in world frame.
@@ -114,9 +114,9 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   const gtsam::Pose3& Tjccom() const { return Tjccom_; }
 
   /// check if the link is Child link, throw an error if link is not connected to this joint
-  bool isChildLink (const RobotLinkWeakPtr link) const
+  bool isChildLink (const LinkWeakPtr link) const
   {
-    RobotLinkSharedPtr link_ptr = link.lock();
+    LinkSharedPtr link_ptr = link.lock();
     if (link_ptr != child_link_.lock() && link_ptr != parent_link_.lock())
     {
       throw std::runtime_error("link " + link_ptr->name() + " is not connected to this joint " + name_);
@@ -125,10 +125,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   }
 
  public:
-  RobotJoint() {}
+  Joint() {}
 
   /**
-   * Create RobotJoint from a sdf::Joint instance, as described in
+   * Create Joint from a sdf::Joint instance, as described in
    * ROS/urdfdom_headers:
    * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Joint.hh
    *
@@ -141,14 +141,14 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
    *   accelerationLimit          -- joint acceleration limit
    *   accelerationLimitThreshold -- joint acceleration limit threshold
    *   torqueLimitThreshold       -- joint torque limit threshold
-   *   parent_link                -- shared pointer to the parent RobotLink.
-   *   child_link                 -- shared pointer to the child RobotLink.
+   *   parent_link                -- shared pointer to the parent Link.
+   *   child_link                 -- shared pointer to the child Link.
    */
-  RobotJoint(sdf::Joint sdf_joint, JointEffortType joint_effort_type,
+  Joint(sdf::Joint sdf_joint, JointEffortType joint_effort_type,
              double springCoefficient, double jointLimitThreshold,
              double velocityLimitThreshold, double accelerationLimit,
              double accelerationLimitThreshold, double torqueLimitThreshold,
-             RobotLinkSharedPtr parent_link, RobotLinkSharedPtr child_link)
+             LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : name_(sdf_joint.Name()),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
@@ -182,10 +182,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
     Tjccom_ = Twj_.inverse() * child_link->Twcom();
     com_Mpc_ = parent_link->Twcom().inverse() * child_link->Twcom();
 
-    pScrewAxis_ = robot::unit_twist(
+    pScrewAxis_ = gtdynamics::unit_twist(
         Tjpcom_.rotation().inverse() * -axis_,
         Tjpcom_.rotation().inverse() * (-Tjpcom_.translation().vector()));
-    cScrewAxis_ = robot::unit_twist(
+    cScrewAxis_ = gtdynamics::unit_twist(
         Tjccom_.rotation().inverse() * axis_,
         Tjccom_.rotation().inverse() * (-Tjccom_.translation().vector()));
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
@@ -197,10 +197,10 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   }
 
   /// Return a shared ptr to this joint.
-  RobotJointSharedPtr getSharedPtr() { return shared_from_this(); }
+  JointSharedPtr getSharedPtr() { return shared_from_this(); }
 
   /// Return a weak ptr to this joint.
-  RobotJointWeakPtr getWeakPtr() { return shared_from_this(); }
+  JointWeakPtr getWeakPtr() { return shared_from_this(); }
 
   /// Set the joint's ID to track reference to gtsam::LabeledSymbol.
   void setID(unsigned char id) {
@@ -224,37 +224,37 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
 
-  RobotLinkWeakPtr otherLink(const RobotLinkWeakPtr link) const
+  LinkWeakPtr otherLink(const LinkWeakPtr link) const
   {
     return isChildLink(link) ? parent_link_ : child_link_;
   }
 
   /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const RobotLinkWeakPtr link, boost::optional<double> q = boost::none) const
+  gtsam::Pose3 transformFrom(const LinkWeakPtr link, boost::optional<double> q = boost::none) const
   {
     return isChildLink(link) ? MpcCom(q) : McpCom(q);
   }
 
   /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const RobotLinkWeakPtr link, boost::optional<double> q = boost::none) const
+  gtsam::Pose3 transformTo(const LinkWeakPtr link, boost::optional<double> q = boost::none) const
   {
     return isChildLink(link) ? McpCom(q) : MpcCom(q);
   }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6& screwAxis(const RobotLinkWeakPtr link) const { 
+  const gtsam::Vector6& screwAxis(const LinkWeakPtr link) const { 
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_; 
   }
 
-  std::vector<RobotLinkWeakPtr> links() const {
-    return std::vector<RobotLinkWeakPtr> {parent_link_, child_link_};
+  std::vector<LinkWeakPtr> links() const {
+    return std::vector<LinkWeakPtr> {parent_link_, child_link_};
   }
 
   /// Return a shared ptr to the parent link.
-  RobotLinkWeakPtr parentLink() { return parent_link_; }
+  LinkWeakPtr parentLink() { return parent_link_; }
 
   /// Return a weak ptr to the child link.
-  RobotLinkWeakPtr childLink() { return child_link_; }
+  LinkWeakPtr childLink() { return child_link_; }
 
   /// Return joint angle lower limit.
   double jointLowerLimit() const { return jointLowerLimit_; }
@@ -291,14 +291,14 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   /// Return joint torque limit threshold.
   double torqueLimitThreshold() const { return torqueLimitThreshold_; }
 
-  virtual ~RobotJoint() = default;
+  virtual ~Joint() = default;
 };
 
-struct RobotJointParams {
+struct JointParams {
   std::string name;  // Name of this joint as described in the URDF file.
 
-  RobotJoint::JointEffortType jointEffortType =
-      RobotJoint::JointEffortType::Actuated;
+  Joint::JointEffortType jointEffortType =
+      Joint::JointEffortType::Actuated;
   double springCoefficient = 0;      // spring coefficient for Impedence joint.
   double jointLimitThreshold = 0.0;  // joint angle limit threshold.
   double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
@@ -308,4 +308,4 @@ struct RobotJointParams {
   double torqueLimitThreshold = 0.0;  // joint torque limit threshold.
 };
 
-}  // namespace robot
+}  // namespace gtdynamics

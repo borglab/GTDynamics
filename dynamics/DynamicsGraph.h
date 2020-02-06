@@ -6,15 +6,15 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file DynamicsGraphBuilder.h
- * @brief Builds a dynamics graph from a UniversalRobot object.
+ * @file DynamicsGraph.h
+ * @brief Builds a dynamics graph from a Robot object.
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
 #pragma once
 
 #include <OptimizerSetting.h>
-#include <UniversalRobot.h>
+#include <Robot.h>
 
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -28,7 +28,7 @@
 #include <string>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
@@ -90,10 +90,10 @@ inline gtsam::LabeledSymbol TimeKey(int t) {
 }
 
 /**
- * DynamicsGraphBuilder is a class which builds a factor graph to do kinodynamic
+ * DynamicsGraph is a class which builds a factor graph to do kinodynamic
  * motion planning
  */
-class DynamicsGraphBuilder {
+class DynamicsGraph {
  private:
   OptimizerSetting opt_;
 
@@ -101,36 +101,36 @@ class DynamicsGraphBuilder {
   /**
    * Constructor
    */
-  DynamicsGraphBuilder() {
+  DynamicsGraph() {
     opt_ = OptimizerSetting();
     // set all dynamics related factors to be constrained
-    // opt_.bp_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.bv_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.ba_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.p_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.v_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.a_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.f_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
-    // opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.cp_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.cv_cost_model = gtsam::noiseModel::Constrained::All(3);
-    // opt_.ca_cost_model = gtsam::noiseModel::Constrained::All(3);
-    // opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);
-    // opt_.prior_q_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.prior_qv_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.prior_qa_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.prior_t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.q_col_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.v_col_cost_model = gtsam::noiseModel::Constrained::All(1);
-    // opt_.time_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.bp_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.bv_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.ba_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.p_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.v_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.a_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.f_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.cp_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.cv_cost_model = gtsam::noiseModel::Constrained::All(3);
+    opt_.ca_cost_model = gtsam::noiseModel::Constrained::All(3);
+    opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);
+    opt_.prior_q_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_qv_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_qa_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.prior_t_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.q_col_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.v_col_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.time_cost_model = gtsam::noiseModel::Constrained::All(1);
   }
 
-  DynamicsGraphBuilder(const OptimizerSetting& opt) : opt_(opt)
+  DynamicsGraph(const OptimizerSetting& opt) : opt_(opt)
   {
   }
 
-  ~DynamicsGraphBuilder() {}
+  ~DynamicsGraph() {}
 
   enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
@@ -146,17 +146,17 @@ class DynamicsGraphBuilder {
      gravity                    -- gravity in world frame
      planar_axis                -- axis of the plane, used only for planar robot
    */
-  static gtsam::GaussianFactorGraph linearDynamicsGraph(const UniversalRobot &robot, const int t,
-                                                        const UniversalRobot::JointValues& joint_angles,
-                                                        const UniversalRobot::JointValues& joint_vels,
-                                                        const UniversalRobot::FKResults &fk_results,
+  static gtsam::GaussianFactorGraph linearDynamicsGraph(const Robot &robot, const int t,
+                                                        const Robot::JointValues& joint_angles,
+                                                        const Robot::JointValues& joint_vels,
+                                                        const Robot::FKResults &fk_results,
                                                         const boost::optional<gtsam::Vector3> &gravity = boost::none,
                                                         const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
 
   /* return linear factor graph with priors on torques */
-  static gtsam::GaussianFactorGraph linearFDPriors(const UniversalRobot &robot,
+  static gtsam::GaussianFactorGraph linearFDPriors(const Robot &robot,
                                                    const int t, 
-                                                   const UniversalRobot::JointValues& torque_values);
+                                                   const Robot::JointValues& torque_values);
 
   /** sovle forward kinodynamics using linear factor graph, return values of all variables
   * Keyword arguments:
@@ -170,30 +170,30 @@ class DynamicsGraphBuilder {
      planar_axis                -- axis of the plane, used only for planar robot
   * return values of all variables
   */
-  static gtsam::Values linearSolveFD(const UniversalRobot &robot, const int t,
-                                     const UniversalRobot::JointValues& joint_angles,
-                                     const UniversalRobot::JointValues& joint_vels,
-                                     const UniversalRobot::JointValues& torques,
-                                     const UniversalRobot::FKResults &fk_results,
+  static gtsam::Values linearSolveFD(const Robot &robot, const int t,
+                                     const Robot::JointValues& joint_angles,
+                                     const Robot::JointValues& joint_vels,
+                                     const Robot::JointValues& torques,
+                                     const Robot::FKResults &fk_results,
                                      const boost::optional<gtsam::Vector3> &gravity = boost::none,
                                      const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
 
 
   /* return q-level nonlinear factor graph (pose related factors) */
-  gtsam::NonlinearFactorGraph qFactors(const UniversalRobot &robot,
+  gtsam::NonlinearFactorGraph qFactors(const Robot &robot,
                                        const int t) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
-  gtsam::NonlinearFactorGraph vFactors(const UniversalRobot &robot,
+  gtsam::NonlinearFactorGraph vFactors(const Robot &robot,
                                        const int t) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
-  gtsam::NonlinearFactorGraph aFactors(const UniversalRobot &robot,
+  gtsam::NonlinearFactorGraph aFactors(const Robot &robot,
                                        const int t) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const UniversalRobot &robot, const int t,
+      const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
@@ -207,7 +207,7 @@ class DynamicsGraphBuilder {
         contact link and 0 denotes no contact.
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
-      const UniversalRobot &robot, const int t,
+      const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
       const boost::optional<std::vector<uint>> &contacts = boost::none) const;
@@ -221,7 +221,7 @@ class DynamicsGraphBuilder {
      torques                    -- joint torques specified in order of joints
    */
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const UniversalRobot &robot, const int t,
+      const Robot &robot, const int t,
       const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
       const gtsam::Vector &torques) const;
 
@@ -234,7 +234,7 @@ class DynamicsGraphBuilder {
      torques_seq                -- joint torques along the trajectory
    */
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
-      const UniversalRobot &robot, const int num_steps,
+      const Robot &robot, const int num_steps,
       const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
       const std::vector<gtsam::Vector> &torques_seq) const;
 
@@ -248,7 +248,7 @@ class DynamicsGraphBuilder {
      planar_axis                -- axis of the plane, used only for planar robot
    */
   gtsam::NonlinearFactorGraph trajectoryFG(
-      const UniversalRobot &robot, const int num_steps, const double dt,
+      const Robot &robot, const int num_steps, const double dt,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
@@ -263,7 +263,7 @@ class DynamicsGraphBuilder {
   axis of the plane, used only for planar robot
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<UniversalRobot> &robots,
+      const std::vector<Robot> &robots,
       const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation,
@@ -279,7 +279,7 @@ class DynamicsGraphBuilder {
      collocation                -- collocation scheme chosen
    */
   gtsam::NonlinearFactorGraph collocationFactors(
-      const UniversalRobot &robot, const int t, const double dt,
+      const Robot &robot, const int t, const double dt,
       const CollocationScheme collocation) const;
 
   /** return collocation factors on angles and velocities from time step t to
@@ -291,27 +291,51 @@ class DynamicsGraphBuilder {
      collocation                -- collocation scheme chosen
    */
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
-      const UniversalRobot &robot, const int t, const int phase,
+      const Robot &robot, const int t, const int phase,
       const CollocationScheme collocation) const;
+
+  /** return goal factors of joint angle
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step to specify the goal
+     joint_name                 -- name of the joint to specify the goal
+     target_angle               -- target joint angle
+   */
+  gtsam::NonlinearFactorGraph
+  targetAngleFactors(const Robot &robot, const int t,
+                     const std::string &joint_name,
+                     const double target_angle) const;
+
+  /** return goal factors of link pose
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step to specify the goal
+     link_name                  -- name of the link to specify the goal
+     target_pose                -- target link pose
+   */
+  gtsam::NonlinearFactorGraph
+  targetPoseFactors(const Robot &robot, const int t,
+                    const std::string &link_name,
+                    const gtsam::Pose3 &target_pose) const;
 
   /** return the joint accelerations
   * Keyword arguments:
      robot                      -- the robot
      t                          -- time step
    */
-  static gtsam::Vector jointAccels(const UniversalRobot &robot,
+  static gtsam::Vector jointAccels(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /* return joint velocities. */
-  static gtsam::Vector jointVels(const UniversalRobot &robot,
+  static gtsam::Vector jointVels(const Robot &robot,
                                  const gtsam::Values &result, const int t);
 
   /* return joint angles. */
-  static gtsam::Vector jointAngles(const UniversalRobot &robot,
+  static gtsam::Vector jointAngles(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /* return joint torques. */
-  static gtsam::Vector jointTorques(const UniversalRobot &robot,
+  static gtsam::Vector jointTorques(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /** return the joint accelerations as std::map<name, acceleration>
@@ -319,7 +343,7 @@ class DynamicsGraphBuilder {
      robot                      -- the robot
      t                          -- time step
    */
-  static UniversalRobot::JointValues jointAccelsMap(const UniversalRobot &robot,
+  static Robot::JointValues jointAccelsMap(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /** return zero values for all variables for initial value of optimization
@@ -327,7 +351,7 @@ class DynamicsGraphBuilder {
      robot                      -- the robot
      t                          -- time step
    */
-  static gtsam::Values zeroValues(const UniversalRobot &robot, const int t);
+  static gtsam::Values zeroValues(const Robot &robot, const int t);
 
   /** return zero values of the trajectory for initial value of optimization
   * Keyword arguments:
@@ -336,25 +360,27 @@ class DynamicsGraphBuilder {
      num_phases                 -- number of phases, -1 for not using
   multi-phase
    */
-  static gtsam::Values zeroValuesTrajectory(const UniversalRobot &robot,
+  static gtsam::Values zeroValuesTrajectory(const Robot &robot,
                                             const int num_steps,
                                             const int num_phases = -1);
 
   /** optimize factor graph
   * Keyword arguments:
-     graph                      -- nonlinear factor graph
+     graph                      -- nonlinear factor graph 
      init_values                -- initial values for optimization
      optim_type                 -- choice of optimizer type
+     debug                      -- option to print error summaries
    */
-  static gtsam::Values optimize(const gtsam::NonlinearFactorGraph &graph,
-                                const gtsam::Values &init_values,
-                                OptimizerType optim_type);
+  static gtsam::Values optimize(
+      const gtsam::NonlinearFactorGraph &graph,
+      const gtsam::Values &init_values, OptimizerType optim_type,
+      const bool debug = false);
 
   // print the factors of the factor graph
-  static void print_graph(const gtsam::NonlinearFactorGraph &graph);
+  static void printGraph(const gtsam::NonlinearFactorGraph &graph);
 
   // print the values
-  static void print_values(const gtsam::Values &values);
+  static void printValues(const gtsam::Values &values);
 
   /** save factor graph in json format for visualization
   * Keyword arguments:
@@ -368,13 +394,13 @@ class DynamicsGraphBuilder {
   static void saveGraph(const std::string &file_path,
                         const gtsam::NonlinearFactorGraph &graph,
                         const gtsam::Values &values,
-                        const UniversalRobot &robot, const int t,
+                        const Robot &robot, const int t,
                         bool radial = false);
 
   static void saveGraphMultiSteps(const std::string &file_path,
                                   const gtsam::NonlinearFactorGraph &graph,
                                   const gtsam::Values &values,
-                                  const UniversalRobot &robot,
+                                  const Robot &robot,
                                   const int num_steps, bool radial = false);
 
   const OptimizerSetting& opt() const
@@ -383,4 +409,4 @@ class DynamicsGraphBuilder {
   }
 };
 
-}  // namespace robot
+}  // namespace gtdynamics

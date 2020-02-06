@@ -6,41 +6,41 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testRobotJoint.cpp
- * @brief Test RobotJoint class.
+ * @file  testJoint.cpp
+ * @brief Test Joint class.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <RobotJoint.h>
-#include <RobotLink.h>
+#include <Joint.h>
+#include <Link.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 #include <utils.h>
 
-using robot::get_sdf, robot::RobotJoint, robot::RobotLink,
-    robot::RobotJointSharedPtr, robot::RobotLinkSharedPtr;
+using gtdynamics::get_sdf, gtdynamics::Joint, gtdynamics::Link,
+    gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
 using gtsam::assert_equal;
 
 /**
- * construct a RobotJoint and ensure all values are as expected.
+ * construct a Joint and ensure all values are as expected.
  */
-TEST(RobotJoint, urdf_constructor) {
+TEST(Joint, urdf_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  RobotLinkSharedPtr l1 =
-      std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l1")));
-  RobotLinkSharedPtr l2 =
-      std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l2")));
+  LinkSharedPtr l1 =
+      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+  LinkSharedPtr l2 =
+      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  robot::RobotJointParams j1_params;
+  gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
+  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  RobotJointSharedPtr j1 = std::make_shared<RobotJoint>(
-      RobotJoint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
+  JointSharedPtr j1 = std::make_shared<Joint>(
+      Joint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
                  j1_params.springCoefficient, j1_params.jointLimitThreshold,
                  j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
                  j1_params.accelerationLimitThreshold,
@@ -64,7 +64,7 @@ TEST(RobotJoint, urdf_constructor) {
   EXPECT(j1->jointType() == 'R');
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == robot::RobotJoint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT (j1->otherLink(l2).lock() == l1);
@@ -108,23 +108,23 @@ TEST(RobotJoint, urdf_constructor) {
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
 }
 
-TEST(RobotJoint, sdf_constructor) {
+TEST(Joint, sdf_constructor) {
   auto model =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  RobotLinkSharedPtr l0 =
-      std::make_shared<RobotLink>(RobotLink(*model.LinkByName("link_0")));
-  RobotLinkSharedPtr l1 =
-      std::make_shared<RobotLink>(RobotLink(*model.LinkByName("link_1")));
-  RobotLinkSharedPtr l2 =
-      std::make_shared<RobotLink>(RobotLink(*model.LinkByName("link_2")));
+  LinkSharedPtr l0 =
+      std::make_shared<Link>(Link(*model.LinkByName("link_0")));
+  LinkSharedPtr l1 =
+      std::make_shared<Link>(Link(*model.LinkByName("link_1")));
+  LinkSharedPtr l2 =
+      std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
   // constructor for j1
-  robot::RobotJointParams j1_params;
+  gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
-  RobotJointSharedPtr j1 = std::make_shared<RobotJoint>(
-      RobotJoint(*model.JointByName("joint_1"), j1_params.jointEffortType,
+  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
+  JointSharedPtr j1 = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_1"), j1_params.jointEffortType,
                  j1_params.springCoefficient, j1_params.jointLimitThreshold,
                  j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
                  j1_params.accelerationLimitThreshold,
@@ -147,11 +147,11 @@ TEST(RobotJoint, sdf_constructor) {
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
-  robot::RobotJointParams j2_params;
+  gtdynamics::JointParams j2_params;
   j2_params.name = "j2";
-  j2_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
-  RobotJointSharedPtr j2 = std::make_shared<RobotJoint>(
-      RobotJoint(*model.JointByName("joint_2"), j2_params.jointEffortType,
+  j2_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
+  JointSharedPtr j2 = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_2"), j2_params.jointEffortType,
                  j2_params.springCoefficient, j2_params.jointLimitThreshold,
                  j2_params.velocityLimitThreshold, j2_params.accelerationLimit,
                  j2_params.accelerationLimitThreshold,

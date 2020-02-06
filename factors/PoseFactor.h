@@ -22,7 +22,7 @@
 
 #include <string>
 
-namespace robot {
+namespace gtdynamics {
 
 /** PoseFunctor is functor predicting link's pose (COM) with previous one*/
 class PoseFunctor {
@@ -130,4 +130,4 @@ class PoseFactor
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

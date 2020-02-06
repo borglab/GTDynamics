@@ -6,38 +6,38 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testRobotLink.cpp
- * @brief Test RobotLink class.
+ * @file  testLink.cpp
+ * @brief Test Link class.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <RobotJoint.h>
-#include <RobotLink.h>
+#include <Joint.h>
+#include <Link.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 #include <utils.h>
 
 using gtsam::assert_equal;
-using robot::get_sdf, robot::RobotLink, robot::RobotJoint;
+using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
 
 /**
- * Construct a RobotLink via urdf link and ensure all values are as expected.
+ * Construct a Link via urdf link and ensure all values are as expected.
  */
-TEST(RobotLink, urdf_constructor) {
+TEST(Link, urdf_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  // Initialize UniversalRobot instance using urdf::ModelInterfacePtr.
-  robot::RobotLinkSharedPtr l1 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l1")));
-  robot::RobotLinkSharedPtr l2 = std::make_shared<RobotLink>(RobotLink(*simple_urdf.LinkByName("l2")));
-  robot::RobotJointParams j1_params;
+  // Initialize Robot instance using urdf::ModelInterfacePtr.
+  gtdynamics::LinkSharedPtr l1 = std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+  gtdynamics::LinkSharedPtr l2 = std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+  gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = robot::RobotJoint::JointEffortType::Actuated;
+  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  robot::RobotJointSharedPtr j1 = std::make_shared<RobotJoint>(
-      RobotJoint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
+  gtdynamics::JointSharedPtr j1 = std::make_shared<Joint>(
+      Joint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
                  j1_params.springCoefficient, j1_params.jointLimitThreshold,
                  j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
                  j1_params.accelerationLimitThreshold,
@@ -96,12 +96,12 @@ TEST(RobotLink, urdf_constructor) {
   EXPECT(assert_equal(0, l1->getJoints().size()));
 }
 
-TEST(RobotLink, sdf_constructor) {
+TEST(Link, sdf_constructor) {
   auto model =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  RobotLink l0 = RobotLink(*model.LinkByName("link_0"));
-  RobotLink l1 = RobotLink(*model.LinkByName("link_1"));
+  Link l0 = Link(*model.LinkByName("link_0"));
+  Link l1 = Link(*model.LinkByName("link_1"));
 
   // Both link frames are defined in the world frame.
   EXPECT(assert_equal(gtsam::Pose3::identity(), l0.Twl()));

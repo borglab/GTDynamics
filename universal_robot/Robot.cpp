@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file UniversalRobot.h
+ * @file Robot.h
  * @brief Robot structure.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "universal_robot/UniversalRobot.h"
+#include "universal_robot/Robot.h"
 
 #include <gtsam/geometry/Pose3.h>
 #include <utils.h>
@@ -24,7 +24,7 @@
 
 #include "RobotTypes.h"
 
-namespace robot {
+namespace gtdynamics {
 
 template <typename K, typename V>
 std::vector<V> getValues(std::map<K, V> m) {
@@ -37,14 +37,14 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-robot::RobotJointParams getJointParams(sdf::Joint &j_i, 
-                                      const boost::optional<std::vector<robot::RobotJointParams>> joint_params) {
-    robot::RobotJointParams default_params;
-    robot::RobotJointParams jps;
+gtdynamics::JointParams getJointParams(sdf::Joint &j_i, 
+                                      const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
+    gtdynamics::JointParams default_params;
+    gtdynamics::JointParams jps;
     if (joint_params) {
       auto jparams =
           std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                       [=](const robot::RobotJointParams& jps) {
+                       [=](const gtdynamics::JointParams& jps) {
                          return (jps.name == j_i.Name());
                        });
       jps = jparams == joint_params.get().end() ? default_params : *jparams;
@@ -57,19 +57,19 @@ robot::RobotJointParams getJointParams(sdf::Joint &j_i,
 
 LinkJointPair extract_structure_from_sdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<robot::RobotJointParams>> joint_params) {
+    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   
-  // Loop through all links in the urdf interface and construct RobotLink
+  // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    robot::RobotLinkSharedPtr link =
-        std::make_shared<robot::RobotLink>(*sdf.LinkByIndex(i));
+    gtdynamics::LinkSharedPtr link =
+        std::make_shared<gtdynamics::Link>(*sdf.LinkByIndex(i));
     link -> setID(i);
     name_to_link.insert(std::make_pair(link->name(), link));
   }
 
-  // Create RobotJoint objects and update list of parent and child links/joints.
+  // Create Joint objects and update list of parent and child links/joints.
   JointMap name_to_joint;
   for (uint j = 0; j < sdf.JointCount(); j++) {
     sdf::Joint sdf_joint = *sdf.JointByIndex(j);
@@ -79,20 +79,20 @@ LinkJointPair extract_structure_from_sdf(
     std::string child_link_name = sdf_joint.ChildLinkName();
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
-      robot::RobotLinkSharedPtr child_link = name_to_link[child_link_name];
+      gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
       gtsam::Pose3 fixed_pose = child_link->Twcom();
       child_link->fix(fixed_pose);
       continue;
     }
-    robot::RobotLinkSharedPtr parent_link = name_to_link[parent_link_name];
-    robot::RobotLinkSharedPtr child_link = name_to_link[child_link_name];
+    gtdynamics::LinkSharedPtr parent_link = name_to_link[parent_link_name];
+    gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Obtain joint params.
-    robot::RobotJointParams jps = getJointParams(sdf_joint, joint_params);
+    gtdynamics::JointParams jps = getJointParams(sdf_joint, joint_params);
 
-    // Construct RobotJoint and insert into name_to_joint.
-    robot::RobotJointSharedPtr joint =
-        std::make_shared<robot::RobotJoint>(robot::RobotJoint(
+    // Construct Joint and insert into name_to_joint.
+    gtdynamics::JointSharedPtr joint =
+        std::make_shared<gtdynamics::Joint>(gtdynamics::Joint(
             sdf_joint, jps.jointEffortType, jps.springCoefficient,
             jps.jointLimitThreshold, jps.velocityLimitThreshold,
             jps.accelerationLimit, jps.accelerationLimitThreshold,
@@ -100,7 +100,7 @@ LinkJointPair extract_structure_from_sdf(
     name_to_joint.insert(std::make_pair(sdf_joint.Name(), joint));
     joint -> setID(j);
 
-    // Update list of parent and child links/joints for each RobotLink.
+    // Update list of parent and child links/joints for each Link.
     parent_link -> addJoint(joint);
     child_link -> addJoint(joint);
   }
@@ -110,7 +110,7 @@ LinkJointPair extract_structure_from_sdf(
 
 LinkJointPair extract_structure_from_file(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<robot::RobotJointParams>> joint_params) {
+    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
@@ -123,26 +123,26 @@ LinkJointPair extract_structure_from_file(
   throw std::runtime_error("Invalid file extension.");
 }
 
-UniversalRobot::UniversalRobot(LinkJointPair links_and_joints)
+Robot::Robot(LinkJointPair links_and_joints)
     : name_to_link_(links_and_joints.first),
       name_to_joint_(links_and_joints.second) {}
 
-UniversalRobot::UniversalRobot(const std::string file_path,
+Robot::Robot(const std::string file_path,
                                std::string model_name)
-    : UniversalRobot(extract_structure_from_file(file_path, model_name)) {}
+    : Robot(extract_structure_from_file(file_path, model_name)) {}
 
-std::vector<RobotLinkSharedPtr> UniversalRobot::links() const {
-  return getValues<std::string, robot::RobotLinkSharedPtr>(name_to_link_);
+std::vector<LinkSharedPtr> Robot::links() const {
+  return getValues<std::string, gtdynamics::LinkSharedPtr>(name_to_link_);
 }
 
-std::vector<RobotJointSharedPtr> UniversalRobot::joints() const {
-  return getValues<std::string, robot::RobotJointSharedPtr>(name_to_joint_);
+std::vector<JointSharedPtr> Robot::joints() const {
+  return getValues<std::string, gtdynamics::JointSharedPtr>(name_to_joint_);
 }
 
-void UniversalRobot::removeLink(RobotLinkSharedPtr link) {
+void Robot::removeLink(LinkSharedPtr link) {
   // remove all joints associated to the link
   auto joints = link->getJoints();
-  for (robot::RobotJointWeakPtr joint : joints) {
+  for (gtdynamics::JointWeakPtr joint : joints) {
     removeJoint(joint.lock());
   }
 
@@ -150,7 +150,7 @@ void UniversalRobot::removeLink(RobotLinkSharedPtr link) {
   name_to_link_.erase(link->name());
 }
 
-void UniversalRobot::removeJoint(RobotJointSharedPtr joint) {
+void Robot::removeJoint(JointSharedPtr joint) {
   // in all links connected to the joint, remove the joint
   for (auto link: joint->links())
   {
@@ -160,25 +160,25 @@ void UniversalRobot::removeJoint(RobotJointSharedPtr joint) {
   name_to_joint_.erase(joint->name());
 }
 
-RobotLinkSharedPtr UniversalRobot::getLinkByName(std::string name) const {
+LinkSharedPtr Robot::getLinkByName(std::string name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
   return name_to_link_.at(name);
 }
 
-RobotJointSharedPtr UniversalRobot::getJointByName(std::string name) const {
+JointSharedPtr Robot::getJointByName(std::string name) const {
   if (name_to_joint_.find(name) == name_to_joint_.end()) {
     throw std::runtime_error("no joint named " + name);
   }
   return name_to_joint_.at(name);
 }
 
-int UniversalRobot::numLinks() const { return name_to_link_.size(); }
+int Robot::numLinks() const { return name_to_link_.size(); }
 
-int UniversalRobot::numJoints() const { return name_to_joint_.size(); }
+int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void UniversalRobot::printRobot() const {
+void Robot::printRobot() const {
   for (const auto& link : links()) {
     std::cout << link->name() << ":\n";
     std::cout << "\tlink pose: " << link->Twl().rotation().rpy().transpose()
@@ -194,8 +194,8 @@ void UniversalRobot::printRobot() const {
 
   for (const auto& joint : joints()) {
     std::cout << joint->name() << ":\n";
-    robot::RobotLinkSharedPtr parent_link = joint->parentLink().lock();
-    robot::RobotLinkSharedPtr child_link = joint->childLink().lock();
+    gtdynamics::LinkSharedPtr parent_link = joint->parentLink().lock();
+    gtdynamics::LinkSharedPtr child_link = joint->childLink().lock();
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
     std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose() << "\n";
@@ -206,7 +206,7 @@ void UniversalRobot::printRobot() const {
   }
 }
 
-UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
+Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
                               const boost::optional<std::string> prior_link_name, 
                               const boost::optional<gtsam::Pose3> &prior_link_pose, 
                               const boost::optional<gtsam::Vector6>  &prior_link_twist) const
@@ -217,9 +217,9 @@ UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &j
   // link_poses["aa"] = gtsam::Pose3();
 
   //// set root link
-  robot::RobotLinkSharedPtr root_link;
+  gtdynamics::LinkSharedPtr root_link;
   // check fixed links
-  for (robot::RobotLinkSharedPtr link: links())
+  for (gtdynamics::LinkSharedPtr link: links())
   {
     if (link->isFixed())
     {
@@ -239,7 +239,7 @@ UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &j
   }
 
   //// bfs to set the pose
-  std::queue<RobotLinkSharedPtr> q;
+  std::queue<LinkSharedPtr> q;
   q.push(root_link);
   int loop_count = 0;
   while (!q.empty()) {
@@ -247,10 +247,10 @@ UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &j
     gtsam::Pose3 T_w1 = link_poses.at(link1->name());
     gtsam::Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
-    for (robot::RobotJointWeakPtr joint : link1->getJoints()) {
-      robot::RobotJointSharedPtr joint_ptr = joint.lock();
+    for (gtdynamics::JointWeakPtr joint : link1->getJoints()) {
+      gtdynamics::JointSharedPtr joint_ptr = joint.lock();
       // get the other link
-      RobotLinkSharedPtr link2 = joint_ptr->otherLink(link1).lock();
+      LinkSharedPtr link2 = joint_ptr->otherLink(link1).lock();
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
       double joint_vel = joint_vels.at(joint_ptr->name());
@@ -282,4 +282,4 @@ UniversalRobot::FKResults UniversalRobot::forwardKinematics(const JointValues &j
 }
 
 
-}  // namespace robot.
+}  // namespace gtdynamics.

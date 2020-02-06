@@ -25,7 +25,7 @@
 #include <vector>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** ContactKinematicsAccelFactor is unary nonlinear factor which enforces
  *  zero linear acceleration at the contact point for a link. */
@@ -93,4 +93,4 @@ class ContactKinematicsAccelFactor
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

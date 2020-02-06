@@ -28,7 +28,7 @@
 
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** Create unit twist for axis direction
     Keyword argument:
@@ -133,9 +133,9 @@ std::vector<gtsam::Matrix> readFromTxt(
     std::string mat_dir,
     gtsam::Point3 &origin,  // NOLINT
     double &cell_size);  // NOLINT
-}  // namespace robot
+}  // namespace gtdynamics
 
-namespace robot {
+namespace gtdynamics {
 /** obtain the sdf ElementPtr associated with the robot model.
  * Keyword arguments:
  *    sdf_file_path    -- a string containing the absolute to the sdf file.
@@ -143,4 +143,4 @@ namespace robot {
         case a world file is specified.
 */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
-}  // namespace robot
+}  // namespace gtdynamics

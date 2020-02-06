@@ -46,7 +46,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
+  gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                              cTcom);
 
   // A link with zero linear/angular accelration at its CoM should have zero
@@ -105,7 +105,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
+  gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                              cTcom);
 
   // Initial link twist.

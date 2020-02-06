@@ -41,7 +41,7 @@ TEST(TorqueFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  robot::TorqueFactor factor(example::wrench_key, example::torque_key,
+  gtdynamics::TorqueFactor factor(example::wrench_key, example::torque_key,
                                    example::cost_model, screw_axis);
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();

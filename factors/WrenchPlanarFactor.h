@@ -21,7 +21,7 @@
 #include <string>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** WrenchPlanarFactor is a one-way nonlinear factor which enforces the
  * wrench to be planar*/
@@ -89,4 +89,4 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

@@ -26,7 +26,7 @@ TEST(DynamicsGraph, forward_dynamics_r) {
   my_robot.getLinkByName("l1")->fix();
 
   // Build a factor graph with all the kinodynamics constraints.
-  robot::DynamicsGraphBuilder dg_builder = robot::DynamicsGraphBuilder();
+  gtdynamics::DynamicsGraph dg_builder = gtdynamics::DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::NonlinearFactorGraph dfg =
       dg_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
@@ -44,10 +44,10 @@ TEST(DynamicsGraph, forward_dynamics_r) {
 
   // Compute the forward dynamics.
   gtsam::Values results = dg_builder.optimize(
-      dfg, init_values, robot::DynamicsGraphBuilder::OptimizerType::LM);
+      dfg, init_values, gtdynamics::DynamicsGraph::OptimizerType::LM);
 
   // Print the resulting values and compute error.
-  dg_builder.print_values(results);
+  dg_builder.printValues(results);
   std::cout << "Optimization error: " << dfg.error(results) << std::endl;
 }
 

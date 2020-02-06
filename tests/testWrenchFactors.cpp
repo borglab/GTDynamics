@@ -51,7 +51,7 @@ TEST(WrenchFactor2, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  robot::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
+  gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
                        example::wrench_1_key, example::wrench_2_key,
                        example::pKey, example::cost_model, example::inertia,
                        gravity);
@@ -84,7 +84,7 @@ TEST(WrenchFactor3, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  robot::WrenchFactor3 factor(example::twist_key, example::twist_accel_key,
+  gtdynamics::WrenchFactor3 factor(example::twist_key, example::twist_accel_key,
                        example::wrench_1_key, example::wrench_2_key,
                        example::wrench_3_key, example::pKey,
                        example::cost_model, example::inertia, gravity);
@@ -119,7 +119,7 @@ TEST(WrenchFactor4, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  robot::WrenchFactor4 factor(
+  gtdynamics::WrenchFactor4 factor(
       example::twist_key, example::twist_accel_key, example::wrench_1_key,
       example::wrench_2_key, example::wrench_3_key, example::wrench_4_key,
       example::pKey, example::cost_model, example::inertia, gravity);
@@ -154,7 +154,7 @@ TEST(WrenchFactor4, error_1) {
 TEST(WrenchFactor2, error_2) {
   // Create all factors
 
-  robot::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
+  gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
                        example::wrench_1_key, example::wrench_2_key,
                        example::pKey, example::cost_model, example::inertia);
 
