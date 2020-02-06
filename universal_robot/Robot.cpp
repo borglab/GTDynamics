@@ -268,7 +268,7 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
       else { // link 2 is already assigned
         gtsam::Pose3 T_w2_prev = link_poses.at(link2->name());
         gtsam::Vector6 V_2_prev = link_twists.at(link2->name());
-        if (!(T_w2.equals(T_w2_prev, 1e-6) &&  V_2 == V_2_prev))
+        if (!(T_w2.equals(T_w2_prev, 1e-4) &&  (V_2-V_2_prev).norm() < 1e-4))
         {
           throw std::runtime_error("inconsistent joint angles detected in forward kinematics");
         }
