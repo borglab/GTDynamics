@@ -55,7 +55,7 @@ class WrenchEquivalenceFactor
  private:
   /* calculate joint coordinate q jacobian */
   gtsam::Matrix61 qJacobian_(double q, const gtsam::Vector6 &wrench_2) const {
-    auto H = manipulator::AdjointMapJacobianQ(q, M_21_, screw_axis_);
+    auto H = robot::AdjointMapJacobianQ(q, M_21_, screw_axis_);
     return H.transpose() * wrench_2;
   }
 

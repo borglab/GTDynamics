@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 enable_testing()
-project(dynamics CXX C)
+project(gtdynamics CXX C)
 
 add_compile_options(
 	-faligned-new
@@ -53,7 +53,7 @@ add_definitions( -DSDF_PATH="${PROJECT_SOURCE_DIR}/sdfs" )
 # All subdirectories that contain source code relevant to this library.
 set(SOURCE_SUBDIRS dynamics universal_robot factors utils)
 
-# Create dynamics library and link source and header files.
+# Add this directory as include.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Include sdformat directories.
@@ -71,18 +71,18 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
 	add_subdirectory(${SOURCE_SUBDIR}) # Process subdirectory.
 endforeach()
 
-add_library(dynamics SHARED ${sources})
+add_library(gtdynamics SHARED ${sources})
 
-target_link_libraries(dynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
-target_include_directories(dynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
+target_link_libraries(gtdynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
 
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
-    target_include_directories(dynamics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR})
+    target_include_directories(gtdynamics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR})
 endforeach()
 
 # Install library.
-install(TARGETS dynamics LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
-set_target_properties(dynamics PROPERTIES LINKER_LANGUAGE CXX)
+install(TARGETS gtdynamics LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
+set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 # Process subdirectories.
 add_subdirectory(tests)

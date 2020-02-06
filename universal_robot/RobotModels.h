@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RobotLink.h
- * @brief only link part of a manipulator, does not include joint part
+ * @file  RobotModels.h
+ * @brief robot models for tests
  * @Author: Yetong Zhang and Alejandro Escontrela
  */
 
@@ -82,7 +82,7 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace jumping_robot {
 UniversalRobot getJumpingRobot() {
-  UniversalRobot jumping_robot = 
+  UniversalRobot jumping_robot =
       UniversalRobot(std::string(SDF_PATH) + "/test/jumping_robot.sdf");
   jumping_robot.getLinkByName("l0")->fix();
   return jumping_robot;
@@ -97,7 +97,7 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace three_link {
 UniversalRobot getThreeLink() {
-  UniversalRobot three_link = 
+  UniversalRobot three_link =
       UniversalRobot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
   three_link.getLinkByName("link_0")->fix();
   return three_link;
