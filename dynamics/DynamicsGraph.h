@@ -223,6 +223,19 @@ class DynamicsGraph {
       const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
       const gtsam::Vector &torques) const;
 
+  /** return prior factors of torque, angle, velocity
+  * Keyword arguments:
+     robot                -- the robot
+     t                    -- time step
+     joint_angles         -- map from joint name to joint angle
+     joint_vels           -- map from joint name to joint velocity
+     torques              -- map from joint name to joint torque
+   */
+  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
+      const Robot &robot, const int t,
+      const Robot::JointValues &joint_angles, const Robot::JointValues &joint_vels,
+      const Robot::JointValues &torques) const;
+
   /** return prior factors of initial state, torques along trajectory
   * Keyword arguments:
      robot               -- the robot
@@ -350,6 +363,18 @@ class DynamicsGraph {
      t                   -- time step
    */
   static Robot::JointValues jointAccelsMap(const Robot &robot,
+                                   const gtsam::Values &result, const int t);
+
+  /* return joint velocities as std::map<name, velocity>. */
+  static Robot::JointValues jointVelsMap(const Robot &robot,
+                                   const gtsam::Values &result, const int t);
+
+  /* return joint angles as std::map<name, angle>. */
+  static Robot::JointValues jointAnglesMap(const Robot &robot,
+                                   const gtsam::Values &result, const int t);
+
+  /* return joint torques as std::map<name, torque>. */
+  static Robot::JointValues jointTorquesMap(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /** return zero values for all variables for initial value of optimization

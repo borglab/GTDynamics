@@ -559,6 +559,28 @@ gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
   return graph;
 }
 
+  gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
+      const Robot &robot, const int t,
+      const Robot::JointValues &joint_angles, const Robot::JointValues &joint_vels,
+      const Robot::JointValues &torques) const
+  {
+    gtsam::NonlinearFactorGraph graph;
+    auto joints = robot.joints();
+    for (auto joint: joints) {
+      int j = joint->getID();
+      std::string name = joint->name();
+      graph.add(
+          gtsam::PriorFactor<double>(JointAngleKey(j, t), joint_angles.at(name),
+                                    opt_.prior_q_cost_model));
+      graph.add(
+          gtsam::PriorFactor<double>(JointVelKey(j, t), joint_vels.at(name),
+                                    opt_.prior_qv_cost_model));
+      graph.add(gtsam::PriorFactor<double>(
+          TorqueKey(j, t), torques.at(name), opt_.prior_t_cost_model));
+    }
+    return graph;
+  }
+
 gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFDPriors(
     const Robot &robot, const int num_steps,
     const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
@@ -700,13 +722,48 @@ Robot::JointValues DynamicsGraph::jointAccelsMap(const Robot &robot,
                                                 const gtsam::Values &result,
                                                 const int t) {
   Robot::JointValues joint_accels;
-
   for (JointSharedPtr joint: robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
     joint_accels[name] = result.atDouble(JointAccelKey(j, t));
   }
   return joint_accels;
+}
+
+Robot::JointValues DynamicsGraph::jointVelsMap(const Robot &robot,
+                                                const gtsam::Values &result,
+                                                const int t) {
+  Robot::JointValues joint_vels;
+  for (JointSharedPtr joint: robot.joints()) {
+    int j = joint->getID();
+    std::string name = joint->name();
+    joint_vels[name] = result.atDouble(JointVelKey(j, t));
+  }
+  return joint_vels;
+}
+
+Robot::JointValues DynamicsGraph::jointAnglesMap(const Robot &robot,
+                                                const gtsam::Values &result,
+                                                const int t) {
+  Robot::JointValues joint_angles;
+  for (JointSharedPtr joint: robot.joints()) {
+    int j = joint->getID();
+    std::string name = joint->name();
+    joint_angles[name] = result.atDouble(JointAngleKey(j, t));
+  }
+  return joint_angles;
+}
+
+Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
+                                                const gtsam::Values &result,
+                                                const int t) {
+  Robot::JointValues joint_torques;
+  for (JointSharedPtr joint: robot.joints()) {
+    int j = joint->getID();
+    std::string name = joint->name();
+    joint_torques[name] = result.atDouble(TorqueKey(j, t));
+  }
+  return joint_torques;
 }
 
 
