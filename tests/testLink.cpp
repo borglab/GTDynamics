@@ -8,7 +8,7 @@
 /**
  * @file  testLink.cpp
  * @brief Test Link class.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -45,9 +45,6 @@ TEST(Link, urdf_constructor) {
 
   // get shared ptr
   EXPECT (l1 -> getSharedPtr() == l1);
-
-  // get weak ptr
-  EXPECT (l1 -> getWeakPtr().lock() == l1);
 
   // // get, set ID
   l1 -> setID(1);
@@ -89,12 +86,60 @@ TEST(Link, urdf_constructor) {
   // add joint
   l1 -> addJoint(j1);
   EXPECT(assert_equal(1, l1->getJoints().size()));
-  EXPECT(l1->getJoints()[0].lock() == j1);
+  EXPECT(l1->getJoints()[0] == j1);
 
   // remove joint
   l1 -> removeJoint (j1);
   EXPECT(assert_equal(0, l1->getJoints().size()));
 }
+
+/**
+ * Construct the same link via Params and ensure all values are as expected.
+ */
+TEST(Link, params_constructor) {
+  gtdynamics::Link::Params params;
+  params.mass = 100;
+  params.name = "l1";
+  params.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
+  params.wTl = gtsam::Pose3();
+  params.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
+
+  gtdynamics::LinkSharedPtr l1 = std::make_shared<Link>(Link(params));
+
+  // name
+  EXPECT(assert_equal("l1", l1 -> name()));
+
+  // mass
+  EXPECT(assert_equal(100, l1 -> mass()));
+
+  // Check center of mass.
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
+                      l1 -> Tlcom()));
+
+  // Check inertia.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 3, 0, 0, 0, 2, 0, 0, 0, 1).finished(),
+      l1 -> inertia()));
+
+  // Check general mass matrix.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(6, 6) << 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+      0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100)
+          .finished(),
+      l1->inertiaMatrix()));
+
+  // Assert correct center of mass in link frame.
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
+                      l1->Tlcom()));
+
+  // Check transform to link-end frame from link com frame. leTl_com
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
+                      l1->leTl_com()));
+
+  // Check that no child links/joints have yet been added.
+  EXPECT(assert_equal(0, l1->getJoints().size()));
+}
+
 
 TEST(Link, sdf_constructor) {
   auto model =

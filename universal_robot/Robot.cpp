@@ -142,8 +142,8 @@ std::vector<JointSharedPtr> Robot::joints() const {
 void Robot::removeLink(LinkSharedPtr link) {
   // remove all joints associated to the link
   auto joints = link->getJoints();
-  for (gtdynamics::JointWeakPtr joint : joints) {
-    removeJoint(joint.lock());
+  for (gtdynamics::JointSharedPtr joint : joints) {
+    removeJoint(joint);
   }
 
   // remove link from name_to_link_
@@ -154,7 +154,7 @@ void Robot::removeJoint(JointSharedPtr joint) {
   // in all links connected to the joint, remove the joint
   for (auto link: joint->links())
   {
-    link.lock()->removeJoint(joint);
+    link->removeJoint(joint);
   }
   // Remove the joint from name_to_joint_
   name_to_joint_.erase(joint->name());
@@ -187,15 +187,15 @@ void Robot::printRobot() const {
               << ", " << link->Twcom().translation() << "\n";
     std::cout << "\tjoints: ";
     for (const auto& joint : link->getJoints()) {
-      std::cout << joint.lock()->name() << " ";
+      std::cout << joint->name() << " ";
     }
     std::cout << "\n";
   }
 
   for (const auto& joint : joints()) {
     std::cout << joint->name() << ":\n";
-    gtdynamics::LinkSharedPtr parent_link = joint->parentLink().lock();
-    gtdynamics::LinkSharedPtr child_link = joint->childLink().lock();
+    gtdynamics::LinkSharedPtr parent_link = joint->parentLink();
+    gtdynamics::LinkSharedPtr child_link = joint->childLink();
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
     std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose() << "\n";
@@ -247,10 +247,10 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
     gtsam::Pose3 T_w1 = link_poses.at(link1->name());
     gtsam::Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
-    for (gtdynamics::JointWeakPtr joint : link1->getJoints()) {
-      gtdynamics::JointSharedPtr joint_ptr = joint.lock();
+    for (gtdynamics::JointSharedPtr joint : link1->getJoints()) {
+      gtdynamics::JointSharedPtr joint_ptr = joint;
       // get the other link
-      LinkSharedPtr link2 = joint_ptr->otherLink(link1).lock();
+      LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
       double joint_vel = joint_vels.at(joint_ptr->name());

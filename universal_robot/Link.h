@@ -52,9 +52,21 @@ class Link : public std::enable_shared_from_this<Link> {
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  std::vector<JointWeakPtr> joints_;  // joints connected to the link
+  std::vector<JointSharedPtr> joints_;  // joints connected to the link
 
  public:
+
+  /**
+   * Params contains all parameters to construct a link
+   */
+  struct Params {
+    std::string name;   // name of the link
+    double mass;        // mass of the link
+    gtsam::Matrix3 inertia; // inertia of the link
+    gtsam::Pose3 wTl;   // link pose expressed in world frame
+    gtsam::Pose3 lTcom; // link com expressed in link frame
+  };
+
   Link() {}
 
   /**
@@ -93,18 +105,26 @@ class Link : public std::enable_shared_from_this<Link> {
         Twcom_(Twl_ * Tlcom_),
         is_fixed_(false) {}
 
+  /** constructor using Params */
+  explicit Link(const Params& params)
+    : name_(params.name),
+      mass_(params.mass),
+      inertia_(params.inertia),
+      Twl_(params.wTl),
+      Tlcom_(params.lTcom),
+      Twcom_(Twl_ * Tlcom_),
+      is_fixed_(false) {}
+
+  /** destructor */
   virtual ~Link() = default;
 
   // return a shared pointer of the link
   LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
 
-  // return a weak pointer of the link
-  LinkWeakPtr getWeakPtr(void) { return shared_from_this(); }
-
   // remove the joint
-  void removeJoint(JointWeakPtr joint) {
+  void removeJoint(JointSharedPtr joint) {
     for (auto joint_it = joints_.begin(); joint_it != joints_.end(); joint_it++) {
-      if ((*joint_it).lock() == joint.lock()) {
+      if ((*joint_it) == joint) {
         joints_.erase(joint_it);
         break;
       }
@@ -126,7 +146,7 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 
   // add joint to the link
-  void addJoint(JointWeakPtr joint_ptr) {
+  void addJoint(JointSharedPtr joint_ptr) {
     joints_.push_back(joint_ptr);
   }
 
@@ -156,7 +176,7 @@ class Link : public std::enable_shared_from_this<Link> {
   void unfix() { is_fixed_ = false; }
 
   // return all joints of the link
-  const std::vector<JointWeakPtr>& getJoints(void) const { return joints_; }
+  const std::vector<JointSharedPtr>& getJoints(void) const { return joints_; }
 
   // Reutrn link name.
   std::string name() const { return name_; }
