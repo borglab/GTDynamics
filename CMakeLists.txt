@@ -6,9 +6,9 @@ add_compile_options(
 	-faligned-new
 )
 
-#####################################
-# Find dependent libraries
-#####################################
+#####################
+# Find Dependencies #
+#####################
 
 # Find GTSAM components.
 find_package(GTSAM REQUIRED) # Uses installed package
@@ -36,7 +36,6 @@ if(NOT (${Boost_VERSION} LESS 105600))
 endif()
 
 # For cython wrapper.
-find_package(GTSAM REQUIRED) # Make sure gtsam's install folder is in your PATH
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
@@ -61,17 +60,18 @@ include_directories(${SDFormat_INCLUDE_DIRS})
 link_directories(${SDFormat_LIBRARY_DIRS})
 
 # Glob all source/header files in SOURCE_SUBDIRS.
-file(GLOB sources "*.cpp" "*.h")
+file(GLOB sources "*.cpp")
+file(GLOB headers "*.h")
 
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
-    file(GLOB GLOB_RESULT
-         ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp
-         ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
+	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp)
 	list(APPEND sources ${GLOB_RESULT})
+	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
+	list(APPEND headers ${GLOB_RESULT})
 	add_subdirectory(${SOURCE_SUBDIR}) # Process subdirectory.
 endforeach()
 
-add_library(gtdynamics SHARED ${sources})
+add_library(gtdynamics SHARED ${sources} ${headers})
 
 target_link_libraries(gtdynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
 target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
@@ -80,8 +80,9 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
     target_include_directories(gtdynamics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR})
 endforeach()
 
-# Install library.
+# Install library and headers.
 install(TARGETS gtdynamics LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
+install(FILES ${headers} DESTINATION include)
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 # Process subdirectories.
