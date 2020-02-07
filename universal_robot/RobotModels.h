@@ -18,6 +18,8 @@
 
 #include <string>
 
+// TODO(aescontrela): The entire program shouldn't crash when a single file doesn't load.
+
 // using namespace std;
 // using namespace gtdynamics;
 // using namespace gtsam;
@@ -92,7 +94,6 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace jumping_robot
-
 
 namespace three_link {
 Robot getThreeLink() {
