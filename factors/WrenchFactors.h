@@ -31,7 +31,7 @@
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** WrenchFactor0 is a three-way nonlinear factor which enforces relation
  * between wrenches on this link*/
@@ -797,4 +797,4 @@ class WrenchFactor4
   }
 };
 
-}  // namespace robot
+}  // namespace gtdynamics

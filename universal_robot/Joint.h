@@ -6,14 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RobotJoint.h
+ * @file  Joint.h
  * @brief Representation of a robot joint.
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang
  */
 
 #pragma once
 
-#include <RobotLink.h>
+#include <Link.h>
 #include <RobotTypes.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -26,11 +26,13 @@
 #include <string>
 #include <vector>
 
-namespace robot {
+namespace gtdynamics {
+
+
 /**
- * RobotJoint is the base class for a joint connecting two RobotLink objects.
+ * Joint is the base class for a joint connecting two Link objects.
  */
-class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
+class Joint : public std::enable_shared_from_this<Joint> {
  public:
   /** joint effort types
    * Actuated: motor powered
@@ -38,6 +40,22 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
    * Impedence: with spring resistance
    */
   enum JointEffortType { Actuated, Unactuated, Impedence };
+
+  /**
+   * JointParams contains all parameters to construct a joint
+   */
+  struct Params {
+    std::string name;   // name of the joint
+    char joint_type;    // type of joint
+    Joint::JointEffortType effor_type; // joint effor type
+    LinkSharedPtr parent_link;        // shared pointer to parent link
+    LinkSharedPtr child_link;        // shared pointer to child link
+    gtsam::Vector3 axis;  // joint axis expressed in joint frame
+    gtsam::Pose3 wTj;   // joint pose expressed in world frame
+    double joint_lower_limit;
+    double joint_upper_limit;
+    double joint_limit_threshold;
+  };
 
  private:
   // This joint's name, as described in the URDF file.
@@ -52,24 +70,24 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   gtsam::Vector3 axis_;
 
   // Joint parameters.
-  double jointLowerLimit_;
-  double jointUpperLimit_;
-  double jointLimitThreshold_;
+  double joint_lower_limit_;
+  double joint_upper_limit_;
+  double joint_limit_threshold_;
 
-  double dampCoefficient_;
-  double springCoefficient_;
+  double damping_coeff_;
+  double spring_coeff_;
 
-  double velocityLimit_;
-  double velocityLimitThreshold_;
+  double velocity_limit_;
+  double velocity_limit_threshold_;
 
-  double accelerationLimit_;
-  double accelerationLimitThreshold_;
+  double acceleration_limit_;
+  double acceleration_limit_threshold_;
 
-  double torqueLimit_;
-  double torqueLimitThreshold_;
+  double torque_limit_;
+  double torque_limit_threshold_;
 
-  RobotLinkWeakPtr parent_link_;
-  RobotLinkWeakPtr child_link_;
+  LinkSharedPtr parent_link_;
+  LinkSharedPtr child_link_;
 
   // SDF Elements.
   gtsam::Pose3 Twj_;  // Joint frame defined in world frame.
@@ -114,21 +132,35 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   const gtsam::Pose3& Tjccom() const { return Tjccom_; }
 
   /// check if the link is Child link, throw an error if link is not connected to this joint
-  bool isChildLink (const RobotLinkWeakPtr link) const
+  bool isChildLink (const LinkSharedPtr link) const
   {
-    RobotLinkSharedPtr link_ptr = link.lock();
-    if (link_ptr != child_link_.lock() && link_ptr != parent_link_.lock())
+    LinkSharedPtr link_ptr = link;
+    if (link_ptr != child_link_ && link_ptr != parent_link_)
     {
       throw std::runtime_error("link " + link_ptr->name() + " is not connected to this joint " + name_);
     }
-    return link_ptr == child_link_.lock();
+    return link_ptr == child_link_;
+  }
+
+  void setScrewAxis()
+  {
+    Tjpcom_ = Twj_.inverse() * parent_link_->Twcom();
+    Tjccom_ = Twj_.inverse() * child_link_->Twcom();
+    com_Mpc_ = parent_link_->Twcom().inverse() * child_link_->Twcom();
+
+    pScrewAxis_ = gtdynamics::unit_twist(
+        Tjpcom_.rotation().inverse() * -axis_,
+        Tjpcom_.rotation().inverse() * (-Tjpcom_.translation().vector()));
+    cScrewAxis_ = gtdynamics::unit_twist(
+        Tjccom_.rotation().inverse() * axis_,
+        Tjccom_.rotation().inverse() * (-Tjccom_.translation().vector()));
   }
 
  public:
-  RobotJoint() {}
+  Joint() {}
 
   /**
-   * Create RobotJoint from a sdf::Joint instance, as described in
+   * Create Joint from a sdf::Joint instance, as described in
    * ROS/urdfdom_headers:
    * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Joint.hh
    *
@@ -141,30 +173,30 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
    *   accelerationLimit          -- joint acceleration limit
    *   accelerationLimitThreshold -- joint acceleration limit threshold
    *   torqueLimitThreshold       -- joint torque limit threshold
-   *   parent_link                -- shared pointer to the parent RobotLink.
-   *   child_link                 -- shared pointer to the child RobotLink.
+   *   parent_link                -- shared pointer to the parent Link.
+   *   child_link                 -- shared pointer to the child Link.
    */
-  RobotJoint(sdf::Joint sdf_joint, JointEffortType joint_effort_type,
+  Joint(const sdf::Joint& sdf_joint, JointEffortType joint_effort_type,
              double springCoefficient, double jointLimitThreshold,
              double velocityLimitThreshold, double accelerationLimit,
              double accelerationLimitThreshold, double torqueLimitThreshold,
-             RobotLinkSharedPtr parent_link, RobotLinkSharedPtr child_link)
+             LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : name_(sdf_joint.Name()),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
                              sdf_joint.Axis()->Xyz()[1],
                              sdf_joint.Axis()->Xyz()[2])),
-        jointLowerLimit_(sdf_joint.Axis()->Lower()),
-        jointUpperLimit_(sdf_joint.Axis()->Upper()),
-        jointLimitThreshold_(jointLimitThreshold),
-        dampCoefficient_(sdf_joint.Axis()->Damping()),
-        springCoefficient_(springCoefficient),
-        velocityLimit_(sdf_joint.Axis()->MaxVelocity()),
-        velocityLimitThreshold_(velocityLimitThreshold),
-        accelerationLimit_(accelerationLimit),
-        accelerationLimitThreshold_(accelerationLimitThreshold),
-        torqueLimit_(sdf_joint.Axis()->Effort()),
-        torqueLimitThreshold_(torqueLimitThreshold),
+        joint_lower_limit_(sdf_joint.Axis()->Lower()),
+        joint_upper_limit_(sdf_joint.Axis()->Upper()),
+        joint_limit_threshold_(jointLimitThreshold),
+        damping_coeff_(sdf_joint.Axis()->Damping()),
+        spring_coeff_(springCoefficient),
+        velocity_limit_(sdf_joint.Axis()->MaxVelocity()),
+        velocity_limit_threshold_(velocityLimitThreshold),
+        acceleration_limit_(accelerationLimit),
+        acceleration_limit_threshold_(accelerationLimitThreshold),
+        torque_limit_(sdf_joint.Axis()->Effort()),
+        torque_limit_threshold_(torqueLimitThreshold),
         parent_link_(parent_link),
         child_link_(child_link) {
     if ((sdf_joint.PoseFrame() == "") &&
@@ -177,17 +209,7 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
               sdf_joint.Pose().Rot().Y(), sdf_joint.Pose().Rot().Z())),
           gtsam::Point3(sdf_joint.Pose().Pos()[0], sdf_joint.Pose().Pos()[1],
                         sdf_joint.Pose().Pos()[2]));
-
-    Tjpcom_ = Twj_.inverse() * parent_link->Twcom();
-    Tjccom_ = Twj_.inverse() * child_link->Twcom();
-    com_Mpc_ = parent_link->Twcom().inverse() * child_link->Twcom();
-
-    pScrewAxis_ = robot::unit_twist(
-        Tjpcom_.rotation().inverse() * -axis_,
-        Tjpcom_.rotation().inverse() * (-Tjpcom_.translation().vector()));
-    cScrewAxis_ = robot::unit_twist(
-        Tjccom_.rotation().inverse() * axis_,
-        Tjccom_.rotation().inverse() * (-Tjccom_.translation().vector()));
+    setScrewAxis();
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';
     }
@@ -196,11 +218,24 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
     }
   }
 
-  /// Return a shared ptr to this joint.
-  RobotJointSharedPtr getSharedPtr() { return shared_from_this(); }
+  /** constructor using JointParams */
+  Joint(const Params& params)
+  : name_(params.name),
+    joint_type_(params.joint_type),
+    jointEffortType_(params.effor_type),
+    axis_(params.axis),
+    joint_lower_limit_(params.joint_lower_limit),
+    joint_upper_limit_(params.joint_upper_limit),
+    joint_limit_threshold_(params.joint_limit_threshold),
+    parent_link_(params.parent_link),
+    child_link_(params.child_link),
+    Twj_(params.wTj)
+    {
+      setScrewAxis();
+    }
 
-  /// Return a weak ptr to this joint.
-  RobotJointWeakPtr getWeakPtr() { return shared_from_this(); }
+  /// Return a shared ptr to this joint.
+  JointSharedPtr getSharedPtr() { return shared_from_this(); }
 
   /// Set the joint's ID to track reference to gtsam::LabeledSymbol.
   void setID(unsigned char id) {
@@ -224,81 +259,81 @@ class RobotJoint : public std::enable_shared_from_this<RobotJoint> {
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
 
-  RobotLinkWeakPtr otherLink(const RobotLinkWeakPtr link) const
+  LinkSharedPtr otherLink(const LinkSharedPtr link) const
   {
     return isChildLink(link) ? parent_link_ : child_link_;
   }
 
   /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const RobotLinkWeakPtr link, boost::optional<double> q = boost::none) const
+  gtsam::Pose3 transformFrom(const LinkSharedPtr link, boost::optional<double> q = boost::none) const
   {
     return isChildLink(link) ? MpcCom(q) : McpCom(q);
   }
 
   /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const RobotLinkWeakPtr link, boost::optional<double> q = boost::none) const
+  gtsam::Pose3 transformTo(const LinkSharedPtr link, boost::optional<double> q = boost::none) const
   {
     return isChildLink(link) ? McpCom(q) : MpcCom(q);
   }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6& screwAxis(const RobotLinkWeakPtr link) const { 
+  const gtsam::Vector6& screwAxis(const LinkSharedPtr link) const { 
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_; 
   }
 
-  std::vector<RobotLinkWeakPtr> links() const {
-    return std::vector<RobotLinkWeakPtr> {parent_link_, child_link_};
+  std::vector<LinkSharedPtr> links() const {
+    return std::vector<LinkSharedPtr> {parent_link_, child_link_};
   }
 
   /// Return a shared ptr to the parent link.
-  RobotLinkWeakPtr parentLink() { return parent_link_; }
+  LinkSharedPtr parentLink() { return parent_link_; }
 
-  /// Return a weak ptr to the child link.
-  RobotLinkWeakPtr childLink() { return child_link_; }
+  /// Return a shared ptr to the child link.
+  LinkSharedPtr childLink() { return child_link_; }
 
   /// Return joint angle lower limit.
-  double jointLowerLimit() const { return jointLowerLimit_; }
+  double jointLowerLimit() const { return joint_lower_limit_; }
 
   /// Return joint angle upper limit.
-  double jointUpperLimit() const { return jointUpperLimit_; }
+  double jointUpperLimit() const { return joint_upper_limit_; }
 
   /// Return joint angle limit threshold.
-  double jointLimitThreshold() const { return jointLimitThreshold_; }
+  double jointLimitThreshold() const { return joint_limit_threshold_; }
 
   /// Return joint damping coefficient
-  double dampCoefficient() const { return dampCoefficient_; }
+  double dampCoefficient() const { return damping_coeff_; }
 
   /// Return joint spring coefficient
-  double springCoefficient() const { return springCoefficient_; }
+  double springCoefficient() const { return spring_coeff_; }
 
   /// Return joint velocity limit.
-  double velocityLimit() const { return velocityLimit_; }
+  double velocityLimit() const { return velocity_limit_; }
 
   /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const { return velocityLimitThreshold_; }
+  double velocityLimitThreshold() const { return velocity_limit_threshold_; }
 
   /// Return joint acceleration limit.
-  double accelerationLimit() const { return accelerationLimit_; }
+  double accelerationLimit() const { return acceleration_limit_; }
 
   /// Return joint acceleration limit threshold.
   double accelerationLimitThreshold() const {
-    return accelerationLimitThreshold_;
+    return acceleration_limit_threshold_;
   }
 
   /// Return joint torque limit.
-  double torqueLimit() const { return torqueLimit_; }
+  double torqueLimit() const { return torque_limit_; }
 
   /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const { return torqueLimitThreshold_; }
+  double torqueLimitThreshold() const { return torque_limit_threshold_; }
 
-  virtual ~RobotJoint() = default;
+  virtual ~Joint() = default;
 };
 
-struct RobotJointParams {
+struct JointParams {
   std::string name;  // Name of this joint as described in the URDF file.
 
-  RobotJoint::JointEffortType jointEffortType =
-      RobotJoint::JointEffortType::Actuated;
+  Joint::JointEffortType jointEffortType =
+      Joint::JointEffortType::Actuated;
   double springCoefficient = 0;      // spring coefficient for Impedence joint.
   double jointLimitThreshold = 0.0;  // joint angle limit threshold.
   double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
@@ -308,4 +343,4 @@ struct RobotJointParams {
   double torqueLimitThreshold = 0.0;  // joint torque limit threshold.
 };
 
-}  // namespace robot
+}  // namespace gtdynamics

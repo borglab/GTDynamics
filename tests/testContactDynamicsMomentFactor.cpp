@@ -46,7 +46,7 @@ TEST(ContactDynamicsMomentFactor, error) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
+  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                             cTcom);
 
   // A link with zero contact wrench should have zero
@@ -88,7 +88,7 @@ TEST(ContactDynamicsMomentFactor, optimization) {
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
 
-  robot::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
+  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                             cTcom);
 
   // Initial link twist.

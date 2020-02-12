@@ -6,50 +6,50 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file testUniversalRobot.cpp
- * @brief Test UniversalRobot instance methods and integration test with various
+ * @file testRobot.cpp
+ * @brief Test Robot instance methods and integration test with various
  * URDF/SDF configurations.
  * @Author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <UniversalRobot.h>
+#include <Robot.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 #include <utils.h>
 
 using gtsam::assert_equal;
-using robot::get_sdf, robot::UniversalRobot, robot::LinkJointPair,
-    robot::extract_structure_from_sdf;
+using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
+    gtdynamics::extract_structure_from_sdf;
 
-// Initialize a UniversalRobot with "urdfs/test/simple_urdf.urdf" and make sure
+// Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
 // that all transforms, link/joint properties, etc. are correct.
-TEST(UniversalRobot, simple_urdf) {
+TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   LinkJointPair links_and_joints = extract_structure_from_sdf(simple_urdf);
-  robot::LinkMap name_to_link = links_and_joints.first;
-  robot::JointMap name_to_joint = links_and_joints.second;
+  gtdynamics::LinkMap name_to_link = links_and_joints.first;
+  gtdynamics::JointMap name_to_joint = links_and_joints.second;
   EXPECT(assert_equal(2, name_to_link.size()));
   EXPECT(assert_equal(1, name_to_joint.size()));
 
-  robot::RobotLinkConstSharedPtr l1 = name_to_link.at("l1");
-  robot::RobotLinkConstSharedPtr l2 = name_to_link.at("l2");
-  robot::RobotJointSharedPtr j1 = name_to_joint.at("j1");
+  gtdynamics::LinkConstSharedPtr l1 = name_to_link.at("l1");
+  gtdynamics::LinkConstSharedPtr l2 = name_to_link.at("l2");
+  gtdynamics::JointSharedPtr j1 = name_to_joint.at("j1");
   EXPECT(assert_equal(1, l1->getJoints().size()));
   EXPECT(assert_equal(1, l2->getJoints().size()));
   EXPECT(l1->getID() == 0);
   EXPECT(l2->getID() == 1);
   EXPECT(j1->getID() == 0);
 
-  // Initialize UniversalRobot instance using RobotLink and RobotJoint
+  // Initialize Robot instance using Link and Joint
   // instances.
-  UniversalRobot simple_robot = UniversalRobot(links_and_joints);
+  Robot simple_robot = Robot(links_and_joints);
 
-  // Check that number of links and joints in the UniversalRobot instance is
+  // Check that number of links and joints in the Robot instance is
   // correct.
   EXPECT(assert_equal(2, simple_robot.links().size()));
   EXPECT(assert_equal(1, simple_robot.joints().size()));
@@ -64,12 +64,12 @@ TEST(UniversalRobot, simple_urdf) {
 }
 
 
-TEST(UniversalRobot, four_bar_sdf) {
-  // Initialize UniversalRobot instance from a file.
-  UniversalRobot four_bar =
-      UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+TEST(Robot, four_bar_sdf) {
+  // Initialize Robot instance from a file.
+  Robot four_bar =
+      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
 
-  // Check that number of links and joints in the UniversalRobot instance is
+  // Check that number of links and joints in the Robot instance is
   // correct.
   EXPECT(assert_equal(5, four_bar.links().size()));
   EXPECT(assert_equal(5, four_bar.joints().size()));
@@ -92,12 +92,12 @@ TEST(UniversalRobot, four_bar_sdf) {
       assert_equal(0.0, four_bar.getJointByName("j1")->jointLimitThreshold()));
 }
 
-TEST(UniversalRobot, simple_rr_sdf) {
-  // Initialize UniversalRobot instance from a file.
-  UniversalRobot simple_rr = UniversalRobot(
+TEST(Robot, simple_rr_sdf) {
+  // Initialize Robot instance from a file.
+  Robot simple_rr = Robot(
       std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  // // Check that number of links and joints in the UniversalRobot instance is
+  // // Check that number of links and joints in the Robot instance is
   // correct.
   EXPECT(assert_equal(3, simple_rr.links().size()));
   EXPECT(assert_equal(2, simple_rr.joints().size()));
@@ -120,10 +120,10 @@ TEST(UniversalRobot, simple_rr_sdf) {
       0.0, simple_rr.getJointByName("joint_1")->jointLimitThreshold()));
 }
 
-TEST(UniversalRobot, removeLink) {
-  // Initialize UniversalRobot instance from a file.
-  UniversalRobot four_bar =
-      UniversalRobot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+TEST(Robot, removeLink) {
+  // Initialize Robot instance from a file.
+  Robot four_bar =
+      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.removeLink(four_bar.getLinkByName("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
@@ -131,10 +131,10 @@ TEST(UniversalRobot, removeLink) {
   EXPECT(four_bar.getLinkByName("l3")->getJoints().size() == 1);
 }
 
-TEST(UniversalRobot, forwardKinematics) {
-  UniversalRobot simple_robot = UniversalRobot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+TEST(Robot, forwardKinematics) {
+  Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  UniversalRobot::JointValues joint_angles, joint_vels;
+  Robot::JointValues joint_angles, joint_vels;
   joint_angles["j1"] = 0;
   joint_vels["j1"] = 0;
 
@@ -143,9 +143,9 @@ TEST(UniversalRobot, forwardKinematics) {
 
   // test fk at rest
   simple_robot.getLinkByName("l1")->fix();
-  UniversalRobot::FKResults fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
-  UniversalRobot::LinkPoses poses = fk_results.first;
-  UniversalRobot::LinkTwists twists = fk_results.second;
+  Robot::FKResults fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
+  Robot::LinkPoses poses = fk_results.first;
+  Robot::LinkTwists twists = fk_results.second;
 
   gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
   gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 3));
@@ -192,6 +192,38 @@ TEST(UniversalRobot, forwardKinematics) {
   EXPECT(assert_equal(T_wl2_float, poses.at("l2")));
   EXPECT(assert_equal(V_l1_float, twists.at("l1")));
   EXPECT(assert_equal(V_l2_float, twists.at("l2")));
+}
+
+// test fk for a four bar linkage (loopy)
+TEST(forwardKinematics, four_bar)
+{  
+  Robot four_bar =
+      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+  four_bar.getLinkByName("l1") -> fix();
+
+  Robot::JointValues joint_angles, joint_vels;
+  for (gtdynamics::JointSharedPtr joint: four_bar.joints())
+  {
+    joint_angles[joint->name()] = 0;
+    joint_vels[joint->name()] = 0;
+  }
+  Robot::FKResults fk_results = four_bar.forwardKinematics(joint_angles, joint_vels);
+  Robot::LinkPoses poses = fk_results.first;
+  Robot::LinkTwists twists = fk_results.second;
+  gtsam::Vector6 V_4;
+  V_4 << 0, 0, 0, 0, 0, 0;
+  gtsam::Pose3 T_4(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, -1, 0));
+  EXPECT(assert_equal(V_4, twists.at("l4"), 1e-6));
+  // TODO(yetong): check why this error is large
+  EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3)); 
+
+  // incorrect specficiation of joint angles;
+  Robot::JointValues wrong_angles = joint_angles;
+  Robot::JointValues wrong_vels = joint_vels;
+  wrong_angles["j1"] = 1;
+  wrong_vels["j1"] = 1;
+  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles, joint_vels));
+  THROWS_EXCEPTION(four_bar.forwardKinematics(joint_angles, wrong_vels));
 }
 
 int main() {

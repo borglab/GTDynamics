@@ -24,7 +24,7 @@
 
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
@@ -55,7 +55,7 @@ class WrenchEquivalenceFactor
  private:
   /* calculate joint coordinate q jacobian */
   gtsam::Matrix61 qJacobian_(double q, const gtsam::Vector6 &wrench_2) const {
-    auto H = robot::AdjointMapJacobianQ(q, M_21_, screw_axis_);
+    auto H = gtdynamics::AdjointMapJacobianQ(q, M_21_, screw_axis_);
     return H.transpose() * wrench_2;
   }
 
@@ -112,4 +112,4 @@ class WrenchEquivalenceFactor
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

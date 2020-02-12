@@ -22,12 +22,12 @@
   typedef std::shared_ptr<const Class> Class##ConstSharedPtr; \
   typedef std::weak_ptr<Class> Class##WeakPtr
 
-namespace robot {
+namespace gtdynamics {
 
-LINK_TYPEDEF_CLASS_POINTER(RobotLink);
-LINK_TYPEDEF_CLASS_POINTER(RobotJoint);
-struct RobotJointParams;
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
+struct JointParams;
 
-}  // namespace robot.
+}  // namespace gtdynamics.
 
 #endif  // UNIVERSAL_ROBOT_ROBOTTYPES_H_

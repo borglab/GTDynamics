@@ -23,7 +23,7 @@
 
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** TwistFactor is a four-way nonlinear factor which enforces relation
  * between twist on previous link and this link*/
@@ -117,4 +117,4 @@ class TwistFactor
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

@@ -14,6 +14,8 @@
 
 #include <DynamicsGraph.h>
 #include <RobotModels.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
@@ -25,32 +27,34 @@ TEST(DynamicsGraph, optimization) {
 
   // Build the factor graph for the robot.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
-  gtsam::Vector3 planarAxis = (gtsam::Vector(3) << 1, 0, 0).finished();
+  gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  auto graphBuilder = robot::DynamicsGraphBuilder();
+  auto graph_builder = gtdynamics::DynamicsGraph();
   auto graph =
-      graphBuilder.dynamicsFactorGraph(my_robot, 0, gravity, planarAxis);
+      graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
 
   // Add forward dynamics priors to factor graph.
-  gtsam::Vector jointAngles =
-      (gtsam::Vector(1) << 0).finished();
-  gtsam::Vector jointVels = (gtsam::Vector(1) << 0).finished();
+  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques;
+  joint_angles["joint_1"] = 0;
+  joint_vels["joint_1"] = 0;
+  joint_torques["joint_1"] = 0;
+  joint_angles["joint_2"] = 0;
+  joint_vels["joint_2"] = 0;
+  joint_torques["joint_2"] = 0;
 
-  gtsam::Vector jointTorques = (gtsam::Vector(1) << 0).finished();
-  auto priorFactors = graphBuilder.forwardDynamicsPriors(my_robot, 0, 
-            jointAngles, jointVels, jointTorques);
+  auto priorFactors = graph_builder.forwardDynamicsPriors(my_robot, 0, 
+            joint_angles, joint_vels, joint_torques);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto initValues = graphBuilder.zeroValues(my_robot, 0);
+  auto init_values = graph_builder.zeroValues(my_robot, 0);
 
   // Compute forward dynamics.
-  gtsam::Values result = graphBuilder.optimize(
-      graph, initValues,
-      robot::DynamicsGraphBuilder::OptimizerType::GaussNewton);
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+  gtsam::Values result = optimizer.optimize();
 
   // Print the result and its associated error.
-  graphBuilder.print_values(result);
+  graph_builder.printValues(result);
   std::cout << "Optimization error: " << graph.error(result) << std::endl;
 }
 

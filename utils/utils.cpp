@@ -15,7 +15,7 @@
 
 #include <stdexcept>
 
-namespace robot {
+namespace gtdynamics {
 
 gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p) {
   gtsam::Vector6 unit_twist;
@@ -166,9 +166,9 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
   return data;
 }
 
-}  // namespace robot
+}  // namespace gtdynamics
 
-namespace robot {
+namespace gtdynamics {
 
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   auto sdf = sdf::readFile(sdf_file_path);
@@ -194,4 +194,4 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   throw std::runtime_error("Model not found.");
 }
 
-}  // namespace robot
+}  // namespace gtdynamics

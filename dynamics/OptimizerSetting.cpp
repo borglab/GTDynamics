@@ -14,7 +14,7 @@
 #include "dynamics/OptimizerSetting.h"
 
 
-namespace robot {
+namespace gtdynamics {
 
 OptimizerSetting::OptimizerSetting()
     : bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.00001)),
@@ -38,10 +38,11 @@ OptimizerSetting::OptimizerSetting()
       q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       rel_thresh(1e-2),
       max_iter(50) {}
 
 // void OptimizerSetting::setQcModelPose3(const gtsam::Matrix &Qc) {
 //   Qc_model_pose3 = gtsam::noiseModel::Gaussian::Covariance(Qc);
 // }
-}  // namespace robot
+}  // namespace gtdynamics

@@ -25,7 +25,7 @@
 #include <string>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces
  * zero height at the contact point. This factor assumes that the ground is
@@ -108,4 +108,4 @@ class ContactKinematicsPoseFactor
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

@@ -25,7 +25,7 @@
 #include <string>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** ContactKinematicsTwistFactor is unary nonlinear factor which enforces
  *  zero linear velocity at the contact point for a link. */
@@ -94,4 +94,4 @@ virtual ~ContactKinematicsTwistFactor() {}
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics

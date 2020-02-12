@@ -109,7 +109,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
   gtsam::Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
 
-  robot::WrenchEquivalenceFactor factor(example::wrench_j_key,
+  gtdynamics::WrenchEquivalenceFactor factor(example::wrench_j_key,
                                         example::wrench_k_key, example::qKey,
                                         example::cost_model, kMj, screw_axis);
   double q = 0;

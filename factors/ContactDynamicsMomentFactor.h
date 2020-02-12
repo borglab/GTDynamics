@@ -25,7 +25,7 @@
 #include <string>
 #include <boost/optional.hpp>
 
-namespace robot {
+namespace gtdynamics {
 
 /** ContactDynamicsMomentFactor is unary nonlinear factor which enforces
  *  zero moment at the contact point for the link. */
@@ -98,4 +98,4 @@ class ContactDynamicsMomentFactor
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace robot
+}  // namespace gtdynamics
