@@ -12,14 +12,15 @@
  */
 #pragma once
 
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <vector>
+#include <string>
 
 #include <boost/optional.hpp>
+
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/Robot.h"
 
 namespace gtdynamics {
 /**
@@ -46,8 +47,7 @@ class Simulator {
    *  initial_angels           -- initial joint angles
    *  initial_vels             -- initial joint velocities
    */
-  Simulator(const Robot &robot,
-            const Robot::JointValues &initial_angles,
+  Simulator(const Robot &robot, const Robot::JointValues &initial_angles,
             const Robot::JointValues &initial_vels,
             const boost::optional<gtsam::Vector3> &gravity = boost::none,
             const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
@@ -77,9 +77,9 @@ class Simulator {
    * for the time step
    */
   void forwardDynamics(const Robot::JointValues &torques) {
-    
     auto fk_results = robot_.forwardKinematics(qs_, vs_);
-    gtsam::Values result = graph_builder_.linearSolveFD(robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
+    gtsam::Values result = graph_builder_.linearSolveFD(
+        robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
     results_.insert(result);
 
     // update accelerations
@@ -94,11 +94,11 @@ class Simulator {
    */
   void integration(const double dt) {
     Robot::JointValues vs_new, qs_new;
-    for (JointSharedPtr joint : robot_.joints())
-    {
-        std::string name = joint->name();
-        vs_new[name] = vs_.at(name) + dt * as_.at(name);
-        qs_new[name] = qs_.at(name) + dt * vs_.at(name) + 0.5 * as_.at(name) * std::pow(dt, 2);
+    for (JointSharedPtr joint : robot_.joints()) {
+      std::string name = joint->name();
+      vs_new[name] = vs_.at(name) + dt * as_.at(name);
+      qs_new[name] = qs_.at(name) + dt * vs_.at(name) +
+                     0.5 * as_.at(name) * std::pow(dt, 2);
     }
     vs_ = vs_new;
     qs_ = qs_new;

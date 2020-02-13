@@ -11,8 +11,6 @@
  * @Author: Mandy Xie and Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/utils.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -22,6 +20,8 @@
 
 #include <algorithm>
 #include <string>
+
+#include "gtdynamics/utils/utils.h"
 
 using gtsam::assert_equal;
 
@@ -86,7 +86,8 @@ TEST(utils, load_and_parse_urdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_file) {
-  auto simple_sdf = gtdynamics::get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
+  auto simple_sdf =
+      gtdynamics::get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));

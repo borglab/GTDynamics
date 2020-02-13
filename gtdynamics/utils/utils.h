@@ -92,10 +92,9 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
         start_q     -- start value of variable q
         end_q       -- end value of variable q
 */
-gtsam::Vector q_trajectory(
-    int i, int total_step,
-    gtsam::Vector &start_q,  // NOLINT
-    gtsam::Vector &end_q);  // NOLINT
+gtsam::Vector q_trajectory(int i, int total_step,
+                           gtsam::Vector &start_q,  // NOLINT
+                           gtsam::Vector &end_q);   // NOLINT
 
 /** calculate center of spheres used to represent this link for collision
  *  check
@@ -129,10 +128,9 @@ std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
  *  this is used for sdf
  *
  */
-std::vector<gtsam::Matrix> readFromTxt(
-    std::string mat_dir,
-    gtsam::Point3 &origin,  // NOLINT
-    double &cell_size);  // NOLINT
+std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
+                                       gtsam::Point3 &origin,  // NOLINT
+                                       double &cell_size);     // NOLINT
 }  // namespace gtdynamics
 
 namespace gtdynamics {

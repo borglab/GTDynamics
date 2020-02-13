@@ -11,8 +11,6 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/factors/TwistFactor.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -24,6 +22,8 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/TwistFactor.h"
 
 using gtsam::assert_equal;
 
@@ -43,8 +43,8 @@ TEST(TwistFactor, error) {
   screw_axis << 0, 0, 1, 0, 1, 0;
 
   gtdynamics::TwistFactor factor(example::twist_i_key, example::twist_j_key,
-                                  example::qKey, example::qVelKey,
-                                  example::cost_model, jMi, screw_axis);
+                                 example::qKey, example::qVelKey,
+                                 example::cost_model, jMi, screw_axis);
   double q = M_PI / 4, qVel = 10;
   gtsam::Vector twist_i, twist_j;
   twist_i = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();

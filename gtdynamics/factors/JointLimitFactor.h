@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  JointLimitFactor.h
  * @brief apply joint limit
@@ -10,12 +17,13 @@
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
+
+#include <boost/optional.hpp>
 
 namespace gtdynamics {
 
@@ -91,7 +99,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }

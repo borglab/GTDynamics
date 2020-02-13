@@ -13,12 +13,12 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/RobotTypes.h"
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+
 #include <sdf/sdf.hh>
 
 #include <memory>
@@ -27,6 +27,8 @@
 
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 /**
@@ -55,16 +57,15 @@ class Link : public std::enable_shared_from_this<Link> {
   std::vector<JointSharedPtr> joints_;  // joints connected to the link
 
  public:
-
   /**
    * Params contains all parameters to construct a link
    */
   struct Params {
-    std::string name;   // name of the link
-    double mass;        // mass of the link
-    gtsam::Matrix3 inertia; // inertia of the link
-    gtsam::Pose3 wTl;   // link pose expressed in world frame
-    gtsam::Pose3 lTcom; // link com expressed in link frame
+    std::string name;        // name of the link
+    double mass;             // mass of the link
+    gtsam::Matrix3 inertia;  // inertia of the link
+    gtsam::Pose3 wTl;        // link pose expressed in world frame
+    gtsam::Pose3 lTcom;      // link com expressed in link frame
   };
 
   Link() {}
@@ -107,13 +108,13 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /** constructor using Params */
   explicit Link(const Params& params)
-    : name_(params.name),
-      mass_(params.mass),
-      inertia_(params.inertia),
-      Twl_(params.wTl),
-      Tlcom_(params.lTcom),
-      Twcom_(Twl_ * Tlcom_),
-      is_fixed_(false) {}
+      : name_(params.name),
+        mass_(params.mass),
+        inertia_(params.inertia),
+        Twl_(params.wTl),
+        Tlcom_(params.lTcom),
+        Twcom_(Twl_ * Tlcom_),
+        is_fixed_(false) {}
 
   /** destructor */
   virtual ~Link() = default;
@@ -123,7 +124,8 @@ class Link : public std::enable_shared_from_this<Link> {
 
   // remove the joint
   void removeJoint(JointSharedPtr joint) {
-    for (auto joint_it = joints_.begin(); joint_it != joints_.end(); joint_it++) {
+    for (auto joint_it = joints_.begin(); joint_it != joints_.end();
+         joint_it++) {
       if ((*joint_it) == joint) {
         joints_.erase(joint_it);
         break;
@@ -146,9 +148,7 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 
   // add joint to the link
-  void addJoint(JointSharedPtr joint_ptr) {
-    joints_.push_back(joint_ptr);
-  }
+  void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
 
   // transform from link to world frame
   const gtsam::Pose3& Twl() { return Twl_; }

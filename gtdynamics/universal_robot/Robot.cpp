@@ -12,16 +12,17 @@
  */
 
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/geometry/Pose3.h>
 
-#include <stdexcept>
-#include <sstream>
-#include <queue>
-#include <memory>
 #include <algorithm>
+#include <memory>
+#include <queue>
+#include <sstream>
+#include <stdexcept>
+
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -29,42 +30,39 @@ template <typename K, typename V>
 std::vector<V> getValues(std::map<K, V> m) {
   std::vector<V> vec;
   vec.reserve(m.size());
-  std::transform (m.begin(), m.end(),back_inserter(vec), [] (std::pair<K, V> const & pair)
-																				{
-																					return pair.second;
-																				});
+  std::transform(m.begin(), m.end(), back_inserter(vec),
+                 [](std::pair<K, V> const &pair) { return pair.second; });
   return vec;
 }
 
-gtdynamics::JointParams getJointParams(sdf::Joint &j_i, 
-                                      const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
-    gtdynamics::JointParams default_params;
-    gtdynamics::JointParams jps;
-    if (joint_params) {
-      auto jparams =
-          std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                       [=](const gtdynamics::JointParams& jps) {
-                         return (jps.name == j_i.Name());
-                       });
-      jps = jparams == joint_params.get().end() ? default_params : *jparams;
-    } else {
-      jps = default_params;
-    }
-    return jps;
+gtdynamics::JointParams getJointParams(
+    const sdf::Joint &j_i,
+    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
+  gtdynamics::JointParams default_params;
+  gtdynamics::JointParams jps;
+  if (joint_params) {
+    auto jparams =
+        std::find_if(joint_params.get().begin(), joint_params.get().end(),
+                     [=](const gtdynamics::JointParams &jps) {
+                       return (jps.name == j_i.Name());
+                     });
+    jps = jparams == joint_params.get().end() ? default_params : *jparams;
+  } else {
+    jps = default_params;
+  }
+  return jps;
 }
-
 
 LinkJointPair extract_structure_from_sdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
-  
   // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
     gtdynamics::LinkSharedPtr link =
         std::make_shared<gtdynamics::Link>(*sdf.LinkByIndex(i));
-    link -> setID(i);
+    link->setID(i);
     name_to_link.insert(std::make_pair(link->name(), link));
   }
 
@@ -90,18 +88,17 @@ LinkJointPair extract_structure_from_sdf(
     gtdynamics::JointParams jps = getJointParams(sdf_joint, joint_params);
 
     // Construct Joint and insert into name_to_joint.
-    gtdynamics::JointSharedPtr joint =
-        std::make_shared<gtdynamics::Joint>(gtdynamics::Joint(
-            sdf_joint, jps.jointEffortType, jps.springCoefficient,
-            jps.jointLimitThreshold, jps.velocityLimitThreshold,
-            jps.accelerationLimit, jps.accelerationLimitThreshold,
-            jps.torqueLimitThreshold, parent_link, child_link));
+    gtdynamics::JointSharedPtr joint = std::make_shared<gtdynamics::Joint>(
+        gtdynamics::Joint(sdf_joint, jps.jointEffortType, jps.springCoefficient,
+                          jps.jointLimitThreshold, jps.velocityLimitThreshold,
+                          jps.accelerationLimit, jps.accelerationLimitThreshold,
+                          jps.torqueLimitThreshold, parent_link, child_link));
     name_to_joint.insert(std::make_pair(sdf_joint.Name(), joint));
-    joint -> setID(j);
+    joint->setID(j);
 
     // Update list of parent and child links/joints for each Link.
-    parent_link -> addJoint(joint);
-    child_link -> addJoint(joint);
+    parent_link->addJoint(joint);
+    child_link->addJoint(joint);
   }
 
   return std::make_pair(name_to_link, name_to_joint);
@@ -126,8 +123,7 @@ Robot::Robot(LinkJointPair links_and_joints)
     : name_to_link_(links_and_joints.first),
       name_to_joint_(links_and_joints.second) {}
 
-Robot::Robot(const std::string file_path,
-                               std::string model_name)
+Robot::Robot(const std::string file_path, std::string model_name)
     : Robot(extract_structure_from_file(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
@@ -151,8 +147,7 @@ void Robot::removeLink(LinkSharedPtr link) {
 
 void Robot::removeJoint(JointSharedPtr joint) {
   // in all links connected to the joint, remove the joint
-  for (auto link: joint->links())
-  {
+  for (auto link : joint->links()) {
     link->removeJoint(joint);
   }
   // Remove the joint from name_to_joint_
@@ -178,38 +173,40 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::printRobot() const {
-  for (const auto& link : links()) {
+  for (const auto &link : links()) {
     std::cout << link->name() << ":\n";
     std::cout << "\tlink pose: " << link->Twl().rotation().rpy().transpose()
               << ", " << link->Twl().translation() << "\n";
     std::cout << "\tcom pose: " << link->Twcom().rotation().rpy().transpose()
               << ", " << link->Twcom().translation() << "\n";
     std::cout << "\tjoints: ";
-    for (const auto& joint : link->getJoints()) {
+    for (const auto &joint : link->getJoints()) {
       std::cout << joint->name() << " ";
     }
     std::cout << "\n";
   }
 
-  for (const auto& joint : joints()) {
+  for (const auto &joint : joints()) {
     std::cout << joint->name() << ":\n";
     gtdynamics::LinkSharedPtr parent_link = joint->parentLink();
     gtdynamics::LinkSharedPtr child_link = joint->childLink();
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
-    std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose() << "\n";
+    std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose()
+              << "\n";
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
-    std::cout << "\tMpc_com: " << joint->transformTo(child_link).rotation().rpy().transpose()
+    std::cout << "\tMpc_com: "
+              << joint->transformTo(child_link).rotation().rpy().transpose()
               << ", " << joint->transformTo(child_link).translation() << "\n";
   }
 }
 
-Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
-                              const boost::optional<std::string> prior_link_name, 
-                              const boost::optional<gtsam::Pose3> &prior_link_pose, 
-                              const boost::optional<gtsam::Vector6>  &prior_link_twist) const
-{
+Robot::FKResults Robot::forwardKinematics(
+    const JointValues &joint_angles, const JointValues &joint_vels,
+    const boost::optional<std::string> prior_link_name,
+    const boost::optional<gtsam::Pose3> &prior_link_pose,
+    const boost::optional<gtsam::Vector6> &prior_link_twist) const {
   LinkPoses link_poses;
   LinkTwists link_twists;
 
@@ -218,10 +215,8 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
   //// set root link
   gtdynamics::LinkSharedPtr root_link;
   // check fixed links
-  for (gtdynamics::LinkSharedPtr link: links())
-  {
-    if (link->isFixed())
-    {
+  for (gtdynamics::LinkSharedPtr link : links()) {
+    if (link->isFixed()) {
       root_link = link;
       link_poses[link->name()] = link->getFixedPose();
       link_twists[link->name()] = gtsam::Vector6::Zero();
@@ -232,8 +227,7 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
     link_poses[*prior_link_name] = *prior_link_pose;
     link_twists[*prior_link_name] = *prior_link_twist;
   }
-  if (link_poses.size() == 0)
-  {
+  if (link_poses.size() == 0) {
     throw std::runtime_error("cannot find a fixed link");
   }
 
@@ -259,27 +253,24 @@ Robot::FKResults Robot::forwardKinematics(const JointValues &joint_angles, const
       gtsam::Vector6 V_2 = T_21.AdjointMap() * V_1 + S_2 * joint_vel;
 
       // check if link 2 is already assigned
-      if (link_poses.find(link2->name())==link_poses.end()) {
+      if (link_poses.find(link2->name()) == link_poses.end()) {
         link_poses[link2->name()] = T_w2;
         link_twists[link2->name()] = V_2;
         q.push(link2);
-      }
-      else { // link 2 is already assigned
+      } else {  // link 2 is already assigned
         gtsam::Pose3 T_w2_prev = link_poses.at(link2->name());
         gtsam::Vector6 V_2_prev = link_twists.at(link2->name());
-        if (!(T_w2.equals(T_w2_prev, 1e-4) &&  (V_2-V_2_prev).norm() < 1e-4))
-        {
-          throw std::runtime_error("inconsistent joint angles detected in forward kinematics");
+        if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
+          throw std::runtime_error(
+              "inconsistent joint angles detected in forward kinematics");
         }
       }
     }
-    if (loop_count++ > 100000)
-    {
+    if (loop_count++ > 100000) {
       throw std::runtime_error("infinite loop in bfs");
     }
   }
   return FKResults(link_poses, link_twists);
 }
-
 
 }  // namespace gtdynamics.

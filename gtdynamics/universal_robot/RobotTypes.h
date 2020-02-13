@@ -11,8 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef UNIVERSAL_ROBOT_ROBOTTYPES_H_
-#define UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
 
 #include <memory>
 
@@ -30,4 +30,4 @@ struct JointParams;
 
 }  // namespace gtdynamics.
 
-#endif  // UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_

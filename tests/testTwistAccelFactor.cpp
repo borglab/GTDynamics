@@ -11,8 +11,6 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/factors/TwistAccelFactor.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -25,6 +23,8 @@
 
 #include <cmath>
 #include <iostream>
+
+#include "gtdynamics/factors/TwistAccelFactor.h"
 
 using gtsam::assert_equal;
 

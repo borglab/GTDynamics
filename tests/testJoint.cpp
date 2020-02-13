@@ -11,14 +11,14 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/utils.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
+
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Joint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
@@ -42,21 +42,20 @@ TEST(Joint, urdf_constructor) {
   // Test constructor.
   JointSharedPtr j1 = std::make_shared<Joint>(
       Joint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
-                 j1_params.springCoefficient, j1_params.jointLimitThreshold,
-                 j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-                 j1_params.accelerationLimitThreshold,
-                 j1_params.torqueLimitThreshold, l1, l2));
-
+            j1_params.springCoefficient, j1_params.jointLimitThreshold,
+            j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
+            j1_params.accelerationLimitThreshold,
+            j1_params.torqueLimitThreshold, l1, l2));
 
   // get shared ptr
-  EXPECT (j1->getSharedPtr() == j1);
+  EXPECT(j1->getSharedPtr() == j1);
 
   // get, set ID
   j1->setID(1);
-  EXPECT (j1 -> getID() == 1);
+  EXPECT(j1->getID() == 1);
 
   // name
-  EXPECT (assert_equal(j1->name(), "j1"));
+  EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
   EXPECT(j1->jointType() == 'R');
@@ -65,8 +64,8 @@ TEST(Joint, urdf_constructor) {
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
 
   // other link
-  EXPECT (j1->otherLink(l2) == l1);
-  EXPECT (j1->otherLink(l1) == l2);
+  EXPECT(j1->otherLink(l2) == l1);
+  EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
   gtsam::Pose3 T_12comRest(gtsam::Rot3::Rx(0), gtsam::Point3(0, 0, 2));
@@ -105,7 +104,6 @@ TEST(Joint, urdf_constructor) {
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
 }
-
 
 /**
  * Construct the same joint via Params and ensure all values are as expected.
@@ -132,7 +130,7 @@ TEST(Joint, params_constructor) {
   JointSharedPtr j1 = std::make_shared<Joint>(Joint(params));
 
   // name
-  EXPECT (assert_equal(j1->name(), "j1"));
+  EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
   EXPECT(j1->jointType() == 'R');
@@ -141,8 +139,8 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
 
   // other link
-  EXPECT (j1->otherLink(l2) == l1);
-  EXPECT (j1->otherLink(l1) == l2);
+  EXPECT(j1->otherLink(l2) == l1);
+  EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
   gtsam::Pose3 T_12comRest(gtsam::Rot3::Rx(0), gtsam::Point3(0, 0, 2));
@@ -182,17 +180,13 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
 }
 
-
 TEST(Joint, sdf_constructor) {
   auto model =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  LinkSharedPtr l0 =
-      std::make_shared<Link>(Link(*model.LinkByName("link_0")));
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(Link(*model.LinkByName("link_1")));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(Link(*model.LinkByName("link_2")));
+  LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
+  LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
+  LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
   // constructor for j1
   gtdynamics::JointParams j1_params;
@@ -200,10 +194,10 @@ TEST(Joint, sdf_constructor) {
   j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
   JointSharedPtr j1 = std::make_shared<Joint>(
       Joint(*model.JointByName("joint_1"), j1_params.jointEffortType,
-                 j1_params.springCoefficient, j1_params.jointLimitThreshold,
-                 j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-                 j1_params.accelerationLimitThreshold,
-                 j1_params.torqueLimitThreshold, l0, l1));
+            j1_params.springCoefficient, j1_params.jointLimitThreshold,
+            j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
+            j1_params.accelerationLimitThreshold,
+            j1_params.torqueLimitThreshold, l0, l1));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -214,7 +208,8 @@ TEST(Joint, sdf_constructor) {
 
   // Check transform from l0 com to l1 com at rest and at various angles.
   gtsam::Pose3 T_01comRest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.4));
-  gtsam::Pose3 T_01com_neg(gtsam::Rot3::Rz(-M_PI / 2), gtsam::Point3(0, 0, 0.4));
+  gtsam::Pose3 T_01com_neg(gtsam::Rot3::Rz(-M_PI / 2),
+                           gtsam::Point3(0, 0, 0.4));
   gtsam::Pose3 T_01com_pos(gtsam::Rot3::Rz(M_PI / 2), gtsam::Point3(0, 0, 0.4));
 
   EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
@@ -227,10 +222,10 @@ TEST(Joint, sdf_constructor) {
   j2_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
   JointSharedPtr j2 = std::make_shared<Joint>(
       Joint(*model.JointByName("joint_2"), j2_params.jointEffortType,
-                 j2_params.springCoefficient, j2_params.jointLimitThreshold,
-                 j2_params.velocityLimitThreshold, j2_params.accelerationLimit,
-                 j2_params.accelerationLimitThreshold,
-                 j2_params.torqueLimitThreshold, l1, l2));
+            j2_params.springCoefficient, j2_params.jointLimitThreshold,
+            j2_params.velocityLimitThreshold, j2_params.accelerationLimit,
+            j2_params.accelerationLimitThreshold,
+            j2_params.torqueLimitThreshold, l1, l2));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -241,8 +236,10 @@ TEST(Joint, sdf_constructor) {
 
   // Check transform from l1 com to l2 com at rest and at various angles.
   gtsam::Pose3 T_12com_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.6));
-  gtsam::Pose3 T_12com_pi_2(gtsam::Rot3::Ry(M_PI / 2), gtsam::Point3(0.3, 0.0, 0.3));
-  gtsam::Pose3 T_12com_pi_4(gtsam::Rot3::Ry(M_PI / 4), gtsam::Point3(0.2121, 0.0, 0.5121));
+  gtsam::Pose3 T_12com_pi_2(gtsam::Rot3::Ry(M_PI / 2),
+                            gtsam::Point3(0.3, 0.0, 0.3));
+  gtsam::Pose3 T_12com_pi_4(gtsam::Rot3::Ry(M_PI / 4),
+                            gtsam::Point3(0.2121, 0.0, 0.5121));
 
   EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2)));
   EXPECT(assert_equal(T_12com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));

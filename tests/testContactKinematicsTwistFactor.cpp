@@ -11,23 +11,21 @@
  * @Author: Alejandro Escontrela
  */
 
-#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-
-#include <math.h>
-
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
+#include <math.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 

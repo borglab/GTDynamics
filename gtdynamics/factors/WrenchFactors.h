@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/utils/utils.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -25,12 +23,14 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
+
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

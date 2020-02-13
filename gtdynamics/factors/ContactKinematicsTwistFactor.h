@@ -13,17 +13,18 @@
 
 #pragma once
 
-#include "gtdynamics/utils/utils.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include <boost/optional.hpp>
+
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -43,11 +44,12 @@ class ContactKinematicsTwistFactor
           cost_model -- gtsam::noiseModel for this factor.
           cTcom      -- Contact frame expressed in com frame.
    */
-  ContactKinematicsTwistFactor(gtsam::Key twist_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const gtsam::Pose3 &cTcom)
+  ContactKinematicsTwistFactor(
+      gtsam::Key twist_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const gtsam::Pose3 &cTcom)
       : Base(cost_model, twist_key), cTcom_(cTcom) {}
-virtual ~ContactKinematicsTwistFactor() {}
+  virtual ~ContactKinematicsTwistFactor() {}
 
  public:
   /** Evaluate contact point linear velocity errors.
@@ -57,16 +59,13 @@ virtual ~ContactKinematicsTwistFactor() {}
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist,
       boost::optional<gtsam::Matrix &> H_twist = boost::none) const override {
-      gtsam::Matrix36 H_vel;
-      H_vel << 0, 0, 0, 1, 0, 0,
-               0, 0, 0, 0, 1, 0,
-               0, 0, 0, 0, 0, 1;
+    gtsam::Matrix36 H_vel;
+    H_vel << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1;
 
     // Transform the twist from the link COM frame to the contact frame.
     gtsam::Vector3 error = H_vel * cTcom_.AdjointMap() * twist;
 
-    if (H_twist)
-      *H_twist = H_vel * cTcom_.AdjointMap();
+    if (H_twist) *H_twist = H_vel * cTcom_.AdjointMap();
 
     return error;
   }

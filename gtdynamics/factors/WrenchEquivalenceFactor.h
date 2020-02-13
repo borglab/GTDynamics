@@ -7,23 +7,24 @@
 
 /**
  * @file  WrenchEquivalenceFactor.h
- * @brief Wrench eq factor, enforce same wrench expressed in different link frames.
+ * @brief Wrench eq factor, enforce same wrench expressed in different link
+ * frames.
  * @Author: Yetong Zhang
  */
 
 #pragma once
-
-#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <boost/optional.hpp>
+
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

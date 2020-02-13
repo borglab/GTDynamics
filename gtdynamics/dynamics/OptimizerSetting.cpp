@@ -13,7 +13,6 @@
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 
-
 namespace gtdynamics {
 
 OptimizerSetting::OptimizerSetting()

@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/utils/utils.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -23,6 +21,8 @@
 #include <string>
 
 #include <boost/optional.hpp>
+
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

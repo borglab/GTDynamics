@@ -27,9 +27,8 @@ class OptimizerSetting {
   enum VerbosityLevel { None, Error };
 
   // factor cost models
-  gtsam::noiseModel::Base::shared_ptr 
-      bp_cost_model,        // pose of fixed link 
-      bv_cost_model,        // velocity of fixed link
+  gtsam::noiseModel::Base::shared_ptr bp_cost_model,  // pose of fixed link
+      bv_cost_model,                                  // velocity of fixed link
       ba_cost_model,        // cceleration of fixed link
       p_cost_model,         // pose factor
       v_cost_model,         // twist factor

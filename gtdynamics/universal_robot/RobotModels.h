@@ -13,12 +13,13 @@
 
 #pragma once
 
+#include <string>
+
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
 
-#include <string>
-
-// TODO(aescontrela): The entire program shouldn't crash when a single file doesn't load.
+// TODO(aescontrela): The entire program shouldn't crash when a single file
+// doesn't load.
 
 // using namespace std;
 // using namespace gtdynamics;
@@ -41,8 +42,7 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_urdf {
 Robot getSimpleUrdf() {
-  Robot simple_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -55,8 +55,8 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_urdf_zero_inertia {
 Robot getSimpleUrdf() {
-  Robot simple_robot = Robot(
-      std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
+  Robot simple_robot =
+      Robot(std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -108,4 +108,4 @@ gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
-} // namespace three_link
+}  // namespace three_link

@@ -13,19 +13,18 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-
 #include <sdf/parser_urdf.hh>
-
 #include <map>
-
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+
 #include <boost/optional.hpp>
+
 
 namespace gtdynamics {
 
@@ -71,15 +70,13 @@ LinkJointPair extract_structure_from_file(
  */
 class Robot {
  private:
-
   // For quicker/easier access to links and joints.
   LinkMap name_to_link_;
   JointMap name_to_joint_;
 
  public:
-
   /** Default Constructor */
-  explicit Robot() {}
+  Robot() {}
 
   /**
    * Constructor.
@@ -133,7 +130,7 @@ class Robot {
 
   // type for storing forward kinematics results
   typedef std::pair<LinkPoses, LinkTwists> FKResults;
-  
+
   /**
    * calculate forward kinematics by performing bfs in the link-joint graph
    * (will throw an error when invalid joint angle specification detected)
@@ -145,10 +142,11 @@ class Robot {
    *    prior_link_twist  -- twist of the konwn link
    * return poses and twists of all links
    */
-  FKResults forwardKinematics(const JointValues &joint_angles, const JointValues &joint_vels,
-                              const boost::optional<std::string> prior_link_name = boost::none, 
-                              const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none, 
-                              const boost::optional<gtsam::Vector6>  &prior_link_twist = boost::none) const;
-
+  FKResults forwardKinematics(
+      const JointValues &joint_angles, const JointValues &joint_vels,
+      const boost::optional<std::string> prior_link_name = boost::none,
+      const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none,
+      const boost::optional<gtsam::Vector6> &prior_link_twist =
+          boost::none) const;
 };
 }  // namespace gtdynamics

@@ -11,8 +11,6 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/factors/TorqueFactor.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -24,6 +22,8 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/TorqueFactor.h"
 
 using gtsam::assert_equal;
 
@@ -43,7 +43,7 @@ TEST(TorqueFactor, error) {
   screw_axis << 0, 0, 1, 0, 1, 0;
 
   gtdynamics::TorqueFactor factor(example::wrench_key, example::torque_key,
-                                   example::cost_model, screw_axis);
+                                  example::cost_model, screw_axis);
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   gtsam::Vector1 actual_errors, expected_errors;

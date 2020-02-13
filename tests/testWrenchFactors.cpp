@@ -11,9 +11,6 @@
  * @Author: Yetong Zhang
  */
 
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -25,6 +22,9 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 
@@ -53,9 +53,9 @@ TEST(WrenchFactor2, error_1) {
   gravity << 0, -9.8, 0;
 
   gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
-                       example::wrench_1_key, example::wrench_2_key,
-                       example::pKey, example::cost_model, example::inertia,
-                       gravity);
+                                   example::wrench_1_key, example::wrench_2_key,
+                                   example::pKey, example::cost_model,
+                                   example::inertia, gravity);
   gtsam::Vector twist, twist_accel, wrench_1, wrench_2;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twist_accel = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -85,10 +85,10 @@ TEST(WrenchFactor3, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  gtdynamics::WrenchFactor3 factor(example::twist_key, example::twist_accel_key,
-                       example::wrench_1_key, example::wrench_2_key,
-                       example::wrench_3_key, example::pKey,
-                       example::cost_model, example::inertia, gravity);
+  gtdynamics::WrenchFactor3 factor(
+      example::twist_key, example::twist_accel_key, example::wrench_1_key,
+      example::wrench_2_key, example::wrench_3_key, example::pKey,
+      example::cost_model, example::inertia, gravity);
   gtsam::Vector twist, twist_accel, wrench_1, wrench_2, wrench_3;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twist_accel = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -156,8 +156,9 @@ TEST(WrenchFactor2, error_2) {
   // Create all factors
 
   gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
-                       example::wrench_1_key, example::wrench_2_key,
-                       example::pKey, example::cost_model, example::inertia);
+                                   example::wrench_1_key, example::wrench_2_key,
+                                   example::pKey, example::cost_model,
+                                   example::inertia);
 
   gtsam::Vector6 twist, twist_accel, wrench_1, wrench_2;
   twist = (gtsam::Vector(6) << 0, 0, 1, 0, 1, 0).finished();

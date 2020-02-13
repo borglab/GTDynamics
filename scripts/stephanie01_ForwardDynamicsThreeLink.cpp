@@ -12,13 +12,13 @@
  * @Author: Stephanie McCormick
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-
 #include <CppUnitLite/TestHarness.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 TEST(DynamicsGraph, optimization) {
   // Load the three-link robot using the relevant namespace from RobotModels.
@@ -41,8 +41,8 @@ TEST(DynamicsGraph, optimization) {
   joint_vels["joint_2"] = 0;
   joint_torques["joint_2"] = 0;
 
-  auto priorFactors = graph_builder.forwardDynamicsPriors(my_robot, 0, 
-            joint_angles, joint_vels, joint_torques);
+  auto priorFactors = graph_builder.forwardDynamicsPriors(
+      my_robot, 0, joint_angles, joint_vels, joint_torques);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.

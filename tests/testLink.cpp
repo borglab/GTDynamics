@@ -11,17 +11,17 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/utils.h"
-
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 
-using gtsam::assert_equal;
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/utils/utils.h"
+
 using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
+using gtsam::assert_equal;
 
 /**
  * Construct a Link via urdf link and ensure all values are as expected.
@@ -30,8 +30,10 @@ TEST(Link, urdf_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
-  gtdynamics::LinkSharedPtr l1 = std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
-  gtdynamics::LinkSharedPtr l2 = std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+  gtdynamics::LinkSharedPtr l1 =
+      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+  gtdynamics::LinkSharedPtr l2 =
+      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
   gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
   j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
@@ -39,32 +41,32 @@ TEST(Link, urdf_constructor) {
   // Test constructor.
   gtdynamics::JointSharedPtr j1 = std::make_shared<Joint>(
       Joint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
-                 j1_params.springCoefficient, j1_params.jointLimitThreshold,
-                 j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-                 j1_params.accelerationLimitThreshold,
-                 j1_params.torqueLimitThreshold, l1, l2));
+            j1_params.springCoefficient, j1_params.jointLimitThreshold,
+            j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
+            j1_params.accelerationLimitThreshold,
+            j1_params.torqueLimitThreshold, l1, l2));
 
   // get shared ptr
-  EXPECT (l1 -> getSharedPtr() == l1);
+  EXPECT(l1->getSharedPtr() == l1);
 
   // // get, set ID
-  l1 -> setID(1);
-  EXPECT (l1 -> getID() == 1);
+  l1->setID(1);
+  EXPECT(l1->getID() == 1);
 
   // name
-  EXPECT(assert_equal("l1", l1 -> name()));
+  EXPECT(assert_equal("l1", l1->name()));
 
   // mass
-  EXPECT(assert_equal(100, l1 -> mass()));
+  EXPECT(assert_equal(100, l1->mass()));
 
   // Check center of mass.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1 -> Tlcom()));
+                      l1->Tlcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
       (gtsam::Matrix(3, 3) << 3, 0, 0, 0, 2, 0, 0, 0, 1).finished(),
-      l1 -> inertia()));
+      l1->inertia()));
 
   // Check general mass matrix.
   EXPECT(assert_equal(
@@ -85,12 +87,12 @@ TEST(Link, urdf_constructor) {
   EXPECT(assert_equal(0, l1->getJoints().size()));
 
   // add joint
-  l1 -> addJoint(j1);
+  l1->addJoint(j1);
   EXPECT(assert_equal(1, l1->getJoints().size()));
   EXPECT(l1->getJoints()[0] == j1);
 
   // remove joint
-  l1 -> removeJoint (j1);
+  l1->removeJoint(j1);
   EXPECT(assert_equal(0, l1->getJoints().size()));
 }
 
@@ -108,24 +110,24 @@ TEST(Link, params_constructor) {
   gtdynamics::LinkSharedPtr l1 = std::make_shared<Link>(Link(params));
 
   // name
-  EXPECT(assert_equal("l1", l1 -> name()));
+  EXPECT(assert_equal("l1", l1->name()));
 
   // mass
-  EXPECT(assert_equal(100, l1 -> mass()));
+  EXPECT(assert_equal(100, l1->mass()));
 
   // Check center of mass.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1 -> Tlcom()));
+                      l1->Tlcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
       (gtsam::Matrix(3, 3) << 3, 0, 0, 0, 2, 0, 0, 0, 1).finished(),
-      l1 -> inertia()));
+      l1->inertia()));
 
   // Check general mass matrix.
   EXPECT(assert_equal(
       (gtsam::Matrix(6, 6) << 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-      0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100)
+       0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100)
           .finished(),
       l1->inertiaMatrix()));
 
@@ -140,7 +142,6 @@ TEST(Link, params_constructor) {
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1->getJoints().size()));
 }
-
 
 TEST(Link, sdf_constructor) {
   auto model =

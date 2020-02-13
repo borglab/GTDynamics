@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Pose3.h>
@@ -26,8 +23,11 @@
 #include <string>
 #include <vector>
 
-namespace gtdynamics {
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
 
+namespace gtdynamics {
 
 /**
  * Joint is the base class for a joint connecting two Link objects.
@@ -45,13 +45,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * JointParams contains all parameters to construct a joint
    */
   struct Params {
-    std::string name;   // name of the joint
-    char joint_type;    // type of joint
-    Joint::JointEffortType effor_type; // joint effor type
-    LinkSharedPtr parent_link;        // shared pointer to parent link
-    LinkSharedPtr child_link;        // shared pointer to child link
-    gtsam::Vector3 axis;  // joint axis expressed in joint frame
-    gtsam::Pose3 wTj;   // joint pose expressed in world frame
+    std::string name;                   // name of the joint
+    char joint_type;                    // type of joint
+    Joint::JointEffortType effor_type;  // joint effor type
+    LinkSharedPtr parent_link;          // shared pointer to parent link
+    LinkSharedPtr child_link;           // shared pointer to child link
+    gtsam::Vector3 axis;                // joint axis expressed in joint frame
+    gtsam::Pose3 wTj;                   // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold;
@@ -97,8 +97,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
       Tjccom_;  // Rest transform to child link CoM frame from joint frame.
   gtsam::Pose3 com_Mpc_;  // Rest transform to parent link com frame from child
                           // link com frame at rest.
-  gtsam::Vector6 pScrewAxis_;  // Joint axis expressed in COM frame of parent link
-  gtsam::Vector6 cScrewAxis_;  // Joint axis expressed in COM frame of child link
+  gtsam::Vector6
+      pScrewAxis_;  // Joint axis expressed in COM frame of parent link
+  gtsam::Vector6
+      cScrewAxis_;  // Joint axis expressed in COM frame of child link
 
   /// Return transform of child link com frame w.r.t parent link com frame
   gtsam::Pose3 MpcCom(boost::optional<double> q = boost::none) const {
@@ -131,19 +133,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Transform from the joint frame to the child's center of mass.
   const gtsam::Pose3& Tjccom() const { return Tjccom_; }
 
-  /// check if the link is Child link, throw an error if link is not connected to this joint
-  bool isChildLink (const LinkSharedPtr link) const
-  {
+  /// check if the link is Child link, throw an error if link is not connected
+  /// to this joint
+  bool isChildLink(const LinkSharedPtr link) const {
     LinkSharedPtr link_ptr = link;
-    if (link_ptr != child_link_ && link_ptr != parent_link_)
-    {
-      throw std::runtime_error("link " + link_ptr->name() + " is not connected to this joint " + name_);
+    if (link_ptr != child_link_ && link_ptr != parent_link_) {
+      throw std::runtime_error("link " + link_ptr->name() +
+                               " is not connected to this joint " + name_);
     }
     return link_ptr == child_link_;
   }
 
-  void setScrewAxis()
-  {
+  void setScrewAxis() {
     Tjpcom_ = Twj_.inverse() * parent_link_->Twcom();
     Tjccom_ = Twj_.inverse() * child_link_->Twcom();
     com_Mpc_ = parent_link_->Twcom().inverse() * child_link_->Twcom();
@@ -177,10 +178,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
    *   child_link                 -- shared pointer to the child Link.
    */
   Joint(const sdf::Joint& sdf_joint, JointEffortType joint_effort_type,
-             double springCoefficient, double jointLimitThreshold,
-             double velocityLimitThreshold, double accelerationLimit,
-             double accelerationLimitThreshold, double torqueLimitThreshold,
-             LinkSharedPtr parent_link, LinkSharedPtr child_link)
+        double springCoefficient, double jointLimitThreshold,
+        double velocityLimitThreshold, double accelerationLimit,
+        double accelerationLimitThreshold, double torqueLimitThreshold,
+        LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : name_(sdf_joint.Name()),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
@@ -212,35 +213,31 @@ class Joint : public std::enable_shared_from_this<Joint> {
     setScrewAxis();
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';
-    }
-    else if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
+    } else if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
       joint_type_ = 'P';
     }
   }
 
   /** constructor using JointParams */
-  Joint(const Params& params)
-  : name_(params.name),
-    joint_type_(params.joint_type),
-    jointEffortType_(params.effor_type),
-    axis_(params.axis),
-    joint_lower_limit_(params.joint_lower_limit),
-    joint_upper_limit_(params.joint_upper_limit),
-    joint_limit_threshold_(params.joint_limit_threshold),
-    parent_link_(params.parent_link),
-    child_link_(params.child_link),
-    Twj_(params.wTj)
-    {
-      setScrewAxis();
-    }
+  explicit Joint(const Params& params)
+      : name_(params.name),
+        joint_type_(params.joint_type),
+        jointEffortType_(params.effor_type),
+        axis_(params.axis),
+        joint_lower_limit_(params.joint_lower_limit),
+        joint_upper_limit_(params.joint_upper_limit),
+        joint_limit_threshold_(params.joint_limit_threshold),
+        parent_link_(params.parent_link),
+        child_link_(params.child_link),
+        Twj_(params.wTj) {
+    setScrewAxis();
+  }
 
   /// Return a shared ptr to this joint.
   JointSharedPtr getSharedPtr() { return shared_from_this(); }
 
   /// Set the joint's ID to track reference to gtsam::LabeledSymbol.
-  void setID(unsigned char id) {
-    id_ = id;
-  }
+  void setID(unsigned char id) { id_ = id; }
 
   /// Get the joint's ID to track reference to gtsam::LabeledSymbol.
   int getID() const {
@@ -259,30 +256,29 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
 
-  LinkSharedPtr otherLink(const LinkSharedPtr link) const
-  {
+  LinkSharedPtr otherLink(const LinkSharedPtr link) const {
     return isChildLink(link) ? parent_link_ : child_link_;
   }
 
   /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const LinkSharedPtr link, boost::optional<double> q = boost::none) const
-  {
+  gtsam::Pose3 transformFrom(const LinkSharedPtr link,
+                             boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? MpcCom(q) : McpCom(q);
   }
 
   /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const LinkSharedPtr link, boost::optional<double> q = boost::none) const
-  {
+  gtsam::Pose3 transformTo(const LinkSharedPtr link,
+                           boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? McpCom(q) : MpcCom(q);
   }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6& screwAxis(const LinkSharedPtr link) const { 
-    return isChildLink(link) ? cScrewAxis_ : pScrewAxis_; 
+  const gtsam::Vector6& screwAxis(const LinkSharedPtr link) const {
+    return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
   std::vector<LinkSharedPtr> links() const {
-    return std::vector<LinkSharedPtr> {parent_link_, child_link_};
+    return std::vector<LinkSharedPtr>{parent_link_, child_link_};
   }
 
   /// Return a shared ptr to the parent link.
@@ -332,8 +328,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 struct JointParams {
   std::string name;  // Name of this joint as described in the URDF file.
 
-  Joint::JointEffortType jointEffortType =
-      Joint::JointEffortType::Actuated;
+  Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
   double springCoefficient = 0;      // spring coefficient for Impedence joint.
   double jointLimitThreshold = 0.0;  // joint angle limit threshold.
   double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
