@@ -19,7 +19,7 @@ find_package(Boost COMPONENTS filesystem system thread program_options serializa
 include_directories(${Boost_INCLUDE_DIR})
 
 # Find GTDynamics. TODO: Change this path to the folder of your built library.
-set(gtdynamics_lib_path "/Users/aescontrela/MEGA/Research/BorgLab/fg_quadruped/src/main/gtdynamics_install/lib")
+set(gtdynamics_lib_path "<PATH_TO_INSTALL_LOCATION>/lib")
 find_library(GTDYNAMICS NAMES gtdynamics PATHS ${gtdynamics_lib_path})
 
 ####################
@@ -30,5 +30,5 @@ add_executable(exec test.cpp)
 target_link_libraries(exec PUBLIC ${GTDYNAMICS} ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
 
 # Include headers. TODO: Change this path to the location of the installed headers.
-set(gtdynamics_headers_path "/Users/aescontrela/MEGA/Research/BorgLab/fg_quadruped/src/main/gtdynamics_install/include/")
+set(gtdynamics_headers_path "<PATH_TO_INSTALL_LOCATION>/include/")
 target_include_directories(exec PUBLIC ${gtdynamics_headers_path} ${SDFormat_INCLUDE_DIRS})
