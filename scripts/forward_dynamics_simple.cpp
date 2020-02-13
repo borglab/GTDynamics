@@ -12,9 +12,10 @@
  * @Author: Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <DynamicsGraph.h>
-#include <RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

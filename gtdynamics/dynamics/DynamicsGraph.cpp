@@ -11,27 +11,26 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#include "dynamics/DynamicsGraph.h"
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
+#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
+#include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
+#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/factors/JointLimitFactor.h"
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/TwistFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/JsonSaver.h"
 
-#include <ContactDynamicsMomentFactor.h>
-#include <ContactKinematicsAccelFactor.h>
-#include <ContactKinematicsPoseFactor.h>
-#include <ContactKinematicsTwistFactor.h>
-#include <JointLimitFactor.h>
-#include <PoseFactor.h>
-#include <TorqueFactor.h>
-#include <TwistAccelFactor.h>
-#include <TwistFactor.h>
-#include <WrenchEquivalenceFactor.h>
-#include <WrenchFactors.h>
-#include <WrenchPlanarFactor.h>
-#include <JsonSaver.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
-
-#include <utils.h>
 
 #include <iostream>
 #include <vector>

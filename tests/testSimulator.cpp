@@ -11,15 +11,14 @@
  * @Author: Yetong Zhang
  */
 
-#include <RobotModels.h>
-#include <Simulator.h>
-#include <Robot.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <utils.h>
-
-#include <gtsam/nonlinear/Values.h>
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/dynamics/Simulator.h"
+#include "gtdynamics/utils/utils.h"
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/nonlinear/Values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 

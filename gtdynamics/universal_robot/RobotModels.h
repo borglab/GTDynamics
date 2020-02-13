@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <DynamicsGraph.h>
-#include <Robot.h>
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/Robot.h"
 
 #include <string>
 

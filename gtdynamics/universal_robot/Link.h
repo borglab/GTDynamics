@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <RobotTypes.h>
+#include "gtdynamics/universal_robot/RobotTypes.h"
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>

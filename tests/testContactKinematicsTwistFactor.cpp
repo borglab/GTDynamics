@@ -11,9 +11,8 @@
  * @Author: Alejandro Escontrela
  */
 
-#include <ContactKinematicsTwistFactor.h>
-
-#include <RobotModels.h>
+#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 #include <math.h>
 

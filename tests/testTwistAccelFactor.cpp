@@ -11,8 +11,9 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
+#include "gtdynamics/factors/TwistAccelFactor.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <TwistAccelFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

@@ -13,14 +13,14 @@
 
 #pragma once
 
-#include <Link.h>
-#include <RobotTypes.h>
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <utils.h>
 
 #include <memory>
 #include <string>

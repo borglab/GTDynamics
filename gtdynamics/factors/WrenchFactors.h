@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -22,7 +24,6 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
-#include <utils.h>
 
 #include <vector>
 #include <string>

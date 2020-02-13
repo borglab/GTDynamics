@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <utils.h>
+#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>

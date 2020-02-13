@@ -6,14 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ContactKinematicsTwistFactor.h
- * @brief Factor to enforce zero linear velocity at the contact point.
+ * @file  ContactDynamicsMomentFactor.h
+ * @brief Factor to enforce moment at the contact point.
  * @Author: Alejandro Escontrela
  */
 
 #pragma once
 
-#include <utils.h>
+#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -27,46 +27,50 @@
 
 namespace gtdynamics {
 
-/** ContactKinematicsTwistFactor is unary nonlinear factor which enforces
- *  zero linear velocity at the contact point for a link. */
-class ContactKinematicsTwistFactor
+/** ContactDynamicsMomentFactor is unary nonlinear factor which enforces
+ *  zero moment at the contact point for the link. */
+class ContactDynamicsMomentFactor
     : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
-  typedef ContactKinematicsTwistFactor This;
+  typedef ContactDynamicsMomentFactor This;
   typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
   gtsam::Pose3 cTcom_;
+  gtsam::Matrix36 H_contact_wrench_;
 
  public:
-  /** Contact kinematics factor for zero (linear) velocity at contact.
+  /** Contact dynamics factor for zero moment at contact.
       Keyword argument:
-          twist_key  -- gtsam::LabeledKey corresponding to this link's twist.
+          contact_wrench_key -- gtsam::LabeledKey corresponding to this link's
+            contact wrench.
           cost_model -- gtsam::noiseModel for this factor.
           cTcom      -- Contact frame expressed in com frame.
    */
-  ContactKinematicsTwistFactor(gtsam::Key twist_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const gtsam::Pose3 &cTcom)
-      : Base(cost_model, twist_key), cTcom_(cTcom) {}
-virtual ~ContactKinematicsTwistFactor() {}
+  ContactDynamicsMomentFactor(
+      gtsam::Key contact_wrench_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const gtsam::Pose3 &cTcom)
+      : Base(cost_model, contact_wrench_key), cTcom_(cTcom) {
+    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+                         0, 0, 0, 1, 0, 0, 0)
+                            .finished();
+  }
+  virtual ~ContactDynamicsMomentFactor() {}
 
  public:
-  /** Evaluate contact point linear velocity errors.
+  /** Evaluate contact point moment errors.
       Keyword argument:
-          twist         -- twist on this link
+          contact_wrench         -- Contact wrench on this link.
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist,
-      boost::optional<gtsam::Matrix &> H_twist = boost::none) const override {
-      gtsam::Matrix36 H_vel;
-      H_vel << 0, 0, 0, 1, 0, 0,
-               0, 0, 0, 0, 1, 0,
-               0, 0, 0, 0, 0, 1;
-
+      const gtsam::Vector6 &contact_wrench,
+      boost::optional<gtsam::Matrix &> H_contact_wrench =
+          boost::none) const override {
     // Transform the twist from the link COM frame to the contact frame.
-    gtsam::Vector3 error = H_vel * cTcom_.AdjointMap() * twist;
+    gtsam::Vector3 error =
+        H_contact_wrench_ * cTcom_.AdjointMap() * contact_wrench;
 
-    if (H_twist)
-      *H_twist = H_vel * cTcom_.AdjointMap();
+    if (H_contact_wrench)
+      *H_contact_wrench = H_contact_wrench_ * cTcom_.AdjointMap();
 
     return error;
   }
@@ -81,7 +85,7 @@ virtual ~ContactKinematicsTwistFactor() {}
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "wrench equivalence factor" << std::endl;
+    std::cout << s << "Contact Dynamics Moment Factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
@@ -91,7 +95,7 @@ virtual ~ContactKinematicsTwistFactor() {}
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
 }  // namespace gtdynamics

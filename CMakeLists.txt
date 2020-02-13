@@ -64,11 +64,12 @@ file(GLOB sources "*.cpp")
 file(GLOB headers "*.h")
 
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
-	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp)
+	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/gtdynamics/${SOURCE_SUBDIR}/*.cpp)
 	list(APPEND sources ${GLOB_RESULT})
-	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
+	file(GLOB GLOB_RESULT ${CMAKE_CURRENT_SOURCE_DIR}/gtdynamics/${SOURCE_SUBDIR}/*.h)
 	list(APPEND headers ${GLOB_RESULT})
-	add_subdirectory(${SOURCE_SUBDIR}) # Process subdirectory.
+	install(FILES ${GLOB_RESULT} DESTINATION include/gtdynamics/${SOURCE_SUBDIR})
+	add_subdirectory(gtdynamics/${SOURCE_SUBDIR}) # Process subdirectory.
 endforeach()
 
 add_library(gtdynamics SHARED ${sources} ${headers})
@@ -82,7 +83,6 @@ endforeach()
 
 # Install library and headers.
 install(TARGETS gtdynamics LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
-install(FILES ${headers} DESTINATION include)
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 # Process subdirectories.

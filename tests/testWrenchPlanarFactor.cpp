@@ -11,8 +11,9 @@
  * @Author: Yetong Zhang
  */
 
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <WrenchPlanarFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

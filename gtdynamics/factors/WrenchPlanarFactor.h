@@ -13,10 +13,11 @@
 
 #pragma once
 
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-#include <utils.h>
 
 #include <string>
 #include <boost/optional.hpp>

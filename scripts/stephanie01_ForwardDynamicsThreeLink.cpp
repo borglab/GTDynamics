@@ -12,12 +12,11 @@
  * @Author: Stephanie McCormick
  */
 
-#include <DynamicsGraph.h>
-#include <RobotModels.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 

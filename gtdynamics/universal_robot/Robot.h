@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include <Joint.h>
-#include <Link.h>
-#include <RobotTypes.h>
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
 
 #include <sdf/parser_urdf.hh>
 

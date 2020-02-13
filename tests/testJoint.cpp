@@ -11,13 +11,14 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <Joint.h>
-#include <Link.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
-#include <utils.h>
 
 using gtdynamics::get_sdf, gtdynamics::Joint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;

@@ -11,7 +11,7 @@
  * @Author: Mandy Xie
  */
 
-#include "dynamics/OptimizerSetting.h"
+#include "gtdynamics/dynamics/OptimizerSetting.h"
 
 
 namespace gtdynamics {

@@ -11,8 +11,9 @@
  * @Author: Yetong Zhang
  */
 
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <WrenchEquivalenceFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

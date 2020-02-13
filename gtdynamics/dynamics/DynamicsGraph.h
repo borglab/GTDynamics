@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <OptimizerSetting.h>
-#include <Robot.h>
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Robot.h"
 
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/NoiseModel.h>

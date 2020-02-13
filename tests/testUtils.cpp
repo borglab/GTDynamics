@@ -11,13 +11,14 @@
  * @Author: Mandy Xie and Alejandro Escontrela
  */
 
+#include "gtdynamics/utils/utils.h"
+
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <limits.h>
 #include <unistd.h>
-#include <utils.h>
 
 #include <algorithm>
 #include <string>

@@ -11,9 +11,10 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/factors/PoseFactor.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <PoseFactor.h>
-#include <RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

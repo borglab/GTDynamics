@@ -7,13 +7,15 @@
  * notice.
  */
 
-#include <PoseFactor.h>
-#include <TorqueFactor.h>
-#include <TwistAccelFactor.h>
-#include <TwistFactor.h>
-#include <WrenchEquivalenceFactor.h>
-#include <WrenchFactors.h>
-#include <WrenchPlanarFactor.h>
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/TwistFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/linear/NoiseModel.h>
 
 #include <fstream>
@@ -23,8 +25,6 @@
 #include <sstream>
 #include <string>
 #include <typeinfo>
-
-#include <utils.h>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>

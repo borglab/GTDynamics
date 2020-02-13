@@ -11,9 +11,8 @@
  * @Author: Alejandro Escontrela
  */
 
-#include <ContactDynamicsMomentFactor.h>
-
-#include <RobotModels.h>
+#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 #include <math.h>
 

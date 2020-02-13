@@ -11,9 +11,10 @@
  * @Author: Yetong Zhang
  */
 
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+
 #include <CppUnitLite/TestHarness.h>
-#include <RobotModels.h>
-#include <WrenchFactors.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

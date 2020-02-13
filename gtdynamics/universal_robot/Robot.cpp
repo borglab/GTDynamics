@@ -11,18 +11,17 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/geometry/Pose3.h>
-#include <utils.h>
 
 #include <stdexcept>
 #include <sstream>
 #include <queue>
 #include <memory>
 #include <algorithm>
-
-#include "RobotTypes.h"
 
 namespace gtdynamics {
 
