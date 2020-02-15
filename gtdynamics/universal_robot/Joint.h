@@ -47,7 +47,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   struct Params {
     std::string name;                   // name of the joint
     char joint_type;                    // type of joint
-    Joint::JointEffortType effor_type;  // joint effor type
+    Joint::JointEffortType effort_type;  // joint effor type
     LinkSharedPtr parent_link;          // shared pointer to parent link
     LinkSharedPtr child_link;           // shared pointer to child link
     gtsam::Vector3 axis;                // joint axis expressed in joint frame
@@ -222,7 +222,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   explicit Joint(const Params& params)
       : name_(params.name),
         joint_type_(params.joint_type),
-        jointEffortType_(params.effor_type),
+        jointEffortType_(params.effort_type),
         axis_(params.axis),
         joint_lower_limit_(params.joint_lower_limit),
         joint_upper_limit_(params.joint_upper_limit),

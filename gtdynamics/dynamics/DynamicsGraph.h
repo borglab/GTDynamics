@@ -423,7 +423,7 @@ class DynamicsGraph {
                                   bool radial = false);
 
   /* return the optimizer setting. */
-  const OptimizerSetting &opt() const { return opt_; }
+  const OptimizerSetting& opt() const { return opt_; }
 };
 
 }  // namespace gtdynamics
