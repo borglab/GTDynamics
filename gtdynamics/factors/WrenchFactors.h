@@ -146,7 +146,7 @@ class WrenchFactor0
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
@@ -270,7 +270,7 @@ class WrenchFactor1
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
@@ -403,7 +403,7 @@ class WrenchFactor2
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
   }
@@ -542,7 +542,7 @@ class WrenchFactor3
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }
@@ -646,7 +646,7 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int /*version*/) {
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
@@ -792,7 +792,7 @@ class WrenchFactor4
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor7", boost::serialization::base_object<Base>(*this));
   }

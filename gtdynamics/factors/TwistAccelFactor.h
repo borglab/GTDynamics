@@ -139,7 +139,7 @@ class TwistAccelFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE const &ar, const unsigned int version) {
+  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }
