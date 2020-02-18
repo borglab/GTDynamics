@@ -733,7 +733,7 @@ gtsam::Values DynamicsGraph::zeroValues(const Robot &robot, const int t) {
   gtsam::Values zero_values;
   for (auto &link : robot.links()) {
     int i = link->getID();
-    zero_values.insert(PoseKey(i, t), link->Twcom());
+    zero_values.insert(PoseKey(i, t), link->wTcom());
     zero_values.insert(TwistKey(i, t), zero_twists);
     zero_values.insert(TwistAccelKey(i, t), zero_accels);
   }

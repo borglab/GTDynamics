@@ -77,7 +77,7 @@ LinkJointPair extract_structure_from_sdf(
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
       gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
-      gtsam::Pose3 fixed_pose = child_link->Twcom();
+      gtsam::Pose3 fixed_pose = child_link->wTcom();
       child_link->fix(fixed_pose);
       continue;
     }
@@ -175,10 +175,10 @@ int Robot::numJoints() const { return name_to_joint_.size(); }
 void Robot::printRobot() const {
   for (const auto &link : links()) {
     std::cout << link->name() << ":\n";
-    std::cout << "\tlink pose: " << link->Twl().rotation().rpy().transpose()
-              << ", " << link->Twl().translation() << "\n";
-    std::cout << "\tcom pose: " << link->Twcom().rotation().rpy().transpose()
-              << ", " << link->Twcom().translation() << "\n";
+    std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
+              << ", " << link->wTl().translation() << "\n";
+    std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
+              << ", " << link->wTcom().translation() << "\n";
     std::cout << "\tjoints: ";
     for (const auto &joint : link->getJoints()) {
       std::cout << joint->name() << " ";
@@ -196,7 +196,7 @@ void Robot::printRobot() const {
               << "\n";
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
-    std::cout << "\tMpc_com: "
+    std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
               << ", " << joint->transformTo(child_link).translation() << "\n";
   }

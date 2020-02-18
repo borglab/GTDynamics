@@ -118,7 +118,7 @@ TEST(Joint, params_constructor) {
   gtdynamics::Joint::Params params;
   params.name = "j1";
   params.joint_type = 'R';
-  params.effor_type = Joint::JointEffortType::Actuated;
+  params.effort_type = Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
   params.axis = gtsam::Point3(1, 0, 0);

@@ -65,7 +65,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass) {
   auto l1 = my_robot.getLinkByName(prior_link_name);
   gtsam::Vector6 V_l1 = gtsam::Vector6::Zero();
   auto fk_results = my_robot.forwardKinematics(
-      joint_angles, joint_vels, prior_link_name, l1->Twcom(), V_l1);
+      joint_angles, joint_vels, prior_link_name, l1->wTcom(), V_l1);
 
   Values result = graph_builder.linearSolveFD(my_robot, t, joint_angles,
                                               joint_vels, joint_torques,
@@ -93,7 +93,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   for (auto link : my_robot.links()) {
     int i = link->getID();
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-        gtdynamics::PoseKey(i, 0), link->Twcom(),
+        gtdynamics::PoseKey(i, 0), link->wTcom(),
         graph_builder.opt().bp_cost_model));
     graph.add(gtsam::PriorFactor<gtsam::Vector6>(
         gtdynamics::TwistKey(i, 0), gtsam::Vector6::Zero(),
@@ -127,7 +127,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   for (auto link : my_robot.links()) {
     int i = link->getID();
     prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        gtdynamics::PoseKey(i, 0), link->Twcom(),
+        gtdynamics::PoseKey(i, 0), link->wTcom(),
         graph_builder.opt().bp_cost_model));
     prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
         gtdynamics::TwistKey(i, 0), gtsam::Vector6::Zero(),

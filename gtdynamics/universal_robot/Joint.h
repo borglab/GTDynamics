@@ -90,12 +90,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
   LinkSharedPtr child_link_;
 
   // SDF Elements.
-  gtsam::Pose3 Twj_;  // Joint frame defined in world frame.
+  gtsam::Pose3 wTj_;  // Joint frame defined in world frame.
   gtsam::Pose3
-      Tjpcom_;  // Rest transform to parent link CoM frame from joint frame.
+      jTpcom_;  // Rest transform to parent link CoM frame from joint frame.
   gtsam::Pose3
-      Tjccom_;  // Rest transform to child link CoM frame from joint frame.
-  gtsam::Pose3 com_Mpc_;  // Rest transform to parent link com frame from child
+      jTccom_;  // Rest transform to child link CoM frame from joint frame.
+  gtsam::Pose3 pMccom_;  // Rest transform to parent link com frame from child
                           // link com frame at rest.
   gtsam::Vector6
       pScrewAxis_;  // Joint axis expressed in COM frame of parent link
@@ -103,21 +103,21 @@ class Joint : public std::enable_shared_from_this<Joint> {
       cScrewAxis_;  // Joint axis expressed in COM frame of child link
 
   /// Return transform of child link com frame w.r.t parent link com frame
-  gtsam::Pose3 MpcCom(boost::optional<double> q = boost::none) const {
+  gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none) const {
     if (q)
-      return com_Mpc_ * gtsam::Pose3::Expmap(cScrewAxis_ * (*q));
+      return pMccom_ * gtsam::Pose3::Expmap(cScrewAxis_ * (*q));
     else
-      return com_Mpc_;
+      return pMccom_;
   }
 
   /// Return transform of parent link com frame w.r.t child link com frame
-  gtsam::Pose3 McpCom(boost::optional<double> q = boost::none) const {
+  gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none) const {
     if (q)
       // return gtsam::Pose3::Expmap(screwAxis_ * (*q)).inverse() *
-      //        (com_Mpc_.inverse());
-      return com_Mpc_.inverse() * gtsam::Pose3::Expmap(pScrewAxis_ * (*q));
+      //        (pMccom_.inverse());
+      return pMccom_.inverse() * gtsam::Pose3::Expmap(pScrewAxis_ * (*q));
     else
-      return com_Mpc_.inverse();
+      return pMccom_.inverse();
   }
 
   /// Return the joint axis. Rotational axis for revolute and translation
@@ -125,13 +125,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
   const gtsam::Vector3& axis() const { return axis_; }
 
   /// Transform from the world frame to the joint frame.
-  const gtsam::Pose3& Twj() const { return Twj_; }
+  const gtsam::Pose3& wTj() const { return wTj_; }
 
   /// Transform from the joint frame to the parent's center of mass.
-  const gtsam::Pose3& Tjpcom() const { return Tjpcom_; }
+  const gtsam::Pose3& jTpcom() const { return jTpcom_; }
 
   /// Transform from the joint frame to the child's center of mass.
-  const gtsam::Pose3& Tjccom() const { return Tjccom_; }
+  const gtsam::Pose3& jTccom() const { return jTccom_; }
 
   /// check if the link is Child link, throw an error if link is not connected
   /// to this joint
@@ -145,16 +145,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   void setScrewAxis() {
-    Tjpcom_ = Twj_.inverse() * parent_link_->Twcom();
-    Tjccom_ = Twj_.inverse() * child_link_->Twcom();
-    com_Mpc_ = parent_link_->Twcom().inverse() * child_link_->Twcom();
+    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
+    jTccom_ = wTj_.inverse() * child_link_->wTcom();
+    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
     pScrewAxis_ = gtdynamics::unit_twist(
-        Tjpcom_.rotation().inverse() * -axis_,
-        Tjpcom_.rotation().inverse() * (-Tjpcom_.translation().vector()));
+        jTpcom_.rotation().inverse() * -axis_,
+        jTpcom_.rotation().inverse() * (-jTpcom_.translation().vector()));
     cScrewAxis_ = gtdynamics::unit_twist(
-        Tjccom_.rotation().inverse() * axis_,
-        Tjccom_.rotation().inverse() * (-Tjccom_.translation().vector()));
+        jTccom_.rotation().inverse() * axis_,
+        jTccom_.rotation().inverse() * (-jTccom_.translation().vector()));
   }
 
  public:
@@ -202,9 +202,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
         child_link_(child_link) {
     if ((sdf_joint.PoseFrame() == "") &&
         (sdf_joint.Pose() == ignition::math::Pose3d()))
-      Twj_ = child_link->Twl();
+      wTj_ = child_link->wTl();
     else
-      Twj_ = gtsam::Pose3(
+      wTj_ = gtsam::Pose3(
           gtsam::Rot3(gtsam::Quaternion(
               sdf_joint.Pose().Rot().W(), sdf_joint.Pose().Rot().X(),
               sdf_joint.Pose().Rot().Y(), sdf_joint.Pose().Rot().Z())),
@@ -229,7 +229,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
         joint_limit_threshold_(params.joint_limit_threshold),
         parent_link_(params.parent_link),
         child_link_(params.child_link),
-        Twj_(params.wTj) {
+        wTj_(params.wTj) {
     setScrewAxis();
   }
 
@@ -263,13 +263,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return the transform from this link com to the other link com frame
   gtsam::Pose3 transformFrom(const LinkSharedPtr link,
                              boost::optional<double> q = boost::none) const {
-    return isChildLink(link) ? MpcCom(q) : McpCom(q);
+    return isChildLink(link) ? pMcCom(q) : cMpCom(q);
   }
 
   /// Return the transform from the other link com to this link com frame
   gtsam::Pose3 transformTo(const LinkSharedPtr link,
                            boost::optional<double> q = boost::none) const {
-    return isChildLink(link) ? McpCom(q) : MpcCom(q);
+    return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
 
   /// Return screw axis expressed in the specified link frame

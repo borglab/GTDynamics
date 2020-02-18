@@ -61,7 +61,7 @@ TEST(Link, urdf_constructor) {
 
   // Check center of mass.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1->Tlcom()));
+                      l1->lTcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -77,7 +77,7 @@ TEST(Link, urdf_constructor) {
 
   // Assert correct center of mass in link frame.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1->Tlcom()));
+                      l1->lTcom()));
 
   // Check transform to link-end frame from link com frame. leTl_com
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
@@ -117,7 +117,7 @@ TEST(Link, params_constructor) {
 
   // Check center of mass.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1->Tlcom()));
+                      l1->lTcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -133,7 +133,7 @@ TEST(Link, params_constructor) {
 
   // Assert correct center of mass in link frame.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
-                      l1->Tlcom()));
+                      l1->lTcom()));
 
   // Check transform to link-end frame from link com frame. leTl_com
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
@@ -151,24 +151,24 @@ TEST(Link, sdf_constructor) {
   Link l1 = Link(*model.LinkByName("link_1"));
 
   // Both link frames are defined in the world frame.
-  EXPECT(assert_equal(gtsam::Pose3::identity(), l0.Twl()));
-  EXPECT(assert_equal(gtsam::Pose3::identity(), l1.Twl()));
+  EXPECT(assert_equal(gtsam::Pose3::identity(), l0.wTl()));
+  EXPECT(assert_equal(gtsam::Pose3::identity(), l1.wTl()));
 
   // Verify center of mass defined in the link frame is correct.
   EXPECT(assert_equal(
       gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1)),
-      l0.Tlcom()));
+      l0.lTcom()));
   EXPECT(assert_equal(
       gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5)),
-      l1.Tlcom()));
+      l1.lTcom()));
 
   // Verify center of mass defined in the world frame is correct.
   EXPECT(assert_equal(
       gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1)),
-      l0.Twcom()));
+      l0.wTcom()));
   EXPECT(assert_equal(
       gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5)),
-      l1.Twcom()));
+      l1.wTcom()));
 
   // Verify that mass is correct.
   EXPECT(assert_equal(0.01, l0.mass()));
