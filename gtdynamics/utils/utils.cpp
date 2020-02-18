@@ -194,4 +194,15 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   throw std::runtime_error("Model not found.");
 }
 
+gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {
+  gtsam::Pose3 parsed_pose = gtsam::Pose3(
+    gtsam::Rot3(gtsam::Quaternion(
+      ignition_pose.Rot().W(), ignition_pose.Rot().X(),
+      ignition_pose.Rot().Y(), ignition_pose.Rot().Z())),
+    gtsam::Point3(
+      ignition_pose.Pos()[0], ignition_pose.Pos()[1], ignition_pose.Pos()[2]));
+
+  return parsed_pose;
+}
+
 }  // namespace gtdynamics

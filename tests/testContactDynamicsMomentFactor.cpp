@@ -41,8 +41,7 @@ TEST(ContactDynamicsMomentFactor, error) {
   gtsam::LabeledSymbol contact_wrench_key = gtsam::LabeledSymbol('C', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                                  cTcom);
 
@@ -83,8 +82,7 @@ TEST(ContactDynamicsMomentFactor, optimization) {
   gtsam::LabeledSymbol contact_wrench_key = gtsam::LabeledSymbol('C', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                                  cTcom);
 

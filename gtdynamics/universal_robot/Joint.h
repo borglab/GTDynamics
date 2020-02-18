@@ -148,14 +148,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
   void setScrewAxis() {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
+
+    gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
+    gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
+
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
-    pScrewAxis_ = gtdynamics::unit_twist(
-        jTpcom_.rotation().inverse() * -axis_,
-        jTpcom_.rotation().inverse() * (-jTpcom_.translation().vector()));
-    cScrewAxis_ = gtdynamics::unit_twist(
-        jTccom_.rotation().inverse() * axis_,
-        jTccom_.rotation().inverse() * (-jTccom_.translation().vector()));
+    pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
+        pcomRj * (-jTpcom_.translation().vector()));
+    cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
+        ccomRj * (-jTccom_.translation().vector()));
   }
 
  public:
@@ -205,12 +207,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
         (sdf_joint.Pose() == ignition::math::Pose3d()))
       wTj_ = child_link->wTl();
     else
-      wTj_ = gtsam::Pose3(
-          gtsam::Rot3(gtsam::Quaternion(
-              sdf_joint.Pose().Rot().W(), sdf_joint.Pose().Rot().X(),
-              sdf_joint.Pose().Rot().Y(), sdf_joint.Pose().Rot().Z())),
-          gtsam::Point3(sdf_joint.Pose().Pos()[0], sdf_joint.Pose().Pos()[1],
-                        sdf_joint.Pose().Pos()[2]));
+      wTj_ = parse_ignition_pose(sdf_joint.Pose());
+
     setScrewAxis();
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';

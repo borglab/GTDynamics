@@ -7,8 +7,8 @@
  * notice.
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
-#define GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
+#ifndef GTDYNAMICS_UTILS_JSONSAVER_H_
+#define GTDYNAMICS_UTILS_JSONSAVER_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -644,4 +644,4 @@ class StorageManager {
 
 }  // namespace gtsam
 
-#endif   // GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
+#endif   // GTDYNAMICS_UTILS_JSONSAVER_H_

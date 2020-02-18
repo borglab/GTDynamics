@@ -15,6 +15,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <ignition/math/Pose3.hh>
 #include <limits.h>
 #include <unistd.h>
 
@@ -110,6 +111,19 @@ TEST(utils, load_and_parse_sdf_world_file) {
   EXPECT(assert_equal(0.05, l1.Inertial().Moi()(0, 0)));
   EXPECT(assert_equal(0.06, l1.Inertial().Moi()(1, 1)));
   EXPECT(assert_equal(0.03, l1.Inertial().Moi()(2, 2)));
+}
+
+TEST(utils, parse_ignition_pose) {
+  ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
+
+  gtsam::Pose3 parsed_pose = gtdynamics::parse_ignition_pose(
+    pose_to_parse);
+
+  EXPECT(assert_equal(
+    gtsam::Pose3(
+      gtsam::Rot3::RzRyRx(M_PI / 2, 0, -M_PI),
+      gtsam::Point3(-1, 1, -1)),
+    parsed_pose));
 }
 
 int main() {

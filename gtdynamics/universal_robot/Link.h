@@ -30,6 +30,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 /**
@@ -49,7 +50,6 @@ class Link : public std::enable_shared_from_this<Link> {
   // SDF Elements.
   gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
   gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
-  gtsam::Pose3 wTcom_;  // CoM frame defined in the world frame.
 
   // option to fix the link, used for ground link
   bool is_fixed_;
@@ -89,22 +89,8 @@ class Link : public std::enable_shared_from_this<Link> {
              sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
              sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2))
                 .finished()),
-        wTl_(gtsam::Pose3(
-            gtsam::Rot3(gtsam::Quaternion(
-                sdf_link.Pose().Rot().W(), sdf_link.Pose().Rot().X(),
-                sdf_link.Pose().Rot().Y(), sdf_link.Pose().Rot().Z())),
-            gtsam::Point3(sdf_link.Pose().Pos()[0], sdf_link.Pose().Pos()[1],
-                          sdf_link.Pose().Pos()[2]))),
-        lTcom_(
-            gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
-                             sdf_link.Inertial().Pose().Rot().W(),
-                             sdf_link.Inertial().Pose().Rot().X(),
-                             sdf_link.Inertial().Pose().Rot().Y(),
-                             sdf_link.Inertial().Pose().Rot().Z())),
-                         gtsam::Point3(sdf_link.Inertial().Pose().Pos()[0],
-                                       sdf_link.Inertial().Pose().Pos()[1],
-                                       sdf_link.Inertial().Pose().Pos()[2]))),
-        wTcom_(wTl_ * lTcom_),
+        wTl_(parse_ignition_pose(sdf_link.Pose())),
+        lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
         is_fixed_(false) {}
 
   /** constructor using Params */
@@ -114,7 +100,6 @@ class Link : public std::enable_shared_from_this<Link> {
         inertia_(params.inertia),
         wTl_(params.wTl),
         lTcom_(params.lTcom),
-        wTcom_(wTl_ * lTcom_),
         is_fixed_(false) {}
 
   /** destructor */
@@ -152,25 +137,25 @@ class Link : public std::enable_shared_from_this<Link> {
   void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
 
   // transform from link to world frame
-  const gtsam::Pose3& wTl() { return wTl_; }
+  const gtsam::Pose3& wTl() const { return wTl_; }
 
   // transfrom from link com frame to link frame
-  const gtsam::Pose3& lTcom() { return lTcom_; }
+  const gtsam::Pose3& lTcom() const { return lTcom_; }
 
   // transform from link com frame to world frame
-  const gtsam::Pose3& wTcom() { return wTcom_; }
+  inline gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
   // the fixed pose of the link
   const gtsam::Pose3& getFixedPose() { return fixed_pose_; }
 
   // whether the link is fixed
-  bool isFixed() { return is_fixed_; }
+  bool isFixed() const { return is_fixed_; }
 
   // fix the link to fixed_pose, if fixed_pose not specify, fix the link to
   // default pose
   void fix(const boost::optional<gtsam::Pose3&> fixed_pose = boost::none) {
     is_fixed_ = true;
-    fixed_pose_ = fixed_pose ? *fixed_pose : wTcom_;
+    fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
   }
 
   // unfix the link
@@ -187,13 +172,6 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /// Return center of mass (gtsam::Pose3)
   const gtsam::Pose3& centerOfMass() const { return centerOfMass_; }
-
-  /// Return the frame at link's end in the link com frame.
-  gtsam::Pose3 leTl_com() const {
-    gtsam::Pose3 l_comTle =
-        gtsam::Pose3(gtsam::Rot3::identity(), lTcom_.translation());
-    return l_comTle.inverse();
-  }
 
   /// Return inertia.
   const gtsam::Matrix3& inertia() const { return inertia_; }

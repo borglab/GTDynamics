@@ -36,7 +36,7 @@ std::vector<V> getValues(std::map<K, V> m) {
 }
 
 gtdynamics::JointParams getJointParams(
-    const sdf::Joint &j_i,
+    const sdf::Joint &joint_i,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   gtdynamics::JointParams default_params;
   gtdynamics::JointParams jps;
@@ -44,7 +44,7 @@ gtdynamics::JointParams getJointParams(
     auto jparams =
         std::find_if(joint_params.get().begin(), joint_params.get().end(),
                      [=](const gtdynamics::JointParams &jps) {
-                       return (jps.name == j_i.Name());
+                       return (jps.name == joint_i.Name());
                      });
     jps = jparams == joint_params.get().end() ? default_params : *jparams;
   } else {

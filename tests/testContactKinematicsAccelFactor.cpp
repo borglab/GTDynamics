@@ -41,8 +41,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('A', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                                   cTcom);
 
@@ -100,8 +99,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('V', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                                   cTcom);
 

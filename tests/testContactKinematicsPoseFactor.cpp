@@ -42,13 +42,10 @@ TEST(ContactKinematicsPoseFactor, error) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, leTcom,
+      pose_key, cost_model, cTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
-
-  std::cout << leTcom << std::endl;
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -102,10 +99,9 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, leTcom,
+      pose_key, cost_model, cTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
   // Initial link pose.

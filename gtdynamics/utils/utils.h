@@ -11,8 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_UTILS_H_
-#define GTDYNAMICS_UNIVERSAL_UTILS_H_
+#ifndef GTDYNAMICS_UTILS_UTILS_H_
+#define GTDYNAMICS_UTILS_UTILS_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -21,6 +21,7 @@
 #include <gtsam/linear/NoiseModel.h>
 
 #include <sdf/sdf.hh>
+#include <ignition/math/Pose3.hh>
 
 #include <cmath>
 #include <fstream>
@@ -142,6 +143,13 @@ namespace gtdynamics {
         case sdf_file_path points to a world file.
 */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
+
+/** Parse a ignition::math Pose object into a gtsam::Pose.
+ * Keyword arguments:
+ *     ignition_pose   -- An ignition::math::Pose object to be parsed.
+ */
+gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
+
 }  // namespace gtdynamics
 
-#endif   // GTDYNAMICS_UNIVERSAL_UTILS_H_
+#endif   // GTDYNAMICS_UTILS_UTILS_H_

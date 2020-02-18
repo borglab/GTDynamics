@@ -79,10 +79,6 @@ TEST(Link, urdf_constructor) {
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
                       l1->lTcom()));
 
-  // Check transform to link-end frame from link com frame. leTl_com
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
-                      l1->leTl_com()));
-
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1->getJoints().size()));
 
@@ -134,10 +130,6 @@ TEST(Link, params_constructor) {
   // Assert correct center of mass in link frame.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1)),
                       l1->lTcom()));
-
-  // Check transform to link-end frame from link com frame. leTl_com
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1)),
-                      l1->leTl_com()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1->getJoints().size()));
