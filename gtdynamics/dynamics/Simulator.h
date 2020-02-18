@@ -10,7 +10,8 @@
  * @brief robot Simulator using forward dynamics factor graph
  * @Author:Yetong Zhang
  */
-#pragma once
+#ifndef GTDYNAMICS_DYNAMICS_SIMULATOR_H_
+#define GTDYNAMICS_DYNAMICS_SIMULATOR_H_
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -138,3 +139,5 @@ class Simulator {
 };
 
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_DYNAMICS_SIMULATOR_H_

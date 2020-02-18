@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
+#define GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -92,3 +93,5 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_TORQUEFACTOR_H_

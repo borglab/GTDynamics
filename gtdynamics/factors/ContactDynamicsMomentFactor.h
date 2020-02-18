@@ -11,7 +11,8 @@
  * @Author: Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_CONTACTDYNAMICSMOMENTFACTOR_H_
+#define GTDYNAMICS_FACTORS_CONTACTDYNAMICSMOMENTFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -100,3 +101,5 @@ class ContactDynamicsMomentFactor
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_CONTACTDYNAMICSMOMENTFACTOR_H_

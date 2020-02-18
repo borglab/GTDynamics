@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -206,3 +207,5 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 };
 }  // namespace gtdynamics
+
+#endif   // GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_

@@ -11,7 +11,8 @@
  * @Author: Mandy Xie
  */
 
-#pragma once
+#ifndef GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_
+#define GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_
 
 #include <gtsam/linear/NoiseModel.h>
 
@@ -83,3 +84,5 @@ class OptimizerSetting {
   void setMaxIteration(size_t iter) { max_iter = iter; }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_

@@ -11,7 +11,8 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
+#define GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -427,3 +428,5 @@ class DynamicsGraph {
 };
 
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_

@@ -12,7 +12,8 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
+#define GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -145,3 +146,5 @@ class TwistAccelFactor
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_

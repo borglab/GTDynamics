@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_UTILS_H_
+#define GTDYNAMICS_UNIVERSAL_UTILS_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -142,3 +143,5 @@ namespace gtdynamics {
 */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 }  // namespace gtdynamics
+
+#endif   // GTDYNAMICS_UNIVERSAL_UTILS_H_

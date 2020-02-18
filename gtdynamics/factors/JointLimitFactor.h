@@ -10,7 +10,8 @@
  * @brief apply joint limit
  * @Author: Frank Dellaert and Mandy Xie
  */
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_
+#define GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -105,3 +106,5 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_

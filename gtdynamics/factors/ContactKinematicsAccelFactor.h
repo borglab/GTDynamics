@@ -11,7 +11,8 @@
  * @Author: Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_
+#define GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -95,3 +96,5 @@ class ContactKinematicsAccelFactor
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_

@@ -11,7 +11,8 @@
  * @Author: Yetong Zhang
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_
+#define GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -92,3 +93,5 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_

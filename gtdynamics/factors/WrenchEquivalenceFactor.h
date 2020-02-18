@@ -12,7 +12,8 @@
  * @Author: Yetong Zhang
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
+#define GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -115,3 +116,5 @@ class WrenchEquivalenceFactor
   }
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_

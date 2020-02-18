@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 
 #include <sdf/parser_urdf.hh>
 #include <map>
@@ -150,3 +151,5 @@ class Robot {
           boost::none) const;
 };
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_

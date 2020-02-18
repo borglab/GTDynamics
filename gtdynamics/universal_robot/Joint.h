@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -339,3 +340,5 @@ struct JointParams {
 };
 
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_

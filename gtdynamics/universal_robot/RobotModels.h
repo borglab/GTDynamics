@@ -11,7 +11,8 @@
  * @Author: Yetong Zhang and Alejandro Escontrela
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_
 
 #include <string>
 
@@ -109,3 +110,5 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace three_link
+
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_

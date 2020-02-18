@@ -11,7 +11,8 @@
  * @Author: Frank Dellaert, Mandy Xie and Yetong Zhang
  */
 
-#pragma once
+#ifndef GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
+#define GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -799,3 +800,5 @@ class WrenchFactor4
 };
 
 }  // namespace gtdynamics
+
+#endif  // GTDYNAMICS_FACTORS_WRENCHFACTORS_H_

@@ -7,7 +7,8 @@
  * notice.
  */
 
-#pragma once
+#ifndef GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
+#define GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -642,3 +643,5 @@ class StorageManager {
 // const std::string JsonSaver::kQuote_ = "\"";
 
 }  // namespace gtsam
+
+#endif   // GTDYNAMICS_UNIVERSAL_JSONSAVER_H_
