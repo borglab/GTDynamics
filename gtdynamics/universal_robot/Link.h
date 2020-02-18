@@ -143,7 +143,7 @@ class Link : public std::enable_shared_from_this<Link> {
   const gtsam::Pose3& lTcom() const { return lTcom_; }
 
   // transform from link com frame to world frame
-  inline gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
+  inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
   // the fixed pose of the link
   const gtsam::Pose3& getFixedPose() { return fixed_pose_; }
