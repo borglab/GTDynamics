@@ -12,7 +12,6 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <WrenchPlanarFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,6 +22,8 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
 
 using gtsam::assert_equal;
 
@@ -38,8 +39,8 @@ TEST(WrenchPlanarFactor, x_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 1, 0, 0;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
+  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
+                                        example::cost_model, planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;
@@ -59,8 +60,8 @@ TEST(WrenchPlanarFactor, y_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 1, 0;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
+  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
+                                        example::cost_model, planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;
@@ -80,8 +81,8 @@ TEST(WrenchPlanarFactor, z_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 0, 1;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
+  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
+                                        example::cost_model, planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;

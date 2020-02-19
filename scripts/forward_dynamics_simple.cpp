@@ -13,13 +13,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <DynamicsGraph.h>
-#include <RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <iostream>
+
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 TEST(DynamicsGraph, forward_dynamics_r) {
   // Load the simple robot and fix the first link's pose.

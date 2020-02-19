@@ -11,12 +11,9 @@
  * @Author: Alejandro Escontrela
  */
 
-#include <ContactKinematicsPoseFactor.h>
-
-#include <RobotModels.h>
-
-#include <math.h>
-
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -24,12 +21,12 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
+#include <math.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 
@@ -45,13 +42,10 @@ TEST(ContactKinematicsPoseFactor, error) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, leTcom,
+      pose_key, cost_model, cTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
-
-  std::cout << leTcom << std::endl;
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -79,8 +73,8 @@ TEST(ContactKinematicsPoseFactor, error) {
                    gtsam::Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_a,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3);   // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 
   // Pure translation.
   gtsam::Values values_b;
@@ -88,8 +82,8 @@ TEST(ContactKinematicsPoseFactor, error) {
                   gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3);   // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 }
 
 /**
@@ -105,10 +99,9 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 leTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, leTcom,
+      pose_key, cost_model, cTcom,
       (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
   // Initial link pose.

@@ -38,6 +38,7 @@ If issues arise when installing dependencies for sdformat, reference the followi
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
+# Optionally specify install path with -DCMAKE_INSTALL_PREFIX
 $ cmake ../
 $ make
 $ sudo make install
@@ -60,3 +61,7 @@ The core paper behind this work is:
     Eprint = {arXiv:1911.10065},
 }
 ```
+
+## Including this in your project
+
+The `/examples` directory contains example projects that demonstrate how to link GTDynamics to your executable/library.

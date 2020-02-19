@@ -12,7 +12,6 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <TwistAccelFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,6 +23,8 @@
 
 #include <cmath>
 #include <iostream>
+
+#include "gtdynamics/factors/TwistAccelFactor.h"
 
 using gtsam::assert_equal;
 

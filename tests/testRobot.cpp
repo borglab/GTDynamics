@@ -14,15 +14,16 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <Robot.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
-#include <utils.h>
 
-using gtsam::assert_equal;
+#include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/utils/utils.h"
+
 using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
     gtdynamics::extract_structure_from_sdf;
+using gtsam::assert_equal;
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
 // that all transforms, link/joint properties, etc. are correct.
@@ -63,11 +64,9 @@ TEST(Robot, simple_urdf) {
                       j1->transformFrom(j1->childLink())));
 }
 
-
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
-  Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  Robot four_bar = Robot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -94,8 +93,8 @@ TEST(Robot, four_bar_sdf) {
 
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
-  Robot simple_rr = Robot(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  Robot simple_rr =
+      Robot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -143,7 +142,8 @@ TEST(Robot, forwardKinematics) {
 
   // test fk at rest
   simple_robot.getLinkByName("l1")->fix();
-  Robot::FKResults fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
+  Robot::FKResults fk_results =
+      simple_robot.forwardKinematics(joint_angles, joint_vels);
   Robot::LinkPoses poses = fk_results.first;
   Robot::LinkTwists twists = fk_results.second;
 
@@ -185,7 +185,8 @@ TEST(Robot, forwardKinematics) {
   V_l2_float << 2, 0, 0, 0, -2, 2;
 
   std::string prior_link_name = "l1";
-  fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels, prior_link_name, T_wl1_float, V_l1_float);
+  fk_results = simple_robot.forwardKinematics(
+      joint_angles, joint_vels, prior_link_name, T_wl1_float, V_l1_float);
   poses = fk_results.first;
   twists = fk_results.second;
   EXPECT(assert_equal(T_wl1_float, poses.at("l1")));
@@ -195,19 +196,18 @@ TEST(Robot, forwardKinematics) {
 }
 
 // test fk for a four bar linkage (loopy)
-TEST(forwardKinematics, four_bar)
-{  
+TEST(forwardKinematics, four_bar) {
   Robot four_bar =
       Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
-  four_bar.getLinkByName("l1") -> fix();
+  four_bar.getLinkByName("l1")->fix();
 
   Robot::JointValues joint_angles, joint_vels;
-  for (gtdynamics::JointSharedPtr joint: four_bar.joints())
-  {
+  for (gtdynamics::JointSharedPtr joint : four_bar.joints()) {
     joint_angles[joint->name()] = 0;
     joint_vels[joint->name()] = 0;
   }
-  Robot::FKResults fk_results = four_bar.forwardKinematics(joint_angles, joint_vels);
+  Robot::FKResults fk_results =
+      four_bar.forwardKinematics(joint_angles, joint_vels);
   Robot::LinkPoses poses = fk_results.first;
   Robot::LinkTwists twists = fk_results.second;
   gtsam::Vector6 V_4;
@@ -215,7 +215,7 @@ TEST(forwardKinematics, four_bar)
   gtsam::Pose3 T_4(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, -1, 0));
   EXPECT(assert_equal(V_4, twists.at("l4"), 1e-6));
   // TODO(yetong): check why this error is large
-  EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3)); 
+  EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3));
 
   // incorrect specficiation of joint angles;
   Robot::JointValues wrong_angles = joint_angles;

@@ -11,24 +11,21 @@
  * @Author: Alejandro Escontrela
  */
 
-#include <ContactKinematicsAccelFactor.h>
-
-#include <RobotModels.h>
-
-#include <math.h>
-
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
+#include <math.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 
@@ -44,10 +41,9 @@ TEST(ContactKinematicsAccelFactor, error) {
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('A', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
-                                             cTcom);
+                                                  cTcom);
 
   // A link with zero linear/angular accelration at its CoM should have zero
   // acceleration at the contact point.
@@ -103,10 +99,9 @@ TEST(ContactKinematicsAccelFactor, optimization) {
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('V', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
-                                             cTcom);
+                                                  cTcom);
 
   // Initial link twist.
   gtsam::Vector6 link_accel_init =

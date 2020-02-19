@@ -12,8 +12,6 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <PoseFactor.h>
-#include <RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -25,14 +23,17 @@
 
 #include <iostream>
 
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+
 using gtsam::assert_equal;
 
 namespace example {
 // nosie model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key pose_i_key = gtsam::Symbol('p', 1), pose_j_key = gtsam::Symbol('p', 2),
-           qKey = gtsam::Symbol('q', 0);
+gtsam::Key pose_i_key = gtsam::Symbol('p', 1),
+           pose_j_key = gtsam::Symbol('p', 2), qKey = gtsam::Symbol('q', 0);
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -51,8 +52,8 @@ TEST(PoseFactor, error) {
 
   // Create factor
   gtdynamics::PoseFactor factor(example::pose_i_key, example::pose_j_key,
-                                 example::qKey, example::cost_model, jMi,
-                                 screw_axis);
+                                example::qKey, example::cost_model, jMi,
+                                screw_axis);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_i, pose_j, jointAngle);

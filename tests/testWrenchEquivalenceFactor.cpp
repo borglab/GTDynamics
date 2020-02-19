@@ -12,7 +12,6 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <WrenchEquivalenceFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,6 +23,8 @@
 
 #include <cmath>
 #include <iostream>
+
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 
 using gtsam::assert_equal;
 
@@ -109,9 +110,9 @@ TEST(WrenchEquivalenceFactor, error_3) {
   gtsam::Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
 
-  gtdynamics::WrenchEquivalenceFactor factor(example::wrench_j_key,
-                                        example::wrench_k_key, example::qKey,
-                                        example::cost_model, kMj, screw_axis);
+  gtdynamics::WrenchEquivalenceFactor factor(
+      example::wrench_j_key, example::wrench_k_key, example::qKey,
+      example::cost_model, kMj, screw_axis);
   double q = 0;
   gtsam::Vector wrench_j, wrench_k;
   wrench_j = (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();

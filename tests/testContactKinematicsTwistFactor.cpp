@@ -11,24 +11,21 @@
  * @Author: Alejandro Escontrela
  */
 
-#include <ContactKinematicsTwistFactor.h>
-
-#include <RobotModels.h>
-
-#include <math.h>
-
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
+#include <math.h>
 
 #include <iostream>
+
+#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 
@@ -44,8 +41,7 @@ TEST(ContactKinematicsTwistFactor, error) {
   gtsam::LabeledSymbol twist_key = gtsam::LabeledSymbol('V', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // A link with zero linear/angular velocity at its CoM should have a
@@ -102,8 +98,7 @@ TEST(ContactKinematicsTwistFactor, optimization) {
   gtsam::LabeledSymbol twist_key = gtsam::LabeledSymbol('V', 0, 0);
 
   // Transform from the robot com to the contact point.
-  gtsam::Pose3 cTcom = my_robot.links()[0]->leTl_com();
-
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // Initial link twist.
