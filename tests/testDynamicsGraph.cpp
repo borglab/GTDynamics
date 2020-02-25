@@ -606,12 +606,6 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
   graph.add(prior_factors);
 
-  // Add min torque factor.
-//   for (auto joint : my_robot.joints())
-//     graph.add(
-//         gtdynamics::MinTorqueFactor(TorqueKey(joint->getID(), 0),
-//                                     gtsam::noiseModel::Isotropic::Sigma(1, 1)));
-
   // Set initial values.
   gtsam::Values init_values =
       graph_builder.zeroValues(my_robot, 0, contact_points);

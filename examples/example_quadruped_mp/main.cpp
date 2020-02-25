@@ -12,13 +12,11 @@
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
