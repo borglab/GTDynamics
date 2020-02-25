@@ -40,9 +40,9 @@ inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
                               t);  // a hack here for a key with 3 numbers
 }
 
-/* Shorthand for C_i_t, for contact wrench on i-th link at time t.*/
-inline gtsam::LabeledSymbol ContactWrenchKey(int i, int t) {
-  return gtsam::LabeledSymbol('C', i, t);
+/* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
+inline gtsam::LabeledSymbol ContactWrenchKey(int i, int k, int t) {
+  return gtsam::LabeledSymbol('C', i * 16 + k, t);
 }
 
 /* Shorthand for T_j_t, for torque on the j-th joint at time t. */
@@ -89,6 +89,22 @@ inline gtsam::LabeledSymbol PhaseKey(int k) {
 inline gtsam::LabeledSymbol TimeKey(int t) {
   return gtsam::LabeledSymbol('t', 1, t);
 }
+
+/**
+ * ContactPoint defines a single contact point at a link.
+ * Keyword Arguments:
+ *  name -- The name of the link in contact.
+ *  contact_point -- The location of the contact point relative to the link
+ *    Com.
+ *  contact_id -- Each link's contact points must have a unique contact id.
+ *  contact_height -- Height at which contact is made.
+ */
+typedef struct {
+  std::string name;
+  gtsam::Point3 contact_point;
+  int contact_id;
+  double contact_height = 0.0;
+} ContactPoint;
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
@@ -174,34 +190,52 @@ class DynamicsGraph {
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
 
   /* return q-level nonlinear factor graph (pose related factors) */
-  gtsam::NonlinearFactorGraph qFactors(const Robot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph qFactors(
+      const Robot &robot, const int t,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
-  gtsam::NonlinearFactorGraph vFactors(const Robot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph vFactors(
+      const Robot &robot, const int t,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
-  gtsam::NonlinearFactorGraph aFactors(const Robot &robot, const int t) const;
+  gtsam::NonlinearFactorGraph aFactors(
+      const Robot &robot, const int t,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of all dynamics factors
   * Keyword arguments:
-     robot                -- the robot
-     t                    -- time step
-     gravity              -- gravity in world frame
-     planar_axis          -- axis of the plane, used only for planar robot
-     contacts             -- vector of length num_links where 1 denotes
-        contact link and 0 denotes no contact.
+     robot                      -- the robot
+     t                          -- time step
+     gravity                    -- gravity in world frame
+     planar_axis                -- axis of the plane, used only for planar
+        robot contact link and 0 denotes no contact.
+     contact_points             -- optional vector of contact points.
+     mu                         -- optional coefficient of static friction.
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<std::vector<uint>> &contacts = boost::none) const;
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /** return prior factors of torque, angle, velocity
   * Keyword arguments:
@@ -214,6 +248,18 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
       const Robot &robot, const int t, const gtsam::Vector &joint_angles,
       const gtsam::Vector &joint_vels, const gtsam::Vector &torques) const;
+
+  /** return prior factors of accel, angle, velocity
+  * Keyword arguments:
+     robot                      -- the robot
+     t                          -- time step
+     joint_angles               -- joint angles specified in order of joints
+     joint_vels                 -- joint velocites specified in order of joints
+     joint_accels               -- joint accels specified in order of joints
+   */
+  gtsam::NonlinearFactorGraph inverseDynamicsPriors(
+      const Robot &robot, const int t, const gtsam::Vector &joint_angles,
+      const gtsam::Vector &joint_vels, const gtsam::Vector &joint_accels) const;
 
   /** return prior factors of torque, angle, velocity
   * Keyword arguments:
@@ -254,7 +300,10 @@ class DynamicsGraph {
       const Robot &robot, const int num_steps, const double dt,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of the entire trajectory for multi-phase
   * Keyword arguments:
@@ -375,7 +424,10 @@ class DynamicsGraph {
      robot               -- the robot
      t                   -- time step
    */
-  static gtsam::Values zeroValues(const Robot &robot, const int t);
+  static gtsam::Values zeroValues(
+      const Robot &robot, const int t,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none);
 
   /** return zero values of the trajectory for initial value of optimization
   * Keyword arguments:
@@ -384,9 +436,10 @@ class DynamicsGraph {
      num_phases          -- number of phases, -1 for not using
   multi-phase
    */
-  static gtsam::Values zeroValuesTrajectory(const Robot &robot,
-                                            const int num_steps,
-                                            const int num_phases = -1);
+  static gtsam::Values zeroValuesTrajectory(
+      const Robot &robot, const int num_steps, const int num_phases = -1,
+      const boost::optional<std::vector<ContactPoint>> &contact_points =
+          boost::none);
 
   /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
@@ -424,7 +477,7 @@ class DynamicsGraph {
                                   bool radial = false);
 
   /* return the optimizer setting. */
-  const OptimizerSetting& opt() const { return opt_; }
+  const OptimizerSetting &opt() const { return opt_; }
 };
 
 }  // namespace gtdynamics

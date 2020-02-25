@@ -20,6 +20,7 @@
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -27,6 +28,7 @@
 #include <iostream>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/utils.h"
@@ -53,7 +55,7 @@ using std::vector;
 // Test linear dynamics graph of a two-link robot, base fixed, with gravity
 TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass) {
   using simple_urdf_eq_mass::my_robot, simple_urdf_eq_mass::gravity,
-    simple_urdf_eq_mass::planar_axis;
+      simple_urdf_eq_mass::planar_axis;
 
   auto graph_builder = DynamicsGraph();
   int t = 0;
@@ -169,9 +171,9 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
 
 // test jumping robot
 TEST(dynamicsFactorGraph_FD, jumping_robot) {
-  using jumping_robot::my_robot, jumping_robot::gravity,
-    jumping_robot::planar_axis, jumping_robot::joint_angles,
-    jumping_robot::joint_vels;
+  using jumping_robot::gravity, jumping_robot::planar_axis,
+      jumping_robot::joint_angles, jumping_robot::joint_vels,
+      jumping_robot::my_robot;
   double torque3 = 0;
   double torque2 = 0.5;
   Vector torques =
@@ -410,6 +412,155 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
       assert_equal(3.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 2))));
 }
 
+// Test contacts in dynamics graph.
+TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
+  // Load the robot from urdf file
+  using simple_rr::my_robot;
+
+  // Add some contact points.
+  std::vector<gtdynamics::ContactPoint> contact_points;
+  contact_points.push_back(
+      gtdynamics::ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0});
+
+  // Build the dynamics FG.
+  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  auto graph_builder = DynamicsGraph();
+  gtsam::NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(
+      my_robot, 0, gravity, boost::none, contact_points, 1.0);
+
+  // Compute inverse dynamics prior factors.
+  gtsam::Vector joint_accels = gtsam::Vector::Zero(my_robot.numJoints());
+  gtsam::NonlinearFactorGraph prior_factors =
+      graph_builder.inverseDynamicsPriors(my_robot, 0, simple_rr::joint_angles,
+                                          simple_rr::joint_vels, joint_accels);
+
+  // Specify pose and twist priors for one leg.
+  prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+      gtdynamics::PoseKey(my_robot.getLinkByName("link_0")->getID(), 0),
+      my_robot.getLinkByName("link_0")->wTcom(),
+      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
+      gtdynamics::TwistKey(my_robot.getLinkByName("link_0")->getID(), 0),
+      gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
+  graph.add(prior_factors);
+
+  // Add min torque factor.
+  for (auto joint : my_robot.joints())
+    graph.add(
+        gtdynamics::MinTorqueFactor(TorqueKey(joint->getID(), 0),
+                                    gtsam::noiseModel::Isotropic::Sigma(1, 1)));
+
+  // Set initial values.
+  gtsam::Values init_values =
+      graph_builder.zeroValues(my_robot, 0, contact_points);
+
+  graph_builder.printGraph(graph);
+
+  // Optimize!
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+  Values results = optimizer.optimize();
+  std::cout << "Error: " << graph.error(results) << std::endl;
+
+  gtdynamics::LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
+
+  gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
+      l0->getID(), contact_points[0].contact_id, 0);
+  gtsam::Vector contact_wrench_optimized =
+      results.at(contact_wrench_key).cast<gtsam::Vector>();
+
+  graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
+                          results, my_robot, 0, false);
+
+  EXPECT(assert_equal((gtsam::Vector(6) << 0, 0, 0, 0, 0, 0.294).finished(),
+                      contact_wrench_optimized));
+
+  for (auto joint : my_robot.joints())
+    EXPECT(assert_equal(
+        0, results.atDouble(gtdynamics::TorqueKey(joint->getID(), 0))));
+}
+
+// Test contacts in dynamics graph.
+TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
+  // Load the robot from urdf file
+  gtdynamics::Robot biped =
+      gtdynamics::Robot(std::string(URDF_PATH) + "/biped.urdf");
+
+  // Add some contact points.
+  std::vector<gtdynamics::ContactPoint> contact_points;
+  contact_points.push_back(
+      gtdynamics::ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, -0.54});
+  contact_points.push_back(
+      gtdynamics::ContactPoint{"lower2", gtsam::Point3(0.14, 0, 0), 0, -0.54});
+
+  // Build the dynamics FG.
+  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  auto graph_builder = DynamicsGraph();
+  gtsam::NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(
+      biped, 0, gravity, boost::none, contact_points, 1.0);
+
+  // Compute inverse dynamics prior factors.
+  // Inverse dynamics priors. We care about the torques.
+  gtsam::Vector joint_angles = gtsam::Vector::Zero(biped.numJoints());
+  gtsam::Vector joint_vels = gtsam::Vector::Zero(biped.numJoints());
+  gtsam::Vector joint_accels = gtsam::Vector::Zero(biped.numJoints());
+  gtsam::NonlinearFactorGraph prior_factors =
+      graph_builder.inverseDynamicsPriors(biped, 0, joint_angles, joint_vels,
+                                          joint_accels);
+
+  // Specify pose and twist priors for base.
+  auto body = biped.getLinkByName("body");
+  prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+      gtdynamics::PoseKey(body->getID(), 0), body->wTcom(),
+      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
+      gtdynamics::TwistKey(body->getID(), 0), gtsam::Vector6::Zero(),
+      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
+      gtdynamics::TwistAccelKey(body->getID(), 0), gtsam::Vector6::Zero(),
+      gtsam::noiseModel::Constrained::All(6)));
+  graph.add(prior_factors);
+
+  // Add min torque factor.
+  for (auto joint : biped.joints())
+    graph.add(
+        gtdynamics::MinTorqueFactor(TorqueKey(joint->getID(), 0),
+                                    gtsam::noiseModel::Isotropic::Sigma(1, 1)));
+
+  // Set initial values.
+  gtsam::Values init_values =
+      graph_builder.zeroValues(biped, 0, contact_points);
+
+  graph_builder.printGraph(graph);
+
+  // Optimize!
+  gtsam::Values results;
+  gtsam::LevenbergMarquardtParams params;
+  params.setVerbosity("ERROR");
+  params.setAbsoluteErrorTol(1e-12);
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
+  results = optimizer.optimize();
+
+  std::cout << "Error: " << graph.error(results) << std::endl;
+
+  double normal_force = 0;
+  for (auto&& contact_point : contact_points) {
+    gtdynamics::LinkSharedPtr l = biped.getLinkByName("lower0");
+    gtsam::LabeledSymbol contact_wrench_key =
+        gtdynamics::ContactWrenchKey(l->getID(), contact_point.contact_id, 0);
+    gtsam::Vector contact_wrench_optimized =
+        results.at(contact_wrench_key).cast<gtsam::Vector>();
+    gtsam::Pose3 pose_optimized =
+        results.at(gtdynamics::PoseKey(l->getID(), 0)).cast<gtsam::Pose3>();
+    gtsam::Pose3 comTc =
+        gtsam::Pose3(pose_optimized.rotation(), contact_point.contact_point);
+    normal_force =
+        normal_force + (comTc.AdjointMap() * contact_wrench_optimized)[5];
+  }
+
+  // Assert that the normal forces at the contacts sum up to the robot's weight.
+  EXPECT(assert_equal(187.67, normal_force, 1e-2));
+}
+
 // check joint limit factors
 TEST(jointlimitFactors, simple_urdf) {
   using simple_urdf::my_robot;
@@ -420,6 +571,74 @@ TEST(jointlimitFactors, simple_urdf) {
   // 4 joint limit factors per joint (angle, velocity, acceleration, torque).
   EXPECT(assert_equal(static_cast<int>(my_robot.joints().size()) * 4,
                       joint_limit_factors.keys().size()));
+}
+
+// Test contacts in dynamics graph.
+TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
+  // Load the robot from urdf file
+  gtdynamics::Robot my_robot = gtdynamics::Robot(
+      std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
+
+  // Add some contact points.
+  std::vector<gtdynamics::ContactPoint> contact_points;
+  contact_points.push_back(
+      gtdynamics::ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0});
+
+  // Build the dynamics FG.
+  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  auto graph_builder = DynamicsGraph();
+  gtsam::NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(
+      my_robot, 0, gravity, boost::none, contact_points, 1.0);
+
+  // Compute inverse dynamics prior factors.
+  gtsam::Vector joint_accels = gtsam::Vector::Zero(my_robot.numJoints());
+  gtsam::NonlinearFactorGraph prior_factors =
+      graph_builder.inverseDynamicsPriors(my_robot, 0, simple_rr::joint_angles,
+                                          simple_rr::joint_vels, joint_accels);
+
+  // Specify pose and twist priors for one leg.
+  prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+      gtdynamics::PoseKey(my_robot.getLinkByName("link_0")->getID(), 0),
+      my_robot.getLinkByName("link_0")->wTcom(),
+      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
+      gtdynamics::TwistKey(my_robot.getLinkByName("link_0")->getID(), 0),
+      gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
+  graph.add(prior_factors);
+
+  // Add min torque factor.
+//   for (auto joint : my_robot.joints())
+//     graph.add(
+//         gtdynamics::MinTorqueFactor(TorqueKey(joint->getID(), 0),
+//                                     gtsam::noiseModel::Isotropic::Sigma(1, 1)));
+
+  // Set initial values.
+  gtsam::Values init_values =
+      graph_builder.zeroValues(my_robot, 0, contact_points);
+
+  graph_builder.printGraph(graph);
+
+  // Optimize!
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+  Values results = optimizer.optimize();
+  std::cout << "Error: " << graph.error(results) << std::endl;
+
+  gtdynamics::LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
+
+  gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
+      l0->getID(), contact_points[0].contact_id, 0);
+  gtsam::Vector contact_wrench_optimized =
+      results.at(contact_wrench_key).cast<gtsam::Vector>();
+
+  graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
+                          results, my_robot, 0, false);
+
+  EXPECT(assert_equal((gtsam::Vector(6) << 0, 0, 0, 0, 0, 0.392).finished(),
+                      contact_wrench_optimized));
+
+  for (auto joint : my_robot.joints())
+    EXPECT(assert_equal(
+        0, results.atDouble(gtdynamics::TorqueKey(joint->getID(), 0))));
 }
 
 int main() {
