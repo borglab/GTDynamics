@@ -52,9 +52,9 @@ class ContactDynamicsMomentFactor
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom)
       : Base(cost_model, contact_wrench_key), cTcom_(cTcom) {
-    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-                         0, 0, 0, 1, 0, 0, 0)
-                            .finished();
+    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0,
+                                              0, 1, 0, 0, 0, 0,
+                                              0, 0, 1, 0, 0, 0).finished();
   }
   virtual ~ContactDynamicsMomentFactor() {}
 
@@ -69,10 +69,12 @@ class ContactDynamicsMomentFactor
           boost::none) const override {
     // Transform the twist from the link COM frame to the contact frame.
     gtsam::Vector3 error =
-        H_contact_wrench_ * cTcom_.AdjointMap() * contact_wrench;
+        H_contact_wrench_ * cTcom_.inverse().AdjointMap().transpose() *
+        contact_wrench;
 
     if (H_contact_wrench)
-      *H_contact_wrench = H_contact_wrench_ * cTcom_.AdjointMap();
+      *H_contact_wrench = H_contact_wrench_ *
+      cTcom_.inverse().AdjointMap().transpose();
 
     return error;
   }
