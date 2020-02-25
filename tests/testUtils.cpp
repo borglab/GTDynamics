@@ -99,7 +99,7 @@ TEST(utils, load_and_parse_sdf_world_file) {
       std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
-  EXPECT(assert_equal(3, simple_sdf.JointCount()));
+  EXPECT(assert_equal(2, simple_sdf.JointCount()));
 
   sdf::Link l0 = *simple_sdf.LinkByName("link_0");
   sdf::Link l1 = *simple_sdf.LinkByName("link_1");
