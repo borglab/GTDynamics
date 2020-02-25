@@ -66,8 +66,9 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
     gtsam::Point3 sTp_t = sTp.translation(H_point);
     gtsam::Matrix H_err;
     // gtsam::Vector3 error = sTp_t.logmap(goalPoint_, H_err);
-    double d = sTp_t.distance(goalPoint_, H_err);
-    gtsam::Vector error = (gtsam::Vector(1) << d).finished();
+    gtsam::Vector error = sTp_t.sub(goalPoint_, H_err);
+    // double d = sTp_t.distance(goalPoint_, H_err);
+    // gtsam::Vector error = (gtsam::Vector(1) << d).finished();
 
     if (H_pose)
         *H_pose = H_err * H_point * comTp_.inverse().AdjointMap();

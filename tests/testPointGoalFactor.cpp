@@ -33,7 +33,7 @@ TEST(PointGoalFactor, error) {
   using simple_urdf::my_robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
 
   // Initialize factor with goal point.
@@ -43,11 +43,11 @@ TEST(PointGoalFactor, error) {
 
   // Test the goal pose error against the robot's various nominal poses.
   EXPECT(assert_equal(
-      (gtsam::Vector(1) << 0).finished(),
+      (gtsam::Vector(3) << 0, 0, 0).finished(),
       factor.evaluateError(my_robot.getLinkByName("l1")->wTcom())));
 
   EXPECT(assert_equal(
-      (gtsam::Vector(1) << 2).finished(),
+      (gtsam::Vector(3) << 0, 0, 2).finished(),
       factor.evaluateError(my_robot.getLinkByName("l2")->wTcom())));
 
   // Make sure linearization is correct
@@ -66,7 +66,7 @@ TEST(PointGoalFactor, optimization) {
   using simple_urdf::my_robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Constrained::All(1);
+      gtsam::noiseModel::Constrained::All(3);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
 
@@ -77,6 +77,7 @@ TEST(PointGoalFactor, optimization) {
 
   // Initial link pose.
   gtsam::Pose3 pose_init = my_robot.getLinkByName("l1")->wTcom();
+  std::cout << "Error Init: " << factor.evaluateError(pose_init) << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -93,8 +94,10 @@ TEST(PointGoalFactor, optimization) {
   optimizer.optimize();
   gtsam::Values results = optimizer.values();
   gtsam::Pose3 pose_optimized = results.at(pose_key).cast<gtsam::Pose3>();
+  std::cout << "Error Final: "
+            << factor.evaluateError(pose_optimized) << std::endl;
   EXPECT(assert_equal(factor.evaluateError(pose_optimized),
-                      gtsam::Vector1::Zero(), 1e-4));
+                      gtsam::Vector3::Zero(), 1e-4));
 }
 
 int main() {

@@ -17,7 +17,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -282,10 +282,10 @@ int main(int argc, char **argv) {
     for (auto &&leg : swing_sequence)
       kfg.add(gtdynamics::PointGoalFactor(
           gtdynamics::PoseKey(vision60.getLinkByName(leg)->getID(), ti),
-          gtsam::noiseModel::Constrained::All(1), comTc,
+          gtsam::noiseModel::Constrained::All(3), comTc,
           tposes[leg].translation()));
 
-    gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
+    gtsam::GaussNewtonOptimizer optimizer(kfg, values);
     gtsam::Values results = optimizer.optimize();
 
     if ((ti % 100) == 0)
