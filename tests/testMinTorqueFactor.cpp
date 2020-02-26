@@ -38,17 +38,44 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1);
 // Test Torque factor for stationary case
 TEST(MinTorqueFactor, error) {
   gtdynamics::MinTorqueFactor factor(example::torque_key, example::cost_model);
-  double torque = 20;
-  gtsam::Vector1 actual_errors, expected_errors;
 
-  actual_errors = factor.evaluateError(torque);
-  expected_errors = gtsam::Vector1(400);
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+  EXPECT(assert_equal(
+    (gtsam::Vector(1) << 20).finished(),
+    factor.evaluateError(20), 1e-6));
   // Make sure linearization is correct
   gtsam::Values values;
-  values.insert(example::torque_key, torque);
+  values.insert(example::torque_key, 20.0);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+}
+
+/**
+ * Test the optimization of a joint torque to ensure zero torque
+ * reached.
+ **/
+TEST(MinTorqueFactor, optimization) {
+  gtdynamics::MinTorqueFactor factor(example::torque_key, example::cost_model);
+
+  // Initial torque.
+  double torque_init = 1e8;
+
+  gtsam::NonlinearFactorGraph graph;
+  graph.add(factor);
+  gtsam::Values init_values;
+  init_values.insert(example::torque_key, torque_init);
+
+  gtsam::GaussNewtonParams params;
+  params.setVerbosity("ERROR");
+  params.setAbsoluteErrorTol(1e-14);
+
+  // Optimize!
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values, params);
+  optimizer.optimize();
+
+  gtsam::Values results = optimizer.values();
+  double torque_optimized = results.atDouble(example::torque_key);
+
+  EXPECT(assert_equal(0.0, torque_optimized, 1e-3));
 }
 
 int main() {

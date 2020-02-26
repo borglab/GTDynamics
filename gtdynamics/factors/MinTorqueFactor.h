@@ -50,10 +50,10 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
   gtsam::Vector evaluateError(
       const double &torque, boost::optional<gtsam::Matrix &> H_torque
         = boost::none) const override {
-    gtsam::Vector error = (gtsam::Vector(1) << torque * torque).finished();
+    gtsam::Vector error = (gtsam::Vector(1) << torque).finished();
 
     if (H_torque)
-      *H_torque = gtsam::I_1x1 * 2 * torque;
+      *H_torque = gtsam::I_1x1;
 
     return error;
   }
