@@ -7,7 +7,7 @@ project(gtdynamics_demo C CXX)
 find_package(sdformat8 REQUIRED)
 
 # GTSAM.
-find_package(GTSAM REQUIRED)
+find_package(GTSAM REQUIRED) # Uses installed package
 
 # Find GTDynamics.
 find_library(GTDYNAMICS NAMES gtdynamics)
