@@ -15,7 +15,7 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-quad_id = p.loadURDF("vision60_simple.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
+quad_id = p.loadURDF("vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
                      False)
 
 joint_to_jid_map = {}

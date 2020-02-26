@@ -182,7 +182,7 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
 int main(int argc, char **argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  gtdynamics::Robot vision60 = gtdynamics::Robot("../vision60_simple.urdf");
+  gtdynamics::Robot vision60 = gtdynamics::Robot("../vision60.urdf");
 
   // Coordinate system:
   //  z
