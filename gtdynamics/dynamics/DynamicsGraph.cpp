@@ -212,7 +212,7 @@ Values DynamicsGraph::linearSolveFD(
 gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
-    const boost::optional<std::vector<ContactPoint>> &contact_points) const {
+    const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links()) {
     int i = link->getID();
@@ -258,7 +258,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
-    const boost::optional<std::vector<ContactPoint>> &contact_points) const {
+    const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links()) {
     int i = link->getID();
@@ -298,7 +298,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
 gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
-    const boost::optional<std::vector<ContactPoint>> &contact_points) const {
+    const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links()) {
     int i = link->getID();
@@ -340,7 +340,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis,
-    const boost::optional<std::vector<ContactPoint>> &contact_points,
+    const boost::optional<ContactPoints> &contact_points,
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links()) {
@@ -445,7 +445,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis,
-    const boost::optional<std::vector<ContactPoint>> &contact_points,
+    const boost::optional<ContactPoints> &contact_points,
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   graph.add(qFactors(robot, t, gravity, contact_points));
@@ -461,7 +461,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const DynamicsGraph::CollocationScheme collocation,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis,
-    const boost::optional<std::vector<ContactPoint>> &contact_points,
+    const boost::optional<ContactPoints> &contact_points,
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t < num_steps + 1; t++) {
@@ -832,7 +832,7 @@ Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
 
 gtsam::Values DynamicsGraph::zeroValues(
     const Robot &robot, const int t,
-    const boost::optional<std::vector<ContactPoint>> &contact_points) {
+    const boost::optional<ContactPoints> &contact_points) {
   gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
                 zero_accels = gtsam::Vector6::Zero(),
                 zero_wrenches = gtsam::Vector6::Zero(),
@@ -877,7 +877,7 @@ gtsam::Values DynamicsGraph::zeroValues(
 
 gtsam::Values DynamicsGraph::zeroValuesTrajectory(
     const Robot &robot, const int num_steps, const int num_phases,
-    const boost::optional<std::vector<ContactPoint>> &contact_points) {
+    const boost::optional<ContactPoints> &contact_points) {
   gtsam::Values zero_values;
   for (int t = 0; t <= num_steps; t++) {
     zero_values.insert(zeroValues(robot, t, contact_points));
