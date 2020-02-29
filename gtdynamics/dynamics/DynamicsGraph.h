@@ -105,6 +105,7 @@ typedef struct {
   int contact_id;
   double contact_height = 0.0;
 } ContactPoint;
+typedef std::vector<ContactPoint> ContactPoints;
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
@@ -193,21 +194,21 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
@@ -215,7 +216,7 @@ class DynamicsGraph {
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -233,7 +234,7 @@ class DynamicsGraph {
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -301,7 +302,7 @@ class DynamicsGraph {
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -426,7 +427,7 @@ class DynamicsGraph {
    */
   static gtsam::Values zeroValues(
       const Robot &robot, const int t,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none);
 
   /** return zero values of the trajectory for initial value of optimization
@@ -438,7 +439,7 @@ class DynamicsGraph {
    */
   static gtsam::Values zeroValuesTrajectory(
       const Robot &robot, const int num_steps, const int num_phases = -1,
-      const boost::optional<std::vector<ContactPoint>> &contact_points =
+      const boost::optional<ContactPoints> &contact_points =
           boost::none);
 
   /* print the factors of the factor graph */
