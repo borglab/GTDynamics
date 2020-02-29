@@ -16,4 +16,4 @@ find_library(GTDYNAMICS NAMES gtdynamics)
 
 add_executable(exec main.cpp)
 target_link_libraries(exec PUBLIC ${GTDYNAMICS} gtsam ${SDFormat_LIBRARIES})
-target_include_directories(exec PUBLIC ${GTSAM_INCLUDE_DIR} ${SDFormat_INCLUDE_DIRS})
+target_include_directories(exec PUBLIC ${GTSAM_INCLUDE_DIR} ${SDFormat_INCLUDE_DIRS} ${CMAKE_PREFIX_PATH}/include)
