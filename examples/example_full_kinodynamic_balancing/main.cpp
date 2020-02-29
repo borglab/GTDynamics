@@ -38,20 +38,22 @@
  * @param[in] link_name       The name of the link whose pose to interpolate.
  * @param[in] wTl_i           The initial pose of the link.
  * @param[in] wTl_f           The final pose of the link.
- * @param[in] T               Duration of trajectory (s.).
+ * @param[in] T_i             Time at which to start interpolation.
+ * @param[in] T_f             Time at which to end interpolation.
  * @param[in] dt              The duration of a single timestep.
  * @param[in] contact_points  The duration of a single timestep.
  * @return Initial solution stored in gtsam::Values object.
  */
 gtsam::Values initialize_solution_interpolation(
     const gtdynamics::Robot& robot, const std::string& link_name,
-    const gtsam::Pose3& wTl_i, const gtsam::Pose3& wTl_f, const double& T,
-    const double& dt,
+    const gtsam::Pose3& wTl_i, const gtsam::Pose3& wTl_f,
+    const double& T_i, const double& T_f, const double& dt,
     const boost::optional<std::vector<gtdynamics::ContactPoint>>&
         contact_points = boost::none) {
   gtsam::Values init_vals;
 
-  int n_steps = static_cast<int>(std::ceil(T / dt));
+  int n_steps_init = static_cast<int>(std::ceil(T_i / dt));
+  int n_steps_final = static_cast<int>(std::ceil(T_f / dt));
   gtsam::Point3 wPl_i = wTl_i.translation(), wPl_f = wTl_f.translation();
   gtsam::Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
 
@@ -67,9 +69,9 @@ gtsam::Values initialize_solution_interpolation(
     zero_torque = gtsam::Vector1::Zero(), zero_q = gtsam::Vector1::Zero(),
     zero_v = gtsam::Vector1::Zero(), zero_a = gtsam::Vector1::Zero();
 
-  double t_elapsed = 0.0;
-  for (int t = 0; t <= n_steps; t++) {
-    double s = t_elapsed / T;
+  double t_elapsed = T_i;
+  for (int t = n_steps_init; t < n_steps_final; t++) {
+    double s = (t_elapsed - T_i) / (T_f - T_i);
 
     // Compute interpolated pose for link.
     gtsam::Point3 wPl_t = (1 - s) * wPl_i + s * wPl_f;
@@ -147,11 +149,7 @@ int main(int argc, char** argv) {
 
   auto graph_builder = gtdynamics::DynamicsGraph();
 
-  // Specify boundary conditions for base.
-  gtsam::Pose3 base_pose_init = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
-  gtsam::Pose3 base_pose_final =
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 10.0, 0.0, 0.0),
-                   gtsam::Point3(0, 0, 0.1));
+  gtsam::Pose3 base_pose_init = vision60.getLinkByName("body")->wTcom();
   gtsam::Vector6 base_twist_init = gtsam::Vector6::Zero(),
                  base_twist_final = gtsam::Vector6::Zero(),
                  base_accel_init = gtsam::Vector6::Zero(),
@@ -168,6 +166,26 @@ int main(int argc, char** argv) {
   double T = 3.0;                                     // Time horizon (s.)
   double dt = 1. / 240;                               // Time step (s.)
   int t_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
+
+  // Specify poses which we want to hit and at what times.
+  std::vector<gtsam::Pose3> des_poses;
+  std::vector<double> des_poses_t;
+
+  des_poses.push_back(gtsam::Pose3(gtsam::Rot3::RzRyRx(0.0, 0.0 , M_PI / 2.0),
+                   gtsam::Point3(0, 0, 0.1)));
+  des_poses_t.push_back(0.8);
+
+  des_poses.push_back(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 10.0, 0.0, 0.0),
+                   gtsam::Point3(0, 0, 0.1)));
+  des_poses_t.push_back(1.9);
+
+  des_poses.push_back(gtsam::Pose3(gtsam::Rot3::RzRyRx(-M_PI / 10.0, 0.0, 0.0),
+                   gtsam::Point3(0, 0, 0.1)));
+  des_poses_t.push_back(2.5);
+
+  des_poses.push_back(gtsam::Pose3(gtsam::Rot3::RzRyRx(0.0, 0.0, 0.0),
+                   gtsam::Point3(0, 0, 0.1)));
+  des_poses_t.push_back(2.8);
 
   gtsam::NonlinearFactorGraph graph = graph_builder.trajectoryFG(
       vision60, t_steps, dt,
@@ -189,20 +207,12 @@ int main(int argc, char** argv) {
       gtsam::noiseModel::Constrained::All(6)));
 
   // Add certain poses to be reached.
-  objective_factors.add(gtdynamics::PoseGoalFactor(
-      gtdynamics::PoseKey(base_link->getID(), t_steps / 2),
+  for (size_t i = 0; i < des_poses.size(); i++)
+    objective_factors.add(gtdynamics::PoseGoalFactor(
+      gtdynamics::PoseKey(base_link->getID(),
+      static_cast<int>(std::ceil(des_poses_t[i] / dt))),
       gtsam::noiseModel::Constrained::All(6),
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 10.0, 0.0, 0.0),
-                   gtsam::Point3(0, 0, 0.1))));
-  objective_factors.add(gtdynamics::PoseGoalFactor(
-      gtdynamics::PoseKey(base_link->getID(), t_steps),
-      gtsam::noiseModel::Constrained::All(6),
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(-M_PI / 10.0, 0.0, 0.0),
-                   gtsam::Point3(0, 0, 0.1))));
-
-  objective_factors.add(gtdynamics::PoseGoalFactor(
-      gtdynamics::PoseKey(base_link->getID(), t_steps),
-      gtsam::noiseModel::Constrained::All(6), base_pose_final));
+      des_poses[i]));
 
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       gtdynamics::TwistKey(base_link->getID(), t_steps), base_twist_final,
@@ -240,7 +250,24 @@ int main(int argc, char** argv) {
 
   graph.add(objective_factors);
 
-  // Optimize!
+  // Initial values.
+  // TODO(aescontrela): Figure out why the linearly interpolated initial
+  // trajectory fails to optimize. My initial guess is that the optimizer has
+  // a difficult time optimizing the trajectory when the initial solution lies
+  // in the infeasible region. This would make sense if I were using an IPM to
+  // solve this problem...
+
+  // gtsam::Values init_vals;
+  // gtsam::Pose3 pose = base_pose_init;
+  // des_poses.push_back(des_poses[des_poses.size() - 1]);
+  // des_poses_t.push_back(T + dt);
+  // double curr_t = 0.0;
+  // for (size_t i = 0; i < des_poses.size(); i++) {
+  //   init_vals.insert(initialize_solution_interpolation(vision60, "body",
+  //     pose, des_poses[i], curr_t, des_poses_t[i], dt, contact_points));
+  //   pose = des_poses[i];
+  //   curr_t = des_poses_t[i];
+  // }
   gtsam::Values init_vals =
       graph_builder.zeroValuesTrajectory(vision60, t_steps, 0, contact_points);
   gtsam::LevenbergMarquardtParams params;
@@ -283,8 +310,9 @@ int main(int argc, char** argv) {
   std::string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
   traj_file.open("../traj.csv");
-  //             angles                vels                accels
-  traj_file << jnames_str << "," << jnames_str << "," << jnames_str << "," << jnames_str << "\n";
+  // angles, vels, accels, torques.
+  traj_file << jnames_str << "," << jnames_str << ","
+            << jnames_str << "," << jnames_str << "\n";
   for (int t = 0; t <= t_steps; t++) {
     std::vector<std::string> jvals;
     for (auto&& joint : vision60.joints())

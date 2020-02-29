@@ -3,7 +3,7 @@ from typing import Dict
 
 import time
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pybullet as p
 import pybullet_data
 import pandas as pd
@@ -55,11 +55,12 @@ all_pos_sim = []
 
 debug_iters = 100
 for i in range(len(df)):
-    joint_angles = df.loc[i][[str(i) for i in range(12)]]
-    joint_vels = df.loc[i][[str(i) + '.1' for i in range(12)]]
-    joint_accels = df.loc[i][[str(i) + '.2' for i in range(12)]]
+    jangles = df.loc[i][[str(i) for i in range(12)]]
+    jvels = df.loc[i][[str(i) + '.1' for i in range(12)]]
+    jaccels = df.loc[i][[str(i) + '.2' for i in range(12)]]
+    jtorques = df.loc[i][[str(i) + '.3' for i in range(12)]]
 
-    set_joint_angles(joint_angles, joint_vels)
+    set_joint_angles(jangles, jvels)
 
 #     new_pos_des = df.loc[i][['bodyx', 'bodyy', 'bodyz']].tolist()
 #     new_pos_des[2] = new_pos_des[2] + 0.2
