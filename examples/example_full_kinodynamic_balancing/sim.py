@@ -14,7 +14,7 @@ _ = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
-p.changeDynamics(planeId, -1, lateralFriction=1)
+p.changeDynamics(planeId, -1, lateralFriction=2.0)
 quad_id = p.loadURDF("vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
                      False)
 
