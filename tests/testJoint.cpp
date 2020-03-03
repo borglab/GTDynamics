@@ -241,7 +241,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
-  screw_axis_l1 << 0, 0, 0, 1, 0, 0;
+  screw_axis_l1 << 0, 0, 0, 0, 1, 0;
   screw_axis_l2 << 0, 0, 0, 0, 0, 1;
   EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
   EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2)));
@@ -323,7 +323,7 @@ TEST(Joint, params_constructor_prismatic) {
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
-  screw_axis_l1 << 0, 0, 0, 1, 0, 0;
+  screw_axis_l1 << 0, 0, 0, 0, 1, 0;
   screw_axis_l2 << 0, 0, 0, 0, 0, 1;
   EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
   EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2)));

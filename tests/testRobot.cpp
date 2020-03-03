@@ -215,8 +215,8 @@ TEST(Robot, forwardKinematics_rpr) {
 
   gtsam::Pose3 T_wl0_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
   gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5));
-  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.4));
-  gtsam::Pose3 T_wl3_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 2.2));
+  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.1));
+  gtsam::Pose3 T_wl3_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.7));
   gtsam::Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
   V_l0_rest << 0, 0, 0, 0, 0, 0;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
@@ -242,14 +242,14 @@ TEST(Robot, forwardKinematics_rpr) {
   twists = fk_results.second;
 
   gtsam::Pose3 T_wl0_move(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
-  gtsam::Pose3 T_wl1_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(0.4, 0, 0.2));
-  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(1.2, 0, 0.2));
-  gtsam::Pose3 T_wl3_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(2.5, 0, 0.2));
+  gtsam::Pose3 T_wl1_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(0.3, 0, 0.2));
+  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(1.4, 0, 0.2));
+  gtsam::Pose3 T_wl3_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(2.0, 0, 0.2));
   gtsam::Vector6 V_l0_move, V_l1_move, V_l2_move, V_l3_move;
   V_l0_move << 0, 0, 0, 0, 0, 0;
   V_l1_move << 0, 0, 0, 0, 0, 0;
-  V_l2_move << 0, 0, 0, 1, 0, 0;
-  V_l3_move << 0, 0, 0, 1, 0, 0;
+  V_l2_move << 0, 0, 0, 0, 0, 1;
+  V_l3_move << 0, 0, 0, 0, 0, 1;
   EXPECT(assert_equal(T_wl0_move, poses.at("link_0")));
   EXPECT(assert_equal(T_wl1_move, poses.at("link_1")));
   EXPECT(assert_equal(T_wl2_move, poses.at("link_2")));
