@@ -243,7 +243,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
   screw_axis_l1 << 0, 0, 0, 0, 1, 0;
   screw_axis_l2 << 0, 0, 0, 0, 0, 1;
-  EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
+  EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1), 1e-5));
   EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2)));
 
   // links
@@ -326,7 +326,7 @@ TEST(Joint, params_constructor_prismatic) {
   screw_axis_l1 << 0, 0, 0, 0, 1, 0;
   screw_axis_l2 << 0, 0, 0, 0, 0, 1;
   EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
-  EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2)));
+  EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2), 1e-5));
 
   // links
   auto links = j1->links();
