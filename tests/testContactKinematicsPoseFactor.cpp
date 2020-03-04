@@ -15,7 +15,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-#include <gtsam/inference/Symbol.h>
+#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -26,7 +26,6 @@
 #include <iostream>
 
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using gtsam::assert_equal;
 
@@ -34,8 +33,6 @@ using gtsam::assert_equal;
  * Test the evaluateError method with various link twists.
  **/
 TEST(ContactKinematicsPoseFactor, error) {
-  using simple_urdf::my_robot;
-
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
@@ -87,18 +84,72 @@ TEST(ContactKinematicsPoseFactor, error) {
 }
 
 /**
+ * Test the evaluateError method with various link twists.
+ **/
+TEST(ContactKinematicsPoseFactor, error_with_height) {
+  gtsam::noiseModel::Gaussian::shared_ptr cost_model =
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+
+  gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
+
+  // Transform from the contact frame to the link com.
+  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
+
+  // Create a factor that establishes a ground plane at z = -1.0.
+  gtdynamics::ContactKinematicsPoseFactor factor(
+      pose_key, cost_model, cTcom,
+      (gtsam::Vector(3) << 0, 0, -9.8).finished(), -1.0);
+
+  // Leg oriented upwards with contact away from the ground.
+  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
+                          gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
+                      (gtsam::Vector(1) << 4).finished()));
+
+  // Leg oriented down with contact 1m away from the ground.
+  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
+                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
+                      (gtsam::Vector(1) << 2).finished()));
+
+  // Contact touching the ground.
+  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
+                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
+                      (gtsam::Vector(1) << 1).finished()));
+
+  // Check that Jacobian computation is correct by comparison to finite
+  // differences.
+
+  // Rotation and translation.
+  gtsam::Values values_a;
+  values_a.insert(
+      pose_key,
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
+                   gtsam::Point3(4., 3., 3.)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(
+      factor, values_a,
+      1e-7,  // Step used when computing numerical derivative jacobians.
+      1e-3);   // Tolerance.
+
+  // Pure translation.
+  gtsam::Values values_b;
+  values_b.insert(pose_key,
+                  gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(
+      factor, values_b,
+      1e-7,  // Step used when computing numerical derivative jacobians.
+      1e-3);   // Tolerance.
+}
+
+/**
  * Test the optimization of a link twist to ensure zero
  * velocity at the contact point.
  **/
 TEST(ContactKinematicsPoseFactor, optimization) {
-  using simple_urdf::my_robot;
-
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Constrained::All(1);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
-  // Transform from the robot com to the link end.
+  // Transform from the contact frame to the link com.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
       pose_key, cost_model, cTcom,

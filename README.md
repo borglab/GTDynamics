@@ -50,6 +50,30 @@ $ sudo make install
 $ make check
 ```
 
+## Running examples
+
+The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
+
+1. Navigate to the example's subdirectory and create a build directory. e.g.
+```bash
+cd GTDynamics/examples/example_forward_dynamics
+mkdir build; cd build
+```
+
+2. Make the example.
+
+If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
+
+```bash
+cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install
+make
+```
+
+3. Run the example!
+```bash
+./exec
+```
+
 ## Citing this work
 
 The core paper behind this work is:
@@ -62,6 +86,3 @@ The core paper behind this work is:
 }
 ```
 
-## Including this in your project
-
-The `/examples` directory contains example projects that demonstrate how to link GTDynamics to your executable/library.

@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
     // Load the robot and build a nonlinear factor graph of kinodynamics
     // constraints.
     auto simple_rr = gtdynamics::Robot(
-        "../../../sdfs/test/simple_rr.sdf", "simple_rr_sdf");
+        "../simple_rr.sdf", "simple_rr_sdf");
     simple_rr.printRobot();
 
     auto graph_builder = gtdynamics::DynamicsGraph();

@@ -38,21 +38,25 @@ class ContactKinematicsPoseFactor
   typedef ContactKinematicsPoseFactor This;
   typedef gtsam::NoiseModelFactor1<gtsam::Pose3> Base;
   gtsam::Pose3 cTcom_;
+  gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
 
   gtsam::Matrix13 H_err_;
 
  public:
   /** Contact kinematics factor for link end to remain in contact with the
-     ground. Keyword argument: pose_key   -- The key corresponding to the link's
-     Com pose. cost_model -- Noise model associated with this factor. cTcom --
-     Static transform from link com to link end (where contact is made). gravity
-     -- Gravity vector in the spatial frame. Used to calculate the "up"
+     ground. Keyword argument: 
+     pose_key   -- The key corresponding to the link's Com pose. 
+     cost_model -- Noise model associated with this factor.
+     cTcom -- Static transform from link com to link end (where contact is made). 
+     gravity -- Gravity vector in the spatial frame. Used to calculate the "up"
      direction.
+     ground_plane_height -- Height of the ground plane in the world frame.
    */
   ContactKinematicsPoseFactor(
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity)
+      const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
+      const double &ground_plane_height = 0.0)
       : Base(cost_model, pose_key), cTcom_(cTcom) {
     if (gravity[0] != 0)
       H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
@@ -60,6 +64,8 @@ class ContactKinematicsPoseFactor
       H_err_ = (gtsam::Matrix13() << 0, 1, 0).finished();  // y.
     else
       H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
+
+    h_ = (gtsam::Vector(1) << ground_plane_height).finished();
   }
   virtual ~ContactKinematicsPoseFactor() {}
 
@@ -78,11 +84,18 @@ class ContactKinematicsPoseFactor
     gtsam::Matrix36 H_trans;
     gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
 
+    gtsam::Vector sTc_p_h = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
+    // gtsam::Vector error = (sTc_p_h - h_) * (sTc_p_h - h_);
+    gtsam::Vector error = sTc_p_h - h_;
+
     // Compute the error.
-    gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
+    // gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
 
     // Compute the jacobian.
-    if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+    // if (H_pose) *H_pose = 2 * (sTc_p_h - h_) * H_err_ *
+    //                       H_trans * cTcom_.AdjointMap();
+    if (H_pose) *H_pose = H_err_ *
+                          H_trans * cTcom_.AdjointMap();
 
     return error;
   }

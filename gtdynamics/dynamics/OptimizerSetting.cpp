@@ -26,6 +26,7 @@ OptimizerSetting::OptimizerSetting()
       fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
       t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       cp_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      cfriction_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       cv_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
       ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
       cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),

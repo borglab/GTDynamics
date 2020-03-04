@@ -81,6 +81,19 @@ gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace simple_urdf_eq_mass
 
+namespace simple_rr {
+Robot getSimpleRR() {
+  Robot simple_robot =
+      Robot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  return simple_robot;
+}
+Robot my_robot = getSimpleRR();
+gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
+gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
+}  // namespace simple_rr
+
 namespace jumping_robot {
 Robot getJumpingRobot() {
   Robot jumping_robot =

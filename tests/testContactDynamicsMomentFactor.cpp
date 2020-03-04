@@ -15,7 +15,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-#include <gtsam/inference/Symbol.h>
+#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -58,7 +58,13 @@ TEST(ContactDynamicsMomentFactor, error) {
   gtsam::Vector6 link_wrench_linear =
       (gtsam::Vector(6) << 0, -5, 0, 5, 0, 0).finished();
   EXPECT(assert_equal(factor.evaluateError(link_wrench_linear),
-                      (gtsam::Vector(3) << 0, -5, 0).finished()));
+                      (gtsam::Vector(3) << 0, -10, 0).finished()));
+
+  // Now the moment should some to zero.
+  gtsam::Vector6 link_wrench_linear_2 =
+      (gtsam::Vector(6) << 0, -5, 0, -5, 0, 0).finished();
+  EXPECT(assert_equal(factor.evaluateError(link_wrench_linear_2),
+                      (gtsam::Vector(3) << 0, 0, 0).finished()));
 
   // Make sure linearization is correct
   gtsam::Values values;
