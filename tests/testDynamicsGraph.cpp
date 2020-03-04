@@ -582,7 +582,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Add some contact points.
   std::vector<gtdynamics::ContactPoint> contact_points;
   contact_points.push_back(
-      gtdynamics::ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0});
+      gtdynamics::ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0, 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -606,11 +606,18 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
   graph.add(prior_factors);
 
+  // Add min torque factor.
+  for (auto joint : my_robot.joints())
+    graph.add(
+      gtdynamics::MinTorqueFactor(
+        gtdynamics::TorqueKey(joint->getID(), 0),
+          gtsam::noiseModel::Isotropic::Sigma(1, 0.1)));
+
+  graph_builder.printGraph(graph);
+
   // Set initial values.
   gtsam::Values init_values =
       graph_builder.zeroValues(my_robot, 0, contact_points);
-
-  graph_builder.printGraph(graph);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
