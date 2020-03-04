@@ -233,7 +233,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
           gravity_ = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 
         ContactKinematicsPoseFactor contact_pose_factor(
-            PoseKey(i, t), gtsam::noiseModel::Constrained::All(1),
+            PoseKey(i, t), opt_.cp_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point), gravity_,
             contact_point.contact_height);
         graph.add(contact_pose_factor);
@@ -273,7 +273,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
         if (contact_point.name != link->name()) continue;
 
         ContactKinematicsTwistFactor contact_twist_factor(
-            TwistKey(i, t), gtsam::noiseModel::Constrained::All(3),
+            TwistKey(i, t), opt_.cv_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point));
         graph.add(contact_twist_factor);
       }
@@ -313,7 +313,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
         if (contact_point.name != link->name()) continue;
 
         ContactKinematicsAccelFactor contact_accel_factor(
-            TwistAccelKey(i, t), gtsam::noiseModel::Constrained::All(3),
+            TwistAccelKey(i, t), opt_.ca_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point));
         graph.add(contact_accel_factor);
       }
@@ -375,11 +375,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
           graph.add(ContactDynamicsFrictionConeFactor(
               PoseKey(i, t), ContactWrenchKey(i, contact_point.contact_id, t),
-              gtsam::noiseModel::Constrained::All(1), mu_, gravity_));
+              opt_.cfriction_cost_model, mu_, gravity_));
 
           graph.add(ContactDynamicsMomentFactor(
               ContactWrenchKey(i, contact_point.contact_id, t),
-              gtsam::noiseModel::Constrained::All(3),
+              opt_.cm_cost_model,
               gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point)));
         }
       }
@@ -628,13 +628,13 @@ gtsam::NonlinearFactorGraph DynamicsGraph::inverseDynamicsPriors(
     int j = joint->getID();
     graph.add(
         gtsam::PriorFactor<double>(JointAngleKey(j, t), joint_angles[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_q_cost_model));
     graph.add(
         gtsam::PriorFactor<double>(JointVelKey(j, t), joint_vels[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_qv_cost_model));
     graph.add(
         gtsam::PriorFactor<double>(JointAccelKey(j, t), joint_accels[idx],
-                                   gtsam::noiseModel::Constrained::All(1)));
+                                   opt_.prior_qa_cost_model));
   }
   return graph;
 }

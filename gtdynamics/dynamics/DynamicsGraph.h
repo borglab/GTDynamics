@@ -132,6 +132,7 @@ class DynamicsGraph {
     opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.cp_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.cfriction_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.cv_cost_model = gtsam::noiseModel::Constrained::All(3);
     opt_.ca_cost_model = gtsam::noiseModel::Constrained::All(3);
     opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);

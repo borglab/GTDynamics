@@ -38,6 +38,7 @@ class OptimizerSetting {
       fa_cost_model,        // wrench factor
       t_cost_model,         // torque factor
       cp_cost_model,        // contact pose
+      cfriction_cost_model, // contact friction cone
       cv_cost_model,        // contact twist
       ca_cost_model,        // contact acceleration
       cm_cost_model,        // contact moment
