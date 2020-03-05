@@ -478,6 +478,20 @@ class DynamicsGraph {
                                   const Robot &robot, const int num_steps,
                                   bool radial = false);
 
+  /** save factor graph of trajectory in json format
+  * Keyword arguments:
+     file_path           -- path of the json file to store the graph
+     graph               -- factor graph
+     values              -- values of variables in factor graph
+     robot               -- the robot
+     num_steps           -- number of time steps
+     radial              -- option to display in radial format
+   */
+  static void saveGraphTraj(const std::string &file_path,
+                             const gtsam::NonlinearFactorGraph &graph,
+                             const gtsam::Values &values,
+                             const int num_steps);
+
   /* return the optimizer setting. */
   const OptimizerSetting &opt() const { return opt_; }
 };

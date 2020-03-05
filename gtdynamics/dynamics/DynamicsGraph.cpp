@@ -1036,4 +1036,148 @@ void DynamicsGraph::saveGraphMultiSteps(
   json_file.close();
 }
 
+/* classify the variables into different clusters */
+typedef std::pair<std::string, int> ClusterInfo;
+
+inline ClusterInfo getCluster(const gtsam::Key &key)
+{
+  gtsam::LabeledSymbol symb(key);
+  char ch = symb.chr();
+  int index = symb.label();
+  int t = symb.index();
+  if (ch == 'q' || ch == 'p')
+  {
+    return ClusterInfo("q", t);
+  }
+  if (ch == 'v' || ch == 'V')
+  {
+    return ClusterInfo("v", t);
+  }
+  if (ch == 'a' || ch == 'A')
+  {
+    return ClusterInfo("a", t);
+  }
+  if (ch == 'T' || ch == 'F')
+  {
+    return ClusterInfo("f", t);
+  }
+  if ((ch == 't' && index != 1) || (ch = 'P' && t==1000000))
+  { // intial time and pressure
+    return ClusterInfo("s", 1000000);
+  }
+  return ClusterInfo("o", t);
+}
+
+void DynamicsGraph::saveGraphTraj(const std::string &file_path,
+                                  const gtsam::NonlinearFactorGraph &graph,
+                                  const gtsam::Values &values,
+                                  const int num_steps)
+{
+  std::map<std::string, gtsam::Values> clustered_values;
+  std::map<std::string, gtsam::NonlinearFactorGraph> clustered_graphs;
+
+  // cluster the values
+  for (const auto &key : values.keys())
+  {
+    ClusterInfo cluster_info = getCluster(key);
+    int t = cluster_info.second;
+    std::string category = cluster_info.first;
+    std::string cluster_name = category + std::to_string(t);
+    if (category == "s") {cluster_name = "control"; }
+    if (clustered_values.find(cluster_name) == clustered_values.end())
+    {
+      clustered_values[cluster_name] = gtsam::Values();
+    }
+    clustered_values[cluster_name].insert(key, values.at(key));
+  }
+
+  // cluster the factors
+  for (const auto &factor : graph)
+  {
+    std::set<int> time_steps;
+    std::set<std::string> v_categories;
+    for (gtsam::Key key : factor->keys())
+    {
+      ClusterInfo cluster_info = getCluster(key);
+      v_categories.insert(cluster_info.first);
+      if (cluster_info.first != "s")
+      {
+        time_steps.insert(cluster_info.second);
+      }
+    }
+    std::string cluster_name;
+    int t = *std::min_element(time_steps.begin(), time_steps.end());
+
+    if (time_steps.size() == 2)
+    { // collocation factors
+      if (v_categories.find("q") != v_categories.end())
+      {
+        cluster_name = "cQ" + std::to_string(t) + "_" + std::to_string(t + 1);
+      }
+      else
+      {
+        cluster_name = "cV" + std::to_string(t) + "_" + std::to_string(t + 1);
+      }
+    }
+    else if (time_steps.size() == 1)
+    {
+      if (v_categories.find("o") != v_categories.end())
+      {
+        cluster_name = "O" + std::to_string(t);
+      }
+      else if (v_categories.find("f") != v_categories.end())
+      {
+        cluster_name = "F" + std::to_string(t);
+      }
+      else if (v_categories.find("a") != v_categories.end())
+      {
+        cluster_name = "A" + std::to_string(t);
+      }
+      else if (v_categories.find("v") != v_categories.end())
+      {
+        cluster_name = "V" + std::to_string(t);
+      }
+      else if (v_categories.find("q") != v_categories.end())
+      {
+        cluster_name = "Q" + std::to_string(t);
+      }
+      else
+      {
+        cluster_name = "S";
+      }
+    }
+    else
+    {
+      cluster_name = "S";
+    }
+    if (clustered_graphs.find(cluster_name) == clustered_graphs.end())
+    {
+      clustered_graphs[cluster_name] = gtsam::NonlinearFactorGraph();
+    }
+    clustered_graphs[cluster_name].add(factor);
+  }
+
+  // specify locations
+  gtsam::JsonSaver::StrLocationType locations;
+  for (int t = 0; t <= num_steps; t++)
+  {
+    locations["q" + std::to_string(t)] = (gtsam::Vector(3) << t, 0, 0).finished();
+    locations["v" + std::to_string(t)] = (gtsam::Vector(3) << t, 1, 0).finished();
+    locations["a" + std::to_string(t)] = (gtsam::Vector(3) << t, 2, 0).finished();
+    locations["f" + std::to_string(t)] = (gtsam::Vector(3) << t, 3, 0).finished();
+    locations["o" + std::to_string(t)] = (gtsam::Vector(3) << t, 4, 0).finished();
+    locations['V' + std::to_string(t)] = (gtsam::Vector(3) << t, 0.5, 0).finished();
+    locations['A' + std::to_string(t)] = (gtsam::Vector(3) << t, 1.5, 0).finished();
+    locations['F' + std::to_string(t)] = (gtsam::Vector(3) << t, 2.5, 0).finished();
+  }
+
+  // save to file
+  std::ofstream json_file;
+  json_file.open(file_path);
+  gtsam::JsonSaver::SaveClusteredGraph(json_file, clustered_graphs, clustered_values, values, locations);
+  json_file.close();
+
+}
+
+
 }  // namespace gtdynamics

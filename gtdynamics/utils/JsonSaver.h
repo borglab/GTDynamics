@@ -56,6 +56,7 @@ class JsonSaver {
   typedef std::pair<std::string, std::string> AttributeType;
   typedef boost::shared_ptr<gtsam::Value> ValuePtr;
   typedef std::map<Key, gtsam::Vector3> LocationType;
+  typedef std::map<std::string, gtsam::Vector3> StrLocationType;
 
   /**
    * @brief constructor
@@ -515,6 +516,105 @@ class JsonSaver {
       value_type = Quoted(value_type);
     }
     return JsonList(value_types, -1);
+  }
+
+  static inline void SaveClusteredGraph(std::ostream &stm,
+                                        const std::map<std::string, gtsam::NonlinearFactorGraph> &clustered_graphs,
+                                        const std::map<std::string, gtsam::Values> &clustered_values,
+                                        const gtsam::Values &values,
+                                        const StrLocationType &locations = StrLocationType())
+  {
+    // create map from key to value_cluster name for faster searching
+    std::map<gtsam::Key, std::string> key_to_cluster;
+    for (auto value_cluster : clustered_values)
+    {
+      std::string cluster_name = value_cluster.first;
+      // std::cout << "value cluster: " << cluster_name << "\n";
+      for (const auto &key : value_cluster.second.keys())
+      {
+        key_to_cluster[key] = cluster_name;
+      }
+    }
+
+    std::vector<std::string> values_strings;
+    std::vector<std::string> graphs_strings;
+
+    // add clustered values
+    for (const auto &it : clustered_values)
+    {
+      std::string cluster_name = it.first;
+      const gtsam::Values &values = it.second;
+
+      std::vector<AttributeType> attributes;
+      // name
+      attributes.emplace_back(Quoted("name"),
+                              Quoted(cluster_name));
+
+      // location
+      if (locations.find(cluster_name) != locations.end())
+      {
+        const auto loc_str = GetVector(locations.at(cluster_name));
+        attributes.emplace_back(Quoted("location"), loc_str);
+      }
+
+      // values
+      std::vector<std::string> varaible_names;
+      for (const gtsam::Key &key : values.keys())
+      {
+        varaible_names.emplace_back(GetName(key));
+      }
+      attributes.emplace_back(JsonSaver::Quoted("value"), Quoted(JsonList(varaible_names, -1)));
+      values_strings.emplace_back(JsonDict(attributes));
+    }
+
+    // add clustered graphs
+    for (const auto &it : clustered_graphs)
+    {
+      std::string cluster_name = it.first;
+      const gtsam::NonlinearFactorGraph &graph = it.second;
+
+      // std::cout << "graph cluster: " << cluster_name << "\tsize:" << graph.size() << "\n";
+
+      std::vector<AttributeType> attributes;
+      // name
+      attributes.emplace_back(Quoted("name"),
+                              Quoted(cluster_name));
+
+      // varaible clusters
+      std::set<std::string> values_cluster_names;
+      for (const auto &factor : graph)
+      {
+        for (const auto &key : factor->keys())
+        {
+          values_cluster_names.insert(Quoted(key_to_cluster[key]));
+        }
+      }
+      std::vector<std::string> vec_cluster_names(values_cluster_names.begin(), values_cluster_names.end());
+      attributes.emplace_back(Quoted("variables"), JsonList(vec_cluster_names, -1));
+
+      // calculate errors
+      double error = 0;
+      for (const auto &factor : graph)
+      {
+        error += factor->error(values);
+      }
+      attributes.emplace_back(Quoted("error"), std::to_string(error));
+
+      // location
+      if (locations.find(cluster_name) != locations.end())
+      {
+        const auto loc_str = GetVector(locations.at(cluster_name));
+        attributes.emplace_back(Quoted("location"), loc_str);
+      }
+
+      graphs_strings.emplace_back(JsonDict(attributes));
+    }
+
+    std::string s_variables = JsonList(values_strings);
+    std::string s_factors = JsonList(graphs_strings);
+    std::vector<std::string> all_strings{s_variables, s_factors};
+    std::string s_all = JsonList(all_strings);
+    stm << s_all;
   }
 };
 
