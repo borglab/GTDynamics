@@ -184,7 +184,7 @@ gtsam::Values initialize_solution_inverse_kinematics(
   // Linearly interpolated pose for link at each discretized timestep.
   std::vector<gtsam::Pose3> wTl_dt;
 
-  for (int i = 0; i < ts.size(); i++) {
+  for (size_t i = 0; i < ts.size(); i++) {
     gtsam::Point3 wPl_t = wTl_t[i].translation();  // des P.
     gtsam::Rot3 wRl_t = wTl_t[i].rotation();       // des R.
     double t_ti = t_i, t_t = ts[i];                // Initial and final times.

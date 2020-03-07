@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
   for (auto&& jval : joint_vals_final)
     std::cout << "\t" << jval.first << ": " << jval.second << "," << std::endl;
 
-  // Write the joint angles, velocities, accels, and torques to an output file.
+  // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::vector<std::string> jnames;
   for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
   std::string jnames_str = boost::algorithm::join(jnames, ",");
@@ -248,23 +248,39 @@ int main(int argc, char** argv) {
   traj_file.open("../traj.csv");
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
-            << jnames_str << "\n";
+            << jnames_str << ",gol_x" << ",gol_y" << ",gol_z" << ",gol_qx"
+            << ",gol_qy" << ",gol_qz" << ",gol_qw" << "\n";
   for (int t = 0; t <= t_steps; t++) {
-    std::vector<std::string> jvals;
+    std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())
-      jvals.push_back(std::to_string(
+      vals.push_back(std::to_string(
           results.atDouble(gtdynamics::JointAngleKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      jvals.push_back(std::to_string(
+      vals.push_back(std::to_string(
           results.atDouble(gtdynamics::JointVelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      jvals.push_back(std::to_string(
+      vals.push_back(std::to_string(
           results.atDouble(gtdynamics::JointAccelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      jvals.push_back(std::to_string(
+      vals.push_back(std::to_string(
           results.atDouble(gtdynamics::TorqueKey(joint->getID(), t))));
-    std::string jvals_str = boost::algorithm::join(jvals, ",");
-    traj_file << jvals_str << "\n";
+
+    for (size_t i = 0; i < des_poses.size(); i++) {
+        gtsam::Pose3 dp = des_poses[i];
+        if (t <= static_cast<int>(std::round(des_poses_t[i] / dt))) {
+            vals.push_back(std::to_string(dp.x()));
+            vals.push_back(std::to_string(dp.y()));
+            vals.push_back(std::to_string(dp.z()));
+            vals.push_back(std::to_string(dp.rotation().toQuaternion().x()));
+            vals.push_back(std::to_string(dp.rotation().toQuaternion().y()));
+            vals.push_back(std::to_string(dp.rotation().toQuaternion().z()));
+            vals.push_back(std::to_string(dp.rotation().toQuaternion().w()));
+            break;
+        }
+    }
+
+    std::string vals_str = boost::algorithm::join(vals, ",");
+    traj_file << vals_str << "\n";
   }
   traj_file.close();
 
