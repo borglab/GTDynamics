@@ -117,6 +117,40 @@ TEST(initialize_solution_utils, initialize_solution_interpolation_multi_phase) {
           .cast<gtsam::Pose3>()));
 }
 
+TEST(initialize_solution_utils, initialize_solution_inverse_kinematics) {
+  using simple_urdf::my_robot;
+
+  auto l2 = my_robot.getLinkByName("l2");
+
+  gtsam::Pose3 wTb_i = l2->wTcom();
+  std::vector<gtsam::Pose3> wTb_t = {
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3(1, 0, 3))
+  };
+
+  std::vector<double> ts = {10};
+  double dt = 1;
+
+  gtdynamics::ContactPoints contact_points = {
+    gtdynamics::ContactPoint{"l1", gtsam::Point3(0, 0, -1), 1, 0.0}
+  };
+
+  gtsam::Values init_vals = gtdynamics::initialize_solution_inverse_kinematics(
+    my_robot, "l2", wTb_i, wTb_t, ts, dt, contact_points);
+
+  EXPECT(assert_equal(
+      wTb_i,
+      init_vals.at(gtdynamics::PoseKey(l2->getID(), 0)).cast<gtsam::Pose3>(),
+      1e-3));
+
+  EXPECT(assert_equal(
+      wTb_t[0],
+      init_vals.at(gtdynamics::PoseKey(l2->getID(), 10)).cast<gtsam::Pose3>())
+  );
+  
+
+
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
