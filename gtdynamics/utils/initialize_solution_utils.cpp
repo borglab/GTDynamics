@@ -59,7 +59,7 @@ gtsam::Values initialize_solution_interpolation(
                 zero_a = gtsam::Vector1::Zero();
 
   double t_elapsed = T_i;
-  for (int t = n_steps_init; t < n_steps_final; t++) {
+  for (int t = n_steps_init; t <= n_steps_final; t++) {
     double s = (t_elapsed - T_i) / (T_f - T_i);
 
     // Compute interpolated pose for link.
@@ -116,7 +116,7 @@ gtsam::Values initialize_solution_interpolation(
   return init_vals;
 }
 
-gtsam::Values initialize_solution_interpolation_multi_step(
+gtsam::Values initialize_solution_interpolation_multi_phase(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
     const std::vector<double>& ts, const double& dt,
@@ -125,8 +125,10 @@ gtsam::Values initialize_solution_interpolation_multi_step(
   gtsam::Pose3 pose = wTl_i;
   double curr_t = 0.0;
   for (size_t i = 0; i < wTl_t.size(); i++) {
-    init_vals.insert(initialize_solution_interpolation(
-        robot, link_name, pose, wTl_t[i], curr_t, ts[i], dt, contact_points));
+    gtsam::Values phase_vals = initialize_solution_interpolation(
+      robot, link_name, pose, wTl_t[i], curr_t, ts[i], dt, contact_points);
+    for (auto&& key_value_pair : phase_vals)
+      init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
     pose = wTl_t[i];
     curr_t = ts[i];
   }

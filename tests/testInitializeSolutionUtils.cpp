@@ -16,32 +16,105 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 
-#include <string>
+#include <cmath>
 #include <iostream>
+#include <string>
 
-#include "gtdynamics/utils/initialize_solution_utils.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
+using gtsam::assert_equal;
 
 TEST(initialize_solution_utils, initialize_solution_interpolation) {
-    using simple_urdf_eq_mass::my_robot, simple_urdf_eq_mass::gravity,
-      simple_urdf_eq_mass::planar_axis;
-    
-    gtsam::Pose3 wTb_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
-    gtsam::Pose3 wTb_f = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+  using simple_urdf::my_robot;
 
-    double T_i = 0, T_f = 10, dt = 1;
+  gtsam::Pose3 wTb_i =
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3());
+  gtsam::Pose3 wTb_f = gtsam::Pose3(
+      gtsam::Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2), gtsam::Point3(1, 1, 1));
 
-    gtsam::Values init_vals = gtdynamics::initialize_solution_interpolation(
-        my_robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
+  double T_i = 0, T_f = 10, dt = 1;
 
-    int n_steps_init = static_cast<int>(std::round(T_i / dt));
-    int n_steps_final = static_cast<int>(std::round(T_f / dt));
+  gtsam::Values init_vals = gtdynamics::initialize_solution_interpolation(
+      my_robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
 
-    for (int t = n_steps_init; t < n_steps_final; t++) {
-        std::cout << init_vals.at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), t)).cast<gtsam::Pose3>() << std::endl;
-    }
+  int n_steps_final = static_cast<int>(std::round(T_f / dt));
+
+  EXPECT(assert_equal(wTb_i, init_vals
+                                 .at(gtdynamics::PoseKey(
+                                     my_robot.getLinkByName("l1")->getID(), 0))
+                                 .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
+                   gtsam::Point3(0.5, 0.5, 0.5)),
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), 5))
+          .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      gtsam::Pose3(wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
+                   gtsam::Point3(0.9, 0.9, 0.9)),
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(),
+                                  n_steps_final - 1))
+          .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      wTb_f, init_vals
+                 .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(),
+                                         n_steps_final))
+                 .cast<gtsam::Pose3>()));
+}
+
+TEST(initialize_solution_utils, initialize_solution_interpolation_multi_phase) {
+  using simple_urdf_eq_mass::my_robot;
+
+  gtsam::Pose3 wTb_i =
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3());
+  std::vector<gtsam::Pose3> wTb_t = {
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 1, 1)),
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2),
+                   gtsam::Point3(2, 1, 1))};
+  std::vector<double> ts = {5, 10};
+  double dt = 1;
+
+  gtsam::Values init_vals =
+      gtdynamics::initialize_solution_interpolation_multi_phase(
+          my_robot, "l1", wTb_i, wTb_t, ts, dt);
+
+  EXPECT(assert_equal(wTb_i, init_vals
+                                 .at(gtdynamics::PoseKey(
+                                     my_robot.getLinkByName("l1")->getID(), 0))
+                                 .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
+                   gtsam::Point3(0, -1, 1)),
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l2")->getID(), 0))
+          .cast<gtsam::Pose3>(),
+      1e-3));
+
+  EXPECT(assert_equal(
+      wTb_t[0],
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), 5))
+          .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      gtsam::Pose3(wTb_t[0].rotation().slerp(0.8, wTb_t[1].rotation()),
+                   gtsam::Point3(1.8, 1, 1)),
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), 9))
+          .cast<gtsam::Pose3>()));
+
+  EXPECT(assert_equal(
+      wTb_t[1],
+      init_vals
+          .at(gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), 10))
+          .cast<gtsam::Pose3>()));
 }
 
 int main() {

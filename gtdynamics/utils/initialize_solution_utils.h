@@ -43,7 +43,7 @@ gtsam::Values initialize_solution_interpolation(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const gtsam::Pose3& wTl_f, const double& T_i,
     const double& T_f, const double& dt,
-    const boost::optional<std::vector<ContactPoint>>& 
+    const boost::optional<std::vector<ContactPoint>>&
     contact_points = boost::none);
 
 /** @fn Initialize interpolated solution for multiple phases.
@@ -57,7 +57,7 @@ gtsam::Values initialize_solution_interpolation(
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
-gtsam::Values initialize_solution_interpolation_multi_step(
+gtsam::Values initialize_solution_interpolation_multi_phase(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
     const std::vector<double>& ts, const double& dt,
