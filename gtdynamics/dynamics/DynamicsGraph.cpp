@@ -371,7 +371,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           if (mu)
             mu_ = *mu;
           else
-            mu_ = 1.0;
+            mu_ = DEFAULT_MU;
 
           graph.add(ContactDynamicsFrictionConeFactor(
               PoseKey(i, t), ContactWrenchKey(i, contact_point.contact_id, t),
@@ -479,23 +479,35 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
     const boost::optional<gtsam::Vector3> &gravity,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
+    const boost::optional<gtsam::Vector3> &planar_axis,
+    const boost::optional<std::vector<ContactPoints>> &phase_contact_points,
+    const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   int num_phases = robots.size();
 
   // add dynamcis for each step
   int t = 0;
-  graph.add(dynamicsFactorGraph(robots[0], t, gravity, planar_axis));
+  if (phase_contact_points)
+    graph.add(dynamicsFactorGraph(robots[0], t, gravity, planar_axis, (*phase_contact_points)[0], mu));
+  else
+    graph.add(dynamicsFactorGraph(robots[0], t, gravity, planar_axis));
 
   for (int phase = 0; phase < num_phases; phase++) {
     // in-phase
     for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
          phase_step++) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis));
+
+      if (phase_contact_points)
+        graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis, (*phase_contact_points)[phase], mu));
+      else
+        graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis));
     }
     // transition
     if (phase == num_phases - 1) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis));
+      if (phase_contact_points)
+        graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis, (*phase_contact_points)[phase], mu));
+      else
+        graph.add(dynamicsFactorGraph(robots[phase], ++t, gravity, planar_axis));
     } else {
       t++;
       graph.add(transition_graphs[phase]);

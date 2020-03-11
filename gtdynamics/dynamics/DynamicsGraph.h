@@ -29,6 +29,8 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
 
+#define DEFAULT_MU 1.0
+
 namespace gtdynamics {
 
 // TODO(aescontrela3, yetongumich): can we not use inline here?
@@ -309,19 +311,22 @@ class DynamicsGraph {
 
   /** return nonlinear factor graph of the entire trajectory for multi-phase
   * Keyword arguments:
-     robots              -- the robot configuration for each phase
-     phase_steps         -- number of time steps for each phase
-     transition_graphs   -- transition step graphs with guardian factors
-     collocation         -- the collocation scheme
-     gravity             -- gravity in world frame
-     planar_axis         -- axis of the plane, only for planar robot
+     robots               -- the robot configuration for each phase
+     phase_steps          -- number of time steps for each phase
+     transition_graphs    -- transition step graphs with guardian factors
+     collocation          -- the collocation scheme
+     gravity              -- gravity in world frame
+     planar_axis          -- axis of the plane, only for planar robot
+     phase_contact_points -- contact points at each phase.
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
+      const boost::optional<std::vector<ContactPoints>> &phase_contact_points = boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /** return collocation factors on angles and velocities from time step t to
   t+1
