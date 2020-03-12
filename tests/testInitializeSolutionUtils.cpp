@@ -154,24 +154,31 @@ TEST(initialize_solution_utils, initialize_solution_inverse_kinematics) {
   // TODO(aescontrela): These unit tests should work once the issue with the
   // ContactKinematicsPoseFactor is fixed.
 
-    for (int t = 0; t <= std::roundl(ts[0] / dt); t++) {
-      EXPECT(assert_equal(
-      0.0,
-      (init_vals.at(gtdynamics::PoseKey(l1->getID(), t)).cast<gtsam::Pose3>() * oTc_l1).translation().z(), 1e-3
-      ));
-      std::cout << init_vals.at(gtdynamics::PoseKey(l2->getID(), t)).cast<gtsam::Pose3>() << std::endl;
-    }
+  for (int t = 0; t <= std::roundl(ts[0] / dt); t++) {
+    EXPECT(assert_equal(0.0,
+                        (init_vals.at(gtdynamics::PoseKey(l1->getID(), t))
+                             .cast<gtsam::Pose3>() *
+                         oTc_l1)
+                            .translation()
+                            .z(),
+                        1e-3));
+    std::cout << init_vals.at(gtdynamics::PoseKey(l2->getID(), t))
+                     .cast<gtsam::Pose3>()
+              << std::endl;
+  }
 
-    EXPECT(assert_equal(
-        wTb_t[0],
-        init_vals.at(gtdynamics::PoseKey(l2->getID(), std::roundl(ts[0] /
-        dt))).cast<gtsam::Pose3>())
-    );
-    EXPECT(assert_equal(
+  EXPECT(assert_equal(
+      wTb_t[0],
+      init_vals.at(gtdynamics::PoseKey(l2->getID(), std::roundl(ts[0] / dt)))
+          .cast<gtsam::Pose3>()));
+  EXPECT(assert_equal(
       0.0,
-      (init_vals.at(gtdynamics::PoseKey(l1->getID(), std::roundl(ts[0] /
-      dt))).cast<gtsam::Pose3>() * oTc_l1).translation().z(), 1e-3
-    ));
+      (init_vals.at(gtdynamics::PoseKey(l1->getID(), std::roundl(ts[0] / dt)))
+           .cast<gtsam::Pose3>() *
+       oTc_l1)
+          .translation()
+          .z(),
+      1e-3));
 }
 
 TEST(initialize_solution_utils, initialize_solution_zero_values) {
@@ -205,7 +212,7 @@ TEST(initialize_solution_utils, initialize_solution_zero_values_trajectory) {
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   /**
-   * 
+   *
    *    |                 ı
    *    | l2              |  l2
    *    |                 |
@@ -216,16 +223,15 @@ TEST(initialize_solution_utils, initialize_solution_zero_values_trajectory) {
    */
 
   /**
-   * 
-   *    |                 
-   *    | l2              | 
+   *
+   *    |
+   *    | l2              |
    *    |                 | l2
    *    |       =>        |
-   *    | l1              | 
+   *    | l1              |
    *    |                 | l1 :(
    * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
-
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
