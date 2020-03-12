@@ -84,18 +84,19 @@ class ContactKinematicsPoseFactor
     gtsam::Matrix36 H_trans;
     gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
 
+    // Compute the error.
     gtsam::Vector sTc_p_h = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
-    // gtsam::Vector error = (sTc_p_h - h_) * (sTc_p_h - h_);
     gtsam::Vector error = sTc_p_h - h_;
 
-    // Compute the error.
-    // gtsam::Vector error = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
+    if (H_pose) {
+      *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+      gtsam::Matrix16 H_p = *H_pose;
 
-    // Compute the jacobian.
-    // if (H_pose) *H_pose = 2 * (sTc_p_h - h_) * H_err_ *
-    //                       H_trans * cTcom_.AdjointMap();
-    if (H_pose) *H_pose = H_err_ *
-                          H_trans * cTcom_.AdjointMap();
+      gtsam::Vector6 grad_corr = gtsam::Vector6::Zero();
+      for (int i = 3; i < 6; i++)
+        grad_corr[i] = H_p[i] == 0 ? grad_corr[i] + 1e-1 : 0;
+      *H_pose = *H_pose + grad_corr.transpose();
+    }
 
     return error;
   }
