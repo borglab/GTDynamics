@@ -67,9 +67,6 @@ gtsam::Values initialize_solution_interpolation(
     gtsam::Rot3 wRl_t = wRl_i.slerp(s, wRl_f);
     gtsam::Pose3 wTl_t = gtsam::Pose3(wRl_t, wPl_t);
 
-    // std::cout << "\t Pose: [" << wPl_t << " | " << wRl_t.rpy() << "]" <<
-    // std::endl;
-
     // Compute forward dynamics to obtain remaining link poses.
     auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_t);
     for (auto&& pose_result : fk_results.first)
@@ -212,16 +209,6 @@ gtsam::Values initialize_solution_inverse_kinematics(
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
     gtsam::Values results = optimizer.optimize();
-
-    // std::cout << "Error (" << t << "): " << kfg.error(results) << std::endl;
-    // std::cout << "wTl_dt[" << t << "]: [R = " <<
-    // wTl_dt[t].rotation().rpy().transpose() << "| t = " <<
-    // wTl_dt[t].translation().vector().transpose() << "]\n"; gtsam::Pose3
-    // wTl_t_opt =
-    // results.at(gtdynamics::PoseKey(robot.getLinkByName(link_name)->getID(),
-    // t)).cast<gtsam::Pose3>(); std::cout << "wTl_t_opt[" << t << "]: [R = " <<
-    // wTl_t_opt.rotation().rpy().transpose() << "| t = " <<
-    // wTl_t_opt.translation().vector().transpose() << "]\n";
 
     init_vals.insert(results);
 

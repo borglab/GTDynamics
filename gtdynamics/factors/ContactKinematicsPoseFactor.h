@@ -92,6 +92,8 @@ class ContactKinematicsPoseFactor
       *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
       gtsam::Matrix16 H_p = *H_pose;
 
+      // Add a small perturbation to any zero-valued translation components
+      // of the gradient to drive the system away from any singularities.
       gtsam::Vector6 grad_corr = gtsam::Vector6::Zero();
       for (int i = 3; i < 6; i++)
         grad_corr[i] = H_p[i] == 0 ? grad_corr[i] + 1e-1 : 0;
