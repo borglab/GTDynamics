@@ -3,6 +3,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 
 int main(int argc, char** argv) {
 
@@ -29,7 +30,7 @@ int main(int argc, char** argv) {
     kdfg.add(fd_priors);
 
     // Initialize solution.
-    auto init_values = graph_builder.zeroValues(simple_rr, 0);
+    auto init_values = gtdynamics::zero_values(simple_rr, 0);
 
     // Compute the forward dynamics.
     gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

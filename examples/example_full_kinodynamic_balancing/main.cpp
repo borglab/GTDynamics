@@ -16,6 +16,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/PoseGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -30,8 +31,6 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
-
-#include "initialize_solutions.hpp"
 
 #define GROUND_HEIGHT -0.191839
 
@@ -192,20 +191,21 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  std::string initialization_technique = "zeros";
+  std::string initialization_technique = "inverse_kinematics";
   if (initialization_technique == "interp")
     // TODO(aescontrela): Figure out why the linearly interpolated initial
     // trajectory fails to optimize. My initial guess is that the optimizer has
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = initialize_solution_interpolation_multi_step(vision60,
-      "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
+    init_vals = gtdynamics::initialize_solution_interpolation_multi_phase(
+        vision60, "body", base_pose_init, des_poses, des_poses_t, dt,
+        contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = graph_builder.zeroValuesTrajectory(
+    init_vals = gtdynamics::zero_values_trajectory(
       vision60, t_steps, 0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = initialize_solution_inverse_kinematics(vision60,
+    init_vals = gtdynamics::initialize_solution_inverse_kinematics(vision60,
       "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
 
   gtsam::LevenbergMarquardtParams params;

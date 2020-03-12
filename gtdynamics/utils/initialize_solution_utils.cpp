@@ -152,10 +152,9 @@ gtsam::Values initialize_solution_inverse_kinematics(
     const std::vector<double>& ts, const double& dt,
     const boost::optional<std::vector<ContactPoint>>&
         contact_points) {
-  // Initial pose.
-  gtsam::Point3 wPl_i = wTl_i.translation();
-  gtsam::Rot3 wRl_i = wTl_i.rotation();
-  double t_i = 0.0;
+  gtsam::Point3 wPl_i = wTl_i.translation();  // Initial translation.
+  gtsam::Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
+  double t_i = 0.0;                           // Time elapsed.
 
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 
@@ -167,11 +166,8 @@ gtsam::Values initialize_solution_inverse_kinematics(
     gtsam::Rot3 wRl_t = wTl_t[i].rotation();       // des R.
     double t_ti = t_i, t_t = ts[i];                // Initial and final times.
 
-    int n_steps_init = static_cast<int>(std::round(t_i / dt));
-    int n_steps_final = static_cast<int>(std::round(t_t / dt));
-
-    for (int t = n_steps_init; t < n_steps_final; t++) {
-      double s = (t_i - t_ti) / (t_t - t_ti);
+    for (int t = std::lround(t_i / dt); t < std::lround(t_t / dt); t++) {
+      double s = (t_i - t_ti) / (t_t - t_ti);  // Normalized phase progress.
 
       // Compute interpolated pose for link.
       gtsam::Point3 wPl_s = (1 - s) * wPl_i + s * wPl_t;
@@ -188,54 +184,58 @@ gtsam::Values initialize_solution_inverse_kinematics(
 
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
-  int n_steps_init = 0;
-  int n_steps_final = static_cast<int>(std::round(ts[ts.size() - 1] / dt));
   gtsam::Values init_vals, init_vals_t;
 
-  // Initial pose known a priori.
-  gtsam::Vector zero_twist = gtsam::Vector6::Zero(),
-                zero_accel = gtsam::Vector6::Zero(),
-                zero_wrench = gtsam::Vector6::Zero(),
-                zero_torque = gtsam::Vector1::Zero(),
-                zero_q = gtsam::Vector1::Zero(),
-                zero_v = gtsam::Vector1::Zero(),
-                zero_a = gtsam::Vector1::Zero();
+  // Initial pose and joint angles are known a priori.
+  gtsam::Vector z_six = gtsam::Vector6::Zero(), z_one = gtsam::Vector6::Zero();
 
-  // Init pose and joint angles.
-  for (auto&& link : robot.links())
-    init_vals_t.insert(gtdynamics::PoseKey(link->getID(), 0), link->wTcom());
+  gtdynamics::Robot::JointValues jangles, jvels;
+  for (auto&& joint : robot.joints()) {
+    jangles.insert(std::make_pair(joint->name(), 0.0));
+    jvels.insert(std::make_pair(joint->name(), 0.0));
+  }
+  // Compute forward dynamics to obtain remaining link poses.
+  auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_i);
+  for (auto&& pose_result : fk_results.first)
+    init_vals_t.insert(gtdynamics::PoseKey(
+                          robot.getLinkByName(pose_result.first)->getID(), 0),
+                      pose_result.second);
   for (auto&& joint : robot.joints())
-    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0), zero_q[0]);
+    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0), z_one[0]);
 
   auto dgb = gtdynamics::DynamicsGraph();
-
-  for (int t = n_steps_init; t <= n_steps_final; t++) {
+  for (int t = 0; t <= std::lround(ts[ts.size() - 1] / dt); t++) {
     gtsam::NonlinearFactorGraph kfg =
         dgb.qFactors(robot, t, gravity, contact_points);
     kfg.add(gtdynamics::PoseGoalFactor(
         gtdynamics::PoseKey(robot.getLinkByName(link_name)->getID(), t),
         gtsam::noiseModel::Constrained::All(6), wTl_dt[t]));
-
+    
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
     gtsam::Values results = optimizer.optimize();
 
+    // std::cout << "Error (" << t << "): " << kfg.error(results) << std::endl;
+    // std::cout << "wTl_dt[" << t << "]: [R = " << wTl_dt[t].rotation().rpy().transpose() << "| t = " << wTl_dt[t].translation().vector().transpose() << "]\n";
+    // gtsam::Pose3 wTl_t_opt = results.at(gtdynamics::PoseKey(robot.getLinkByName(link_name)->getID(), t)).cast<gtsam::Pose3>();
+    // std::cout << "wTl_t_opt[" << t << "]: [R = " << wTl_t_opt.rotation().rpy().transpose() << "| t = " << wTl_t_opt.translation().vector().transpose() << "]\n";
+    
+
     init_vals.insert(results);
 
-    // Add initial values for dynamics quantities.
+    // Add zero initial values for remaining variables.
     for (auto&& link : robot.links()) {
-      init_vals.insert(gtdynamics::TwistKey(link->getID(), t), zero_twist);
-      init_vals.insert(gtdynamics::TwistAccelKey(link->getID(), t), zero_accel);
+      init_vals.insert(gtdynamics::TwistKey(link->getID(), t), z_six);
+      init_vals.insert(gtdynamics::TwistAccelKey(link->getID(), t), z_six);
     }
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
       init_vals.insert(
-          gtdynamics::WrenchKey(joint->parentLink()->getID(), j, t),
-          zero_wrench);
-      init_vals.insert(gtdynamics::WrenchKey(joint->childLink()->getID(), j, t),
-                       zero_wrench);
-      init_vals.insert(gtdynamics::TorqueKey(j, t), zero_torque[0]);
-      init_vals.insert(gtdynamics::JointVelKey(j, t), zero_v[0]);
-      init_vals.insert(gtdynamics::JointAccelKey(j, t), zero_a[0]);
+          gtdynamics::WrenchKey(joint->parentLink()->getID(), j, t), z_six);
+      init_vals.insert(
+          gtdynamics::WrenchKey(joint->childLink()->getID(), j, t), z_six);
+      init_vals.insert(gtdynamics::TorqueKey(j, t), z_one[0]);
+      init_vals.insert(gtdynamics::JointVelKey(j, t), z_one[0]);
+      init_vals.insert(gtdynamics::JointAccelKey(j, t), z_one[0]);
     }
     if (contact_points) {
       for (auto&& contact_point : *contact_points) {
@@ -246,7 +246,7 @@ gtsam::Values initialize_solution_inverse_kinematics(
         if (link_id == -1) throw std::runtime_error("Link not found.");
         init_vals.insert(
             gtdynamics::ContactWrenchKey(link_id, contact_point.contact_id, t),
-            zero_wrench);
+            z_six);
       }
     }
 
@@ -263,6 +263,66 @@ gtsam::Values initialize_solution_inverse_kinematics(
   }
 
   return init_vals;
+}
+
+gtsam::Values zero_values(
+    const Robot &robot, const int t,
+    const boost::optional<ContactPoints> &contact_points) {
+  gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
+                zero_accels = gtsam::Vector6::Zero(),
+                zero_wrenches = gtsam::Vector6::Zero(),
+                zero_torque = gtsam::Vector1::Zero(),
+                zero_q = gtsam::Vector1::Zero(),
+                zero_v = gtsam::Vector1::Zero(),
+                zero_a = gtsam::Vector1::Zero();
+  gtsam::Values zero_values;
+  for (auto &link : robot.links()) {
+    int i = link->getID();
+    zero_values.insert(gtdynamics::PoseKey(i, t), link->wTcom());
+    zero_values.insert(gtdynamics::TwistKey(i, t), zero_twists);
+    zero_values.insert(gtdynamics::TwistAccelKey(i, t), zero_accels);
+  }
+  for (auto &joint : robot.joints()) {
+    int j = joint->getID();
+    auto parent_link = joint->parentLink();
+    auto child_link = joint->childLink();
+    zero_values.insert(gtdynamics::WrenchKey(parent_link->getID(), j, t), zero_wrenches);
+    zero_values.insert(gtdynamics::WrenchKey(child_link->getID(), j, t), zero_wrenches);
+    zero_values.insert(gtdynamics::TorqueKey(j, t), zero_torque[0]);
+    zero_values.insert(gtdynamics::JointAngleKey(j, t), zero_q[0]);
+    zero_values.insert(gtdynamics::JointVelKey(j, t), zero_v[0]);
+    zero_values.insert(gtdynamics::JointAccelKey(j, t), zero_a[0]);
+  }
+  if (contact_points) {
+    for (auto &&contact_point : *contact_points) {
+      int link_id = -1;
+      for (auto &link : robot.links()) {
+        if (link->name() == contact_point.name) link_id = link->getID();
+      }
+
+      if (link_id == -1) throw std::runtime_error("Link not found.");
+
+      zero_values.insert(gtdynamics::ContactWrenchKey(link_id, contact_point.contact_id, t),
+                         zero_wrenches);
+    }
+  }
+
+  return zero_values;
+}
+
+gtsam::Values zero_values_trajectory(
+    const Robot &robot, const int num_steps, const int num_phases,
+    const boost::optional<ContactPoints> &contact_points) {
+  gtsam::Values z_values;
+  for (int t = 0; t <= num_steps; t++) {
+    z_values.insert(zero_values(robot, t, contact_points));
+  }
+  if (num_phases > 0) {
+    for (int phase = 0; phase <= num_phases; phase++) {
+      z_values.insert(gtdynamics::PhaseKey(phase), 0.0);
+    }
+  }
+  return z_values;
 }
 
 }  // namespace gtdynamics

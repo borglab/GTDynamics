@@ -82,6 +82,30 @@ gtsam::Values initialize_solution_inverse_kinematics(
     const boost::optional<std::vector<ContactPoint>>&
         contact_points = boost::none);
 
+/** @fn Return zero values for all variables for initial value of optimization.
+ * 
+ * @param[in] robot          A gtdynamics::Robot object.
+ * @param[in] t              Timestep to return zero initial values for.
+ * @param[in] contact_points Contact points for timestep t.
+ */
+gtsam::Values zero_values(
+    const Robot &robot, const int t,
+    const boost::optional<ContactPoints> &contact_points =
+        boost::none);
+
+/** @fn Return zero values of the trajectory for initial value of optimization.
+ * 
+ * @param[in] robot          A gtdynamics::Robot object.
+ * @param[in] num_steps      Total number of time steps.
+ * @param[in] num_phases     Number of phases, -1 if not using.
+ * @param[in] contact_points Contact points along the trajectory.
+ * @return Initial solution stored in a gtsam::Values object.
+ */
+gtsam::Values zero_values_trajectory(
+    const Robot &robot, const int num_steps, const int num_phases = -1,
+    const boost::optional<ContactPoints> &contact_points =
+        boost::none);
+
 }  // namespace gtdynamics
 
 

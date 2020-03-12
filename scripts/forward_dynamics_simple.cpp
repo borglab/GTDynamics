@@ -21,6 +21,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 TEST(DynamicsGraph, forward_dynamics_r) {
   // Load the simple robot and fix the first link's pose.
@@ -42,7 +43,7 @@ TEST(DynamicsGraph, forward_dynamics_r) {
   dfg.add(fd_priors);
 
   // Obtain solution initialization.
-  gtsam::Values init_values = dg_builder.zeroValues(my_robot, 0);
+  gtsam::Values init_values = gtdynamics::zero_values(my_robot, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);
