@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
     // Specify the forward dynamics priors and add them to the factor graph.
     gtsam::Vector theta = (gtsam::Vector(3) << 0, 0, 0).finished();
-    gtsam::Vector theta_dot = (gtsam::Vector(3) << 0.1, 0.3, 0).finished();
+    gtsam::Vector theta_dot = (gtsam::Vector(3) << 0.3, 0.1, 0).finished();
     std::vector<gtsam::Vector> taus;
     for (int t = 0; t <= T; t++) {
         taus.push_back((gtsam::Vector(3) << 0, 0, 0).finished());
