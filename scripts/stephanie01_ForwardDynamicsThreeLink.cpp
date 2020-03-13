@@ -20,7 +20,7 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-TEST(DynamicsGraph, optimization) {
+int main(int argc, char** argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
   using three_link::my_robot;
 
@@ -55,9 +55,6 @@ TEST(DynamicsGraph, optimization) {
   // Print the result and its associated error.
   graph_builder.printValues(result);
   std::cout << "Optimization error: " << graph.error(result) << std::endl;
-}
 
-int main() {
-  TestResult tr;
-  return TestRegistry::runAllTests(tr);
+  return 0;
 }
