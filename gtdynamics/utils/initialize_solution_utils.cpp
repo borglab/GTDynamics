@@ -183,7 +183,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
   gtsam::Values init_vals, init_vals_t;
 
   // Initial pose and joint angles are known a priori.
-  gtsam::Vector z_six = gtsam::Vector6::Zero(), z_one = gtsam::Vector6::Zero();
+  gtsam::Vector z_six = gtsam::Vector6::Zero(), z_one = gtsam::Vector1::Zero();
 
   gtdynamics::Robot::JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
