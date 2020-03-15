@@ -40,6 +40,8 @@ class ContactKinematicsPoseFactor
   gtsam::Pose3 cTcom_;
   gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
 
+  double gradient_perturbation_;
+
   gtsam::Matrix13 H_err_;
 
  public:
@@ -56,8 +58,10 @@ class ContactKinematicsPoseFactor
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
-      const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), cTcom_(cTcom) {
+      const double &ground_plane_height = 0.0,
+      double gradient_perturbation = 1e-1)
+      : Base(cost_model, pose_key), cTcom_(cTcom),
+        gradient_perturbation_(gradient_perturbation) {
     if (gravity[0] != 0)
       H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
     else if (gravity[1] != 0)
@@ -96,7 +100,7 @@ class ContactKinematicsPoseFactor
       // of the gradient to drive the system away from any singularities.
       gtsam::Vector6 grad_corr = gtsam::Vector6::Zero();
       for (int i = 3; i < 6; i++)
-        grad_corr[i] = H_p[i] == 0 ? grad_corr[i] + 1e-1 : 0;
+        grad_corr[i] = H_p[i] == 0 ? grad_corr[i] + gradient_perturbation_ : 0;
       *H_pose = *H_pose + grad_corr.transpose();
     }
 
