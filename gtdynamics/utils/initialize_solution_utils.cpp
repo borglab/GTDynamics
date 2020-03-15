@@ -29,7 +29,7 @@
 
 namespace gtdynamics {
 
-gtsam::Values initialize_solution_interpolation(
+gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const gtsam::Pose3& wTl_f, const double& T_i, const double& T_f,
     const double& dt,
@@ -113,7 +113,7 @@ gtsam::Values initialize_solution_interpolation(
   return init_vals;
 }
 
-gtsam::Values initialize_solution_interpolation_multi_phase(
+gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt,
@@ -122,7 +122,7 @@ gtsam::Values initialize_solution_interpolation_multi_phase(
   gtsam::Pose3 pose = wTl_i;
   double curr_t = 0.0;
   for (size_t i = 0; i < wTl_t.size(); i++) {
-    gtsam::Values phase_vals = initialize_solution_interpolation(
+    gtsam::Values phase_vals = InitializeSolutionInterpolation(
         robot, link_name, pose, wTl_t[i], curr_t, ts[i], dt, contact_points);
     for (auto&& key_value_pair : phase_vals)
       init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
@@ -143,7 +143,7 @@ gtsam::Values initialize_solution_interpolation_multi_phase(
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
-gtsam::Values initialize_solution_inverse_kinematics(
+gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt,
@@ -255,7 +255,7 @@ gtsam::Values initialize_solution_inverse_kinematics(
   return init_vals;
 }
 
-gtsam::Values zero_values(
+gtsam::Values ZeroValues(
     const Robot& robot, const int t,
     const boost::optional<ContactPoints>& contact_points) {
   gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
@@ -303,12 +303,12 @@ gtsam::Values zero_values(
   return zero_values;
 }
 
-gtsam::Values zero_values_trajectory(
+gtsam::Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases,
     const boost::optional<ContactPoints>& contact_points) {
   gtsam::Values z_values;
   for (int t = 0; t <= num_steps; t++) {
-    z_values.insert(zero_values(robot, t, contact_points));
+    z_values.insert(ZeroValues(robot, t, contact_points));
   }
   if (num_phases > 0) {
     for (int phase = 0; phase <= num_phases; phase++) {

@@ -67,7 +67,7 @@ TEST(IDFourBar, inverse_dynamics) {
             gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  gtsam::Values init_values = gtdynamics::zero_values(my_robot, 0);
+  gtsam::Values init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;
   graph_builder.printGraph(graph);

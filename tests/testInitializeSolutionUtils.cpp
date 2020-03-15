@@ -26,7 +26,7 @@
 
 using gtsam::assert_equal;
 
-TEST(initialize_solution_utils, initialize_solution_interpolation) {
+TEST(initialize_solution_utils, InitializeSolutionInterpolation) {
   using simple_urdf::my_robot;
 
   gtsam::Pose3 wTb_i =
@@ -36,7 +36,7 @@ TEST(initialize_solution_utils, initialize_solution_interpolation) {
 
   double T_i = 0, T_f = 10, dt = 1;
 
-  gtsam::Values init_vals = gtdynamics::initialize_solution_interpolation(
+  gtsam::Values init_vals = gtdynamics::InitializeSolutionInterpolation(
       my_robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
@@ -68,7 +68,7 @@ TEST(initialize_solution_utils, initialize_solution_interpolation) {
                  .cast<gtsam::Pose3>()));
 }
 
-TEST(initialize_solution_utils, initialize_solution_interpolation_multi_phase) {
+TEST(initialize_solution_utils, InitializeSolutionInterpolationMultiPhase) {
   using simple_urdf_eq_mass::my_robot;
 
   gtsam::Pose3 wTb_i =
@@ -81,7 +81,7 @@ TEST(initialize_solution_utils, initialize_solution_interpolation_multi_phase) {
   double dt = 1;
 
   gtsam::Values init_vals =
-      gtdynamics::initialize_solution_interpolation_multi_phase(
+      gtdynamics::InitializeSolutionInterpolationMultiPhase(
           my_robot, "l1", wTb_i, wTb_t, ts, dt);
 
   EXPECT(assert_equal(wTb_i, init_vals
@@ -117,7 +117,7 @@ TEST(initialize_solution_utils, initialize_solution_interpolation_multi_phase) {
           .cast<gtsam::Pose3>()));
 }
 
-TEST(initialize_solution_utils, initialize_solution_inverse_kinematics) {
+TEST(initialize_solution_utils, InitializeSolutionInverseKinematics) {
   auto my_robot =
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -135,7 +135,7 @@ TEST(initialize_solution_utils, initialize_solution_inverse_kinematics) {
   gtdynamics::ContactPoints contact_points = {
       gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
-  gtsam::Values init_vals = gtdynamics::initialize_solution_inverse_kinematics(
+  gtsam::Values init_vals = gtdynamics::InitializeSolutionInverseKinematics(
       my_robot, l2->name(), wTb_i, wTb_t, ts, dt, contact_points);
 
   EXPECT(assert_equal(
@@ -195,7 +195,7 @@ TEST(initialize_solution_utils, initialize_solution_zero_values) {
       gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
   gtsam::Values init_vals =
-      gtdynamics::zero_values(my_robot, 0, contact_points);
+      gtdynamics::ZeroValues(my_robot, 0, contact_points);
 
   for (auto&& link : my_robot.links())
     EXPECT(assert_equal(link->wTcom(),
@@ -243,7 +243,7 @@ TEST(initialize_solution_utils, initialize_solution_zero_values_trajectory) {
       gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
   gtsam::Values init_vals =
-      gtdynamics::zero_values_trajectory(my_robot, 100, -1, contact_points);
+      gtdynamics::ZeroValuesTrajectory(my_robot, 100, -1, contact_points);
 
   for (int t = 0; t <= 100; t++) {
     for (auto&& link : my_robot.links())

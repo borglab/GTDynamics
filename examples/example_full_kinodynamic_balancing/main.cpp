@@ -198,14 +198,14 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = gtdynamics::initialize_solution_interpolation_multi_phase(
+    init_vals = gtdynamics::InitializeSolutionInterpolationMultiPhase(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = gtdynamics::zero_values_trajectory(
+    init_vals = gtdynamics::ZeroValuesTrajectory(
       vision60, t_steps, 0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = gtdynamics::initialize_solution_inverse_kinematics(vision60,
+    init_vals = gtdynamics::InitializeSolutionInverseKinematics(vision60,
       "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
 
   gtsam::LevenbergMarquardtParams params;

@@ -43,7 +43,7 @@ TEST(DynamicsGraph, forward_dynamics_r) {
   dfg.add(fd_priors);
 
   // Obtain solution initialization.
-  gtsam::Values init_values = gtdynamics::zero_values(my_robot, 0);
+  gtsam::Values init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);

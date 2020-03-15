@@ -39,7 +39,7 @@ namespace gtdynamics {
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
-gtsam::Values initialize_solution_interpolation(
+gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const gtsam::Pose3& wTl_f, const double& T_i,
     const double& T_f, const double& dt,
@@ -57,7 +57,7 @@ gtsam::Values initialize_solution_interpolation(
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
-gtsam::Values initialize_solution_interpolation_multi_phase(
+gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
     const std::vector<double>& ts, const double& dt,
@@ -75,7 +75,7 @@ gtsam::Values initialize_solution_interpolation_multi_phase(
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
-gtsam::Values initialize_solution_inverse_kinematics(
+gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name,
     const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
     const std::vector<double>& ts, const double& dt,
@@ -88,7 +88,7 @@ gtsam::Values initialize_solution_inverse_kinematics(
  * @param[in] t              Timestep to return zero initial values for.
  * @param[in] contact_points Contact points for timestep t.
  */
-gtsam::Values zero_values(
+gtsam::Values ZeroValues(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points =
         boost::none);
@@ -101,7 +101,7 @@ gtsam::Values zero_values(
  * @param[in] contact_points Contact points along the trajectory.
  * @return Initial solution stored in a gtsam::Values object.
  */
-gtsam::Values zero_values_trajectory(
+gtsam::Values ZeroValuesTrajectory(
     const Robot &robot, const int num_steps, const int num_phases = -1,
     const boost::optional<ContactPoints> &contact_points =
         boost::none);

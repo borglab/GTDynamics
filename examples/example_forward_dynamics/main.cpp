@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     kdfg.add(fd_priors);
 
     // Initialize solution.
-    auto init_values = gtdynamics::zero_values(simple_rr, 0);
+    auto init_values = gtdynamics::ZeroValues(simple_rr, 0);
 
     // Compute the forward dynamics.
     gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

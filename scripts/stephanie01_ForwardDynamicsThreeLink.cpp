@@ -47,7 +47,7 @@ TEST(DynamicsGraph, optimization) {
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = gtdynamics::zero_values(my_robot, 0);
+  auto init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
