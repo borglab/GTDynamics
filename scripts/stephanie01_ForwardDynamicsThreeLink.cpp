@@ -19,6 +19,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 TEST(DynamicsGraph, optimization) {
   // Load the three-link robot using the relevant namespace from RobotModels.
@@ -46,7 +47,7 @@ TEST(DynamicsGraph, optimization) {
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = graph_builder.zeroValues(my_robot, 0);
+  auto init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

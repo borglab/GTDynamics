@@ -41,8 +41,7 @@ TEST(ContactKinematicsPoseFactor, error) {
   // Transform from the robot com to the link end.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom,
-      (gtsam::Vector(3) << 0, 0, -9.8).finished());
+      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(), 0, 0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -75,12 +74,26 @@ TEST(ContactKinematicsPoseFactor, error) {
 
   // Pure translation.
   gtsam::Values values_b;
-  values_b.insert(pose_key,
-                  gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
+  values_b.insert(
+      pose_key,
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
       1e-7,   // Step used when computing numerical derivative jacobians.
       1e-3);  // Tolerance.
+
+  // NOTE: In the original form, the gradient of the error for this example
+  // would be 0, 0, 0, 0, 0, 1. However, a small perturbation is added to
+  // zero-valued translation components to prevent singularities from occuring.
+  // Transform from the robot com to the link end.
+  gtdynamics::ContactKinematicsPoseFactor factor_c(
+      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished());
+  gtsam::Matrix H_pose_b;
+  factor_c.evaluateError(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)),
+                       H_pose_b);
+  EXPECT(assert_equal(
+      gtsam::Matrix16((gtsam::Vector(6) << 0, 0, 0, 0.1, 0.1, 1).finished()),
+      H_pose_b));
 }
 
 /**
@@ -97,8 +110,8 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
 
   // Create a factor that establishes a ground plane at z = -1.0.
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom,
-      (gtsam::Vector(3) << 0, 0, -9.8).finished(), -1.0);
+      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
+      -1.0, 0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -126,17 +139,31 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
                    gtsam::Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_a,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3);   // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 
   // Pure translation.
   gtsam::Values values_b;
-  values_b.insert(pose_key,
-                  gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
+  values_b.insert(
+      pose_key,
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3);   // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
+
+  // NOTE: In the original form, the gradient of the error for this example
+  // would be 0, 0, 0, 0, 0, 1. However, a small perturbation is added to
+  // zero-valued translation components to prevent singularities from occuring.
+  // Transform from the robot com to the link end.
+  gtdynamics::ContactKinematicsPoseFactor factor_c(
+      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(), -1.0);
+  gtsam::Matrix H_pose_a;
+  factor_c.evaluateError(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)),
+                       H_pose_a);
+  EXPECT(assert_equal(
+      gtsam::Matrix16((gtsam::Vector(6) << 0, 0, 0, 0.1, 0.1, 1).finished()),
+      H_pose_a));
 }
 
 /**
@@ -152,8 +179,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   // Transform from the contact frame to the link com.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
   gtdynamics::ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom,
-      (gtsam::Vector(3) << 0, 0, -9.8).finished());
+      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
   // Initial link pose.
   gtsam::Pose3 link_pose_init = gtsam::Pose3(

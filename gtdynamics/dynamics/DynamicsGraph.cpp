@@ -235,7 +235,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         ContactKinematicsPoseFactor contact_pose_factor(
             PoseKey(i, t), opt_.cp_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point), gravity_,
-            contact_point.contact_height);
+            contact_point.contact_height, opt_.cp_gradient_perturbation);
         graph.add(contact_pose_factor);
       }
     }
@@ -840,66 +840,6 @@ Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
     joint_torques[name] = result.atDouble(TorqueKey(j, t));
   }
   return joint_torques;
-}
-
-gtsam::Values DynamicsGraph::zeroValues(
-    const Robot &robot, const int t,
-    const boost::optional<ContactPoints> &contact_points) {
-  gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
-                zero_accels = gtsam::Vector6::Zero(),
-                zero_wrenches = gtsam::Vector6::Zero(),
-                zero_torque = gtsam::Vector1::Zero(),
-                zero_q = gtsam::Vector1::Zero(),
-                zero_v = gtsam::Vector1::Zero(),
-                zero_a = gtsam::Vector1::Zero();
-  gtsam::Values zero_values;
-  for (auto &link : robot.links()) {
-    int i = link->getID();
-    zero_values.insert(PoseKey(i, t), link->wTcom());
-    zero_values.insert(TwistKey(i, t), zero_twists);
-    zero_values.insert(TwistAccelKey(i, t), zero_accels);
-  }
-  for (auto &joint : robot.joints()) {
-    int j = joint->getID();
-    auto parent_link = joint->parentLink();
-    auto child_link = joint->childLink();
-    zero_values.insert(WrenchKey(parent_link->getID(), j, t), zero_wrenches);
-    zero_values.insert(WrenchKey(child_link->getID(), j, t), zero_wrenches);
-    zero_values.insert(TorqueKey(j, t), zero_torque[0]);
-    zero_values.insert(JointAngleKey(j, t), zero_q[0]);
-    zero_values.insert(JointVelKey(j, t), zero_v[0]);
-    zero_values.insert(JointAccelKey(j, t), zero_a[0]);
-  }
-  if (contact_points) {
-    for (auto &&contact_point : *contact_points) {
-      int link_id = -1;
-      for (auto &link : robot.links()) {
-        if (link->name() == contact_point.name) link_id = link->getID();
-      }
-
-      if (link_id == -1) throw std::runtime_error("Link not found.");
-
-      zero_values.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
-                         zero_wrenches);
-    }
-  }
-
-  return zero_values;
-}
-
-gtsam::Values DynamicsGraph::zeroValuesTrajectory(
-    const Robot &robot, const int num_steps, const int num_phases,
-    const boost::optional<ContactPoints> &contact_points) {
-  gtsam::Values zero_values;
-  for (int t = 0; t <= num_steps; t++) {
-    zero_values.insert(zeroValues(robot, t, contact_points));
-  }
-  if (num_phases > 0) {
-    for (int phase = 0; phase <= num_phases; phase++) {
-      zero_values.insert(PhaseKey(phase), 0.0);
-    }
-  }
-  return zero_values;
 }
 
 void printKey(const gtsam::Key &key) {
