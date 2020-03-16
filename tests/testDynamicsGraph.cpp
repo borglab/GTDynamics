@@ -20,7 +20,6 @@
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -533,12 +532,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   graph_builder.printGraph(graph);
 
   // Optimize!
-  gtsam::Values results;
-  gtsam::LevenbergMarquardtParams params;
-  params.setVerbosity("ERROR");
-  params.setAbsoluteErrorTol(1e-12);
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
-  results = optimizer.optimize();
+  gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
+  gtsam::Values results = optimizer.optimize();
 
   std::cout << "Error: " << graph.error(results) << std::endl;
 
@@ -592,9 +587,11 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Compute inverse dynamics prior factors.
   gtsam::Vector joint_accels = gtsam::Vector::Zero(my_robot.numJoints());
+  gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
+  gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
   gtsam::NonlinearFactorGraph prior_factors =
-      graph_builder.inverseDynamicsPriors(my_robot, 0, simple_rr::joint_angles,
-                                          simple_rr::joint_vels, joint_accels);
+      graph_builder.inverseDynamicsPriors(my_robot, 0, joint_angles,
+                                          joint_vels, joint_accels);
 
   // Specify pose and twist priors for one leg.
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
