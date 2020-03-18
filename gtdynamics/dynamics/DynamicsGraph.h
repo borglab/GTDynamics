@@ -33,51 +33,9 @@ namespace gtdynamics {
 
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
-/* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t.
- */
-inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
-  return gtsam::LabeledSymbol('F', i * 16 + j,
-                              t);  // a hack here for a key with 3 numbers
-}
-
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
 inline gtsam::LabeledSymbol ContactWrenchKey(int i, int k, int t) {
   return gtsam::LabeledSymbol('C', i * 16 + k, t);
-}
-
-/* Shorthand for T_j_t, for torque on the j-th joint at time t. */
-inline gtsam::LabeledSymbol TorqueKey(int j, int t) {
-  return gtsam::LabeledSymbol('T', j, t);
-}
-
-/* Shorthand for p_i_t, for COM pose on the i-th link at time t. */
-inline gtsam::LabeledSymbol PoseKey(int i, int t) {
-  return gtsam::LabeledSymbol('p', i, t);
-}
-
-/* Shorthand for V_i_t, for 6D link twist vector on the i-th link. */
-inline gtsam::LabeledSymbol TwistKey(int i, int t) {
-  return gtsam::LabeledSymbol('V', i, t);
-}
-
-/* Shorthand for A_i_t, for twist accelerations on the i-th link at time t. */
-inline gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
-  return gtsam::LabeledSymbol('A', i, t);
-}
-
-/* Shorthand for q_j_t, for j-th joint angle at time t. */
-inline gtsam::LabeledSymbol JointAngleKey(int j, int t) {
-  return gtsam::LabeledSymbol('q', j, t);
-}
-
-/* Shorthand for v_j_t, for j-th joint velocity at time t. */
-inline gtsam::LabeledSymbol JointVelKey(int j, int t) {
-  return gtsam::LabeledSymbol('v', j, t);
-}
-
-/* Shorthand for a_j_t, for j-th joint acceleration at time t. */
-inline gtsam::LabeledSymbol JointAccelKey(int j, int t) {
-  return gtsam::LabeledSymbol('a', j, t);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */

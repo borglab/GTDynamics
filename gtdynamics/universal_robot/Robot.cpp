@@ -273,4 +273,46 @@ Robot::FKResults Robot::forwardKinematics(
   return FKResults(link_poses, link_twists);
 }
 
+gtsam::NonlinearFactorGraph Robot::qFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&link : links())
+    graph.add(link->qFactors(t, opt));
+  for (auto &&joint : joints())
+    graph.add(joint->qFactors(t, opt));
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph Robot::vFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&link : links())
+    graph.add(link->vFactors(t, opt));
+  for (auto &&joint : joints())
+    graph.add(joint->vFactors(t, opt));
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph Robot::aFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&link : links())
+    graph.add(link->aFactors(t, opt));
+  for (auto &&joint : joints())
+    graph.add(joint->aFactors(t, opt));
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph Robot::dynamicsFactors(const int &t, const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&joint : joints())
+    graph.add(joint->dynamicsFactors(t, opt, planar_axis));
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph Robot::jointLimitFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&joint : joints())
+    graph.add(joint->jointLimitFactors(t, opt));
+  return graph;
+}
+
 }  // namespace gtdynamics.

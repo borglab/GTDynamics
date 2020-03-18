@@ -149,6 +149,49 @@ class Robot {
       const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none,
       const boost::optional<gtsam::Vector6> &prior_link_twist =
           boost::none) const;
+
+  /** Returns q factors for the robot.
+   * 
+   * Keyword Arguments:
+   *    t               -- Timestep to return q factors for.
+   *    opt             -- OptimizerSetting object.
+   */
+  gtsam::NonlinearFactorGraph qFactors(const int &t, const OptimizerSetting &opt) const;
+
+  /** Returns v factors for the robot.
+   * 
+   * Keyword Arguments:
+   *    t               -- Timestep to return q factors for.
+   *    opt             -- OptimizerSetting object.
+   */
+  gtsam::NonlinearFactorGraph vFactors(const int &t, const OptimizerSetting &opt) const;
+
+  /** Returns a factors for the robot.
+   * 
+   * Keyword Arguments:
+   *    t               -- Timestep to return q factors for.
+   *    opt             -- OptimizerSetting object.
+   */
+  gtsam::NonlinearFactorGraph aFactors(const int &t, const OptimizerSetting &opt) const;
+
+  /** Returns dynamics factors for the robot.
+   * 
+   * Keyword Arguments:
+   *    t               -- Timestep to return q factors for.
+   *    opt             -- OptimizerSetting object.
+   *    planar_axis     -- Optional planar axis.
+   */
+  gtsam::NonlinearFactorGraph dynamicsFactors(const int &t, const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis) const;
+
+  /** Returns joint limit factors for the robot.
+   * 
+   * Keyword Arguments:
+   *    t               -- Timestep to return q factors for.
+   *    opt             -- OptimizerSetting object.
+   */
+  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t, const OptimizerSetting &opt) const;
+
 };
 }  // namespace gtdynamics
 
