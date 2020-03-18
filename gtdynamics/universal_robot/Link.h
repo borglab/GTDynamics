@@ -30,7 +30,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/Utils.h"
 
 namespace gtdynamics {
 /**

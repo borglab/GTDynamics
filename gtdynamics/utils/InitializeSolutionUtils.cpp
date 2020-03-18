@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  initialize_solution_utils.cpp
+ * @file  InitializeSolutionUtils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>

@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  initialize_solution_utils.h
+ * @file  InitializeSolutionUtils.h
  * @brief Utility methods for initializing trajectory optimization solutions.
  * @Author: Alejandro Escontrela and Yetong Zhang
  */

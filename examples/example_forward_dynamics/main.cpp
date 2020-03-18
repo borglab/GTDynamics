@@ -3,7 +3,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/InitializeSolutionUtils.h>
 
 int main(int argc, char** argv) {
 
