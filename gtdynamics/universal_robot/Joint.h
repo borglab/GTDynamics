@@ -163,7 +163,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
       pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
       cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
     } else {
-      throw std::runtime_error("joint type " + std::string(1, joint_type_) + " not supported");
+      throw std::runtime_error(
+        "joint type " + std::string(1, joint_type_) + " not supported");
     }
   }
 
