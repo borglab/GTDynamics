@@ -195,6 +195,71 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_float, twists.at("l2")));
 }
 
+TEST(Robot, forwardKinematics_rpr) {
+  Robot rpr_robot = Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+
+  Robot::JointValues joint_angles, joint_vels;
+  joint_angles["joint_1"] = 0;
+  joint_vels["joint_1"] = 0;
+  joint_angles["joint_2"] = 0;
+  joint_vels["joint_2"] = 0;
+  joint_angles["joint_3"] = 0;
+  joint_vels["joint_3"] = 0;
+
+  // test fk at rest
+  rpr_robot.getLinkByName("link_0")->fix();
+  Robot::FKResults fk_results =
+      rpr_robot.forwardKinematics(joint_angles, joint_vels);
+  Robot::LinkPoses poses = fk_results.first;
+  Robot::LinkTwists twists = fk_results.second;
+
+  gtsam::Pose3 T_wl0_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
+  gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5));
+  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.1));
+  gtsam::Pose3 T_wl3_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.7));
+  gtsam::Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
+  V_l0_rest << 0, 0, 0, 0, 0, 0;
+  V_l1_rest << 0, 0, 0, 0, 0, 0;
+  V_l2_rest << 0, 0, 0, 0, 0, 0;
+  V_l3_rest << 0, 0, 0, 0, 0, 0;
+
+  EXPECT(assert_equal(T_wl0_rest, poses.at("link_0")));
+  EXPECT(assert_equal(T_wl1_rest, poses.at("link_1")));
+  EXPECT(assert_equal(T_wl2_rest, poses.at("link_2")));
+  EXPECT(assert_equal(T_wl3_rest, poses.at("link_3")));
+  EXPECT(assert_equal(V_l0_rest, twists.at("link_0")));
+  EXPECT(assert_equal(V_l1_rest, twists.at("link_1")));
+  EXPECT(assert_equal(V_l2_rest, twists.at("link_2")));
+  EXPECT(assert_equal(V_l3_rest, twists.at("link_3")));
+
+  // test fk with moving prismatic joint and fixed base
+  joint_angles["joint_1"] = M_PI_2;
+  joint_angles["joint_2"] = 0.5;
+  joint_vels["joint_2"] = 1;
+
+  fk_results = rpr_robot.forwardKinematics(joint_angles, joint_vels);
+  poses = fk_results.first;
+  twists = fk_results.second;
+
+  gtsam::Pose3 T_wl0_move(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
+  gtsam::Pose3 T_wl1_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(0.3, 0, 0.2));
+  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(1.4, 0, 0.2));
+  gtsam::Pose3 T_wl3_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(2.0, 0, 0.2));
+  gtsam::Vector6 V_l0_move, V_l1_move, V_l2_move, V_l3_move;
+  V_l0_move << 0, 0, 0, 0, 0, 0;
+  V_l1_move << 0, 0, 0, 0, 0, 0;
+  V_l2_move << 0, 0, 0, 0, 0, 1;
+  V_l3_move << 0, 0, 0, 0, 0, 1;
+  EXPECT(assert_equal(T_wl0_move, poses.at("link_0")));
+  EXPECT(assert_equal(T_wl1_move, poses.at("link_1")));
+  EXPECT(assert_equal(T_wl2_move, poses.at("link_2")));
+  EXPECT(assert_equal(T_wl3_move, poses.at("link_3")));
+  EXPECT(assert_equal(V_l0_move, twists.at("link_0")));
+  EXPECT(assert_equal(V_l1_move, twists.at("link_1")));
+  EXPECT(assert_equal(V_l2_move, twists.at("link_2")));
+  EXPECT(assert_equal(V_l3_move, twists.at("link_3")));
+}
+
 // test fk for a four bar linkage (loopy)
 TEST(forwardKinematics, four_bar) {
   Robot four_bar =
