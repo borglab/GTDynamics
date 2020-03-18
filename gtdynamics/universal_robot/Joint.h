@@ -184,10 +184,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
-    pScrewAxis_ = gtdynamics::unit_twist(
-        pcomRj * -axis_, pcomRj * (-jTpcom_.translation().vector()));
-    cScrewAxis_ = gtdynamics::unit_twist(
-        ccomRj * axis_, ccomRj * (-jTccom_.translation().vector()));
+    if (joint_type_ == 'R') {
+      pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
+          pcomRj * (-jTpcom_.translation().vector()));
+      cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
+          ccomRj * (-jTccom_.translation().vector()));
+    } else if (joint_type_ == 'P') {
+      pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
+      cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
+    } else {
+      throw std::runtime_error(
+        "joint type " + std::string(1, joint_type_) + " not supported");
+    }
   }
 
  public:
@@ -239,12 +247,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
     else
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
 
-    setScrewAxis();
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';
     } else if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
       joint_type_ = 'P';
+    } else {
+      throw std::runtime_error("joint type not supported");
     }
+    setScrewAxis();
   }
 
   /** constructor using JointParams */

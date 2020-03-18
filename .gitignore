@@ -110,3 +110,6 @@ venv.bak/
 v-rep/test_data/
 
 visualization/*.json
+
+# gerry00 visualization data
+scripts/gerry00_rpr_viz.gif
