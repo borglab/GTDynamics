@@ -153,30 +153,26 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of all dynamics factors
@@ -193,8 +189,7 @@ class DynamicsGraph {
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return prior factors of torque, angle, velocity
@@ -261,8 +256,7 @@ class DynamicsGraph {
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of the entire trajectory for multi-phase
@@ -424,9 +418,8 @@ class DynamicsGraph {
      radial              -- option to display in radial format
    */
   static void saveGraphTraj(const std::string &file_path,
-                             const gtsam::NonlinearFactorGraph &graph,
-                             const gtsam::Values &values,
-                             const int num_steps);
+                            const gtsam::NonlinearFactorGraph &graph,
+                            const gtsam::Values &values, const int num_steps);
 
   /* return the optimizer setting. */
   const OptimizerSetting &opt() const { return opt_; }

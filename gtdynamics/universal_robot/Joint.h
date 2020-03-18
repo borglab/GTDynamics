@@ -17,26 +17,26 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/inference/LabeledSymbol.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/JointLimitFactor.h"
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/TwistFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/utils/Utils.h"
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/dynamics/OptimizerSetting.h"
 
 namespace gtdynamics {
 
@@ -76,13 +76,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * JointParams contains all parameters to construct a joint
    */
   struct Params {
-    std::string name;                   // name of the joint
-    char joint_type;                    // type of joint
+    std::string name;                    // name of the joint
+    char joint_type;                     // type of joint
     Joint::JointEffortType effort_type;  // joint effor type
-    LinkSharedPtr parent_link;          // shared pointer to parent link
-    LinkSharedPtr child_link;           // shared pointer to child link
-    gtsam::Vector3 axis;                // joint axis expressed in joint frame
-    gtsam::Pose3 wTj;                   // joint pose expressed in world frame
+    LinkSharedPtr parent_link;           // shared pointer to parent link
+    LinkSharedPtr child_link;            // shared pointer to child link
+    gtsam::Vector3 axis;                 // joint axis expressed in joint frame
+    gtsam::Pose3 wTj;                    // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold;
@@ -127,7 +127,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   gtsam::Pose3
       jTccom_;  // Rest transform to child link CoM frame from joint frame.
   gtsam::Pose3 pMccom_;  // Rest transform to parent link com frame from child
-                          // link com frame at rest.
+                         // link com frame at rest.
   gtsam::Vector6
       pScrewAxis_;  // Joint axis expressed in COM frame of parent link
   gtsam::Vector6
@@ -153,16 +153,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Return the joint axis. Rotational axis for revolute and translation
   /// direction for prismatic in the joint frame.
-  const gtsam::Vector3& axis() const { return axis_; }
+  const gtsam::Vector3 &axis() const { return axis_; }
 
   /// Transform from the world frame to the joint frame.
-  const gtsam::Pose3& wTj() const { return wTj_; }
+  const gtsam::Pose3 &wTj() const { return wTj_; }
 
   /// Transform from the joint frame to the parent's center of mass.
-  const gtsam::Pose3& jTpcom() const { return jTpcom_; }
+  const gtsam::Pose3 &jTpcom() const { return jTpcom_; }
 
   /// Transform from the joint frame to the child's center of mass.
-  const gtsam::Pose3& jTccom() const { return jTccom_; }
+  const gtsam::Pose3 &jTccom() const { return jTccom_; }
 
   /// check if the link is Child link, throw an error if link is not connected
   /// to this joint
@@ -184,10 +184,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
-    pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-        pcomRj * (-jTpcom_.translation().vector()));
-    cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-        ccomRj * (-jTccom_.translation().vector()));
+    pScrewAxis_ = gtdynamics::unit_twist(
+        pcomRj * -axis_, pcomRj * (-jTpcom_.translation().vector()));
+    cScrewAxis_ = gtdynamics::unit_twist(
+        ccomRj * axis_, ccomRj * (-jTccom_.translation().vector()));
   }
 
  public:
@@ -210,7 +210,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    *   parent_link                -- shared pointer to the parent Link.
    *   child_link                 -- shared pointer to the child Link.
    */
-  Joint(const sdf::Joint& sdf_joint, JointEffortType joint_effort_type,
+  Joint(const sdf::Joint &sdf_joint, JointEffortType joint_effort_type,
         double springCoefficient, double jointLimitThreshold,
         double velocityLimitThreshold, double accelerationLimit,
         double accelerationLimitThreshold, double torqueLimitThreshold,
@@ -248,7 +248,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   /** constructor using JointParams */
-  explicit Joint(const Params& params)
+  explicit Joint(const Params &params)
       : name_(params.name),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
@@ -302,7 +302,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6& screwAxis(const LinkSharedPtr link) const {
+  const gtsam::Vector6 &screwAxis(const LinkSharedPtr link) const {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
@@ -352,74 +352,68 @@ class Joint : public std::enable_shared_from_this<Joint> {
   double torqueLimitThreshold() const { return torque_limit_threshold_; }
 
   /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph qFactors(const int &t,
+                                       const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(
-      PoseFactor(
-        PoseKey(parent_link_->getID(), t),
-        PoseKey(child_link_->getID(), t),
-        JointAngleKey(getID(), t),
-        opt.p_cost_model,
-        transformTo(child_link_),
-        screwAxis(child_link_)));
+    graph.add(PoseFactor(PoseKey(parent_link_->getID(), t),
+                         PoseKey(child_link_->getID(), t),
+                         JointAngleKey(getID(), t), opt.p_cost_model,
+                         transformTo(child_link_), screwAxis(child_link_)));
     return graph;
   }
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph vFactors(const int &t,
+                                       const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(
-      TwistFactor(
+    graph.add(TwistFactor(
         TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
-        JointAngleKey(getID(), t), JointVelKey(getID(), t),
-        opt.v_cost_model, transformTo(child_link_), screwAxis(child_link_)));
+        JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
+        transformTo(child_link_), screwAxis(child_link_)));
 
     return graph;
   }
 
   /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(const int &t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph aFactors(const int &t,
+                                       const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(
-      TwistAccelFactor(
+    graph.add(TwistAccelFactor(
         TwistKey(child_link_->getID(), t),
         TwistAccelKey(parent_link_->getID(), t),
-        TwistAccelKey(child_link_->getID(), t),
-        JointAngleKey(getID(), t), JointVelKey(getID(), t),
-        JointAccelKey(getID(), t), opt.a_cost_model, transformTo(child_link_),
-        screwAxis(child_link_)));
+        TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
+        JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
+        transformTo(child_link_), screwAxis(child_link_)));
 
     return graph;
   }
 
   /// Return joint dynamics factors.
-  gtsam::NonlinearFactorGraph dynamicsFactors(const int &t, const OptimizerSetting &opt,
+  gtsam::NonlinearFactorGraph dynamicsFactors(
+      const int &t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(
-      WrenchEquivalenceFactor(
+    graph.add(WrenchEquivalenceFactor(
         WrenchKey(parent_link_->getID(), getID(), t),
         WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
         opt.f_cost_model, transformTo(child_link_), screwAxis(child_link_)));
-    graph.add(
-      TorqueFactor(
-        WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
-        opt.t_cost_model, screwAxis(child_link_)));
+    graph.add(TorqueFactor(WrenchKey(child_link_->getID(), getID(), t),
+                           TorqueKey(getID(), t), opt.t_cost_model,
+                           screwAxis(child_link_)));
     if (planar_axis)
-      graph.add(
-        WrenchPlanarFactor(
-          WrenchKey(child_link_->getID(), getID(), t),
-          opt.planar_cost_model, *planar_axis));
+      graph.add(WrenchPlanarFactor(WrenchKey(child_link_->getID(), getID(), t),
+                                   opt.planar_cost_model, *planar_axis));
     return graph;
   }
 
   // Return joint limit factors.
-  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t, const OptimizerSetting &opt) {
+  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t,
+                                                const OptimizerSetting &opt) {
     gtsam::NonlinearFactorGraph graph;
     // Add joint angle limit factor.
-    graph.add(JointLimitFactor(
-        JointAngleKey(getID(), t), opt.jl_cost_model, jointLowerLimit(),
-        jointUpperLimit(), jointLimitThreshold()));
+    graph.add(JointLimitFactor(JointAngleKey(getID(), t), opt.jl_cost_model,
+                               jointLowerLimit(), jointUpperLimit(),
+                               jointLimitThreshold()));
 
     // Add joint velocity limit factors.
     graph.add(JointLimitFactor(JointVelKey(getID(), t), opt.jl_cost_model,
@@ -427,9 +421,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
                                velocityLimitThreshold()));
 
     // Add joint acceleration limit factors.
-    graph.add(JointLimitFactor(
-        JointAccelKey(getID(), t), opt.jl_cost_model, -accelerationLimit(),
-        accelerationLimit(), accelerationLimitThreshold()));
+    graph.add(JointLimitFactor(JointAccelKey(getID(), t), opt.jl_cost_model,
+                               -accelerationLimit(), accelerationLimit(),
+                               accelerationLimitThreshold()));
 
     // Add joint torque limit factors.
     graph.add(JointLimitFactor(TorqueKey(getID(), t), opt.jl_cost_model,

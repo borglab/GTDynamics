@@ -15,17 +15,17 @@
 #define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 
 #include <sdf/parser_urdf.hh>
+
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <boost/optional.hpp>
+
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-
-#include <boost/optional.hpp>
-
 
 namespace gtdynamics {
 
@@ -151,47 +151,51 @@ class Robot {
           boost::none) const;
 
   /** Returns q factors for the robot.
-   * 
+   *
    * Keyword Arguments:
    *    t               -- Timestep to return q factors for.
    *    opt             -- OptimizerSetting object.
    */
-  gtsam::NonlinearFactorGraph qFactors(const int &t, const OptimizerSetting &opt) const;
+  gtsam::NonlinearFactorGraph qFactors(const int &t,
+                                       const OptimizerSetting &opt) const;
 
   /** Returns v factors for the robot.
-   * 
+   *
    * Keyword Arguments:
    *    t               -- Timestep to return q factors for.
    *    opt             -- OptimizerSetting object.
    */
-  gtsam::NonlinearFactorGraph vFactors(const int &t, const OptimizerSetting &opt) const;
+  gtsam::NonlinearFactorGraph vFactors(const int &t,
+                                       const OptimizerSetting &opt) const;
 
   /** Returns a factors for the robot.
-   * 
+   *
    * Keyword Arguments:
    *    t               -- Timestep to return q factors for.
    *    opt             -- OptimizerSetting object.
    */
-  gtsam::NonlinearFactorGraph aFactors(const int &t, const OptimizerSetting &opt) const;
+  gtsam::NonlinearFactorGraph aFactors(const int &t,
+                                       const OptimizerSetting &opt) const;
 
   /** Returns dynamics factors for the robot.
-   * 
+   *
    * Keyword Arguments:
    *    t               -- Timestep to return q factors for.
    *    opt             -- OptimizerSetting object.
    *    planar_axis     -- Optional planar axis.
    */
-  gtsam::NonlinearFactorGraph dynamicsFactors(const int &t, const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const;
+  gtsam::NonlinearFactorGraph dynamicsFactors(
+      const int &t, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis) const;
 
   /** Returns joint limit factors for the robot.
-   * 
+   *
    * Keyword Arguments:
    *    t               -- Timestep to return q factors for.
    *    opt             -- OptimizerSetting object.
    */
-  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t, const OptimizerSetting &opt) const;
-
+  gtsam::NonlinearFactorGraph jointLimitFactors(
+      const int &t, const OptimizerSetting &opt) const;
 };
 }  // namespace gtdynamics
 
