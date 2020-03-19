@@ -22,7 +22,7 @@
 #include "gtdynamics/utils/Utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
-    gtdynamics::extract_structure_from_sdf;
+    gtdynamics::extractRobotFromSdf;
 using gtsam::assert_equal;
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
@@ -31,7 +31,7 @@ TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  LinkJointPair links_and_joints = extract_structure_from_sdf(simple_urdf);
+  LinkJointPair links_and_joints = extractRobotFromSdf(simple_urdf);
   gtdynamics::LinkMap name_to_link = links_and_joints.first;
   gtdynamics::JointMap name_to_joint = links_and_joints.second;
   EXPECT(assert_equal(2, name_to_link.size()));

@@ -88,7 +88,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     double joint_limit_threshold;
   };
 
- private:
+ protected:
   // This joint's name, as described in the URDF file.
   std::string name_;
 

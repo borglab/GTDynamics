@@ -53,7 +53,7 @@ gtdynamics::JointParams getJointParams(
   return jps;
 }
 
-LinkJointPair extract_structure_from_sdf(
+LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   // Loop through all links in the urdf interface and construct Link
@@ -104,16 +104,16 @@ LinkJointPair extract_structure_from_sdf(
   return std::make_pair(name_to_link, name_to_joint);
 }
 
-LinkJointPair extract_structure_from_file(
+LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
   if (file_ext == "urdf")
-    return extract_structure_from_sdf(get_sdf(file_path), joint_params);
+    return extractRobotFromSdf(get_sdf(file_path), joint_params);
   else if (file_ext == "sdf")
-    return extract_structure_from_sdf(get_sdf(file_path, model_name),
+    return extractRobotFromSdf(get_sdf(file_path, model_name),
                                       joint_params);
 
   throw std::runtime_error("Invalid file extension.");
@@ -124,7 +124,7 @@ Robot::Robot(LinkJointPair links_and_joints)
       name_to_joint_(links_and_joints.second) {}
 
 Robot::Robot(const std::string file_path, std::string model_name)
-    : Robot(extract_structure_from_file(file_path, model_name)) {}
+    : Robot(extractRobotFromFile(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, gtdynamics::LinkSharedPtr>(name_to_link_);

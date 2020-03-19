@@ -48,7 +48,7 @@ typedef std::pair<LinkMap, JointMap> LinkJointPair;
  *    joint_params     -- a vector contanining optional params for joints.
  *
  */
-LinkJointPair extract_structure_from_sdf(
+LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
         boost::none);
@@ -58,7 +58,7 @@ LinkJointPair extract_structure_from_sdf(
  * file containing the robot description. joint_params -- a vector containing
  * optional params for joints.
  */
-LinkJointPair extract_structure_from_file(
+LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
         boost::none);
