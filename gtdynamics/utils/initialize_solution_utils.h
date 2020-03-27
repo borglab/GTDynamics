@@ -11,8 +11,8 @@
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#ifndef GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
-#define GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
+#ifndef GTDYNAMICS_UTILS_INITIALIZE_SOLUTION_UTILS_H_
+#define GTDYNAMICS_UTILS_INITIALIZE_SOLUTION_UTILS_H_
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -48,7 +48,7 @@ gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const gtsam::Pose3& wTl_f, const double& T_s, const double& T_f,
     const double& dt, const double& gaussian_noise = 0.0,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
+    const boost::optional<ContactPoints>& contact_points =
         boost::none);
 
 /** @fn Initialize interpolated solution for multiple phases.
@@ -69,7 +69,7 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise = 0.0,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
+    const boost::optional<ContactPoints>& contact_points =
         boost::none);
 
 /** @fn Iteratively solve for the robot kinematics with contacts.
@@ -90,8 +90,46 @@ gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise = 1e-8,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
+    const boost::optional<ContactPoints>& contact_points =
         boost::none);
+
+/** @fn Initialize solution for multi-phase trajectory to nominal pose.
+ *
+ * @param[in] robots                The Robot object to use for each phase.
+ * @param[in] phase_steps           Number of steps for each phase.
+ * @param[in] transition_graph_init Initial values for transition graphs.
+ * @param[in] dt_i                  Initial phase duration,
+ * @param[in] phase_contact_points  Contact points at each phase.
+ */
+gtsam::Values MultiPhaseZeroValuesTrajectory(
+    const std::vector<gtdynamics::Robot>& robots,
+    const std::vector<int>& phase_steps,
+    std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points = boost::none);
+
+/** @fn Multi-phase initialize solution inverse kinematics.
+ *
+ * @param[in] robots                A gtdynamics::Robot object for each phase.
+ * @param[in] link_name             The name of the link whose pose to
+ * interpolate.
+ * @param[in] phase_steps           Number of steps for each phase.
+ * @param[in] wTl_i                 The initial pose of the link.
+ * @param[in] wTl_t                 A vector of desired poses.
+ * @param[in] ts                    Discretized times at which poses start and
+ * end.
+ * @param[in] transition_graph_init Initial values for transition graphs.
+ * @param[in] dt_i                  Initial value for phase duration.
+ * @param[in] phase_contact_points  Contact points at each phase.
+ * @return Initial solution stored in gtsam::Values object.
+ */
+gtsam::Values MultiPhaseInverseKinematicsTrajectory(
+    const std::vector<gtdynamics::Robot>& robots, const std::string& link_name,
+    const std::vector<int>& phase_steps, const gtsam::Pose3& wTl_i,
+    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<int>& ts,
+    std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points = boost::none);
 
 /** @fn Return zero values for all variables for initial value of optimization.
  *
@@ -124,4 +162,4 @@ gtsam::Values ZeroValuesTrajectory(
 
 }  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
+#endif  // GTDYNAMICS_UTILS_INITIALIZE_SOLUTION_UTILS_H_
