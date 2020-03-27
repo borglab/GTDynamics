@@ -30,8 +30,8 @@
 #include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 using gtdynamics::DynamicsGraph;
 

@@ -22,11 +22,11 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 using gtsam::assert_equal;
 
-TEST(initialize_solution_utils, InitializeSolutionInterpolation) {
+TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
   using simple_urdf::my_robot;
 
   gtsam::Pose3 wTb_i =
@@ -68,7 +68,7 @@ TEST(initialize_solution_utils, InitializeSolutionInterpolation) {
                  .cast<gtsam::Pose3>()));
 }
 
-TEST(initialize_solution_utils, InitializeSolutionInterpolationMultiPhase) {
+TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   using simple_urdf_eq_mass::my_robot;
 
   gtsam::Pose3 wTb_i =
@@ -117,7 +117,7 @@ TEST(initialize_solution_utils, InitializeSolutionInterpolationMultiPhase) {
           .cast<gtsam::Pose3>()));
 }
 
-TEST(initialize_solution_utils, InitializeSolutionInverseKinematics) {
+TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   auto my_robot =
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -181,7 +181,7 @@ TEST(initialize_solution_utils, InitializeSolutionInverseKinematics) {
       1e-3));
 }
 
-TEST(initialize_solution_utils, initialize_solution_zero_values) {
+TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   auto my_robot =
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -207,7 +207,7 @@ TEST(initialize_solution_utils, initialize_solution_zero_values) {
         0.0, init_vals.atDouble(gtdynamics::JointAngleKey(joint->getID(), 0))));
 }
 
-TEST(initialize_solution_utils, initialize_solution_zero_values_trajectory) {
+TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   auto my_robot =
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 

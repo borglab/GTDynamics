@@ -31,7 +31,7 @@
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
 
-#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/Utils.h"
 
 namespace gtdynamics {
 

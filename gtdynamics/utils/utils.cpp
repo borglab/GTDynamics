@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  utils.h
+ * @file  Utils.h
  * @brief Utility methods.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/Utils.h"
 
 #include <stdexcept>
 

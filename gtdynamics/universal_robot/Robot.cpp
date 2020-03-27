@@ -22,7 +22,7 @@
 #include <stdexcept>
 
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/Utils.h"
 
 namespace gtdynamics {
 

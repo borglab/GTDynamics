@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  initialize_solution_utils.cpp
+ * @file  InitializeSolutionUtils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -31,13 +31,13 @@ namespace gtdynamics {
 
 gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const gtsam::Pose3& wTl_f, const double& T_i, const double& T_f,
+    const gtsam::Pose3& wTl_f, const double& T_s, const double& T_f,
     const double& dt,
     const boost::optional<std::vector<ContactPoint>>& contact_points) {
   gtsam::Values init_vals;
 
   // Initial and final discretized timesteps.
-  int n_steps_init = static_cast<int>(std::round(T_i / dt));
+  int n_steps_init = static_cast<int>(std::round(T_s / dt));
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
   gtsam::Point3 wPl_i = wTl_i.translation(), wPl_f = wTl_f.translation();
@@ -58,9 +58,9 @@ gtsam::Values InitializeSolutionInterpolation(
                 zero_v = gtsam::Vector1::Zero(),
                 zero_a = gtsam::Vector1::Zero();
 
-  double t_elapsed = T_i;
+  double t_elapsed = T_s;
   for (int t = n_steps_init; t <= n_steps_final; t++) {
-    double s = (t_elapsed - T_i) / (T_f - T_i);
+    double s = (t_elapsed - T_s) / (T_f - T_s);
 
     // Compute interpolated pose for link.
     gtsam::Point3 wPl_t = (1 - s) * wPl_i + s * wPl_f;

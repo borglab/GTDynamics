@@ -24,7 +24,7 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/factors/MinTorqueFactor.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 TEST(IDFourBar, inverse_dynamics) {
   using four_bar_linkage::my_robot, four_bar_linkage::planar_axis,

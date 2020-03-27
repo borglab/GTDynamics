@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  initialize_solution_utils.h
+ * @file  InitializeSolutionUtils.h
  * @brief Utility methods for initializing trajectory optimization solutions.
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
@@ -33,18 +33,18 @@ namespace gtdynamics {
  * @param[in] link_name       The name of the link whose pose to interpolate.
  * @param[in] wTl_i           The initial pose of the link.
  * @param[in] wTl_f           The final pose of the link.
- * @param[in] T_i             Time at which to start interpolation.
+ * @param[in] T_s             Time at which to start interpolation.
  * @param[in] T_f             Time at which to end interpolation.
  * @param[in] dt              The duration of a single timestep.
  * @param[in] contact_points  ContactPoint objects.
  * @return Initial solution stored in gtsam::Values object.
  */
 gtsam::Values InitializeSolutionInterpolation(
-    const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const gtsam::Pose3& wTl_f, const double& T_i, const double& T_f,
-    const double& dt,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
-        boost::none);
+    const Robot& robot, const std::string& link_name,
+    const gtsam::Pose3& wTl_i, const gtsam::Pose3& wTl_f, const double& T_s,
+    const double& T_f, const double& dt,
+    const boost::optional<std::vector<ContactPoint>>&
+    contact_points = boost::none);
 
 /** @fn Initialize interpolated solution for multiple phases.
  *

@@ -21,7 +21,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include "gtdynamics/utils/InitializeSolutionUtils.h"
 
 TEST(DynamicsGraph, forward_dynamics_r) {
   // Load the simple robot and fix the first link's pose.

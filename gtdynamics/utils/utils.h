@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  utils.h
+ * @file  Utils.h
  * @brief Utility methods.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
