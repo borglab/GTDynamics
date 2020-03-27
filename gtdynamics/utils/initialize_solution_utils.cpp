@@ -162,7 +162,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
     gtsam::Rot3 wRl_t = wTl_t[i].rotation();       // des R.
     double t_ti = t_i, t_t = ts[i];                // Initial and final times.
 
-    for (int t = std::lround(t_i / dt); t < std::lround(t_t / dt); t++) {
+    for (int t = std::lround(t_ti / dt); t < std::lround(t_t / dt); t++) {
       double s = (t_i - t_ti) / (t_t - t_ti);  // Normalized phase progress.
 
       // Compute interpolated pose for link.
@@ -255,9 +255,167 @@ gtsam::Values InitializeSolutionInverseKinematics(
   return init_vals;
 }
 
-gtsam::Values ZeroValues(
-    const Robot& robot, const int t,
-    const boost::optional<ContactPoints>& contact_points) {
+/** @fn Initialize solution for multi-phase trajectory to nominal pose.
+ *
+ * @param[in] robots                The Robot object to use for each phase.
+ * @param[in] phase_steps           Number of steps for each phase.
+ * @param[in] transition_graph_init Initial values for transition graphs.
+ * @param[in] dt_i                  Initial phase duration,
+ * @param[in] phase_contact_points  Contact points at each phase.
+ */
+gtsam::Values MultiPhaseZeroValuesTrajectory(
+    const std::vector<gtdynamics::Robot>& robots,
+    const std::vector<int>& phase_steps,
+    std::vector<gtsam::Values> transition_graph_init, double dt_i,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points) {
+  gtsam::Values zero_values;
+  int num_phases = robots.size();
+
+  int t = 0;
+  if (phase_contact_points)
+    zero_values.insert(
+        gtdynamics::ZeroValues(robots[0], t, (*phase_contact_points)[0]));
+  else
+    zero_values.insert(gtdynamics::ZeroValues(robots[0], t));
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    // in-phase
+    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
+         phase_step++) {
+      if (phase_contact_points)
+        zero_values.insert(gtdynamics::ZeroValues(
+            robots[phase], ++t, (*phase_contact_points)[phase]));
+      else
+        zero_values.insert(gtdynamics::ZeroValues(robots[phase], ++t));
+    }
+
+    if (phase == num_phases - 1) {
+      if (phase_contact_points)
+        zero_values.insert(gtdynamics::ZeroValues(
+            robots[phase], ++t, (*phase_contact_points)[phase]));
+      else
+        zero_values.insert(gtdynamics::ZeroValues(robots[phase], ++t));
+    } else {
+      t++;
+      zero_values.insert(transition_graph_init[phase]);
+    }
+  }
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    zero_values.insert(gtdynamics::PhaseKey(phase), dt_i);
+  }
+
+  return zero_values;
+}
+
+gtsam::Values MultiPhaseInverseKinematicsTrajectory(
+    const std::vector<gtdynamics::Robot>& robots, const std::string& link_name,
+    const std::vector<int>& phase_steps, const gtsam::Pose3& wTl_i,
+    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<int>& ts,
+    std::vector<gtsam::Values> transition_graph_init, double dt_i,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points) {
+  gtsam::Point3 wPl_i = wTl_i.translation();  // Initial translation.
+  gtsam::Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
+  int t_i = 0;                                // Time elapsed.
+  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+
+  // Linearly interpolated pose for link at each discretized timestep.
+  std::vector<gtsam::Pose3> wTl_dt;
+  for (size_t i = 0; i < ts.size(); i++) {
+    gtsam::Point3 wPl_t = wTl_t[i].translation();  // des P.
+    gtsam::Rot3 wRl_t = wTl_t[i].rotation();       // des R.
+    int t_ti = t_i, t_t = ts[i];                   // Initial and final times.
+
+    for (int t = t_ti; t < t_t; t++) {
+      double s = static_cast<double>(t_i - t_ti) /
+                 static_cast<double>(t_t - t_ti);  // Normalized phase progress.
+
+      // Compute interpolated pose for link.
+      gtsam::Point3 wPl_s = (1 - s) * wPl_i + s * wPl_t;
+      gtsam::Rot3 wRl_s = wRl_i.slerp(s, wRl_t);
+      gtsam::Pose3 wTl_s = gtsam::Pose3(wRl_s, wPl_s);
+      wTl_dt.push_back(wTl_s);
+      t_i++;
+    }
+
+    wPl_i = wPl_t;
+    wRl_i = wRl_t;
+  }
+  wTl_dt.push_back(wTl_t[wTl_t.size() - 1]);  // Add the final pose.
+
+  // Iteratively solve the inverse kinematics problem while statisfying
+  // the contact pose constraint.
+  gtsam::Values init_vals, init_vals_t;
+
+  // Initial pose and joint angles are known a priori.
+  gtsam::Vector z_six = gtsam::Vector6::Zero(), z_one = gtsam::Vector1::Zero();
+
+  gtdynamics::Robot::JointValues jangles, jvels;
+  for (auto&& joint : robots[0].joints()) {
+    jangles.insert(std::make_pair(joint->name(), 0.0));
+    jvels.insert(std::make_pair(joint->name(), 0.0));
+  }
+
+  // Compute forward dynamics to obtain remaining link poses.
+  auto fk_results =
+      robots[0].forwardKinematics(jangles, jvels, link_name, wTl_i);
+  for (auto&& pose_result : fk_results.first)
+    init_vals_t.insert(
+        gtdynamics::PoseKey(robots[0].getLinkByName(pose_result.first)->getID(),
+                            0),
+        pose_result.second);
+  for (auto&& joint : robots[0].joints())
+    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0), z_one[0]);
+
+  auto dgb = gtdynamics::DynamicsGraph();
+
+  int t = 0;
+  int num_phases = robots.size();
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    // In-phase.
+    int curr_phase_steps =
+        phase == (num_phases - 1) ? phase_steps[phase] + 1 : phase_steps[phase];
+    for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
+      gtsam::NonlinearFactorGraph kfg = dgb.qFactors(
+          robots[phase], t, gravity, (*phase_contact_points)[phase]);
+      kfg.add(gtdynamics::PoseGoalFactor(
+          gtdynamics::PoseKey(robots[phase].getLinkByName(link_name)->getID(),
+                              t),
+          gtsam::noiseModel::Constrained::All(6), wTl_dt[t]));
+
+      gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
+      gtsam::Values results = optimizer.optimize();
+
+      init_vals.insert(results);
+
+      // Update initial values for next timestep.
+      init_vals_t.clear();
+      for (auto&& link : robots[phase].links())
+        init_vals_t.insert(gtdynamics::PoseKey(link->getID(), t + 1),
+                           results.at(gtdynamics::PoseKey(link->getID(), t))
+                               .cast<gtsam::Pose3>());
+      for (auto&& joint : robots[phase].joints())
+        init_vals_t.insert(
+            gtdynamics::JointAngleKey(joint->getID(), t + 1),
+            results.atDouble(gtdynamics::JointAngleKey(joint->getID(), t)));
+      t++;
+    }
+  }
+
+  gtsam::Values zero_values = MultiPhaseZeroValuesTrajectory(
+      robots, phase_steps, transition_graph_init, dt_i, phase_contact_points);
+
+  for (auto&& key_value_pair : zero_values)
+    init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
+
+  return init_vals;
+}
+
+gtsam::Values ZeroValues(const Robot& robot, const int t,
+                         const boost::optional<ContactPoints>& contact_points) {
   gtsam::Vector zero_twists = gtsam::Vector6::Zero(),
                 zero_accels = gtsam::Vector6::Zero(),
                 zero_wrenches = gtsam::Vector6::Zero(),
