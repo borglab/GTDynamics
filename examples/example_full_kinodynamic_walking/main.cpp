@@ -99,12 +99,12 @@ int main(int argc, char** argv) {
   phase_contact_points = {p0, p1, p2, p3, p4, p5};
 
   // Robot model for each phase.
-  std::vector<gtdynamics::Robot> robots(6, vision60);
+  std::vector<gtdynamics::Robot> robots(phase_contact_points.size(), vision60);
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;
-  std::vector<int> phase_steps(6, steps_per_phase);
-  int dt_f = 6 * steps_per_phase;  // The final discretized timestep.
+  std::vector<int> phase_steps(phase_contact_points.size(), steps_per_phase);
+  int dt_f = phase_contact_points.size() * steps_per_phase;  // The final discretized timestep.
   double dt_des = 1. / 240.;
 
   // Collocation scheme.
@@ -153,9 +153,14 @@ int main(int argc, char** argv) {
       gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3(0.0, 0.0, 0.1)));
   ts.push_back(dt_f);
 
-  objective_factors.add(gtdynamics::PoseGoalFactor(
-      gtdynamics::PoseKey(base_link->getID(), ts[0]),
+  for (int t = 0; t <= dt_f; t++) {
+      objective_factors.add(gtdynamics::PoseGoalFactor(
+      gtdynamics::PoseKey(base_link->getID(), t),
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives), wTb_t[0]));
+  }
+//   objective_factors.add(gtdynamics::PoseGoalFactor(
+//       gtdynamics::PoseKey(base_link->getID(), ts[0]),
+//       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives), wTb_t[0]));
 
   // Add link boundary conditions to FG.
   gtsam::Vector6 link_twist_init = gtsam::Vector6::Zero(),
