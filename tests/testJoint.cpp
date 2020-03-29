@@ -507,6 +507,107 @@ TEST(Joint, sdf_constructor2) {
   EXPECT(assert_equal(T_12com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
 }
 
+bool assert_equal_first3(gtsam::Vector6 a, gtsam::Vector6 b) {
+  gtsam::Vector6 c;
+  c << a(0), a(1), a(2), b(3), b(4), b(5);
+  return assert_equal(c, b);
+}
+
+/**
+ * Construct sdf joints with different reference frames for poses and axis
+ */
+TEST(Joint, sdf_constructor_frames) {
+  auto model =
+    get_sdf(std::string(SDF_PATH) + "/test/simple_joints.sdf", "simple_joints");
+
+  LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
+  LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
+
+  // constructors for joints
+  auto a = gtdynamics::Joint::JointEffortType::Actuated;
+  JointSharedPtr j_wf_da = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_worldframe"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_df_da = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_defaultframe"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_cf_da = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_childframe"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_pf_da = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_parentframe"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_wf_pa = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_worldframe_axisparent"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_df_pa = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_defaultframe_axisparent"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_cf_pa = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_childframe_axisparent"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr j_pf_pa = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_parentframe_axisparent"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+
+  // check screw axes - too much work to check these, rely on transforms
+  gtsam::Vector6 screw_axis_j_wa_l0, screw_axis_j_wa_l1,
+                 screw_axis_j_da_l0, screw_axis_j_da_l1,
+                 screw_axis_j_pa_l0, screw_axis_j_pa_l1;
+  screw_axis_j_wa_l0 << -1, 0, 0, 0, 0, 0;
+  screw_axis_j_wa_l1 << 0, 0, 1, 0, 0, 0;
+  screw_axis_j_da_l0 << 0, 1, 0, 0, 0, 0;
+  screw_axis_j_da_l1 << 1, 0, 0, 0, 0, 0;
+  screw_axis_j_pa_l0 << -1, 0, 0, 0, 0, 0;
+  screw_axis_j_pa_l1 << 0, 0, 1, 0, 0, 0;
+  EXPECT(assert_equal_first3(screw_axis_j_wa_l0, j_wf_da->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_wa_l1, j_wf_da->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_da_l0, j_df_da->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_da_l1, j_df_da->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_da_l0, j_cf_da->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_da_l1, j_cf_da->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l0, j_pf_da->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l1, j_pf_da->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l0, j_wf_pa->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l1, j_wf_pa->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l0, j_df_pa->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l1, j_df_pa->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l0, j_cf_pa->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l1, j_cf_pa->screwAxis(l1)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l0, j_pf_pa->screwAxis(l0)));
+  EXPECT(assert_equal_first3(screw_axis_j_pa_l1, j_pf_pa->screwAxis(l1)));
+
+  // Check transform from l0 com to l1 com at rest and at various angles.
+  gtsam::Pose3 T_01comRest(gtsam::Rot3::Rx(-M_PI / 2) *
+                           gtsam::Rot3::Ry(M_PI / 2),
+                           gtsam::Point3(-1, 0, -1));
+
+  EXPECT(assert_equal(T_01comRest, j_wf_da->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_df_da->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_cf_da->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_pf_da->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_wf_pa->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_df_pa->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_cf_pa->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j_pf_pa->transformTo(l0)));
+  EXPECT(assert_equal(gtsam::Point3(-1, 2, -1),
+      j_wf_da->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(0, 0, -2),
+      j_df_da->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(0, 0, -2),
+      j_cf_da->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(-1, 2, 1),
+      j_pf_da->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(-1, 2, -1),
+      j_wf_pa->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(-1, 0, -1),
+      j_df_pa->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(-1, 0, -1),
+      j_cf_pa->transformTo(l0, M_PI / 2).translation()));
+  EXPECT(assert_equal(gtsam::Point3(-1, 2, 1),
+      j_pf_pa->transformTo(l0, M_PI / 2).translation()));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
