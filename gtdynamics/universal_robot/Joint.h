@@ -145,14 +145,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
     return link_ptr == child_link_;
   }
 
-  void setScrewAxis() {
+  void setScrewAxis(double qInit) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
 
     gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
     gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
-
-    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
     if (joint_type_ == 'R') {
       pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
@@ -166,6 +164,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
       throw std::runtime_error(
         "joint type " + std::string(1, joint_type_) + " not supported");
     }
+
+    if (qInit == 0)
+      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+    else
+      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom() *
+                gtsam::Pose3::Expmap(cScrewAxis_ * -qInit);
   }
 
  public:
@@ -240,7 +244,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     } else {
       throw std::runtime_error("joint type not supported");
     }
-    setScrewAxis();
+    setScrewAxis(sdf_joint.Axis()->InitialPosition());
   }
 
   /** constructor using JointParams */
@@ -255,7 +259,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
         parent_link_(params.parent_link),
         child_link_(params.child_link),
         wTj_(params.wTj) {
-    setScrewAxis();
+    setScrewAxis(0);
   }
 
   /// Return a shared ptr to this joint.
