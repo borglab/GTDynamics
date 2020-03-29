@@ -99,6 +99,16 @@
         <use_parent_model_frame>1</use_parent_model_frame>
       </axis>
     </joint>
+
+    <joint name='joint_initialangle' type='revolute'>
+      <pose frame=''>0 0 1 0 0 0</pose>
+      <child>link_1</child>
+      <parent>link_0</parent>
+      <axis>
+        <initial_position>1.5707963268</initial_position>
+        <xyz>1 0 0</xyz>
+      </axis>
+    </joint>
   </model>
 
 </world>

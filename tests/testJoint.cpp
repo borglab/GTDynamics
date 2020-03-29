@@ -550,7 +550,7 @@ TEST(Joint, sdf_constructor_frames) {
       Joint(*model.JointByName("joint_parentframe_axisparent"),
             a, 10, 0, 0, 0, 0, 0, l0, l1));
 
-  // check screw axes - too much work to check these, rely on transforms
+  // check screw axes - only check rotational axis, not translationaal
   gtsam::Vector6 screw_axis_j_wa_l0, screw_axis_j_wa_l1,
                  screw_axis_j_da_l0, screw_axis_j_da_l1,
                  screw_axis_j_pa_l0, screw_axis_j_pa_l1;
@@ -606,6 +606,42 @@ TEST(Joint, sdf_constructor_frames) {
       j_cf_pa->transformTo(l0, M_PI / 2).translation()));
   EXPECT(assert_equal(gtsam::Point3(-1, 2, 1),
       j_pf_pa->transformTo(l0, M_PI / 2).translation()));
+}
+
+/**
+ * Construct sdf joint with nonzero initial angle
+ */
+TEST(Joint, sdf_joint_initial_angle) {
+  auto model =
+    get_sdf(std::string(SDF_PATH) + "/test/simple_joints.sdf", "simple_joints");
+
+  LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
+  LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
+
+  // constructors for joints
+  auto a = gtdynamics::Joint::JointEffortType::Actuated;
+  JointSharedPtr initzero = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_defaultframe"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+  JointSharedPtr init90 = std::make_shared<Joint>(
+      Joint(*model.JointByName("joint_initialangle"),
+            a, 10, 0, 0, 0, 0, 0, l0, l1));
+
+  // screw axes should match
+  EXPECT(assert_equal_first3(init90->screwAxis(l0), initzero->screwAxis(l0)));
+  EXPECT(assert_equal_first3(init90->screwAxis(l1), initzero->screwAxis(l1)));
+
+  // Check transform from l0 com to l1 com at rest and at various angles.
+  gtsam::Pose3 T_01comRest(gtsam::Rot3::Rx(-M_PI / 2) *
+                           gtsam::Rot3::Ry(M_PI / 2),
+                           gtsam::Point3(-1, 0, -1));
+
+  EXPECT(assert_equal(initzero->transformTo(l0),
+                      init90->transformTo(l0, M_PI/2)));
+  EXPECT(assert_equal(initzero->transformTo(l0, -M_PI/2),
+                      init90->transformTo(l0)));
+  EXPECT(assert_equal(gtsam::Point3(0, 0, 0),
+                      init90->transformTo(l0).translation()));
 }
 
 int main() {
