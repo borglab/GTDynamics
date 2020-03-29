@@ -229,6 +229,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     } else if (sdf_joint.PoseFrame() == "world") {
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
     } else {
+      // TODO: get pose frame from name.  Need sdf::Model to do that though.
       throw std::runtime_error("joint pose frames other than world, parent, or "
                                "child not yet supported");
     }
