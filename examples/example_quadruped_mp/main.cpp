@@ -47,8 +47,8 @@ CoeffVector compute_spline_coefficients(const gtsam::Pose3 &wTb_i,
                                         const gtsam::Vector3 &x_0_p,
                                         const gtsam::Vector3 &x_1_p,
                                         const double &th) {
-  gtsam::Vector3 x_0 = wTb_i.translation().vector();
-  gtsam::Vector3 x_1 = wTb_f.translation().vector();
+  gtsam::Vector3 x_0 = wTb_i.translation();
+  gtsam::Vector3 x_1 = wTb_f.translation();
 
   // Hermite parameterization.
   gtsam::Vector3 a_0 = x_0, a_1 = x_0_p;
@@ -107,8 +107,8 @@ TargetFootholds compute_target_footholds(
       gtsam::Pose3 wTf = wTb * bTf.second;
       gtsam::Pose3 wTf_gh = gtsam::Pose3(
           wTf.rotation(),
-          gtsam::Point3(wTf.translation().vector()[0],
-                        wTf.translation().vector()[1], GROUND_HEIGHT));
+          gtsam::Point3(wTf.translation()[0],
+                        wTf.translation()[1], GROUND_HEIGHT));
       target_footholds_i.insert(std::make_pair(bTf.first, wTf_gh));
     }
     target_footholds.insert(std::make_pair(i, target_footholds_i));
@@ -169,8 +169,8 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
   t_poses.insert(std::make_pair(
       swing_sequence[swing_leg_idx],
       gtsam::Pose3(gtsam::Rot3(),
-                   gtsam::Point3(curr_foot_pos.vector()[0],
-                                 curr_foot_pos.vector()[1], h))));
+                   gtsam::Point3(curr_foot_pos[0],
+                                 curr_foot_pos[1], h))));
 
   // Yet to complete swing phase in this support phase.
   for (int i = swing_leg_idx + 1; i < 4; i++)
@@ -262,13 +262,13 @@ int main(int argc, char **argv) {
         compute_target_poses(targ_footholds, th, t_support, curr_t,
                              swing_sequence, coeffs, x_0_p, wTb_i);
 
-    pose_file << tposes["body"].translation().vector()[0] << ","
-              << tposes["body"].translation().vector()[1] << ","
-              << tposes["body"].translation().vector()[2];
+    pose_file << tposes["body"].translation()[0] << ","
+              << tposes["body"].translation()[1] << ","
+              << tposes["body"].translation()[2];
     for (auto &&leg : swing_sequence)
-      pose_file << "," << tposes[leg].translation().vector()[0] << ","
-                << tposes[leg].translation().vector()[1] << ","
-                << tposes[leg].translation().vector()[2];
+      pose_file << "," << tposes[leg].translation()[0] << ","
+                << tposes[leg].translation()[1] << ","
+                << tposes[leg].translation()[2];
 
     // Create factor graph of kinematics constraints.
     gtsam::NonlinearFactorGraph kfg = dgb.qFactors(vision60, ti);

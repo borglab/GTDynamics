@@ -240,7 +240,7 @@ gtsam::Values initialize_solution_inverse_kinematics(
 
     // std::cout << t
     //         << ": R[ (" << wTl_dt[t].rotation().rpy().transpose()
-    //         << "), P(" << wTl_dt[t].translation().vector().transpose()
+    //         << "), P(" << wTl_dt[t].translation().transpose()
     //         << ")]" << std::endl;
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
