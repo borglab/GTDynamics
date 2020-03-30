@@ -11,9 +11,6 @@
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
 
@@ -26,7 +23,7 @@
 #include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/utils/InitializeSolutionUtils.h"
 
-TEST(IDFourBar, inverse_dynamics) {
+int main(int argc, char** argv) {
   using four_bar_linkage::my_robot, four_bar_linkage::planar_axis,
     four_bar_linkage::joint_angles, four_bar_linkage::joint_vels;
 
@@ -91,9 +88,6 @@ TEST(IDFourBar, inverse_dynamics) {
   for (auto joint : my_robot.joints())
       std::cout << "\t'" << joint->name() << "': " << results.atDouble(
           gtdynamics::TorqueKey(joint->getID(), 0)) << "," << std::endl;
-}
 
-int main() {
-  TestResult tr;
-  return TestRegistry::runAllTests(tr);
+  return 0;
 }

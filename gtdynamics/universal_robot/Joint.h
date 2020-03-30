@@ -38,9 +38,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /** joint effort types
    * Actuated: motor powered
    * Unactuated: not powered, free to move, exert zero torque
-   * Impedence: with spring resistance
+   * Impedance: with spring resistance
    */
-  enum JointEffortType { Actuated, Unactuated, Impedence };
+  enum JointEffortType { Actuated, Unactuated, Impedance };
 
   /**
    * JointParams contains all parameters to construct a joint
@@ -48,7 +48,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   struct Params {
     std::string name;                   // name of the joint
     char joint_type;                    // type of joint
-    Joint::JointEffortType effort_type;  // joint effor type
+    Joint::JointEffortType effort_type;  // joint effort type
     LinkSharedPtr parent_link;          // shared pointer to parent link
     LinkSharedPtr child_link;           // shared pointer to child link
     gtsam::Vector3 axis;                // joint axis expressed in joint frame
@@ -154,10 +154,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 
-    pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-        pcomRj * (-jTpcom_.translation().vector()));
-    cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-        ccomRj * (-jTccom_.translation().vector()));
+    if (joint_type_ == 'R') {
+      pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
+          pcomRj * (-jTpcom_.translation().vector()));
+      cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
+          ccomRj * (-jTccom_.translation().vector()));
+    } else if (joint_type_ == 'P') {
+      pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
+      cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
+    } else {
+      throw std::runtime_error(
+        "joint type " + std::string(1, joint_type_) + " not supported");
+    }
   }
 
  public:
@@ -171,7 +179,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * Keyword arguments:
    *   sdf_joint                  -- sdf::Joint instance to derive joint
    * attributes from. jointEffortType_           -- joint effort type.
-   *   springCoefficient          -- spring coefficient for Impedence joint.
+   *   springCoefficient          -- spring coefficient for Impedance joint.
    *   jointLimitThreshold        -- joint angle limit threshold.
    *   velocityLimitThreshold     -- joint velocity limit threshold.
    *   accelerationLimit          -- joint acceleration limit
@@ -209,12 +217,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
     else
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
 
-    setScrewAxis();
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';
     } else if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
       joint_type_ = 'P';
+    } else {
+      throw std::runtime_error("joint type not supported");
     }
+    setScrewAxis();
   }
 
   /** constructor using JointParams */
@@ -328,7 +338,7 @@ struct JointParams {
   std::string name;  // Name of this joint as described in the URDF file.
 
   Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
-  double springCoefficient = 0;      // spring coefficient for Impedence joint.
+  double springCoefficient = 0;      // spring coefficient for Impedance joint.
   double jointLimitThreshold = 0.0;  // joint angle limit threshold.
   double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
   double accelerationLimit = 10000;     // joint acceleration limit.

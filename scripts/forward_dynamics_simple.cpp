@@ -23,7 +23,7 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/InitializeSolutionUtils.h"
 
-TEST(DynamicsGraph, forward_dynamics_r) {
+int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::my_robot, simple_urdf::planar_axis;
   my_robot.getLinkByName("l1")->fix();
@@ -52,9 +52,6 @@ TEST(DynamicsGraph, forward_dynamics_r) {
   // Print the resulting values and compute error.
   dg_builder.printValues(results);
   std::cout << "Optimization error: " << dfg.error(results) << std::endl;
-}
 
-int main() {
-  TestResult tr;
-  return TestRegistry::runAllTests(tr);
+  return 0;
 }

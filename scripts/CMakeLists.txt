@@ -1,4 +1,4 @@
-gtsamAddTestsGlob(scripts "*.cpp" "" "gtdynamics")
+gtsamAddExamplesGlob("*.cpp" "" "gtdynamics")
 
 option(DEBUG "Turn on debug mode to print out more info?" OFF)
 
