@@ -59,7 +59,7 @@ class ContactKinematicsPoseFactor
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
       const double &ground_plane_height = 0.0,
-      double gradient_perturbation = 1e-1)
+      double gradient_perturbation = 0.0)
       : Base(cost_model, pose_key), cTcom_(cTcom),
         gradient_perturbation_(gradient_perturbation) {
     if (gravity[0] != 0)
