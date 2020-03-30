@@ -16,6 +16,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/utils/InitializeSolutionUtils.h>
 
 int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
@@ -50,7 +51,7 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  auto init_values = graph_builder.zeroValuesTrajectory(simple_rpr, T, 0);
+  auto init_values = gtdynamics::ZeroValuesTrajectory(simple_rpr, T, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);
