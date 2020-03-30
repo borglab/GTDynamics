@@ -72,7 +72,7 @@ gtsam::Vector q_trajectory(int i, int total_step,
 
 std::vector<std::vector<gtsam::Point3>> sphereCenters(
     std::vector<double> lengths, std::vector<double> radii) {
-  std::vector<std::vector<gtsam::Point3>> shpere_centers_all;
+  std::vector<std::vector<gtsam::Point3>> sphere_centers_all;
   int dof = lengths.size();
   for (int j = 0; j < dof; ++j) {
     std::vector<gtsam::Point3> sphere_centers;
@@ -87,9 +87,9 @@ std::vector<std::vector<gtsam::Point3>> sphereCenters(
             gtsam::Point3((i + 0.5) * distance - 0.5 * lengths[j], 0, 0));
       }
     }
-    shpere_centers_all.push_back(sphere_centers);
+    sphere_centers_all.push_back(sphere_centers);
   }
-  return shpere_centers_all;
+  return sphere_centers_all;
 }
 
 std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
