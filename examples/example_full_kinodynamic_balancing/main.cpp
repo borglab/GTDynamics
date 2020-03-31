@@ -14,7 +14,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/PoseGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -140,10 +139,11 @@ int main(int argc, char** argv) {
 
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
-    objective_factors.add(gtdynamics::PoseGoalFactor(
-        gtdynamics::PoseKey(base_link->getID(),
-                            static_cast<int>(std::ceil(des_poses_t[i] / dt))),
-        des_pose_nm, des_poses[i]));
+    objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+       gtdynamics::PoseKey(
+           base_link->getID(),
+           static_cast<int>(std::ceil(des_poses_t[i] / dt))), 
+      des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
   objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(

@@ -106,7 +106,7 @@ class WrenchFactor0
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
+        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
     gtsam::Matrix63 intermediateMatrix;
     intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
     auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
@@ -227,7 +227,7 @@ class WrenchFactor1
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
+        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
     gtsam::Matrix63 intermediateMatrix;
     intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
     auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
@@ -357,7 +357,7 @@ class WrenchFactor2
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
+        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
     gtsam::Matrix63 intermediateMatrix;
     intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
     auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
@@ -493,7 +493,7 @@ class WrenchFactor3
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
+        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
     gtsam::Matrix63 intermediateMatrix;
     intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
     auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
@@ -740,7 +740,7 @@ class WrenchFactor4
     gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
     gtsam::Matrix H_rotation, H_unrotate;
     auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate).vector();
+        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
     gtsam::Matrix63 intermediateMatrix;
     intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
     auto gravity_wrench = inertia_ * intermediateMatrix * gravity;

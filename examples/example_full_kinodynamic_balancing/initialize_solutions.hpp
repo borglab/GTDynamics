@@ -16,7 +16,6 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/PoseGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -234,13 +233,13 @@ gtsam::Values initialize_solution_inverse_kinematics(
   for (int t = n_steps_init; t <= n_steps_final; t++) {
     gtsam::NonlinearFactorGraph kfg =
         dgb.qFactors(robot, t, gravity, contact_points);
-    kfg.add(gtdynamics::PoseGoalFactor(
-        gtdynamics::PoseKey(robot.getLinkByName(link_name)->getID(), t),
-        gtsam::noiseModel::Constrained::All(6), wTl_dt[t]));
+    kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
+      gtdynamics::PoseKey(robot.getLinkByName(link_name)->getID(), t), 
+      wTl_dt[t], gtsam::noiseModel::Constrained::All(6)));
 
     // std::cout << t
     //         << ": R[ (" << wTl_dt[t].rotation().rpy().transpose()
-    //         << "), P(" << wTl_dt[t].translation().vector().transpose()
+    //         << "), P(" << wTl_dt[t].translation().transpose()
     //         << ")]" << std::endl;
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
