@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  PoseGoalFactor.h
+ * @file  PointGoalFactor.h
  * @brief Link point goal factor.
  * @Author: Alejandro Escontrela
  */

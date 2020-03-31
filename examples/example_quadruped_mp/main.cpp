@@ -13,7 +13,6 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/factors/PoseGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -274,9 +273,9 @@ int main(int argc, char **argv) {
     gtsam::NonlinearFactorGraph kfg = dgb.qFactors(vision60, ti);
 
     // Constrain the base pose using trajectory value.
-    kfg.add(gtdynamics::PoseGoalFactor(
-        gtdynamics::PoseKey(vision60.getLinkByName("body")->getID(), ti),
-        gtsam::noiseModel::Constrained::All(6), tposes["body"]));
+    kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
+      gtdynamics::PoseKey(vision60.getLinkByName("body")->getID(), ti), 
+      tposes["body"], gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
     for (auto &&leg : swing_sequence)
