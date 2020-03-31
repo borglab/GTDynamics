@@ -66,7 +66,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   // contact r = 1, the linear component a = 1.
   gtsam::Vector6 link_accel_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(gtsam::norm_2(factor.evaluateError(link_accel_angular)),
+  EXPECT(assert_equal(factor.evaluateError(link_accel_angular).norm(),
                       1.0));
 
   // A link with both angular and linear acceleration at the CoM should have
@@ -75,7 +75,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   gtsam::Vector6 link_accel_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
   EXPECT(assert_equal(
-      gtsam::norm_2(factor.evaluateError(link_accel_angular_linear)),
+      factor.evaluateError(link_accel_angular_linear).norm(),
       std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct

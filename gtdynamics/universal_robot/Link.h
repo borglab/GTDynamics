@@ -191,7 +191,7 @@ class Link : public std::enable_shared_from_this<Link> {
   // return all joints of the link
   const std::vector<JointSharedPtr> &getJoints(void) const { return joints_; }
 
-  // Reutrn link name.
+  // Return link name.
   std::string name() const { return name_; }
 
   /// Return link mass.

@@ -68,9 +68,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /** joint effort types
    * Actuated: motor powered
    * Unactuated: not powered, free to move, exert zero torque
-   * Impedence: with spring resistance
+   * Impedance: with spring resistance
    */
-  enum JointEffortType { Actuated, Unactuated, Impedence };
+  enum JointEffortType { Actuated, Unactuated, Impedance };
 
   /**
    * JointParams contains all parameters to construct a joint
@@ -186,9 +186,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
     if (joint_type_ == 'R') {
       pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-          pcomRj * (-jTpcom_.translation().vector()));
+          pcomRj * (-jTpcom_.translation()));
       cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-          ccomRj * (-jTccom_.translation().vector()));
+          ccomRj * (-jTccom_.translation()));
     } else if (joint_type_ == 'P') {
       pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
       cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
@@ -209,7 +209,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * Keyword arguments:
    *   sdf_joint                  -- sdf::Joint instance to derive joint
    * attributes from. jointEffortType_           -- joint effort type.
-   *   springCoefficient          -- spring coefficient for Impedence joint.
+   *   springCoefficient          -- spring coefficient for Impedance joint.
    *   jointLimitThreshold        -- joint angle limit threshold.
    *   velocityLimitThreshold     -- joint velocity limit threshold.
    *   accelerationLimit          -- joint acceleration limit
@@ -449,7 +449,7 @@ struct JointParams {
   std::string name;  // Name of this joint as described in the URDF file.
 
   Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
-  double springCoefficient = 0;      // spring coefficient for Impedence joint.
+  double springCoefficient = 0;      // spring coefficient for Impedance joint.
   double jointLimitThreshold = 0.0;  // joint angle limit threshold.
   double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
   double accelerationLimit = 10000;     // joint acceleration limit.

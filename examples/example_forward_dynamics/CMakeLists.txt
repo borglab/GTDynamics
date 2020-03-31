@@ -11,9 +11,13 @@ find_package(GTSAM REQUIRED) # Uses installed package
 
 # Find GTDynamics.
 find_library(GTDYNAMICS NAMES gtdynamics)
+find_path(GTDYNAMICS_INCLUDE_DIR NAMES gtdynamics)
 
 ## Build Executable
 
 add_executable(exec main.cpp)
 target_link_libraries(exec PUBLIC ${GTDYNAMICS} gtsam ${SDFormat_LIBRARIES})
-target_include_directories(exec PUBLIC ${GTSAM_INCLUDE_DIR} ${SDFormat_INCLUDE_DIRS})
+target_include_directories(exec PUBLIC
+    ${GTDYNAMICS_INCLUDE_DIR}
+    ${GTSAM_INCLUDE_DIR}
+    ${SDFormat_INCLUDE_DIRS})

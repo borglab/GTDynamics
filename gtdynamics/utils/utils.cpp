@@ -43,10 +43,10 @@ gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
   auto w_skew = gtsam::skewSymmetric(w);
   gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
   gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  gtsam::Vector3 H_T = H_expo * (jMi.translation().vector() - w_skew * v) +
+  gtsam::Vector3 H_T = H_expo * (jMi.translation() - w_skew * v) +
                        w * w.transpose() * v;
   gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
-                        gtsam::skewSymmetric(kTj.translation().vector()) * H_R;
+                        gtsam::skewSymmetric(kTj.translation()) * H_R;
   gtsam::Matrix6 H = gtsam::Z_6x6;
   gtsam::insertSub(H, H_R, 0, 0);
   gtsam::insertSub(H, H_TR, 3, 0);
@@ -72,7 +72,7 @@ gtsam::Vector q_trajectory(int i, int total_step,
 
 std::vector<std::vector<gtsam::Point3>> sphereCenters(
     std::vector<double> lengths, std::vector<double> radii) {
-  std::vector<std::vector<gtsam::Point3>> shpere_centers_all;
+  std::vector<std::vector<gtsam::Point3>> sphere_centers_all;
   int dof = lengths.size();
   for (int j = 0; j < dof; ++j) {
     std::vector<gtsam::Point3> sphere_centers;
@@ -87,9 +87,9 @@ std::vector<std::vector<gtsam::Point3>> sphereCenters(
             gtsam::Point3((i + 0.5) * distance - 0.5 * lengths[j], 0, 0));
       }
     }
-    shpere_centers_all.push_back(sphere_centers);
+    sphere_centers_all.push_back(sphere_centers);
   }
-  return shpere_centers_all;
+  return sphere_centers_all;
 }
 
 std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,

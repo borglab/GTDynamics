@@ -65,7 +65,7 @@ TEST(ContactKinematicsTwistFactor, error) {
   // linear component v = 1.
   gtsam::Vector6 link_twist_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(gtsam::norm_2(factor.evaluateError(link_twist_angular)),
+  EXPECT(assert_equal(factor.evaluateError(link_twist_angular).norm(),
                       1.0));
 
   // A link with both angular velocity and linear velocity at the CoM should
@@ -74,7 +74,7 @@ TEST(ContactKinematicsTwistFactor, error) {
   gtsam::Vector6 link_twist_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
   EXPECT(assert_equal(
-      gtsam::norm_2(factor.evaluateError(link_twist_angular_linear)),
+      factor.evaluateError(link_twist_angular_linear).norm(),
       std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
