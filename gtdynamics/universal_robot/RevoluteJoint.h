@@ -15,10 +15,9 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
 
-#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
@@ -26,12 +25,11 @@
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
-  class RevoluteJoint : public Joint {
-
-protected:
-
+class RevoluteJoint : public Joint {
+ protected:
   char joint_type_;
   JointEffortType jointEffortType_;
   gtsam::Vector3 axis_;
@@ -84,12 +82,12 @@ protected:
     gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
 
     pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-      pcomRj * (-jTpcom_.translation()));
+                                         pcomRj * (-jTpcom_.translation()));
     cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-      ccomRj * (-jTccom_.translation()));
+                                         ccomRj * (-jTccom_.translation()));
   }
 
-public:
+ public:
   /**
    * @brief Create RevoluteJoint from a sdf::Joint instance.
    *
@@ -105,10 +103,10 @@ public:
    * @param[in] child_link                 Shared pointer to the child Link.
    */
   RevoluteJoint(const sdf::Joint &sdf_joint, JointEffortType joint_effort_type,
-        double springCoefficient, double jointLimitThreshold,
-        double velocityLimitThreshold, double accelerationLimit,
-        double accelerationLimitThreshold, double torqueLimitThreshold,
-        LinkSharedPtr parent_link, LinkSharedPtr child_link)
+                double springCoefficient, double jointLimitThreshold,
+                double velocityLimitThreshold, double accelerationLimit,
+                double accelerationLimitThreshold, double torqueLimitThreshold,
+                LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : Joint(sdf_joint, parent_link, child_link),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
@@ -130,7 +128,7 @@ public:
 
   /** constructor using JointParams */
   explicit RevoluteJoint(const Params &params)
-      : Joint (params),
+      : Joint(params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
@@ -278,9 +276,7 @@ public:
                                torqueLimitThreshold()));
     return graph;
   }
-
 };
-}
+}  // namespace gtdynamics
 
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
