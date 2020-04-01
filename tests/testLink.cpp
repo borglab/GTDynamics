@@ -16,8 +16,8 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 
-#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/utils/Utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
@@ -39,12 +39,13 @@ TEST(Link, urdf_constructor) {
   j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  gtdynamics::JointSharedPtr j1 = std::make_shared<Joint>(
-      Joint(*simple_urdf.JointByName("j1"), j1_params.jointEffortType,
-            j1_params.springCoefficient, j1_params.jointLimitThreshold,
-            j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-            j1_params.accelerationLimitThreshold,
-            j1_params.torqueLimitThreshold, l1, l2));
+  gtdynamics::RevoluteJointSharedPtr j1 =
+      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+          *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
+          j1_params.springCoefficient, j1_params.jointLimitThreshold,
+          j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
+          j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold,
+          l1, l2));
 
   // get shared ptr
   EXPECT(l1->getSharedPtr() == l1);

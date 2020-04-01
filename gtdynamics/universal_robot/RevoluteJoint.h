@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  PrismaticJoint.h
- * @brief Representation of a prismatic robot joint.
+ * @file  RevoluteJoint.h
+ * @brief Representation of a revolute robot joint.
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela
@@ -15,9 +15,10 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_
 
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
@@ -25,11 +26,12 @@
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
-class PrismaticJoint : public Joint {
- protected:
+  class RevoluteJoint : public Joint {
+
+protected:
+
   char joint_type_;
   JointEffortType jointEffortType_;
   gtsam::Vector3 axis_;
@@ -81,13 +83,15 @@ class PrismaticJoint : public Joint {
     gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
     gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
 
-    pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
-    cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
+    pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
+      pcomRj * (-jTpcom_.translation()));
+    cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
+      ccomRj * (-jTccom_.translation()));
   }
 
- public:
+public:
   /**
-   * @brief Create PrismaticJoint from a sdf::Joint instance.
+   * @brief Create RevoluteJoint from a sdf::Joint instance.
    *
    * @param[in] sdf_joint                  sdf::Joint object.
    * @param[in] joint_effort_type          Joint effort type.
@@ -100,11 +104,11 @@ class PrismaticJoint : public Joint {
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
    */
-  PrismaticJoint(const sdf::Joint &sdf_joint, JointEffortType joint_effort_type,
-                 double springCoefficient, double jointLimitThreshold,
-                 double velocityLimitThreshold, double accelerationLimit,
-                 double accelerationLimitThreshold, double torqueLimitThreshold,
-                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
+  RevoluteJoint(const sdf::Joint &sdf_joint, JointEffortType joint_effort_type,
+        double springCoefficient, double jointLimitThreshold,
+        double velocityLimitThreshold, double accelerationLimit,
+        double accelerationLimitThreshold, double torqueLimitThreshold,
+        LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : Joint(sdf_joint, parent_link, child_link),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
@@ -125,8 +129,8 @@ class PrismaticJoint : public Joint {
   }
 
   /** constructor using JointParams */
-  explicit PrismaticJoint(const Params &params)
-      : Joint(params),
+  explicit RevoluteJoint(const Params &params)
+      : Joint (params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
@@ -137,7 +141,7 @@ class PrismaticJoint : public Joint {
   }
 
   /// Return jointType
-  char jointType() const { return 'P'; }
+  char jointType() const { return 'R'; }
 
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
@@ -274,7 +278,9 @@ class PrismaticJoint : public Joint {
                                torqueLimitThreshold()));
     return graph;
   }
-};
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
+};
+}
+
+
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTE_JOINT_H_

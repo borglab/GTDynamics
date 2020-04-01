@@ -88,11 +88,27 @@ LinkJointPair extractRobotFromSdf(
     gtdynamics::JointParams jps = getJointParams(sdf_joint, joint_params);
 
     // Construct Joint and insert into name_to_joint.
-    gtdynamics::JointSharedPtr joint = std::make_shared<gtdynamics::Joint>(
-        gtdynamics::Joint(sdf_joint, jps.jointEffortType, jps.springCoefficient,
-                          jps.jointLimitThreshold, jps.velocityLimitThreshold,
-                          jps.accelerationLimit, jps.accelerationLimitThreshold,
-                          jps.torqueLimitThreshold, parent_link, child_link));
+    gtdynamics::JointSharedPtr joint;
+    if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
+      joint = std::make_shared<gtdynamics::PrismaticJoint>(
+          gtdynamics::PrismaticJoint(
+              sdf_joint, jps.jointEffortType, jps.springCoefficient,
+              jps.jointLimitThreshold, jps.velocityLimitThreshold,
+              jps.accelerationLimit, jps.accelerationLimitThreshold,
+              jps.torqueLimitThreshold, parent_link, child_link));
+    } else if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
+      joint =
+          std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+              sdf_joint, jps.jointEffortType, jps.springCoefficient,
+              jps.jointLimitThreshold, jps.velocityLimitThreshold,
+              jps.accelerationLimit, jps.accelerationLimitThreshold,
+              jps.torqueLimitThreshold, parent_link, child_link));
+    } else {
+      throw std::runtime_error("Joint type for [" +
+                               std::string(sdf_joint.Name()) +
+                               "] not yet supported");
+    }
+
     name_to_joint.insert(std::make_pair(sdf_joint.Name(), joint));
     joint->setID(j);
 
@@ -113,8 +129,7 @@ LinkJointPair extractRobotFromFile(
   if (file_ext == "urdf")
     return extractRobotFromSdf(get_sdf(file_path), joint_params);
   else if (file_ext == "sdf")
-    return extractRobotFromSdf(get_sdf(file_path, model_name),
-                                      joint_params);
+    return extractRobotFromSdf(get_sdf(file_path, model_name), joint_params);
 
   throw std::runtime_error("Invalid file extension.");
 }
@@ -190,10 +205,11 @@ void Robot::printRobot() const {
     std::cout << joint->name() << ":\n";
     gtdynamics::LinkSharedPtr parent_link = joint->parentLink();
     gtdynamics::LinkSharedPtr child_link = joint->childLink();
+    // TODO(aescontrela): Call link and joint toString methods here.
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
-    std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose()
-              << "\n";
+    // std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose()
+    //           << "\n";
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
     std::cout << "\tpMc_com: "
