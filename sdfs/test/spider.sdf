@@ -46,6 +46,46 @@
 		
 		<!-- Leg 1 links -->
 		
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_1">
+			<pose frame=''>0 0 0 0 0 0</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_1_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_1_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
+
 		<link name="femur_1">
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
@@ -162,9 +202,9 @@
 		
 		<!-- Leg 1 joints -->
 		
-		<joint name="hip_1" type="universal">
+		<joint name="hip_1" type="revolute">
 			<parent>body</parent>
-			<child>femur_1</child>
+			<child>trochanter_1</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -174,20 +214,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_1" type="revolute">
+			<parent>trochanter_1</parent>
+			<child>femur_1</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_1" type="revolute">
 			<parent>femur_1</parent>
 			<child>tibia_1</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -200,7 +245,7 @@
 		<joint name="ankle_1" type="revolute">
 			<parent>tibia_1</parent>
 			<child>tarsus_1</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -212,6 +257,46 @@
 		
 		<!-- Leg 2 links -->
 		
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_2">
+			<pose frame=''>0 0 0 0 0 0.785398</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_2_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_2_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
+
 		<link name="femur_2">
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
@@ -328,9 +413,9 @@
 		
 		<!-- Leg 2 joints -->
 		
-		<joint name="hip_2" type="universal">
+		<joint name="hip_2" type="revolute">
 			<parent>body</parent>
-			<child>femur_2</child>
+			<child>trochanter_2</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -340,20 +425,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_2" type="revolute">
+			<parent>trochanter_2</parent>
+			<child>femur_2</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_2" type="revolute">
 			<parent>femur_2</parent>
 			<child>tibia_2</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -366,7 +456,7 @@
 		<joint name="ankle_2" type="revolute">
 			<parent>tibia_2</parent>
 			<child>tarsus_2</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -377,6 +467,46 @@
 		</joint>
 
 		<!-- Leg 3 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_3">
+			<pose frame=''>0 0 0 0 0 1.570796</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_3_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_3_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_3">
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
@@ -494,9 +624,9 @@
 		
 		<!-- Leg 3 joints -->
 		
-		<joint name="hip_3" type="universal">
+		<joint name="hip_3" type="revolute">
 			<parent>body</parent>
-			<child>femur_3</child>
+			<child>trochanter_3</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -506,20 +636,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_3" type="revolute">
+			<parent>trochanter_3</parent>
+			<child>femur_3</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_3" type="revolute">
 			<parent>femur_3</parent>
 			<child>tibia_3</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -532,7 +667,7 @@
 		<joint name="ankle_3" type="revolute">
 			<parent>tibia_3</parent>
 			<child>tarsus_3</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -543,6 +678,46 @@
 		</joint>
 
 		<!-- Leg 4 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_4">
+			<pose frame=''>0 0 0 0 0 2.356194</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_4_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_4_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_4">
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
@@ -660,9 +835,9 @@
 		
 		<!-- Leg 4 joints -->
 		
-		<joint name="hip_4" type="universal">
+		<joint name="hip_4" type="revolute">
 			<parent>body</parent>
-			<child>femur_4</child>
+			<child>trochanter_4</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -672,20 +847,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_4" type="revolute">
+			<parent>trochanter_4</parent>
+			<child>femur_4</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_4" type="revolute">
 			<parent>femur_4</parent>
 			<child>tibia_4</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -698,7 +878,7 @@
 		<joint name="ankle_4" type="revolute">
 			<parent>tibia_4</parent>
 			<child>tarsus_4</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -709,6 +889,46 @@
 		</joint>
 
 		<!-- Leg 5 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_5">
+			<pose frame=''>0 0 0 0 0 3.141592</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_5_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_5_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_5">
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
@@ -826,9 +1046,9 @@
 		
 		<!-- Leg 5 joints -->
 		
-		<joint name="hip_5" type="universal">
+		<joint name="hip_5" type="revolute">
 			<parent>body</parent>
-			<child>femur_5</child>
+			<child>trochanter_5</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -838,20 +1058,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_5" type="revolute">
+			<parent>trochanter_5</parent>
+			<child>femur_5</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_5" type="revolute">
 			<parent>femur_5</parent>
 			<child>tibia_5</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -864,7 +1089,7 @@
 		<joint name="ankle_5" type="revolute">
 			<parent>tibia_5</parent>
 			<child>tarsus_5</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -875,6 +1100,46 @@
 		</joint>
 
 		<!-- Leg 6 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_6">
+			<pose frame=''>0 0 0 0 0 3.92699</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_6_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_6_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_6">
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
@@ -992,9 +1257,9 @@
 		
 		<!-- Leg 6 joints -->
 		
-		<joint name="hip_6" type="universal">
+		<joint name="hip_6" type="revolute">
 			<parent>body</parent>
-			<child>femur_6</child>
+			<child>trochanter_6</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1004,20 +1269,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_6" type="revolute">
+			<parent>trochanter_6</parent>
+			<child>femur_6</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_6" type="revolute">
 			<parent>femur_6</parent>
 			<child>tibia_6</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -1030,7 +1300,7 @@
 		<joint name="ankle_6" type="revolute">
 			<parent>tibia_6</parent>
 			<child>tarsus_6</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -1041,6 +1311,46 @@
 		</joint>
 
 		<!-- Leg 7 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_7">
+			<pose frame=''>0 0 0 0 0 4.712388</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_7_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_7_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_7">
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
@@ -1158,9 +1468,9 @@
 		
 		<!-- Leg 7 joints -->
 		
-		<joint name="hip_7" type="universal">
+		<joint name="hip_7" type="revolute">
 			<parent>body</parent>
-			<child>femur_7</child>
+			<child>trochanter_7</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1170,20 +1480,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_7" type="revolute">
+			<parent>trochanter_7</parent>
+			<child>femur_7</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_7" type="revolute">
 			<parent>femur_7</parent>
 			<child>tibia_7</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -1196,7 +1511,7 @@
 		<joint name="ankle_7" type="revolute">
 			<parent>tibia_7</parent>
 			<child>tarsus_7</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -1207,6 +1522,46 @@
 		</joint>
 
 		<!-- Leg 8 links -->
+
+		<!-- A temporary link, for the temporary solution of testing
+		this file using revolute instead of universal joints -->
+		<link name="trochanter_8">
+			<pose frame=''>0 0 0 0 0 5.497786</pose>
+			<inertial>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
+				<inertia>
+					<ixx>5</ixx>
+					<ixy>0</ixy>
+					<ixz>0</ixz>
+					<iyy>5</iyy>
+					<iyz>0</iyz>
+					<izz>5</izz>
+				</inertia>
+			</inertial>
+			<collision name="trochanter_8_collision">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+			</collision>
+			<visual name="trochanter_8_visual">
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<geometry>
+					<cylinder>
+						<length>0.001</length>
+						<radius>0.04</radius>
+					</cylinder>
+				</geometry>
+				<material>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
+				</material>
+			</visual>
+		</link>
 		
 		<link name="femur_8">
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
@@ -1323,10 +1678,10 @@
 		</link>
 		
 		<!-- Leg 8 joints -->
-		
-		<joint name="hip_8" type="universal">
+
+		<joint name="hip_8" type="revolute">
 			<parent>body</parent>
-			<child>femur_8</child>
+			<child>trochanter_8</child>
 			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1336,20 +1691,25 @@
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
-			<axis2>
+		</joint>
+		<joint name="hip2_8" type="revolute">
+			<parent>trochanter_8</parent>
+			<child>femur_8</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
+			<axis>
 				<xyz>0 0 1</xyz>
 				<limit>
 					<lower>-0.610865</lower>
 					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
-			</axis2>
+			</axis>
 		</joint>
 		
 		<joint name="knee_8" type="revolute">
 			<parent>femur_8</parent>
 			<child>tibia_8</child>
-			<pose frame=''>0 0.78 0 0 0 0</pose>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
@@ -1362,7 +1722,7 @@
 		<joint name="ankle_8" type="revolute">
 			<parent>tibia_8</parent>
 			<child>tarsus_8</child>
-			<pose frame=''>0 1.26 0 0 0 0</pose>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
 				<limit>
