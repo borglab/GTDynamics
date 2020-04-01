@@ -19,12 +19,12 @@
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <algorithm>
 #include <iostream>
-#include <vector>
-#include <utility>
 #include <map>
 #include <set>
-#include <algorithm>
+#include <utility>
+#include <vector>
 
 #include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
@@ -43,18 +43,6 @@ using gtsam::Values;
 using gtsam::Vector, gtsam::Vector6;
 
 namespace gtdynamics {
-
-gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {
-  gtsam::Matrix36 H_wrench;
-  if (planar_axis[0] == 1) {  // x axis
-    H_wrench << 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0;
-  } else if (planar_axis[1] == 1) {  // y axis
-    H_wrench << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0;
-  } else if (planar_axis[2] == 1) {  // z axis
-    H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
-  }
-  return H_wrench;
-}
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     const Robot &robot, const int t, const Robot::JointValues &joint_angles,
@@ -105,48 +93,11 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     }
   }
 
-  for (JointSharedPtr joint : robot.joints()) {
-    LinkSharedPtr link_1 = joint->parentLink();
-    LinkSharedPtr link_2 = joint->childLink();
-    int i1 = link_1->getID();
-    int i2 = link_2->getID();
-    int j = joint->getID();
-
-    const Pose3 T_wi1 = poses.at(link_1->name());
-    const Pose3 T_wi2 = poses.at(link_2->name());
-    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const Vector6 V_i2 = twists.at(link_2->name());
-    const Vector6 S_i2_j = joint->screwAxis(link_2);
-    const double v_j = joint_vels.at(joint->name());
-
-    // twist acceleration factor
-    // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
-    Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(i2, t), I_6x6, TwistAccelKey(i1, t),
-              -T_i2i1.AdjointMap(), JointAccelKey(j, t), -S_i2_j, rhs_tw,
-              gtsam::noiseModel::Constrained::All(6));
-
-    // torque factor
-    // S_i_j^T * F_i_j - tau = 0
-    gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(i2, j, t), joint->screwAxis(link_2).transpose(),
-              TorqueKey(j, t), -I_1x1, rhs_torque,
-              gtsam::noiseModel::Constrained::All(1));
-
-    // wrench equivalence factor
-    // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
-    Vector6 rhs_weq = Vector6::Zero();
-    graph.add(WrenchKey(i1, j, t), I_6x6, WrenchKey(i2, j, t),
-              T_i2i1.AdjointMap().transpose(), rhs_weq,
-              gtsam::noiseModel::Constrained::All(6));
-
-    // wrench planar factor
-    if (planar_axis) {
-      gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(i2, j, t), J_wrench, gtsam::Vector3::Zero(),
-                gtsam::noiseModel::Constrained::All(3));
-    }
-  }
+  OptimizerSetting opt_ = OptimizerSetting();
+  graph += robot.linearAFactors(t, poses, twists, joint_angles, joint_vels,
+                                opt_, planar_axis);
+  graph += robot.linearDynamicsFactors(t, poses, twists, joint_angles,
+                                       joint_vels, opt_, planar_axis);
   return graph;
 }
 

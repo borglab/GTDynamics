@@ -178,6 +178,15 @@ class Robot {
   gtsam::NonlinearFactorGraph aFactors(const int &t,
                                        const OptimizerSetting &opt) const;
 
+  gtsam::GaussianFactorGraph linearAFactors(
+    const int &t,
+    const std::map<std::string, gtsam::Pose3> &poses,
+    const std::map<std::string, gtsam::Vector6> &twists,
+    const std::map<std::string, double> &joint_angles,
+    const std::map<std::string, double> &joint_vels,
+    const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+
   /** Returns dynamics factors for the robot.
    *
    * Keyword Arguments:
@@ -188,6 +197,15 @@ class Robot {
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const int &t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const;
+
+  gtsam::GaussianFactorGraph linearDynamicsFactors(
+    const int &t,
+    const std::map<std::string, gtsam::Pose3> &poses,
+    const std::map<std::string, gtsam::Vector6> &twists,
+    const std::map<std::string, double> &joint_angles,
+    const std::map<std::string, double> &joint_vels,
+    const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
   /** Returns joint limit factors for the robot.
    *

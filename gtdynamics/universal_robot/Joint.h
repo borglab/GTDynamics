@@ -14,8 +14,10 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 
+#include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -209,22 +211,31 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Abstract method: Return joint type.
   virtual char jointType() const = 0;
 
-  // TODO(aescontrela): Remove this method, as not all joint types have a screw
-  // axis (e.g. universal joints). First need to remove screw axis dependency
-  // from the rest of the code.
-  virtual const gtsam::Vector6 &screwAxis(const LinkSharedPtr link) const = 0;
-
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame
   virtual gtsam::Pose3 transformFrom(
       const LinkSharedPtr link,
       boost::optional<double> q = boost::none) const = 0;
 
+  /// Abstract method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  virtual gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      boost::optional<double> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none) const = 0;
+
   /// Abstract method. Return the transform from the other link com to this link
   /// com frame
   virtual gtsam::Pose3 transformTo(
       const LinkSharedPtr link,
       boost::optional<double> q = boost::none) const = 0;
+
+  /// Abstract method. Return the twist of this link given the other link's
+  /// twist and joint angle.
+  virtual gtsam::Vector6 transformTwistTo(
+      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      boost::optional<double> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
 
   /// Abstract method. Return joint angle factors.
   virtual gtsam::NonlinearFactorGraph qFactors(
@@ -238,10 +249,30 @@ class Joint : public std::enable_shared_from_this<Joint> {
   virtual gtsam::NonlinearFactorGraph aFactors(
       const int &t, const OptimizerSetting &opt) const = 0;
 
+  /// Abstract method. Return linearized form of joint accel factors.
+  virtual gtsam::GaussianFactorGraph linearAFactors(
+      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      const std::map<std::string, gtsam::Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis =
+          boost::none) const = 0;
+
   /// Abstract method. Return joint dynamics factors.
   virtual gtsam::NonlinearFactorGraph dynamicsFactors(
       const int &t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
+
+  /// Abstract method. Return linearized form of joint dynamics factors.
+  virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
+      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      const std::map<std::string, gtsam::Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis =
+          boost::none) const = 0;
 
   // Abstract method. Return joint limit factors.
   virtual gtsam::NonlinearFactorGraph jointLimitFactors(

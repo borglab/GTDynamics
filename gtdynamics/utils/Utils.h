@@ -150,6 +150,13 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
  */
 gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
 
+/** Obtain the planar jacobian for the given planar axis.
+ * 
+ * Keyword Arguments:
+ *  planar_axis -- The planar axis.
+ */
+gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
+
 }  // namespace gtdynamics
 
 #endif   // GTDYNAMICS_UTILS_UTILS_H_

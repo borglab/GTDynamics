@@ -14,6 +14,7 @@
 #include "gtdynamics/universal_robot/Robot.h"
 
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
 
 #include <algorithm>
 #include <memory>
@@ -208,8 +209,6 @@ void Robot::printRobot() const {
     // TODO(aescontrela): Call link and joint toString methods here.
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
-    // std::cout << "\tscrew axis: " << joint->screwAxis(child_link).transpose()
-    //           << "\n";
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
     std::cout << "\tpMc_com: "
@@ -265,8 +264,8 @@ Robot::FKResults Robot::forwardKinematics(
       gtsam::Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
       gtsam::Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
       gtsam::Pose3 T_w2 = T_w1 * T_12;
-      gtsam::Vector6 S_2 = joint_ptr->screwAxis(link2);
-      gtsam::Vector6 V_2 = T_21.AdjointMap() * V_1 + S_2 * joint_vel;
+      gtsam::Vector6 V_2 =
+          joint->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
 
       // check if link 2 is already assigned
       if (link_poses.find(link2->name()) == link_poses.end()) {
@@ -313,12 +312,41 @@ gtsam::NonlinearFactorGraph Robot::aFactors(const int &t,
   return graph;
 }
 
+gtsam::GaussianFactorGraph Robot::linearAFactors(
+    const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+    const std::map<std::string, gtsam::Vector6> &twists,
+    const std::map<std::string, double> &joint_angles,
+    const std::map<std::string, double> &joint_vels,
+    const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis) const {
+  gtsam::GaussianFactorGraph graph;
+  for (auto &&joint : joints())
+    graph += joint->linearAFactors(t, poses, twists, joint_angles, joint_vels,
+                                   opt, planar_axis);
+
+  return graph;
+}
+
 gtsam::NonlinearFactorGraph Robot::dynamicsFactors(
     const int &t, const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto &&joint : joints())
     graph.add(joint->dynamicsFactors(t, opt, planar_axis));
+  return graph;
+}
+
+gtsam::GaussianFactorGraph Robot::linearDynamicsFactors(
+    const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+    const std::map<std::string, gtsam::Vector6> &twists,
+    const std::map<std::string, double> &joint_angles,
+    const std::map<std::string, double> &joint_vels,
+    const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis) const {
+  gtsam::GaussianFactorGraph graph;
+  for (auto &&joint : joints())
+    graph += joint->linearDynamicsFactors(t, poses, twists, joint_angles,
+                                          joint_vels, opt, planar_axis);
   return graph;
 }
 
