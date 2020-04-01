@@ -156,9 +156,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
     if (joint_type_ == 'R') {
       pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-          pcomRj * (-jTpcom_.translation().vector()));
+          pcomRj * (-jTpcom_.translation()));
       cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-          ccomRj * (-jTccom_.translation().vector()));
+          ccomRj * (-jTccom_.translation()));
     } else if (joint_type_ == 'P') {
       pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
       cScrewAxis_ << 0, 0, 0, ccomRj * axis_;

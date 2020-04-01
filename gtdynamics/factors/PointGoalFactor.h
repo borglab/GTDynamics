@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  PoseGoalFactor.h
+ * @file  PointGoalFactor.h
  * @brief Link point goal factor.
  * @Author: Alejandro Escontrela
  */
@@ -64,11 +64,10 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
     gtsam::Pose3 sTp = pose.transformPoseFrom(comTp_);
     gtsam::Matrix H_point;
     gtsam::Point3 sTp_t = sTp.translation(H_point);
-    gtsam::Matrix H_err;
-    gtsam::Vector error = sTp_t.sub(goalPoint_, H_err);
+    gtsam::Vector error = sTp_t - goalPoint_;
 
     if (H_pose)
-        *H_pose = H_err * H_point * comTp_.inverse().AdjointMap();
+        *H_pose = H_point * comTp_.inverse().AdjointMap();
 
     return error;
   }
