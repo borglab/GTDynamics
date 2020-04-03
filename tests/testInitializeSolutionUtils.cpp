@@ -135,6 +135,36 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   gtdynamics::ContactPoints contact_points = {
       gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
+  /**
+   * The aim of this test is to initialize a trajectory for the simple two-link
+   * that translates link l2 1 meter in the x direction and down 0.5 meters in
+   * the y direction all the while ensuring that the end of link l1 remains in
+   * contact with the ground. When initialized in it's upright position, the
+   * two link robot is in a singular state. This is because the gradients of
+   * the ContactKinematicsPoseFactor with respect to the x and y are equally 0.
+   * This prevents link 1 from rotating about the revolute joint as to remain
+   * in contact with the ground. This problem is addressed by adding a small
+   * amount of gaussian noise to the initial solution, which prevents it from
+   * being a singular configuration.
+   * 
+   *  1. Desired trajectory obtained by adding noise to the initial solution:
+   *  z                   |                 ı
+   *  |                   | l2              |  l2
+   *   ¯¯ x               |                 |
+   *                      |       =>         \
+   *                      | l1                \  l1
+   *                      |                    \
+   * ¯                  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+   *
+   *  2. Optimized trajectory without noise in the solution initialization:
+   *                      |
+   *                      | l2              |
+   *                      |                 | l2
+   *                      |       =>        |
+   *                      | l1              |
+   *                      |                 | l1 :(
+   *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
+   */
   double gaussian_noise = 1e-8;
   gtsam::Values init_vals = gtdynamics::InitializeSolutionInverseKinematics(
       my_robot, l2->name(), wTb_i, wTb_t, ts, dt, gaussian_noise,
@@ -210,28 +240,6 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
 TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   auto my_robot =
       gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-
-  /**
-   *
-   *    |                 ı
-   *    | l2              |  l2
-   *    |                 |
-   *    |       =>         \
-   *    | l1                \  l1
-   *    |                    \
-   * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-   */
-
-  /**
-   *
-   *    |
-   *    | l2              |
-   *    |                 | l2
-   *    |       =>        |
-   *    | l1              |
-   *    |                 | l1 :(
-   * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
-   */
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
