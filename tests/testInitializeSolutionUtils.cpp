@@ -22,7 +22,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/InitializeSolutionUtils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using gtsam::assert_equal;
 

@@ -22,7 +22,7 @@
 
 #include <string>
 
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

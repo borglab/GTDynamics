@@ -15,7 +15,7 @@
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/InitializeSolutionUtils.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>

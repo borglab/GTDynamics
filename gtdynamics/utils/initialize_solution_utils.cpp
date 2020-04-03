@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  InitializeSolutionUtils.cpp
+ * @file  initialize_solution_utils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#include "gtdynamics/utils/InitializeSolutionUtils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -153,17 +153,6 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
   return init_vals;
 }
 
-/** @fn Iteratively solve for the robot kinematics with contacts.
- *
- * @param[in] robot           A gtdynamics::Robot object.
- * @param[in] link_name       The name of the link whose pose to interpolate.
- * @param[in] wTl_i           The initial pose of the link.
- * @param[in] wTl_t           A vector of desired poses.
- * @param[in] ts              Times at which poses start and end.
- * @param[in] dt              The duration of a single timestep.
- * @param[in] contact_points  ContactPoint objects.
- * @return Initial solution stored in gtsam::Values object.
- */
 gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,

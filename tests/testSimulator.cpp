@@ -22,7 +22,7 @@
 #include "gtdynamics/dynamics/Simulator.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 TEST(Simulate, simple_urdf) {
   using gtsam::assert_equal;
