@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
        gtdynamics::PoseKey(
            base_link->getID(),
-           static_cast<int>(std::ceil(des_poses_t[i] / dt))), 
+           static_cast<int>(std::ceil(des_poses_t[i] / dt))),
       des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
@@ -199,14 +199,14 @@ int main(int argc, char** argv) {
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
     init_vals = gtdynamics::InitializeSolutionInterpolationMultiPhase(
-        vision60, "body", base_pose_init, des_poses, des_poses_t, dt,
+        vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
     init_vals = gtdynamics::ZeroValuesTrajectory(
-      vision60, t_steps, 0, contact_points);
+      vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
     init_vals = gtdynamics::InitializeSolutionInverseKinematics(vision60,
-      "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
+      "body", base_pose_init, des_poses, des_poses_t, dt, 0.0, contact_points);
 
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
