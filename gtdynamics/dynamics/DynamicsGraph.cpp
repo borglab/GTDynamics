@@ -180,7 +180,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         ContactKinematicsPoseFactor contact_pose_factor(
             PoseKey(i, t), opt_.cp_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point), gravity_,
-            contact_point.contact_height, opt_.cp_gradient_perturbation);
+            contact_point.contact_height);
         graph.add(contact_pose_factor);
       }
     }

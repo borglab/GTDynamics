@@ -56,8 +56,6 @@ class OptimizerSetting {
       time_cost_model,      // time prior
       jl_cost_model;        // joint limit factor
 
-  double cp_gradient_perturbation;  // to prevent singularities in pose factor
-
   /// optimization settings
   IterationType opt_type;        // optimizer type
   VerbosityLevel opt_verbosity;  // optimizer print out

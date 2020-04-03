@@ -452,7 +452,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   // Set initial values.
   gtsam::Values init_values =
-      gtdynamics::ZeroValues(my_robot, 0, contact_points);
+      gtdynamics::ZeroValues(my_robot, 0, 0.0, contact_points);
 
   graph_builder.printGraph(graph);
 
@@ -528,7 +528,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Set initial values.
   gtsam::Values init_values =
-      gtdynamics::ZeroValues(biped, 0, contact_points);
+      gtdynamics::ZeroValues(biped, 0, 0.0, contact_points);
 
   graph_builder.printGraph(graph);
 
@@ -615,7 +615,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Set initial values.
   gtsam::Values init_values =
-      gtdynamics::ZeroValues(my_robot, 0, contact_points);
+      gtdynamics::ZeroValues(my_robot, 0, 0.0, contact_points);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
