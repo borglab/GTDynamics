@@ -63,12 +63,10 @@ gtsam::Values InitializeSolutionInterpolation(
   gtsam::Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
 
   // Initialize joint angles and velocities to 0.
-  gtdynamics::Robot::JointValues jangles, jvels;
+  gtdynamics::JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(
-        joint->name(), GaussianRandomVector(1, 0, gaussian_noise)[0]));
-    jvels.insert(std::make_pair(joint->name(),
-                                GaussianRandomVector(1, 0, gaussian_noise)[0]));
+    jangles.insert(joint->getKey(), GaussianRandomVector(1, 0, gaussian_noise)[0]);
+    jvels.insert(joint->getKey(), GaussianRandomVector(1, 0, gaussian_noise)[0]);
   }
 
   double t_elapsed = T_s;
@@ -215,12 +213,10 @@ gtsam::Values InitializeSolutionInverseKinematics(
   gtsam::Vector z_six = GaussianRandomVector(6, 0, gaussian_noise),
                 z_one = GaussianRandomVector(1, 0, gaussian_noise);
 
-  gtdynamics::Robot::JointValues jangles, jvels;
+  gtdynamics::JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(
-        joint->name(), GaussianRandomVector(1, 0, gaussian_noise)[0]));
-    jvels.insert(std::make_pair(joint->name(),
-                                GaussianRandomVector(1, 0, gaussian_noise)[0]));
+    jangles.insert(joint->getKey(), GaussianRandomVector(1, 0, gaussian_noise)[0]);
+    jvels.insert(joint->getKey(), GaussianRandomVector(1, 0, gaussian_noise)[0]);
   }
   // Compute forward dynamics to obtain remaining link poses.
   auto fk_results =

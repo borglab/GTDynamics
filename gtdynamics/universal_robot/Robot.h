@@ -121,15 +121,6 @@ class Robot {
   // print links and joints of the robot, for debug purposes
   void printRobot() const;
 
-  // map from joint name to joint angle/vel/accel/torque
-  typedef std::map<std::string, double> JointValues;
-
-  // map from link name to link pose
-  typedef std::map<std::string, gtsam::Pose3> LinkPoses;
-
-  // map from link name to link twist
-  typedef std::map<std::string, gtsam::Vector6> LinkTwists;
-
   // type for storing forward kinematics results
   typedef std::pair<LinkPoses, LinkTwists> FKResults;
 
@@ -178,12 +169,16 @@ class Robot {
   gtsam::NonlinearFactorGraph aFactors(const int &t,
                                        const OptimizerSetting &opt) const;
 
+  gtsam::GaussianFactorGraph linearFDPriors(int t,
+                                            const JointValues &torques,
+                                            const OptimizerSetting &opt) const;
+
   gtsam::GaussianFactorGraph linearAFactors(
     const int &t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
+    const LinkPoses &poses,
+    const LinkTwists &twists,
+    const JointValues &joint_angles,
+    const JointValues &joint_vels,
     const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
@@ -200,10 +195,10 @@ class Robot {
 
   gtsam::GaussianFactorGraph linearDynamicsFactors(
     const int &t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
+    const LinkPoses &poses,
+    const LinkTwists &twists,
+    const JointValues &joint_angles,
+    const JointValues &joint_vels,
     const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 

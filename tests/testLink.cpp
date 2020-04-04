@@ -36,7 +36,7 @@ TEST(Link, urdf_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
   gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
 
   // Test constructor.
   gtdynamics::RevoluteJointSharedPtr j1 =

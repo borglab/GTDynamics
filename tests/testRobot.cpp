@@ -119,9 +119,9 @@ TEST(Robot, removeLink) {
 TEST(Robot, forwardKinematics) {
   Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  Robot::JointValues joint_angles, joint_vels;
-  joint_angles["j1"] = 0;
-  joint_vels["j1"] = 0;
+  gtsam::Values joint_angles, joint_vels;
+  joint_angles.insert(simple_robot.getJointByName("j1")->getKey(), 0);
+  joint_vels.insert(simple_robot.getJointByName("j1")->getKey(), 0);
 
   // not fixing a link would cause an exception
   THROWS_EXCEPTION(simple_robot.forwardKinematics(joint_angles, joint_vels));
@@ -130,8 +130,8 @@ TEST(Robot, forwardKinematics) {
   simple_robot.getLinkByName("l1")->fix();
   Robot::FKResults fk_results =
       simple_robot.forwardKinematics(joint_angles, joint_vels);
-  Robot::LinkPoses poses = fk_results.first;
-  Robot::LinkTwists twists = fk_results.second;
+  gtdynamics::LinkPoses poses = fk_results.first;
+  gtdynamics::LinkTwists twists = fk_results.second;
 
   gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
   gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 3));
@@ -185,20 +185,20 @@ TEST(Robot, forwardKinematics_rpr) {
   Robot rpr_robot =
       Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
-  Robot::JointValues joint_angles, joint_vels;
-  joint_angles["joint_1"] = 0;
-  joint_vels["joint_1"] = 0;
-  joint_angles["joint_2"] = 0;
-  joint_vels["joint_2"] = 0;
-  joint_angles["joint_3"] = 0;
-  joint_vels["joint_3"] = 0;
+  gtsam::Values joint_angles, joint_vels;
+  joint_angles.insert(rpr_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_vels.insert(rpr_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_angles.insert(rpr_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_vels.insert(rpr_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_angles.insert(rpr_robot.getJointByName("joint_3")->getKey(), 0);
+  joint_vels.insert(rpr_robot.getJointByName("joint_3")->getKey(), 0);
 
   // test fk at rest
   rpr_robot.getLinkByName("link_0")->fix();
   Robot::FKResults fk_results =
       rpr_robot.forwardKinematics(joint_angles, joint_vels);
-  Robot::LinkPoses poses = fk_results.first;
-  Robot::LinkTwists twists = fk_results.second;
+  gtdynamics::LinkPoses poses = fk_results.first;
+  gtdynamics::LinkTwists twists = fk_results.second;
 
   gtsam::Pose3 T_wl0_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
   gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5));
@@ -253,15 +253,15 @@ TEST(forwardKinematics, four_bar) {
       Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.getLinkByName("l1")->fix();
 
-  Robot::JointValues joint_angles, joint_vels;
+  gtsam::Values joint_angles, joint_vels;
   for (gtdynamics::JointSharedPtr joint : four_bar.joints()) {
-    joint_angles[joint->name()] = 0;
-    joint_vels[joint->name()] = 0;
+    joint_angles.insert(joint->getKey(), 0);
+    joint_vels.insert(joint->getKey(), 0);
   }
   Robot::FKResults fk_results =
       four_bar.forwardKinematics(joint_angles, joint_vels);
-  Robot::LinkPoses poses = fk_results.first;
-  Robot::LinkTwists twists = fk_results.second;
+  gtdynamics::LinkPoses poses = fk_results.first;
+  gtdynamics::LinkTwists twists = fk_results.second;
   gtsam::Vector6 V_4;
   V_4 << 0, 0, 0, 0, 0, 0;
   gtsam::Pose3 T_4(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, -1, 0));
@@ -270,10 +270,10 @@ TEST(forwardKinematics, four_bar) {
   EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3));
 
   // incorrect specficiation of joint angles;
-  Robot::JointValues wrong_angles = joint_angles;
-  Robot::JointValues wrong_vels = joint_vels;
-  wrong_angles["j1"] = 1;
-  wrong_vels["j1"] = 1;
+  gtsam::Values wrong_angles = joint_angles;
+  gtsam::Values wrong_vels = joint_vels;
+  wrong_angles.insert(four_bar.getJointByName("j1")->getKey(), 1);
+  wrong_vels.insert(four_bar.getJointByName("j1")->getKey(), 1);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles, joint_vels));
   THROWS_EXCEPTION(four_bar.forwardKinematics(joint_angles, wrong_vels));
 }

@@ -34,13 +34,13 @@ int main(int argc, char** argv) {
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
 
   // Add forward dynamics priors to factor graph.
-  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques;
-  joint_angles["joint_1"] = 0;
-  joint_vels["joint_1"] = 0;
-  joint_torques["joint_1"] = 0;
-  joint_angles["joint_2"] = 0;
-  joint_vels["joint_2"] = 0;
-  joint_torques["joint_2"] = 0;
+  gtsam::Values joint_angles, joint_vels, joint_torques;
+  joint_angles.insert(my_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_vels.insert(my_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_torques.insert(my_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_angles.insert(my_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_vels.insert(my_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_torques.insert(my_robot.getJointByName("joint_2")->getKey(), 0);
 
   auto priorFactors = graph_builder.forwardDynamicsPriors(
       my_robot, 0, joint_angles, joint_vels, joint_torques);

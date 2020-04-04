@@ -33,10 +33,10 @@ class Simulator {
   Robot robot_;
   int t_;
   DynamicsGraph graph_builder_;
-  Robot::JointValues initial_angles_, initial_vels_;
+  JointValues initial_angles_, initial_vels_;
   boost::optional<gtsam::Vector3> gravity_;
   boost::optional<gtsam::Vector3> planar_axis_;
-  Robot::JointValues qs_, vs_, as_;
+  JointValues qs_, vs_, as_;
   gtsam::Values results_;
 
  public:
@@ -48,8 +48,8 @@ class Simulator {
    *  initial_angels           -- initial joint angles
    *  initial_vels             -- initial joint velocities
    */
-  Simulator(const Robot &robot, const Robot::JointValues &initial_angles,
-            const Robot::JointValues &initial_vels,
+  Simulator(const Robot &robot, const JointValues &initial_angles,
+            const JointValues &initial_vels,
             const boost::optional<gtsam::Vector3> &gravity = boost::none,
             const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
       : robot_(robot),
@@ -68,7 +68,7 @@ class Simulator {
     t_ = t;
     qs_ = initial_angles_;
     vs_ = initial_vels_;
-    as_ = Robot::JointValues();
+    as_ = JointValues();
     results_ = gtsam::Values();
   }
 
@@ -77,14 +77,14 @@ class Simulator {
    * values to results_ Keyword arguments: torques                   -- torques
    * for the time step
    */
-  void forwardDynamics(const Robot::JointValues &torques) {
+  void forwardDynamics(const JointValues &torques) {
     auto fk_results = robot_.forwardKinematics(qs_, vs_);
     gtsam::Values result = graph_builder_.linearSolveFD(
         robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
     results_.insert(result);
 
     // update accelerations
-    as_ = DynamicsGraph::jointAccelsMap(robot_, result, t_);
+    as_ = DynamicsGraph::jointAccels(robot_, result, t_);
   }
 
   /**
@@ -94,12 +94,13 @@ class Simulator {
    *  dt                        -- duration for the time step
    */
   void integration(const double dt) {
-    Robot::JointValues vs_new, qs_new;
+    JointValues vs_new, qs_new;
     for (JointSharedPtr joint : robot_.joints()) {
-      std::string name = joint->name();
-      vs_new[name] = vs_.at(name) + dt * as_.at(name);
-      qs_new[name] = qs_.at(name) + dt * vs_.at(name) +
-                     0.5 * as_.at(name) * std::pow(dt, 2);
+      gtsam::Key key = joint->getKey();
+      vs_new.insert(key, vs_.at(key) + dt * as_.at(key));
+      qs_new.insert(key, qs_.at(key) + dt * vs_.at(key) +
+                         0.5 * as_.at(key) * std::pow(dt, 2));
+      // TODO(gerry, stephanie): make this work with spherical / u-joints
     }
     vs_ = vs_new;
     qs_ = qs_new;
@@ -110,29 +111,29 @@ class Simulator {
    * result_ Keyword arguments: torques                   -- torques for the
    * time step dt                        -- duration for the time step
    */
-  void step(const Robot::JointValues &torques, const double dt) {
+  void step(const JointValues &torques, const double dt) {
     forwardDynamics(torques);
     integration(dt);
     t_++;
   }
 
   /* simulation for the specified sequence of torques */
-  gtsam::Values simulate(const std::vector<Robot::JointValues> torques_seq,
+  gtsam::Values simulate(const std::vector<JointValues> torques_seq,
                          const double dt) {
-    for (const Robot::JointValues &torques : torques_seq) {
+    for (const JointValues &torques : torques_seq) {
       step(torques, dt);
     }
     return results_;
   }
 
   /* return joint angle values. */
-  const Robot::JointValues &getJointAngles() const { return qs_; }
+  const JointValues &getJointAngles() const { return qs_; }
 
   /* return joint velocity values. */
-  const Robot::JointValues &getJointVelocities() const { return vs_; }
+  const JointValues &getJointVelocities() const { return vs_; }
 
   /* return joint acceleration values. */
-  const Robot::JointValues &getJointAccelerations() const { return as_; }
+  const JointValues &getJointAccelerations() const { return as_; }
 
   /* return all values during simulation. */
   const gtsam::Values &getValues() const { return results_; }

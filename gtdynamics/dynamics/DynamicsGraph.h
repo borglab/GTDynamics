@@ -124,14 +124,14 @@ class DynamicsGraph {
      planar_axis         -- axis of the plane, used only for planar robot
    */
   static gtsam::GaussianFactorGraph linearDynamicsGraph(
-      const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-      const Robot::JointValues &joint_vels, const Robot::FKResults &fk_results,
+      const Robot &robot, const int t, const JointValues &joint_angles,
+      const JointValues &joint_vels, const Robot::FKResults &fk_results,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
 
   /* return linear factor graph with priors on torques */
   static gtsam::GaussianFactorGraph linearFDPriors(
-      const Robot &robot, const int t, const Robot::JointValues &torque_values);
+      const Robot &robot, const int t, const JointValues &torque_values);
 
   /** sovle forward kinodynamics using linear factor graph, return values of all
   variables
@@ -147,8 +147,8 @@ class DynamicsGraph {
   * return values of all variables
   */
   static gtsam::Values linearSolveFD(
-      const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-      const Robot::JointValues &joint_vels, const Robot::JointValues &torques,
+      const Robot &robot, const int t, const JointValues &joint_angles,
+      const JointValues &joint_vels, const JointValues &torques,
       const Robot::FKResults &fk_results,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
@@ -229,9 +229,9 @@ class DynamicsGraph {
      torques              -- map from joint name to joint torque
    */
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-      const Robot::JointValues &joint_vels,
-      const Robot::JointValues &torques) const;
+      const Robot &robot, const int t, const JointValues &joint_angles,
+      const JointValues &joint_vels,
+      const JointValues &torques) const;
 
   /** return prior factors of initial state, torques along trajectory
   * Keyword arguments:
@@ -333,47 +333,27 @@ class DynamicsGraph {
       const Robot &robot, const int t, const std::string &link_name,
       const gtsam::Pose3 &target_pose) const;
 
-  /** return the joint accelerations
-  * Keyword arguments:
-     robot               -- the robot
-     t                   -- time step
-   */
-  static gtsam::Vector jointAccels(const Robot &robot,
-                                   const gtsam::Values &result, const int t);
-
-  /* return joint velocities. */
-  static gtsam::Vector jointVels(const Robot &robot,
-                                 const gtsam::Values &result, const int t);
-
-  /* return joint angles. */
-  static gtsam::Vector jointAngles(const Robot &robot,
-                                   const gtsam::Values &result, const int t);
-
-  /* return joint torques. */
-  static gtsam::Vector jointTorques(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
-
   /** return the joint accelerations as std::map<name, acceleration>
   * Keyword arguments:
      robot               -- the robot
      t                   -- time step
    */
-  static Robot::JointValues jointAccelsMap(const Robot &robot,
+  static JointValues jointAccels(const Robot &robot,
                                            const gtsam::Values &result,
                                            const int t);
 
   /* return joint velocities as std::map<name, velocity>. */
-  static Robot::JointValues jointVelsMap(const Robot &robot,
+  static JointValues jointVels(const Robot &robot,
                                          const gtsam::Values &result,
                                          const int t);
 
   /* return joint angles as std::map<name, angle>. */
-  static Robot::JointValues jointAnglesMap(const Robot &robot,
+  static JointValues jointAngles(const Robot &robot,
                                            const gtsam::Values &result,
                                            const int t);
 
   /* return joint torques as std::map<name, torque>. */
-  static Robot::JointValues jointTorquesMap(const Robot &robot,
+  static JointValues jointTorques(const Robot &robot,
                                             const gtsam::Values &result,
                                             const int t);
 

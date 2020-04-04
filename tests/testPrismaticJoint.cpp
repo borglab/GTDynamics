@@ -39,7 +39,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   gtdynamics::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
 
   // Test constructor.
   gtdynamics::PrismaticJointSharedPtr j1 =
@@ -64,7 +64,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->jointType() == 'P');
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -126,7 +126,7 @@ TEST(Joint, params_constructor_prismatic) {
   gtdynamics::Joint::Params params;
   params.name = "j1";
   params.joint_type = 'P';
-  params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
+  params.effort_type = gtdynamics::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
   params.axis = gtsam::Point3(0, 0, 1);
@@ -153,7 +153,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->jointType() == 'P');
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);

@@ -229,9 +229,9 @@ int main(int argc, char** argv) {
             << "\n\tfinal rot:" << optimized_pose_final.rotation().rpy()
             << std::endl;
 
-  auto joint_vals_init = graph_builder.jointAnglesMap(vision60, results, 0);
+  auto joint_vals_init = graph_builder.jointAngles(vision60, results, 0);
   auto joint_vals_final =
-      graph_builder.jointAnglesMap(vision60, results, t_steps);
+      graph_builder.jointAngles(vision60, results, t_steps);
 
   std::cout << "Joint vals init" << std::endl;
   for (auto&& jval : joint_vals_init)

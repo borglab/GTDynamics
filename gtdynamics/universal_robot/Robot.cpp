@@ -36,7 +36,7 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-gtdynamics::JointParams getJointParams(
+JointParams getJointParams(
     const sdf::Joint &joint_i,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
   gtdynamics::JointParams default_params;
@@ -259,13 +259,11 @@ Robot::FKResults Robot::forwardKinematics(
       gtdynamics::JointSharedPtr joint_ptr = joint;
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
-      double joint_angle = joint_angles.at(joint_ptr->name());
-      double joint_vel = joint_vels.at(joint_ptr->name());
-      gtsam::Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
-      gtsam::Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
+      gtsam::Pose3 T_12 = joint_ptr->transformTo(link1, joint_angles);
+      gtsam::Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angles);
       gtsam::Pose3 T_w2 = T_w1 * T_12;
       gtsam::Vector6 V_2 =
-          joint->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
+          joint->transformTwistFrom(link1, joint_angles, joint_vels, V_1);
 
       // check if link 2 is already assigned
       if (link_poses.find(link2->name()) == link_poses.end()) {
@@ -312,11 +310,20 @@ gtsam::NonlinearFactorGraph Robot::aFactors(const int &t,
   return graph;
 }
 
+gtsam::GaussianFactorGraph Robot::linearFDPriors(int t,
+                                            const JointValues &torques,
+                                            const OptimizerSetting &opt) const {
+  gtsam::GaussianFactorGraph graph;
+  for (auto &&joint : joints())
+    graph += joint->linearFDPriors(t, torques, opt);
+  return graph;
+}
+
 gtsam::GaussianFactorGraph Robot::linearAFactors(
-    const int &t, const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
+    const int &t, const LinkPoses &poses,
+    const LinkTwists &twists,
+    const JointValues &joint_angles,
+    const JointValues &joint_vels,
     const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::GaussianFactorGraph graph;
@@ -337,10 +344,10 @@ gtsam::NonlinearFactorGraph Robot::dynamicsFactors(
 }
 
 gtsam::GaussianFactorGraph Robot::linearDynamicsFactors(
-    const int &t, const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
+    const int &t, const LinkPoses &poses,
+    const LinkTwists &twists,
+    const JointValues &joint_angles,
+    const JointValues &joint_vels,
     const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::GaussianFactorGraph graph;

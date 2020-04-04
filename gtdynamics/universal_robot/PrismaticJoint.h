@@ -32,7 +32,7 @@
 #include "gtdynamics/utils/Utils.h"
 
 namespace gtdynamics {
-class PrismaticJoint : public Joint {
+class PrismaticJoint : public Joint<double> {
  protected:
   char joint_type_;
   JointEffortType jointEffortType_;
@@ -163,12 +163,11 @@ class PrismaticJoint : public Joint {
       const LinkSharedPtr link, boost::optional<double> q,
       boost::optional<double> q_dot,
       boost::optional<gtsam::Vector6> this_twist) const {
-    double q_ = q ? *q : 0.0;
     double q_dot_ = q_dot ? *q_dot : 0.0;
     gtsam::Vector6 this_twist_ =
         this_twist ? *this_twist : gtsam::Vector6::Zero();
 
-    return transformFrom(link, q_).AdjointMap() * this_twist_ +
+    return transformFrom(link, q).AdjointMap() * this_twist_ +
            screwAxis(otherLink(link)) * q_dot_;
   }
 
@@ -184,12 +183,11 @@ class PrismaticJoint : public Joint {
       const LinkSharedPtr link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const {
-    double q_ = q ? *q : 0.0;
     double q_dot_ = q_dot ? *q_dot : 0.0;
     gtsam::Vector6 other_twist_ =
         other_twist ? *other_twist : gtsam::Vector6::Zero();
 
-    return transformTo(link, q_).AdjointMap() * other_twist_ +
+    return transformTo(link, q).AdjointMap() * other_twist_ +
            screwAxis(link) * q_dot_;
   }
 
@@ -265,11 +263,23 @@ class PrismaticJoint : public Joint {
     return graph;
   }
 
+  gtsam::GaussianFactorGraph linearFDPriors(
+      int t, const JointValues &torques,
+      const OptimizerSetting &opt) const {
+    gtsam::GaussianFactorGraph priors;
+    gtsam::Vector1 rhs;
+    rhs << torques.at<double>(getKey());
+    // TODO(alejandro): use optimizer settings
+    priors.add(TorqueKey(getID(), t), gtsam::I_1x1, rhs,
+               gtsam::noiseModel::Constrained::All(1));
+    return priors;
+  }
+
   gtsam::GaussianFactorGraph linearAFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
+      const int &t, const LinkPoses &poses,
+      const LinkTwists &twists,
+      const JointValues &joint_angles,
+      const JointValues &joint_vels,
       const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
@@ -279,7 +289,7 @@ class PrismaticJoint : public Joint {
     const gtsam::Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
-    const double v_j = joint_vels.at(name());
+    const double v_j = joint_vels.at<double>(getKey());
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
@@ -311,10 +321,10 @@ class PrismaticJoint : public Joint {
   }
 
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
+      const int &t, const LinkPoses &poses,
+      const LinkTwists &twists,
+      const JointValues &joint_angles,
+      const JointValues &joint_vels,
       const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
