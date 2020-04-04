@@ -172,7 +172,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Pose3 link_pose_optimized = results.at(pose_key).cast<gtsam::Pose3>();
+  gtsam::Pose3 link_pose_optimized = results.at<gtsam::Pose3>(pose_key);
 
   std::cout << "Initial Pose: " << std::endl;
   std::cout << link_pose_init << std::endl;

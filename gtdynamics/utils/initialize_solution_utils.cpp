@@ -265,9 +265,9 @@ gtsam::Values InitializeSolutionInverseKinematics(
     // Update initial values for next timestep.
     init_vals_t.clear();
     for (auto&& link : robot.links())
-      init_vals_t.insert(gtdynamics::PoseKey(link->getID(), t + 1),
-                         results.at(gtdynamics::PoseKey(link->getID(), t))
-                             .cast<gtsam::Pose3>());
+      init_vals_t.insert(
+        gtdynamics::PoseKey(link->getID(), t + 1), results.at<gtsam::Pose3>(
+          gtdynamics::PoseKey(link->getID(), t)));
     for (auto&& joint : robot.joints())
       init_vals_t.insert(
           gtdynamics::JointAngleKey(joint->getID(), t + 1),
