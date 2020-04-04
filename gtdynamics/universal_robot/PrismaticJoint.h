@@ -29,7 +29,7 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 class PrismaticJoint : public Joint {

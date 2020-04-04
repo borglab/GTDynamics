@@ -18,7 +18,7 @@
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::PrismaticJoint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;

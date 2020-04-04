@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-      gtdynamics::PoseKey(vision60.getLinkByName("body")->getID(), ti), 
+      gtdynamics::PoseKey(vision60.getLinkByName("body")->getID(), ti),
       tposes["body"], gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
@@ -295,8 +295,7 @@ int main(int argc, char **argv) {
     values.clear();
     for (auto &&link : vision60.links())
       values.insert(gtdynamics::PoseKey(link->getID(), ti + 1),
-                    results.at(gtdynamics::PoseKey(link->getID(), ti))
-                        .cast<gtsam::Pose3>());
+          results.at<gtsam::Pose3>(gtdynamics::PoseKey(link->getID(), ti)));
     for (auto &&joint : vision60.joints())
       values.insert(
           gtdynamics::JointAngleKey(joint->getID(), ti + 1),

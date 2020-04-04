@@ -34,7 +34,7 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

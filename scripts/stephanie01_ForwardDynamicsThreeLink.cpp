@@ -19,7 +19,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/InitializeSolutionUtils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 int main(int argc, char** argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.

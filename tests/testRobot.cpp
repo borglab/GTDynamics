@@ -19,7 +19,7 @@
 #include <gtsam/linear/VectorValues.h>
 
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
     gtdynamics::extractRobotFromSdf;
