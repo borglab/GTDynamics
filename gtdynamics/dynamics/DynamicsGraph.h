@@ -421,28 +421,6 @@ class DynamicsGraph {
                                             const gtsam::Values &result,
                                             const int t);
 
-  /** return zero values for all variables for initial value of optimization
-  * Keyword arguments:
-     robot               -- the robot
-     t                   -- time step
-   */
-  static gtsam::Values zeroValues(
-      const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none);
-
-  /** return zero values of the trajectory for initial value of optimization
-  * Keyword arguments:
-     robot               -- the robot
-     num_steps           -- total time steps
-     num_phases          -- number of phases, -1 for not using
-  multi-phase
-   */
-  static gtsam::Values zeroValuesTrajectory(
-      const Robot &robot, const int num_steps, const int num_phases = -1,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none);
-
   /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
 

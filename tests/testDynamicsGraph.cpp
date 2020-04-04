@@ -31,6 +31,7 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using gtdynamics::DynamicsGraph;
 
@@ -102,7 +103,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   }
 
   gtsam::GaussNewtonOptimizer optimizer(graph,
-                                        DynamicsGraph::zeroValues(my_robot, 0));
+                                        gtdynamics::ZeroValues(my_robot, 0));
   Values result = optimizer.optimize();
 
   gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(my_robot, result, 0);
@@ -139,7 +140,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(prior_factors);
 
-  gtsam::Values init_values = DynamicsGraph::zeroValues(my_robot, 0);
+  gtsam::Values init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   // test the four bar linkage FD in the free-floating scenario
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
@@ -187,7 +188,7 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
 
   // test jumping robot FD
   gtsam::GaussNewtonOptimizer optimizer(graph,
-                                        DynamicsGraph::zeroValues(my_robot, 0));
+                                        gtdynamics::ZeroValues(my_robot, 0));
   Values result = optimizer.optimize();
 
   // check acceleration
@@ -310,7 +311,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
     torques_seq.emplace_back((Vector(1) << i * 1.0 + 1.0).finished());
   }
 
-  Values init_values = DynamicsGraph::zeroValuesTrajectory(my_robot, num_steps);
+  Values init_values = gtdynamics::ZeroValuesTrajectory(my_robot, num_steps);
 
   // test Euler
   NonlinearFactorGraph euler_graph = graph_builder.trajectoryFG(
@@ -360,7 +361,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
                                          graph_builder.opt().time_cost_model));
   mp_prior_graph.add(PriorFactor<double>(PhaseKey(1), dt1,
                                          graph_builder.opt().time_cost_model));
-  init_values = DynamicsGraph::zeroValuesTrajectory(my_robot, num_steps, 2);
+  init_values = gtdynamics::ZeroValuesTrajectory(my_robot, num_steps, 2);
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
@@ -451,7 +452,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   // Set initial values.
   gtsam::Values init_values =
-      graph_builder.zeroValues(my_robot, 0, contact_points);
+      gtdynamics::ZeroValues(my_robot, 0, 0.0, contact_points);
 
   graph_builder.printGraph(graph);
 
@@ -465,7 +466,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector>();
+      results.at<gtsam::Vector>(contact_wrench_key);
 
   graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
                           results, my_robot, 0, false);
@@ -527,7 +528,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Set initial values.
   gtsam::Values init_values =
-      graph_builder.zeroValues(biped, 0, contact_points);
+      gtdynamics::ZeroValues(biped, 0, 0.0, contact_points);
 
   graph_builder.printGraph(graph);
 
@@ -543,9 +544,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
     gtsam::LabeledSymbol contact_wrench_key =
         gtdynamics::ContactWrenchKey(l->getID(), contact_point.contact_id, 0);
     gtsam::Vector contact_wrench_optimized =
-        results.at(contact_wrench_key).cast<gtsam::Vector>();
+        results.at<gtsam::Vector>(contact_wrench_key);
     gtsam::Pose3 pose_optimized =
-        results.at(gtdynamics::PoseKey(l->getID(), 0)).cast<gtsam::Pose3>();
+        results.at<gtsam::Pose3>(gtdynamics::PoseKey(l->getID(), 0));
     gtsam::Pose3 comTc =
         gtsam::Pose3(pose_optimized.rotation(), contact_point.contact_point);
     normal_force =
@@ -614,7 +615,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Set initial values.
   gtsam::Values init_values =
-      graph_builder.zeroValues(my_robot, 0, contact_points);
+      gtdynamics::ZeroValues(my_robot, 0, 0.0, contact_points);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
@@ -626,7 +627,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector>();
+      results.at<gtsam::Vector>(contact_wrench_key);
 
   graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
                           results, my_robot, 0, false);

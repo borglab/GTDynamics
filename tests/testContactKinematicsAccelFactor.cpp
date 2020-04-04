@@ -123,7 +123,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
 
   gtsam::Values results = optimizer.values();
   gtsam::Vector6 accel_optimized =
-      results.at(twist_accel_key).cast<gtsam::Vector6>();
+      results.at<gtsam::Vector6>(twist_accel_key);
 
   EXPECT(assert_equal(factor.evaluateError(accel_optimized),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));

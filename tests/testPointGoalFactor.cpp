@@ -93,7 +93,7 @@ TEST(PointGoalFactor, optimization) {
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
   optimizer.optimize();
   gtsam::Values results = optimizer.values();
-  gtsam::Pose3 pose_optimized = results.at(pose_key).cast<gtsam::Pose3>();
+  gtsam::Pose3 pose_optimized = results.at<gtsam::Pose3>(pose_key);
   std::cout << "Error Final: "
             << factor.evaluateError(pose_optimized) << std::endl;
   EXPECT(assert_equal(factor.evaluateError(pose_optimized),

@@ -21,6 +21,7 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/factors/MinTorqueFactor.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 int main(int argc, char** argv) {
   using four_bar_linkage::my_robot, four_bar_linkage::planar_axis,
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
             gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  gtsam::Values init_values = graph_builder.zeroValues(my_robot, 0);
+  gtsam::Values init_values = gtdynamics::ZeroValues(my_robot, 0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;
   graph_builder.printGraph(graph);

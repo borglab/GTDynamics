@@ -112,7 +112,7 @@ TEST(ContactDynamicsMomentFactor, optimization) {
 
   gtsam::Values results = optimizer.values();
   gtsam::Vector6 contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector6>();
+      results.at<gtsam::Vector6>(contact_wrench_key);
 
   std::cout << "Initial Contact Wrench: " << std::endl;
   std::cout << contact_wrench_init << std::endl;

@@ -15,6 +15,7 @@
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -29,8 +30,6 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
-
-#include "initialize_solutions.hpp"
 
 #define GROUND_HEIGHT -0.191839
 
@@ -142,7 +141,7 @@ int main(int argc, char** argv) {
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
        gtdynamics::PoseKey(
            base_link->getID(),
-           static_cast<int>(std::ceil(des_poses_t[i] / dt))), 
+           static_cast<int>(std::ceil(des_poses_t[i] / dt))),
       des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
@@ -192,21 +191,22 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  std::string initialization_technique = "zeros";
+  std::string initialization_technique = "inverse_kinematics";
   if (initialization_technique == "interp")
     // TODO(aescontrela): Figure out why the linearly interpolated initial
     // trajectory fails to optimize. My initial guess is that the optimizer has
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = initialize_solution_interpolation_multi_step(vision60,
-      "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
+    init_vals = gtdynamics::InitializeSolutionInterpolationMultiPhase(
+        vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
+        contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = graph_builder.zeroValuesTrajectory(
-      vision60, t_steps, 0, contact_points);
+    init_vals = gtdynamics::ZeroValuesTrajectory(
+      vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = initialize_solution_inverse_kinematics(vision60,
-      "body", base_pose_init, des_poses, des_poses_t, dt, contact_points);
+    init_vals = gtdynamics::InitializeSolutionInverseKinematics(vision60,
+      "body", base_pose_init, des_poses, des_poses_t, dt, 0.0, contact_points);
 
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
@@ -214,11 +214,10 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   gtsam::Pose3 optimized_pose_init =
-      results.at(gtdynamics::PoseKey(base_link->getID(), 0))
-          .cast<gtsam::Pose3>();
+      results.at<gtsam::Pose3>(gtdynamics::PoseKey(base_link->getID(), 0));
   gtsam::Pose3 optimized_pose_final =
-      results.at(gtdynamics::PoseKey(base_link->getID(), t_steps - 1))
-          .cast<gtsam::Pose3>();
+      results.at<gtsam::Pose3>(
+          gtdynamics::PoseKey(base_link->getID(), t_steps - 1));
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()

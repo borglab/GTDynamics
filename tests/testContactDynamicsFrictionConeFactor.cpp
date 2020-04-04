@@ -155,9 +155,9 @@ TEST(ContactDynamicsFrictionConeFactor, optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Pose3 link_pose_optimized = results.at(pose_key).cast<gtsam::Pose3>();
+  gtsam::Pose3 link_pose_optimized = results.at<gtsam::Pose3>(pose_key);
   gtsam::Vector6 contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector6>();
+      results.at<gtsam::Vector6>(contact_wrench_key);
 
   std::cout << "Initial pose: " << std::endl << link_pose_init << std::endl;
   std::cout << "Initial wrench: " << std::endl
