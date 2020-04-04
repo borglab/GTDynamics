@@ -27,36 +27,37 @@
 #include <utility>
 #include <vector>
 
+using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
+    gtsam::Point3, gtsam::Rot3, gtsam::Sampler, gtsam::Values;
+
 namespace gtdynamics {
 
 /// Add zero-mean gaussian noise to a Pose.
-inline gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T, double std,
-                                           gtsam::Sampler sampler) {
-  gtsam::Vector rand_vec = sampler.sample();
-  gtsam::Point3 p = gtsam::Point3(T.translation().vector() + rand_vec.head(3));
-  gtsam::Rot3 R = gtsam::Rot3::Expmap(gtsam::Rot3::Logmap(T.rotation()) +
-                                      rand_vec.tail<3>());
-  return gtsam::Pose3(R, p);
+inline Pose3 addGaussianNoiseToPose(const Pose3& T, double std,
+                                    Sampler sampler) {
+  Vector rand_vec = sampler.sample();
+  Point3 p = Point3(T.translation().vector() + rand_vec.head(3));
+  Rot3 R = Rot3::Expmap(Rot3::Logmap(T.rotation()) + rand_vec.tail<3>());
+  return Pose3(R, p);
 }
 
-gtsam::Values InitializeSolutionInterpolation(
-    const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const gtsam::Pose3& wTl_f, const double& T_s, const double& T_f,
-    const double& dt, const double& gaussian_noise,
+Values InitializeSolutionInterpolation(
+    const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
+    const Pose3& wTl_f, const double& T_s, const double& T_f, const double& dt,
+    const double& gaussian_noise,
     const boost::optional<std::vector<ContactPoint>>& contact_points) {
-  gtsam::Values init_vals;
+  Values init_vals;
 
-  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(
-          gtsam::Vector6::Constant(6, gaussian_noise));
-  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
+  auto sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+  Sampler sampler(sampler_noise_model);
 
   // Initial and final discretized timesteps.
   int n_steps_init = static_cast<int>(std::round(T_s / dt));
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-  gtsam::Point3 wPl_i = wTl_i.translation(), wPl_f = wTl_f.translation();
-  gtsam::Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
+  Point3 wPl_i = wTl_i.translation(), wPl_f = wTl_f.translation();
+  Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
 
   // Initialize joint angles and velocities to 0.
   Robot::JointValues jangles, jvels;
@@ -70,10 +71,10 @@ gtsam::Values InitializeSolutionInterpolation(
     double s = (t_elapsed - T_s) / (T_f - T_s);
 
     // Compute interpolated pose for link.
-    gtsam::Point3 wPl_t = (1 - s) * wPl_i + s * wPl_f;
-    gtsam::Rot3 wRl_t = wRl_i.slerp(s, wRl_f);
-    gtsam::Pose3 wTl_t = addGaussianNoiseToPose(gtsam::Pose3(wRl_t, wPl_t),
-                                                gaussian_noise, sampler);
+    Point3 wPl_t = (1 - s) * wPl_i + s * wPl_f;
+    Rot3 wRl_t = wRl_i.slerp(s, wRl_f);
+    Pose3 wTl_t =
+        addGaussianNoiseToPose(Pose3(wRl_t, wPl_t), gaussian_noise, sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
     auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_t);
@@ -119,16 +120,16 @@ gtsam::Values InitializeSolutionInterpolation(
   return init_vals;
 }
 
-gtsam::Values InitializeSolutionInterpolationMultiPhase(
-    const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
+Values InitializeSolutionInterpolationMultiPhase(
+    const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
+    const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
     const boost::optional<std::vector<ContactPoint>>& contact_points) {
-  gtsam::Values init_vals;
-  gtsam::Pose3 pose = wTl_i;
+  Values init_vals;
+  Pose3 pose = wTl_i;
   double curr_t = 0.0;
   for (size_t i = 0; i < wTl_t.size(); i++) {
-    gtsam::Values phase_vals = InitializeSolutionInterpolation(
+    Values phase_vals = InitializeSolutionInterpolation(
         robot, link_name, pose, wTl_t[i], curr_t, ts[i], dt, gaussian_noise,
         contact_points);
     for (auto&& key_value_pair : phase_vals)
@@ -139,36 +140,35 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
   return init_vals;
 }
 
-gtsam::Values InitializeSolutionInverseKinematics(
-    const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
+Values InitializeSolutionInverseKinematics(
+    const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
+    const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
     const boost::optional<std::vector<ContactPoint>>& contact_points) {
-  gtsam::Point3 wPl_i = wTl_i.translation();  // Initial translation.
-  gtsam::Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
-  double t_i = 0.0;                           // Time elapsed.
+  Point3 wPl_i = wTl_i.translation();  // Initial translation.
+  Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
+  double t_i = 0.0;                    // Time elapsed.
 
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
 
-  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(
-          gtsam::Vector6::Constant(6, gaussian_noise));
-  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
+  auto sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+  Sampler sampler(sampler_noise_model);
 
   // Linearly interpolated pose for link at each discretized timestep.
-  std::vector<gtsam::Pose3> wTl_dt;
+  std::vector<Pose3> wTl_dt;
   for (size_t i = 0; i < ts.size(); i++) {
-    gtsam::Point3 wPl_t = wTl_t[i].translation();  // des P.
-    gtsam::Rot3 wRl_t = wTl_t[i].rotation();       // des R.
-    double t_ti = t_i, t_t = ts[i];                // Initial and final times.
+    Point3 wPl_t = wTl_t[i].translation();  // des P.
+    Rot3 wRl_t = wTl_t[i].rotation();       // des R.
+    double t_ti = t_i, t_t = ts[i];         // Initial and final times.
 
     for (int t = std::lround(t_i / dt); t < std::lround(t_t / dt); t++) {
       double s = (t_i - t_ti) / (t_t - t_ti);  // Normalized phase progress.
 
       // Compute interpolated pose for link.
-      gtsam::Point3 wPl_s = (1 - s) * wPl_i + s * wPl_t;
-      gtsam::Rot3 wRl_s = wRl_i.slerp(s, wRl_t);
-      gtsam::Pose3 wTl_s = gtsam::Pose3(wRl_s, wPl_s);
+      Point3 wPl_s = (1 - s) * wPl_i + s * wPl_t;
+      Rot3 wRl_s = wRl_i.slerp(s, wRl_t);
+      Pose3 wTl_s = Pose3(wRl_s, wPl_s);
       wTl_dt.push_back(wTl_s);
       t_i += dt;
     }
@@ -178,7 +178,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
   }
   wTl_dt.push_back(wTl_t[wTl_t.size() - 1]);  // Add the final pose.
 
-  gtsam::Pose3 wTl_i_processed;
+  Pose3 wTl_i_processed;
   if (gaussian_noise > 0.0) {
     wTl_i_processed = addGaussianNoiseToPose(wTl_i, gaussian_noise, sampler);
     for (size_t i = 0; i < wTl_dt.size(); i++)
@@ -189,7 +189,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
 
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
-  gtsam::Values init_vals, init_vals_t;
+  Values init_vals, init_vals_t;
 
   // Initial pose and joint angles are known a priori.
   Robot::JointValues jangles, jvels;
@@ -211,12 +211,12 @@ gtsam::Values InitializeSolutionInverseKinematics(
   for (int t = 0; t <= std::lround(ts[ts.size() - 1] / dt); t++) {
     gtsam::NonlinearFactorGraph kfg =
         dgb.qFactors(robot, t, gravity, contact_points);
-    kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
+    kfg.add(gtsam::PriorFactor<Pose3>(
         PoseKey(robot.getLinkByName(link_name)->getID(), t), wTl_dt[t],
         gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
-    gtsam::Values results = optimizer.optimize();
+    Values results = optimizer.optimize();
 
     init_vals.insert(results);
 
@@ -251,7 +251,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
     init_vals_t.clear();
     for (auto&& link : robot.links())
       init_vals_t.insert(PoseKey(link->getID(), t + 1),
-                         results.at<gtsam::Pose3>(PoseKey(link->getID(), t)));
+                         results.at<Pose3>(PoseKey(link->getID(), t)));
     for (auto&& joint : robot.joints())
       init_vals_t.insert(JointAngleKey(joint->getID(), t + 1),
                          results.atDouble(JointAngleKey(joint->getID(), t)));
@@ -260,15 +260,13 @@ gtsam::Values InitializeSolutionInverseKinematics(
   return init_vals;
 }
 
-gtsam::Values ZeroValues(const Robot& robot, const int t,
-                         const double& gaussian_noise,
-                         const boost::optional<ContactPoints>& contact_points) {
-  gtsam::Values zero_values;
+Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
+                  const boost::optional<ContactPoints>& contact_points) {
+  Values zero_values;
 
-  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(
-          gtsam::Vector6::Constant(6, gaussian_noise));
-  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
+  auto sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+  Sampler sampler(sampler_noise_model);
 
   for (auto& link : robot.links()) {
     int i = link->getID();
@@ -307,11 +305,11 @@ gtsam::Values ZeroValues(const Robot& robot, const int t,
   return zero_values;
 }
 
-gtsam::Values ZeroValuesTrajectory(
+Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases,
     const double& gaussian_noise,
     const boost::optional<ContactPoints>& contact_points) {
-  gtsam::Values z_values;
+  Values z_values;
   for (int t = 0; t <= num_steps; t++)
     z_values.insert(ZeroValues(robot, t, gaussian_noise, contact_points));
   if (num_phases > 0) {
