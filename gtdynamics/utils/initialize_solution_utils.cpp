@@ -18,6 +18,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -28,23 +29,13 @@
 
 namespace gtdynamics {
 
-/// Create a random vector where each element's value is sampled
-/// from a gaussian distribution N(mean, std).
-inline gtsam::Vector GaussianRandomVector(int dim, double mean, double std) {
-  if (std == 0.0) return gtsam::Vector::Constant(dim, mean);
-  gtsam::Vector rand_vec = gtsam::Vector::Zero(dim);
-  std::default_random_engine generator;
-  std::normal_distribution<double> distribution(mean, std);
-  for (int i = 0; i < dim; i++) rand_vec[i] = distribution(generator);
-  return rand_vec;
-}
-
 /// Add zero-mean gaussian noise to a Pose.
-inline gtsam::Pose3 addGaussianNoise(const gtsam::Pose3& T, double std) {
-  gtsam::Point3 p = gtsam::Point3(T.translation().vector() +
-                                  GaussianRandomVector(3, 0.0, std));
+inline gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T, double std,
+                                           gtsam::Sampler sampler) {
+  gtsam::Vector rand_vec = sampler.sample();
+  gtsam::Point3 p = gtsam::Point3(T.translation().vector() + rand_vec.head(3));
   gtsam::Rot3 R = gtsam::Rot3::Expmap(gtsam::Rot3::Logmap(T.rotation()) +
-                                      GaussianRandomVector(3, 0.0, std));
+                                      rand_vec.tail<3>());
   return gtsam::Pose3(R, p);
 }
 
@@ -54,6 +45,11 @@ gtsam::Values InitializeSolutionInterpolation(
     const double& dt, const double& gaussian_noise,
     const boost::optional<std::vector<ContactPoint>>& contact_points) {
   gtsam::Values init_vals;
+
+  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(
+          gtsam::Vector6::Constant(6, gaussian_noise));
+  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
 
   // Initial and final discretized timesteps.
   int n_steps_init = static_cast<int>(std::round(T_s / dt));
@@ -65,10 +61,8 @@ gtsam::Values InitializeSolutionInterpolation(
   // Initialize joint angles and velocities to 0.
   gtdynamics::Robot::JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(
-        joint->name(), GaussianRandomVector(1, 0, gaussian_noise)[0]));
-    jvels.insert(std::make_pair(joint->name(),
-                                GaussianRandomVector(1, 0, gaussian_noise)[0]));
+    jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+    jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
   }
 
   double t_elapsed = T_s;
@@ -78,8 +72,8 @@ gtsam::Values InitializeSolutionInterpolation(
     // Compute interpolated pose for link.
     gtsam::Point3 wPl_t = (1 - s) * wPl_i + s * wPl_f;
     gtsam::Rot3 wRl_t = wRl_i.slerp(s, wRl_f);
-    gtsam::Pose3 wTl_t =
-        addGaussianNoise(gtsam::Pose3(wRl_t, wPl_t), gaussian_noise);
+    gtsam::Pose3 wTl_t = addGaussianNoiseToPose(gtsam::Pose3(wRl_t, wPl_t),
+                                                gaussian_noise, sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
     auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_t);
@@ -91,9 +85,9 @@ gtsam::Values InitializeSolutionInterpolation(
     // Initialize link dynamics to 0.
     for (auto&& link : robot.links()) {
       init_vals.insert(gtdynamics::TwistKey(link->getID(), t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
+                       sampler.sample());
       init_vals.insert(gtdynamics::TwistAccelKey(link->getID(), t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
+                       sampler.sample());
     }
 
     // Initialize joint kinematics/dynamics to 0.
@@ -101,17 +95,13 @@ gtsam::Values InitializeSolutionInterpolation(
       int j = joint->getID();
       init_vals.insert(
           gtdynamics::WrenchKey(joint->parentLink()->getID(), j, t),
-          GaussianRandomVector(6, 0.0, gaussian_noise));
+          sampler.sample());
       init_vals.insert(gtdynamics::WrenchKey(joint->childLink()->getID(), j, t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
-      init_vals.insert(gtdynamics::TorqueKey(j, t),
-                       GaussianRandomVector(1, 0, gaussian_noise)[0]);
-      init_vals.insert(gtdynamics::JointAngleKey(j, t),
-                       GaussianRandomVector(1, 0, gaussian_noise)[0]);
-      init_vals.insert(gtdynamics::JointVelKey(j, t),
-                       GaussianRandomVector(1, 0, gaussian_noise)[0]);
-      init_vals.insert(gtdynamics::JointAccelKey(j, t),
-                       GaussianRandomVector(1, 0, gaussian_noise)[0]);
+                       sampler.sample());
+      init_vals.insert(gtdynamics::TorqueKey(j, t), sampler.sample()[0]);
+      init_vals.insert(gtdynamics::JointAngleKey(j, t), sampler.sample()[0]);
+      init_vals.insert(gtdynamics::JointVelKey(j, t), sampler.sample()[0]);
+      init_vals.insert(gtdynamics::JointAccelKey(j, t), sampler.sample()[0]);
     }
 
     // Initialize contacts to 0.
@@ -124,7 +114,7 @@ gtsam::Values InitializeSolutionInterpolation(
         if (link_id == -1) throw std::runtime_error("Link not found.");
         init_vals.insert(
             gtdynamics::ContactWrenchKey(link_id, contact_point.contact_id, t),
-            GaussianRandomVector(6, 0.0, gaussian_noise));
+            sampler.sample());
       }
     }
     t_elapsed += dt;
@@ -164,6 +154,11 @@ gtsam::Values InitializeSolutionInverseKinematics(
 
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 
+  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(
+          gtsam::Vector6::Constant(6, gaussian_noise));
+  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
+
   // Linearly interpolated pose for link at each discretized timestep.
   std::vector<gtsam::Pose3> wTl_dt;
   for (size_t i = 0; i < ts.size(); i++) {
@@ -189,9 +184,9 @@ gtsam::Values InitializeSolutionInverseKinematics(
 
   gtsam::Pose3 wTl_i_processed;
   if (gaussian_noise > 0.0) {
-    wTl_i_processed = addGaussianNoise(wTl_i, gaussian_noise);
+    wTl_i_processed = addGaussianNoiseToPose(wTl_i, gaussian_noise, sampler);
     for (size_t i = 0; i < wTl_dt.size(); i++)
-      wTl_dt[i] = addGaussianNoise(wTl_dt[i], gaussian_noise);
+      wTl_dt[i] = addGaussianNoiseToPose(wTl_dt[i], gaussian_noise, sampler);
   } else {
     wTl_i_processed = wTl_i;
   }
@@ -201,15 +196,10 @@ gtsam::Values InitializeSolutionInverseKinematics(
   gtsam::Values init_vals, init_vals_t;
 
   // Initial pose and joint angles are known a priori.
-  gtsam::Vector z_six = GaussianRandomVector(6, 0, gaussian_noise),
-                z_one = GaussianRandomVector(1, 0, gaussian_noise);
-
   gtdynamics::Robot::JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(
-        joint->name(), GaussianRandomVector(1, 0, gaussian_noise)[0]));
-    jvels.insert(std::make_pair(joint->name(),
-                                GaussianRandomVector(1, 0, gaussian_noise)[0]));
+    jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+    jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
   }
   // Compute forward dynamics to obtain remaining link poses.
   auto fk_results =
@@ -219,7 +209,8 @@ gtsam::Values InitializeSolutionInverseKinematics(
         gtdynamics::PoseKey(robot.getLinkByName(pose_result.first)->getID(), 0),
         pose_result.second);
   for (auto&& joint : robot.joints())
-    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0), z_one[0]);
+    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0),
+                       sampler.sample()[0]);
 
   auto dgb = gtdynamics::DynamicsGraph();
   for (int t = 0; t <= std::lround(ts[ts.size() - 1] / dt); t++) {
@@ -236,18 +227,21 @@ gtsam::Values InitializeSolutionInverseKinematics(
 
     // Add zero initial values for remaining variables.
     for (auto&& link : robot.links()) {
-      init_vals.insert(gtdynamics::TwistKey(link->getID(), t), z_six);
-      init_vals.insert(gtdynamics::TwistAccelKey(link->getID(), t), z_six);
+      init_vals.insert(gtdynamics::TwistKey(link->getID(), t),
+                       sampler.sample());
+      init_vals.insert(gtdynamics::TwistAccelKey(link->getID(), t),
+                       sampler.sample());
     }
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
       init_vals.insert(
-          gtdynamics::WrenchKey(joint->parentLink()->getID(), j, t), z_six);
+          gtdynamics::WrenchKey(joint->parentLink()->getID(), j, t),
+          sampler.sample());
       init_vals.insert(gtdynamics::WrenchKey(joint->childLink()->getID(), j, t),
-                       z_six);
-      init_vals.insert(gtdynamics::TorqueKey(j, t), z_one[0]);
-      init_vals.insert(gtdynamics::JointVelKey(j, t), z_one[0]);
-      init_vals.insert(gtdynamics::JointAccelKey(j, t), z_one[0]);
+                       sampler.sample());
+      init_vals.insert(gtdynamics::TorqueKey(j, t), sampler.sample()[0]);
+      init_vals.insert(gtdynamics::JointVelKey(j, t), sampler.sample()[0]);
+      init_vals.insert(gtdynamics::JointAccelKey(j, t), sampler.sample()[0]);
     }
     if (contact_points) {
       for (auto&& contact_point : *contact_points) {
@@ -258,7 +252,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
         if (link_id == -1) throw std::runtime_error("Link not found.");
         init_vals.insert(
             gtdynamics::ContactWrenchKey(link_id, contact_point.contact_id, t),
-            z_six);
+            sampler.sample());
       }
     }
 
@@ -266,8 +260,8 @@ gtsam::Values InitializeSolutionInverseKinematics(
     init_vals_t.clear();
     for (auto&& link : robot.links())
       init_vals_t.insert(
-        gtdynamics::PoseKey(link->getID(), t + 1), results.at<gtsam::Pose3>(
-          gtdynamics::PoseKey(link->getID(), t)));
+          gtdynamics::PoseKey(link->getID(), t + 1),
+          results.at<gtsam::Pose3>(gtdynamics::PoseKey(link->getID(), t)));
     for (auto&& joint : robot.joints())
       init_vals_t.insert(
           gtdynamics::JointAngleKey(joint->getID(), t + 1),
@@ -281,31 +275,32 @@ gtsam::Values ZeroValues(const Robot& robot, const int t,
                          const double& gaussian_noise,
                          const boost::optional<ContactPoints>& contact_points) {
   gtsam::Values zero_values;
+
+  gtsam::noiseModel::Diagonal::shared_ptr sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(
+          gtsam::Vector6::Constant(6, gaussian_noise));
+  gtsam::Sampler sampler = gtsam::Sampler(sampler_noise_model);
+
   for (auto& link : robot.links()) {
     int i = link->getID();
-    zero_values.insert(gtdynamics::PoseKey(i, t),
-                       addGaussianNoise(link->wTcom(), gaussian_noise));
-    zero_values.insert(gtdynamics::TwistKey(i, t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
-    zero_values.insert(gtdynamics::TwistAccelKey(i, t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
+    zero_values.insert(
+        gtdynamics::PoseKey(i, t),
+        addGaussianNoiseToPose(link->wTcom(), gaussian_noise, sampler));
+    zero_values.insert(gtdynamics::TwistKey(i, t), sampler.sample());
+    zero_values.insert(gtdynamics::TwistAccelKey(i, t), sampler.sample());
   }
   for (auto& joint : robot.joints()) {
     int j = joint->getID();
     auto parent_link = joint->parentLink();
     auto child_link = joint->childLink();
     zero_values.insert(gtdynamics::WrenchKey(parent_link->getID(), j, t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
+                       sampler.sample());
     zero_values.insert(gtdynamics::WrenchKey(child_link->getID(), j, t),
-                       GaussianRandomVector(6, 0.0, gaussian_noise));
-    zero_values.insert(gtdynamics::TorqueKey(j, t),
-                       GaussianRandomVector(1, 0.0, gaussian_noise)[0]);
-    zero_values.insert(gtdynamics::JointAngleKey(j, t),
-                       GaussianRandomVector(1, 0.0, gaussian_noise)[0]);
-    zero_values.insert(gtdynamics::JointVelKey(j, t),
-                       GaussianRandomVector(1, 0.0, gaussian_noise)[0]);
-    zero_values.insert(gtdynamics::JointAccelKey(j, t),
-                       GaussianRandomVector(1, 0.0, gaussian_noise)[0]);
+                       sampler.sample());
+    zero_values.insert(gtdynamics::TorqueKey(j, t), sampler.sample()[0]);
+    zero_values.insert(gtdynamics::JointAngleKey(j, t), sampler.sample()[0]);
+    zero_values.insert(gtdynamics::JointVelKey(j, t), sampler.sample()[0]);
+    zero_values.insert(gtdynamics::JointAccelKey(j, t), sampler.sample()[0]);
   }
   if (contact_points) {
     for (auto&& contact_point : *contact_points) {
@@ -318,7 +313,7 @@ gtsam::Values ZeroValues(const Robot& robot, const int t,
 
       zero_values.insert(
           gtdynamics::ContactWrenchKey(link_id, contact_point.contact_id, t),
-          GaussianRandomVector(6, 0.0, gaussian_noise));
+          sampler.sample());
     }
   }
 
