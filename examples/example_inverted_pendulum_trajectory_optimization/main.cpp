@@ -32,8 +32,7 @@
 
 using gtdynamics::Robot, gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
     gtdynamics::JointAccelKey, gtdynamics::TorqueKey, gtsam::PriorFactor,
-    gtdynamics::ZeroValuesTrajectory, std::to_string,
-    gtsam::noiseModel::Isotropic;
+    gtdynamics::ZeroValuesTrajectory, gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
@@ -41,20 +40,19 @@ int main(int argc, char** argv) {
   auto j1 = ip.getJointByName("j1");
   ip.getLinkByName("l1")->fix();
   ip.printRobot();
-
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished(),
                  planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
   // Specify optimal control problem parameters.
-  double T = 3.0;                                     // Time horizon (s.)
-  double dt = 1. / 100;                               // Time step (s.)
+  double T = 3.0,                  // Time horizon (s.)
+         dt = 1. / 100,            // Time step (s.)
+         sigma_dynamics = 1e-5,    // Variance of dynamics constraints.
+         sigma_objectives = 1e-2,  // Variance of additional objectives.
+         sigma_control = 1e-1;     // Variance of control.
   int t_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
-  double sigma_dynamics = 1e-5;    // Variance of dynamics constraints.
-  double sigma_objectives = 1e-2;  // Variance of additional objectives.
-  double sigma_control = 1e-1;     // Variance of control.
 
   // Specify initial conditions and goal state.
-  double theta_i = 0, dtheta_i = 0, ddtheta_i = 0, tau_i = 0;
+  double theta_i = 0, dtheta_i = 0, ddtheta_i = 0;
   double theta_T = M_PI, dtheta_T = 0, ddtheta_T = 0;
 
   // Create trajectory factor graph.
@@ -70,10 +68,8 @@ int main(int argc, char** argv) {
     Isotropic::Sigma(1, sigma_dynamics)));
   graph.add(PriorFactor<double>(JointAccelKey(j1->getID(), 0), ddtheta_i,
     Isotropic::Sigma(1, sigma_dynamics)));
-  graph.add(PriorFactor<double>(TorqueKey(j1->getID(), 0), tau_i,
-    Isotropic::Sigma(1, sigma_dynamics)));
 
-  // Add objectives to trajectory factor graph.
+  // Add state and min torque objectives to trajectory factor graph.
   graph.add(PriorFactor<double>(JointVelKey(j1->getID(), t_steps), dtheta_T,
     Isotropic::Sigma(1, sigma_objectives)));
   graph.add(PriorFactor<double>(JointAccelKey(j1->getID(), t_steps), dtheta_T,
@@ -86,11 +82,9 @@ int main(int argc, char** argv) {
       graph.add(PriorFactor<double>(JointAngleKey(j1->getID(), t), theta_T,
         Isotropic::Sigma(1, sigma_objectives)));
   }
-  // Add min torque objectives.
   for (int t = 0; t <= t_steps; t++)
     graph.add(gtdynamics::MinTorqueFactor(
-      TorqueKey(j1->getID(), t),
-      Isotropic::Sigma(1, sigma_control)));
+      TorqueKey(j1->getID(), t), Isotropic::Sigma(1, sigma_control)));
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
@@ -100,22 +94,18 @@ int main(int argc, char** argv) {
   auto results = optimizer.optimize();
 
   // Log the joint angles, velocities, accels, torques, and current goal pose.
-  std::vector<std::string> jnames;
-  for (auto&& joint : ip.joints()) jnames.push_back(joint->name());
   std::ofstream traj_file;
   traj_file.open("../traj.csv");
   traj_file << "t,theta,dtheta,ddtheta,tau" << "\n";
   double t_elapsed = 0;
   for (int t = 0; t <= t_steps; t++) {
-    std::vector<std::string> vals;
-    vals.push_back(to_string(t_elapsed));
-    vals.push_back(to_string(results.atDouble(JointAngleKey(j1->getID(), t))));
-    vals.push_back(to_string(results.atDouble(JointVelKey(j1->getID(), t))));
-    vals.push_back(to_string(results.atDouble(JointAccelKey(j1->getID(), t))));
-    vals.push_back(to_string(results.atDouble(TorqueKey(j1->getID(), t))));
-    std::string vals_str = boost::algorithm::join(vals, ",");
-    traj_file << vals_str << "\n";
-    t_elapsed += dt;
+    std::vector<std::string> vals = {
+      std::to_string(t_elapsed += dt),
+      std::to_string(results.atDouble(JointAngleKey(j1->getID(), t))),
+      std::to_string(results.atDouble(JointVelKey(j1->getID(), t))),
+      std::to_string(results.atDouble(JointAccelKey(j1->getID(), t))),
+      std::to_string(results.atDouble(TorqueKey(j1->getID(), t)))};
+    traj_file << boost::algorithm::join(vals, ",") << "\n";
   }
   traj_file.close();
 
