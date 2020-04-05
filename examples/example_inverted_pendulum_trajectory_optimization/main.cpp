@@ -98,9 +98,9 @@ int main(int argc, char** argv) {
   traj_file.open("../traj.csv");
   traj_file << "t,theta,dtheta,ddtheta,tau" << "\n";
   double t_elapsed = 0;
-  for (int t = 0; t <= t_steps; t++) {
+  for (int t = 0; t <= t_steps; t++, t_elapsed += dt) {
     std::vector<std::string> vals = {
-      std::to_string(t_elapsed += dt),
+      std::to_string(t_elapsed),
       std::to_string(results.atDouble(JointAngleKey(j1->getID(), t))),
       std::to_string(results.atDouble(JointVelKey(j1->getID(), t))),
       std::to_string(results.atDouble(JointAccelKey(j1->getID(), t))),
