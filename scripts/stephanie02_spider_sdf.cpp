@@ -19,5 +19,7 @@ int main(int argc, char** argv) {
   const auto spider =
       gtdynamics::Robot(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
 
+  spider.printRobot();
+
   return 0;
 }
