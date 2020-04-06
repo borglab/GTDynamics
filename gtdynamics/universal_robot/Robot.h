@@ -14,8 +14,8 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 
-#include <sdf/parser_urdf.hh>
 #include <map>
+#include <sdf/parser_urdf.hh>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,7 +25,6 @@
 #include "gtdynamics/universal_robot/RobotTypes.h"
 
 #include <boost/optional.hpp>
-
 
 namespace gtdynamics {
 
@@ -40,23 +39,24 @@ typedef std::map<std::string, gtdynamics::LinkSharedPtr> LinkMap;
 typedef std::map<std::string, gtdynamics::JointSharedPtr> JointMap;
 typedef std::pair<LinkMap, JointMap> LinkJointPair;
 
-/** Construct all Link and Joint objects from an input
- sdf::ElementPtr.
- * Keyword arguments:
- *    sdf_ptr          -- a shared pointer to a sdf::ElementPtr containing the
-        robot model.
- *    joint_params     -- a vector contanining optional params for joints.
- *
+/** Construct all Link and Joint objects from an input sdf::ElementPtr.
+ * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the robot
+ * model.
+ * @param joint_params a vector contanining optional params for joints.
+ * @return LinkMap and JointMap as a pair
  */
 LinkJointPair extract_structure_from_sdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
         boost::none);
 
-/** Construct all Link and Joint objects from an input urdf or sdf
- * file. Keyword arguments: file_path    -- absolute path to the urdf or sdf
- * file containing the robot description. joint_params -- a vector containing
- * optional params for joints.
+/** Construct all Link and Joint objects from an input urdf or sdf file.
+ * @param file_path absolute path to the urdf or sdf file containing the
+ * robot description.
+ * @param model_name name of the robot we care about. Must be specified in case
+ * sdf_file_path points to a world file.
+ * @param joint_params a vector contanining optional params for joints.
+ * @return LinkMap and JointMap as a pair
  */
 LinkJointPair extract_structure_from_file(
     const std::string file_path, const std::string model_name,
@@ -87,9 +87,9 @@ class Robot {
   explicit Robot(LinkJointPair links_and_joints);
 
   /** Constructor from a urdf or sdf file.
-   *
-   * Keyword Arguments:
-   *  file_path -- path to the file.
+   * @param file_path path to the file.
+   * @param model_name name of the robot we care about. Must be specified in
+   * case sdf_file_path points to a world file.
    */
   explicit Robot(const std::string file_path, std::string model_name = "");
 
