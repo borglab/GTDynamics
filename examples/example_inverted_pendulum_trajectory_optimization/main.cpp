@@ -19,7 +19,6 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <fstream>
@@ -37,18 +36,17 @@ using gtdynamics::Robot, gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
   auto ip = Robot("../inverted_pendulum.urdf");
-  auto j1 = ip.getJointByName("j1");
+  auto j1_id = ip.getJointByName("j1")->getID();
   ip.getLinkByName("l1")->fix();
   ip.printRobot();
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished(),
-                 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
+  gtsam::Vector3 gravity(0, 0, -9.8), planar_axis(1, 0, 0);
 
   // Specify optimal control problem parameters.
-  double T = 3.0,                  // Time horizon (s.)
-         dt = 1. / 100,            // Time step (s.)
-         sigma_dynamics = 1e-5,    // Variance of dynamics constraints.
-         sigma_objectives = 1e-2,  // Variance of additional objectives.
-         sigma_control = 1e-1;     // Variance of control.
+  double T = 3.0,               // Time horizon (s.)
+      dt = 1. / 100,            // Time step (s.)
+      sigma_dynamics = 1e-5,    // Variance of dynamics constraints.
+      sigma_objectives = 1e-2,  // Variance of additional objectives.
+      sigma_control = 1e-1;     // Variance of control.
   int t_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
 
   // Specify initial conditions and goal state.
@@ -57,34 +55,39 @@ int main(int argc, char** argv) {
 
   // Create trajectory factor graph.
   auto graph_builder = gtdynamics::DynamicsGraph();
-  auto graph = graph_builder.trajectoryFG(ip, t_steps, dt,
-    gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal,
-    gravity, planar_axis);
+  auto graph = graph_builder.trajectoryFG(
+      ip, t_steps, dt,
+      gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
+      planar_axis);
 
   // Add initial conditions to trajectory factor graph.
-  graph.add(PriorFactor<double>(JointAngleKey(j1->getID(), 0), theta_i,
-    Isotropic::Sigma(1, sigma_dynamics)));
-  graph.add(PriorFactor<double>(JointVelKey(j1->getID(), 0), dtheta_i,
-    Isotropic::Sigma(1, sigma_dynamics)));
-  graph.add(PriorFactor<double>(JointAccelKey(j1->getID(), 0), ddtheta_i,
-    Isotropic::Sigma(1, sigma_dynamics)));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointAngleKey(j1_id, 0), theta_i, Isotropic::Sigma(1, sigma_dynamics));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointVelKey(j1_id, 0), dtheta_i, Isotropic::Sigma(1, sigma_dynamics));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointAccelKey(j1_id, 0), ddtheta_i, Isotropic::Sigma(1, sigma_dynamics));
 
   // Add state and min torque objectives to trajectory factor graph.
-  graph.add(PriorFactor<double>(JointVelKey(j1->getID(), t_steps), dtheta_T,
-    Isotropic::Sigma(1, sigma_objectives)));
-  graph.add(PriorFactor<double>(JointAccelKey(j1->getID(), t_steps), dtheta_T,
-    Isotropic::Sigma(1, sigma_objectives)));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointVelKey(j1_id, t_steps), dtheta_T,
+      Isotropic::Sigma(1, sigma_objectives));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointAccelKey(j1_id, t_steps), dtheta_T,
+      Isotropic::Sigma(1, sigma_objectives));
   bool apply_theta_objective_all_dt = false;
-  graph.add(PriorFactor<double>(JointAngleKey(j1->getID(), t_steps), theta_T,
-    Isotropic::Sigma(1, sigma_objectives)));
+  graph.emplace_shared<PriorFactor<double>>(
+      JointAngleKey(j1_id, t_steps), theta_T,
+      Isotropic::Sigma(1, sigma_objectives));
   if (apply_theta_objective_all_dt) {
     for (int t = 0; t < t_steps; t++)
-      graph.add(PriorFactor<double>(JointAngleKey(j1->getID(), t), theta_T,
-        Isotropic::Sigma(1, sigma_objectives)));
+      graph.emplace_shared<PriorFactor<double>>(
+          JointAngleKey(j1_id, t), theta_T,
+          Isotropic::Sigma(1, sigma_objectives));
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.add(gtdynamics::MinTorqueFactor(
-      TorqueKey(j1->getID(), t), Isotropic::Sigma(1, sigma_control)));
+    graph.emplace_shared<gtdynamics::MinTorqueFactor>(
+        TorqueKey(j1_id, t), Isotropic::Sigma(1, sigma_control));
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
@@ -96,15 +99,16 @@ int main(int argc, char** argv) {
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::ofstream traj_file;
   traj_file.open("../traj.csv");
-  traj_file << "t,theta,dtheta,ddtheta,tau" << "\n";
+  traj_file << "t,theta,dtheta,ddtheta,tau"
+            << "\n";
   double t_elapsed = 0;
   for (int t = 0; t <= t_steps; t++, t_elapsed += dt) {
     std::vector<std::string> vals = {
-      std::to_string(t_elapsed),
-      std::to_string(results.atDouble(JointAngleKey(j1->getID(), t))),
-      std::to_string(results.atDouble(JointVelKey(j1->getID(), t))),
-      std::to_string(results.atDouble(JointAccelKey(j1->getID(), t))),
-      std::to_string(results.atDouble(TorqueKey(j1->getID(), t)))};
+        std::to_string(t_elapsed),
+        std::to_string(results.atDouble(JointAngleKey(j1_id, t))),
+        std::to_string(results.atDouble(JointVelKey(j1_id, t))),
+        std::to_string(results.atDouble(JointAccelKey(j1_id, t))),
+        std::to_string(results.atDouble(TorqueKey(j1_id, t)))};
     traj_file << boost::algorithm::join(vals, ",") << "\n";
   }
   traj_file.close();
