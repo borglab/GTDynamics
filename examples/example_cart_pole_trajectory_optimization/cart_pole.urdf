@@ -1,4 +1,11 @@
 <!-- DO NOT MODIFY OR REMOVE -->
+<!-- 
+    Cart pole robot model. Consists of a prismatic joint (actuated)
+    and a continuous revolute joint (unactuated). The aim of the cart pole
+    problem is to optimize a control sequence for the actuated joint which
+    brings the system to the desired goal state (i.e. swing the pendulum
+    up).
+-->
 <robot name="cart_pole">
     <link name="l0">
         <visual>

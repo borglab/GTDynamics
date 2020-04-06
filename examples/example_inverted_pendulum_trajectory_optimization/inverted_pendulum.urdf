@@ -1,4 +1,9 @@
 <!-- DO NOT MODIFY OR REMOVE -->
+<!-- 
+    Inverted pendulum robot model. Consists of a single actuated continuous
+    joint. The goal of the inverted pendulum problem is to swing the pendulum
+    up.
+-->
 <robot name="inverted_pendulum">
 
     <link name="l1">
