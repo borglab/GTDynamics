@@ -44,6 +44,8 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 
   double mu = 1.0;
+  double delta = 0.3;
+  double epsilon = 1e-4;
 
   gtdynamics::ContactDynamicsFrictionConeFactor factor(
       pose_key, contact_wrench_key, cost_model, mu, gravity);
@@ -53,22 +55,33 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
       assert_equal((gtsam::Vector(1) << 0).finished(),
                    factor.evaluateError(
                        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)),
-                       (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished())));
-
+                       (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished()), 1e-3));
+  // Feasible force within the friction cone.
+  EXPECT(
+      assert_equal((gtsam::Vector(1) << 0).finished(),
+                   factor.evaluateError(
+                       gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)),
+                       (gtsam::Vector(6) << 0, 0, 0, 1.414, 1.414, 3).finished()), 1e-3));
+  // Infeasible force "pulling" on the ground.
+  EXPECT(
+      assert_equal((gtsam::Vector(1) << 14.9271950265).finished(),
+                   factor.evaluateError(
+                       gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)),
+                       (gtsam::Vector(6) << 0, 0, 0, 0, 0, -1).finished()), 1e-3));
   // Link completely upright with contact wrench pointed laterally to ground
   // (slip condition).
   EXPECT(
-      assert_equal((gtsam::Vector(1) << 1).finished(),
+      assert_equal((gtsam::Vector(1) << 14.9261950265).finished(),
                    factor.evaluateError(
                        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)),
-                       (gtsam::Vector(6) << 0, 0, 0, 1, 0, 0).finished())));
+                       (gtsam::Vector(6) << 0, 0, 0, 1, 0, 0).finished()), 1e-3));
+  // Slip force outside friction cone.
   EXPECT(
-      assert_equal((gtsam::Vector(1) << 11).finished(),
+      assert_equal((gtsam::Vector(1) << 24.5581251412).finished(),
                    factor.evaluateError(
                        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)),
-                       (gtsam::Vector(6) << 0, 0, 0, 4, 2, 3).finished())));
+                       (gtsam::Vector(6) << 0, 0, 0, 4, 2, 3).finished()), 1e-3));
 
-  // Rotation and translation.
   gtsam::Values values_simple;
   values_simple.insert(pose_key,
                        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2.0)));
@@ -81,12 +94,12 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
 
   // Link angled with contact wrench angled relative to ground.
   EXPECT(assert_equal(
-      (gtsam::Vector(1) << 0).finished(),
+      (gtsam::Vector(1) << 0.6139).finished(),
       factor.evaluateError(
           gtsam::Pose3(gtsam::Rot3::Rx(M_PI / 8), gtsam::Point3(0., 0., 2.)),
-          (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished())));
+          (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished()), 1e-3));
   EXPECT(assert_equal(
-      (gtsam::Vector(1) << 0.7071).finished(),
+      (gtsam::Vector(1) << 7.93913).finished(),
       factor.evaluateError(gtsam::Pose3(gtsam::Rot3::Rx(3 * M_PI / 8),
                                         gtsam::Point3(0., 0., 2.)),
                            (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished()),

@@ -22,10 +22,13 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include <boost/optional.hpp>
 
 #include "gtdynamics/utils/utils.h"
+
+using std::sqrt, std::pow;
 
 namespace gtdynamics {
 
@@ -37,7 +40,9 @@ class ContactDynamicsFrictionConeFactor
   typedef ContactDynamicsFrictionConeFactor This;
   typedef gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6> Base;
   int up_axis_;  // Which axis is up (assuming flat ground)? {0: x, 1: y, 2: z}.
-  double mu_prime_;  // static friction coefficient squared.
+  double mu_;
+  double epsilon_ = 1e-4;  // TODO(aescontrela): Make the perturbed friction cone parameter epsilon a constructor argument.
+  double delta_ = 0.3; // TODO(aescontrela): Make this a constructor argument.
   const gtsam::Matrix36 H_wrench_ = (gtsam::Matrix(3, 6) << 0, 0, 0, 1, 0, 0, 0,
                                      0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1)
                                         .finished();
@@ -61,7 +66,7 @@ class ContactDynamicsFrictionConeFactor
       gtsam::Key pose_key, gtsam::Key contact_wrench_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model, double mu,
       const gtsam::Vector3 &gravity)
-      : Base(cost_model, pose_key, contact_wrench_key), mu_prime_(mu * mu) {
+      : Base(cost_model, pose_key, contact_wrench_key), mu_(mu) {
     if (gravity[0] != 0)
       up_axis_ = 0;  // x.
     else if (gravity[1] != 0)
@@ -81,61 +86,61 @@ class ContactDynamicsFrictionConeFactor
       boost::optional<gtsam::Matrix &> H_pose = boost::none,
       boost::optional<gtsam::Matrix &> H_contact_wrench =
           boost::none) const override {
-    // Linear component of the contact wrench.
-    gtsam::Matrix f_c = H_wrench_ * contact_wrench;
+    // Linear component of the contact wrench in the link com frame.
+    gtsam::Matrix Fc_l = H_wrench_ * contact_wrench;
 
-    // Rotate linear contact wrench force into the spatial frame.
+    // Rotate linear contact wrench force into the inertial frame.
     gtsam::Matrix36 H_p;
-    gtsam::Matrix f_c_prime = pose.rotation(H_p) * f_c;
+    gtsam::Matrix Fc_i = pose.rotation(H_p) * Fc_l;
 
-    // Compute the squared force values.
-    gtsam::Matrix A = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_x_;
-    gtsam::Matrix B = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_y_;
-    gtsam::Matrix C = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_z_;
-
-    if (up_axis_ == 0)
-      A *= -mu_prime_;
-    else if (up_axis_ == 1)
-      B *= -mu_prime_;
-    else
-      C *= -mu_prime_;
-
-    // a = f_x^2, b = f_z^2, c = f_z^2.
-    gtsam::Matrix a = A * gtsam::Matrix(f_c_prime);
-    gtsam::Matrix b = B * gtsam::Matrix(f_c_prime);
-    gtsam::Matrix c = C * gtsam::Matrix(f_c_prime);
-
-    gtsam::Matrix resultant = a + b + c;
-    gtsam::Vector error;
-
-    // Ramp function.
-    if (resultant(0, 0) > 0)
-      error = resultant;
-    else
-      error = (gtsam::Vector(1) << 0).finished();
-
-    // Compute the gradients based on whether or not the inequality constraint
-    // is active.
-    gtsam::Matrix H_f_c_prime = (2 * A + 2 * B + 2 * C);
-    if (H_contact_wrench) {
-      if (resultant(0, 0) > 0) {  // Active.
-        gtsam::Matrix H_f_c = H_f_c_prime * pose.rotation().matrix();
-        *H_contact_wrench = H_f_c * H_wrench_;
-      } else {  // Inactive.
-        *H_contact_wrench =
-            (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
-      }
+    // Gather the normal and lateral components of the linear force (Here is
+    // where the flat ground assumption is applied).
+    int n_idx = 2, lat1_idx = 0, lat2_idx = 1;
+    if (up_axis_ == 0) {
+      n_idx = 0;
+      lat1_idx = 1;
+      lat2_idx = 2;
+    } else if (up_axis_ == 1) {
+      n_idx = 1;
+      lat1_idx = 0;
+      lat2_idx = 2;
     }
 
-    if (H_pose) {
-      if (resultant(0, 0) > 0) {  // Active.
-        gtsam::Matrix33 H_r = pose.rotation().matrix() *
-                              gtsam::skewSymmetric(-f_c(0), -f_c(1), -f_c(2));
-        gtsam::Matrix H_rot = gtsam::Matrix(H_f_c_prime * H_r);
-        *H_pose = H_rot * H_p;
-      } else {  // Inactive.
-        *H_pose = (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
-      }
+    // Apply the perturbed friction cone equation.
+    double h = mu_ * Fc_i(n_idx);
+    double h_sqrt = sqrt(pow(Fc_i(lat1_idx), 2) + pow(Fc_i(lat2_idx), 2) + pow(epsilon_, 2));
+    h -= h_sqrt;
+    
+    // Compute the gradient of h wrt Fc_i.
+    gtsam::Matrix13 H_h;
+    H_h[lat1_idx] = -Fc_i(lat1_idx) / h_sqrt;
+    H_h[lat2_idx] = -Fc_i(lat2_idx) / h_sqrt;
+    H_h[n_idx] = mu_;
+
+    // Calculate the relaxed log barrier function value.
+    double B;
+    if (h >= delta_)
+      B = -std::log(h);
+    else
+      B = 0.5 * (std::pow((h - 2 * delta_) / delta_, 2) - 1) - log(delta_);
+    
+    // Calculate the gradient of B wrt h.
+    gtsam::Matrix11 H_B;
+    if (h >= delta_)
+      H_B[0] = -1 / h;
+    else
+      H_B[0] = (h - 2 * delta_) / std::pow(delta_, 2.0);
+    
+    gtsam::Vector error = (gtsam::Vector(1) << B).finished();
+
+    if (H_contact_wrench) {
+      *H_contact_wrench = H_B * H_h * pose.rotation().matrix() * H_wrench_;
+    }
+
+     if (H_pose) {
+      gtsam::Matrix33 H_r = pose.rotation().matrix() *
+                            gtsam::skewSymmetric(-Fc_l(0), -Fc_l(1), -Fc_l(2));
+      *H_pose = H_B * H_h * H_r * H_p;
     }
 
     return error;
