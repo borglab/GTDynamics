@@ -59,7 +59,8 @@ int main(int argc, char** argv) {
   // graph_builder.printValues(results);
   std::cout << "\033[1;31m" << "Joint Angles:" << "\033[0m" << std::endl;
   for (int t = 0; t <= T; t++) {
-    std::cout << graph_builder.jointAngles(simple_rpr, results, t) << std::endl << std::endl;
+    graph_builder.jointAngles(simple_rpr, results, t).print();
+    std::cout << std::endl;
   }
   std::cout << "\033[1;31m" << "Link Poses:" << "\033[0m\n" << std::endl;
   for (int t = 0; t <= T; t++) {

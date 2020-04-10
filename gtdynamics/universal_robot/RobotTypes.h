@@ -29,15 +29,7 @@
 namespace gtdynamics {
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
-template<typename JointAngleType>
-class Joint;
-template<typename JointAngleType>
-using JointSharedPtr = std::shared_ptr<Joint<JointAngleType>>;
-template<typename JointAngleType>
-using JointConstSharedPtr = std::shared_ptr<const Joint<JointAngleType>>;
-template<typename JointAngleType>
-using JointWeakPtr = std::weak_ptr<Joint<JointAngleType>>;
-// LINK_TYPEDEF_CLASS_POINTER(Joint);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
 LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
 LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
 LINK_TYPEDEF_CLASS_POINTER(SphericalJoint);

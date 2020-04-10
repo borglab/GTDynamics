@@ -31,7 +31,7 @@
 #include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
-class RevoluteJoint : public Joint<double> {
+class RevoluteJoint : public JointType<double> {
  protected:
   char joint_type_;
   JointEffortType jointEffortType_;
@@ -111,7 +111,7 @@ class RevoluteJoint : public Joint<double> {
                 double velocityLimitThreshold, double accelerationLimit,
                 double accelerationLimitThreshold, double torqueLimitThreshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
-      : Joint(sdf_joint, parent_link, child_link),
+      : JointType<double>(sdf_joint, parent_link, child_link),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
                              sdf_joint.Axis()->Xyz()[1],
@@ -132,7 +132,7 @@ class RevoluteJoint : public Joint<double> {
 
   /** constructor using JointParams */
   explicit RevoluteJoint(const Params &params)
-      : Joint(params),
+      : JointType<double>(params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
@@ -154,14 +154,14 @@ class RevoluteJoint : public Joint<double> {
   }
 
   /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const LinkSharedPtr link,
+  gtsam::Pose3 transformFromImpl(const LinkSharedPtr link,
                              boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? pMcCom(q) : cMpCom(q);
   }
 
   /// Return the twist of the other link given this link's twist and
   /// joint angle.
-  gtsam::Vector6 transformTwistFrom(
+  gtsam::Vector6 transformTwistFromImpl(
       const LinkSharedPtr link, boost::optional<double> q,
       boost::optional<double> q_dot,
       boost::optional<gtsam::Vector6> this_twist) const {
@@ -170,19 +170,19 @@ class RevoluteJoint : public Joint<double> {
         this_twist ? *this_twist : gtsam::Vector6::Zero();
 
     // Lynch & Park Eq. 8.51
-    return transformFrom(link, q).AdjointMap() * this_twist_ +
+    return transformFromImpl(link, q).AdjointMap() * this_twist_ +
            screwAxis(otherLink(link)) * q_dot_;
   }
 
   /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const LinkSharedPtr link,
+  gtsam::Pose3 transformToImpl(const LinkSharedPtr link,
                            boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
 
   /// Return the twist of this link given the other link's twist and
   /// joint angle.
-  gtsam::Vector6 transformTwistTo(
+  gtsam::Vector6 transformTwistToImpl(
       const LinkSharedPtr link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const {
@@ -191,7 +191,7 @@ class RevoluteJoint : public Joint<double> {
         other_twist ? *other_twist : gtsam::Vector6::Zero();
 
     // Lynch & Park Eq. 8.51
-    return transformTo(link, q).AdjointMap() * other_twist_ +
+    return transformToImpl(link, q).AdjointMap() * other_twist_ +
            screwAxis(link) * q_dot_;
   }
 
