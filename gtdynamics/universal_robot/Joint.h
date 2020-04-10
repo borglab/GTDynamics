@@ -26,7 +26,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -145,20 +145,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
     return link_ptr == child_link_;
   }
 
-  void setScrewAxis() {
+  void setScrewAxis(double qInit) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
 
     gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
     gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
 
-    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
-
     if (joint_type_ == 'R') {
       pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-          pcomRj * (-jTpcom_.translation().vector()));
+          pcomRj * (-jTpcom_.translation()));
       cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-          ccomRj * (-jTccom_.translation().vector()));
+          ccomRj * (-jTccom_.translation()));
     } else if (joint_type_ == 'P') {
       pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
       cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
@@ -166,6 +164,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
       throw std::runtime_error(
         "joint type " + std::string(1, joint_type_) + " not supported");
     }
+
+    if (qInit == 0)
+      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+    else
+      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom() *
+                gtsam::Pose3::Expmap(cScrewAxis_ * -qInit);
   }
 
  public:
@@ -211,11 +215,28 @@ class Joint : public std::enable_shared_from_this<Joint> {
         torque_limit_threshold_(torqueLimitThreshold),
         parent_link_(parent_link),
         child_link_(child_link) {
-    if ((sdf_joint.PoseFrame() == "") &&
-        (sdf_joint.Pose() == ignition::math::Pose3d()))
-      wTj_ = child_link->wTl();
-    else
+    if (sdf_joint.PoseFrame() == "" ||
+        sdf_joint.PoseFrame() == child_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = child_link->wTl();
+      else
+        wTj_ = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == parent_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = parent_link->wTl();
+      else
+        wTj_ = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == "world") {
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
+    } else {
+      // TODO: get pose frame from name.  Need sdf::Model to do that though.
+      throw std::runtime_error("joint pose frames other than world, parent, or "
+                               "child not yet supported");
+    }
+
+    if (sdf_joint.Axis()->UseParentModelFrame()) {
+      axis_ = wTj_.rotation().inverse() * parent_link->wTl().rotation() * axis_;
+    }
 
     if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint_type_ = 'R';
@@ -224,7 +245,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     } else {
       throw std::runtime_error("joint type not supported");
     }
-    setScrewAxis();
+    setScrewAxis(sdf_joint.Axis()->InitialPosition());
   }
 
   /** constructor using JointParams */
@@ -239,7 +260,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
         parent_link_(params.parent_link),
         child_link_(params.child_link),
         wTj_(params.wTj) {
-    setScrewAxis();
+    setScrewAxis(0);
   }
 
   /// Return a shared ptr to this joint.

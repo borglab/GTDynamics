@@ -22,7 +22,7 @@
 
 #include <boost/optional.hpp>
 
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 

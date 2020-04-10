@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <string>
 
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtsam::assert_equal;
 

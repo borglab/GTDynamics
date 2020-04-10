@@ -34,7 +34,7 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 #include <boost/optional.hpp>
 

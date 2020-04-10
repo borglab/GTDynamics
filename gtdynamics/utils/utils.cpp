@@ -6,12 +6,12 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  Utils.h
+ * @file  utils.cpp
  * @brief Utility methods.
  * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 #include <stdexcept>
 
@@ -43,10 +43,10 @@ gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
   auto w_skew = gtsam::skewSymmetric(w);
   gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
   gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  gtsam::Vector3 H_T = H_expo * (jMi.translation().vector() - w_skew * v) +
+  gtsam::Vector3 H_T = H_expo * (jMi.translation() - w_skew * v) +
                        w * w.transpose() * v;
   gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
-                        gtsam::skewSymmetric(kTj.translation().vector()) * H_R;
+                        gtsam::skewSymmetric(kTj.translation()) * H_R;
   gtsam::Matrix6 H = gtsam::Z_6x6;
   gtsam::insertSub(H, H_R, 0, 0);
   gtsam::insertSub(H, H_TR, 3, 0);
