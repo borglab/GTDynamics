@@ -33,8 +33,6 @@ grid;
 %% Animate inverted pendulum trajectory.
 pos1 = get(gcf,'Position');
 set(gcf,'Position', pos1 - [pos1(3)/2,0,0,0])
-hold off;
-grid;
 fh = figure();
 pos2 = get(gcf,'Position');
 set(gcf,'Position', pos2 + [pos1(3)/2,0,0,0])

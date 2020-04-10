@@ -31,7 +31,8 @@
 
 using gtdynamics::Robot, gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
     gtdynamics::JointAccelKey, gtdynamics::TorqueKey, gtsam::PriorFactor,
-    gtdynamics::ZeroValuesTrajectory, gtsam::noiseModel::Isotropic;
+    gtdynamics::ZeroValuesTrajectory, gtsam::noiseModel::Isotropic,
+    gtdynamics::MinTorqueFactor;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
@@ -41,13 +42,13 @@ int main(int argc, char** argv) {
   ip.printRobot();
   gtsam::Vector3 gravity(0, 0, -9.8), planar_axis(1, 0, 0);
 
-  // Specify optimal control problem parameters.
-  double T = 3.0,               // Time horizon (s.)
-      dt = 1. / 100,            // Time step (s.)
-      sigma_dynamics = 1e-5,    // Variance of dynamics constraints.
-      sigma_objectives = 1e-2,  // Variance of additional objectives.
-      sigma_control = 1e-1;     // Variance of control.
+  double T = 3, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).
   int t_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
+
+  // Noise models:
+  auto dynamics_model = Isotropic::Sigma(1, 1e-5);  // Dynamics constraints.
+  auto objectives_model = Isotropic::Sigma(1, 1e-2);  // Objectives.
+  auto control_model = Isotropic::Sigma(1, 1e-1);  // Controls.
 
   // Specify initial conditions and goal state.
   double theta_i = 0, dtheta_i = 0, ddtheta_i = 0;
@@ -62,32 +63,25 @@ int main(int argc, char** argv) {
 
   // Add initial conditions to trajectory factor graph.
   graph.emplace_shared<PriorFactor<double>>(
-      JointAngleKey(j1_id, 0), theta_i, Isotropic::Sigma(1, sigma_dynamics));
+      JointAngleKey(j1_id, 0), theta_i, dynamics_model);
   graph.emplace_shared<PriorFactor<double>>(
-      JointVelKey(j1_id, 0), dtheta_i, Isotropic::Sigma(1, sigma_dynamics));
-  graph.emplace_shared<PriorFactor<double>>(
-      JointAccelKey(j1_id, 0), ddtheta_i, Isotropic::Sigma(1, sigma_dynamics));
+      JointVelKey(j1_id, 0), dtheta_i, dynamics_model);
 
   // Add state and min torque objectives to trajectory factor graph.
   graph.emplace_shared<PriorFactor<double>>(
-      JointVelKey(j1_id, t_steps), dtheta_T,
-      Isotropic::Sigma(1, sigma_objectives));
+      JointVelKey(j1_id, t_steps), dtheta_T, objectives_model);
   graph.emplace_shared<PriorFactor<double>>(
-      JointAccelKey(j1_id, t_steps), dtheta_T,
-      Isotropic::Sigma(1, sigma_objectives));
+      JointAccelKey(j1_id, t_steps), dtheta_T, objectives_model);
   bool apply_theta_objective_all_dt = false;
   graph.emplace_shared<PriorFactor<double>>(
-      JointAngleKey(j1_id, t_steps), theta_T,
-      Isotropic::Sigma(1, sigma_objectives));
+      JointAngleKey(j1_id, t_steps), theta_T, objectives_model);
   if (apply_theta_objective_all_dt) {
     for (int t = 0; t < t_steps; t++)
       graph.emplace_shared<PriorFactor<double>>(
-          JointAngleKey(j1_id, t), theta_T,
-          Isotropic::Sigma(1, sigma_objectives));
+          JointAngleKey(j1_id, t), theta_T, objectives_model);
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.emplace_shared<gtdynamics::MinTorqueFactor>(
-        TorqueKey(j1_id, t), Isotropic::Sigma(1, sigma_control));
+    graph.emplace_shared<MinTorqueFactor>(TorqueKey(j1_id, t), control_model);
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(ip, t_steps, 0, 0.0);

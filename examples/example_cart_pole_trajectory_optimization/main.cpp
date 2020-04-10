@@ -43,18 +43,14 @@ int main(int argc, char** argv) {
   cp.printRobot();
   gtsam::Vector3 gravity(0, 0, -9.8);
 
-  // Specify optimal control problem parameters.
-  double T = 2,                     // Time horizon (s.)
-      dt = 1. / 100,                // Time step (s.)
-      sigma_dynamics = 1e-7,        // Variance of dynamics constraints.
-      sigma_objectives = 5e-3,      // Variance of additional objectives.
-      sigma_pos_objectives = 1e-5,  // Variance of positional objectives.
-      sigma_control = 20;           // Variance of control.
+  double T = 2, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).
   int t_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
 
-  auto dynamics_nm = Isotropic::Sigma(1, sigma_dynamics);
-  auto objectives_nm = Isotropic::Sigma(1, sigma_objectives);
-  auto pos_objectives_nm = Isotropic::Sigma(1, sigma_pos_objectives);
+  // Noise models:
+  auto dynamics_model = Isotropic::Sigma(1, 1e-7);  // Dynamics constraints.
+  auto pos_objectives_model = Isotropic::Sigma(1, 1e-5);  // Pos objectives.
+  auto objectives_model = Isotropic::Sigma(1, 5e-3);  // Additional objectives.
+  auto control_model = Isotropic::Sigma(1, 20);  // Controls.
 
   // Specify initial conditions and goal state.
   // State: x, dx/dt, d^2x/dt^2, theta, dtheta/dt, d^2theta/dt
@@ -76,48 +72,44 @@ int main(int argc, char** argv) {
 
   // Add initial conditions to trajectory factor graph.
   graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j0_id, 0), X_i[0],
-                                            dynamics_nm);
+                                            dynamics_model);
   graph.emplace_shared<PriorFactor<double>>(JointVelKey(j0_id, 0), X_i[1],
-                                            dynamics_nm);
-  graph.emplace_shared<PriorFactor<double>>(JointAccelKey(j0_id, 0), X_i[2],
-                                            dynamics_nm);
+                                            dynamics_model);
   graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j1_id, 0), X_i[3],
-                                            dynamics_nm);
+                                            dynamics_model);
   graph.emplace_shared<PriorFactor<double>>(JointVelKey(j1_id, 0), X_i[4],
-                                            dynamics_nm);
-  graph.emplace_shared<PriorFactor<double>>(JointAccelKey(j1_id, 0), X_i[5],
-                                            dynamics_nm);
+                                            dynamics_model);
 
-  // Add state and min torque objectives to trajectory factor graph.
+  // Add terminal conditions to the factor graph.
   graph.emplace_shared<PriorFactor<double>>(JointVelKey(j0_id, t_steps), X_T[1],
-                                            objectives_nm);
+                                            objectives_model);
   graph.emplace_shared<PriorFactor<double>>(JointAccelKey(j0_id, t_steps),
-                                            X_T[2], objectives_nm);
+                                            X_T[2], objectives_model);
   graph.emplace_shared<PriorFactor<double>>(JointVelKey(j1_id, t_steps), X_T[4],
-                                            objectives_nm);
+                                            objectives_model);
   graph.emplace_shared<PriorFactor<double>>(JointAccelKey(j1_id, t_steps),
-                                            X_T[5], objectives_nm);
+                                            X_T[5], objectives_model);
 
   // Insert position objective (x, theta) factor at every timestep or only at
-  // the terminal state. Adding the position objective will force the system to
-  // converge to the desired state quicker at the cost of more impulsive control
-  // actions.
+  // the terminal state. Adding the position objective at every timestep will
+  // force the system to converge to the desired state quicker at the cost of
+  // more impulsive control actions.
   bool apply_pos_objective_all_dt = false;
   graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j0_id, t_steps),
-                                            X_T[0], pos_objectives_nm);
+                                            X_T[0], pos_objectives_model);
   graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j1_id, t_steps),
-                                            X_T[3], pos_objectives_nm);
+                                            X_T[3], pos_objectives_model);
   if (apply_pos_objective_all_dt) {
     for (int t = 0; t < t_steps; t++) {
       graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j0_id, t), X_T[0],
-                                                pos_objectives_nm);
+                                                pos_objectives_model);
       graph.emplace_shared<PriorFactor<double>>(JointAngleKey(j1_id, t), X_T[3],
-                                                pos_objectives_nm);
+                                                pos_objectives_model);
     }
   }
   for (int t = 0; t <= t_steps; t++)
     graph.emplace_shared<gtdynamics::MinTorqueFactor>(
-        TorqueKey(j0_id, t), Isotropic::Sigma(1, sigma_control));
+        TorqueKey(j0_id, t), control_model);
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
