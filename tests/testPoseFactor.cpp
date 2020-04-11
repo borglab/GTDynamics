@@ -105,7 +105,7 @@ TEST(PoseFactor, breaking_rr) {
   double joint_angle = M_PI / 4;
 
   auto l2 = my_robot.getLinkByName("l2");
-  auto j1 = my_robot.getJointByName("j1");
+  gtdynamics::RevoluteJointSharedPtr j1 = my_robot.getJointByName("j1");
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 jMi = j1->transformTo(l2);

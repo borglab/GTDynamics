@@ -306,6 +306,12 @@ class JointType : public Joint {
       const LinkSharedPtr link,
       boost::optional<JointAngleType> q = boost::none) const = 0;
 
+  /// Convenience method. Return the transform from this link com to the other link
+  /// com frame
+  gtsam::Pose3 transformFrom(
+      const LinkSharedPtr link,
+      const JointAngleType q) const { return transformFromImpl(link, q); }
+
   /// Return the transform from this link com to the other link
   /// com frame given a Values object containing this joint's angle Value
   gtsam::Pose3 transformFrom(
@@ -325,6 +331,24 @@ class JointType : public Joint {
       boost::optional<JointAngleType> q_dot = boost::none,
       boost::optional<gtsam::Vector6> this_twist = boost::none) const = 0;
 
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link,
+      JointAngleType q,
+      boost::optional<JointAngleType> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none) const {
+    transformTwistFromImpl(link, q, q_dot, this_twist);
+  }
+
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link,
+      gtsam::Vector6 this_twist) const {
+    transformTwistFromImpl(link, boost::none, boost::none, this_twist);
+  }
+
   /// Return the twist of the other link given this link's
   /// twist and a Values object containing this joint's angle Value.
   gtsam::Vector6 transformTwistFrom(
@@ -332,7 +356,7 @@ class JointType : public Joint {
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Values> q_dot = boost::none,
       boost::optional<gtsam::Vector6> this_twist = boost::none) const {
-    if (q && q->exists<JointAngleType>(getKey())){
+    if (q && q->exists<JointAngleType>(getKey())) {
       if (q_dot && q_dot->exists<JointAngleType>(getKey())) {
         return transformTwistFromImpl(link,
             q->at<JointAngleType>(getKey()),
@@ -355,6 +379,12 @@ class JointType : public Joint {
       const LinkSharedPtr link,
       boost::optional<JointAngleType> q = boost::none) const = 0;
 
+  /// Convenience method. Return the transform from this link com to the other link
+  /// com frame
+  gtsam::Pose3 transformTo(
+      const LinkSharedPtr link,
+      const JointAngleType q) const { return transformToImpl(link, q); }
+
   /// Return the transform from the other link com to this link
   /// com frame given a Values object containing this joint's angle Value
   gtsam::Pose3 transformTo(
@@ -373,6 +403,24 @@ class JointType : public Joint {
       boost::optional<JointAngleType> q = boost::none,
       boost::optional<JointAngleType> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
+
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistTo(
+      const LinkSharedPtr link,
+      JointAngleType q,
+      boost::optional<JointAngleType> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none) const {
+    transformTwistToImpl(link, q, q_dot, this_twist);
+  }
+
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistTo(
+      const LinkSharedPtr link,
+      gtsam::Vector6 this_twist) const {
+    transformTwistToImpl(link, boost::none, boost::none, this_twist);
+  }
 
   /// Return the twist of this link given the other link's
   /// twist and a Values object containing this joint's angle Value.

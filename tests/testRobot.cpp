@@ -120,8 +120,8 @@ TEST(Robot, forwardKinematics) {
   Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   gtsam::Values joint_angles, joint_vels;
-  joint_angles.insert(simple_robot.getJointByName("j1")->getKey(), 0);
-  joint_vels.insert(simple_robot.getJointByName("j1")->getKey(), 0);
+  joint_angles.insert<double>(simple_robot.getJointByName("j1")->getKey(), 0);
+  joint_vels.insert<double>(simple_robot.getJointByName("j1")->getKey(), 0);
 
   // not fixing a link would cause an exception
   THROWS_EXCEPTION(simple_robot.forwardKinematics(joint_angles, joint_vels));
@@ -145,8 +145,8 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_rest, twists.at("l2")));
 
   // test fk with moving joint and fixed base
-  joint_angles["j1"] = M_PI_2;
-  joint_vels["j1"] = 1;
+  joint_angles.insert<double>(simple_robot.getJointByName("j1")->getKey(), M_PI_2);
+  joint_vels.insert<double>(simple_robot.getJointByName("j1")->getKey(), 1);
 
   fk_results = simple_robot.forwardKinematics(joint_angles, joint_vels);
   poses = fk_results.first;
@@ -186,12 +186,12 @@ TEST(Robot, forwardKinematics_rpr) {
       Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   gtsam::Values joint_angles, joint_vels;
-  joint_angles.insert(rpr_robot.getJointByName("joint_1")->getKey(), 0);
-  joint_vels.insert(rpr_robot.getJointByName("joint_1")->getKey(), 0);
-  joint_angles.insert(rpr_robot.getJointByName("joint_2")->getKey(), 0);
-  joint_vels.insert(rpr_robot.getJointByName("joint_2")->getKey(), 0);
-  joint_angles.insert(rpr_robot.getJointByName("joint_3")->getKey(), 0);
-  joint_vels.insert(rpr_robot.getJointByName("joint_3")->getKey(), 0);
+  joint_angles.insert<double>(rpr_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_vels.insert<double>(rpr_robot.getJointByName("joint_1")->getKey(), 0);
+  joint_angles.insert<double>(rpr_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_vels.insert<double>(rpr_robot.getJointByName("joint_2")->getKey(), 0);
+  joint_angles.insert<double>(rpr_robot.getJointByName("joint_3")->getKey(), 0);
+  joint_vels.insert<double>(rpr_robot.getJointByName("joint_3")->getKey(), 0);
 
   // test fk at rest
   rpr_robot.getLinkByName("link_0")->fix();
@@ -220,9 +220,9 @@ TEST(Robot, forwardKinematics_rpr) {
   EXPECT(assert_equal(V_l3_rest, twists.at("link_3")));
 
   // test fk with moving prismatic joint and fixed base
-  joint_angles["joint_1"] = M_PI_2;
-  joint_angles["joint_2"] = 0.5;
-  joint_vels["joint_2"] = 1;
+  joint_angles.insert<double>(rpr_robot.getJointByName("joint_1")->getKey(), M_PI_2);
+  joint_angles.insert<double>(rpr_robot.getJointByName("joint_2")->getKey(), 0.5);
+  joint_vels.insert<double>(rpr_robot.getJointByName("joint_2")->getKey(), 1);
 
   fk_results = rpr_robot.forwardKinematics(joint_angles, joint_vels);
   poses = fk_results.first;
@@ -255,8 +255,8 @@ TEST(forwardKinematics, four_bar) {
 
   gtsam::Values joint_angles, joint_vels;
   for (gtdynamics::JointSharedPtr joint : four_bar.joints()) {
-    joint_angles.insert(joint->getKey(), 0);
-    joint_vels.insert(joint->getKey(), 0);
+    joint_angles.insert<double>(joint->getKey(), 0);
+    joint_vels.insert<double>(joint->getKey(), 0);
   }
   Robot::FKResults fk_results =
       four_bar.forwardKinematics(joint_angles, joint_vels);
@@ -272,8 +272,8 @@ TEST(forwardKinematics, four_bar) {
   // incorrect specficiation of joint angles;
   gtsam::Values wrong_angles = joint_angles;
   gtsam::Values wrong_vels = joint_vels;
-  wrong_angles.insert(four_bar.getJointByName("j1")->getKey(), 1);
-  wrong_vels.insert(four_bar.getJointByName("j1")->getKey(), 1);
+  wrong_angles.insert<double>(four_bar.getJointByName("j1")->getKey(), 1);
+  wrong_vels.insert<double>(four_bar.getJointByName("j1")->getKey(), 1);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles, joint_vels));
   THROWS_EXCEPTION(four_bar.forwardKinematics(joint_angles, wrong_vels));
 }
