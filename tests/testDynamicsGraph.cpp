@@ -106,9 +106,9 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
                                         gtdynamics::ZeroValues(my_robot, 0));
   Values result = optimizer.optimize();
 
-  gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
+  gtsam::Vector1 expected_qAccel = (gtsam::Vector(1) << 4).finished();
   Values actual_qAccel = DynamicsGraph::jointAccels(my_robot, result, 0);
-  gtsam::Vector6 actual_qAccel_vector;
+  gtsam::Vector1 actual_qAccel_vector;
   for (int ji = 0; ji < my_robot.numJoints(); ji++)
     actual_qAccel_vector[ji] = actual_qAccel.at<double>(my_robot.joints()[ji]->getKey());
   EXPECT(assert_equal(expected_qAccel, actual_qAccel_vector, 1e-3));
@@ -148,9 +148,9 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   // test the four bar linkage FD in the free-floating scenario
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values result = optimizer.optimize();
-  gtsam::Vector expected_qAccel = (gtsam::Vector(4) << 1, -1, 1, -1).finished();
+  gtsam::Vector4 expected_qAccel = (gtsam::Vector(4) << 1, -1, 1, -1).finished();
   Values actual_qAccel = DynamicsGraph::jointAccels(my_robot, result, 0);
-  gtsam::Vector6 actual_qAccel_vector;
+  gtsam::Vector4 actual_qAccel_vector;
   for (int ji = 0; ji < my_robot.numJoints(); ji++)
     actual_qAccel_vector[ji] = actual_qAccel.at<double>(my_robot.joints()[ji]->getKey());
   EXPECT(assert_equal(expected_qAccel, actual_qAccel_vector, 1e-4));
@@ -172,7 +172,6 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
 
   expected_qAccel = (gtsam::Vector(4) << 0.25, -0.25, 0.25, -0.25).finished();
   actual_qAccel = DynamicsGraph::jointAccels(my_robot, result, 0);
-  actual_qAccel_vector;
   for (int ji = 0; ji < my_robot.numJoints(); ji++)
     actual_qAccel_vector[ji] = actual_qAccel.at<double>(my_robot.joints()[ji]->getKey());
   EXPECT(assert_equal(expected_qAccel, actual_qAccel_vector));

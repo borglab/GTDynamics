@@ -29,9 +29,9 @@ TEST(Simulate, simple_urdf) {
   using simple_urdf::my_robot, simple_urdf::gravity, simple_urdf::planar_axis;
   using std::vector;
   gtsam::Values joint_angles, joint_vels, torques;
-  joint_angles.insert(my_robot.getJointByName("j1")->getKey(), 0);
-  joint_vels.insert(my_robot.getJointByName("j1")->getKey(), 0);
-  torques.insert(my_robot.getJointByName("j1")->getKey(), 1);
+  joint_angles.insert<double>(my_robot.getJointByName("j1")->getKey(), 0);
+  joint_vels.insert<double>(my_robot.getJointByName("j1")->getKey(), 0);
+  torques.insert<double>(my_robot.getJointByName("j1")->getKey(), 1);
   auto simulator = gtdynamics::Simulator(my_robot, joint_angles, joint_vels,
                                          gravity, planar_axis);
 

@@ -22,6 +22,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
+#include <memory>
 
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
@@ -105,7 +106,7 @@ TEST(PoseFactor, breaking_rr) {
   double joint_angle = M_PI / 4;
 
   auto l2 = my_robot.getLinkByName("l2");
-  gtdynamics::RevoluteJointSharedPtr j1 = my_robot.getJointByName("j1");
+  auto j1 = std::dynamic_pointer_cast<gtdynamics::RevoluteJoint>(my_robot.getJointByName("j1"));
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 jMi = j1->transformTo(l2);

@@ -97,9 +97,9 @@ class Simulator {
     JointValues vs_new, qs_new;
     for (JointSharedPtr joint : robot_.joints()) {
       gtsam::Key key = joint->getKey();
-      vs_new.insert(key, vs_.at(key) + dt * as_.at(key));
-      qs_new.insert(key, qs_.at(key) + dt * vs_.at(key) +
-                         0.5 * as_.at(key) * std::pow(dt, 2));
+      vs_new.insert(key, vs_.at<double>(key) + dt * as_.at<double>(key));
+      qs_new.insert(key, qs_.at<double>(key) + dt * vs_.at<double>(key) +
+                         0.5 * as_.at<double>(key) * std::pow(dt, 2));
       // TODO(gerry, stephanie): make this work with spherical / u-joints
     }
     vs_ = vs_new;

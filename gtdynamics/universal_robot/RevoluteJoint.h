@@ -336,7 +336,7 @@ class RevoluteJoint : public JointType<double> {
     const gtsam::Pose3 T_wi1 = poses.at(parent_link_->name());
     const gtsam::Pose3 T_wi2 = poses.at(child_link_->name());
     const gtsam::Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
+    // const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
 
     // torque factor
