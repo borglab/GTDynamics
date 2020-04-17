@@ -130,9 +130,9 @@ int main(int argc, char** argv) {
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
-  vector<CPs> phase_cps =   {p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6};
-  vector<CPs> trans_cps =   {  t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23 };
-  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
+  vector<CPs> phase_cps =   {p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6};
+  vector<CPs> trans_cps =   {  t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23 };
+  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
 
   // Define the cumulative phase steps.
   vector<int> cum_phase_steps;
