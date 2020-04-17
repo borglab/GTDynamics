@@ -3,6 +3,7 @@ from typing import Dict
 
 import time
 
+import matplotlib.pyplot as plt
 import pybullet as p
 import pybullet_data
 import pandas as pd
@@ -47,7 +48,27 @@ print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
 
 debug_iters = 20
 
-for i in range(len(df)):
+max_traj_replays = 5
+num_traj_replays = 0
+
+t = 0
+t_f = None
+ts = []
+all_pos_sim = []
+
+i=0
+while True:
+# for i in range(len(df)):
+
+    if num_traj_replays == max_traj_replays:
+        break
+
+    if (i == 1260):
+        i = 135
+        if num_traj_replays == 0:
+            t_f = t
+        num_traj_replays += 1
+
     jangles = df.loc[i][[str(i) for i in range(12)]]
     jvels = df.loc[i][[str(i) + '.1' for i in range(12)]]
     jaccels = df.loc[i][[str(i) + '.2' for i in range(12)]]
@@ -63,7 +84,11 @@ for i in range(len(df)):
     if (i % debug_iters) == 0:
         print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
             i, new_pos, p.getEulerFromQuaternion(new_orn)))
-        p.addUserDebugLine(pos, new_pos, lineColorRGB=[0, 1, 1], lineWidth=1)
+
+        if (num_traj_replays == 0):
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[1, 0, 1], lineWidth=2.5)
+        else:
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[0, 1, 1], lineWidth=2.5)
         pos, orn = new_pos, new_orn
 
         bod_debug_line_x = p.addUserDebugLine(
@@ -82,10 +107,34 @@ for i in range(len(df)):
     p.stepSimulation()
     time.sleep(1. / 240.)
 
+    ts.append(t)
+    t += 1. / 240.
+    all_pos_sim.append(new_pos)
+    i+=1
+
 
 pos, orn = p.getBasePositionAndOrientation(quad_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                 p.getEulerFromQuaternion(orn)))
+
+fig, axs = plt.subplots(3, 1, sharex=True)
+fig.subplots_adjust(hspace=0)
+
+axs[0].plot(ts, [p[0] for p in all_pos_sim])
+axs[0].axvline(x=t_f, color='k', linestyle='--')
+axs[0].set_ylabel('x (m.)')
+
+axs[1].plot(ts, [p[1] for p in all_pos_sim])
+axs[1].axvline(x=t_f, color='k', linestyle='--')
+axs[1].set_ylabel('y (m.)')
+
+axs[2].plot(ts, [p[2] for p in all_pos_sim])
+axs[2].axvline(x=t_f, color='k', linestyle='--')
+axs[2].set_ylabel('z (m.)')
+
+plt.xlabel("time (s.)")
+
+plt.show()
 
 while True:
     p.stepSimulation()
