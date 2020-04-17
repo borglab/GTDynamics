@@ -127,25 +127,30 @@ int main(int argc, char** argv) {
 
   CPs p6  = {c0,         c3};  // Front right leg and hind left swing.
 
-  vector<CPs> phase_cps = {p0, p5, p0, p6, p0, p5, p0, p6};
-  vector<CPs> trans_cps = {  t45,t45,t23,t23,t45,t45,t23  };
+  // Define contact points for each phase, transition contact points,
+  // and phase durations.
+  vector<CPs> phase_cps =   {p0, p5, p0, p6, p0, p5, p0, p6};
+  vector<CPs> trans_cps =   {  t45,t45,t23,t23,t45,t45,t23  };
+  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60};
   // vector<CPs> phase_cps = {p0, p1, p2, p3, p4};
   // vector<CPs> trans_cps = {t01, t12, t23, t34, t45, t56};
+
+  // Define the cumulative phase steps.
+  vector<int> cum_phase_steps;
+  for (int i = 0; i < phase_steps.size(); i++) {
+    int cum_val = i == 0 ? phase_steps[0] : phase_steps[i] + cum_phase_steps[i-1];
+    cum_phase_steps.push_back(cum_val);
+    std::cout << cum_val << std::endl;
+  }
+  int t_f = cum_phase_steps[cum_phase_steps.size() - 1];  // Final timestep.
+  double dt_des = 1. / 240.;  // Desired timestep duration.
+    
 
   // Robot model for each phase.
   vector<Robot> robots(phase_cps.size(), vision60);
 
-  int steps_per_phase = 100;  // Number of discretized timesteps per phase.
-  vector<int> phase_steps(phase_cps.size(), steps_per_phase);
-  int t_f = phase_cps.size() * steps_per_phase;  // Final timestep.
-  double dt_des = 1. / 240.;  // Desired timestep duration.
-
-  std::cout << "Running direct collocation with "
-            << (steps_per_phase * dt_des)
-            << "s. per phase" << std::endl;
-
   // Collocation scheme.
-  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal;
+  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
   // TODO(aescontrela): Transition timestep should satisfy the dynamics for both cases.
@@ -154,9 +159,9 @@ int main(int argc, char** argv) {
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-      robots[p], p * steps_per_phase, gravity, boost::none, trans_cps[p - 1], mu));
+      robots[p], cum_phase_steps[p - 1], gravity, boost::none, trans_cps[p - 1], mu));
     transition_graph_init.push_back(
-      ZeroValues(robots[p], p * steps_per_phase, gaussian_noise, trans_cps[p - 1]));
+      ZeroValues(robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
   // Construct the multi-phase trajectory factor graph.
@@ -179,14 +184,14 @@ int main(int argc, char** argv) {
       (link_map[link]->wTcom() * Pose3(Rot3(), c0.contact_point)).translation()));
   
   // Distance to move contact point during swing.
-  auto contact_offset = Point3(0.1, 0, 0);
+  auto contact_offset = Point3(0.15, 0, 0);
   
   // Add contact point objectives to factor graph.
   for (int p = 0; p < phase_cps.size(); p++) {
     // Phase start and end timesteps.
-    int t_p_i = p * steps_per_phase;
+    int t_p_i = cum_phase_steps[p] - phase_steps[p];
     if (p != 0) t_p_i += 1;
-    int t_p_f = (p + 1) * steps_per_phase;
+    int t_p_f = cum_phase_steps[p];
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
@@ -198,11 +203,8 @@ int main(int argc, char** argv) {
             phase_contact_links.end(), l) == phase_contact_links.end())
         phase_swing_links.push_back(l);
     }
-    // if (phase_swing_links.size() == 0)
-    //   continue;
 
     // Update the goal point for the swing links.
-  
     if (p==2)
       contact_offset = 2 * contact_offset;
 
@@ -229,9 +231,9 @@ int main(int argc, char** argv) {
 
   // Add base goal objectives to the factor graph.
   auto base_pose_model = gtsam::noiseModel::Diagonal::Sigmas(
-    (Vector(6) << sigma_objectives,
-                  sigma_objectives,
-                  sigma_objectives,
+    (Vector(6) << sigma_objectives * 10,
+                  sigma_objectives * 10,
+                  sigma_objectives * 10,
                   10000, sigma_objectives,
                   sigma_objectives).finished());
   for (int t = 0; t <= t_f; t++)
