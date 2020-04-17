@@ -129,11 +129,9 @@ int main(int argc, char** argv) {
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
-  vector<CPs> phase_cps =   {p0, p5, p0, p6, p0, p5, p0, p6};
-  vector<CPs> trans_cps =   {  t45,t45,t23,t23,t45,t45,t23  };
-  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60};
-  // vector<CPs> phase_cps = {p0, p1, p2, p3, p4};
-  // vector<CPs> trans_cps = {t01, t12, t23, t34, t45, t56};
+  vector<CPs> phase_cps =   {p0, p5, p0, p6, p0, p5, p0, p6, p0, p5, p0, p6};
+  vector<CPs> trans_cps =   {  t45,t45,t23,t23,t45,t45,t23,t23,t45,t45,t23 };
+  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
 
   // Define the cumulative phase steps.
   vector<int> cum_phase_steps;
@@ -145,7 +143,6 @@ int main(int argc, char** argv) {
   int t_f = cum_phase_steps[cum_phase_steps.size() - 1];  // Final timestep.
   double dt_des = 1. / 240.;  // Desired timestep duration.
     
-
   // Robot model for each phase.
   vector<Robot> robots(phase_cps.size(), vision60);
 
@@ -153,7 +150,6 @@ int main(int argc, char** argv) {
   auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
-  // TODO(aescontrela): Transition timestep should satisfy the dynamics for both cases.
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
   vector<Values> transition_graph_init;
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
@@ -204,10 +200,10 @@ int main(int argc, char** argv) {
         phase_swing_links.push_back(l);
     }
 
-    // Update the goal point for the swing links.
     if (p==2)
       contact_offset = 2 * contact_offset;
 
+    // Update the goal point for the swing links.
     for (auto && psl : phase_swing_links)
       prev_cp[psl] = prev_cp[psl] + contact_offset;
 
@@ -231,10 +227,8 @@ int main(int argc, char** argv) {
 
   // Add base goal objectives to the factor graph.
   auto base_pose_model = gtsam::noiseModel::Diagonal::Sigmas(
-    (Vector(6) << sigma_objectives * 10,
-                  sigma_objectives * 10,
-                  sigma_objectives * 10,
-                  10000, sigma_objectives,
+    (Vector(6) << sigma_objectives * 3, sigma_objectives * 3,
+                  sigma_objectives * 3, 10000, sigma_objectives,
                   sigma_objectives).finished());
   for (int t = 0; t <= t_f; t++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
