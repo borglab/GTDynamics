@@ -7,7 +7,7 @@
 
 /**
  * @file  main.cpp
- * @brief Trajectory optimization for a walking legged robot with contacts.
+ * @brief Quadruped trajectory optimization with pre-specified footholds.
  * @Author: Alejandro Escontrela
  */
 
@@ -16,6 +16,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -26,6 +27,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <algorithm>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
@@ -33,49 +35,56 @@
 #define GROUND_HEIGHT -0.191839
 
 using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
-    gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
+    gtdynamics::JointAngleKey, gtdynamics::JointVelKey, gtsam::Point3,
+    gtsam::Rot3, gtsam::Pose3, gtsam::Values,
     gtdynamics::JointAccelKey, gtdynamics::TorqueKey, gtdynamics::ContactPoints,
     gtdynamics::ContactPoint, gtdynamics::ZeroValues, gtdynamics::PhaseKey,
     gtdynamics::TwistKey, gtdynamics::TwistAccelKey, gtdynamics::Robot,
-    std::vector, std::string;
+    std::vector, std::string, gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
+
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
   auto vision60 = Robot("../vision60.urdf");
 
-  double sigma_dynamics = 1e-5;    // Variance of dynamics constraints.
-  double sigma_objectives = 1e-3;  // Variance of additional objectives.
+  double sigma_dynamics = 1e-6;    // std of dynamics constraints.
+  double sigma_objectives = 1e-4;  // std of additional objectives.
+  
 
-  // Initialize graph builder with desired dynamics constraint variances.
+  // Noise models.
+  auto dynamics_model_6 = Isotropic::Sigma(6, sigma_dynamics),
+       dynamics_model_3 = Isotropic::Sigma(3, sigma_dynamics),
+       dynamics_model_1 = Isotropic::Sigma(1, sigma_dynamics),
+       objectives_model_6 = Isotropic::Sigma(6, sigma_objectives),
+       objectives_model_3 = Isotropic::Sigma(3, sigma_objectives),
+       objectives_model_1 = Isotropic::Sigma(1, sigma_objectives);
+
+  // Initialize graph builder with desired dynamics constraint stds.
+  // TODO(aescontrela): Make a constructor for OptimizerSetting that
+  //     initializes all noise models with the same sigma.
   auto opt = gtdynamics::OptimizerSetting();
-  opt.bp_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.bv_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.ba_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cp_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cfriction_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cv_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
-  opt.ca_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
-  opt.planar_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
-  opt.prior_q_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.prior_qv_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.prior_qa_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.prior_t_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.bp_cost_model = dynamics_model_6;
+  opt.bv_cost_model = dynamics_model_6;
+  opt.ba_cost_model = dynamics_model_6;
+  opt.p_cost_model = dynamics_model_6;
+  opt.v_cost_model = dynamics_model_6;
+  opt.a_cost_model = dynamics_model_6;
+  opt.f_cost_model = dynamics_model_6;
+  opt.fa_cost_model = dynamics_model_6;
+  opt.t_cost_model = dynamics_model_1;
+  opt.cp_cost_model = dynamics_model_1;
+  opt.cfriction_cost_model = dynamics_model_1;
+  opt.cv_cost_model = dynamics_model_3;
+  opt.ca_cost_model = dynamics_model_3;
+  opt.planar_cost_model = dynamics_model_3;
+  opt.prior_q_cost_model = dynamics_model_1;
+  opt.prior_qv_cost_model = dynamics_model_1;
+  opt.prior_qa_cost_model = dynamics_model_1;
+  opt.prior_t_cost_model = dynamics_model_1;
+  opt.q_col_cost_model = dynamics_model_1;
+  opt.v_col_cost_model = dynamics_model_1;
+  opt.time_cost_model = dynamics_model_1;
   auto graph_builder = gtdynamics::DynamicsGraph(opt);
 
   // Env parameters.
@@ -83,131 +92,181 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   // All contacts.
-  auto c1 = ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT};
-  auto c2 = ContactPoint{"lower1", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT};
-  auto c3 = ContactPoint{"lower2", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT};
-  auto c4 = ContactPoint{"lower3", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT};
+  typedef ContactPoint CP;
+  auto c0 = CP{"lower0", Point3(0.14, 0, 0), 0, GROUND_HEIGHT}; // Front left.
+  auto c1 = CP{"lower1", Point3(0.14, 0, 0), 0, GROUND_HEIGHT}; // Hind left.
+  auto c2 = CP{"lower2", Point3(0.14, 0, 0), 0, GROUND_HEIGHT}; // Front right.
+  auto c3 = CP{"lower3", Point3(0.14, 0, 0), 0, GROUND_HEIGHT}; // Hind right.
 
-  // Contact points for each phase. In this example the robot moves one foot at
-  // a time.
-  ContactPoints p0 = {c1, c2, c3, c4};  // Initially stationary.
-  ContactPoints p1 = {c1, c2, c4};      // Front right leg swing.
-  ContactPoints p2 = {c1, c3, c4};      // Hind left leg swing.
-  ContactPoints p3 = {c2, c3, c4};      // Front left leg swing.
-  ContactPoints p4 = {c1, c2, c3};      // Hind right leg swing.
-  ContactPoints p5 = {c1, c2, c3, c4};  // Finally stationary.
+  // Contact points for each phase. First move one leg at a time then switch
+  // to a more dynamic gait with two legs in swing per phase.
+  typedef ContactPoints CPs;
+  CPs p0  = {c0, c1, c2, c3};  // Initially stationary.
 
-  vector<ContactPoints> phase_contact_points;
-  phase_contact_points = {p0, p1, p2, p3, p4, p5};
+  CPs t01 = {    c1, c2, c3};
+
+  CPs p1  = {    c1, c2, c3};  // Front right leg swing.
+
+  CPs t12 = {        c2, c3};
+
+  CPs p2  = {c0,     c2, c3};  // Front left leg swing.
+
+  CPs t23 = {c0,         c3};
+
+  CPs p3  = {c0, c1,     c3};  // Hind right swing.
+
+  CPs t34 = {c0, c1        };
+
+  CPs p4  = {c0, c1, c2    };  // Hind left swing.
+
+  CPs t45 = {    c1, c2    };
+
+  CPs p5  = {    c1, c2    };  // Front left leg and hind right swing.
+
+  CPs t56 = {              };
+
+  CPs p6  = {c0,         c3};  // Front right leg and hind left swing.
+
+  vector<CPs> phase_cps = {p0, p5, p0, p6, p0, p5, p0, p6};
+  vector<CPs> trans_cps = {  t45,t45,t23,t23,t45,t45,t23  };
+  // vector<CPs> phase_cps = {p0, p1, p2, p3, p4};
+  // vector<CPs> trans_cps = {t01, t12, t23, t34, t45, t56};
 
   // Robot model for each phase.
-  vector<Robot> robots(phase_contact_points.size(), vision60);
+  vector<Robot> robots(phase_cps.size(), vision60);
 
-  // Number of descretized timesteps for each phase.
-  int steps_per_phase = 100;
-  vector<int> phase_steps(phase_contact_points.size(), steps_per_phase);
-  int dt_f = phase_contact_points.size() *
-             steps_per_phase;  // The final discretized timestep.
-  double dt_des = 1. / 240.;
+  int steps_per_phase = 100;  // Number of discretized timesteps per phase.
+  vector<int> phase_steps(phase_cps.size(), steps_per_phase);
+  int t_f = phase_cps.size() * steps_per_phase;  // Final timestep.
+  double dt_des = 1. / 240.;  // Desired timestep duration.
+
+  std::cout << "Running direct collocation with "
+            << (steps_per_phase * dt_des)
+            << "s. per phase" << std::endl;
 
   // Collocation scheme.
-  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
+  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal;
 
-  // Transition graphs. Transition graph in this case is equivalent to the
-  // stationary case.
+  // Graphs for transition between phases + their initial values.
+  // TODO(aescontrela): Transition timestep should satisfy the dynamics for both cases.
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
-  transition_graphs = {
-      graph_builder.dynamicsFactorGraph(robots[0], 1 * steps_per_phase, gravity,
-                                        boost::none, p0, mu),
-      graph_builder.dynamicsFactorGraph(robots[1], 2 * steps_per_phase, gravity,
-                                        boost::none, p0, mu),
-      graph_builder.dynamicsFactorGraph(robots[2], 3 * steps_per_phase, gravity,
-                                        boost::none, p0, mu),
-      graph_builder.dynamicsFactorGraph(robots[3], 4 * steps_per_phase, gravity,
-                                        boost::none, p0, mu),
-      graph_builder.dynamicsFactorGraph(robots[4], 5 * steps_per_phase, gravity,
-                                        boost::none, p0, mu)};
-
-  // Initial values for transition graphs.
-  vector<gtsam::Values> transition_graph_init;
-  double gaussian_noise = 1e-8;
-  transition_graph_init.push_back(
-      ZeroValues(robots[0], 1 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(
-      ZeroValues(robots[1], 2 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(
-      ZeroValues(robots[2], 3 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(
-      ZeroValues(robots[3], 4 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(
-      ZeroValues(robots[4], 5 * steps_per_phase, gaussian_noise, p0));
+  vector<Values> transition_graph_init;
+  double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
+  for (int p = 1; p < phase_cps.size(); p++) {
+    transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
+      robots[p], p * steps_per_phase, gravity, boost::none, trans_cps[p - 1], mu));
+    transition_graph_init.push_back(
+      ZeroValues(robots[p], p * steps_per_phase, gaussian_noise, trans_cps[p - 1]));
+  }
 
   // Construct the multi-phase trajectory factor graph.
   auto graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, collocation, gravity, boost::none,
-      phase_contact_points, mu);
+    robots, phase_steps, transition_graphs, collocation, gravity, boost::none,
+    phase_cps, mu);
 
-  auto base_link = vision60.getLinkByName("body");
+  // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
+  auto base_link = vision60.getLinkByName("body");
+  vector<string> links = {"lower0", "lower1", "lower2", "lower3"};
+  std::map<string, gtdynamics::LinkSharedPtr> link_map;
+  for (auto&& link : links)
+    link_map.insert(std::make_pair(link, vision60.getLinkByName(link)));
 
-  // The task: to reach a desired pose.
-  vector<gtsam::Pose3> wTb_t;
-  vector<int> ts;
-  wTb_t.push_back(gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0),
-                               gtsam::Point3(0.25, 0.0, 0.1)));
-  ts.push_back(dt_f);
+  // Previous contact point goal.
+  std::map<string, Point3> prev_cp;
+  for (auto&& link : links)
+    prev_cp.insert(std::make_pair(link,
+      (link_map[link]->wTcom() * Pose3(Rot3(), c0.contact_point)).translation()));
+  
+  // Distance to move contact point during swing.
+  auto contact_offset = Point3(0.1, 0, 0);
+  
+  // Add contact point objectives to factor graph.
+  for (int p = 0; p < phase_cps.size(); p++) {
+    // Phase start and end timesteps.
+    int t_p_i = p * steps_per_phase;
+    if (p != 0) t_p_i += 1;
+    int t_p_f = (p + 1) * steps_per_phase;
 
-  for (int t = 0; t <= dt_f; t++)
+    // Obtain the contact links and swing links for this phase.
+    vector<string> phase_contact_links;
+    for (auto&& cp : phase_cps[p])
+      phase_contact_links.push_back(cp.name);
+    vector<string> phase_swing_links;
+    for (auto&& l : links) {
+      if (std::find(phase_contact_links.begin(),
+            phase_contact_links.end(), l) == phase_contact_links.end())
+        phase_swing_links.push_back(l);
+    }
+    // if (phase_swing_links.size() == 0)
+    //   continue;
+
+    // Update the goal point for the swing links.
+  
+    if (p==2)
+      contact_offset = 2 * contact_offset;
+
+    for (auto && psl : phase_swing_links)
+      prev_cp[psl] = prev_cp[psl] + contact_offset;
+
+    for (int t = t_p_i; t <= t_p_f; t++) {
+      // Normalized phase progress.
+      double t_normed = (double) (t - t_p_i) / (double) (t_p_f - t_p_i);
+      for (auto&& pcl : phase_contact_links)
+        // TODO(aescontrela): Use correct contact point for each link.
+        objective_factors.add(gtdynamics::PointGoalFactor(
+          PoseKey(link_map[pcl]->getID(), t), objectives_model_3,
+          Pose3(Rot3(), c0.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.03)));
+
+      double h = GROUND_HEIGHT + 0.05 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
+
+      for (auto&& psl : phase_swing_links)
+        objective_factors.add(gtdynamics::PointGoalFactor(
+          PoseKey(link_map[psl]->getID(), t), objectives_model_3,
+          Pose3(Rot3(), c0.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+    }
+  }
+
+  // Add base goal objectives to the factor graph.
+  auto base_pose_model = gtsam::noiseModel::Diagonal::Sigmas(
+    (Vector(6) << sigma_objectives,
+                  sigma_objectives,
+                  sigma_objectives,
+                  10000, sigma_objectives,
+                  sigma_objectives).finished());
+  for (int t = 0; t <= t_f; t++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(base_link->getID(), t), wTb_t[0],
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
+      PoseKey(base_link->getID(), t),
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0.0, 0.13)),
+      base_pose_model));
 
   // Add link boundary conditions to FG.
-  Vector6 link_twist_init = Vector6::Zero(), link_twist_final = Vector6::Zero(),
-          link_accel_init = Vector6::Zero(), link_accel_final = Vector6::Zero();
   for (auto&& link : vision60.links()) {
-    // Initial link pose, twists, accelerations.
+    // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(link->getID(), 0), link->wTcom(),
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
+        PoseKey(link->getID(), 0), link->wTcom(), dynamics_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->getID(), 0), link_twist_init,
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
-    objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistAccelKey(link->getID(), 0), link_accel_init,
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
+        TwistKey(link->getID(), 0), Vector6::Zero(), dynamics_model_6));
 
     // Final link twists, accelerations.
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->getID(), dt_f), link_twist_final,
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
+        TwistKey(link->getID(), t_f), Vector6::Zero(), objectives_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistAccelKey(link->getID(), dt_f), link_accel_final,
-        gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
+        TwistAccelKey(link->getID(), t_f), Vector6::Zero(),
+        objectives_model_6));
   }
 
   // Add joint boundary conditions to FG.
-  Vector joint_angles_init = Vector::Zero(12),
-         joint_vels_init = Vector::Zero(12),
-         joint_accels_init = Vector::Zero(12),
-         joint_vels_final = Vector::Zero(12),
-         joint_accels_final = Vector::Zero(12);
   for (auto&& joint : vision60.joints()) {
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAngleKey(joint->getID(), 0), 0.0,
-        gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
+        JointAngleKey(joint->getID(), 0), 0.0, dynamics_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), 0), 0.0,
-        gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
+        JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
+
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->getID(), 0), 0.0,
-        gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
+        JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), dt_f), 0.0,
-        gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
-    objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->getID(), dt_f), 0.0,
-        gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
+        JointAccelKey(joint->getID(), t_f), 0.0, objectives_model_1));
   }
 
   // Add prior factor constraining all Phase keys to have duration of 1 / 240.
@@ -217,7 +276,7 @@ int main(int argc, char** argv) {
         gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
 
   // Add min torque objectives.
-  for (int t = 0; t <= dt_f; t++) {
+  for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
           TorqueKey(joint->getID(), t),
@@ -227,22 +286,16 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  string initialization_technique = "zeros";
-  if (initialization_technique == "zeros")
-    init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
-        robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
-        phase_contact_points);
-  else if (initialization_technique == "inverse_kinematics")
-    init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
-        robots, base_link->name(), phase_steps, base_link->wTcom(), wTb_t, ts,
-        transition_graph_init, dt_des, gaussian_noise, phase_contact_points);
+  init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+    robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
+    phase_cps);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
-  params.setlambdaInitial(1e-3);
-  params.setlambdaLowerBound(1e0);
-  params.setlambdaUpperBound(1e7);
   params.setVerbosityLM("SUMMARY");
+  params.setlambdaInitial(1e0);
+  params.setlambdaLowerBound(1e-7);
+  params.setlambdaUpperBound(1e10);
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   gtsam::Values results = optimizer.optimize();
 
@@ -281,6 +334,7 @@ int main(int argc, char** argv) {
     }
   }
   traj_file.close();
+
 
   return 0;
 }

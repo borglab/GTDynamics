@@ -14,7 +14,7 @@ _ = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
-p.changeDynamics(planeId, -1, lateralFriction=2.0)
+p.changeDynamics(planeId, -1, lateralFriction=1)
 quad_id = p.loadURDF("vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
                      False)
 
@@ -26,7 +26,7 @@ for i in range(p.getNumJoints(quad_id)):
 def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
     """Actuate to the suppplied joint angles using PD control."""
     for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=500)
+        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=5000)
 
     for k, v in joint_angles.items():
         p.setJointMotorControl2(bodyUniqueId=quad_id,
@@ -46,6 +46,7 @@ print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                p.getEulerFromQuaternion(orn)))
 
 debug_iters = 20
+
 for i in range(len(df)):
     jangles = df.loc[i][[str(i) for i in range(12)]]
     jvels = df.loc[i][[str(i) + '.1' for i in range(12)]]
@@ -80,6 +81,7 @@ for i in range(len(df)):
 
     p.stepSimulation()
     time.sleep(1. / 240.)
+
 
 pos, orn = p.getBasePositionAndOrientation(quad_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
