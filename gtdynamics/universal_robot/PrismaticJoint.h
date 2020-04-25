@@ -32,6 +32,11 @@
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
+/**
+ * @class Prismatic is an implementation of the abstract Joint class
+ *  which represents a prismatic joint and contains all necessary factor
+ *  construction methods.
+ */
 class PrismaticJoint : public Joint {
  protected:
   char joint_type_;

@@ -31,6 +31,11 @@
 #include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
+/**
+ * @class RevoluteJoint is an implementation of the abstract Joint class
+ *  which represents a revolute joint and contains all necessary factor
+ *  construction methods.
+ */
 class RevoluteJoint : public Joint {
  protected:
   char joint_type_;

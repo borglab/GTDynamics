@@ -51,7 +51,7 @@ inline gtsam::LabeledSymbol TorqueKey(int j, int t) {
 }
 
 /**
- * Joint is the base class for a joint connecting two Link objects.
+ * @class Joint is the base class for a joint connecting two Link objects.
  */
 class Joint : public std::enable_shared_from_this<Joint> {
  public:

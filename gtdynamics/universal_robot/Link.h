@@ -60,7 +60,8 @@ inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
 }
 
 /**
- * Link is the base class for links taking different format of parameters
+ * @class Link is the base class for links taking different format of
+ *  parameters.
  */
 class Link : public std::enable_shared_from_this<Link> {
  private:
