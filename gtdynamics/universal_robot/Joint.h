@@ -139,11 +139,24 @@ class Joint : public std::enable_shared_from_this<Joint> {
       : name_(sdf_joint.Name()),
         parent_link_(parent_link),
         child_link_(child_link) {
-    if ((sdf_joint.PoseFrame() == "") &&
-        (sdf_joint.Pose() == ignition::math::Pose3d()))
-      wTj_ = child_link->wTl();
-    else
+    if (sdf_joint.PoseFrame() == "" ||
+        sdf_joint.PoseFrame() == child_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = child_link->wTl();
+      else
+        wTj_ = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == parent_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = parent_link->wTl();
+      else
+        wTj_ = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == "world") {
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
+    } else {
+      // TODO: get pose frame from name.  Need sdf::Model to do that though.
+      throw std::runtime_error("joint pose frames other than world, parent, or "
+                               "child not yet supported");
+    }
 
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();

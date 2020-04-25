@@ -12,9 +12,6 @@
  * @Author: Stephanie McCormick
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
