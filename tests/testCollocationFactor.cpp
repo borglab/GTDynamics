@@ -32,12 +32,9 @@ namespace example {
 // nosie model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key pose_i_key = gtsam::Symbol('p', 1),
-           pose_j_key = gtsam::Symbol('p', 2),
-           twist_i_key = gtsam::Symbol('v', 1),
-           twist_j_key = gtsam::Symbol('v', 2),
-           accel_i_key = gtsam::Symbol('a', 1),
-           accel_j_key = gtsam::Symbol('a', 2), dt_key = gtsam::Symbol('t', 0);
+gtsam::Symbol pose_i_key('p', 1), pose_j_key('p', 2), twist_i_key('v', 1),
+              twist_j_key('v', 2), accel_i_key('a', 1), accel_j_key('a', 2),
+              dt_key('t', 0);
 }  // namespace example
 
 TEST(PoseTwistFunctor, error) {
