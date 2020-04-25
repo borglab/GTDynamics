@@ -153,7 +153,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
     } else if (sdf_joint.PoseFrame() == "world") {
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
     } else {
-      // TODO: get pose frame from name.  Need sdf::Model to do that though.
+      // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
+      // though.
       throw std::runtime_error("joint pose frames other than world, parent, or "
                                "child not yet supported");
     }
@@ -197,7 +198,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     return id_;
   }
 
-  // Return joint name.
+  /// Return joint name.
   std::string name() const { return name_; }
 
   /// Return the connected link other than the one provided.
@@ -287,7 +288,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis =
           boost::none) const = 0;
 
-  // Abstract method. Return joint limit factors.
+  /// Abstract method. Return joint limit factors.
   virtual gtsam::NonlinearFactorGraph jointLimitFactors(
       const int &t, const OptimizerSetting &opt) = 0;
 
