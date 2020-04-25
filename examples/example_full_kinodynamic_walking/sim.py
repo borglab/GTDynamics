@@ -58,7 +58,6 @@ all_pos_sim = []
 
 i=0
 while True:
-# for i in range(len(df)):
 
     if num_traj_replays == max_traj_replays:
         break
