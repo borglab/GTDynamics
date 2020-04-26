@@ -251,21 +251,47 @@ class Joint : public std::enable_shared_from_this<Joint> {
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
 
-  /// Abstract method. Return joint angle factors.
+  /** @fn (ABSTRACT) Return pose factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate q factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return pose factors.
+   */
   virtual gtsam::NonlinearFactorGraph qFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return joint vel factors.
+  /** @fn (ABSTRACT) Return velocity factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate v factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return velocity factors.
+   */
   virtual gtsam::NonlinearFactorGraph vFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return joint accel factors.
+  /** @fn (ABSTRACT) Return accel factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate a factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return accel factors.
+   */
   virtual gtsam::NonlinearFactorGraph aFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return linearized form of joint accel factors.
+  /** @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
+   * 
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] poses         Link poses.
+   * @param[in] twists        Link twists.
+   * @param[in] joint_angles  Joint angles.
+   * @param[in] joint_vels    Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear accel factors.
+   */
   virtual gtsam::GaussianFactorGraph linearAFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -273,14 +299,30 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis =
           boost::none) const = 0;
 
-  /// Abstract method. Return joint dynamics factors.
+  /** @fn (ABSTRACT) Return dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate dynamics factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return dynamics factors.
+   */
   virtual gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
 
-  /// Abstract method. Return linearized form of joint dynamics factors.
+  /** @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] poses         Link poses.
+   * @param[in] twists        Link twists.
+   * @param[in] joint_angles  Joint angles.
+   * @param[in] joint_vels    Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear dynamics factors.
+   */
   virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -288,9 +330,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis =
           boost::none) const = 0;
 
-  /// Abstract method. Return joint limit factors.
+  /** @fn (ABSTRACT) Return joint limit factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate joint limit factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return joint limit factors.
+   */
   virtual gtsam::NonlinearFactorGraph jointLimitFactors(
-      const int &t, const OptimizerSetting &opt) = 0;
+      size_t t, const OptimizerSetting &opt) = 0;
 
   /**@}*/
 };

@@ -214,7 +214,7 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 
   /// Return link position factors.
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
+  gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -224,7 +224,7 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 
   /// Return link velocity factors.
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
+  gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -234,7 +234,7 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 
   /// Return link accel factors.
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -246,7 +246,7 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /// Return link dymamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const std::vector<gtsam::LabeledSymbol> &wrenches,
       const boost::optional<gtsam::Vector3> &gravity) const {
     gtsam::NonlinearFactorGraph graph;

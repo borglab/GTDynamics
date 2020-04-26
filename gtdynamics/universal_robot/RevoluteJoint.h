@@ -244,7 +244,7 @@ class RevoluteJoint : public Joint {
   double torqueLimitThreshold() const { return torque_limit_threshold_; }
 
   /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
+  gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(PoseFactor(PoseKey(parent_link_->getID(), t),
@@ -255,7 +255,7 @@ class RevoluteJoint : public Joint {
   }
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
+  gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(TwistFactor(
@@ -267,7 +267,7 @@ class RevoluteJoint : public Joint {
   }
 
   /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(TwistAccelFactor(
@@ -282,7 +282,7 @@ class RevoluteJoint : public Joint {
 
   /// Return linearized acceleration factors.
   gtsam::GaussianFactorGraph linearAFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -310,7 +310,7 @@ class RevoluteJoint : public Joint {
 
   /// Return joint dynamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(WrenchEquivalenceFactor(
@@ -328,7 +328,7 @@ class RevoluteJoint : public Joint {
 
   /// Return linearized dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      const int &t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -368,7 +368,7 @@ class RevoluteJoint : public Joint {
   }
 
   /// Return joint limit factors.
-  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t,
+  gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
                                                 const OptimizerSetting &opt) {
     gtsam::NonlinearFactorGraph graph;
     // Add joint angle limit factor.
