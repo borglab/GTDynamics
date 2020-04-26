@@ -213,7 +213,12 @@ class Link : public std::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
-  /// Return link position factors.
+  /** @fn Return pose factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate q factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return pose factors.
+   */
   gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
@@ -223,7 +228,12 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /// Return link velocity factors.
+  /** @fn Return velocity factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate v factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return velocity factors.
+   */
   gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
@@ -233,7 +243,12 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /// Return link accel factors.
+  /** @fn Return accel factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate a factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return accel factors.
+   */
   gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
@@ -244,7 +259,12 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /// Return link dymamics factors.
+  /** @fn Return dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate dynamics factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return dynamics factors.
+   */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
       const std::vector<gtsam::LabeledSymbol> &wrenches,
