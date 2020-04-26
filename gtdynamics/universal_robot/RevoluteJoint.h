@@ -134,6 +134,15 @@ class RevoluteJoint : public Joint {
     setScrewAxis();
   }
 
+  /** Construct joint using sdf::Joint instance and joint parameters. */
+  RevoluteJoint(const sdf::Joint &sdf_joint, const gtdynamics::JointParams &jps,
+                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
+      : RevoluteJoint(
+          sdf_joint, jps.jointEffortType, jps.springCoefficient,
+          jps.jointLimitThreshold, jps.velocityLimitThreshold,
+          jps.accelerationLimit, jps.accelerationLimitThreshold,
+          jps.torqueLimitThreshold, parent_link, child_link) {}
+
   /** constructor using JointParams */
   explicit RevoluteJoint(const Params &params)
       : Joint(params),

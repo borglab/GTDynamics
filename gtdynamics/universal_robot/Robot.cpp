@@ -96,17 +96,11 @@ LinkJointPair extractRobotFromSdf(
     if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
       joint = std::make_shared<gtdynamics::PrismaticJoint>(
           gtdynamics::PrismaticJoint(
-              sdf_joint, jps.jointEffortType, jps.springCoefficient,
-              jps.jointLimitThreshold, jps.velocityLimitThreshold,
-              jps.accelerationLimit, jps.accelerationLimitThreshold,
-              jps.torqueLimitThreshold, parent_link, child_link));
+              sdf_joint, jps, parent_link, child_link));
     } else if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint =
           std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
-              sdf_joint, jps.jointEffortType, jps.springCoefficient,
-              jps.jointLimitThreshold, jps.velocityLimitThreshold,
-              jps.accelerationLimit, jps.accelerationLimitThreshold,
-              jps.torqueLimitThreshold, parent_link, child_link));
+              sdf_joint, jps, parent_link, child_link));
     } else {
       throw std::runtime_error("Joint type for [" +
                                std::string(sdf_joint.Name()) +
