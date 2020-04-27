@@ -249,8 +249,8 @@ Robot::FKResults Robot::forwardKinematics(
   int loop_count = 0;
   while (!q.empty()) {
     auto link1 = q.front();
-    Pose3 T_w1 = link_poses.at(link1->name());
-    Vector6 V_1 = link_twists.at(link1->name());
+    const Pose3 T_w1 = link_poses.at(link1->name());
+    const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
     for (gtdynamics::JointSharedPtr joint : link1->getJoints()) {
       gtdynamics::JointSharedPtr joint_ptr = joint;
@@ -258,10 +258,10 @@ Robot::FKResults Robot::forwardKinematics(
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
       double joint_vel = joint_vels.at(joint_ptr->name());
-      Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
-      Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
-      Pose3 T_w2 = T_w1 * T_12;
-      Vector6 V_2 =
+      const Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
+      const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
+      const Pose3 T_w2 = T_w1 * T_12;
+      const Vector6 V_2 =
           joint->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
 
       // check if link 2 is already assigned
