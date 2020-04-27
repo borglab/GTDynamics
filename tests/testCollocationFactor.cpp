@@ -26,7 +26,7 @@
 #include "gtdynamics/factors/CollocationFactors.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-using gtsam::assert_equal;
+using gtsam::assert_equal, gtsam::Pose3, gtsam::Vector6, gtsam::Rot3;
 
 namespace example {
 // nosie model
@@ -38,14 +38,12 @@ gtsam::Symbol pose_i_key('p', 1), pose_j_key('p', 2), twist_i_key('v', 1),
 
 TEST(PoseTwistFunctor, error) {
   // create functor
-  gtsam::Pose3 pose_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
-  gtsam::Vector6 twist;
+  Pose3 pose_i = Pose3(Rot3(), gtsam::Point3(0, 0, 1));
+  Vector6 twist;
   twist << 1, 0, 0, 0, 0, 1;
   double dt = M_PI_2;
-  gtsam::Vector6 twistdt = twist * dt;
-  gtsam::Pose3 pose_j =
-      gtsam::Pose3(gtsam::Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
-  //   gtsam::Pose3 pose_j = pose_i * gtsam::Pose3::Expmap(twistdt);
+  Vector6 twistdt = twist * dt;
+  Pose3 pose_j(Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
 
   gtdynamics::PoseTwistFunctor predictPose;
   EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
@@ -74,13 +72,12 @@ TEST(PoseTwistFunctor, error) {
 
 TEST(RandomData, EulerPose) {
   // create functor
-  gtsam::Pose3 pose_i = gtsam::Pose3(gtsam::Rot3::RzRyRx(0.7, -0.5, 2),
-                                     gtsam::Point3(0.4, -0.3, 0.9));
-  gtsam::Vector6 twist;
+  Pose3 pose_i(Rot3::RzRyRx(0.7, -0.5, 2), gtsam::Point3(0.4, -0.3, 0.9));
+  Vector6 twist;
   twist << 0.1, 0.6, 0.2, -0.1, 0.9, 1;
   double dt = M_PI_2;
-  gtsam::Vector6 twistdt = twist * dt;
-  gtsam::Pose3 pose_j = pose_i * gtsam::Pose3::Expmap(twistdt);
+  Vector6 twistdt = twist * dt;
+  Pose3 pose_j = pose_i * Pose3::Expmap(twistdt);
 
   gtdynamics::PoseTwistFunctor predictPose;
   EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
@@ -109,14 +106,13 @@ TEST(RandomData, EulerPose) {
 
 TEST(RandomData, TrapezoidalPose) {
   // create functor
-  gtsam::Pose3 pose_i = gtsam::Pose3(gtsam::Rot3::RzRyRx(0.7, -0.5, 2),
-                                     gtsam::Point3(0.4, -0.3, 0.9));
-  gtsam::Vector6 twist_i, twist_j;
+  Pose3 pose_i(Rot3::RzRyRx(0.7, -0.5, 2), gtsam::Point3(0.4, -0.3, 0.9));
+  Vector6 twist_i, twist_j;
   twist_i << 0.1, 0.6, 0.2, -0.1, 0.9, 1;
   twist_j << 0.6, 0.2, -0.1, 0.4, -0.8, -0.9;
   double dt = M_PI_2;
-  gtsam::Vector6 twistdt = 0.5 * dt * (twist_i + twist_j);
-  gtsam::Pose3 pose_j = pose_i * gtsam::Pose3::Expmap(twistdt);
+  Vector6 twistdt = 0.5 * dt * (twist_i + twist_j);
+  Pose3 pose_j = pose_i * Pose3::Expmap(twistdt);
 
   // Create factor
   gtdynamics::TrapezoidalPoseColloFactor factor(
@@ -144,7 +140,7 @@ TEST(RandomData, TrapezoidalPose) {
 
 TEST(RandomData, EulerTwist) {
   // create functor
-  gtsam::Vector6 twist_i, twist_j, accel_i;
+  Vector6 twist_i, twist_j, accel_i;
   twist_i << 0.1, 0.6, 0.2, -0.1, 0.9, 1;
   twist_j << 0.3, -0.3, 0.1, 0.4, 0.2, 0.1;
   accel_i << 2, -9, -1, 5, -7, -9;
@@ -174,7 +170,7 @@ TEST(RandomData, EulerTwist) {
 
 TEST(RandomData, TrapezoidalTwist) {
   // create functor
-  gtsam::Vector6 twist_i, twist_j, accel_i, accel_j;
+  Vector6 twist_i, twist_j, accel_i, accel_j;
   twist_i << 0.1, 0.6, 0.2, -0.1, 0.9, 1;
   twist_j << 0.3, -0.3, 0.1, 0.4, 0.2, 0.1;
   accel_i << 1, -5, -2, 4, -6, -9;
