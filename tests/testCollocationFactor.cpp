@@ -30,8 +30,7 @@ using gtsam::assert_equal;
 
 namespace example {
 // nosie model
-gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 gtsam::Symbol pose_i_key('p', 1), pose_j_key('p', 2), twist_i_key('v', 1),
               twist_j_key('v', 2), accel_i_key('a', 1), accel_j_key('a', 2),
               dt_key('t', 0);
