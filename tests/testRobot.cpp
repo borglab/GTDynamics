@@ -22,7 +22,7 @@
 #include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
-    gtdynamics::extract_structure_from_sdf;
+    gtdynamics::extractRobotFromSdf;
 using gtsam::assert_equal;
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
@@ -31,7 +31,7 @@ TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  LinkJointPair links_and_joints = extract_structure_from_sdf(simple_urdf);
+  LinkJointPair links_and_joints = extractRobotFromSdf(simple_urdf);
   gtdynamics::LinkMap name_to_link = links_and_joints.first;
   gtdynamics::JointMap name_to_joint = links_and_joints.second;
   EXPECT(assert_equal(2, name_to_link.size()));
@@ -84,11 +84,6 @@ TEST(Robot, four_bar_sdf) {
   EXPECT(assert_equal("j2", four_bar.getJointByName("j2")->name()));
   EXPECT(assert_equal("j3", four_bar.getJointByName("j3")->name()));
   EXPECT(assert_equal("j4", four_bar.getJointByName("j4")->name()));
-
-  EXPECT(assert_equal(-1.57, four_bar.getJointByName("j1")->jointLowerLimit()));
-  EXPECT(assert_equal(1.57, four_bar.getJointByName("j1")->jointUpperLimit()));
-  EXPECT(
-      assert_equal(0.0, four_bar.getJointByName("j1")->jointLimitThreshold()));
 }
 
 TEST(Robot, simple_rr_sdf) {
@@ -108,15 +103,6 @@ TEST(Robot, simple_rr_sdf) {
 
   EXPECT(assert_equal("joint_1", simple_rr.getJointByName("joint_1")->name()));
   EXPECT(assert_equal("joint_2", simple_rr.getJointByName("joint_2")->name()));
-
-  EXPECT(assert_equal(-1e16,
-                      simple_rr.getJointByName("joint_1")->jointLowerLimit()));
-
-  EXPECT(assert_equal(1e16,
-                      simple_rr.getJointByName("joint_1")->jointUpperLimit()));
-
-  EXPECT(assert_equal(
-      0.0, simple_rr.getJointByName("joint_1")->jointLimitThreshold()));
 }
 
 TEST(Robot, removeLink) {
@@ -196,7 +182,8 @@ TEST(Robot, forwardKinematics) {
 }
 
 TEST(Robot, forwardKinematics_rpr) {
-  Robot rpr_robot = Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+  Robot rpr_robot =
+      Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Robot::JointValues joint_angles, joint_vels;
   joint_angles["joint_1"] = 0;

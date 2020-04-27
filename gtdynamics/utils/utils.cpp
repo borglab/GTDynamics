@@ -205,4 +205,16 @@ gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {
   return parsed_pose;
 }
 
+gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {
+  gtsam::Matrix36 H_wrench;
+  if (planar_axis[0] == 1) {  // x axis
+    H_wrench << 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0;
+  } else if (planar_axis[1] == 1) {  // y axis
+    H_wrench << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0;
+  } else if (planar_axis[2] == 1) {  // z axis
+    H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
+  }
+  return H_wrench;
+}
+
 }  // namespace gtdynamics
