@@ -383,7 +383,7 @@ class RevoluteJoint : public JointType<double> {
 
   /// Return joint limit factors.
   gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
-                                                const OptimizerSetting &opt) {
+                                                const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     // Add joint angle limit factor.
     graph.add(JointLimitFactor(JointAngleKey(getID(), t), opt.jl_cost_model,

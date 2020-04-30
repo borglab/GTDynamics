@@ -286,13 +286,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
       int t, const JointValues &torques,
       const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return linearized form of joint accel factors.
-  virtual gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const LinkPoses &poses,
-      const LinkTwists &twists,
-      const JointValues &joint_angles,
-      const JointValues &joint_vels,
-
   /** @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
    * 
    * @param[in] t             The timestep for which to generate factors.
@@ -311,8 +304,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const JointValues &joint_angles,
       const JointValues &joint_vels,
       const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis =
-          boost::none) const = 0;
+      const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
 
   /** @fn (ABSTRACT) Return dynamics factors in the dynamics graph.
    * 

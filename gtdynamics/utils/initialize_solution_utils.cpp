@@ -60,10 +60,10 @@ Values InitializeSolutionInterpolation(
   Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
 
   // Initialize joint angles and velocities to 0.
-  Robot::JointValues jangles, jvels;
+  JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
-    jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+    jangles.insert<double>(joint->getKey(), sampler.sample()[0]);
+    jvels.insert<double>(joint->getKey(), sampler.sample()[0]);
   }
 
   double t_elapsed = T_s;
@@ -192,10 +192,10 @@ Values InitializeSolutionInverseKinematics(
   Values init_vals, init_vals_t;
 
   // Initial pose and joint angles are known a priori.
-  Robot::JointValues jangles, jvels;
+  JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
-    jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
-    jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+    jangles.insert<double>(joint->getKey(), sampler.sample()[0]);
+    jvels.insert<double>(joint->getKey(), sampler.sample()[0]);
   }
   // Compute forward dynamics to obtain remaining link poses.
   auto fk_results =
