@@ -15,7 +15,7 @@
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/InitializeSolutionUtils.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -214,11 +214,10 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   gtsam::Pose3 optimized_pose_init =
-      results.at(gtdynamics::PoseKey(base_link->getID(), 0))
-          .cast<gtsam::Pose3>();
+      results.at<gtsam::Pose3>(gtdynamics::PoseKey(base_link->getID(), 0));
   gtsam::Pose3 optimized_pose_final =
-      results.at(gtdynamics::PoseKey(base_link->getID(), t_steps - 1))
-          .cast<gtsam::Pose3>();
+      results.at<gtsam::Pose3>(
+          gtdynamics::PoseKey(base_link->getID(), t_steps - 1));
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()

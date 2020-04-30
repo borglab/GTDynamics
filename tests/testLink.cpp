@@ -18,7 +18,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
 using gtsam::assert_equal;

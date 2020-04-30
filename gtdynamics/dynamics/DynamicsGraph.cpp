@@ -32,7 +32,7 @@
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
 #include "gtdynamics/utils/JsonSaver.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtsam::Double_;
 using gtsam::I_1x1, gtsam::I_6x6;

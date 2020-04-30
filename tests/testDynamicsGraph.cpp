@@ -30,8 +30,8 @@
 #include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/Utils.h"
-#include "gtdynamics/utils/InitializeSolutionUtils.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using gtdynamics::DynamicsGraph;
 
@@ -477,7 +477,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector>();
+      results.at<gtsam::Vector>(contact_wrench_key);
 
   graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
                           results, my_robot, 0, false);
@@ -555,9 +555,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
     gtsam::LabeledSymbol contact_wrench_key =
         gtdynamics::ContactWrenchKey(l->getID(), contact_point.contact_id, 0);
     gtsam::Vector contact_wrench_optimized =
-        results.at(contact_wrench_key).cast<gtsam::Vector>();
+        results.at<gtsam::Vector>(contact_wrench_key);
     gtsam::Pose3 pose_optimized =
-        results.at(gtdynamics::PoseKey(l->getID(), 0)).cast<gtsam::Pose3>();
+        results.at<gtsam::Pose3>(gtdynamics::PoseKey(l->getID(), 0));
     gtsam::Pose3 comTc =
         gtsam::Pose3(pose_optimized.rotation(), contact_point.contact_point);
     normal_force =
@@ -638,7 +638,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   gtsam::LabeledSymbol contact_wrench_key = gtdynamics::ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
-      results.at(contact_wrench_key).cast<gtsam::Vector>();
+      results.at<gtsam::Vector>(contact_wrench_key);
 
   graph_builder.saveGraph("../../visualization/factor_graph.json", graph,
                           results, my_robot, 0, false);

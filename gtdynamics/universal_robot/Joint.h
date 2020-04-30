@@ -58,7 +58,7 @@ inline gtsam::LabeledSymbol TorqueKey(int j, int t) {
 enum JointEffortType { Actuated, Unactuated, Impedance };
 
 /**
- * Joint is the base class for a joint connecting two Link objects.
+ * @class Joint is the base class for a joint connecting two Link objects.
  */
 class Joint : public std::enable_shared_from_this<Joint> {
  public:
@@ -69,7 +69,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   struct Params {
     std::string name;                    // name of the joint
     char joint_type;                     // type of joint
-    JointEffortType effort_type;  // joint effor type
+    JointEffortType effort_type;         // joint effort type
     LinkSharedPtr parent_link;           // shared pointer to parent link
     LinkSharedPtr child_link;            // shared pointer to child link
     gtsam::Vector3 axis;                 // joint axis expressed in joint frame
@@ -132,11 +132,25 @@ class Joint : public std::enable_shared_from_this<Joint> {
       : name_(sdf_joint.Name()),
         parent_link_(parent_link),
         child_link_(child_link) {
-    if ((sdf_joint.PoseFrame() == "") &&
-        (sdf_joint.Pose() == ignition::math::Pose3d()))
-      wTj_ = child_link->wTl();
-    else
+    if (sdf_joint.PoseFrame() == "" ||
+        sdf_joint.PoseFrame() == child_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = child_link->wTl();
+      else
+        wTj_ = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == parent_link->name()) {
+      if (sdf_joint.Pose() == ignition::math::Pose3d())
+        wTj_ = parent_link->wTl();
+      else
+        wTj_ = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+    } else if (sdf_joint.PoseFrame() == "world") {
       wTj_ = parse_ignition_pose(sdf_joint.Pose());
+    } else {
+      // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
+      // though.
+      throw std::runtime_error("joint pose frames other than world, parent, or "
+                               "child not yet supported");
+    }
 
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
@@ -185,7 +199,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     return gtsam::Key(id_);
   }
 
-  // Return joint name.
+  /// Return joint name.
   std::string name() const { return name_; }
 
   /// Return the connected link other than the one provided.
@@ -240,25 +254,59 @@ class Joint : public std::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Values> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
 
-  /// Abstract method. Return joint angle factors.
+  /** @fn (ABSTRACT) Return pose factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate q factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return pose factors.
+   */
   virtual gtsam::NonlinearFactorGraph qFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return joint vel factors.
+  /** @fn (ABSTRACT) Return velocity factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate v factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return velocity factors.
+   */
   virtual gtsam::NonlinearFactorGraph vFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
-  /// Abstract method. Return joint accel factors.
+  /** @fn (ABSTRACT) Return accel factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate a factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return accel factors.
+   */
   virtual gtsam::NonlinearFactorGraph aFactors(
-      const int &t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
+  /// Abstract method. Returns forward dynamics priors on torque
   virtual gtsam::GaussianFactorGraph linearFDPriors(
       int t, const JointValues &torques,
       const OptimizerSetting &opt) const = 0;
 
   /// Abstract method. Return linearized form of joint accel factors.
   virtual gtsam::GaussianFactorGraph linearAFactors(
-      const int &t, const LinkPoses &poses,
+      size_t t, const LinkPoses &poses,
+      const LinkTwists &twists,
+      const JointValues &joint_angles,
+      const JointValues &joint_vels,
+
+  /** @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
+   * 
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] poses         Link poses.
+   * @param[in] twists        Link twists.
+   * @param[in] joint_angles  Joint angles.
+   * @param[in] joint_vels    Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear accel factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearAFactors(
+      size_t t, const LinkPoses &poses,
       const LinkTwists &twists,
       const JointValues &joint_angles,
       const JointValues &joint_vels,
@@ -266,14 +314,30 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis =
           boost::none) const = 0;
 
-  /// Abstract method. Return joint dynamics factors.
+  /** @fn (ABSTRACT) Return dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate dynamics factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return dynamics factors.
+   */
   virtual gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
 
-  /// Abstract method. Return linearized form of joint dynamics factors.
+  /** @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] poses         Link poses.
+   * @param[in] twists        Link twists.
+   * @param[in] joint_angles  Joint angles.
+   * @param[in] joint_vels    Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear dynamics factors.
+   */
   virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
-      const int &t, const LinkPoses &poses,
+      size_t t, const LinkPoses &poses,
       const LinkTwists &twists,
       const JointValues &joint_angles,
       const JointValues &joint_vels,
@@ -281,9 +345,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis =
           boost::none) const = 0;
 
-  // Abstract method. Return joint limit factors.
+  /** @fn (ABSTRACT) Return joint limit factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate joint limit factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return joint limit factors.
+   */
   virtual gtsam::NonlinearFactorGraph jointLimitFactors(
-      const int &t, const OptimizerSetting &opt) = 0;
+      size_t t, const OptimizerSetting &opt) const = 0;
 
   /**@}*/
 };

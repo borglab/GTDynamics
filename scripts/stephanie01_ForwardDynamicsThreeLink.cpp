@@ -12,14 +12,11 @@
  * @Author: Stephanie McCormick
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/InitializeSolutionUtils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
 
 int main(int argc, char** argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.

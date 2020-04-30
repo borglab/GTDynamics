@@ -23,7 +23,10 @@
 #include <stdexcept>
 
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
+
+using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
+      gtsam::GaussianFactorGraph, gtsam::Vector3;
 
 namespace gtdynamics {
 
@@ -78,7 +81,7 @@ LinkJointPair extractRobotFromSdf(
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
       gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
-      gtsam::Pose3 fixed_pose = child_link->wTcom();
+      Pose3 fixed_pose = child_link->wTcom();
       child_link->fix(fixed_pose);
       continue;
     }
@@ -93,17 +96,11 @@ LinkJointPair extractRobotFromSdf(
     if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
       joint = std::make_shared<gtdynamics::PrismaticJoint>(
           gtdynamics::PrismaticJoint(
-              sdf_joint, jps.jointEffortType, jps.springCoefficient,
-              jps.jointLimitThreshold, jps.velocityLimitThreshold,
-              jps.accelerationLimit, jps.accelerationLimitThreshold,
-              jps.torqueLimitThreshold, parent_link, child_link));
+              sdf_joint, jps, parent_link, child_link));
     } else if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
       joint =
           std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
-              sdf_joint, jps.jointEffortType, jps.springCoefficient,
-              jps.jointLimitThreshold, jps.velocityLimitThreshold,
-              jps.accelerationLimit, jps.accelerationLimitThreshold,
-              jps.torqueLimitThreshold, parent_link, child_link));
+              sdf_joint, jps, parent_link, child_link));
     } else {
       throw std::runtime_error("Joint type for [" +
                                std::string(sdf_joint.Name()) +
@@ -220,12 +217,12 @@ void Robot::printRobot() const {
 Robot::FKResults Robot::forwardKinematics(
     const JointValues &joint_angles, const JointValues &joint_vels,
     const boost::optional<std::string> prior_link_name,
-    const boost::optional<gtsam::Pose3> &prior_link_pose,
-    const boost::optional<gtsam::Vector6> &prior_link_twist) const {
+    const boost::optional<Pose3> &prior_link_pose,
+    const boost::optional<Vector6> &prior_link_twist) const {
   LinkPoses link_poses;
   LinkTwists link_twists;
 
-  // link_poses["aa"] = gtsam::Pose3();
+  // link_poses["aa"] = Pose3();
 
   //// set root link
   gtdynamics::LinkSharedPtr root_link;
@@ -234,7 +231,7 @@ Robot::FKResults Robot::forwardKinematics(
     if (link->isFixed()) {
       root_link = link;
       link_poses[link->name()] = link->getFixedPose();
-      link_twists[link->name()] = gtsam::Vector6::Zero();
+      link_twists[link->name()] = Vector6::Zero();
     }
   }
   if (prior_link_name) {
@@ -252,17 +249,17 @@ Robot::FKResults Robot::forwardKinematics(
   int loop_count = 0;
   while (!q.empty()) {
     auto link1 = q.front();
-    gtsam::Pose3 T_w1 = link_poses.at(link1->name());
-    gtsam::Vector6 V_1 = link_twists.at(link1->name());
+    const Pose3 T_w1 = link_poses.at(link1->name());
+    const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
     for (gtdynamics::JointSharedPtr joint : link1->getJoints()) {
       gtdynamics::JointSharedPtr joint_ptr = joint;
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
-      gtsam::Pose3 T_12 = joint_ptr->transformTo(link1, joint_angles);
-      gtsam::Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angles);
-      gtsam::Pose3 T_w2 = T_w1 * T_12;
-      gtsam::Vector6 V_2 =
+      const Pose3 T_12 = joint_ptr->transformTo(link1, joint_angles);
+      const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angles);
+      const Pose3 T_w2 = T_w1 * T_12;
+      const Vector6 V_2 =
           joint->transformTwistFrom(link1, joint_angles, joint_vels, V_1);
 
       // check if link 2 is already assigned
@@ -271,8 +268,8 @@ Robot::FKResults Robot::forwardKinematics(
         link_twists[link2->name()] = V_2;
         q.push(link2);
       } else {  // link 2 is already assigned
-        gtsam::Pose3 T_w2_prev = link_poses.at(link2->name());
-        gtsam::Vector6 V_2_prev = link_twists.at(link2->name());
+        Pose3 T_w2_prev = link_poses.at(link2->name());
+        Vector6 V_2_prev = link_twists.at(link2->name());
         if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
           throw std::runtime_error(
               "inconsistent joint angles detected in forward kinematics");
@@ -286,47 +283,47 @@ Robot::FKResults Robot::forwardKinematics(
   return FKResults(link_poses, link_twists);
 }
 
-gtsam::NonlinearFactorGraph Robot::qFactors(const int &t,
+NonlinearFactorGraph Robot::qFactors(size_t t,
                                             const OptimizerSetting &opt) const {
-  gtsam::NonlinearFactorGraph graph;
+  NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->qFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->qFactors(t, opt));
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Robot::vFactors(const int &t,
+NonlinearFactorGraph Robot::vFactors(size_t t,
                                             const OptimizerSetting &opt) const {
-  gtsam::NonlinearFactorGraph graph;
+  NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->vFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->vFactors(t, opt));
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Robot::aFactors(const int &t,
+NonlinearFactorGraph Robot::aFactors(size_t t,
                                             const OptimizerSetting &opt) const {
-  gtsam::NonlinearFactorGraph graph;
+  NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->aFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));
   return graph;
 }
 
-gtsam::GaussianFactorGraph Robot::linearFDPriors(int t,
+GaussianFactorGraph Robot::linearFDPriors(size_t t,
                                             const JointValues &torques,
                                             const OptimizerSetting &opt) const {
-  gtsam::GaussianFactorGraph graph;
+  GaussianFactorGraph graph;
   for (auto &&joint : joints())
     graph += joint->linearFDPriors(t, torques, opt);
   return graph;
 }
 
-gtsam::GaussianFactorGraph Robot::linearAFactors(
-    const int &t, const LinkPoses &poses,
+GaussianFactorGraph Robot::linearAFactors(
+    size_t t, const LinkPoses &poses,
     const LinkTwists &twists,
     const JointValues &joint_angles,
     const JointValues &joint_vels,
     const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
-  gtsam::GaussianFactorGraph graph;
+    const boost::optional<Vector3> &planar_axis) const {
+  GaussianFactorGraph graph;
   for (auto &&joint : joints())
     graph += joint->linearAFactors(t, poses, twists, joint_angles, joint_vels,
                                    opt, planar_axis);
@@ -334,32 +331,32 @@ gtsam::GaussianFactorGraph Robot::linearAFactors(
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Robot::dynamicsFactors(
-    const int &t, const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
-  gtsam::NonlinearFactorGraph graph;
+NonlinearFactorGraph Robot::dynamicsFactors(
+    size_t t, const OptimizerSetting &opt,
+    const boost::optional<Vector3> &planar_axis) const {
+  NonlinearFactorGraph graph;
   for (auto &&joint : joints())
     graph.add(joint->dynamicsFactors(t, opt, planar_axis));
   return graph;
 }
 
-gtsam::GaussianFactorGraph Robot::linearDynamicsFactors(
-    const int &t, const LinkPoses &poses,
+GaussianFactorGraph Robot::linearDynamicsFactors(
+    size_t t, const LinkPoses &poses,
     const LinkTwists &twists,
     const JointValues &joint_angles,
     const JointValues &joint_vels,
     const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
-  gtsam::GaussianFactorGraph graph;
+    const boost::optional<Vector3> &planar_axis) const {
+  GaussianFactorGraph graph;
   for (auto &&joint : joints())
     graph += joint->linearDynamicsFactors(t, poses, twists, joint_angles,
                                           joint_vels, opt, planar_axis);
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Robot::jointLimitFactors(
-    const int &t, const OptimizerSetting &opt) const {
-  gtsam::NonlinearFactorGraph graph;
+NonlinearFactorGraph Robot::jointLimitFactors(
+    size_t t, const OptimizerSetting &opt) const {
+  NonlinearFactorGraph graph;
   for (auto &&joint : joints()) graph.add(joint->jointLimitFactors(t, opt));
   return graph;
 }

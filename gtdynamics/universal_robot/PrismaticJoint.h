@@ -29,9 +29,14 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
+/**
+ * @class Prismatic is an implementation of the abstract typed JointType class
+ *  which represents a prismatic joint and contains all necessary factor
+ *  construction methods.
+ */
 class PrismaticJoint : public JointType<double> {
  protected:
   char joint_type_;
@@ -127,6 +132,16 @@ class PrismaticJoint : public JointType<double> {
         torque_limit_threshold_(torqueLimitThreshold) {
     setScrewAxis();
   }
+
+  /** Construct joint using sdf::Joint instance and joint parameters. */
+  PrismaticJoint(const sdf::Joint &sdf_joint,
+                 const gtdynamics::JointParams &jps,
+                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
+      : PrismaticJoint(
+          sdf_joint, jps.jointEffortType, jps.springCoefficient,
+          jps.jointLimitThreshold, jps.velocityLimitThreshold,
+          jps.accelerationLimit, jps.accelerationLimitThreshold,
+          jps.torqueLimitThreshold, parent_link, child_link) {}
 
   /** constructor using JointParams */
   explicit PrismaticJoint(const Params &params)
@@ -227,7 +242,7 @@ class PrismaticJoint : public JointType<double> {
   double torqueLimitThreshold() const { return torque_limit_threshold_; }
 
   /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
+  gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(PoseFactor(PoseKey(parent_link_->getID(), t),
@@ -238,7 +253,7 @@ class PrismaticJoint : public JointType<double> {
   }
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
+  gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(TwistFactor(
@@ -250,7 +265,7 @@ class PrismaticJoint : public JointType<double> {
   }
 
   /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(TwistAccelFactor(
@@ -263,6 +278,7 @@ class PrismaticJoint : public JointType<double> {
     return graph;
   }
 
+  /// Returns forward dynamics priors on torque
   gtsam::GaussianFactorGraph linearFDPriors(
       int t, const JointValues &torques,
       const OptimizerSetting &opt) const {
@@ -275,8 +291,9 @@ class PrismaticJoint : public JointType<double> {
     return priors;
   }
 
+  /// Return linearized acceleration factors.
   gtsam::GaussianFactorGraph linearAFactors(
-      const int &t, const LinkPoses &poses,
+      size_t t, const LinkPoses &poses,
       const LinkTwists &twists,
       const JointValues &joint_angles,
       const JointValues &joint_vels,
@@ -304,7 +321,7 @@ class PrismaticJoint : public JointType<double> {
 
   /// Return joint dynamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::NonlinearFactorGraph graph;
     graph.add(WrenchEquivalenceFactor(
@@ -320,8 +337,9 @@ class PrismaticJoint : public JointType<double> {
     return graph;
   }
 
+  /// Return linear dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      const int &t, const LinkPoses &poses,
+      size_t t, const LinkPoses &poses,
       const LinkTwists &twists,
       const JointValues &joint_angles,
       const JointValues &joint_vels,
@@ -360,8 +378,8 @@ class PrismaticJoint : public JointType<double> {
     return graph;
   }
 
-  // Return joint limit factors.
-  gtsam::NonlinearFactorGraph jointLimitFactors(const int &t,
+  /// Return joint limit factors.
+  gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
                                                 const OptimizerSetting &opt) {
     gtsam::NonlinearFactorGraph graph;
     // Add joint angle limit factor.

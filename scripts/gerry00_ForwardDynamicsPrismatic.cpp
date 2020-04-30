@@ -16,7 +16,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/utils/InitializeSolutionUtils.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 
 int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics

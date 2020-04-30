@@ -34,34 +34,34 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/Utils.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
-/* Shorthand for p_i_t, for COM pose on the i-th link at time t. */
+/// Shorthand for p_i_t, for COM pose on the i-th link at time t.
 inline gtsam::LabeledSymbol PoseKey(int i, int t) {
   return gtsam::LabeledSymbol('p', i, t);
 }
 
-/* Shorthand for V_i_t, for 6D link twist vector on the i-th link. */
+/// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
 inline gtsam::LabeledSymbol TwistKey(int i, int t) {
   return gtsam::LabeledSymbol('V', i, t);
 }
 
-/* Shorthand for A_i_t, for twist accelerations on the i-th link at time t. */
+/// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
 inline gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
   return gtsam::LabeledSymbol('A', i, t);
 }
 
-/* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t.
- */
+/// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
 inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
   return gtsam::LabeledSymbol('F', i * 16 + j,
                               t);  // a hack here for a key with 3 numbers
 }
 
 /**
- * Link is the base class for links taking different format of parameters
+ * @class Link is the base class for links taking different format of
+ *  parameters.
  */
 class Link : public std::enable_shared_from_this<Link> {
  private:
@@ -103,8 +103,7 @@ class Link : public std::enable_shared_from_this<Link> {
    * described in the sdformat8 documentation:
    * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
    *
-   * Keyword arguments:
-   *    sdf_link -- sdf::Link object containing link information.
+   * @param sdf_link sdf::Link object containing link information.
    */
   explicit Link(sdf::Link sdf_link)
       : name_(sdf_link.Name()),
@@ -120,7 +119,11 @@ class Link : public std::enable_shared_from_this<Link> {
         lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
         is_fixed_(false) {}
 
-  /** constructor using Params */
+  /**
+   * Initialize Link's inertial properties with a Link::Params instance.
+   *
+   * @param params Link::Params object containing link information.
+   */
   explicit Link(const Params &params)
       : name_(params.name),
         mass_(params.mass),
@@ -132,10 +135,10 @@ class Link : public std::enable_shared_from_this<Link> {
   /** destructor */
   virtual ~Link() = default;
 
-  // return a shared pointer of the link
+  /// return a shared pointer of the link
   LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
 
-  // remove the joint
+  /// remove the joint
   void removeJoint(JointSharedPtr joint) {
     for (auto joint_it = joints_.begin(); joint_it != joints_.end();
          joint_it++) {
@@ -146,13 +149,13 @@ class Link : public std::enable_shared_from_this<Link> {
     }
   }
 
-  // set ID for the link
+  /// set ID for the link
   void setID(unsigned char id) {
     // if (id == 0) throw std::runtime_error("ID cannot be 0");
     id_ = id;
   }
 
-  // return ID of the link
+  /// return ID of the link
   int getID() const {
     if (id_ == -1)
       throw std::runtime_error(
@@ -160,38 +163,37 @@ class Link : public std::enable_shared_from_this<Link> {
     return id_;
   }
 
-  // add joint to the link
+  /// add joint to the link
   void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
 
-  // transform from link to world frame
+  /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
 
-  // transfrom from link com frame to link frame
+  /// transfrom from link com frame to link frame
   const gtsam::Pose3 &lTcom() const { return lTcom_; }
 
-  // transform from link com frame to world frame
+  /// transform from link com frame to world frame
   inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
-  // the fixed pose of the link
+  /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }
 
-  // whether the link is fixed
+  /// whether the link is fixed
   bool isFixed() const { return is_fixed_; }
 
-  // fix the link to fixed_pose, if fixed_pose not specify, fix the link to
-  // default pose
+  /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
     is_fixed_ = true;
     fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
   }
 
-  // unfix the link
+  /// unfix the link
   void unfix() { is_fixed_ = false; }
 
-  // return all joints of the link
+  /// return all joints of the link
   const std::vector<JointSharedPtr> &getJoints(void) const { return joints_; }
 
-  // Return link name.
+  /// Return link name.
   std::string name() const { return name_; }
 
   /// Return link mass.
@@ -211,8 +213,13 @@ class Link : public std::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
-  /// Return link position factors.
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
+  /** @fn Return pose factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate q factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return pose factors.
+   */
+  gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -221,8 +228,13 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /// Return link velocity factors.
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
+  /** @fn Return velocity factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate v factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return velocity factors.
+   */
+  gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -231,8 +243,13 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /// Return link accel factors.
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
+  /** @fn Return accel factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate a factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return accel factors.
+   */
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
@@ -242,9 +259,14 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  // Return link dymamics factors.
+  /** @fn Return dynamics factors in the dynamics graph.
+   * 
+   * @param[in] t   The timestep for which to generate dynamics factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return dynamics factors.
+   */
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const std::vector<gtsam::LabeledSymbol> &wrenches,
       const boost::optional<gtsam::Vector3> &gravity) const {
     gtsam::NonlinearFactorGraph graph;
