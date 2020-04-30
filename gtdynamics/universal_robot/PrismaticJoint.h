@@ -37,7 +37,7 @@ namespace gtdynamics {
  *  which represents a prismatic joint and contains all necessary factor
  *  construction methods.
  */
-class PrismaticJoint : public JointType<double> {
+class PrismaticJoint : public JointType<double, double> {
  protected:
   char joint_type_;
   JointEffortType jointEffortType_;
@@ -114,7 +114,7 @@ class PrismaticJoint : public JointType<double> {
                  double velocityLimitThreshold, double accelerationLimit,
                  double accelerationLimitThreshold, double torqueLimitThreshold,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
-      : JointType<double>(sdf_joint, parent_link, child_link),
+      : JointType<double, double>(sdf_joint, parent_link, child_link),
         jointEffortType_(joint_effort_type),
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
                              sdf_joint.Axis()->Xyz()[1],
@@ -145,7 +145,7 @@ class PrismaticJoint : public JointType<double> {
 
   /** constructor using JointParams */
   explicit PrismaticJoint(const Params &params)
-      : JointType<double>(params),
+      : JointType<double, double>(params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
