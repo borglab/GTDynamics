@@ -20,8 +20,8 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <sdf/sdf.hh>
 #include <ignition/math/Pose3.hh>
+#include <sdf/sdf.hh>
 
 #include <cmath>
 #include <fstream>
@@ -136,12 +136,12 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
 }  // namespace gtdynamics
 
 namespace gtdynamics {
-/** obtain the sdf ElementPtr associated with the robot model.
- * Keyword arguments:
- *    sdf_file_path    -- a string containing the absolute to the sdf file.
- *    model_name       -- name of the robot we care about. Must be specified in
-        case sdf_file_path points to a world file.
-*/
+/** Obtain the sdf ElementPtr associated with the robot model.
+ * @param sdf_file_path a string containing the absolute to the sdf file.
+ * @param model_name name of the robot we care about. Must be specified in case
+ * sdf_file_path points to a world file.
+ * @return SDF Model
+ */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 
 /** Parse a ignition::math Pose object into a gtsam::Pose.
@@ -150,6 +150,13 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
  */
 gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
 
+/** Obtain the planar jacobian for the given planar axis.
+ * 
+ * Keyword Arguments:
+ *  planar_axis -- The planar axis.
+ */
+gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
+
 }  // namespace gtdynamics
 
-#endif   // GTDYNAMICS_UTILS_UTILS_H_
+#endif  // GTDYNAMICS_UTILS_UTILS_H_

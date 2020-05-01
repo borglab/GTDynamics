@@ -35,51 +35,9 @@ namespace gtdynamics {
 
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
-/* Shorthand for F_i_j_t, for wrenches at j-th joint on the i-th link at time t.
- */
-inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
-  return gtsam::LabeledSymbol('F', i * 16 + j,
-                              t);  // a hack here for a key with 3 numbers
-}
-
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
 inline gtsam::LabeledSymbol ContactWrenchKey(int i, int k, int t) {
   return gtsam::LabeledSymbol('C', i * 16 + k, t);
-}
-
-/* Shorthand for T_j_t, for torque on the j-th joint at time t. */
-inline gtsam::LabeledSymbol TorqueKey(int j, int t) {
-  return gtsam::LabeledSymbol('T', j, t);
-}
-
-/* Shorthand for p_i_t, for COM pose on the i-th link at time t. */
-inline gtsam::LabeledSymbol PoseKey(int i, int t) {
-  return gtsam::LabeledSymbol('p', i, t);
-}
-
-/* Shorthand for V_i_t, for 6D link twist vector on the i-th link. */
-inline gtsam::LabeledSymbol TwistKey(int i, int t) {
-  return gtsam::LabeledSymbol('V', i, t);
-}
-
-/* Shorthand for A_i_t, for twist accelerations on the i-th link at time t. */
-inline gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
-  return gtsam::LabeledSymbol('A', i, t);
-}
-
-/* Shorthand for q_j_t, for j-th joint angle at time t. */
-inline gtsam::LabeledSymbol JointAngleKey(int j, int t) {
-  return gtsam::LabeledSymbol('q', j, t);
-}
-
-/* Shorthand for v_j_t, for j-th joint velocity at time t. */
-inline gtsam::LabeledSymbol JointVelKey(int j, int t) {
-  return gtsam::LabeledSymbol('v', j, t);
-}
-
-/* Shorthand for a_j_t, for j-th joint acceleration at time t. */
-inline gtsam::LabeledSymbol JointAccelKey(int j, int t) {
-  return gtsam::LabeledSymbol('a', j, t);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
@@ -130,14 +88,18 @@ class DynamicsGraph {
     opt_.p_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.v_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.a_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.linear_a_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.f_cost_model = gtsam::noiseModel::Constrained::All(6);
+    opt_.linear_f_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
     opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
+    opt_.linear_t_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.cp_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.cfriction_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.cv_cost_model = gtsam::noiseModel::Constrained::All(3);
     opt_.ca_cost_model = gtsam::noiseModel::Constrained::All(3);
     opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);
+    opt_.linear_planar_cost_model = gtsam::noiseModel::Constrained::All(3);
     opt_.prior_q_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.prior_qv_cost_model = gtsam::noiseModel::Constrained::All(1);
     opt_.prior_qa_cost_model = gtsam::noiseModel::Constrained::All(1);
@@ -197,30 +159,26 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none) const;
+      const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of all dynamics factors
@@ -237,8 +195,7 @@ class DynamicsGraph {
       const Robot &robot, const int t,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return prior factors of torque, angle, velocity
@@ -305,8 +262,7 @@ class DynamicsGraph {
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
-      const boost::optional<ContactPoints> &contact_points =
-          boost::none,
+      const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /** return nonlinear factor graph of the entire trajectory for multi-phase
@@ -471,9 +427,8 @@ class DynamicsGraph {
      radial              -- option to display in radial format
    */
   static void saveGraphTraj(const std::string &file_path,
-                             const gtsam::NonlinearFactorGraph &graph,
-                             const gtsam::Values &values,
-                             const int num_steps);
+                            const gtsam::NonlinearFactorGraph &graph,
+                            const gtsam::Values &values, const int num_steps);
 
   /* return the optimizer setting. */
   const OptimizerSetting &opt() const { return opt_; }
