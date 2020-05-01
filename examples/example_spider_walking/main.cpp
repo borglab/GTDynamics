@@ -7,8 +7,9 @@
 
 /**
  * @file  main.cpp
- * @brief Quadruped trajectory optimization with pre-specified footholds.
+ * @brief Spider trajectory optimization with pre-specified footholds.
  * @Author: Alejandro Escontrela
+ * @Author: Stephanie McCormick
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
