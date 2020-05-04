@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
   CPs p1  = {    c2, c3, c4, c5, c6, c7, c8};
   CPs t12 = {        c3, c4, c5, c6, c7, c8};
   CPs p2  = {c1,     c3, c4, c5, c6, c7, c8};
-  CPs t23 = {        c3, c4, c5, c6, c7, c8};
+  CPs t23 = {c1,         c4, c5, c6, c7, c8};
   CPs p3  = {c1, c2,     c4, c5, c6, c7, c8};
   CPs t34 = {c1, c2,         c5, c6, c7, c8};
   CPs p4  = {c1, c2, c3,     c5, c6, c7, c8};
@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
   }
   graph.add(objective_factors);
 
-  // // Initialize solution.
+   // // Initialize solution.
   // gtsam::Values init_vals;
   // init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
   //   robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
