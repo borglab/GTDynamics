@@ -152,13 +152,16 @@ int main(int argc, char** argv) {
   vector<Values> transition_graph_init;
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
   for (int p = 1; p < phase_cps.size(); p++) {
+    std::cout << "Creating transition graph" << std::endl;
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
       robots[p], cum_phase_steps[p - 1], gravity, boost::none, trans_cps[p - 1], mu));
+    std::cout << "Creating initial values" << std::endl;
     transition_graph_init.push_back(
       ZeroValues(robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
   // Construct the multi-phase trajectory factor graph.
+  std::cout << "Creating dynamics graph" << std::endl;
   auto graph = graph_builder.multiPhaseTrajectoryFG(
     robots, phase_steps, transition_graphs, collocation, gravity, boost::none,
     phase_cps, mu);

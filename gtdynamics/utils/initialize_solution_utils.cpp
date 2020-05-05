@@ -460,6 +460,7 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     int j = joint->getID();
     auto parent_link = joint->parentLink();
     auto child_link = joint->childLink();
+    std::cout << "pid: " << parent_link->getID() << ", cid: " << child_link->getID() << ", j: " << j << std::endl;
     zero_values.insert(WrenchKey(parent_link->getID(), j, t), sampler.sample());
     zero_values.insert(WrenchKey(child_link->getID(), j, t), sampler.sample());
     std::vector<gtsam::LabeledSymbol> keys = {

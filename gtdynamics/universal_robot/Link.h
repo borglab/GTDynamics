@@ -54,8 +54,9 @@ inline gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
 }
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
+// TODO(): Fix this hack to load spider model. Too many links and joints!
 inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
-  return gtsam::LabeledSymbol('F', i * 16 + j,
+  return gtsam::LabeledSymbol('F', i * 7 + j,
                               t);  // a hack here for a key with 3 numbers
 }
 
