@@ -17,7 +17,7 @@
 #include <gtsam/linear/VectorValues.h>
 
 #include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
+#include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
