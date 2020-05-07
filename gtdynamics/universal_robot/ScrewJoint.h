@@ -172,7 +172,7 @@ class ScrewJoint : public Joint {
   }
 
   /// Return jointType
-  char jointType() const { return 's'; }
+  virtual char jointType() const { return 's'; }
 
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
@@ -423,7 +423,6 @@ class RevoluteJoint : public ScrewJoint {
                                          ccomRj * (-jTccom_.translation()));
   }
  public:
-  using ScrewJoint::ScrewJoint;
   /**
    * @brief Create RevoluteJoint from a sdf::Joint instance.
    *
