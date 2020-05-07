@@ -19,6 +19,7 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
 
+#include <cmath>
 #include <map>
 #include <string>
 
@@ -42,6 +43,7 @@ class ScrewJoint : public Joint {
   char joint_type_;
   JointEffortType jointEffortType_;
   gtsam::Vector3 axis_;
+  double thread_pitch_;
 
   // Joint limit parameters.
   double joint_lower_limit_;
@@ -86,6 +88,26 @@ class ScrewJoint : public Joint {
   /// direction for prismatic in the joint frame.
   const gtsam::Vector3 &axis() const { return axis_; }
 
+  /// Sets screw axis according to screw type joint
+  void setScrewAxis() {
+    gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
+    gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
+
+    gtsam::Vector6 pScrewAxisRot, pScrewAxisTrans,
+                   cScrewAxisRot, cScrewAxisTrans;
+    pScrewAxisRot = gtdynamics::unit_twist(pcomRj * -axis_,
+                                         pcomRj * (-jTpcom_.translation()));
+    cScrewAxisRot = gtdynamics::unit_twist(ccomRj * axis_,
+                                         ccomRj * (-jTccom_.translation()));
+    pScrewAxisTrans << 0, 0, 0,
+        pcomRj * -axis_ / axis_.norm() * thread_pitch_ / 2 / M_PI;
+    cScrewAxisTrans << 0, 0, 0,      
+        ccomRj * axis_ / axis_.norm() * thread_pitch_ / 2 / M_PI;
+
+    pScrewAxis_ = pScrewAxisRot + pScrewAxisTrans;
+    cScrewAxis_ = cScrewAxisRot + cScrewAxisTrans;
+  }
+
  public:
   /**
    * @brief Create ScrewJoint from a sdf::Joint instance.
@@ -112,6 +134,7 @@ class ScrewJoint : public Joint {
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
                              sdf_joint.Axis()->Xyz()[1],
                              sdf_joint.Axis()->Xyz()[2])),
+        thread_pitch_(sdf_joint.ThreadPitch()),
         joint_lower_limit_(sdf_joint.Axis()->Lower()),
         joint_upper_limit_(sdf_joint.Axis()->Upper()),
         joint_limit_threshold_(jointLimitThreshold),
@@ -122,7 +145,9 @@ class ScrewJoint : public Joint {
         acceleration_limit_(accelerationLimit),
         acceleration_limit_threshold_(accelerationLimitThreshold),
         torque_limit_(sdf_joint.Axis()->Effort()),
-        torque_limit_threshold_(torqueLimitThreshold) {}
+        torque_limit_threshold_(torqueLimitThreshold) {
+    setScrewAxis();
+  }
 
   /** Construct joint using sdf::Joint instance and joint parameters. */
   ScrewJoint(const sdf::Joint &sdf_joint, const gtdynamics::JointParams &jps,
@@ -139,12 +164,15 @@ class ScrewJoint : public Joint {
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
+        thread_pitch_(params.thread_pitch),
         joint_lower_limit_(params.joint_lower_limit),
         joint_upper_limit_(params.joint_upper_limit),
-        joint_limit_threshold_(params.joint_limit_threshold) {}
+        joint_limit_threshold_(params.joint_limit_threshold) {
+    setScrewAxis();
+  }
 
-  // /// Return jointType
-  // char jointType() const { return 's'; }
+  /// Return jointType
+  char jointType() const { return 's'; }
 
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
