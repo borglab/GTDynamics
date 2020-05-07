@@ -16,7 +16,7 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/ScrewJoint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 
 using gtdynamics::get_sdf, gtdynamics::ScrewJoint, gtdynamics::Link,
@@ -35,7 +35,7 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::Joint::Params params;
   params.name = "j1";
-  params.joint_type = 's';
+  params.joint_type = 'C';
   params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
@@ -54,7 +54,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 's');
+  EXPECT(j1->jointType() == 'C');
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
