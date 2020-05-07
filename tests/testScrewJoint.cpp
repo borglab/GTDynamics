@@ -11,13 +11,14 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
+
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
+
+#include <CppUnitLite/TestHarness.h>
 
 using gtdynamics::get_sdf, gtdynamics::ScrewJoint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;

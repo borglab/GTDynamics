@@ -20,9 +20,6 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
 
-#include <cmath>
-#include <map>
-#include <string>
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
@@ -31,6 +28,10 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
+
+#include <cmath>
+#include <map>
+#include <string>
 
 namespace gtdynamics {
 /**
