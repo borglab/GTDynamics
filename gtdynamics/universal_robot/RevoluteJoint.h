@@ -31,22 +31,52 @@ namespace gtdynamics {
  *  polymorphism and implements the setScrewAxis() and jointType() functions.
  */
 class RevoluteJoint : public ScrewJointBase<RevoluteJoint> {
- protected:
-  /// Sets screw axis according to revolute type joint
-  void setScrewAxis() {
-    gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
-    gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
-
-    pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-                                         pcomRj * (-jTpcom_.translation()));
-    cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-                                         ccomRj * (-jTccom_.translation()));
-  }
  public:
-  using ScrewJointBase::ScrewJointBase;
+  /**
+   * @brief Create RevoluteJoint from a sdf::Joint instance.
+   *
+   * @param[in] sdf_joint                  sdf::Joint object.
+   * @param[in] joint_effort_type          Joint effort type.
+   * @param[in] springCoefficient          Spring coefficient.
+   * @param[in] jointLimitThreshold        Joint angle limit threshold.
+   * @param[in] velocityLimitThreshold     Joint velocity limit threshold.
+   * @param[in] accelerationLimit          Joint acceleration limit.
+   * @param[in] accelerationLimitThreshold Joint Acceleration limit threshold.
+   * @param[in] torqueLimitThreshold       Joint torque limit threshold.
+   * @param[in] parent_link                Shared pointer to the parent Link.
+   * @param[in] child_link                 Shared pointer to the child Link.
+   */
+  RevoluteJoint(const sdf::Joint &sdf_joint,
+                JointEffortType joint_effort_type,
+                double springCoefficient, double jointLimitThreshold,
+                double velocityLimitThreshold, double accelerationLimit,
+                double accelerationLimitThreshold, double torqueLimitThreshold,
+                LinkSharedPtr parent_link, LinkSharedPtr child_link)
+      : ScrewJointBase(sdf_joint, 
+                       (gtsam::Vector6() << sdf_joint.Axis()->Xyz()[0],
+                                            sdf_joint.Axis()->Xyz()[1],
+                                            sdf_joint.Axis()->Xyz()[2],
+                                            0, 0, 0).finished(),
+                       joint_effort_type, springCoefficient,
+                       jointLimitThreshold, velocityLimitThreshold,
+                       accelerationLimit, accelerationLimitThreshold,
+                       torqueLimitThreshold, parent_link, child_link) {}
 
-  // give ScrewJointBase access to setScrewAxis()
-  friend class ScrewJointBase<RevoluteJoint>;
+  /** Construct joint using sdf::Joint instance and joint parameters. */
+  RevoluteJoint(const sdf::Joint &sdf_joint,
+                 const gtdynamics::JointParams &jps,
+                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
+      : RevoluteJoint(
+          sdf_joint,
+          jps.jointEffortType, jps.springCoefficient,
+          jps.jointLimitThreshold, jps.velocityLimitThreshold,
+          jps.accelerationLimit, jps.accelerationLimitThreshold,
+          jps.torqueLimitThreshold, parent_link, child_link) {}
+
+  /** constructor using JointParams and screw axes */
+  explicit RevoluteJoint(const Params &params)
+      : ScrewJointBase(params,
+                       (gtsam::Vector6() << params.axis, 0, 0, 0).finished()) {}
 
   /// Return jointType
   char jointType() const { return 'R'; }
@@ -54,4 +84,4 @@ class RevoluteJoint : public ScrewJointBase<RevoluteJoint> {
 
 } // namespace gtdynamics
 
-#endif // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
+#endif // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_A

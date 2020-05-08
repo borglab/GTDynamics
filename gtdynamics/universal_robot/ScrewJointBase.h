@@ -48,7 +48,6 @@ class ScrewJointBase : public Joint {
   char joint_type_;
   JointEffortType jointEffortType_;
   gtsam::Vector3 axis_;
-  double thread_pitch_;
 
   // Joint limit parameters.
   double joint_lower_limit_;
@@ -98,6 +97,7 @@ class ScrewJointBase : public Joint {
    * @brief Create ScrewJointBase from a sdf::Joint instance.
    *
    * @param[in] sdf_joint                  sdf::Joint object.
+   * @param[in] jScrewAxis                 Screw axis in joint frame
    * @param[in] joint_effort_type          Joint effort type.
    * @param[in] springCoefficient          Spring coefficient.
    * @param[in] jointLimitThreshold        Joint angle limit threshold.
@@ -108,7 +108,9 @@ class ScrewJointBase : public Joint {
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
    */
-  ScrewJointBase(const sdf::Joint &sdf_joint, JointEffortType joint_effort_type,
+  ScrewJointBase(const sdf::Joint &sdf_joint,
+                gtsam::Vector6 jScrewAxis,
+                JointEffortType joint_effort_type,
                 double springCoefficient, double jointLimitThreshold,
                 double velocityLimitThreshold, double accelerationLimit,
                 double accelerationLimitThreshold, double torqueLimitThreshold,
@@ -118,7 +120,6 @@ class ScrewJointBase : public Joint {
         axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
                              sdf_joint.Axis()->Xyz()[1],
                              sdf_joint.Axis()->Xyz()[2])),
-        thread_pitch_(sdf_joint.ThreadPitch()),
         joint_lower_limit_(sdf_joint.Axis()->Lower()),
         joint_upper_limit_(sdf_joint.Axis()->Upper()),
         joint_limit_threshold_(jointLimitThreshold),
@@ -129,31 +130,33 @@ class ScrewJointBase : public Joint {
         acceleration_limit_(accelerationLimit),
         acceleration_limit_threshold_(accelerationLimitThreshold),
         torque_limit_(sdf_joint.Axis()->Effort()),
-        torque_limit_threshold_(torqueLimitThreshold) {
-    static_cast<ScrewJointType*>(this)->setScrewAxis();
-  }
+        torque_limit_threshold_(torqueLimitThreshold),
+        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
+        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
   /** Construct joint using sdf::Joint instance and joint parameters. */
-  ScrewJointBase(const sdf::Joint &sdf_joint, const gtdynamics::JointParams &jps,
+  ScrewJointBase(const sdf::Joint &sdf_joint,
+                 gtsam::Vector6 jScrewAxis,
+                 const gtdynamics::JointParams &jps,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(
-          sdf_joint, jps.jointEffortType, jps.springCoefficient,
+          sdf_joint, jScrewAxis,
+          jps.jointEffortType, jps.springCoefficient,
           jps.jointLimitThreshold, jps.velocityLimitThreshold,
           jps.accelerationLimit, jps.accelerationLimitThreshold,
           jps.torqueLimitThreshold, parent_link, child_link) {}
 
-  /** constructor using JointParams */
-  explicit ScrewJointBase(const Params &params)
+  /** constructor using JointParams and screw axes */
+  explicit ScrewJointBase(const Params &params, gtsam::Vector6 jScrewAxis)
       : Joint(params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(params.axis),
-        thread_pitch_(params.thread_pitch),
         joint_lower_limit_(params.joint_lower_limit),
         joint_upper_limit_(params.joint_upper_limit),
-        joint_limit_threshold_(params.joint_limit_threshold) {
-    static_cast<ScrewJointType*>(this)->setScrewAxis();
-  }
+        joint_limit_threshold_(params.joint_limit_threshold),
+        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
+        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
   /// Return jointType
   char jointType() const {
