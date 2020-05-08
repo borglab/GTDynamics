@@ -12,7 +12,7 @@
  */
 
 #include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Testable.h>
