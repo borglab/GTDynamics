@@ -101,6 +101,10 @@ LinkJointPair extractRobotFromSdf(
       joint =
           std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
               sdf_joint, jps, parent_link, child_link));
+    } else if (sdf_joint.Type() == sdf::JointType::SCREW) {
+      joint = 
+          std::make_shared<gtdynamics::ScrewJoint>(gtdynamics::ScrewJoint(
+              sdf_joint, jps, parent_link, child_link));
     } else {
       throw std::runtime_error("Joint type for [" +
                                std::string(sdf_joint.Name()) +
