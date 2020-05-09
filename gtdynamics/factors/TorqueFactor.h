@@ -33,6 +33,8 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   gtsam::Vector6 screw_axis_;
 
  public:
+  TorqueFactor() {}
+
   /** torque factor, common between forward and inverse dynamics.
       Keyword argument:
           screw_axis -- screw axis expressed in this link's COM frame

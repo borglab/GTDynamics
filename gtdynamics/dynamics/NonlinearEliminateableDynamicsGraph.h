@@ -18,6 +18,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/inference/EliminateableFactorGraph.h>
 #include <gtsam/inference/FactorGraph.h>
+#include <gtsam/inference/Ordering.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -27,14 +28,13 @@
 namespace gtdynamics {
 // Forward declarations
 class NonlinearEliminateableDynamicsGraph;
-class Ordering;
+}  // namespace gtdynamics
 
 /** Main elimination function for NonlinearEliminateableDynamicsGraph */
 std::pair<boost::shared_ptr<int>, gtsam::NonlinearFactor::shared_ptr>
-EliminateNonlinear(const NonlinearEliminateableDynamicsGraph& factors,
-                   const class Ordering& keys);
-}  // namespace gtdynamics
-
+EliminateNonlinear(
+    const gtdynamics::NonlinearEliminateableDynamicsGraph& factors,
+    const gtsam::Ordering& keys);
 /* ************************************************************************* */
 template <>
 struct gtsam::EliminationTraits<
@@ -53,7 +53,7 @@ struct gtsam::EliminationTraits<
   static std::pair<boost::shared_ptr<ConditionalType>,
                    boost::shared_ptr<FactorType> >
   DefaultEliminate(const FactorGraphType& factors,
-                   const gtdynamics::Ordering& keys) {
+                   const gtsam::Ordering& keys) {
     return EliminateNonlinear(factors, keys);
   }
 };
@@ -85,6 +85,5 @@ class NonlinearEliminateableDynamicsGraph
 
 };  // \ NonlinearEliminateableDynamicsGraph
 
-
-
 }  // namespace gtdynamics
+

@@ -11,15 +11,14 @@
  * @Author: Mandy Xie
  */
 
-#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/factors/TorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/utils.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
-
-#include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -35,33 +34,32 @@
 
 using namespace gtdynamics;
 using namespace gtsam;
+using namespace std;
 
 int DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE = 0;
 int DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE = 0;
 
+namespace example {
+// noise model
+gtsam::noiseModel::Gaussian::shared_ptr cost_model =
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+}  // namespace example
+
 // Test nonlinear eliminatebale dynamics graph
 TEST(NonlinearEliminateableDynamicsGraph, constructor) {
-  using simple_urdf_eq_mass::my_robot, simple_urdf_eq_mass::gravity,
-      simple_urdf_eq_mass::planar_axis, simple_urdf_eq_mass::joint_angles,
-      simple_urdf_eq_mass::joint_vels;
-  gtsam::Vector torques = gtsam::Vector::Ones(my_robot.numJoints());
-  // build the dynamics factor graph
-  auto graph_builder = DynamicsGraph();
-  gtsam::NonlinearFactorGraph graph =
-      graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
-  graph.add(graph_builder.forwardDynamicsPriors(my_robot, 0, joint_angles,
-                                                joint_vels, torques));
-  // still need to add pose and twist priors since no link is fixed in this case
-  for (auto link : my_robot.links()) {
-    int i = link->getID();
-    graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-        gtdynamics::PoseKey(i, 0), link->wTcom(),
-        graph_builder.opt().bp_cost_model));
-    graph.add(gtsam::PriorFactor<gtsam::Vector6>(
-        gtdynamics::TwistKey(i, 0), gtsam::Vector6::Zero(),
-        graph_builder.opt().bv_cost_model));
-  }
-  auto NLEDG = NonlinearEliminateableDynamicsGraph(graph);
+  // // Create a torque factor
+  // gtsam::Vector6 screw_axis;
+  // screw_axis << 0, 0, 1, 0, 1, 0;
+  // gtdynamics::TorqueFactor torque_factor(0, 1, example::cost_model,
+  // screw_axis);
+  // // Create a non-linear dynamic factor graph with only a torque factor
+  // gtsam::NonlinearFactorGraph graph;
+  // graph.push_back(torque_factor);
+  // // Create a non-linear eliminatebale dynamic factor graph
+  // auto NLEDG = NonlinearEliminateableDynamicsGraph(graph);
+  auto NLEDG = NonlinearEliminateableDynamicsGraph();
+  // peform elimination
+  auto chordal = NLEDG.eliminateSequential();
 }
 
 int main() {
