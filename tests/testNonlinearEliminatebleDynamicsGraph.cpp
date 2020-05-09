@@ -59,7 +59,7 @@ TEST(NonlinearEliminateableDynamicsGraph, constructor) {
   // auto NLEDG = NonlinearEliminateableDynamicsGraph(graph);
   auto NLEDG = NonlinearEliminateableDynamicsGraph();
   // peform elimination
-  auto chordal = NLEDG.eliminateSequential();
+  // auto chordal = NLEDG.eliminateSequential();
 }
 
 int main() {

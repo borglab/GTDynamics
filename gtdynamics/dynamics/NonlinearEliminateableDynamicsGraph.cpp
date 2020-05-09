@@ -13,6 +13,7 @@
 
 #include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
 #include <gtdynamics/factors/TorqueFactor.h>
+#include <gtsam/inference/EliminateableFactorGraph-inst.h>
 
 std::pair<boost::shared_ptr<int>, gtsam::NonlinearFactor::shared_ptr>
 EliminateNonlinear(
@@ -22,5 +23,5 @@ EliminateNonlinear(
                         boost::make_shared<gtdynamics::TorqueFactor>());
 }
 
-template class gtsam::EliminateableFactorGraph<
-    gtdynamics::NonlinearEliminateableDynamicsGraph>;
+// template class gtsam::EliminateableFactorGraph<
+//     gtdynamics::NonlinearEliminateableDynamicsGraph>;
