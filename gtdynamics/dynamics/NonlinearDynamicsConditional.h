@@ -24,9 +24,9 @@
 
 namespace gtdynamics {
 using gtsam::Conditional;
-using gtsam::NoiseModelFactor;
-using gtsam::KeyFormatter;
 using gtsam::DefaultKeyFormatter;
+using gtsam::KeyFormatter;
+using gtsam::NoiseModelFactor;
 
 /**
  * A non-linear conditional functions as the node in a Bayes network

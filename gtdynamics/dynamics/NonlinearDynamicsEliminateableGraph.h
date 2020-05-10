@@ -56,7 +56,8 @@ struct gtsam::EliminationTraits<
       BayesNetType;  ///< Type of Bayes net from sequential elimination
   typedef gtdynamics::NonlinearDynamicsEliminationTree
       EliminationTreeType;  ///< Type of elimination tree
-  typedef gtdynamics::NonlinearDynamicsBayesTree BayesTreeType;  ///< Type of Bayes tree
+  typedef gtdynamics::NonlinearDynamicsBayesTree
+      BayesTreeType;  ///< Type of Bayes tree
   typedef gtdynamics::NonlinearDynamicsJunctionTree
       JunctionTreeType;  ///< Type of Junction tree
   /// The default dense elimination function
@@ -92,6 +93,22 @@ class NonlinearDynamicsEliminateableGraph
   explicit NonlinearDynamicsEliminateableGraph(
       const gtsam::NonlinearFactorGraph& factors)
       : Base(factors) {}
+
+  /** Construct from iterator over factors */
+  template <typename ITERATOR>
+  NonlinearDynamicsEliminateableGraph(ITERATOR firstFactor, ITERATOR lastFactor)
+      : Base(firstFactor, lastFactor) {}
+
+  /** Construct from container of factors (shared_ptr or plain objects) */
+  template <class CONTAINER>
+  explicit NonlinearDynamicsEliminateableGraph(const CONTAINER& factors)
+      : Base(factors) {}
+
+  /** Implicit copy/downcast constructor to override explicit template container
+   * constructor */
+  template <class DERIVEDFACTOR>
+  NonlinearDynamicsEliminateableGraph(const FactorGraph<DERIVEDFACTOR>& graph)
+      : Base(graph) {}
 
 };  // \ NonlinearDynamicsEliminateableGraph
 

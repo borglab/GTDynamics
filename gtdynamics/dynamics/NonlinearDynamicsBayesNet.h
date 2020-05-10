@@ -37,6 +37,21 @@ class NonlinearDynamicsBayesNet
   /** Construct empty factor graph */
   NonlinearDynamicsBayesNet() {}
 
+  /** Construct from iterator over conditionals */
+  template <typename ITERATOR>
+  NonlinearDynamicsBayesNet(ITERATOR firstConditional, ITERATOR lastConditional)
+      : Base(firstConditional, lastConditional) {}
+
+  /** Construct from container of factors (shared_ptr or plain objects) */
+  template <class CONTAINER>
+  explicit NonlinearDynamicsBayesNet(const CONTAINER& conditionals)
+      : Base(conditionals) {}
+
+  /** Implicit copy/downcast constructor to override explicit template container
+   * constructor */
+  template <class DERIVEDCONDITIONAL>
+  NonlinearDynamicsBayesNet(const FactorGraph<DERIVEDCONDITIONAL>& graph)
+      : Base(graph) {}
 };
 
 }  // namespace gtdynamics

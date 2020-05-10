@@ -19,15 +19,17 @@
 namespace gtdynamics {
 using gtsam::EliminationTree;
 
-  class NonlinearDynamicsEliminationTree :
-    public EliminationTree<NonlinearDynamicsBayesNet, NonlinearDynamicsEliminateableGraph>
-  {
-  public:
-    typedef EliminationTree<NonlinearDynamicsBayesNet, NonlinearDynamicsEliminateableGraph> Base; ///< Base class
-    typedef NonlinearDynamicsEliminationTree This; ///< This class
-    typedef boost::shared_ptr<This> shared_ptr; ///< Shared pointer to this class
+class NonlinearDynamicsEliminationTree
+    : public EliminationTree<NonlinearDynamicsBayesNet,
+                             NonlinearDynamicsEliminateableGraph> {
+ public:
+  typedef EliminationTree<NonlinearDynamicsBayesNet,
+                          NonlinearDynamicsEliminateableGraph>
+      Base;                                       ///< Base class
+  typedef NonlinearDynamicsEliminationTree This;  ///< This class
+  typedef boost::shared_ptr<This> shared_ptr;  ///< Shared pointer to this class
 
   NonlinearDynamicsEliminationTree() {}
-  };
+};
 
-}
+}  // namespace gtdynamics

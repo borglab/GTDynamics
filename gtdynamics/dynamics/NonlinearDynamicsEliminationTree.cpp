@@ -15,6 +15,6 @@
 
 // Instantiate base class
 template class gtsam::EliminationTree<gtdynamics::NonlinearDynamicsBayesNet,
-                               gtsam::NonlinearFactorGraph>;
+                               gtdynamics::NonlinearDynamicsEliminateableGraph>;
 
 namespace gtdynamics {}  // namespace gtdynamics
