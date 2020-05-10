@@ -14,5 +14,17 @@
 #include <gtdynamics/dynamics/NonlinearDynamicsConditional.h>
 #include <gtsam/inference/Conditional-inst.h>
 
-template class gtsam::Conditional<gtdynamics::TorqueFactor,
+template class gtsam::Conditional<gtsam::NoiseModelFactor,
                                   gtdynamics::NonlinearDynamicsConditional>;
+
+namespace gtdynamics {
+/** print */
+void NonlinearDynamicsConditional::print(
+    const std::string &s, const gtsam::KeyFormatter &formatter) const {}
+
+/** equals function */
+bool NonlinearDynamicsConditional::equals(const gtsam::NoiseModelFactor &cg,
+                                          double tol) const {
+  return true;
+}
+}  // namespace gtdynamics
