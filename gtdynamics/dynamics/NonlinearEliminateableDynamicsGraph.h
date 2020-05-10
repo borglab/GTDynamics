@@ -28,10 +28,16 @@
 namespace gtdynamics {
 // Forward declarations
 class NonlinearEliminateableDynamicsGraph;
+class NonlinearConditional;
+class NonlinearBayesNet;
+class NonlinearEliminationTree;
+class NonlinearBayesTree;
+class NonlinearJunctionTree;
 }  // namespace gtdynamics
 
 /** Main elimination function for NonlinearEliminateableDynamicsGraph */
-std::pair<boost::shared_ptr<int>, gtsam::NonlinearFactor::shared_ptr>
+std::pair<boost::shared_ptr<gtdynamics::NonlinearConditional>,
+          gtsam::NonlinearFactor::shared_ptr>
 EliminateNonlinear(
     const gtdynamics::NonlinearEliminateableDynamicsGraph& factors,
     const gtsam::Ordering& keys);
@@ -42,13 +48,17 @@ struct gtsam::EliminationTraits<
   typedef gtsam::NonlinearFactor
       FactorType;  ///< Type of factors in factor graph
   typedef gtdynamics::NonlinearEliminateableDynamicsGraph
-      FactorGraphType;          ///< Type of the factor graph
-                                ///(e.g. NonlinearEliminateableDynamicsGraph)
-  typedef int ConditionalType;  ///< Type of conditionals from elimination
-  typedef int BayesNetType;  ///< Type of Bayes net from sequential elimination
-  typedef int EliminationTreeType;  ///< Type of elimination tree
-  typedef int BayesTreeType;        ///< Type of Bayes tree
-  typedef int JunctionTreeType;     ///< Type of Junction tree
+      FactorGraphType;  ///< Type of the factor graph
+                        ///(e.g. NonlinearEliminateableDynamicsGraph)
+  typedef gtdynamics::NonlinearConditional
+      ConditionalType;  ///< Type of conditionals from elimination
+  typedef gtdynamics::NonlinearBayesNet
+      BayesNetType;  ///< Type of Bayes net from sequential elimination
+  typedef gtdynamics::NonlinearEliminationTree
+      EliminationTreeType;  ///< Type of elimination tree
+  typedef gtdynamics::NonlinearBayesTree BayesTreeType;  ///< Type of Bayes tree
+  typedef gtdynamics::NonlinearJunctionTree
+      JunctionTreeType;  ///< Type of Junction tree
   /// The default dense elimination function
   static std::pair<boost::shared_ptr<ConditionalType>,
                    boost::shared_ptr<FactorType> >
@@ -86,4 +96,3 @@ class NonlinearEliminateableDynamicsGraph
 };  // \ NonlinearEliminateableDynamicsGraph
 
 }  // namespace gtdynamics
-

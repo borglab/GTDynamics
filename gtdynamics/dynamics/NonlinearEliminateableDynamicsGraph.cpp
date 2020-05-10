@@ -12,16 +12,22 @@
  */
 
 #include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/dynamics/NonlinearBayesNet.h>
+#include <gtdynamics/dynamics/NonlinearConditional.h>
+#include <gtdynamics/dynamics/NonlinearEliminationTree.h>
+#include <gtdynamics/dynamics/NonlinearBayesTree.h>
+#include <gtdynamics/dynamics/NonlinearJunctionTree.h>
 #include <gtdynamics/factors/TorqueFactor.h>
 #include <gtsam/inference/EliminateableFactorGraph-inst.h>
 
-std::pair<boost::shared_ptr<int>, gtsam::NonlinearFactor::shared_ptr>
+std::pair<boost::shared_ptr<gtdynamics::NonlinearConditional>,
+          gtsam::NonlinearFactor::shared_ptr>
 EliminateNonlinear(
     const gtdynamics::NonlinearEliminateableDynamicsGraph& factors,
     const gtsam::Ordering& keys) {
-  return std::make_pair(boost::make_shared<int>(),
+  return std::make_pair(boost::make_shared<gtdynamics::NonlinearConditional>(),
                         boost::make_shared<gtdynamics::TorqueFactor>());
 }
 
-// template class gtsam::EliminateableFactorGraph<
-//     gtdynamics::NonlinearEliminateableDynamicsGraph>;
+template class gtsam::EliminateableFactorGraph<
+    gtdynamics::NonlinearEliminateableDynamicsGraph>;
