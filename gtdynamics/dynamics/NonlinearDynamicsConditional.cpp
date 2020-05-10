@@ -18,6 +18,7 @@ template class gtsam::Conditional<gtsam::NoiseModelFactor,
                                   gtdynamics::NonlinearDynamicsConditional>;
 
 namespace gtdynamics {
+
 /** print */
 void NonlinearDynamicsConditional::print(
     const std::string &s, const gtsam::KeyFormatter &formatter) const {}

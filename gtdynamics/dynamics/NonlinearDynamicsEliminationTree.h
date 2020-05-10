@@ -18,6 +18,8 @@
 
 namespace gtdynamics {
 using gtsam::EliminationTree;
+using gtsam::VariableIndex;
+using gtsam::Ordering;
 
 class NonlinearDynamicsEliminationTree
     : public EliminationTree<NonlinearDynamicsBayesNet,
@@ -29,7 +31,27 @@ class NonlinearDynamicsEliminationTree
   typedef NonlinearDynamicsEliminationTree This;  ///< This class
   typedef boost::shared_ptr<This> shared_ptr;  ///< Shared pointer to this class
 
-  NonlinearDynamicsEliminationTree() {}
+  /**
+   * Build the elimination tree of a factor graph using pre-computed column
+   * structure.
+   * @param factorGraph The factor graph for which to build the elimination tree
+   * @param structure The set of factors involving each variable.  If this is
+   * not precomputed, you can call the Create(const FactorGraph<DERIVEDFACTOR>&)
+   * named constructor instead.
+   * @return The elimination tree
+   */
+  NonlinearDynamicsEliminationTree(
+      const NonlinearDynamicsEliminateableGraph& factorGraph,
+      const VariableIndex& structure, const Ordering& order);
+
+  /** Build the elimination tree of a factor graph.  Note that this has to
+   * compute the column structure as a VariableIndex, so if you already have
+   * this precomputed, use the other constructor instead.
+   * @param factorGraph The factor graph for which to build the elimination tree
+   */
+  NonlinearDynamicsEliminationTree(
+      const NonlinearDynamicsEliminateableGraph& factorGraph,
+      const Ordering& order);
 };
 
 }  // namespace gtdynamics

@@ -14,7 +14,20 @@
 #include <gtsam/inference/EliminationTree-inst.h>
 
 // Instantiate base class
-template class gtsam::EliminationTree<gtdynamics::NonlinearDynamicsBayesNet,
-                               gtdynamics::NonlinearDynamicsEliminateableGraph>;
+template class gtsam::EliminationTree<
+    gtdynamics::NonlinearDynamicsBayesNet,
+    gtdynamics::NonlinearDynamicsEliminateableGraph>;
 
-namespace gtdynamics {}  // namespace gtdynamics
+namespace gtdynamics {
+/* ************************************************************************* */
+NonlinearDynamicsEliminationTree::DiscreteEliminationTree(
+    const NonlinearDynamicsEliminateableGraph& factorGraph, const VariableIndex& structure,
+    const Ordering& order)
+    : Base(factorGraph, structure, order) {}
+
+/* ************************************************************************* */
+NonlinearDynamicsEliminationTree::DiscreteEliminationTree(
+    const NonlinearDynamicsEliminateableGraph& factorGraph, const Ordering& order)
+    : Base(factorGraph, order) {}
+
+}  // namespace gtdynamics
