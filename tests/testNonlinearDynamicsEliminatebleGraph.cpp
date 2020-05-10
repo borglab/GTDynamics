@@ -6,14 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testNonlinearEliminateableDynamicsGraph.cpp
+ * @file  testNonlinearDynamicsEliminateableGraph.cpp
  * @brief Test non-linear eliminateble dynamics factor graph
  * @Author: Mandy Xie
  */
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminateableGraph.h>
 #include <gtdynamics/factors/TorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -46,7 +46,7 @@ gtsam::noiseModel::Gaussian::shared_ptr cost_model =
 }  // namespace example
 
 // Test nonlinear eliminatebale dynamics graph
-TEST(NonlinearEliminateableDynamicsGraph, constructor) {
+TEST(NonlinearDynamicsEliminateableGraph, constructor) {
   // // Create a torque factor
   // gtsam::Vector6 screw_axis;
   // screw_axis << 0, 0, 1, 0, 1, 0;
@@ -56,8 +56,8 @@ TEST(NonlinearEliminateableDynamicsGraph, constructor) {
   // gtsam::NonlinearFactorGraph graph;
   // graph.push_back(torque_factor);
   // // Create a non-linear eliminatebale dynamic factor graph
-  // auto NLEDG = NonlinearEliminateableDynamicsGraph(graph);
-  auto NLEDG = NonlinearEliminateableDynamicsGraph();
+  // auto NLEDG = NonlinearDynamicsEliminateableGraph(graph);
+  auto NLEDG = NonlinearDynamicsEliminateableGraph();
   // peform elimination
   // auto chordal = NLEDG.eliminateSequential();
 }

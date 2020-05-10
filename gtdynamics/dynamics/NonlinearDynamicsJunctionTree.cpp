@@ -10,29 +10,29 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file NonlinearJunctionTree.cpp
+ * @file NonlinearDynamicsJunctionTree.cpp
  * @date Mar 29, 2013
  * @author Frank Dellaert
  * @author Richard Roberts
  */
 
-#include <gtdynamics/dynamics/NonlinearEliminationTree.h>
-#include <gtdynamics/dynamics/NonlinearJunctionTree.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminationTree.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsJunctionTree.h>
 #include <gtsam/inference/JunctionTree-inst.h>
 
 // Instantiate base classes
 template class gtsam::EliminatableClusterTree<
-    gtdynamics::NonlinearBayesTree,
-    gtdynamics::NonlinearEliminateableDynamicsGraph>;
+    gtdynamics::NonlinearDynamicsBayesTree,
+    gtdynamics::NonlinearDynamicsEliminateableGraph>;
 template class gtsam::JunctionTree<
-    gtdynamics::NonlinearBayesTree,
-    gtdynamics::NonlinearEliminateableDynamicsGraph>;
+    gtdynamics::NonlinearDynamicsBayesTree,
+    gtdynamics::NonlinearDynamicsEliminateableGraph>;
 
 namespace gtdynamics {
 
 /* ************************************************************************* */
-NonlinearJunctionTree::NonlinearJunctionTree(
-    const NonlinearEliminationTree& eliminationTree)
+NonlinearDynamicsJunctionTree::NonlinearDynamicsJunctionTree(
+    const NonlinearDynamicsEliminationTree& eliminationTree)
     : Base(eliminationTree) {}
 
 }  // namespace gtdynamics

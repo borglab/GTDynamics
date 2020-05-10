@@ -6,13 +6,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file   NonlinearConditional.cpp
+ * @file   NonlinearDynamicsConditional.cpp
  * @brief  Nonlinear Conditional Base class
  * @author Mandy Xie
  */
 
-#include <gtdynamics/dynamics/NonlinearConditional.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsConditional.h>
 #include <gtsam/inference/Conditional-inst.h>
 
 template class gtsam::Conditional<gtdynamics::TorqueFactor,
-                                  gtdynamics::NonlinearConditional>;
+                                  gtdynamics::NonlinearDynamicsConditional>;

@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file NonlinearEliminateableDynamicsGraph.h
+ * @file NonlinearDynamicsEliminateableGraph.h
  * @brief Builds an eliminateable nonlinear dynamics graph from a Robot object.
  * @author Mandy Xie
  */
@@ -27,37 +27,37 @@
 
 namespace gtdynamics {
 // Forward declarations
-class NonlinearEliminateableDynamicsGraph;
-class NonlinearConditional;
-class NonlinearBayesNet;
-class NonlinearEliminationTree;
-class NonlinearBayesTree;
-class NonlinearJunctionTree;
+class NonlinearDynamicsEliminateableGraph;
+class NonlinearDynamicsConditional;
+class NonlinearDynamicsBayesNet;
+class NonlinearDynamicsEliminationTree;
+class NonlinearDynamicsBayesTree;
+class NonlinearDynamicsJunctionTree;
 }  // namespace gtdynamics
 
-/** Main elimination function for NonlinearEliminateableDynamicsGraph */
-std::pair<boost::shared_ptr<gtdynamics::NonlinearConditional>,
+/** Main elimination function for NonlinearDynamicsEliminateableGraph */
+std::pair<boost::shared_ptr<gtdynamics::NonlinearDynamicsConditional>,
           gtsam::NonlinearFactor::shared_ptr>
 EliminateNonlinear(
-    const gtdynamics::NonlinearEliminateableDynamicsGraph& factors,
+    const gtdynamics::NonlinearDynamicsEliminateableGraph& factors,
     const gtsam::Ordering& keys);
 /* ************************************************************************* */
 template <>
 struct gtsam::EliminationTraits<
-    gtdynamics::NonlinearEliminateableDynamicsGraph> {
+    gtdynamics::NonlinearDynamicsEliminateableGraph> {
   typedef gtsam::NonlinearFactor
       FactorType;  ///< Type of factors in factor graph
-  typedef gtdynamics::NonlinearEliminateableDynamicsGraph
+  typedef gtdynamics::NonlinearDynamicsEliminateableGraph
       FactorGraphType;  ///< Type of the factor graph
-                        ///(e.g. NonlinearEliminateableDynamicsGraph)
-  typedef gtdynamics::NonlinearConditional
+                        ///(e.g. NonlinearDynamicsEliminateableGraph)
+  typedef gtdynamics::NonlinearDynamicsConditional
       ConditionalType;  ///< Type of conditionals from elimination
-  typedef gtdynamics::NonlinearBayesNet
+  typedef gtdynamics::NonlinearDynamicsBayesNet
       BayesNetType;  ///< Type of Bayes net from sequential elimination
-  typedef gtdynamics::NonlinearEliminationTree
+  typedef gtdynamics::NonlinearDynamicsEliminationTree
       EliminationTreeType;  ///< Type of elimination tree
-  typedef gtdynamics::NonlinearBayesTree BayesTreeType;  ///< Type of Bayes tree
-  typedef gtdynamics::NonlinearJunctionTree
+  typedef gtdynamics::NonlinearDynamicsBayesTree BayesTreeType;  ///< Type of Bayes tree
+  typedef gtdynamics::NonlinearDynamicsJunctionTree
       JunctionTreeType;  ///< Type of Junction tree
   /// The default dense elimination function
   static std::pair<boost::shared_ptr<ConditionalType>,
@@ -73,12 +73,12 @@ namespace gtdynamics {
  * A non-linear eliminateble dynamics graph is a graph of dynamics
  * where we can perform non-linear elimination.
  */
-class NonlinearEliminateableDynamicsGraph
+class NonlinearDynamicsEliminateableGraph
     : public gtsam::NonlinearFactorGraph,
       public gtsam::EliminateableFactorGraph<
-          NonlinearEliminateableDynamicsGraph> {
+          NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef NonlinearEliminateableDynamicsGraph This;  ///< Typedef to this class
+  typedef NonlinearDynamicsEliminateableGraph This;  ///< Typedef to this class
   typedef gtsam::NonlinearFactorGraph
       Base;  ///< Typedef to base factor graph type
   typedef gtsam::EliminateableFactorGraph<This>
@@ -86,13 +86,13 @@ class NonlinearEliminateableDynamicsGraph
   typedef boost::shared_ptr<This> shared_ptr;  ///< shared_ptr to this class
 
   /** Default constructor */
-  NonlinearEliminateableDynamicsGraph() {}
+  NonlinearDynamicsEliminateableGraph() {}
 
   /** Construct from NonlinearFactorGraph */
-  explicit NonlinearEliminateableDynamicsGraph(
+  explicit NonlinearDynamicsEliminateableGraph(
       const gtsam::NonlinearFactorGraph& factors)
       : Base(factors) {}
 
-};  // \ NonlinearEliminateableDynamicsGraph
+};  // \ NonlinearDynamicsEliminateableGraph
 
 }  // namespace gtdynamics

@@ -6,17 +6,17 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file    NonlinearBayesTree.h
+ * @file    NonlinearDynamicsBayesTree.h
  * @brief   Nonlinear Bayes Tree, the result of eliminating a
- * NonlinearJunctionTree
- * @brief   NonlinearBayesTree
+ * NonlinearDynamicsJunctionTree
+ * @brief   NonlinearDynamicsBayesTree
  * @author  Mandy Xie
  */
 
 #pragma once
 
-#include <gtdynamics/dynamics/NonlinearBayesNet.h>
-#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsBayesNet.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminateableGraph.h>
 #include <gtsam/inference/BayesTree.h>
 #include <gtsam/inference/BayesTreeCliqueBase.h>
 
@@ -25,38 +25,38 @@ using gtsam::BayesTree;
 using gtsam::BayesTreeCliqueBase;
 
 // Forward declarations
-class NonlinearConditional;
+class NonlinearDynamicsConditional;
 
 /* ************************************************************************* */
-/** A clique in a NonlinearBayesTree */
-class NonlinearBayesTreeClique
-    : public BayesTreeCliqueBase<NonlinearBayesTreeClique,
-                                 NonlinearEliminateableDynamicsGraph> {
+/** A clique in a NonlinearDynamicsBayesTree */
+class NonlinearDynamicsBayesTreeClique
+    : public BayesTreeCliqueBase<NonlinearDynamicsBayesTreeClique,
+                                 NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef NonlinearBayesTreeClique This;
-  typedef BayesTreeCliqueBase<NonlinearBayesTreeClique,
-                              NonlinearEliminateableDynamicsGraph>
+  typedef NonlinearDynamicsBayesTreeClique This;
+  typedef BayesTreeCliqueBase<NonlinearDynamicsBayesTreeClique,
+                              NonlinearDynamicsEliminateableGraph>
       Base;
   typedef boost::shared_ptr<This> shared_ptr;
   typedef boost::weak_ptr<This> weak_ptr;
-  NonlinearBayesTreeClique() {}
-  NonlinearBayesTreeClique(
-      const boost::shared_ptr<NonlinearConditional>& conditional)
+  NonlinearDynamicsBayesTreeClique() {}
+  NonlinearDynamicsBayesTreeClique(
+      const boost::shared_ptr<NonlinearDynamicsConditional>& conditional)
       : Base(conditional) {}
 };
 
 /* ************************************************************************* */
 /** A Bayes tree representing a Nonlinear density */
-class NonlinearBayesTree : public BayesTree<NonlinearBayesTreeClique> {
+class NonlinearDynamicsBayesTree : public BayesTree<NonlinearDynamicsBayesTreeClique> {
  private:
-  typedef BayesTree<NonlinearBayesTreeClique> Base;
+  typedef BayesTree<NonlinearDynamicsBayesTreeClique> Base;
 
  public:
-  typedef NonlinearBayesTree This;
+  typedef NonlinearDynamicsBayesTree This;
   typedef boost::shared_ptr<This> shared_ptr;
 
   /** Default constructor, creates an empty Bayes tree */
-  NonlinearBayesTree() {}
+  NonlinearDynamicsBayesTree() {}
 };
 
 }  // namespace gtdynamics

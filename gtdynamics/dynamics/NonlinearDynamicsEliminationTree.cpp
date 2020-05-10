@@ -6,15 +6,15 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file NonlinearEliminationTree.cpp
+ * @file NonlinearDynamicsEliminationTree.cpp
  * @author Mandy Xie
  */
 
-#include <gtdynamics/dynamics/NonlinearEliminationTree.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminationTree.h>
 #include <gtsam/inference/EliminationTree-inst.h>
 
 // Instantiate base class
-template class gtsam::EliminationTree<gtdynamics::NonlinearBayesNet,
+template class gtsam::EliminationTree<gtdynamics::NonlinearDynamicsBayesNet,
                                gtsam::NonlinearFactorGraph>;
 
 namespace gtdynamics {}  // namespace gtdynamics

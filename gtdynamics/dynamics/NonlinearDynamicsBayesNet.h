@@ -6,9 +6,9 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file    NonlinearBayesNet.h
+ * @file    NonlinearDynamicsBayesNet.h
  * @brief   Chordal Bayes Net, the result of eliminating a factor graph
- * @brief   NonlinearBayesNet
+ * @brief   NonlinearDynamicsBayesNet
  * @author  Mandy Xie
  */
 
@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <gtdynamics/dynamics/NonlinearConditional.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsConditional.h>
 #include <gtsam/global_includes.h>
 #include <gtsam/inference/FactorGraph.h>
 
@@ -25,17 +25,18 @@ namespace gtdynamics {
 using gtsam::FactorGraph;
 
 /** A Bayes net made from non-linear Gaussian densities */
-class NonlinearBayesNet
-    : public FactorGraph<NonlinearConditional> {
+class NonlinearDynamicsBayesNet
+    : public FactorGraph<NonlinearDynamicsConditional> {
  public:
-  typedef FactorGraph<NonlinearConditional> Base;
-  typedef NonlinearBayesNet This;
-  typedef NonlinearConditional ConditionalType;
+  typedef FactorGraph<NonlinearDynamicsConditional> Base;
+  typedef NonlinearDynamicsBayesNet This;
+  typedef NonlinearDynamicsConditional ConditionalType;
   typedef boost::shared_ptr<This> shared_ptr;
   typedef boost::shared_ptr<ConditionalType> sharedConditional;
 
   /** Construct empty factor graph */
-  NonlinearBayesNet() {}
+  NonlinearDynamicsBayesNet() {}
+
 };
 
 }  // namespace gtdynamics

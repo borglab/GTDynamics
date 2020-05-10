@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file    NonlinearConditional.h
+ * @file    NonlinearDynamicsConditional.h
  * @brief   Nonlinear conditional base class
  * @author  Mandy Xie
  */
@@ -28,19 +28,19 @@ using gtsam::Conditional;
  * A non-linear conditional functions as the node in a Bayes network
  * It has a set of parents y,z, etc. and implements a probability density on x.
  */
-class NonlinearConditional
+class NonlinearDynamicsConditional
     : public TorqueFactor,
-      public Conditional<TorqueFactor, NonlinearConditional> {
+      public Conditional<TorqueFactor, NonlinearDynamicsConditional> {
  public:
-  typedef NonlinearConditional This;           ///< Typedef to this class
+  typedef NonlinearDynamicsConditional This;           ///< Typedef to this class
   typedef boost::shared_ptr<This> shared_ptr;  ///< shared_ptr to this class
   typedef TorqueFactor BaseFactor;  ///< Typedef to our factor base class
   typedef Conditional<BaseFactor, This>
       BaseConditional;  ///< Typedef to our conditional base class
 
   /** default constructor needed for serialization */
-  NonlinearConditional() {}
+  NonlinearDynamicsConditional() {}
 
-};  // NonlinearConditional
+};  // NonlinearDynamicsConditional
 
 }  // namespace gtdynamics

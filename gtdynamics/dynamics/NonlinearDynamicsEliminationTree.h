@@ -6,28 +6,28 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file NonlinearEliminationTree.h
+ * @file NonlinearDynamicsEliminationTree.h
  * @author Mandy Xie
  */
 
 #pragma once
 
-#include <gtdynamics/dynamics/NonlinearBayesNet.h>
-#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsBayesNet.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminateableGraph.h>
 #include <gtsam/inference/EliminationTree.h>
 
 namespace gtdynamics {
 using gtsam::EliminationTree;
 
-  class NonlinearEliminationTree :
-    public EliminationTree<NonlinearBayesNet, NonlinearEliminateableDynamicsGraph>
+  class NonlinearDynamicsEliminationTree :
+    public EliminationTree<NonlinearDynamicsBayesNet, NonlinearDynamicsEliminateableGraph>
   {
   public:
-    typedef EliminationTree<NonlinearBayesNet, NonlinearEliminateableDynamicsGraph> Base; ///< Base class
-    typedef NonlinearEliminationTree This; ///< This class
+    typedef EliminationTree<NonlinearDynamicsBayesNet, NonlinearDynamicsEliminateableGraph> Base; ///< Base class
+    typedef NonlinearDynamicsEliminationTree This; ///< This class
     typedef boost::shared_ptr<This> shared_ptr; ///< Shared pointer to this class
 
-  NonlinearEliminationTree() {}
+  NonlinearDynamicsEliminationTree() {}
   };
 
 }

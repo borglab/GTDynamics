@@ -6,18 +6,18 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file NonlinearJunctionTree.h
+ * @file NonlinearDynamicsJunctionTree.h
  * @author Mandy Xie
  */
 
-#include <gtdynamics/dynamics/NonlinearBayesTree.h>
-#include <gtdynamics/dynamics/NonlinearEliminateableDynamicsGraph.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsBayesTree.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsEliminateableGraph.h>
 #include <gtsam/inference/JunctionTree.h>
 namespace gtdynamics {
 using gtsam::JunctionTree;
 
 // Forward declarations
-class NonlinearEliminationTree;
+class NonlinearDynamicsEliminationTree;
 
 /**
  * A junction tree specialized to nonlinear factors, i.e., it is a cluster tree
@@ -28,12 +28,12 @@ class NonlinearEliminationTree;
  * \addtogroup Multifrontal
  * \nosubgrouping
  */
-class NonlinearJunctionTree
-    : public JunctionTree<NonlinearBayesTree, NonlinearEliminateableDynamicsGraph> {
+class NonlinearDynamicsJunctionTree
+    : public JunctionTree<NonlinearDynamicsBayesTree, NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef JunctionTree<NonlinearBayesTree, NonlinearEliminateableDynamicsGraph>
+  typedef JunctionTree<NonlinearDynamicsBayesTree, NonlinearDynamicsEliminateableGraph>
       Base;                                    ///< Base class
-  typedef NonlinearJunctionTree This;          ///< This class
+  typedef NonlinearDynamicsJunctionTree This;          ///< This class
   typedef boost::shared_ptr<This> shared_ptr;  ///< Shared pointer to this class
 
   /**
@@ -45,7 +45,7 @@ class NonlinearJunctionTree
    * named constructor instead.
    * @return The elimination tree
    */
-  NonlinearJunctionTree(const NonlinearEliminationTree& eliminationTree);
+  NonlinearDynamicsJunctionTree(const NonlinearDynamicsEliminationTree& eliminationTree);
 };
 
 }  // namespace gtdynamics

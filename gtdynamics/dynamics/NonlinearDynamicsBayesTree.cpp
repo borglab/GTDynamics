@@ -6,23 +6,21 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file    NonlinearBayesTree.cpp
+ * @file    NonlinearDynamicsBayesTree.cpp
  * @brief   Nonlinear Bayes Tree, the result of eliminating a
- * NonlinearJunctionTree
- * @brief   NonlinearBayesTree
+ * NonlinearDynamicsJunctionTree
+ * @brief   NonlinearDynamicsBayesTree
  * @author  Mandy Xie
  */
 
-#pragma once
-
-#include <gtdynamics/dynamics/NonlinearBayesNet.h>
-#include <gtdynamics/dynamics/NonlinearBayesTree.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsBayesNet.h>
+#include <gtdynamics/dynamics/NonlinearDynamicsBayesTree.h>
 #include <gtsam/base/treeTraversal-inst.h>
 #include <gtsam/inference/BayesTree-inst.h>
 #include <gtsam/inference/BayesTreeCliqueBase-inst.h>
 
 // Instantiate base class
 template class gtsam::BayesTreeCliqueBase<
-    gtdynamics::NonlinearBayesTreeClique,
-    gtdynamics::NonlinearEliminateableDynamicsGraph>;
-template class gtsam::BayesTree<gtdynamics::NonlinearBayesTreeClique>;
+    gtdynamics::NonlinearDynamicsBayesTreeClique,
+    gtdynamics::NonlinearDynamicsEliminateableGraph>;
+template class gtsam::BayesTree<gtdynamics::NonlinearDynamicsBayesTreeClique>;
