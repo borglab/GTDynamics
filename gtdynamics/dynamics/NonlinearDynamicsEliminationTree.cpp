@@ -20,14 +20,15 @@ template class gtsam::EliminationTree<
 
 namespace gtdynamics {
 /* ************************************************************************* */
-NonlinearDynamicsEliminationTree::DiscreteEliminationTree(
-    const NonlinearDynamicsEliminateableGraph& factorGraph, const VariableIndex& structure,
-    const Ordering& order)
+NonlinearDynamicsEliminationTree::NonlinearDynamicsEliminationTree(
+    const NonlinearDynamicsEliminateableGraph& factorGraph,
+    const VariableIndex& structure, const Ordering& order)
     : Base(factorGraph, structure, order) {}
 
 /* ************************************************************************* */
-NonlinearDynamicsEliminationTree::DiscreteEliminationTree(
-    const NonlinearDynamicsEliminateableGraph& factorGraph, const Ordering& order)
+NonlinearDynamicsEliminationTree::NonlinearDynamicsEliminationTree(
+    const NonlinearDynamicsEliminateableGraph& factorGraph,
+    const Ordering& order)
     : Base(factorGraph, order) {}
 
 }  // namespace gtdynamics
