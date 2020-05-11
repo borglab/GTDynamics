@@ -15,6 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/factors/TorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/inference/EliminateableFactorGraph.h>
 #include <gtsam/inference/FactorGraph.h>
@@ -36,7 +37,7 @@ class NonlinearDynamicsJunctionTree;
 
 /** Main elimination function for NonlinearDynamicsEliminateableGraph */
 std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
-          gtsam::NonlinearFactor::shared_ptr>
+          boost::shared_ptr<TorqueFactor>>
 EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
                    const gtsam::Ordering& keys);
 }  // namespace gtdynamics
@@ -45,7 +46,7 @@ EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
 template <>
 struct gtsam::EliminationTraits<
     gtdynamics::NonlinearDynamicsEliminateableGraph> {
-  typedef gtsam::NonlinearFactor
+  typedef gtdynamics::TorqueFactor
       FactorType;  ///< Type of factors in factor graph
   typedef gtdynamics::NonlinearDynamicsEliminateableGraph
       FactorGraphType;  ///< Type of the factor graph
@@ -62,7 +63,7 @@ struct gtsam::EliminationTraits<
       JunctionTreeType;  ///< Type of Junction tree
   /// The default dense elimination function
   static std::pair<boost::shared_ptr<ConditionalType>,
-                   boost::shared_ptr<FactorType> >
+                   boost::shared_ptr<FactorType>>
   DefaultEliminate(const FactorGraphType& factors,
                    const gtsam::Ordering& keys) {
     return gtdynamics::EliminateNonlinear(factors, keys);
@@ -75,12 +76,12 @@ namespace gtdynamics {
  * where we can perform non-linear elimination.
  */
 class NonlinearDynamicsEliminateableGraph
-    : public gtsam::NonlinearFactorGraph,
+    : public gtsam::FactorGraph<TorqueFactor>,
       public gtsam::EliminateableFactorGraph<
           NonlinearDynamicsEliminateableGraph> {
  public:
   typedef NonlinearDynamicsEliminateableGraph This;  ///< Typedef to this class
-  typedef gtsam::NonlinearFactorGraph
+  typedef gtsam::FactorGraph<TorqueFactor>
       Base;  ///< Typedef to base factor graph type
   typedef gtsam::EliminateableFactorGraph<This>
       BaseEliminateable;  ///< Typedef to base elimination class
@@ -88,11 +89,6 @@ class NonlinearDynamicsEliminateableGraph
 
   /** Default constructor */
   NonlinearDynamicsEliminateableGraph() {}
-
-  /** Construct from NonlinearFactorGraph */
-  explicit NonlinearDynamicsEliminateableGraph(
-      const gtsam::NonlinearFactorGraph& factors)
-      : Base(factors) {}
 
   /** Construct from iterator over factors */
   template <typename ITERATOR>
@@ -110,6 +106,17 @@ class NonlinearDynamicsEliminateableGraph
   NonlinearDynamicsEliminateableGraph(const FactorGraph<DERIVEDFACTOR>& graph)
       : Base(graph) {}
 
+  /// @name Testable
+  /// @{
+  bool equals(const This& fg, double tol = 1e-9) const;
+  /// @}
+
 };  // \ NonlinearDynamicsEliminateableGraph
 
 }  // namespace gtdynamics
+
+/// traits
+template <>
+struct gtsam::traits<gtdynamics::NonlinearDynamicsEliminateableGraph>
+    : public gtsam::Testable<gtdynamics::NonlinearDynamicsEliminateableGraph> {
+};

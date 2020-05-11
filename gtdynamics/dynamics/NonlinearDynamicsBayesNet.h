@@ -52,6 +52,17 @@ class NonlinearDynamicsBayesNet
   template <class DERIVEDCONDITIONAL>
   NonlinearDynamicsBayesNet(const FactorGraph<DERIVEDCONDITIONAL>& graph)
       : Base(graph) {}
+
+  /// @name Testable
+  /// @{
+  /** Check equality */
+  bool equals(const This& bn, double tol = 1e-9) const;
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+/// traits
+template <>
+struct gtsam::traits<gtdynamics::NonlinearDynamicsBayesNet>
+    : public gtsam::Testable<gtdynamics::NonlinearDynamicsBayesNet> {};

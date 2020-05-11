@@ -18,11 +18,12 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/optional.hpp>
 #include <string>
 
-#include <boost/optional.hpp>
-
 namespace gtdynamics {
+// Forward declarations
+class NonlinearDynamicsConditional;
 
 /** TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link*/
@@ -30,6 +31,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
  private:
   typedef TorqueFactor This;
   typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
+  gtsam::noiseModel::Base::shared_ptr costModel_;
   gtsam::Vector6 screw_axis_;
 
  public:
@@ -46,7 +48,9 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, wrench_key, torque_key), screw_axis_(screw_axis) {}
+      : Base(cost_model, wrench_key, torque_key),
+        costModel_(cost_model),
+        screw_axis_(screw_axis) {}
   virtual ~TorqueFactor() {}
 
  public:
@@ -69,6 +73,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);
   }
 
+  gtsam::noiseModel::Base::shared_ptr getCostModel() const { return costModel_; }
   gtsam::Vector6 getScrewAxis() const { return screw_axis_; }
 
   // @return a deep copy of this factor
@@ -85,15 +90,25 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     Base::print("", keyFormatter);
   }
 
+  /** Dense elimination function for nonlinear dynamics factors.  This is
+   * usually provided as an argument to one of the factor graph elimination
+   * functions (see EliminateableFactorGraph).  The factor graph elimination
+   * functions do sparse variable elimination, and use this function to
+   * eliminate single variables or variable cliques. */
+  std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
+            boost::shared_ptr<TorqueFactor> >
+  EliminateNonlinear();
+
  private:
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
 };
+
 }  // namespace gtdynamics
 
 #endif  // GTDYNAMICS_FACTORS_TORQUEFACTOR_H_

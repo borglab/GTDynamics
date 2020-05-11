@@ -17,18 +17,23 @@
 #include <gtdynamics/dynamics/NonlinearDynamicsEliminateableGraph.h>
 #include <gtdynamics/dynamics/NonlinearDynamicsEliminationTree.h>
 #include <gtdynamics/dynamics/NonlinearDynamicsJunctionTree.h>
-#include <gtdynamics/factors/TorqueFactor.h>
 #include <gtsam/inference/EliminateableFactorGraph-inst.h>
 
+template class gtsam::FactorGraph<gtdynamics::TorqueFactor>;
 template class gtsam::EliminateableFactorGraph<
     gtdynamics::NonlinearDynamicsEliminateableGraph>;
 
 namespace gtdynamics {
 std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
-          gtsam::NonlinearFactor::shared_ptr>
+          boost::shared_ptr<TorqueFactor>>
 EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
                    const gtsam::Ordering& keys) {
-  return std::make_pair(boost::make_shared<NonlinearDynamicsConditional>(),
-                        boost::make_shared<TorqueFactor>());
+  return factors[0]->EliminateNonlinear();
+}
+
+/* ************************************************************************* */
+bool NonlinearDynamicsEliminateableGraph::equals(const This& fg,
+                                                 double tol) const {
+  return Base::equals(fg, tol);
 }
 }  // namespace gtdynamics

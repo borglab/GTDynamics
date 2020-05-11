@@ -21,4 +21,9 @@
 // Instantiate base class
 template class gtsam::FactorGraph<gtdynamics::NonlinearDynamicsConditional>;
 
-namespace gtdynamics {}  // namespace gtdynamics
+namespace gtdynamics {
+/* ************************************************************************* */
+bool NonlinearDynamicsBayesNet::equals(const This& bn, double tol) const {
+  return Base::equals(bn, tol);
+}
+}  // namespace gtdynamics
