@@ -33,14 +33,14 @@ class NonlinearDynamicsBayesNet;
 class NonlinearDynamicsEliminationTree;
 class NonlinearDynamicsBayesTree;
 class NonlinearDynamicsJunctionTree;
-}  // namespace gtdynamics
 
 /** Main elimination function for NonlinearDynamicsEliminateableGraph */
-std::pair<boost::shared_ptr<gtdynamics::NonlinearDynamicsConditional>,
+std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
           gtsam::NonlinearFactor::shared_ptr>
-EliminateNonlinear(
-    const gtdynamics::NonlinearDynamicsEliminateableGraph& factors,
-    const gtsam::Ordering& keys);
+EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
+                   const gtsam::Ordering& keys);
+}  // namespace gtdynamics
+
 /* ************************************************************************* */
 template <>
 struct gtsam::EliminationTraits<
@@ -65,7 +65,7 @@ struct gtsam::EliminationTraits<
                    boost::shared_ptr<FactorType> >
   DefaultEliminate(const FactorGraphType& factors,
                    const gtsam::Ordering& keys) {
-    return EliminateNonlinear(factors, keys);
+    return gtdynamics::EliminateNonlinear(factors, keys);
   }
 };
 

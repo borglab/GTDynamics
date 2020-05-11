@@ -47,19 +47,18 @@ gtsam::noiseModel::Gaussian::shared_ptr cost_model =
 
 // Test nonlinear eliminatebale dynamics graph
 TEST(NonlinearDynamicsEliminateableGraph, constructor) {
-  // // Create a torque factor
-  // gtsam::Vector6 screw_axis;
-  // screw_axis << 0, 0, 1, 0, 1, 0;
-  // gtdynamics::TorqueFactor torque_factor(0, 1, example::cost_model,
-  // screw_axis);
-  // // Create a non-linear dynamic factor graph with only a torque factor
-  // gtsam::NonlinearFactorGraph graph;
-  // graph.push_back(torque_factor);
-  // // Create a non-linear eliminatebale dynamic factor graph
-  // auto NLEDG = NonlinearDynamicsEliminateableGraph(graph);
-  auto NLEDG = NonlinearDynamicsEliminateableGraph();
+  // Create a torque factor
+  gtsam::Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
+  gtdynamics::TorqueFactor torque_factor(0, 1, example::cost_model,
+  screw_axis);
+  // Create a non-linear dynamic factor graph with only a torque factor
+  gtsam::NonlinearFactorGraph graph;
+  graph.push_back(torque_factor);
+  // Create a non-linear eliminatebale dynamic factor graph
+  auto NLEDG = NonlinearDynamicsEliminateableGraph(graph);
   // peform elimination
-  // auto chordal = NLEDG.eliminateSequential();
+  auto chordal = NLEDG.eliminateSequential();
 }
 
 int main() {
