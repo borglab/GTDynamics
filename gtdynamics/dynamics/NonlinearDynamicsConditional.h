@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gtdynamics/factors/TorqueFactor.h>
 #include <gtsam/global_includes.h>
 #include <gtsam/inference/Conditional.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
@@ -33,12 +32,12 @@ using gtsam::NoiseModelFactor;
  * It has a set of parents y,z, etc. and implements a probability density on x.
  */
 class NonlinearDynamicsConditional
-    : public TorqueFactor,
-      public Conditional<TorqueFactor, NonlinearDynamicsConditional> {
+    : public NoiseModelFactor,
+      public Conditional<NoiseModelFactor, NonlinearDynamicsConditional> {
  public:
   typedef NonlinearDynamicsConditional This;   ///< Typedef to this class
   typedef boost::shared_ptr<This> shared_ptr;  ///< shared_ptr to this class
-  typedef TorqueFactor BaseFactor;  ///< Typedef to our factor base class
+  typedef NoiseModelFactor BaseFactor;  ///< Typedef to our factor base class
   typedef Conditional<BaseFactor, This>
       BaseConditional;  ///< Typedef to our conditional base class
 
@@ -46,17 +45,17 @@ class NonlinearDynamicsConditional
   NonlinearDynamicsConditional() {}
 
   /** constructor from factor */
-  NonlinearDynamicsConditional(gtsam::Key wrench_key, gtsam::Key torque_key,
-               const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Vector6 &screw_axis)
-      : BaseFactor(wrench_key, torque_key, cost_model, screw_axis), BaseConditional(1) {}
+  NonlinearDynamicsConditional(
+      std::vector<gtsam::Key> keys,
+      const gtsam::noiseModel::Base::shared_ptr& cost_model)
+      : BaseFactor(cost_model, keys), BaseConditional(1) {}
 
   /** print */
   void print(const std::string& = "NonlinearDynamicsConditional",
              const KeyFormatter& formatter = DefaultKeyFormatter) const;
 
   /** equals function */
-  bool equals(const TorqueFactor& cg, double tol = 1e-9) const;
+  bool equals(const NoiseModelFactor& cg, double tol = 1e-9) const;
 
 };  // NonlinearDynamicsConditional
 
