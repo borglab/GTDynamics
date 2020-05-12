@@ -50,7 +50,6 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
                const gtsam::Vector6 &screw_axis,
                const boost::optional<gtsam::Key> &frontalKey = boost::none)
       : Base(cost_model, wrench_key, torque_key),
-        costModel_(cost_model),
         screw_axis_(screw_axis) {
     // set the frontal key for nonlinear conditional
     if (frontalKey) {
