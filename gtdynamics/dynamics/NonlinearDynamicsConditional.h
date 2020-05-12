@@ -49,8 +49,8 @@ class NonlinearDynamicsConditional
   NonlinearDynamicsConditional(
       gtsam::Key wrench_key, gtsam::Key torque_key,
       const gtsam::noiseModel::Base::shared_ptr& cost_model,
-      const gtsam::Vector6& screw_axis)
-      : BaseFactor(wrench_key, torque_key, cost_model, screw_axis),
+      const gtsam::Vector6& screw_axis, const gtsam::Key& frontalKey)
+      : BaseFactor(wrench_key, torque_key, cost_model, screw_axis, frontalKey),
         BaseConditional(1) {}
 
   /** print */

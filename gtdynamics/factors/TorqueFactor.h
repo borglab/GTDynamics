@@ -33,6 +33,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
   gtsam::noiseModel::Base::shared_ptr costModel_;
   gtsam::Vector6 screw_axis_;
+  gtsam::Key frontalKey_;
 
  public:
   TorqueFactor() {}
@@ -47,10 +48,18 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    */
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Vector6 &screw_axis)
+               const gtsam::Vector6 &screw_axis,
+               const boost::optional<gtsam::Key> &frontalKey = boost::none)
       : Base(cost_model, wrench_key, torque_key),
         costModel_(cost_model),
-        screw_axis_(screw_axis) {}
+        screw_axis_(screw_axis) {
+    // set the frontal key for nonlinear conditional
+    if (frontalKey) {
+      frontalKey_ = *frontalKey;
+    } else {
+      frontalKey_ = wrench_key;
+    }
+  }
   virtual ~TorqueFactor() {}
 
  public:
@@ -73,7 +82,9 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);
   }
 
-  gtsam::noiseModel::Base::shared_ptr getCostModel() const { return costModel_; }
+  gtsam::noiseModel::Base::shared_ptr getCostModel() const {
+    return costModel_;
+  }
   gtsam::Vector6 getScrewAxis() const { return screw_axis_; }
 
   // @return a deep copy of this factor
@@ -90,10 +101,17 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     Base::print("", keyFormatter);
   }
 
-  /** Dense elimination function for nonlinear dynamics factors.*/
+  /** Dense elimination function for nonlinear dynamics factors.
+   * Keyword argument:
+   *   frontalKey  -- frontal key
+   *                  if wrench_key is frontal key, then eliminate wrench
+   *                  if torque_key is frontal key, then eliminate torque
+   * return nonlinear dynaimcs conditional, and the remaining factor 
+   */
+
   std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
             boost::shared_ptr<TorqueFactor> >
-  EliminateNonlinear();
+  EliminateNonlinear(const gtsam::Key &frontalKey);
 
  private:
   /** Serialization function */

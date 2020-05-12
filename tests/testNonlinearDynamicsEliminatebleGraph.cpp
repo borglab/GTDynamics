@@ -66,7 +66,7 @@ TEST(NonlinearDynamicsEliminateableGraph, nonlinearElimination) {
 
   // expected Bayes net
   std::vector<NonlinearDynamicsConditional> torqueConditional = {
-      NonlinearDynamicsConditional(0, 1, example::cost_model, screw_axis)};
+      NonlinearDynamicsConditional(0, 1, example::cost_model, screw_axis, 0)};
   NonlinearDynamicsBayesNet expectedBN(torqueConditional);
   // expected remaining NLEDG is empty
   NonlinearDynamicsEliminateableGraph expectedRemainingNLEDG =

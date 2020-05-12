@@ -28,7 +28,7 @@ std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
           boost::shared_ptr<TorqueFactor>>
 EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
                    const gtsam::Ordering& keys) {
-  return factors[0]->EliminateNonlinear();
+  return factors[0]->EliminateNonlinear(keys[0]);
 }
 
 /* ************************************************************************* */

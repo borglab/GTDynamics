@@ -17,10 +17,11 @@
 namespace gtdynamics {
 std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
           boost::shared_ptr<TorqueFactor> >
-TorqueFactor::EliminateNonlinear() {
-  return std::make_pair(boost::make_shared<NonlinearDynamicsConditional>(
-                            key1(), key2(), getCostModel(), getScrewAxis()),
-                        boost::make_shared<TorqueFactor>());
+TorqueFactor::EliminateNonlinear(const gtsam::Key &frontalKey) {
+  return std::make_pair(
+      boost::make_shared<NonlinearDynamicsConditional>(
+          key1(), key2(), getCostModel(), getScrewAxis(), frontalKey),
+      boost::make_shared<TorqueFactor>());
 }
 
 }  // namespace gtdynamics
