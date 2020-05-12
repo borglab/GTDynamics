@@ -33,7 +33,6 @@
 #include <map>
 #include <string>
 
-  using gtsam::Pose3;
 namespace gtdynamics {
 /**
  * @class ScrewJointBase is an implementation of the abstract Joint class
@@ -42,6 +41,7 @@ namespace gtdynamics {
  *  It is the base class for RevoluteJoint, PrismaticJoint, and ScrewJoint.
  */
 class ScrewJointBase : public Joint {
+  using Pose3 = gtsam::Pose3;
 
  protected:
   char joint_type_;
