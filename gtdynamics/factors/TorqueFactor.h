@@ -18,11 +18,12 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/optional.hpp>
 #include <string>
 
-#include <boost/optional.hpp>
-
 namespace gtdynamics {
+// Forward declarations
+class NonlinearDynamicsConditional;
 
 /** TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link*/
@@ -31,8 +32,11 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   typedef TorqueFactor This;
   typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
   gtsam::Vector6 screw_axis_;
+  gtsam::Key frontalKey_;
 
  public:
+  TorqueFactor() {}
+
   /** torque factor, common between forward and inverse dynamics.
       Keyword argument:
           screw_axis -- screw axis expressed in this link's COM frame
@@ -43,8 +47,17 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    */
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, wrench_key, torque_key), screw_axis_(screw_axis) {}
+               const gtsam::Vector6 &screw_axis,
+               const boost::optional<gtsam::Key> &frontalKey = boost::none)
+      : Base(cost_model, wrench_key, torque_key),
+        screw_axis_(screw_axis) {
+    // set the frontal key for nonlinear conditional
+    if (frontalKey) {
+      frontalKey_ = *frontalKey;
+    } else {
+      frontalKey_ = wrench_key;
+    }
+  }
   virtual ~TorqueFactor() {}
 
  public:
@@ -83,15 +96,29 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     Base::print("", keyFormatter);
   }
 
+  /** Elimination function for nonlinear dynamics factors.
+   * Keyword argument:
+   *   frontalKey  -- frontal key
+   *                  if wrench_key is frontal key, then eliminate wrench
+   *                  if torque_key is frontal key, then eliminate torque
+   * return nonlinear torque conditional, and the remaining factor which is
+   * empty in this case.
+   */
+
+  std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
+            boost::shared_ptr<TorqueFactor> >
+  EliminateNonlinear(const gtsam::Key &frontalKey);
+
  private:
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
 };
+
 }  // namespace gtdynamics
 
 #endif  // GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
