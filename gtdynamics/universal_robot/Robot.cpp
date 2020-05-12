@@ -110,7 +110,7 @@ LinkJointPair extractRobotFromSdf(
         joint = std::make_shared<gtdynamics::ScrewJoint>(
             gtdynamics::ScrewJoint(sdf_joint, parameters,
                                    parent_link, child_link));
-        break;        
+        break;
       default:
         throw std::runtime_error("Joint type for [" +
                                std::string(sdf_joint.Name()) +

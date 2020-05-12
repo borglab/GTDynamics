@@ -7,7 +7,7 @@
 
 /**
  * @file  ScrewJoint.h
- * @brief Representation of revolute joint.
+ * @brief Representation of screw joint.
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela

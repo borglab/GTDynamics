@@ -6,9 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ScrewJointBase.h
- * @brief Representation of screw-type robot joints. Revolute, Prismatic, and
- *  Screw subclasses
+ * @file  PrismaticJoint.h
+ * @brief Representation of PrismaticJoint that inherits from ScrewJointBase
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela
