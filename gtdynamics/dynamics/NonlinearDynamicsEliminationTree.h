@@ -7,6 +7,7 @@
 
 /**
  * @file NonlinearDynamicsEliminationTree.h
+ * @brief non-linear dynamics elimination tree
  * @author Mandy Xie
  */
 

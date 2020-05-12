@@ -7,6 +7,7 @@
 
 /**
  * @file NonlinearDynamicsJunctionTree.h
+ * @brief non-linear dynamics junction tree
  * @author Mandy Xie
  */
 

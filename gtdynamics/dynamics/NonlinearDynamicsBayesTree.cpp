@@ -8,8 +8,7 @@
 /**
  * @file    NonlinearDynamicsBayesTree.cpp
  * @brief   Nonlinear Bayes Tree, the result of eliminating a
- * NonlinearDynamicsJunctionTree
- * @brief   NonlinearDynamicsBayesTree
+ *          NonlinearDynamicsJunctionTree
  * @author  Mandy Xie
  */
 

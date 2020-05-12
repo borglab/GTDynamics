@@ -8,7 +8,6 @@
 /**
  * @file    NonlinearDynamicsBayesNet.h
  * @brief   Chordal Bayes Net, the result of eliminating a factor graph
- * @brief   NonlinearDynamicsBayesNet
  * @author  Mandy Xie
  */
 

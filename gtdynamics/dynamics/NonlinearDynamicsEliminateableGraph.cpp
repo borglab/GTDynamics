@@ -7,7 +7,7 @@
 
 /**
  * @file NonlinearDynamicsEliminateableGraph.cpp
- * @brief Builds an eliminateable nonlinear dynamics graph from a Robot object.
+ * @brief eliminateable nonlinear dynamics graph.
  * @author Mandy Xie
  */
 

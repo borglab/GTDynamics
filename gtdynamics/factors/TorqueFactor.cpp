@@ -15,11 +15,6 @@
 #include <gtdynamics/factors/TorqueFactor.h>
 
 namespace gtdynamics {
-/** Dense elimination function for nonlinear dynamics factors.  This is
- * usually provided as an argument to one of the factor graph elimination
- * functions (see EliminateableFactorGraph).  The factor graph elimination
- * functions do sparse variable elimination, and use this function to
- * eliminate single variables or variable cliques. */
 std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
           boost::shared_ptr<TorqueFactor> >
 TorqueFactor::EliminateNonlinear() {

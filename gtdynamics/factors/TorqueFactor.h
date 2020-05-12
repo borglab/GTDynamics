@@ -90,11 +90,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     Base::print("", keyFormatter);
   }
 
-  /** Dense elimination function for nonlinear dynamics factors.  This is
-   * usually provided as an argument to one of the factor graph elimination
-   * functions (see EliminateableFactorGraph).  The factor graph elimination
-   * functions do sparse variable elimination, and use this function to
-   * eliminate single variables or variable cliques. */
+  /** Dense elimination function for nonlinear dynamics factors.*/
   std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
             boost::shared_ptr<TorqueFactor> >
   EliminateNonlinear();
