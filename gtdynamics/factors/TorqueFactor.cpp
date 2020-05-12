@@ -20,7 +20,7 @@ std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
 TorqueFactor::EliminateNonlinear(const gtsam::Key &frontalKey) {
   return std::make_pair(
       boost::make_shared<NonlinearDynamicsConditional>(
-          key1(), key2(), getCostModel(), getScrewAxis(), frontalKey),
+          key1(), key2(), noiseModel(), getScrewAxis(), frontalKey),
       boost::make_shared<TorqueFactor>());
 }
 

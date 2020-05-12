@@ -82,9 +82,6 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);
   }
 
-  gtsam::noiseModel::Base::shared_ptr getCostModel() const {
-    return costModel_;
-  }
   gtsam::Vector6 getScrewAxis() const { return screw_axis_; }
 
   // @return a deep copy of this factor
@@ -101,12 +98,13 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
     Base::print("", keyFormatter);
   }
 
-  /** Dense elimination function for nonlinear dynamics factors.
+  /** Elimination function for nonlinear dynamics factors.
    * Keyword argument:
    *   frontalKey  -- frontal key
    *                  if wrench_key is frontal key, then eliminate wrench
    *                  if torque_key is frontal key, then eliminate torque
-   * return nonlinear dynaimcs conditional, and the remaining factor 
+   * return nonlinear torque conditional, and the remaining factor which is
+   * empty in this case.
    */
 
   std::pair<boost::shared_ptr<NonlinearDynamicsConditional>,
