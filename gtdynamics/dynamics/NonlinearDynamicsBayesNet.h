@@ -16,7 +16,6 @@
 #pragma once
 
 #include <gtdynamics/dynamics/NonlinearDynamicsConditional.h>
-#include <gtsam/global_includes.h>
 #include <gtsam/inference/FactorGraph.h>
 
 namespace gtdynamics {
@@ -27,11 +26,11 @@ using gtsam::FactorGraph;
 class NonlinearDynamicsBayesNet
     : public FactorGraph<NonlinearDynamicsConditional> {
  public:
-  typedef FactorGraph<NonlinearDynamicsConditional> Base;
-  typedef NonlinearDynamicsBayesNet This;
-  typedef NonlinearDynamicsConditional ConditionalType;
-  typedef boost::shared_ptr<This> shared_ptr;
-  typedef boost::shared_ptr<ConditionalType> sharedConditional;
+  using Base = FactorGraph<NonlinearDynamicsConditional>;
+  using This = NonlinearDynamicsBayesNet;
+  using ConditionalType = NonlinearDynamicsConditional;
+  using shared_ptr = boost::shared_ptr<This>;
+  using sharedConditional = boost::shared_ptr<ConditionalType>;
 
   /** Construct empty factor graph */
   NonlinearDynamicsBayesNet() {}
@@ -65,4 +64,3 @@ class NonlinearDynamicsBayesNet
 template <>
 struct gtsam::traits<gtdynamics::NonlinearDynamicsBayesNet>
     : public gtsam::Testable<gtdynamics::NonlinearDynamicsBayesNet> {};
-    

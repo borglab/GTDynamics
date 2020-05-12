@@ -30,12 +30,14 @@ class NonlinearDynamicsEliminationTree;
  * \nosubgrouping
  */
 class NonlinearDynamicsJunctionTree
-    : public JunctionTree<NonlinearDynamicsBayesTree, NonlinearDynamicsEliminateableGraph> {
+    : public JunctionTree<NonlinearDynamicsBayesTree,
+                          NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef JunctionTree<NonlinearDynamicsBayesTree, NonlinearDynamicsEliminateableGraph>
-      Base;                                    ///< Base class
-  typedef NonlinearDynamicsJunctionTree This;          ///< This class
-  typedef boost::shared_ptr<This> shared_ptr;  ///< Shared pointer to this class
+  using Base =
+      JunctionTree<NonlinearDynamicsBayesTree,
+                   NonlinearDynamicsEliminateableGraph>;  ///< Base class
+  using This = NonlinearDynamicsJunctionTree;             ///< This class
+  using shared_ptr = boost::shared_ptr<This>;  ///< Shared pointer to this class
 
   /**
    * Build the elimination tree of a factor graph using pre-computed column
@@ -46,7 +48,8 @@ class NonlinearDynamicsJunctionTree
    * named constructor instead.
    * @return The elimination tree
    */
-  NonlinearDynamicsJunctionTree(const NonlinearDynamicsEliminationTree& eliminationTree);
+  NonlinearDynamicsJunctionTree(
+      const NonlinearDynamicsEliminationTree& eliminationTree);
 };
 
 }  // namespace gtdynamics

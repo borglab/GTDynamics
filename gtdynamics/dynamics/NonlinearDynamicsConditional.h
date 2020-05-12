@@ -36,11 +36,11 @@ class NonlinearDynamicsConditional
     : public TorqueFactor,
       public Conditional<TorqueFactor, NonlinearDynamicsConditional> {
  public:
-  typedef NonlinearDynamicsConditional This;   ///< Typedef to this class
-  typedef boost::shared_ptr<This> shared_ptr;  ///< shared_ptr to this class
-  typedef TorqueFactor BaseFactor;  ///< Typedef to our factor base class
-  typedef Conditional<BaseFactor, This>
-      BaseConditional;  ///< Typedef to our conditional base class
+  using This = NonlinearDynamicsConditional;   ///< typedef to this class
+  using shared_ptr = boost::shared_ptr<This>;  ///< shared_ptr to this class
+  using BaseFactor = TorqueFactor;  ///< typedef to our factor base class
+  using BaseConditional =
+      Conditional<BaseFactor, This>;  ///< Typedef to our conditional base class
 
   /** default constructor needed for serialization */
   NonlinearDynamicsConditional() {}

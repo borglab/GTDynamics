@@ -19,18 +19,18 @@
 
 namespace gtdynamics {
 using gtsam::EliminationTree;
-using gtsam::VariableIndex;
 using gtsam::Ordering;
+using gtsam::VariableIndex;
 
 class NonlinearDynamicsEliminationTree
     : public EliminationTree<NonlinearDynamicsBayesNet,
                              NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef EliminationTree<NonlinearDynamicsBayesNet,
-                          NonlinearDynamicsEliminateableGraph>
-      Base;                                       ///< Base class
-  typedef NonlinearDynamicsEliminationTree This;  ///< This class
-  typedef boost::shared_ptr<This> shared_ptr;  ///< Shared pointer to this class
+  using Base =
+      EliminationTree<NonlinearDynamicsBayesNet,
+                      NonlinearDynamicsEliminateableGraph>;  ///< Base class
+  using This = NonlinearDynamicsEliminationTree;             ///< This class
+  using shared_ptr = boost::shared_ptr<This>;  ///< Shared pointer to this class
 
   /**
    * Build the elimination tree of a factor graph using pre-computed column

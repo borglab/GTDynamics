@@ -32,12 +32,11 @@ class NonlinearDynamicsBayesTreeClique
     : public BayesTreeCliqueBase<NonlinearDynamicsBayesTreeClique,
                                  NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef NonlinearDynamicsBayesTreeClique This;
-  typedef BayesTreeCliqueBase<NonlinearDynamicsBayesTreeClique,
-                              NonlinearDynamicsEliminateableGraph>
-      Base;
-  typedef boost::shared_ptr<This> shared_ptr;
-  typedef boost::weak_ptr<This> weak_ptr;
+  using This = NonlinearDynamicsBayesTreeClique;
+  using Base = BayesTreeCliqueBase<NonlinearDynamicsBayesTreeClique,
+                                   NonlinearDynamicsEliminateableGraph>;
+  using shared_ptr = boost::shared_ptr<This>;
+  using weak_ptr = boost::weak_ptr<This>;
   NonlinearDynamicsBayesTreeClique() {}
   NonlinearDynamicsBayesTreeClique(
       const boost::shared_ptr<NonlinearDynamicsConditional>& conditional)
@@ -46,13 +45,14 @@ class NonlinearDynamicsBayesTreeClique
 
 /* ************************************************************************* */
 /** A Bayes tree representing a Nonlinear density */
-class NonlinearDynamicsBayesTree : public BayesTree<NonlinearDynamicsBayesTreeClique> {
+class NonlinearDynamicsBayesTree
+    : public BayesTree<NonlinearDynamicsBayesTreeClique> {
  private:
-  typedef BayesTree<NonlinearDynamicsBayesTreeClique> Base;
+  using Base = BayesTree<NonlinearDynamicsBayesTreeClique>;
 
  public:
-  typedef NonlinearDynamicsBayesTree This;
-  typedef boost::shared_ptr<This> shared_ptr;
+  using This = NonlinearDynamicsBayesTree;
+  using shared_ptr = boost::shared_ptr<This>;
 
   /** Default constructor, creates an empty Bayes tree */
   NonlinearDynamicsBayesTree() {}

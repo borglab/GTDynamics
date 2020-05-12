@@ -46,21 +46,25 @@ EliminateNonlinear(const NonlinearDynamicsEliminateableGraph& factors,
 template <>
 struct gtsam::EliminationTraits<
     gtdynamics::NonlinearDynamicsEliminateableGraph> {
-  typedef gtdynamics::TorqueFactor
-      FactorType;  ///< Type of factors in factor graph
-  typedef gtdynamics::NonlinearDynamicsEliminateableGraph
-      FactorGraphType;  ///< Type of the factor graph
-                        ///(e.g. NonlinearDynamicsEliminateableGraph)
-  typedef gtdynamics::NonlinearDynamicsConditional
-      ConditionalType;  ///< Type of conditionals from elimination
-  typedef gtdynamics::NonlinearDynamicsBayesNet
-      BayesNetType;  ///< Type of Bayes net from sequential elimination
-  typedef gtdynamics::NonlinearDynamicsEliminationTree
-      EliminationTreeType;  ///< Type of elimination tree
-  typedef gtdynamics::NonlinearDynamicsBayesTree
-      BayesTreeType;  ///< Type of Bayes tree
-  typedef gtdynamics::NonlinearDynamicsJunctionTree
-      JunctionTreeType;  ///< Type of Junction tree
+  using FactorType =
+      gtdynamics::TorqueFactor;  ///< Type of factors in factor graph
+  using FactorGraphType = gtdynamics::
+      NonlinearDynamicsEliminateableGraph;  ///< Type of the factor graph
+                                            ///(e.g.
+                                            /// NonlinearDynamicsEliminateableGraph)
+  using ConditionalType =
+      gtdynamics::NonlinearDynamicsConditional;  ///< Type of conditionals from
+                                                 ///< elimination
+  using BayesNetType =
+      gtdynamics::NonlinearDynamicsBayesNet;  ///< Type of Bayes net from
+                                              ///< sequential elimination
+  using EliminationTreeType =
+      gtdynamics::NonlinearDynamicsEliminationTree;  ///< Type of elimination
+                                                     ///< tree
+  using BayesTreeType =
+      gtdynamics::NonlinearDynamicsBayesTree;  ///< Type of Bayes tree
+  using JunctionTreeType =
+      gtdynamics::NonlinearDynamicsJunctionTree;  ///< Type of Junction tree
   /// The default dense elimination function
   static std::pair<boost::shared_ptr<ConditionalType>,
                    boost::shared_ptr<FactorType>>
@@ -80,12 +84,13 @@ class NonlinearDynamicsEliminateableGraph
       public gtsam::EliminateableFactorGraph<
           NonlinearDynamicsEliminateableGraph> {
  public:
-  typedef NonlinearDynamicsEliminateableGraph This;  ///< Typedef to this class
-  typedef gtsam::FactorGraph<TorqueFactor>
-      Base;  ///< Typedef to base factor graph type
-  typedef gtsam::EliminateableFactorGraph<This>
-      BaseEliminateable;  ///< Typedef to base elimination class
-  typedef boost::shared_ptr<This> shared_ptr;  ///< shared_ptr to this class
+  using This = NonlinearDynamicsEliminateableGraph;  ///< Typedef to this class
+  using Base =
+      gtsam::FactorGraph<TorqueFactor>;  ///< Typedef to base factor graph type
+  using BaseEliminateable =
+      gtsam::EliminateableFactorGraph<This>;   ///< Typedef to base elimination
+                                               ///< class
+  using shared_ptr = boost::shared_ptr<This>;  ///< shared_ptr to this class
 
   /** Default constructor */
   NonlinearDynamicsEliminateableGraph() {}
