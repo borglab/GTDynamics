@@ -61,7 +61,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'P');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Prismatic);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
@@ -125,7 +125,7 @@ TEST(Joint, params_constructor_prismatic) {
 
   gtdynamics::Joint::Params params;
   params.name = "j1";
-  params.joint_type = 'P';
+  params.joint_type = gtdynamics::Joint::JointType::Prismatic;
   params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
@@ -150,7 +150,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'P');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Prismatic);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);

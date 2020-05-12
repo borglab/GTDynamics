@@ -36,7 +36,7 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::Joint::Params parameters;
   parameters.name = "j1";
-  parameters.joint_type = 'H';
+  parameters.joint_type = gtdynamics::Joint::JointType::Screw;
   parameters.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
   parameters.parent_link = l1;
   parameters.child_link = l2;
@@ -53,7 +53,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'H');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Screw);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);

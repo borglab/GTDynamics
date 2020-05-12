@@ -62,12 +62,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
    */
   enum JointEffortType { Actuated, Unactuated, Impedance };
 
+  enum JointType : char {
+    Revolute = 'R',
+    Prismatic = 'P',
+    Screw = 'C'
+  };
+
   /**
    * JointParams contains all parameters to construct a joint
    */
   struct Params {
     std::string name;                    // name of the joint
-    char joint_type;                     // type of joint
+    Joint::JointType joint_type;         // type of joint
     Joint::JointEffortType effort_type;  // joint effort type
     LinkSharedPtr parent_link;           // shared pointer to parent link
     LinkSharedPtr child_link;            // shared pointer to child link
@@ -77,7 +83,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     double joint_limit_threshold;
   };
 
-  gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
+  static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
     auto axis = sdf_joint.Axis()->Xyz();
     return gtsam::Vector3(axis[0], axis[1], axis[2]);
   }
@@ -226,8 +232,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @{
    */
 
-  /// Abstract method: Return joint type.
-  virtual char jointType() const = 0;
+  /// Abstract method: Return joint type for use in reconstructing robot from
+  /// Parameters.
+  virtual Joint::JointType jointType() const = 0;
 
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame

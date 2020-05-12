@@ -33,6 +33,7 @@
 #include <map>
 #include <string>
 
+  using gtsam::Pose3;
 namespace gtdynamics {
 /**
  * @class ScrewJointBase is an implementation of the abstract Joint class
@@ -40,8 +41,8 @@ namespace gtdynamics {
  *  construction methods.
  *  It is the base class for RevoluteJoint, PrismaticJoint, and ScrewJoint.
  */
-template <class ScrewJointType>
 class ScrewJointBase : public Joint {
+
  protected:
   char joint_type_;
   JointEffortType jointEffortType_;
@@ -69,21 +70,13 @@ class ScrewJointBase : public Joint {
   gtsam::Vector6 cScrewAxis_;
 
   /// Return transform of child link com frame w.r.t parent link com frame
-  gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none) const {
-    if (q)
-      return pMccom_ * gtsam::Pose3::Expmap(cScrewAxis_ * (*q));
-    else
-      return pMccom_;
+  Pose3 pMcCom(boost::optional<double> q = boost::none) const {
+    return q ? pMccom_ * Pose3::Expmap(cScrewAxis_ * (*q)) : pMccom_;
   }
 
   /// Return transform of parent link com frame w.r.t child link com frame
-  gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none) const {
-    if (q)
-      // return gtsam::Pose3::Expmap(screwAxis_ * (*q)).inverse() *
-      //        (pMccom_.inverse());
-      return pMccom_.inverse() * gtsam::Pose3::Expmap(pScrewAxis_ * (*q));
-    else
-      return pMccom_.inverse();
+  Pose3 cMpCom(boost::optional<double> q = boost::none) const {
+    return pMcCom(q).inverse();
   }
 
   /// Return the joint axis in the joint frame. Rotational axis for revolute and
@@ -155,11 +148,6 @@ class ScrewJointBase : public Joint {
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
-  /// Return jointType
-  char jointType() const {
-    return static_cast<const ScrewJointType*>(this)->jointType();
-  }
-
   /// Return joint effort type
   JointEffortType jointEffortType() const { return jointEffortType_; }
 
@@ -169,7 +157,7 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const LinkSharedPtr link,
+  Pose3 transformFrom(const LinkSharedPtr link,
                              boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? pMcCom(q) : cMpCom(q);
   }
@@ -190,7 +178,7 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const LinkSharedPtr link,
+  Pose3 transformTo(const LinkSharedPtr link,
                            boost::optional<double> q = boost::none) const {
     return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
@@ -249,7 +237,7 @@ class ScrewJointBase : public Joint {
   gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(PoseFactor(PoseKey(parent_link_->getID(), t),
+    graph.emplace_shared<PoseFactor>(PoseFactor(PoseKey(parent_link_->getID(), t),
                          PoseKey(child_link_->getID(), t),
                          JointAngleKey(getID(), t), opt.p_cost_model,
                          transformTo(child_link_), screwAxis(child_link_)));
@@ -260,7 +248,7 @@ class ScrewJointBase : public Joint {
   gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(TwistFactor(
+    graph.emplace_shared<TwistFactor>(TwistFactor(
         TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
         JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
         transformTo(child_link_), screwAxis(child_link_)));
@@ -272,7 +260,7 @@ class ScrewJointBase : public Joint {
   gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(TwistAccelFactor(
+    graph.emplace_shared<TwistAccelFactor>(TwistAccelFactor(
         TwistKey(child_link_->getID(), t),
         TwistAccelKey(parent_link_->getID(), t),
         TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
@@ -284,7 +272,7 @@ class ScrewJointBase : public Joint {
 
   /// Return linearized acceleration factors.
   gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -292,16 +280,16 @@ class ScrewJointBase : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
 
-    const gtsam::Pose3 T_wi1 = poses.at(parent_link_->name());
-    const gtsam::Pose3 T_wi2 = poses.at(child_link_->name());
-    const gtsam::Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
+    const Pose3 T_wi1 = poses.at(parent_link_->name());
+    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
     const double v_j = joint_vels.at(name());
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
-    gtsam::Vector6 rhs_tw = gtsam::Pose3::adjointMap(V_i2) * S_i2_j * v_j;
+    gtsam::Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
     graph.add(TwistAccelKey(child_link_->getID(), t), gtsam::I_6x6,
               TwistAccelKey(parent_link_->getID(), t), -T_i2i1.AdjointMap(),
               JointAccelKey(getID(), t), -S_i2_j, rhs_tw,
@@ -315,22 +303,25 @@ class ScrewJointBase : public Joint {
       size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.add(WrenchEquivalenceFactor(
-        WrenchKey(parent_link_->getID(), getID(), t),
-        WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
-        opt.f_cost_model, transformTo(child_link_), screwAxis(child_link_)));
-    graph.add(TorqueFactor(WrenchKey(child_link_->getID(), getID(), t),
+    graph.emplace_shared<WrenchEquivalenceFactor>(
+        WrenchEquivalenceFactor(
+            WrenchKey(parent_link_->getID(), getID(), t),
+            WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
+            opt.f_cost_model, transformTo(child_link_), screwAxis(child_link_)));
+    graph.emplace_shared<TorqueFactor>(
+        TorqueFactor(WrenchKey(child_link_->getID(), getID(), t),
                            TorqueKey(getID(), t), opt.t_cost_model,
                            screwAxis(child_link_)));
     if (planar_axis)
-      graph.add(WrenchPlanarFactor(WrenchKey(child_link_->getID(), getID(), t),
+      graph.emplace_shared<WrenchPlanarFactor>(
+          WrenchPlanarFactor(WrenchKey(child_link_->getID(), getID(), t),
                                    opt.planar_cost_model, *planar_axis));
     return graph;
   }
 
   /// Return linearized dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
+      size_t t, const std::map<std::string, Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
@@ -338,9 +329,9 @@ class ScrewJointBase : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
 
-    const gtsam::Pose3 T_wi1 = poses.at(parent_link_->name());
-    const gtsam::Pose3 T_wi2 = poses.at(child_link_->name());
-    const gtsam::Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
+    const Pose3 T_wi1 = poses.at(parent_link_->name());
+    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     // const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
 
@@ -373,25 +364,30 @@ class ScrewJointBase : public Joint {
   gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
                                                 const OptimizerSetting &opt) {
     gtsam::NonlinearFactorGraph graph;
+    auto id = getID();
     // Add joint angle limit factor.
-    graph.add(JointLimitFactor(JointAngleKey(getID(), t), opt.jl_cost_model,
-                               jointLowerLimit(), jointUpperLimit(),
-                               jointLimitThreshold()));
+    graph.emplace_shared<JointLimitFactor>(
+        JointLimitFactor(JointAngleKey(id, t), opt.jl_cost_model,
+                         jointLowerLimit(), jointUpperLimit(),
+                         jointLimitThreshold()));
 
     // Add joint velocity limit factors.
-    graph.add(JointLimitFactor(JointVelKey(getID(), t), opt.jl_cost_model,
-                               -velocityLimit(), velocityLimit(),
-                               velocityLimitThreshold()));
+    graph.emplace_shared<JointLimitFactor>(
+        JointLimitFactor(JointVelKey(id, t), opt.jl_cost_model,
+                         -velocityLimit(), velocityLimit(),
+                         velocityLimitThreshold()));
 
     // Add joint acceleration limit factors.
-    graph.add(JointLimitFactor(JointAccelKey(getID(), t), opt.jl_cost_model,
-                               -accelerationLimit(), accelerationLimit(),
-                               accelerationLimitThreshold()));
+    graph.emplace_shared<JointLimitFactor>(
+        JointLimitFactor(JointAccelKey(id, t), opt.jl_cost_model,
+                         -accelerationLimit(), accelerationLimit(),
+                         accelerationLimitThreshold()));
 
     // Add joint torque limit factors.
-    graph.add(JointLimitFactor(TorqueKey(getID(), t), opt.jl_cost_model,
-                               -torqueLimit(), torqueLimit(),
-                               torqueLimitThreshold()));
+    graph.emplace_shared<JointLimitFactor>(
+        JointLimitFactor(TorqueKey(id, t), opt.jl_cost_model,
+                         -torqueLimit(), torqueLimit(),
+                         torqueLimitThreshold()));
     return graph;
   }
 };

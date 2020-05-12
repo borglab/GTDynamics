@@ -28,7 +28,7 @@ namespace gtdynamics {
  *  which represents a screw joint and contains all necessary factor
  *  construction methods.
  */
-class ScrewJoint : public ScrewJointBase<ScrewJoint> {
+class ScrewJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis and thread
   /// pitch
@@ -97,8 +97,8 @@ class ScrewJoint : public ScrewJointBase<ScrewJoint> {
                        axis,
                        getScrewAxis(axis, thread_pitch)) {}
 
-  /// Return jointType
-  char jointType() const { return 'H'; }
+  /// Return jointType for use in reconstructing robot from Parameters.
+  Joint::JointType jointType() const { return Joint::JointType::Screw; }
 };
 
 }  // namespace gtdynamics

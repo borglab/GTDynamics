@@ -28,7 +28,7 @@ namespace gtdynamics {
  *  which represents a revolute joint and contains all necessary factor
  *  construction methods.
  */
-class RevoluteJoint : public ScrewJointBase<RevoluteJoint> {
+class RevoluteJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(gtsam::Vector3 axis) {
@@ -94,8 +94,8 @@ class RevoluteJoint : public ScrewJointBase<RevoluteJoint> {
                        axis,
                        getScrewAxis(axis)) {}
 
-  /// Return jointType
-  char jointType() const { return 'R'; }
+  /// Return jointType for use in reconstructing robot from Parameters.
+  Joint::JointType jointType() const { return Joint::JointType::Revolute; }
 };
 
 } // namespace gtdynamics

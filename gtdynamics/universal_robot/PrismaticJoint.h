@@ -28,7 +28,7 @@ namespace gtdynamics {
  *  which represents a prismatic joint and contains all necessary factor
  *  construction methods.
  */
-class PrismaticJoint : public ScrewJointBase<PrismaticJoint> {
+class PrismaticJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(gtsam::Vector3 axis) {
@@ -94,8 +94,8 @@ class PrismaticJoint : public ScrewJointBase<PrismaticJoint> {
                        axis,
                        getScrewAxis(axis)) {}
 
-  /// Return jointType
-  char jointType() const { return 'P'; }
+  /// Return jointType for use in reconstructing robot from Parameters.
+  Joint::JointType jointType() const { return Joint::JointType::Prismatic; }
 };
 
 }  // namespace gtdynamics

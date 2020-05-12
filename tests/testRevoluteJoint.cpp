@@ -60,7 +60,7 @@ TEST(Joint, urdf_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'R');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
@@ -119,7 +119,7 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::Joint::Params params;
   params.name = "j1";
-  params.joint_type = 'R';
+  params.joint_type = gtdynamics::Joint::JointType::Revolute;
   params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
@@ -136,7 +136,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'R');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
