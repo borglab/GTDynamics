@@ -27,10 +27,17 @@ namespace gtdynamics {
  * @class ScrewJoint is an implementation of the ScrewJointBase class
  *  which represents a screw joint and contains all necessary factor
  *  construction methods.
- *  This uses the Curiously Recurring Template Pattern (CRTP) for static
- *  polymorphism and implements the setScrewAxis() and jointType() functions.
  */
 class ScrewJoint : public ScrewJointBase<ScrewJoint> {
+ protected:
+  /// Returns the screw axis in the joint frame given the joint axis and thread
+  /// pitch
+  gtsam::Vector6 getScrewAxis(gtsam::Vector3 axis, double thread_pitch) {
+    gtsam::Vector6 screw_axis;
+    screw_axis << axis, axis * thread_pitch / 2 / M_PI;
+    return screw_axis;
+  }
+
  public:
   /**
    * @brief Create ScrewJoint from a sdf::Joint instance.
@@ -53,33 +60,42 @@ class ScrewJoint : public ScrewJointBase<ScrewJoint> {
                 double accelerationLimitThreshold, double torqueLimitThreshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint,
-                       (gtsam::Vector6() << sdf_joint.Axis()->Xyz()[0],
-                                            sdf_joint.Axis()->Xyz()[1],
-                                            sdf_joint.Axis()->Xyz()[2],
-          sdf_joint.Axis()->Xyz()[0] * sdf_joint.ThreadPitch() / 2 / M_PI, // normalize Axis ?
-          sdf_joint.Axis()->Xyz()[1] * sdf_joint.ThreadPitch() / 2 / M_PI,
-          sdf_joint.Axis()->Xyz()[2] * sdf_joint.ThreadPitch() / 2 / M_PI).finished(),
+                       getScrewAxis(Joint::getSdfAxis(sdf_joint),
+                                    sdf_joint.ThreadPitch()),
                        joint_effort_type, springCoefficient,
                        jointLimitThreshold, velocityLimitThreshold,
                        accelerationLimit, accelerationLimitThreshold,
                        torqueLimitThreshold, parent_link, child_link) {}
 
-  /** Construct joint using sdf::Joint instance and joint parameters. */
+  /** 
+   * @brief Create ScrewJoint using sdf::Joint instance and joint parameters. 
+   * 
+   * @param[in] sdf_joint                  sdf::Joint object.
+   * @param[in] parameters                 Joint::Params struct
+   * @param[in] parent_link                Shared pointer to the parent Link.
+   * @param[in] child_link                 Shared pointer to the child Link.
+  */
   ScrewJoint(const sdf::Joint &sdf_joint,
-                 const gtdynamics::JointParams &jps,
+                 const gtdynamics::JointParams &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJoint(
           sdf_joint,
-          jps.jointEffortType, jps.springCoefficient,
-          jps.jointLimitThreshold, jps.velocityLimitThreshold,
-          jps.accelerationLimit, jps.accelerationLimitThreshold,
-          jps.torqueLimitThreshold, parent_link, child_link) {}
+          parameters.jointEffortType, parameters.springCoefficient,
+          parameters.jointLimitThreshold, parameters.velocityLimitThreshold,
+          parameters.accelerationLimit, parameters.accelerationLimitThreshold,
+          parameters.torqueLimitThreshold, parent_link, child_link) {}
 
-  /** constructor using JointParams and screw axes */
-  explicit ScrewJoint(const Params &params)
+  /** 
+   * @brief Create ScrewJoint using JointParams and screw axes.
+   * 
+   * @param[in] params        Joint::Params struct
+   * @param[in] axis          joint axis expressed in joint frame
+   * @param[in] thread_pitch  joint's thread pitch in dist per rev
+  */
+  ScrewJoint(const Params &params, gtsam::Vector3 axis, double thread_pitch)
       : ScrewJointBase(params,
-                       (gtsam::Vector6() << params.axis,
-          params.axis * params.thread_pitch / 2 / M_PI).finished()) {}
+                       axis,
+                       getScrewAxis(axis, thread_pitch)) {}
 
   /// Return jointType
   char jointType() const { return 'H'; }

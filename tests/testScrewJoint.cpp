@@ -22,7 +22,7 @@
 
 using gtdynamics::get_sdf, gtdynamics::ScrewJoint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
-using gtsam::assert_equal;
+using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
  * Construct the same joint via Params and ensure all values are as expected.
@@ -34,22 +34,20 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  gtdynamics::Joint::Params params;
-  params.name = "j1";
-  params.joint_type = 'H';
-  params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
-  params.parent_link = l1;
-  params.child_link = l2;
-  params.axis = gtsam::Point3(1, 0, 0);
-  params.thread_pitch = 0.5;
-  params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
-  params.joint_lower_limit = -1.57;
-  params.joint_upper_limit = 1.57;
-  params.joint_limit_threshold = 0;
+  gtdynamics::Joint::Params parameters;
+  parameters.name = "j1";
+  parameters.joint_type = 'H';
+  parameters.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
+  parameters.parent_link = l1;
+  parameters.child_link = l2;
+  parameters.wTj = Pose3(Rot3(), Point3(0, 0, 2));
+  parameters.joint_lower_limit = -1.57;
+  parameters.joint_upper_limit = 1.57;
+  parameters.joint_limit_threshold = 0;
 
   gtdynamics::ScrewJointSharedPtr j1 =
       std::make_shared<gtdynamics::ScrewJoint>(
-          gtdynamics::ScrewJoint(params));
+          gtdynamics::ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -72,14 +70,14 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
 
   // rest transform
-  gtsam::Pose3 T_12comRest(gtsam::Rot3::Rx(0), gtsam::Point3(0, 0, 2));
-  gtsam::Pose3 T_21comRest(gtsam::Rot3::Rx(0), gtsam::Point3(0, 0, -2));
+  Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
+  Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
   EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2)));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2)));
 
   // transform from (rotating -pi/2)
-  gtsam::Pose3 T_12com(gtsam::Rot3::Rx(-M_PI / 2), gtsam::Point3(-0.125, 1, 1));
-  gtsam::Pose3 T_21com(gtsam::Rot3::Rx(M_PI / 2), gtsam::Point3(0.125, 1, -1));
+  Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(-0.125, 1, 1));
+  Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0.125, 1, -1));
   EXPECT(assert_equal(T_12com, j1->transformFrom(l2, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->transformFrom(l1, -M_PI / 2)));
 
@@ -111,16 +109,16 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
   // constructor for j1
-  gtdynamics::JointParams j1_params;
-  j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
+  gtdynamics::JointParams j1_parameters;
+  j1_parameters.name = "j1";
+  j1_parameters.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
   gtdynamics::ScrewJointSharedPtr j1 =
       std::make_shared<gtdynamics::ScrewJoint>(gtdynamics::ScrewJoint(
-          *model.JointByName("joint_1"), j1_params.jointEffortType,
-          j1_params.springCoefficient, j1_params.jointLimitThreshold,
-          j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-          j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold,
-          l0, l1));
+          *model.JointByName("joint_1"), j1_parameters.jointEffortType,
+          j1_parameters.springCoefficient, j1_parameters.jointLimitThreshold,
+          j1_parameters.velocityLimitThreshold, j1_parameters.accelerationLimit,
+          j1_parameters.accelerationLimitThreshold,
+          j1_parameters.torqueLimitThreshold, l0, l1));
 
   // expected values for screw about z axis
   // check screw axis
@@ -131,11 +129,11 @@ TEST(Joint, sdf_constructor) {
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
-  gtsam::Pose3 T_01comRest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.4));
-  gtsam::Pose3 T_01com_neg(gtsam::Rot3::Rz(-M_PI / 2),
-                           gtsam::Point3(0, 0, 0.4-0.125));
-  gtsam::Pose3 T_01com_pos(gtsam::Rot3::Rz(M_PI / 2),
-                           gtsam::Point3(0, 0, 0.4+0.125));
+  Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
+  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2),
+                           Point3(0, 0, 0.4-0.125));
+  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2),
+                           Point3(0, 0, 0.4+0.125));
 
   EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
   EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));

@@ -123,7 +123,6 @@ TEST(Joint, params_constructor) {
   params.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
-  params.axis = gtsam::Point3(1, 0, 0);
   params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = -1.57;
   params.joint_upper_limit = 1.57;
@@ -131,7 +130,7 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::RevoluteJointSharedPtr j1 =
       std::make_shared<gtdynamics::RevoluteJoint>(
-          gtdynamics::RevoluteJoint(params));
+          gtdynamics::RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));

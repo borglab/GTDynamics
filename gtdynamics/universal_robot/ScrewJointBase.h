@@ -39,8 +39,6 @@ namespace gtdynamics {
  *  which represents a screw-type joint and contains all necessary factor
  *  construction methods.
  *  It is the base class for RevoluteJoint, PrismaticJoint, and ScrewJoint.
- *  This uses the Curiously Recurring Template Pattern (CRTP) for static
- *  polymorphism.
  */
 template <class ScrewJointType>
 class ScrewJointBase : public Joint {
@@ -88,8 +86,8 @@ class ScrewJointBase : public Joint {
       return pMccom_.inverse();
   }
 
-  /// Return the joint axis. Rotational axis for revolute and translation
-  /// direction for prismatic in the joint frame.
+  /// Return the joint axis in the joint frame. Rotational axis for revolute and
+  /// translation direction for prismatic in the joint frame.
   const gtsam::Vector3 &axis() const { return axis_; }
 
  public:
@@ -117,9 +115,7 @@ class ScrewJointBase : public Joint {
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : Joint(sdf_joint, parent_link, child_link),
         jointEffortType_(joint_effort_type),
-        axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
-                             sdf_joint.Axis()->Xyz()[1],
-                             sdf_joint.Axis()->Xyz()[2])),
+        axis_(Joint::getSdfAxis(sdf_joint)),
         joint_lower_limit_(sdf_joint.Axis()->Lower()),
         joint_upper_limit_(sdf_joint.Axis()->Upper()),
         joint_limit_threshold_(jointLimitThreshold),
@@ -147,11 +143,12 @@ class ScrewJointBase : public Joint {
           jps.torqueLimitThreshold, parent_link, child_link) {}
 
   /** constructor using JointParams and screw axes */
-  explicit ScrewJointBase(const Params &params, gtsam::Vector6 jScrewAxis)
+  ScrewJointBase(const Params &params, gtsam::Vector3 axis,
+                 gtsam::Vector6 jScrewAxis)
       : Joint(params),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
-        axis_(params.axis),
+        axis_(axis),
         joint_lower_limit_(params.joint_lower_limit),
         joint_upper_limit_(params.joint_upper_limit),
         joint_limit_threshold_(params.joint_limit_threshold),

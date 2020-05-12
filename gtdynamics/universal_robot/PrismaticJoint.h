@@ -28,10 +28,16 @@ namespace gtdynamics {
  * @class PrismaticJoint is an implementation of the ScrewJointBase class
  *  which represents a prismatic joint and contains all necessary factor
  *  construction methods.
- *  This uses the Curiously Recurring Template Pattern (CRTP) for static
- *  polymorphism and implements the setScrewAxis() and jointType() functions.
  */
 class PrismaticJoint : public ScrewJointBase<PrismaticJoint> {
+ protected:
+  /// Returns the screw axis in the joint frame given the joint axis
+  gtsam::Vector6 getScrewAxis(gtsam::Vector3 axis) {
+    gtsam::Vector6 screw_axis;
+    screw_axis << 0, 0, 0, axis;
+    return screw_axis;
+  }
+
  public:
   /**
    * @brief Create PrismaticJoint from a sdf::Joint instance.
@@ -54,30 +60,40 @@ class PrismaticJoint : public ScrewJointBase<PrismaticJoint> {
                 double accelerationLimitThreshold, double torqueLimitThreshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint,
-                       (gtsam::Vector6() << 0, 0, 0,
-                            sdf_joint.Axis()->Xyz()[0],
-                            sdf_joint.Axis()->Xyz()[1],
-                            sdf_joint.Axis()->Xyz()[2]).finished(),
+                       getScrewAxis(Joint::getSdfAxis(sdf_joint)),
                        joint_effort_type, springCoefficient,
                        jointLimitThreshold, velocityLimitThreshold,
                        accelerationLimit, accelerationLimitThreshold,
                        torqueLimitThreshold, parent_link, child_link) {}
 
-  /** Construct joint using sdf::Joint instance and joint parameters. */
+  /** 
+   * @brief Create PrismaticJoint using sdf::Joint instance and joint parameters. 
+   * 
+   * @param[in] sdf_joint                  sdf::Joint object.
+   * @param[in] parameters                 Joint::Params struct
+   * @param[in] parent_link                Shared pointer to the parent Link.
+   * @param[in] child_link                 Shared pointer to the child Link.
+  */
   PrismaticJoint(const sdf::Joint &sdf_joint,
-                 const gtdynamics::JointParams &jps,
+                 const gtdynamics::JointParams &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : PrismaticJoint(
           sdf_joint,
-          jps.jointEffortType, jps.springCoefficient,
-          jps.jointLimitThreshold, jps.velocityLimitThreshold,
-          jps.accelerationLimit, jps.accelerationLimitThreshold,
-          jps.torqueLimitThreshold, parent_link, child_link) {}
+          parameters.jointEffortType, parameters.springCoefficient,
+          parameters.jointLimitThreshold, parameters.velocityLimitThreshold,
+          parameters.accelerationLimit, parameters.accelerationLimitThreshold,
+          parameters.torqueLimitThreshold, parent_link, child_link) {}
 
-  /** constructor using JointParams and screw axes */
-  explicit PrismaticJoint(const Params &params)
+  /** 
+   * @brief Create PrismaticJoint using JointParams and screw axes.
+   * 
+   * @param[in] params        Joint::Params struct
+   * @param[in] axis          joint axis expressed in joint frame
+  */
+  PrismaticJoint(const Params &params, gtsam::Vector3 axis)
       : ScrewJointBase(params,
-                       (gtsam::Vector6() << 0, 0, 0, params.axis).finished()) {}
+                       axis,
+                       getScrewAxis(axis)) {}
 
   /// Return jointType
   char jointType() const { return 'P'; }

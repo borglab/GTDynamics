@@ -71,13 +71,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
     Joint::JointEffortType effort_type;  // joint effort type
     LinkSharedPtr parent_link;           // shared pointer to parent link
     LinkSharedPtr child_link;            // shared pointer to child link
-    gtsam::Vector3 axis;                 // joint axis expressed in joint frame
     gtsam::Pose3 wTj;                    // joint pose expressed in world frame
-    double thread_pitch;                 // thread pitch for a screw joint
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold;
   };
+
+  gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
+    auto axis = sdf_joint.Axis()->Xyz();
+    return gtsam::Vector3(axis[0], axis[1], axis[2]);
+  }
 
  protected:
   // This joint's name, as described in the URDF file.
