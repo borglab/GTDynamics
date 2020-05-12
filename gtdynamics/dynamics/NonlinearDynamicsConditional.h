@@ -58,7 +58,7 @@ class NonlinearDynamicsConditional
              const KeyFormatter& formatter = DefaultKeyFormatter) const;
 
   /** equals function */
-  bool equals(const TorqueFactor& cg, double tol = 1e-9) const;
+  bool equals(const This& c, double tol = 1e-9) const;
 
 };  // NonlinearDynamicsConditional
 

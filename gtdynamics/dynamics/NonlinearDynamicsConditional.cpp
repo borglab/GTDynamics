@@ -20,11 +20,13 @@ template class gtsam::Conditional<gtdynamics::TorqueFactor,
 namespace gtdynamics {
 /** print */
 void NonlinearDynamicsConditional::print(
-    const std::string &s, const gtsam::KeyFormatter &formatter) const {}
+    const std::string &s, const gtsam::KeyFormatter &formatter) const {
+  BaseConditional::print(s, formatter);
+}
 
 /** equals function */
-bool NonlinearDynamicsConditional::equals(const TorqueFactor &cg,
-                                          double tol) const {
-  return true;
+bool NonlinearDynamicsConditional::equals(const This &c, double tol) const {
+  // TODO(Mandy): need to implement this
+  return BaseFactor::equals(c) && BaseConditional::equals(c);
 }
 }  // namespace gtdynamics
