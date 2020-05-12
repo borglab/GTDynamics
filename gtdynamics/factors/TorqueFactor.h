@@ -31,7 +31,6 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
  private:
   typedef TorqueFactor This;
   typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
-  gtsam::noiseModel::Base::shared_ptr costModel_;
   gtsam::Vector6 screw_axis_;
   gtsam::Key frontalKey_;
 
