@@ -65,3 +65,4 @@ class NonlinearDynamicsBayesNet
 template <>
 struct gtsam::traits<gtdynamics::NonlinearDynamicsBayesNet>
     : public gtsam::Testable<gtdynamics::NonlinearDynamicsBayesNet> {};
+    
