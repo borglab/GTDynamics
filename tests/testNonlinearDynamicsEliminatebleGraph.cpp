@@ -31,46 +31,42 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <iostream>
-
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace std;
 
-int DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE = 0;
-int DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE = 0;
-
 namespace example {
 // noise model
-gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+auto cost_model = noiseModel::Gaussian::Covariance(I_1x1);
+Key torque_key = Symbol('t', 1), wrench_key = Symbol('F', 1);
 }  // namespace example
 
 // Test nonlinear eliminatebale dynamics graph
 TEST(NonlinearDynamicsEliminateableGraph, nonlinearElimination) {
+  using example::cost_model;
+  using example::torque_key;
+  using example::wrench_key;
   // Create a torque factor
-  gtsam::Vector6 screw_axis;
+  Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  gtdynamics::TorqueFactor torque_factor(0, 1, example::cost_model, screw_axis);
+  TorqueFactor torqueFactor(wrench_key, torque_key, cost_model, screw_axis);
   // Create a non-linear dynamic factor graph with only a torque factor
-  std::vector<gtdynamics::TorqueFactor> torque_graph;
-  torque_graph.push_back(torque_factor);
-  // Create a non-linear eliminatebale dynamic factor graph
-  auto NLEDG = NonlinearDynamicsEliminateableGraph(torque_graph);
+  auto NLEDG = NonlinearDynamicsEliminateableGraph();
+  NLEDG.emplace_shared<TorqueFactor>(torqueFactor);
   // // peform partial elimination
   NonlinearDynamicsBayesNet::shared_ptr actualBN;
   NonlinearDynamicsEliminateableGraph::shared_ptr actualRemainingNLEDG;
-  auto ordering = Ordering(vector<int>(1));
+  auto ordering = Ordering(boost::assign::list_of(torque_key));
   boost::tie(actualBN, actualRemainingNLEDG) =
       NLEDG.eliminatePartialSequential(ordering);
 
   // expected Bayes net
-  std::vector<NonlinearDynamicsConditional> torqueConditional = {
-      NonlinearDynamicsConditional(0, 1, example::cost_model, screw_axis, 0)};
-  NonlinearDynamicsBayesNet expectedBN(torqueConditional);
+  auto torqueConditional = NonlinearDynamicsConditional(
+      wrench_key, torque_key, cost_model, screw_axis, torque_key);
+  auto expectedBN = NonlinearDynamicsBayesNet();
+  expectedBN.emplace_shared<NonlinearDynamicsConditional>(torqueConditional);
   // expected remaining NLEDG is empty
-  NonlinearDynamicsEliminateableGraph expectedRemainingNLEDG =
-      NonlinearDynamicsEliminateableGraph();
+  auto expectedRemainingNLEDG = NonlinearDynamicsEliminateableGraph();
 
   // check if the result matches
   EXPECT(assert_equal(*actualBN, expectedBN));
