@@ -133,6 +133,10 @@ class DynamicsGraph {
   static gtsam::GaussianFactorGraph linearFDPriors(
       const Robot &robot, const int t, const Robot::JointValues &torque_values);
 
+  /* return linear factor graph with priors on joint accelerations */
+  static gtsam::GaussianFactorGraph linearIDPriors(
+      const Robot &robot, const int t, const Robot::JointValues &joint_accels);
+
   /** sovle forward kinodynamics using linear factor graph, return values of all
   variables
   * Keyword arguments:
@@ -147,6 +151,26 @@ class DynamicsGraph {
   * return values of all variables
   */
   static gtsam::Values linearSolveFD(
+      const Robot &robot, const int t, const Robot::JointValues &joint_angles,
+      const Robot::JointValues &joint_vels, const Robot::JointValues &torques,
+      const Robot::FKResults &fk_results,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+
+  /** sovle inverse kinodynamics using linear factor graph, return values of all
+  variables
+  * Keyword arguments:
+     robot               -- the robot
+     t                   -- time step
+     joint_angles        -- std::map <joint name, angle>
+     joint_vels          -- std::map <joint name, velocity>
+     torques             -- std::map <joint name, torque>
+     fk_results          -- forward kinematics results
+     gravity             -- gravity in world frame
+     planar_axis         -- axis of the plane, used only for planar robot
+  * return values of all variables
+  */
+  static gtsam::Values linearSolveID(
       const Robot &robot, const int t, const Robot::JointValues &joint_angles,
       const Robot::JointValues &joint_vels, const Robot::JointValues &torques,
       const Robot::FKResults &fk_results,
