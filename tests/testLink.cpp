@@ -11,14 +11,15 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/linear/VectorValues.h>
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/utils/utils.h"
+#include <CppUnitLite/TestHarness.h>
 
 using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
 using gtsam::assert_equal;

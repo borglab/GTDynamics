@@ -89,20 +89,30 @@ LinkJointPair extractRobotFromSdf(
     gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Obtain joint params.
-    gtdynamics::JointParams jps = getJointParams(sdf_joint, joint_params);
+    gtdynamics::JointParams parameters =
+        getJointParams(sdf_joint, joint_params);
 
     // Construct Joint and insert into name_to_joint.
     gtdynamics::JointSharedPtr joint;
-    if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
-      joint = std::make_shared<gtdynamics::PrismaticJoint>(
-          gtdynamics::PrismaticJoint(
-              sdf_joint, jps, parent_link, child_link));
-    } else if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
-      joint =
-          std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
-              sdf_joint, jps, parent_link, child_link));
-    } else {
-      throw std::runtime_error("Joint type for [" +
+
+    switch (sdf_joint.Type()) {
+      case sdf::JointType::PRISMATIC:
+        joint = std::make_shared<gtdynamics::PrismaticJoint>(
+            gtdynamics::PrismaticJoint(sdf_joint, parameters,
+                                   parent_link, child_link));
+        break;
+      case sdf::JointType::REVOLUTE:
+        joint = std::make_shared<gtdynamics::RevoluteJoint>(
+            gtdynamics::RevoluteJoint(sdf_joint, parameters,
+                                      parent_link, child_link));
+        break;
+      case sdf::JointType::SCREW:
+        joint = std::make_shared<gtdynamics::ScrewJoint>(
+            gtdynamics::ScrewJoint(sdf_joint, parameters,
+                                   parent_link, child_link));
+        break;
+      default:
+        throw std::runtime_error("Joint type for [" +
                                std::string(sdf_joint.Name()) +
                                "] not yet supported");
     }
