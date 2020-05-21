@@ -73,8 +73,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
    */
   struct Params {
     std::string name;                    // name of the joint
-    Joint::JointType joint_type;         // type of joint
-    Joint::JointEffortType effort_type;  // joint effort type
+    JointType joint_type;                // type of joint
+    JointEffortType effort_type;         // joint effort type
     LinkSharedPtr parent_link;           // shared pointer to parent link
     LinkSharedPtr child_link;            // shared pointer to child link
     gtsam::Pose3 wTj;                    // joint pose expressed in world frame
@@ -234,7 +234,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Abstract method: Return joint type for use in reconstructing robot from
   /// Parameters.
-  virtual Joint::JointType jointType() const = 0;
+  virtual JointType jointType() const = 0;
 
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame

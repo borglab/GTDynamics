@@ -59,7 +59,7 @@ class PrismaticJoint : public ScrewJointBase {
                 double accelerationLimitThreshold, double torqueLimitThreshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint,
-                       getScrewAxis(Joint::getSdfAxis(sdf_joint)),
+                       getScrewAxis(getSdfAxis(sdf_joint)),
                        joint_effort_type, springCoefficient,
                        jointLimitThreshold, velocityLimitThreshold,
                        accelerationLimit, accelerationLimitThreshold,
@@ -95,7 +95,7 @@ class PrismaticJoint : public ScrewJointBase {
                        getScrewAxis(axis)) {}
 
   /// Return jointType for use in reconstructing robot from Parameters.
-  Joint::JointType jointType() const { return Joint::JointType::Prismatic; }
+  JointType jointType() const { return JointType::Prismatic; }
 };
 
 }  // namespace gtdynamics

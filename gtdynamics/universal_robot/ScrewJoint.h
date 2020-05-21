@@ -60,7 +60,7 @@ class ScrewJoint : public ScrewJointBase {
                 double accelerationLimitThreshold, double torqueLimitThreshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint,
-                       getScrewAxis(Joint::getSdfAxis(sdf_joint),
+                       getScrewAxis(getSdfAxis(sdf_joint),
                                     sdf_joint.ThreadPitch()),
                        joint_effort_type, springCoefficient,
                        jointLimitThreshold, velocityLimitThreshold,
@@ -98,7 +98,7 @@ class ScrewJoint : public ScrewJointBase {
                        getScrewAxis(axis, thread_pitch)) {}
 
   /// Return jointType for use in reconstructing robot from Parameters.
-  Joint::JointType jointType() const { return Joint::JointType::Screw; }
+  JointType jointType() const { return JointType::Screw; }
 };
 
 }  // namespace gtdynamics
