@@ -11,13 +11,15 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/utils/utils.h"
+
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
+
+#include <CppUnitLite/TestHarness.h>
+
 
 using gtdynamics::get_sdf, gtdynamics::RevoluteJoint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
@@ -58,7 +60,7 @@ TEST(Joint, urdf_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'R');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
@@ -117,11 +119,10 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::Joint::Params params;
   params.name = "j1";
-  params.joint_type = 'R';
+  params.joint_type = gtdynamics::Joint::JointType::Revolute;
   params.effort_type = gtdynamics::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
-  params.axis = gtsam::Point3(1, 0, 0);
   params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = -1.57;
   params.joint_upper_limit = 1.57;
@@ -129,13 +130,13 @@ TEST(Joint, params_constructor) {
 
   gtdynamics::RevoluteJointSharedPtr j1 =
       std::make_shared<gtdynamics::RevoluteJoint>(
-          gtdynamics::RevoluteJoint(params));
+          gtdynamics::RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'R');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);

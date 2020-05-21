@@ -11,14 +11,14 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/PrismaticJoint.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/PrismaticJoint.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/utils/utils.h"
+#include <CppUnitLite/TestHarness.h>
 
 using gtdynamics::get_sdf, gtdynamics::PrismaticJoint, gtdynamics::Link,
     gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
@@ -61,7 +61,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'P');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Prismatic);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
@@ -125,11 +125,10 @@ TEST(Joint, params_constructor_prismatic) {
 
   gtdynamics::Joint::Params params;
   params.name = "j1";
-  params.joint_type = 'P';
+  params.joint_type = gtdynamics::Joint::JointType::Prismatic;
   params.effort_type = gtdynamics::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
-  params.axis = gtsam::Point3(0, 0, 1);
   params.wTj =
       gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = 0;
@@ -137,7 +136,8 @@ TEST(Joint, params_constructor_prismatic) {
   params.joint_limit_threshold = 0;
 
   gtdynamics::PrismaticJointSharedPtr j1 =
-      std::make_shared<gtdynamics::PrismaticJoint>(PrismaticJoint(params));
+      std::make_shared<gtdynamics::PrismaticJoint>(PrismaticJoint(
+          params, gtsam::Vector3(0, 0, 1)));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -150,7 +150,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == 'P');
+  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Prismatic);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);

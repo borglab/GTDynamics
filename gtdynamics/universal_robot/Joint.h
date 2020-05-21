@@ -63,21 +63,31 @@ enum JointEffortType { Actuated, Unactuated, Impedance };
 class Joint : public std::enable_shared_from_this<Joint> {
  public:
 
+  enum JointType : char {
+    Revolute = 'R',
+    Prismatic = 'P',
+    Screw = 'C'
+  };
+
   /**
    * JointParams contains all parameters to construct a joint
    */
   struct Params {
     std::string name;                    // name of the joint
-    char joint_type;                     // type of joint
+    JointType joint_type;                // type of joint
     JointEffortType effort_type;         // joint effort type
     LinkSharedPtr parent_link;           // shared pointer to parent link
     LinkSharedPtr child_link;            // shared pointer to child link
-    gtsam::Vector3 axis;                 // joint axis expressed in joint frame
     gtsam::Pose3 wTj;                    // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold;
   };
+
+  static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
+    auto axis = sdf_joint.Axis()->Xyz();
+    return gtsam::Vector3(axis[0], axis[1], axis[2]);
+  }
 
  protected:
   // This joint's name, as described in the URDF file.
@@ -223,8 +233,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @{
    */
 
-  /// Abstract method: Return joint type.
-  virtual char jointType() const = 0;
+  /// Abstract method: Return joint type for use in reconstructing robot from
+  /// Parameters.
+  virtual JointType jointType() const = 0;
 
   /// Return the transform from this link com to the other link
   /// com frame given a Values object containing this joint's angle Value
@@ -283,7 +294,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Abstract method. Returns forward dynamics priors on torque
   virtual gtsam::GaussianFactorGraph linearFDPriors(
-      int t, const JointValues &torques,
+      size_t t, const JointValues &torques,
       const OptimizerSetting &opt) const = 0;
 
   /** @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
@@ -350,12 +361,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
 };
 
 /**
- * JointType is a convenience class that inherits from Joint which wraps
+ * JointTyped is a convenience class that inherits from Joint which wraps
  * transformXXXImpl that take in joint type argument into transformXXX
  * which take in gtsam::Values object
  */
 template <class JointAngleType, class JointAngleTangentType>
-class JointType : public Joint {
+class JointTyped : public Joint {
  public:
 
   /// Inherit constructors
