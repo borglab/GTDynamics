@@ -59,23 +59,30 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass) {
 
   auto graph_builder = DynamicsGraph();
   int t = 0;
-  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques;
+  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques, joint_accels;
   joint_angles["j1"] = 0;
   joint_vels["j1"] = 0;
   joint_torques["j1"] = 1;
+  joint_accels["j1"] = 4;
   std::string prior_link_name = "l1";
   auto l1 = my_robot.getLinkByName(prior_link_name);
   gtsam::Vector6 V_l1 = gtsam::Vector6::Zero();
   auto fk_results = my_robot.forwardKinematics(
       joint_angles, joint_vels, prior_link_name, l1->wTcom(), V_l1);
 
-  Values result = graph_builder.linearSolveFD(my_robot, t, joint_angles,
+  // test forward dynamics
+  Values result_fd = graph_builder.linearSolveFD(my_robot, t, joint_angles,
                                               joint_vels, joint_torques,
                                               fk_results, gravity, planar_axis);
 
   int j = my_robot.joints()[0]->getID();
-  gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
-  EXPECT(assert_equal(4.0, result.atDouble(JointAccelKey(j, t)), 1e-3));
+  EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(j, t)), 1e-3));
+
+  // test inverse dynamics
+  Values result_id =  graph_builder.linearSolveID(my_robot, t, joint_angles,
+                                              joint_vels, joint_accels,
+                                              fk_results, gravity, planar_axis);
+  EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
 }
 
 // Test forward dynamics with gravity of a two-link robot, with base link fixed
