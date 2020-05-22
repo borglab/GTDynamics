@@ -53,13 +53,15 @@ class PoseFunctor {
       const gtsam::Pose3 &pose_i, const double &q,
       gtsam::OptionalJacobian<6, 6> H_pose_i = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-    gtsam::Matrix6 Hexp;
-    gtsam::Pose3 jTi = iMj_ * gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
 
-    gtsam::Matrix6 pose_j_H_jTi;
-    auto pose_j = pose_i.compose(jTi, H_pose_i, pose_j_H_jTi);
+    gtsam::Matrix6 Hexp, iTj_H_jrestTj;
+    gtsam::Pose3 jrestTj = gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
+    gtsam::Pose3 iTj = iMj_.compose(jrestTj, boost::none, iTj_H_jrestTj);
+
+    gtsam::Matrix6 pose_j_H_iTj;
+    auto pose_j = pose_i.compose(iTj, H_pose_i, pose_j_H_iTj);
     if (H_q) {
-      *H_q = pose_j_H_jTi * (Hexp * screw_axis_);
+      *H_q = pose_j_H_iTj * (iTj_H_jrestTj * Hexp * screw_axis_);
     }
 
     return pose_j;
@@ -102,10 +104,15 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
-    gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
-    if (H_pose_j) {
-      *H_pose_j = -gtsam::I_6x6;
-    }
+
+    gtsam::Matrix6 H_pose_j_hat;
+    gtsam::Vector6 error = pose_j.logmap(pose_j_hat, H_pose_j, H_pose_j_hat);
+
+    if (H_pose_i)
+      *H_pose_i = H_pose_j_hat * (*H_pose_i);
+    if (H_q)
+      *H_q = H_pose_j_hat * (*H_q);
+
     return error;
   }
 

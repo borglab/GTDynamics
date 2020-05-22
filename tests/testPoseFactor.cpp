@@ -116,6 +116,40 @@ TEST(PoseFactor, breaking_rr) {
                       predictPose(base_pose, joint_angle), 1e-6));
 }
 
+// Test non-zero jMi rotation case
+TEST(PoseFactor, nonzero_rest) {
+  // Create factor
+  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3::Rx(1), gtsam::Point3(-2, 0, 0));
+  gtsam::Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 1, 0;
+  gtdynamics::PoseFactor factor(example::pose_i_key, example::pose_j_key,
+                                example::qKey, example::cost_model, jMi,
+                                screw_axis);
+
+  double jointAngle;
+  gtsam::Pose3 pose_i, pose_j;
+  // zero joint angle
+  jointAngle = 0;
+  pose_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+  pose_j = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
+  // Make sure linearization is correct
+  gtsam::Values values;
+  values.insert(example::pose_i_key, pose_i);
+  values.insert(example::pose_j_key, pose_j);
+  values.insert(example::qKey, jointAngle);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+
+  // half PI
+  jointAngle = M_PI / 2;
+  pose_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+  pose_j = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
+  values.update(example::pose_i_key, pose_i);
+  values.update(example::pose_j_key, pose_j);
+  values.update(example::qKey, jointAngle);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
