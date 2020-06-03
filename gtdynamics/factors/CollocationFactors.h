@@ -33,7 +33,7 @@ namespace gtdynamics {
 gtsam::Pose3 predictPose(
     const gtsam::Pose3 &pose_i, const gtsam::Vector6 &twistdt,
     gtsam::OptionalJacobian<6, 6> H_pose_i = boost::none,
-    gtsam::OptionalJacobian<6, 6> H_twistdt = boost::none) const {
+    gtsam::OptionalJacobian<6, 6> H_twistdt = boost::none) {
   gtsam::Matrix6 Hexp;
   gtsam::Pose3 jTi = gtsam::Pose3::Expmap(twistdt, Hexp);
 
