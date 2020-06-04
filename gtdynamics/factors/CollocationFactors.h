@@ -38,7 +38,7 @@ gtsam::Pose3 predictPose(
   gtsam::Pose3 jTi = gtsam::Pose3::Expmap(twistdt, Hexp);
 
   gtsam::Matrix6 pose_j_H_jTi;
-  auto pose_j = pose_i.compose(jTi, H_pose_i, pose_j_H_jTi);
+  auto pose_j = pose_i.compose(jTi, H_pose_i, H_twistdt ? & pose_j_H_jTi : nullptr);
   if (H_twistdt) {
     *H_twistdt = pose_j_H_jTi * (Hexp);
   }
