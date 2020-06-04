@@ -45,8 +45,7 @@ TEST(PoseTwistFunctor, error) {
   Vector6 twistdt = twist * dt;
   Pose3 pose_j(Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
 
-  gtdynamics::PoseTwistFunctor predictPose;
-  EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
+  EXPECT(assert_equal(pose_j, gtdynamics::predictPose(pose_i, twistdt), 1e-6));
 
   // Create factor
   gtdynamics::EulerPoseColloFactor factor(
@@ -79,8 +78,7 @@ TEST(RandomData, EulerPose) {
   Vector6 twistdt = twist * dt;
   Pose3 pose_j = pose_i * Pose3::Expmap(twistdt);
 
-  gtdynamics::PoseTwistFunctor predictPose;
-  EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
+  EXPECT(assert_equal(pose_j, gtdynamics::predictPose(pose_i, twistdt), 1e-6));
 
   // Create factor
   gtdynamics::EulerPoseColloFactor factor(
