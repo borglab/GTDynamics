@@ -24,6 +24,7 @@
 #include "gtdynamics/factors/PointGoalFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -39,7 +40,7 @@ TEST(PointGoalFactor, error) {
   // Initialize factor with goal point.
   gtsam::Point3 goal_point = gtsam::Point3(0, 0, 2);
   gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
-  gtdynamics::PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
+  PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
   EXPECT(assert_equal(
@@ -73,7 +74,7 @@ TEST(PointGoalFactor, optimization) {
   // Initialize factor with goal point.
   gtsam::Point3 goal_point = gtsam::Point3(-12, 15, 6);
   gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
-  gtdynamics::PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
+  PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Initial link pose.
   gtsam::Pose3 pose_init = my_robot.getLinkByName("l1")->wTcom();

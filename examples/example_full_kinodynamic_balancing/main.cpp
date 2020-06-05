@@ -32,25 +32,26 @@
 #include <boost/optional.hpp>
 
 #define GROUND_HEIGHT -0.191839
+using namespace gtdynamics; 
 
 int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = gtdynamics::Robot("../vision60.urdf");
+  auto vision60 = Robot("../vision60.urdf");
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   double mu = 2.0;
 
   // Contact points at feet.
-  std::vector<gtdynamics::ContactPoint> contact_points;
-  contact_points.push_back(gtdynamics::ContactPoint{
+  std::vector<ContactPoint> contact_points;
+  contact_points.push_back(ContactPoint{
       "lower0", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(gtdynamics::ContactPoint{
+  contact_points.push_back(ContactPoint{
       "lower1", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(gtdynamics::ContactPoint{
+  contact_points.push_back(ContactPoint{
       "lower2", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(gtdynamics::ContactPoint{
+  contact_points.push_back(ContactPoint{
       "lower3", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
 
   // Specify optimal control problem parameters.
@@ -99,7 +100,7 @@ int main(int argc, char** argv) {
 
   // Build the trajectory factor graph and add boundary condition and goal
   // pose factors.
-  auto opt = gtdynamics::OptimizerSetting();
+  auto opt = OptimizerSetting();
   opt.bp_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   opt.bv_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   opt.ba_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
@@ -127,10 +128,10 @@ int main(int argc, char** argv) {
   opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  auto graph_builder = gtdynamics::DynamicsGraph(opt);
+  auto graph_builder =  DynamicsGraph(opt);
   gtsam::NonlinearFactorGraph graph = graph_builder.trajectoryFG(
       vision60, t_steps, dt,
-      gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
+       DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
       boost::none, contact_points, mu);
 
   auto base_link = vision60.getLinkByName("body");
@@ -139,52 +140,52 @@ int main(int argc, char** argv) {
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-       gtdynamics::PoseKey(
+        PoseKey(
            base_link->getID(),
            static_cast<int>(std::ceil(des_poses_t[i] / dt))),
       des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
   objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      gtdynamics::PoseKey(base_link->getID(), 0), base_pose_init,
+      PoseKey(base_link->getID(), 0), base_pose_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      gtdynamics::TwistKey(base_link->getID(), 0), base_twist_init,
+      TwistKey(base_link->getID(), 0), base_twist_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      gtdynamics::TwistAccelKey(base_link->getID(), 0), base_accel_init,
+      TwistAccelKey(base_link->getID(), 0), base_accel_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      gtdynamics::TwistKey(base_link->getID(), t_steps), base_twist_final,
+      TwistKey(base_link->getID(), t_steps), base_twist_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      gtdynamics::TwistAccelKey(base_link->getID(), t_steps), base_accel_final,
+      TwistAccelKey(base_link->getID(), t_steps), base_accel_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors.add(gtsam::PriorFactor<double>(
-        gtdynamics::JointAngleKey(joint->getID(), 0), 0.0,
+        JointAngleKey(joint->getID(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        gtdynamics::JointVelKey(joint->getID(), 0), 0.0,
+        JointVelKey(joint->getID(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        gtdynamics::JointAccelKey(joint->getID(), 0), 0.0,
+        JointAccelKey(joint->getID(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        gtdynamics::JointVelKey(joint->getID(), t_steps), 0.0,
+        JointVelKey(joint->getID(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        gtdynamics::JointAccelKey(joint->getID(), t_steps), 0.0,
+         JointAccelKey(joint->getID(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
   }
 
   // Add min torque objectives.
   for (int t = 0; t <= t_steps; t++) {
     for (auto&& joint : vision60.joints())
-      objective_factors.add(gtdynamics::MinTorqueFactor(
-          gtdynamics::TorqueKey(joint->getID(), t),
+      objective_factors.add( MinTorqueFactor(
+          TorqueKey(joint->getID(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
@@ -198,14 +199,14 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = gtdynamics::InitializeSolutionInterpolationMultiPhase(
+    init_vals =  InitializeSolutionInterpolationMultiPhase(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = gtdynamics::ZeroValuesTrajectory(
+    init_vals =  ZeroValuesTrajectory(
       vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = gtdynamics::InitializeSolutionInverseKinematics(vision60,
+    init_vals =  InitializeSolutionInverseKinematics(vision60,
       "body", base_pose_init, des_poses, des_poses_t, dt, 0.0, contact_points);
 
   gtsam::LevenbergMarquardtParams params;
@@ -214,10 +215,10 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   gtsam::Pose3 optimized_pose_init =
-      results.at<gtsam::Pose3>(gtdynamics::PoseKey(base_link->getID(), 0));
+      results.at<gtsam::Pose3>( PoseKey(base_link->getID(), 0));
   gtsam::Pose3 optimized_pose_final =
       results.at<gtsam::Pose3>(
-          gtdynamics::PoseKey(base_link->getID(), t_steps - 1));
+          PoseKey(base_link->getID(), t_steps - 1));
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()
@@ -253,16 +254,16 @@ int main(int argc, char** argv) {
     std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())
       vals.push_back(std::to_string(
-          results.atDouble(gtdynamics::JointAngleKey(joint->getID(), t))));
+          results.atDouble(JointAngleKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(std::to_string(
-          results.atDouble(gtdynamics::JointVelKey(joint->getID(), t))));
+          results.atDouble(JointVelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(std::to_string(
-          results.atDouble(gtdynamics::JointAccelKey(joint->getID(), t))));
+          results.atDouble(JointAccelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(std::to_string(
-          results.atDouble(gtdynamics::TorqueKey(joint->getID(), t))));
+          results.atDouble(TorqueKey(joint->getID(), t))));
 
     for (size_t i = 0; i < des_poses.size(); i++) {
         gtsam::Pose3 dp = des_poses[i];

@@ -23,13 +23,15 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
+using namespace gtdynamics; 
+
 int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::my_robot, simple_urdf::planar_axis;
   my_robot.getLinkByName("l1")->fix();
 
   // Build a factor graph with all the kinodynamics constraints.
-  gtdynamics::DynamicsGraph dg_builder = gtdynamics::DynamicsGraph();
+  DynamicsGraph dg_builder =   DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::NonlinearFactorGraph dfg =
       dg_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
@@ -43,7 +45,7 @@ int main(int argc, char** argv) {
   dfg.add(fd_priors);
 
   // Obtain solution initialization.
-  gtsam::Values init_values = gtdynamics::ZeroValues(my_robot, 0);
+  gtsam::Values init_values =   ZeroValues(my_robot, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);

@@ -37,8 +37,8 @@ namespace gtdynamics {
  *
  */
 
-typedef std::map<std::string, gtdynamics::LinkSharedPtr> LinkMap;
-typedef std::map<std::string, gtdynamics::JointSharedPtr> JointMap;
+typedef std::map<std::string, LinkSharedPtr> LinkMap;
+typedef std::map<std::string, JointSharedPtr> JointMap;
 typedef std::pair<LinkMap, JointMap> LinkJointPair;
 
 /** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
@@ -49,7 +49,7 @@ typedef std::pair<LinkMap, JointMap> LinkJointPair;
  */
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
+    const boost::optional<std::vector<JointParams>> joint_params =
         boost::none);
 
 /** @fn Construct all Link and Joint objects from an input urdf or sdf file.
@@ -62,7 +62,7 @@ LinkJointPair extractRobotFromSdf(
  */
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
+    const boost::optional<std::vector<JointParams>> joint_params =
         boost::none);
 
 /**

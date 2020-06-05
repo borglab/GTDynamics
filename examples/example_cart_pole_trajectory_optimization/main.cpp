@@ -28,13 +28,12 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 
-using gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
-      gtdynamics::JointAccelKey, gtdynamics::TorqueKey,
-      gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
+using namespace gtdynamics; 
+using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto cp = gtdynamics::Robot("../cart_pole.urdf");
+  auto cp = Robot("../cart_pole.urdf");
   int j0_id = cp.getJointByName("j0")->getID(),
       j1_id = cp.getJointByName("j1")->getID();
   cp.getLinkByName("l0")->fix();
@@ -58,10 +57,10 @@ int main(int argc, char** argv) {
   std::cout << "Goal State: " << X_T.transpose() << std::endl << std::endl;
 
   // Create trajectory factor graph.
-  auto graph_builder = gtdynamics::DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   auto graph = graph_builder.trajectoryFG(
       cp, t_steps, dt,
-      gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal, gravity);
+      DynamicsGraph::CollocationScheme::Trapezoidal, gravity);
 
   // Set the pendulum joint to be unactuated.
   for (int t = 0; t <= t_steps; t++)
@@ -93,11 +92,11 @@ int main(int argc, char** argv) {
     }
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.emplace_shared<gtdynamics::MinTorqueFactor>(
+    graph.emplace_shared<MinTorqueFactor>(
         TorqueKey(j0_id, t), control_model);
 
   // Initialize solution.
-  auto init_vals = gtdynamics::ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
+  auto init_vals = ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
   gtsam::LevenbergMarquardtParams params;
   params.setMaxIterations(40);
   params.setVerbosityLM("SUMMARY");

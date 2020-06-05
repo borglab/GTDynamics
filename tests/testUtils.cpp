@@ -24,6 +24,7 @@
 
 #include "gtdynamics/utils/utils.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 // Test unit_twist function
@@ -32,7 +33,7 @@ TEST(utils, unit_twist) {
   gtsam::Vector3 p(1, 0, 0);
   gtsam::Vector6 expected_twist =
       (gtsam::Vector(6) << 0, 0, 1, 0, -1, 0).finished();
-  auto actual_twist = gtdynamics::unit_twist(w, p);
+  auto actual_twist = unit_twist(w, p);
   EXPECT(assert_equal(expected_twist, actual_twist, 1e-6));
 }
 
@@ -41,7 +42,7 @@ TEST(utils, calcPhi) {
   double t = 0.1;
   gtsam::Matrix expected_phi =
       (gtsam::Matrix(3, 3) << 1, t, 0.5 * t * t, 0, 1, t, 0, 0, 1).finished();
-  auto actual_phi = gtdynamics::calcPhi(t);
+  auto actual_phi = calcPhi(t);
   EXPECT(assert_equal(expected_phi, actual_phi, 1e-6));
 }
 
@@ -58,7 +59,7 @@ TEST(utils, calcQ) {
        1.0 / 2 * pow(t, 2.0) * Qc, t * Qc)
           .finished();
 
-  auto actual_Q = gtdynamics::calcQ(Qc, t);
+  auto actual_Q = calcQ(Qc, t);
   EXPECT(assert_equal(expected_Q, actual_Q, 1e-6));
 }
 
@@ -66,7 +67,7 @@ TEST(utils, calcQ) {
 TEST(utils, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
   auto simple_urdf =
-      gtdynamics::get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Check that physical and inertial properties were properly parsed..
   EXPECT(assert_equal(2, simple_urdf.LinkCount()));
@@ -88,14 +89,14 @@ TEST(utils, load_and_parse_urdf_file) {
 
 TEST(utils, load_and_parse_sdf_file) {
   auto simple_sdf =
-      gtdynamics::get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
+      get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));
 }
 
 TEST(utils, load_and_parse_sdf_world_file) {
-  auto simple_sdf = gtdynamics::get_sdf(
+  auto simple_sdf = get_sdf(
       std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
@@ -116,7 +117,7 @@ TEST(utils, load_and_parse_sdf_world_file) {
 TEST(utils, parse_ignition_pose) {
   ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
 
-  gtsam::Pose3 parsed_pose = gtdynamics::parse_ignition_pose(
+  gtsam::Pose3 parsed_pose = parse_ignition_pose(
     pose_to_parse);
 
   EXPECT(assert_equal(

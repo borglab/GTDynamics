@@ -39,15 +39,15 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-gtdynamics::JointParams getJointParams(
+JointParams getJointParams(
     const sdf::Joint &joint_i,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
-  gtdynamics::JointParams default_params;
-  gtdynamics::JointParams jps;
+    const boost::optional<std::vector< JointParams>> joint_params) {
+  JointParams default_params;
+  JointParams jps;
   if (joint_params) {
     auto jparams =
         std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                     [=](const gtdynamics::JointParams &jps) {
+                     [=](const JointParams &jps) {
                        return (jps.name == joint_i.Name());
                      });
     jps = jparams == joint_params.get().end() ? default_params : *jparams;
@@ -59,13 +59,13 @@ gtdynamics::JointParams getJointParams(
 
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
+    const boost::optional<std::vector<JointParams>> joint_params) {
   // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    gtdynamics::LinkSharedPtr link =
-        std::make_shared<gtdynamics::Link>(*sdf.LinkByIndex(i));
+    LinkSharedPtr link =
+        std::make_shared< Link>(*sdf.LinkByIndex(i));
     link->setID(i);
     name_to_link.insert(std::make_pair(link->name(), link));
   }
@@ -80,35 +80,35 @@ LinkJointPair extractRobotFromSdf(
     std::string child_link_name = sdf_joint.ChildLinkName();
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
-      gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
+      LinkSharedPtr child_link = name_to_link[child_link_name];
       Pose3 fixed_pose = child_link->wTcom();
       child_link->fix(fixed_pose);
       continue;
     }
-    gtdynamics::LinkSharedPtr parent_link = name_to_link[parent_link_name];
-    gtdynamics::LinkSharedPtr child_link = name_to_link[child_link_name];
+    LinkSharedPtr parent_link = name_to_link[parent_link_name];
+    LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Obtain joint params.
-    gtdynamics::JointParams parameters =
+    JointParams parameters =
         getJointParams(sdf_joint, joint_params);
 
     // Construct Joint and insert into name_to_joint.
-    gtdynamics::JointSharedPtr joint;
+    JointSharedPtr joint;
 
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:
-        joint = std::make_shared<gtdynamics::PrismaticJoint>(
-            gtdynamics::PrismaticJoint(sdf_joint, parameters,
+        joint = std::make_shared< PrismaticJoint>(
+            PrismaticJoint(sdf_joint, parameters,
                                    parent_link, child_link));
         break;
       case sdf::JointType::REVOLUTE:
-        joint = std::make_shared<gtdynamics::RevoluteJoint>(
-            gtdynamics::RevoluteJoint(sdf_joint, parameters,
+        joint = std::make_shared< RevoluteJoint>(
+            RevoluteJoint(sdf_joint, parameters,
                                       parent_link, child_link));
         break;
       case sdf::JointType::SCREW:
-        joint = std::make_shared<gtdynamics::ScrewJoint>(
-            gtdynamics::ScrewJoint(sdf_joint, parameters,
+        joint = std::make_shared< ScrewJoint>(
+            ScrewJoint(sdf_joint, parameters,
                                    parent_link, child_link));
         break;
       default:
@@ -130,7 +130,7 @@ LinkJointPair extractRobotFromSdf(
 
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params) {
+    const boost::optional<std::vector< JointParams>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
@@ -150,17 +150,17 @@ Robot::Robot(const std::string file_path, std::string model_name)
     : Robot(extractRobotFromFile(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
-  return getValues<std::string, gtdynamics::LinkSharedPtr>(name_to_link_);
+  return getValues<std::string,  LinkSharedPtr>(name_to_link_);
 }
 
 std::vector<JointSharedPtr> Robot::joints() const {
-  return getValues<std::string, gtdynamics::JointSharedPtr>(name_to_joint_);
+  return getValues<std::string,  JointSharedPtr>(name_to_joint_);
 }
 
 void Robot::removeLink(LinkSharedPtr link) {
   // remove all joints associated to the link
   auto joints = link->getJoints();
-  for (gtdynamics::JointSharedPtr joint : joints) {
+  for ( JointSharedPtr joint : joints) {
     removeJoint(joint);
   }
 
@@ -211,8 +211,8 @@ void Robot::printRobot() const {
 
   for (const auto &joint : joints()) {
     std::cout << joint->name() << ":\n";
-    gtdynamics::LinkSharedPtr parent_link = joint->parentLink();
-    gtdynamics::LinkSharedPtr child_link = joint->childLink();
+    LinkSharedPtr parent_link = joint->parentLink();
+    LinkSharedPtr child_link = joint->childLink();
     // TODO(aescontrela): Call link and joint toString methods here.
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
@@ -235,9 +235,9 @@ Robot::FKResults Robot::forwardKinematics(
   // link_poses["aa"] = Pose3();
 
   //// set root link
-  gtdynamics::LinkSharedPtr root_link;
+  LinkSharedPtr root_link;
   // check fixed links
-  for (gtdynamics::LinkSharedPtr link : links()) {
+  for (LinkSharedPtr link : links()) {
     if (link->isFixed()) {
       root_link = link;
       link_poses[link->name()] = link->getFixedPose();
@@ -262,8 +262,8 @@ Robot::FKResults Robot::forwardKinematics(
     const Pose3 T_w1 = link_poses.at(link1->name());
     const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
-    for (gtdynamics::JointSharedPtr joint : link1->getJoints()) {
-      gtdynamics::JointSharedPtr joint_ptr = joint;
+    for ( JointSharedPtr joint : link1->getJoints()) {
+      JointSharedPtr joint_ptr = joint;
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());

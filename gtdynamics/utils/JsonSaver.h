@@ -40,6 +40,7 @@
 
 #define kQuote_ "\""
 
+using namespace gtdynamics;
 namespace gtsam {
 /**
  * @brief
@@ -207,8 +208,8 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    if (const gtdynamics::TorqueFactor* f =
-            dynamic_cast<const gtdynamics::TorqueFactor*>(&(*factor))) {
+    if (const TorqueFactor* f =
+            dynamic_cast<const TorqueFactor*>(&(*factor))) {
       ss << GetVector(f->getScrewAxis().transpose());
     } else if (const PriorFactor<Vector3>* f =
                    dynamic_cast<const PriorFactor<Vector3>*>(&(*factor))) {
@@ -230,26 +231,26 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (dynamic_cast<const gtdynamics::WrenchFactor1*>(&(*factor))) {
+    if (dynamic_cast<const WrenchFactor1*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const gtdynamics::WrenchFactor2*>(&(*factor))) {
+    } else if (dynamic_cast<const WrenchFactor2*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const gtdynamics::WrenchFactor3*>(&(*factor))) {
+    } else if (dynamic_cast<const WrenchFactor3*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const gtdynamics::WrenchFactor4*>(&(*factor))) {
+    } else if (dynamic_cast<const WrenchFactor4*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const gtdynamics::PoseFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
       return "Pose";
-    } else if (dynamic_cast<const gtdynamics::TwistFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
       return "Twist";
-    } else if (dynamic_cast<const gtdynamics::TwistAccelFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
       return "TwistAccel";
-    } else if (dynamic_cast<const gtdynamics::TorqueFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
       return "Torque";
-    } else if (dynamic_cast<const gtdynamics::WrenchPlanarFactor*>(
+    } else if (dynamic_cast<const WrenchPlanarFactor*>(
                    &(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const gtdynamics::WrenchEquivalenceFactor*>(
+    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(
                    &(*factor))) {
       return "WrenchEq";
     } else if (dynamic_cast<const PriorFactor<double>*>(&(*factor))) {
