@@ -26,6 +26,7 @@
 
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 namespace example {
@@ -110,7 +111,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
   gtsam::Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
 
-  gtdynamics::WrenchEquivalenceFactor factor(
+  WrenchEquivalenceFactor factor(
       example::wrench_j_key, example::wrench_k_key, example::qKey,
       example::cost_model, kMj, screw_axis);
   double q = 0;

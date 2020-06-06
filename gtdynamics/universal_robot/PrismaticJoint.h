@@ -74,7 +74,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @param[in] child_link                 Shared pointer to the child Link.
   */
   PrismaticJoint(const sdf::Joint &sdf_joint,
-                 const gtdynamics::JointParams &parameters,
+                 const JointParams &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : PrismaticJoint(
           sdf_joint,

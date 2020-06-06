@@ -19,9 +19,8 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include <CppUnitLite/TestHarness.h>
+using namespace gtdynamics; 
 
-using gtdynamics::get_sdf, gtdynamics::ScrewJoint, gtdynamics::Link,
-    gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
@@ -34,10 +33,10 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  gtdynamics::Joint::Params parameters;
+  Joint::Params parameters;
   parameters.name = "j1";
-  parameters.joint_type = gtdynamics::Joint::JointType::Screw;
-  parameters.effort_type = gtdynamics::Joint::JointEffortType::Actuated;
+  parameters.joint_type = Joint::JointType::Screw;
+  parameters.effort_type = Joint::JointEffortType::Actuated;
   parameters.parent_link = l1;
   parameters.child_link = l2;
   parameters.wTj = Pose3(Rot3(), Point3(0, 0, 2));
@@ -45,18 +44,18 @@ TEST(Joint, params_constructor) {
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
 
-  gtdynamics::ScrewJointSharedPtr j1 =
-      std::make_shared<gtdynamics::ScrewJoint>(
-          gtdynamics::ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5));
+  ScrewJointSharedPtr j1 =
+      std::make_shared<ScrewJoint>(
+          ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Screw);
+  EXPECT(j1->jointType() == Joint::JointType::Screw);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == gtdynamics::Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -109,11 +108,11 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
   // constructor for j1
-  gtdynamics::JointParams j1_parameters;
+  JointParams j1_parameters;
   j1_parameters.name = "j1";
-  j1_parameters.jointEffortType = gtdynamics::Joint::JointEffortType::Actuated;
-  gtdynamics::ScrewJointSharedPtr j1 =
-      std::make_shared<gtdynamics::ScrewJoint>(gtdynamics::ScrewJoint(
+  j1_parameters.jointEffortType = Joint::JointEffortType::Actuated;
+  ScrewJointSharedPtr j1 =
+      std::make_shared<ScrewJoint>(ScrewJoint(
           *model.JointByName("joint_1"), j1_parameters.jointEffortType,
           j1_parameters.springCoefficient, j1_parameters.jointLimitThreshold,
           j1_parameters.velocityLimitThreshold, j1_parameters.accelerationLimit,

@@ -76,7 +76,7 @@ class ScrewJoint : public ScrewJointBase {
    * @param[in] child_link                 Shared pointer to the child Link.
   */
   ScrewJoint(const sdf::Joint &sdf_joint,
-                 const gtdynamics::JointParams &parameters,
+                 const JointParams &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJoint(
           sdf_joint,

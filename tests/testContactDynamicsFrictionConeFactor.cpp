@@ -29,6 +29,7 @@
 
 #include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -45,7 +46,7 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
 
   double mu = 1.0;
 
-  gtdynamics::ContactDynamicsFrictionConeFactor factor(
+  ContactDynamicsFrictionConeFactor factor(
       pose_key, contact_wrench_key, cost_model, mu, gravity);
 
   // Link completely upright with contact wrench pointed normal to ground.
@@ -130,7 +131,7 @@ TEST(ContactDynamicsFrictionConeFactor, optimization) {
 
   double mu = 1.0;
 
-  gtdynamics::ContactDynamicsFrictionConeFactor factor(
+  ContactDynamicsFrictionConeFactor factor(
       pose_key, contact_wrench_key, cost_model, mu, gravity);
 
   // Initial values.

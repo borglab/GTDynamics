@@ -27,6 +27,7 @@
 #include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -42,7 +43,7 @@ TEST(ContactKinematicsAccelFactor, error) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
+  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                                   cTcom);
 
   // A link with zero linear/angular accelration at its CoM should have zero
@@ -100,7 +101,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
+  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
                                                   cTcom);
 
   // Initial link twist.

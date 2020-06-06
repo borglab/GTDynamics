@@ -25,7 +25,7 @@
 // using namespace std;
 // using namespace gtdynamics;
 // using namespace gtsam;
-using gtdynamics::Robot;
+using namespace gtdynamics;
 
 namespace four_bar_linkage {
 Robot getFourBar() {

@@ -26,10 +26,11 @@
 #include "gtdynamics/factors/CollocationFactors.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Vector6, gtsam::Rot3;
 
 namespace example {
-// nosie model
+// noise model
 auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 gtsam::Symbol pose_i_key('p', 1), pose_j_key('p', 2), twist_i_key('v', 1),
               twist_j_key('v', 2), accel_i_key('a', 1), accel_j_key('a', 2),
@@ -45,10 +46,10 @@ TEST(PoseTwistFunctor, error) {
   Vector6 twistdt = twist * dt;
   Pose3 pose_j(Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
 
-  EXPECT(assert_equal(pose_j, gtdynamics::predictPose(pose_i, twistdt), 1e-6));
+  EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
 
   // Create factor
-  gtdynamics::EulerPoseColloFactor factor(
+  EulerPoseColloFactor factor(
       example::pose_i_key, example::pose_j_key, example::twist_i_key,
       example::dt_key, example::cost_model);
 
@@ -78,10 +79,10 @@ TEST(RandomData, EulerPose) {
   Vector6 twistdt = twist * dt;
   Pose3 pose_j = pose_i * Pose3::Expmap(twistdt);
 
-  EXPECT(assert_equal(pose_j, gtdynamics::predictPose(pose_i, twistdt), 1e-6));
+  EXPECT(assert_equal(pose_j, predictPose(pose_i, twistdt), 1e-6));
 
   // Create factor
-  gtdynamics::EulerPoseColloFactor factor(
+  EulerPoseColloFactor factor(
       example::pose_i_key, example::pose_j_key, example::twist_i_key,
       example::dt_key, example::cost_model);
 
@@ -113,7 +114,7 @@ TEST(RandomData, TrapezoidalPose) {
   Pose3 pose_j = pose_i * Pose3::Expmap(twistdt);
 
   // Create factor
-  gtdynamics::TrapezoidalPoseColloFactor factor(
+  TrapezoidalPoseColloFactor factor(
       example::pose_i_key, example::pose_j_key, example::twist_i_key,
       example::twist_j_key, example::dt_key, example::cost_model);
 
@@ -145,7 +146,7 @@ TEST(RandomData, EulerTwist) {
   double dt = 0.1;
 
   // Create factor
-  gtdynamics::EulerTwistColloFactor factor(
+  EulerTwistColloFactor factor(
       example::twist_i_key, example::twist_j_key, example::accel_i_key,
       example::dt_key, example::cost_model);
 
@@ -176,7 +177,7 @@ TEST(RandomData, TrapezoidalTwist) {
   double dt = 0.1;
 
   // Create factor
-  gtdynamics::TrapezoidalTwistColloFactor factor(
+  TrapezoidalTwistColloFactor factor(
       example::twist_i_key, example::twist_j_key, example::accel_i_key,
       example::accel_j_key, example::dt_key, example::cost_model);
 
