@@ -56,14 +56,12 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
       gtsam::Pose3(wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
                    gtsam::Point3(0.9, 0.9, 0.9)),
       init_vals.at<gtsam::Pose3>(
-          PoseKey(
-              my_robot.getLinkByName("l1")->getID(), n_steps_final - 1))));
+          PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1))));
 
   EXPECT(assert_equal(
       wTb_f,
       init_vals.at<gtsam::Pose3>(
-          PoseKey(
-              my_robot.getLinkByName("l1")->getID(), n_steps_final))));
+          PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final))));
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
@@ -90,8 +88,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
       gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
                    gtsam::Point3(0, -1, 1)),
       init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l2")->getID(), 0)),
-      1e-3));
+          PoseKey(my_robot.getLinkByName("l2")->getID(), 0)), 1e-3));
 
   EXPECT(assert_equal(
       wTb_t[0],
@@ -164,9 +161,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
       contact_points);
 
   EXPECT(assert_equal(
-      wTb_i,
-      init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), 0)),
-      1e-3));
+      wTb_i, init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), 0)), 1e-3));
 
   EXPECT(assert_equal(
       0.0,
