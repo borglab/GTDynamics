@@ -55,7 +55,7 @@ TEST(MinTorqueFactor, error) {
  * reached.
  **/
 TEST(MinTorqueFactor, optimization) {
-   MinTorqueFactor factor(example::torque_key, example::cost_model);
+  MinTorqueFactor factor(example::torque_key, example::cost_model);
 
   // Initial torque.
   double torque_init = 1e8;

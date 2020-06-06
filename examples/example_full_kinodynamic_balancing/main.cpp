@@ -128,11 +128,10 @@ int main(int argc, char** argv) {
   opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  auto graph_builder =  DynamicsGraph(opt);
+  auto graph_builder = DynamicsGraph(opt);
   gtsam::NonlinearFactorGraph graph = graph_builder.trajectoryFG(
-      vision60, t_steps, dt,
-       DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
-      boost::none, contact_points, mu);
+      vision60, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal,
+      gravity, boost::none, contact_points, mu);
 
   auto base_link = vision60.getLinkByName("body");
   gtsam::NonlinearFactorGraph objective_factors;
@@ -140,10 +139,9 @@ int main(int argc, char** argv) {
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(
-           base_link->getID(),
-           static_cast<int>(std::ceil(des_poses_t[i] / dt))),
-      des_poses[i], des_pose_nm));
+        PoseKey(base_link->getID(),
+                static_cast<int>(std::ceil(des_poses_t[i] / dt))),
+        des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
   objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
@@ -177,14 +175,14 @@ int main(int argc, char** argv) {
         JointVelKey(joint->getID(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
     objective_factors.add(gtsam::PriorFactor<double>(
-         JointAccelKey(joint->getID(), t_steps), 0.0,
+        JointAccelKey(joint->getID(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
   }
 
   // Add min torque objectives.
   for (int t = 0; t <= t_steps; t++) {
     for (auto&& joint : vision60.joints())
-      objective_factors.add( MinTorqueFactor(
+      objective_factors.add(MinTorqueFactor(
           TorqueKey(joint->getID(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
@@ -199,14 +197,14 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals =  InitializeSolutionInterpolationMultiPhase(
+    init_vals = InitializeSolutionInterpolationMultiPhase(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals =  ZeroValuesTrajectory(
+    init_vals = ZeroValuesTrajectory(
       vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals =  InitializeSolutionInverseKinematics(vision60,
+    init_vals = InitializeSolutionInverseKinematics(vision60,
       "body", base_pose_init, des_poses, des_poses_t, dt, 0.0, contact_points);
 
   gtsam::LevenbergMarquardtParams params;
@@ -215,7 +213,7 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   gtsam::Pose3 optimized_pose_init =
-      results.at<gtsam::Pose3>( PoseKey(base_link->getID(), 0));
+      results.at<gtsam::Pose3>(PoseKey(base_link->getID(), 0));
   gtsam::Pose3 optimized_pose_final =
       results.at<gtsam::Pose3>(
           PoseKey(base_link->getID(), t_steps - 1));

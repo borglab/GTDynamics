@@ -36,11 +36,11 @@ TEST(Joint, urdf_constructor) {
 
   JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
 
   // Test constructor.
   RevoluteJointSharedPtr j1 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -58,10 +58,10 @@ TEST(Joint, urdf_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() ==  Joint::JointType::Revolute);
+  EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() ==  Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -117,8 +117,8 @@ TEST(Joint, params_constructor) {
 
   Joint::Params params;
   params.name = "j1";
-  params.joint_type =  Joint::JointType::Revolute;
-  params.effort_type =  Joint::JointEffortType::Actuated;
+  params.joint_type = Joint::JointType::Revolute;
+  params.effort_type = Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
   params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
@@ -127,17 +127,17 @@ TEST(Joint, params_constructor) {
   params.joint_limit_threshold = 0;
 
   RevoluteJointSharedPtr j1 =
-      std::make_shared< RevoluteJoint>(
+      std::make_shared<RevoluteJoint>(
           RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() ==  Joint::JointType::Revolute);
+  EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() ==  Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -192,9 +192,9 @@ TEST(Joint, sdf_constructor) {
   // constructor for j1
   JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model.JointByName("joint_1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -221,9 +221,9 @@ TEST(Joint, sdf_constructor) {
   // constructor for j2
   JointParams j2_params;
   j2_params.name = "j2";
-  j2_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j2_params.jointEffortType = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j2 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model.JointByName("joint_2"), j2_params.jointEffortType,
           j2_params.springCoefficient, j2_params.jointLimitThreshold,
           j2_params.velocityLimitThreshold, j2_params.accelerationLimit,
@@ -256,9 +256,9 @@ TEST(Joint, limit_params) {
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
   JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model.JointByName("j1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -278,9 +278,9 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
   JointParams joint_1_params;
   joint_1_params.name = "j1";
-  joint_1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  joint_1_params.jointEffortType = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr joint_1 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model2.JointByName("joint_1"), joint_1_params.jointEffortType,
           joint_1_params.springCoefficient, joint_1_params.jointLimitThreshold,
           joint_1_params.velocityLimitThreshold,

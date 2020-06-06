@@ -38,7 +38,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
 
   // Test constructor.
   PrismaticJointSharedPtr j1 =
@@ -60,10 +60,10 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() ==  Joint::JointType::Prismatic);
+  EXPECT(j1->jointType() == Joint::JointType::Prismatic);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() ==  Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -124,8 +124,8 @@ TEST(Joint, params_constructor_prismatic) {
 
   Joint::Params params;
   params.name = "j1";
-  params.joint_type =  Joint::JointType::Prismatic;
-  params.effort_type =  Joint::JointEffortType::Actuated;
+  params.joint_type = Joint::JointType::Prismatic;
+  params.effort_type = Joint::JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
   params.wTj =
@@ -135,7 +135,7 @@ TEST(Joint, params_constructor_prismatic) {
   params.joint_limit_threshold = 0;
 
   PrismaticJointSharedPtr j1 =
-      std::make_shared< PrismaticJoint>(PrismaticJoint(
+      std::make_shared<PrismaticJoint>(PrismaticJoint(
           params, gtsam::Vector3(0, 0, 1)));
 
   // get shared ptr
@@ -149,10 +149,10 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() ==  Joint::JointType::Prismatic);
+  EXPECT(j1->jointType() == Joint::JointType::Prismatic);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() ==  Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);

@@ -296,12 +296,12 @@ int main(int argc, char **argv) {
     // Update the values for next iteration.
     values.clear();
     for (auto &&link : vision60.links())
-      values.insert( PoseKey(link->getID(), ti + 1),
-          results.at<gtsam::Pose3>( PoseKey(link->getID(), ti)));
+      values.insert(PoseKey(link->getID(), ti + 1),
+          results.at<gtsam::Pose3>(PoseKey(link->getID(), ti)));
     for (auto &&joint : vision60.joints())
       values.insert(
           JointAngleKey(joint->getID(), ti + 1),
-          results.atDouble( JointAngleKey(joint->getID(), ti)));
+          results.atDouble(JointAngleKey(joint->getID(), ti)));
 
     for (auto &&joint : vision60.joints())
       pose_file << ","

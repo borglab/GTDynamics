@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
   my_robot.getLinkByName("l1")->fix();
 
   // Build a factor graph with all the kinodynamics constraints.
-  DynamicsGraph dg_builder =   DynamicsGraph();
+  DynamicsGraph dg_builder = DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::NonlinearFactorGraph dfg =
       dg_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
   dfg.add(fd_priors);
 
   // Obtain solution initialization.
-  gtsam::Values init_values =   ZeroValues(my_robot, 0);
+  gtsam::Values init_values = ZeroValues(my_robot, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);

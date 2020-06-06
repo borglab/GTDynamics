@@ -35,8 +35,8 @@ TEST(Joint, params_constructor) {
 
   Joint::Params parameters;
   parameters.name = "j1";
-  parameters.joint_type =  Joint::JointType::Screw;
-  parameters.effort_type =  Joint::JointEffortType::Actuated;
+  parameters.joint_type = Joint::JointType::Screw;
+  parameters.effort_type = Joint::JointEffortType::Actuated;
   parameters.parent_link = l1;
   parameters.child_link = l2;
   parameters.wTj = Pose3(Rot3(), Point3(0, 0, 2));
@@ -44,18 +44,18 @@ TEST(Joint, params_constructor) {
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
 
-   ScrewJointSharedPtr j1 =
-      std::make_shared< ScrewJoint>(
-           ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5));
+  ScrewJointSharedPtr j1 =
+      std::make_shared<ScrewJoint>(
+          ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() ==  Joint::JointType::Screw);
+  EXPECT(j1->jointType() == Joint::JointType::Screw);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() ==  Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -110,9 +110,9 @@ TEST(Joint, sdf_constructor) {
   // constructor for j1
   JointParams j1_parameters;
   j1_parameters.name = "j1";
-  j1_parameters.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_parameters.jointEffortType = Joint::JointEffortType::Actuated;
   ScrewJointSharedPtr j1 =
-      std::make_shared< ScrewJoint>( ScrewJoint(
+      std::make_shared<ScrewJoint>(ScrewJoint(
           *model.JointByName("joint_1"), j1_parameters.jointEffortType,
           j1_parameters.springCoefficient, j1_parameters.jointLimitThreshold,
           j1_parameters.velocityLimitThreshold, j1_parameters.accelerationLimit,

@@ -253,7 +253,7 @@ TEST(forwardKinematics, four_bar) {
   four_bar.getLinkByName("l1")->fix();
 
   Robot::JointValues joint_angles, joint_vels;
-  for ( JointSharedPtr joint : four_bar.joints()) {
+  for (JointSharedPtr joint : four_bar.joints()) {
     joint_angles[joint->name()] = 0;
     joint_vels[joint->name()] = 0;
   }

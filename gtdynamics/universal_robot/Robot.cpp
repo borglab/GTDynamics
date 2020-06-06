@@ -41,7 +41,7 @@ std::vector<V> getValues(std::map<K, V> m) {
 
 JointParams getJointParams(
     const sdf::Joint &joint_i,
-    const boost::optional<std::vector< JointParams>> joint_params) {
+    const boost::optional<std::vector<JointParams>> joint_params) {
   JointParams default_params;
   JointParams jps;
   if (joint_params) {
@@ -65,7 +65,7 @@ LinkJointPair extractRobotFromSdf(
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
     LinkSharedPtr link =
-        std::make_shared< Link>(*sdf.LinkByIndex(i));
+        std::make_shared<Link>(*sdf.LinkByIndex(i));
     link->setID(i);
     name_to_link.insert(std::make_pair(link->name(), link));
   }
@@ -97,17 +97,17 @@ LinkJointPair extractRobotFromSdf(
 
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:
-        joint = std::make_shared< PrismaticJoint>(
+        joint = std::make_shared<PrismaticJoint>(
             PrismaticJoint(sdf_joint, parameters,
                                    parent_link, child_link));
         break;
       case sdf::JointType::REVOLUTE:
-        joint = std::make_shared< RevoluteJoint>(
+        joint = std::make_shared<RevoluteJoint>(
             RevoluteJoint(sdf_joint, parameters,
                                       parent_link, child_link));
         break;
       case sdf::JointType::SCREW:
-        joint = std::make_shared< ScrewJoint>(
+        joint = std::make_shared<ScrewJoint>(
             ScrewJoint(sdf_joint, parameters,
                                    parent_link, child_link));
         break;
@@ -130,7 +130,7 @@ LinkJointPair extractRobotFromSdf(
 
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector< JointParams>> joint_params) {
+    const boost::optional<std::vector<JointParams>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
@@ -150,17 +150,17 @@ Robot::Robot(const std::string file_path, std::string model_name)
     : Robot(extractRobotFromFile(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
-  return getValues<std::string,  LinkSharedPtr>(name_to_link_);
+  return getValues<std::string, LinkSharedPtr>(name_to_link_);
 }
 
 std::vector<JointSharedPtr> Robot::joints() const {
-  return getValues<std::string,  JointSharedPtr>(name_to_joint_);
+  return getValues<std::string, JointSharedPtr>(name_to_joint_);
 }
 
 void Robot::removeLink(LinkSharedPtr link) {
   // remove all joints associated to the link
   auto joints = link->getJoints();
-  for ( JointSharedPtr joint : joints) {
+  for (JointSharedPtr joint : joints) {
     removeJoint(joint);
   }
 
@@ -262,7 +262,7 @@ Robot::FKResults Robot::forwardKinematics(
     const Pose3 T_w1 = link_poses.at(link1->name());
     const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
-    for ( JointSharedPtr joint : link1->getJoints()) {
+    for (JointSharedPtr joint : link1->getJoints()) {
       JointSharedPtr joint_ptr = joint;
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2

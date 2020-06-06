@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   std::cout << "-------------" << std::endl;
 
   // Build the dynamics graph.
-  auto graph_builder =   DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   gtsam::NonlinearFactorGraph graph = graph_builder.dynamicsFactorGraph(
       my_robot, 0, gravity, planar_axis);
 
@@ -62,11 +62,11 @@ int main(int argc, char** argv) {
   // Add min torque factor to each joint. This factor minimizes torque squared.
   for (auto joint : my_robot.joints())
     graph.add(
-        MinTorqueFactor(  TorqueKey(joint->getID(), 0),
+        MinTorqueFactor(TorqueKey(joint->getID(), 0),
             gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  gtsam::Values init_values =   ZeroValues(my_robot, 0);
+  gtsam::Values init_values = ZeroValues(my_robot, 0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;
   graph_builder.printGraph(graph);

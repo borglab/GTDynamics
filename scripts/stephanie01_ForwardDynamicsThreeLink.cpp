@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  auto graph_builder =   DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   auto graph =
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
 
@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values =   ZeroValues(my_robot, 0);
+  auto init_values = ZeroValues(my_robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

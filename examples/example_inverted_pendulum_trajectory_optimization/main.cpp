@@ -29,7 +29,7 @@
 #include <boost/optional.hpp>
 
 using namespace gtdynamics; 
-using gtsam::noiseModel::Isotropic,  MinTorqueFactor;
+using gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.

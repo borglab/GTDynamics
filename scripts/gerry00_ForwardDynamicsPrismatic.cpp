@@ -23,7 +23,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
   // constraints.
-  auto simple_rpr =   Robot(
+  auto simple_rpr = Robot(
     "../../sdfs/test/simple_rpr.sdf", "simple_rpr_sdf");
   std::cout << "\033[1;31m" << "Robot Model:" << "\033[0m\n" << std::endl;
   simple_rpr.printRobot();
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
   const double dt = 0.1;
 
   // Build graph
-  auto graph_builder =   DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
   auto kdfg = graph_builder.trajectoryFG(
       simple_rpr,
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  auto init_values =   ZeroValuesTrajectory(simple_rpr, T, 0);
+  auto init_values = ZeroValuesTrajectory(simple_rpr, T, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);
@@ -65,10 +65,10 @@ int main(int argc, char** argv) {
   }
   std::cout << "\033[1;31m" << "Link Poses:" << "\033[0m\n" << std::endl;
   for (int t = 0; t <= T; t++) {
-    results.at<gtsam::Pose3>(  PoseKey(0, t)).translation().print();
-    results.at<gtsam::Pose3>(  PoseKey(1, t)).translation().print();
-    results.at<gtsam::Pose3>(  PoseKey(2, t)).translation().print();
-    results.at<gtsam::Pose3>(  PoseKey(3, t)).translation().print();
+    results.at<gtsam::Pose3>(PoseKey(0, t)).translation().print();
+    results.at<gtsam::Pose3>(PoseKey(1, t)).translation().print();
+    results.at<gtsam::Pose3>(PoseKey(2, t)).translation().print();
+    results.at<gtsam::Pose3>(PoseKey(3, t)).translation().print();
     std::cout << std::endl;
   }
 

@@ -37,11 +37,11 @@ TEST(Link, urdf_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
   JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType =  Joint::JointEffortType::Actuated;
+  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
 
   // Test constructor.
   RevoluteJointSharedPtr j1 =
-      std::make_shared< RevoluteJoint>( RevoluteJoint(
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,

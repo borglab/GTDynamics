@@ -138,7 +138,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(prior_factors);
 
-  gtsam::Values init_values =  ZeroValues(my_robot, 0);
+  gtsam::Values init_values = ZeroValues(my_robot, 0);
 
   // test the four bar linkage FD in the free-floating scenario
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
@@ -309,7 +309,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
     torques_seq.emplace_back((Vector(1) << i * 1.0 + 1.0).finished());
   }
 
-  Values init_values =  ZeroValuesTrajectory(my_robot, num_steps);
+  Values init_values = ZeroValuesTrajectory(my_robot, num_steps);
 
   // test Euler
   NonlinearFactorGraph euler_graph = graph_builder.trajectoryFG(
@@ -359,7 +359,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
                                          graph_builder.opt().time_cost_model));
   mp_prior_graph.add(PriorFactor<double>(PhaseKey(1), dt1,
                                          graph_builder.opt().time_cost_model));
-  init_values =  ZeroValuesTrajectory(my_robot, num_steps, 2);
+  init_values = ZeroValuesTrajectory(my_robot, num_steps, 2);
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
@@ -416,7 +416,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   using simple_rr::my_robot;
 
   // Add some contact points.
-  std::vector< ContactPoint> contact_points;
+  std::vector<ContactPoint> contact_points;
   contact_points.push_back(
       ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0});
 
@@ -461,7 +461,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key =  ContactWrenchKey(
+  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
@@ -474,7 +474,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   for (auto joint : my_robot.joints())
     EXPECT(assert_equal(
-        0, results.atDouble( TorqueKey(joint->getID(), 0))));
+        0, results.atDouble(TorqueKey(joint->getID(), 0))));
 }
 
 // Test contacts in dynamics graph.
@@ -484,7 +484,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
       Robot(std::string(URDF_PATH) + "/biped.urdf");
 
   // Add some contact points.
-  std::vector< ContactPoint> contact_points;
+  std::vector<ContactPoint> contact_points;
   contact_points.push_back(
       ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, -0.54});
   contact_points.push_back(
@@ -544,7 +544,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
     gtsam::Pose3 pose_optimized =
-        results.at<gtsam::Pose3>( PoseKey(l->getID(), 0));
+        results.at<gtsam::Pose3>(PoseKey(l->getID(), 0));
     gtsam::Pose3 comTc =
         gtsam::Pose3(pose_optimized.rotation(), contact_point.contact_point);
     normal_force =
@@ -570,11 +570,11 @@ TEST(jointlimitFactors, simple_urdf) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
-  Robot my_robot =  Robot(
+  Robot my_robot = Robot(
       std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.
-  std::vector< ContactPoint> contact_points;
+  std::vector<ContactPoint> contact_points;
   contact_points.push_back(
       ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0, 0});
 
@@ -622,7 +622,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key =  ContactWrenchKey(
+  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
@@ -635,7 +635,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   for (auto joint : my_robot.joints())
     EXPECT(assert_equal(
-        0, results.atDouble( TorqueKey(joint->getID(), 0))));
+        0, results.atDouble(TorqueKey(joint->getID(), 0))));
 }
 
 int main() {
