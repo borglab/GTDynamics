@@ -74,7 +74,7 @@ class RevoluteJoint : public ScrewJointBase {
    * @param[in] child_link                 Shared pointer to the child Link.
   */
   RevoluteJoint(const sdf::Joint &sdf_joint,
-                 const gtdynamics::JointParams &parameters,
+                 const JointParams &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : RevoluteJoint(
           sdf_joint,

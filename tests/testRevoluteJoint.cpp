@@ -20,9 +20,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 
-
-using gtdynamics::get_sdf, gtdynamics::RevoluteJoint, gtdynamics::Link,
-    gtdynamics::JointSharedPtr, gtdynamics::LinkSharedPtr;
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -36,13 +34,13 @@ TEST(Joint, urdf_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  gtdynamics::JointParams j1_params;
+  JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
+  j1_params.jointEffortType = JointEffortType::Actuated;
 
   // Test constructor.
-  gtdynamics::RevoluteJointSharedPtr j1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+  RevoluteJointSharedPtr j1 =
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -60,10 +58,10 @@ TEST(Joint, urdf_constructor) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
+  EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -117,10 +115,10 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  gtdynamics::Joint::Params params;
+  Joint::Params params;
   params.name = "j1";
-  params.joint_type = gtdynamics::Joint::JointType::Revolute;
-  params.effort_type = gtdynamics::JointEffortType::Actuated;
+  params.joint_type = Joint::JointType::Revolute;
+  params.effort_type = JointEffortType::Actuated;
   params.parent_link = l1;
   params.child_link = l2;
   params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
@@ -128,18 +126,18 @@ TEST(Joint, params_constructor) {
   params.joint_upper_limit = 1.57;
   params.joint_limit_threshold = 0;
 
-  gtdynamics::RevoluteJointSharedPtr j1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(
-          gtdynamics::RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
+  RevoluteJointSharedPtr j1 =
+      std::make_shared<RevoluteJoint>(
+          RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == gtdynamics::Joint::JointType::Revolute);
+  EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == gtdynamics::JointEffortType::Actuated);
+  EXPECT(j1->jointEffortType() == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -192,11 +190,11 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
   // constructor for j1
-  gtdynamics::JointParams j1_params;
+  JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
-  gtdynamics::RevoluteJointSharedPtr j1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+  j1_params.jointEffortType = JointEffortType::Actuated;
+  RevoluteJointSharedPtr j1 =
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model.JointByName("joint_1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -221,11 +219,11 @@ TEST(Joint, sdf_constructor) {
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
-  gtdynamics::JointParams j2_params;
+  JointParams j2_params;
   j2_params.name = "j2";
-  j2_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
-  gtdynamics::RevoluteJointSharedPtr j2 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+  j2_params.jointEffortType = JointEffortType::Actuated;
+  RevoluteJointSharedPtr j2 =
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model.JointByName("joint_2"), j2_params.jointEffortType,
           j2_params.springCoefficient, j2_params.jointLimitThreshold,
           j2_params.velocityLimitThreshold, j2_params.accelerationLimit,
@@ -256,16 +254,15 @@ TEST(Joint, limit_params) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("l1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
-  gtdynamics::JointParams j1_params;
+  JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
-  gtdynamics::RevoluteJointSharedPtr j1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
-          *model.JointByName("j1"), j1_params.jointEffortType,
-          j1_params.springCoefficient, j1_params.jointLimitThreshold,
-          j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-          j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold,
-          l1, l2));
+  j1_params.jointEffortType = JointEffortType::Actuated;
+  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(RevoluteJoint(
+      *model.JointByName("j1"), j1_params.jointEffortType,
+      j1_params.springCoefficient, j1_params.jointLimitThreshold,
+      j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
+      j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold, l1,
+      l2));
 
   EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
@@ -278,11 +275,11 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(Link(*model2.LinkByName("link_0")));
   LinkSharedPtr link_1 =
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
-  gtdynamics::JointParams joint_1_params;
+  JointParams joint_1_params;
   joint_1_params.name = "j1";
-  joint_1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
-  gtdynamics::RevoluteJointSharedPtr joint_1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+  joint_1_params.jointEffortType = JointEffortType::Actuated;
+  RevoluteJointSharedPtr joint_1 =
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *model2.JointByName("joint_1"), joint_1_params.jointEffortType,
           joint_1_params.springCoefficient, joint_1_params.jointLimitThreshold,
           joint_1_params.velocityLimitThreshold,

@@ -107,6 +107,20 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(
   return robot.linearFDPriors(t, torques, opt);
 }
 
+GaussianFactorGraph DynamicsGraph::linearIDPriors(
+    const Robot &robot, const int t, const JointValues &joint_accels) {
+  GaussianFactorGraph graph;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->getID();
+    double accel = joint_accels.at<double>(joint->getKey());
+    gtsam::Vector1 rhs;
+    rhs << accel;
+    graph.add(JointAccelKey(j, t), I_1x1, rhs,
+              gtsam::noiseModel::Constrained::All(1));
+  }
+  return graph;
+}
+
 Values DynamicsGraph::linearSolveFD(
     const Robot &robot, const int t, const JointValues &joint_angles,
     const JointValues &joint_vels, const JointValues &torques,
@@ -133,6 +147,47 @@ Values DynamicsGraph::linearSolveFD(
     values.insert(JointVelKey(j, t), joint_vels.at(key));
     values.insert(JointAccelKey(j, t), results.at(JointAccelKey(j, t))[0]);
     values.insert(TorqueKey(j, t), torques.at(key));
+    values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
+    values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+  }
+  const auto &poses = fk_results.first;
+  const auto &twists = fk_results.second;
+  for (LinkSharedPtr link : robot.links()) {
+    int i = link->getID();
+    std::string name = link->name();
+    values.insert(PoseKey(i, t), poses.at(name));
+    values.insert(TwistKey(i, t), twists.at(name));
+    values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+  }
+  return values;
+}
+
+Values DynamicsGraph::linearSolveID(
+    const Robot &robot, const int t, const JointValues &joint_angles,
+    const JointValues &joint_vels, const JointValues &joint_accels,
+    const Robot::FKResults &fk_results,
+    const boost::optional<gtsam::Vector3> &gravity,
+    const boost::optional<gtsam::Vector3> &planar_axis) {
+  // construct and solve linear graph
+  GaussianFactorGraph graph = linearDynamicsGraph(
+      robot, t, joint_angles, joint_vels, fk_results, gravity, planar_axis);
+  GaussianFactorGraph priors = linearIDPriors(robot, t, joint_accels);
+  for (auto &factor : priors) {
+    graph.add(factor);
+  }
+  gtsam::VectorValues results = graph.optimize();
+
+  // arrange values
+  Values values;
+  for (JointSharedPtr joint : robot.joints()) {
+    int j = joint->getID();
+    int i1 = joint->parentLink()->getID();
+    int i2 = joint->childLink()->getID();
+    gtsam::Key key = joint->getKey();
+    values.insert(JointAngleKey(j, t), joint_angles.at(key));
+    values.insert(JointVelKey(j, t), joint_vels.at(key));
+    values.insert(JointAccelKey(j, t), joint_accels.at(key));
+    values.insert(TorqueKey(j, t), results.at(TorqueKey(j, t))[0]);
     values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
     values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
   }

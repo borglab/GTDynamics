@@ -25,6 +25,7 @@
 
 #include "gtdynamics/factors/MinTorqueFactor.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 namespace example {
@@ -37,7 +38,7 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1);
 
 // Test Torque factor for stationary case
 TEST(MinTorqueFactor, error) {
-  gtdynamics::MinTorqueFactor factor(example::torque_key, example::cost_model);
+  MinTorqueFactor factor(example::torque_key, example::cost_model);
 
   EXPECT(assert_equal(
     (gtsam::Vector(1) << 20).finished(),
@@ -54,7 +55,7 @@ TEST(MinTorqueFactor, error) {
  * reached.
  **/
 TEST(MinTorqueFactor, optimization) {
-  gtdynamics::MinTorqueFactor factor(example::torque_key, example::cost_model);
+  MinTorqueFactor factor(example::torque_key, example::cost_model);
 
   // Initial torque.
   double torque_init = 1e8;

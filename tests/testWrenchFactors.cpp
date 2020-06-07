@@ -26,6 +26,7 @@
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 namespace example {
@@ -52,7 +53,7 @@ TEST(WrenchFactor2, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
+  WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
                                    example::wrench_1_key, example::wrench_2_key,
                                    example::pKey, example::cost_model,
                                    example::inertia, gravity);
@@ -85,7 +86,7 @@ TEST(WrenchFactor3, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  gtdynamics::WrenchFactor3 factor(
+  WrenchFactor3 factor(
       example::twist_key, example::twist_accel_key, example::wrench_1_key,
       example::wrench_2_key, example::wrench_3_key, example::pKey,
       example::cost_model, example::inertia, gravity);
@@ -120,7 +121,7 @@ TEST(WrenchFactor4, error_1) {
   gtsam::Vector3 gravity;
   gravity << 0, -9.8, 0;
 
-  gtdynamics::WrenchFactor4 factor(
+  WrenchFactor4 factor(
       example::twist_key, example::twist_accel_key, example::wrench_1_key,
       example::wrench_2_key, example::wrench_3_key, example::wrench_4_key,
       example::pKey, example::cost_model, example::inertia, gravity);
@@ -155,7 +156,7 @@ TEST(WrenchFactor4, error_1) {
 TEST(WrenchFactor2, error_2) {
   // Create all factors
 
-  gtdynamics::WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
+  WrenchFactor2 factor(example::twist_key, example::twist_accel_key,
                                    example::wrench_1_key, example::wrench_2_key,
                                    example::pKey, example::cost_model,
                                    example::inertia);

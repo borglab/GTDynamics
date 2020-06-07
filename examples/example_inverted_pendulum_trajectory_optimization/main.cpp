@@ -28,13 +28,12 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 
-using gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
-    gtdynamics::JointAccelKey, gtdynamics::TorqueKey,
-    gtsam::noiseModel::Isotropic, gtdynamics::MinTorqueFactor;
+using namespace gtdynamics; 
+using gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto ip = gtdynamics::Robot("../inverted_pendulum.urdf");
+  auto ip = Robot("../inverted_pendulum.urdf");
   auto j1_id = ip.getJointByName("j1")->getID();
   ip.getLinkByName("l1")->fix();
   ip.printRobot();
@@ -53,9 +52,9 @@ int main(int argc, char** argv) {
   double theta_T = M_PI, dtheta_T = 0, ddtheta_T = 0;
 
   // Create trajectory factor graph.
-  auto graph_builder = gtdynamics::DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   auto graph = graph_builder.trajectoryFG(
-    ip, t_steps, dt, gtdynamics::DynamicsGraph::CollocationScheme::Trapezoidal,
+    ip, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal,
     gravity, planar_axis);
 
   // Add initial conditions to trajectory factor graph.
@@ -75,7 +74,7 @@ int main(int argc, char** argv) {
     graph.emplace_shared<MinTorqueFactor>(TorqueKey(j1_id, t), control_model);
 
   // Initialize solution.
-  auto init_vals = gtdynamics::ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
+  auto init_vals = ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);

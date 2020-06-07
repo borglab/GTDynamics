@@ -27,6 +27,7 @@
 
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -40,7 +41,7 @@ TEST(ContactKinematicsPoseFactor, error) {
 
   // Transform from the robot com to the link end.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsPoseFactor factor(
+  ContactKinematicsPoseFactor factor(
       pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
       0);
 
@@ -96,7 +97,7 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
 
   // Create a factor that establishes a ground plane at z = -1.0.
-  gtdynamics::ContactKinematicsPoseFactor factor(
+  ContactKinematicsPoseFactor factor(
       pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
       -1.0);
 
@@ -151,7 +152,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
 
   // Transform from the contact frame to the link com.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsPoseFactor factor(
+  ContactKinematicsPoseFactor factor(
       pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
   // Initial link pose.

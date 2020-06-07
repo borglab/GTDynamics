@@ -21,8 +21,7 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/utils/utils.h"
 
-using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
-    gtdynamics::extractRobotFromSdf;
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
@@ -32,14 +31,14 @@ TEST(Robot, simple_urdf) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   LinkJointPair links_and_joints = extractRobotFromSdf(simple_urdf);
-  gtdynamics::LinkMap name_to_link = links_and_joints.first;
-  gtdynamics::JointMap name_to_joint = links_and_joints.second;
+  LinkMap name_to_link = links_and_joints.first;
+  JointMap name_to_joint = links_and_joints.second;
   EXPECT(assert_equal(2, name_to_link.size()));
   EXPECT(assert_equal(1, name_to_joint.size()));
 
-  gtdynamics::LinkConstSharedPtr l1 = name_to_link.at("l1");
-  gtdynamics::LinkConstSharedPtr l2 = name_to_link.at("l2");
-  gtdynamics::JointSharedPtr j1 = name_to_joint.at("j1");
+  LinkConstSharedPtr l1 = name_to_link.at("l1");
+  LinkConstSharedPtr l2 = name_to_link.at("l2");
+  JointSharedPtr j1 = name_to_joint.at("j1");
   EXPECT(assert_equal(1, l1->getJoints().size()));
   EXPECT(assert_equal(1, l2->getJoints().size()));
   EXPECT(l1->getID() == 0);
@@ -253,8 +252,8 @@ TEST(forwardKinematics, four_bar) {
       Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.getLinkByName("l1")->fix();
 
-  gtsam::Values joint_angles, joint_vels;
-  for (gtdynamics::JointSharedPtr joint : four_bar.joints()) {
+  JointValues joint_angles, joint_vels;
+  for (JointSharedPtr joint : four_bar.joints()) {
     joint_angles.insert<double>(joint->getKey(), 0);
     joint_vels.insert<double>(joint->getKey(), 0);
   }

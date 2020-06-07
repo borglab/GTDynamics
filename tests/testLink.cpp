@@ -21,7 +21,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 
-using gtdynamics::get_sdf, gtdynamics::Link, gtdynamics::Joint;
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -31,17 +31,17 @@ TEST(Link, urdf_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
-  gtdynamics::LinkSharedPtr l1 =
+  LinkSharedPtr l1 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
-  gtdynamics::LinkSharedPtr l2 =
+  LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
-  gtdynamics::JointParams j1_params;
+  JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = gtdynamics::JointEffortType::Actuated;
+  j1_params.jointEffortType = JointEffortType::Actuated;
 
   // Test constructor.
-  gtdynamics::RevoluteJointSharedPtr j1 =
-      std::make_shared<gtdynamics::RevoluteJoint>(gtdynamics::RevoluteJoint(
+  RevoluteJointSharedPtr j1 =
+      std::make_shared<RevoluteJoint>(RevoluteJoint(
           *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
           j1_params.springCoefficient, j1_params.jointLimitThreshold,
           j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
@@ -98,14 +98,14 @@ TEST(Link, urdf_constructor) {
  * Construct the same link via Params and ensure all values are as expected.
  */
 TEST(Link, params_constructor) {
-  gtdynamics::Link::Params params;
+  Link::Params params;
   params.mass = 100;
   params.name = "l1";
   params.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
   params.wTl = gtsam::Pose3();
   params.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
 
-  gtdynamics::LinkSharedPtr l1 = std::make_shared<Link>(Link(params));
+  LinkSharedPtr l1 = std::make_shared<Link>(Link(params));
 
   // name
   EXPECT(assert_equal("l1", l1->name()));
