@@ -22,9 +22,10 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
-  using three_link::my_robot;
+  using simple_rr::my_robot;
 
   // Build the factor graph for the robot.
+  my_robot.getLinkByName("link_0")->fix();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
