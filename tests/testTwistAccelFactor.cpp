@@ -47,7 +47,7 @@ TEST(TwistAccelFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TwistAccelFactor factor(
+  TwistAccelFactor<ScrewJointBase> factor(
       example::twistKey, example::twistAccel_i_key, example::twistAccel_j_key,
       example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
       jMi, screw_axis);

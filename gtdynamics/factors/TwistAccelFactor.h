@@ -30,93 +30,71 @@ namespace gtdynamics {
 
 /** TwistAccelFactor is a six-way nonlinear factor which enforces relation
  * between acceleration on previous link and this link*/
-class TwistAccelFactor
-    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                      gtsam::Vector6, double, double, double> {
+class TwistAccelFactor : public gtsam::NoiseModelFactor6<
+                             gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                             JointTyped::AngleType,
+                             JointTyped::AngleTangentType,
+                             JointTyped::AngleTangentType> {
  private:
+  typedef JointTyped::AngleType JointAngleType;
+  typedef JointTyped::AngleTangentType JointAngleTangentType;
   typedef TwistAccelFactor This;
   typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, double, double, double>
+                                   gtsam::Vector6, JointAngleType,
+                                   JointAngleTangentType, JointAngleTangentType>
       Base;
-  gtsam::Pose3 jMi_;
-  gtsam::Vector6 screw_axis_;
+  JointSharedPtr joint_;
 
  public:
-  /** factor linking this link's twist_accel, joint_coordinate, joint_vel,
-     joint_accel with previous link's twist_accel. Keyword arguments: jMi --
-     previous COM frame, expressed in this link's COM frame, at rest
-     configuration screw_axis -- screw axis expressed in link's COM frame Will
-     create factor corresponding to Lynch & Park book:
-          - twist acceleration, Equation 8.47, page 293
+  /** factor linking child link's twist_accel, joint_coordinate, joint_vel,
+     joint_accel with previous link's twist_accel.
+     Keyword arguments:
+        joint         -- JointSharedPtr to the joint
+        
+    Will create factor corresponding to Lynch & Park book: twist acceleration,
+    Equation 8.47, page 293
    */
-  TwistAccelFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key_i,
-                   gtsam::Key twistAccel_key_j, gtsam::Key q_key,
+  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
+                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, twist_key, twistAccel_key_i, twistAccel_key_j, q_key,
+                   JointSharedPtr joint)
+      : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
-        jMi_(jMi),
-        screw_axis_(screw_axis) {}
+        joint_(joint) {}
   virtual ~TwistAccelFactor() {}
 
  private:
-  /* calculate jacobian of adjointV term w.r.t. joint coordinate twist */
-  gtsam::Matrix6 twistJacobian_(const double &qVel) const {
-    gtsam::Matrix6 H_twist = -gtsam::Pose3::adjointMap(screw_axis_ * qVel);
-    return H_twist;
-  }
-
-  /* calculate jacobian of AdjointMap term w.r.t. joint coordinate q */
-  gtsam::Matrix61 qJacobian_(const double &q,
-                             const gtsam::Vector6 &twist_accel_i) const {
-    auto H = AdjointMapJacobianQ(q, jMi_, screw_axis_);
-    return H * twist_accel_i;
-  }
 
  public:
   /** evaluate twist acceleration errors
       Keyword argument:
-          twistAccel_i          -- twist acceleration on previous link
-          twistAccel_j          -- twist acceleration on this link
-          twist                 -- twist on this link
+          twistAccel_p          -- twist acceleration on parent link
+          twistAccel_c          -- twist acceleration on child link
+          twist_c               -- twist on child link
           q                     -- joint coordination
           qVel                  -- joint velocity
           qAccel                -- joint acceleration
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel_i,
-      const gtsam::Vector6 &twistAccel_j, const double &q, const double &qVel,
-      const double &qAccel,
-      boost::optional<gtsam::Matrix &> H_twist = boost::none,
-      boost::optional<gtsam::Matrix &> H_twistAccel_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_twistAccel_j = boost::none,
+      const gtsam::Vector6 &twist_c, const gtsam::Vector6 &twistAccel_p,
+      const gtsam::Vector6 &twistAccel_c, const JointAngleType &q, const JointAngleTangentType &qVel,
+      const JointAngleTangentType &qAccel,
+      boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
+      boost::optional<gtsam::Matrix &> H_twistAccel_p = boost::none,
+      boost::optional<gtsam::Matrix &> H_twistAccel_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
-    gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
-    gtsam::Matrix6 H_adjoint;
-    gtsam::Vector6 error =
-        twistAccel_j - jTi.AdjointMap() * twistAccel_i -
-        gtsam::Pose3::adjoint(twist, screw_axis_ * qVel, H_adjoint) -
-        screw_axis_ * qAccel;
-    if (H_twist) {
-      *H_twist = -H_adjoint;
-    }
-    if (H_twistAccel_i) {
-      *H_twistAccel_i = -jTi.AdjointMap();
-    }
-    if (H_twistAccel_j) {
-      *H_twistAccel_j = gtsam::I_6x6;
-    }
-    if (H_q) {
-      *H_q = -qJacobian_(q, twistAccel_i);
-    }
-    if (H_qVel) {
-      *H_qVel = -gtsam::Pose3::adjointMap(twist) * screw_axis_;
-    }
-    if (H_qAccel) {
-      *H_qAccel = -screw_axis_;
+    
+    auto error = std::static_pointer_cast<JointTyped>(joint_).transformTwistAccelTo(
+                     joint_->parentLink(),
+                     q, qVel, qAccel, twist_c, twistAccel_c,
+                     H_q, H_qVel, H_qAccel, H_twist_c, H_twistAccel_c) -
+                     twistAccel_p;
+
+    if (H_twistAccel_p) {
+      *H_twistAccel_p = -gtsam::I_6x6;
     }
 
     return error;

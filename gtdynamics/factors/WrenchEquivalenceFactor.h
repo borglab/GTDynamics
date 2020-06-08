@@ -78,6 +78,10 @@ class WrenchEquivalenceFactor
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     gtsam::Pose3 T_21 = gtsam::Pose3::Expmap(-screw_axis_ * q) * M_21_;
 
+    // T_21 = transformFrom(link1, q, H_q);
+
+    // H_q = H_q * wrench_2
+
     gtsam::Vector6 error = wrench_1 + T_21.AdjointMap().transpose() * wrench_2;
 
     if (H_wrench_1) {
