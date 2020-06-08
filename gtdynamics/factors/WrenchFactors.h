@@ -46,7 +46,6 @@ class WrenchFactor0
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -165,7 +164,6 @@ class WrenchFactor1
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -290,7 +288,6 @@ class WrenchFactor2
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -424,7 +421,6 @@ class WrenchFactor3
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -667,7 +663,6 @@ class WrenchFactor4
       Base;
   gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:

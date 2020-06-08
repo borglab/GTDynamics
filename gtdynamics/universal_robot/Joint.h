@@ -237,33 +237,44 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Parameters.
   virtual JointType jointType() const = 0;
 
-  /// Return the transform from this link com to the other link
-  /// com frame given a Values object containing this joint's angle Value
-  virtual gtsam::Pose3 transformFrom(
-      const LinkSharedPtr link,
-      boost::optional<const gtsam::Values&> q = boost::none) const = 0;
-
-  /// Return the twist of the other link given this link's
-  /// twist and a Values object containing this joint's angle Value.
-  virtual gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr link,
-      boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> this_twist = boost::none) const = 0;
-
   /// Abstract method. Return the transform from the other link com to this link
   /// com frame given a Values object containing this joint's angle Value
   virtual gtsam::Pose3 transformTo(
       const LinkSharedPtr link,
-      boost::optional<const gtsam::Values&> q = boost::none) const = 0;
+      boost::optional<const gtsam::Values&> q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
-  /// Abstract method. Return the twist of this link given the other link's
+  /// Abstract method. Return the twist of the other link given this link's
   /// twist and a Values object containing this joint's angle Value.
   virtual gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      boost::optional<gtsam::Matrix &> H_other_twist = boost::none) const = 0;
+
+  /// Return the twist acceleration of the other link given this link's
+  /// twist accel and a Values object containing this joint's angle Value and
+  /// derivatives.
+  virtual gtsam::Vector6 transformTwistAccelTo(
+      const LinkSharedPtr link,
+      boost::optional<gtsam::Values> q = boost::none,
+      boost::optional<gtsam::Values> q_dot = boost::none,
+      boost::optional<gtsam::Values> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
+      boost::optional<gtsam::Matrix &> H_other_twist = boost::none,
+      boost::optional<gtsam::Matrix &> H_other_twist_accel = boost::none) const = 0;
+
+  /// Return the torque of the joint given the wrench on the child link.
+  virtual gtsam::Values transformWrenchToTorque(
+      boost::optional<gtsam::Vector6> wrench = boost::none,
+      boost::optional<gtsam::Matrix &> H_wrench = boost::none) const = 0;
 
   /** @fn (ABSTRACT) Return pose factors in the dynamics graph.
    * 
@@ -358,6 +369,48 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /**@}*/
+
+  /// Return the transform from this link com to the other link
+  /// com frame given a Values object containing this joint's angle Value
+  gtsam::Pose3 transformFrom(
+      const LinkSharedPtr link,
+      boost::optional<const gtsam::Values&> q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+    return transformTo(otherLink(link), q, H_q);
+  }
+
+  /// Return the twist of the other link given this link's
+  /// twist and a Values object containing this joint's angle Value.
+  gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link,
+      boost::optional<gtsam::Values> q = boost::none,
+      boost::optional<gtsam::Values> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      boost::optional<gtsam::Matrix &> H_this_twist = boost::none) const {
+    return transformTwistTo(otherLink(link), q, H_q);
+  }
+
+  /// Return the twist acceleration of the other link given this link's
+  /// twist accel and a Values object containing this joint's angle Value and
+  /// derivatives.
+  gtsam::Vector6 transformTwistAccelFrom(
+      const LinkSharedPtr link,
+      boost::optional<gtsam::Values> q = boost::none,
+      boost::optional<gtsam::Values> q_dot = boost::none,
+      boost::optional<gtsam::Values> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      boost::optional<gtsam::Vector6> this_twist_accel = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
+      boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
+      boost::optional<gtsam::Matrix &> H_this_twist_accel = boost::none) const {
+    return transformTwistAccelTo(otherLink(link), q, q_dot, q_ddot, this_twist,
+                                 this_twist_accel, H_q, H_q_dot, H_q_ddot,
+                                 H_this_twist, H_this_twist_accel);
+  }
 };
 
 /**
@@ -368,32 +421,19 @@ class Joint : public std::enable_shared_from_this<Joint> {
 template <class JointAngleType, class JointAngleTangentType>
 class JointTyped : public Joint {
  public:
+  typedef JointAngleType AngleType;
+  // TODO(gerry+stephanie): fix this for double
+  // typedef typename JointAngleType::TangentVector JointAngleTangentType;
+  typedef JointAngleTangentType AngleTangentType;
+  enum { N = JointAngleType::dimension };
 
-  /// Inherit constructors
-  using Joint::Joint;
-
+ protected:
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame
   virtual gtsam::Pose3 transformFromImpl(
       const LinkSharedPtr link,
-      boost::optional<JointAngleType> q = boost::none) const = 0;
-
-  /// Convenience method. Return the transform from this link com to the other link
-  /// com frame
-  gtsam::Pose3 transformFrom(
-      const LinkSharedPtr link,
-      const JointAngleType q) const { return transformFromImpl(link, q); }
-
-  /// Return the transform from this link com to the other link
-  /// com frame given a Values object containing this joint's angle Value
-  gtsam::Pose3 transformFrom(
-      const LinkSharedPtr link,
-      boost::optional<const gtsam::Values&> q = boost::none) const {
-    if (q && q->exists<JointAngleType>(getKey()))
-      return transformFromImpl(link, q->at<JointAngleType>(getKey()));
-    else
-      return transformFromImpl(link, boost::none);
-  }
+      boost::optional<JointAngleType> q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /// Abstract method. Return the twist of the other link given this link's
   /// twist and joint angle.
@@ -401,72 +441,17 @@ class JointTyped : public Joint {
       const LinkSharedPtr link,
       boost::optional<JointAngleType> q = boost::none,
       boost::optional<JointAngleTangentType> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> this_twist = boost::none) const = 0;
-
-  /// Convenience method. Return the twist of the other link given this link's
-  /// twist and joint angle.
-  gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr link,
-      JointAngleType q,
-      boost::optional<JointAngleTangentType> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> this_twist = boost::none) const {
-    return transformTwistFromImpl(link, q, q_dot, this_twist);
-  }
-
-  /// Convenience method. Return the twist of the other link given this link's
-  /// twist and joint angle.
-  gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr link,
-      gtsam::Vector6 this_twist) const {
-    return transformTwistFromImpl(link, boost::none, boost::none, this_twist);
-  }
-
-  /// Return the twist of the other link given this link's
-  /// twist and a Values object containing this joint's angle Value.
-  gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr link,
-      boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> this_twist = boost::none) const {
-    if (q && q->exists<JointAngleType>(getKey())) {
-      if (q_dot && q_dot->exists<JointAngleTangentType>(getKey())) {
-        return transformTwistFromImpl(link,
-            q->at<JointAngleType>(getKey()),
-            q_dot->at<JointAngleTangentType>(getKey()),
-            this_twist);
-      } else {
-        return transformTwistFromImpl(link,
-          q->at<JointAngleType>(getKey()),
-          boost::none,
-          this_twist);
-      }
-    } else {
-      return transformTwistFromImpl(link, boost::none, boost::none, this_twist);
-    }
-  }
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist = boost::none) const = 0;
 
   /// Abstract method. Return the transform from the other link com to this link
   /// com frame
   virtual gtsam::Pose3 transformToImpl(
       const LinkSharedPtr link,
-      boost::optional<JointAngleType> q = boost::none) const = 0;
-
-  /// Convenience method. Return the transform from this link com to the other link
-  /// com frame
-  gtsam::Pose3 transformTo(
-      const LinkSharedPtr link,
-      const JointAngleType q) const { return transformToImpl(link, q); }
-
-  /// Return the transform from the other link com to this link
-  /// com frame given a Values object containing this joint's angle Value
-  gtsam::Pose3 transformTo(
-      const LinkSharedPtr link,
-      boost::optional<const gtsam::Values&> q = boost::none) const {
-    if (q && q->exists<JointAngleType>(getKey()))
-      return transformToImpl(link, q->at<JointAngleType>(getKey()));
-    else
-      return transformToImpl(link, boost::none);
-  }
+      boost::optional<JointAngleType> q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /// Abstract method. Return the twist of this link given the other link's
   /// twist and joint angle.
@@ -474,7 +459,119 @@ class JointTyped : public Joint {
       const LinkSharedPtr link,
       boost::optional<JointAngleType> q = boost::none,
       boost::optional<JointAngleTangentType> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none) const = 0;
+  
+  virtual gtsam::Vector6 transformTwistAccelToImpl(
+      const LinkSharedPtr link,
+      boost::optional<gtsam::Values> q = boost::none,
+      boost::optional<gtsam::Values> q_dot = boost::none,
+      boost::optional<gtsam::Values> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist_accel = boost::none) const = 0;
+
+  virtual JointAngleTangentType transformWrenchToTorqueImpl(
+      boost::optional<gtsam::Vector6> wrench = boost::none,
+      gtsam::OptionalJacobian<6, N> H_wrench = boost::none) const = 0;
+
+ public:
+  /// Inherit constructors
+  using Joint::Joint;
+
+  /// Convenience method. Return the transform from this link com to the other link
+  /// com frame
+  gtsam::Pose3 transformFrom(const LinkSharedPtr link, const JointAngleType q,
+                             gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
+    return transformFromImpl(link, q, H_q);
+  }
+
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link,
+      JointAngleType q,
+      boost::optional<JointAngleTangentType> q_dot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist = boost::none) const {
+    return transformTwistFromImpl(link, q, q_dot, this_twist, H_q, H_q_dot,
+                                  H_this_twist);
+  }
+
+  /// Convenience method. Return the twist of the other link given this link's
+  /// twist and joint angle.
+  gtsam::Vector6 transformTwistFrom(
+      const LinkSharedPtr link,
+      gtsam::Vector6 this_twist,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist = boost::none) const {
+    return transformTwistFromImpl(link, boost::none, boost::none, this_twist,
+                                  H_q, H_q_dot, H_this_twist);
+  }
+
+  /// Convenience method. Return the twist acceleration of the other link given
+  /// this link's twist accel and a Values object containing this joint's angle
+  /// Value and derivatives.
+  gtsam::Vector6 transformTwistAccelFrom(
+      const LinkSharedPtr link,
+      JointAngleType q,
+      boost::optional<JointAngleTangentType> q_dot = boost::none,
+      boost::optional<JointAngleTangentType> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      boost::optional<gtsam::Vector6> this_twist_accel = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist_accel = boost::none) const {
+    return transformTwistAccelToImpl(link, q, q_dot, q_ddot, this_twist, this_twist_accel,
+                                     H_q, H_q_dot, H_q_ddot, H_this_twist,
+                                     H_this_twist_accel);
+  }
+
+  /// Convenience method. Return the twist acceleration of the other link given
+  /// this link's twist accel and a Values object containing this joint's angle
+  /// Value and derivatives.
+  gtsam::Vector6 transformTwistAccelFrom(
+      const LinkSharedPtr link,
+      gtsam::Vector6 this_twist_accel,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_this_twist_accel = boost::none) const {
+    return transformTwistFromImpl(link, boost::none, boost::none, boost::none, boost::none,
+                                  this_twist_accel,
+                                  H_q, H_q_dot, H_q_ddot, H_this_twist, H_this_twist_accel);
+  }
+
+  /// Convenience method. Return the transform from this link com to the other link
+  /// com frame
+  gtsam::Pose3 transformTo(const LinkSharedPtr link, const JointAngleType q,
+                           gtsam::OptionalJacobian<6, N> H_q) const {
+    return transformToImpl(link, q, H_q);
+  }
+
+  /// Return the transform from the other link com to this link
+  /// com frame given a Values object containing this joint's angle Value
+  gtsam::Pose3 transformTo(
+      const LinkSharedPtr link,
+      boost::optional<const gtsam::Values&> q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none) const override {
+    if (q && q->exists<JointAngleType>(getKey()))
+      return transformToImpl(link, q->at<JointAngleType>(getKey()), H_q);
+    else
+      return transformToImpl(link, boost::none, H_q);
+  }
 
   /// Convenience method. Return the twist of the other link given this link's
   /// twist and joint angle.
@@ -482,16 +579,24 @@ class JointTyped : public Joint {
       const LinkSharedPtr link,
       JointAngleType q,
       boost::optional<JointAngleTangentType> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> this_twist = boost::none) const {
-    return transformTwistToImpl(link, q, q_dot, this_twist);
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none) const {
+    return transformTwistToImpl(link, q, q_dot, other_twist, H_q, H_q_dot,
+                                H_other_twist);
   }
 
   /// Convenience method. Return the twist of the other link given this link's
   /// twist and joint angle.
   gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr link,
-      gtsam::Vector6 this_twist) const {
-    return transformTwistToImpl(link, boost::none, boost::none, this_twist);
+      gtsam::Vector6 other_twist,
+      gtsam::OptionalJacobian<6, N> H_q,
+      gtsam::OptionalJacobian<6, N> H_q_dot,
+      gtsam::OptionalJacobian<6, N> H_other_twist) const {
+    return transformTwistToImpl(link, boost::none, boost::none, other_twist,
+                                H_q, H_q_dot, H_other_twist);
   }
 
   /// Return the twist of this link given the other link's
@@ -500,22 +605,124 @@ class JointTyped : public Joint {
       const LinkSharedPtr link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> other_twist = boost::none) const {
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none) const override {
     if (q && q->exists<JointAngleType>(getKey())) {
       if (q_dot && q_dot->exists<JointAngleTangentType>(getKey())) {
         return transformTwistToImpl(link,
             q->at<JointAngleType>(getKey()),
             q_dot->at<JointAngleTangentType>(getKey()),
-            other_twist);
+            other_twist,
+            H_q, H_q_dot, H_other_twist);
       } else {
         return transformTwistToImpl(link,
           q->at<JointAngleType>(getKey()),
           boost::none,
-          other_twist);
+          other_twist,
+          H_q, H_q_dot, H_other_twist);
       }
     } else {
-      return transformTwistToImpl(link, boost::none, boost::none, other_twist);
+      return transformTwistToImpl(link, boost::none, boost::none, other_twist,
+                                  H_q, H_q_dot, H_other_twist);
     }
+  }
+
+  /// Convenience method. Return the twist acceleration of the other link given
+  /// this link's twist acceleration and joint angle.
+  gtsam::Vector6 transformTwistAccelTo(
+      const LinkSharedPtr link,
+      JointAngleType q,
+      boost::optional<JointAngleTangentType> q_dot = boost::none,
+      boost::optional<JointAngleTangentType> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist_accel = boost::none) const {
+    return transformTwistAccelToImpl(link, q, q_dot, q_ddot, other_twist,
+                                     other_twist_accel, H_q, H_q_dot, H_q_ddot,
+                                     H_other_twist, H_other_twist_accel);
+  }
+
+  /// Convenience method. Return the twist acceleration of the other link given
+  /// this link's twist acceleration and joint angle.
+  gtsam::Vector6 transformTwistAccelTo(
+      const LinkSharedPtr link,
+      gtsam::Vector6 other_twist_accel,
+      gtsam::OptionalJacobian<6, N> H_q,
+      gtsam::OptionalJacobian<6, N> H_q_dot,
+      gtsam::OptionalJacobian<6, N> H_q_ddot,
+      gtsam::OptionalJacobian<6, N> H_other_twist,
+      gtsam::OptionalJacobian<6, N> H_other_twist_accel) const {
+    return transformTwistToAccelImpl(link, boost::none, boost::none,
+                                     boost::none, boost::none,
+                                     other_twist_accel, H_q, H_q_dot, H_q_ddot,
+                                     H_other_twist, H_other_twist_accel);
+  }
+
+  /// Return the twist acceleration of the other link given this link's
+  /// twist accel and a Values object containing this joint's angle Value and
+  /// derivatives.
+  gtsam::Vector6 transformTwistAccelTo(
+      const LinkSharedPtr link, boost::optional<gtsam::Values> q = boost::none,
+      boost::optional<gtsam::Values> q_dot = boost::none,
+      boost::optional<gtsam::Values> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist = boost::none,
+      gtsam::OptionalJacobian<6, N> H_other_twist_accel =
+          boost::none) const override {
+    if (q && q->exists<JointAngleType>(getKey())) {
+      if (q_dot && q_dot->exists<JointAngleTangentType>(getKey())) {
+        if (q_ddot && q_ddot->exists<JointAngleTangentType>(getKey())) {
+          return transformTwistAccelToImpl(link,
+              q->at<JointAngleType>(getKey()),
+              q_dot->at<JointAngleTangentType>(getKey()),
+              q_ddot->at<JointAngleTangentType>(getKey()),
+              other_twist,
+              other_twist_accel,
+              H_q, H_q_dot, H_q_ddot, H_other_twist, H_other_twist_accel);
+        } else {
+          return transformTwistAccelToImpl(link,
+              q->at<JointAngleType>(getKey()),
+              q_dot->at<JointAngleTangentType>(getKey()),
+              boost::none,
+              other_twist,
+              other_twist_accel,
+              H_q, H_q_dot, H_q_ddot, H_other_twist, H_other_twist_accel);
+        }
+      } else {
+        return transformTwistAccelToImpl(link,
+          q->at<JointAngleType>(getKey()),
+          boost::none,
+          boost::none,
+          other_twist,
+          other_twist_accel,
+          H_q, H_q_dot, H_q_ddot, H_other_twist, H_other_twist_accel);
+      }
+    } else {
+      return transformTwistAccelToImpl(link, boost::none, boost::none,
+                                       boost::none, other_twist, 
+                                       other_twist_accel,
+                                       H_q, H_q_dot, H_q_ddot, 
+                                       H_other_twist, H_other_twist_accel);
+    }
+  }
+
+  /// Return the torque of the joint given the wrench on the child link.
+  gtsam::Values transformWrenchToTorque(
+      boost::optional<gtsam::Vector6> wrench = boost::none,
+      gtsam::OptionalJacobian<6, N> H_wrench = boost::none) const override {
+    gtsam::Values torque;
+    // torque.insert(key, transformWrenchToTorqueImpl(wrench, H_wrench));
+    return torque;
   }
 };
 

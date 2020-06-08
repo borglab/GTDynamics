@@ -153,30 +153,10 @@ class ScrewJointBase : public JointTyped<double, double> {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
-  /// Return the transform from this link com to the other link com frame
-  Pose3 transformFromImpl(const LinkSharedPtr link,
-                      boost::optional<double> q = boost::none) const {
-    return isChildLink(link) ? pMcCom(q) : cMpCom(q);
-  }
-
-  /// Return the twist of the other link given this link's twist and
-  /// joint angle.
-  gtsam::Vector6 transformTwistFromImpl(
-      const LinkSharedPtr link, boost::optional<double> q,
-      boost::optional<double> q_dot,
-      boost::optional<gtsam::Vector6> this_twist) const {
-    double q_ = q ? *q : 0.0;
-    double q_dot_ = q_dot ? *q_dot : 0.0;
-    gtsam::Vector6 this_twist_ =
-        this_twist ? *this_twist : gtsam::Vector6::Zero();
-
-    return transformFromImpl(link, q_).AdjointMap() * this_twist_ +
-           screwAxis(otherLink(link)) * q_dot_;
-  }
-
   /// Return the transform from the other link com to this link com frame
   Pose3 transformToImpl(const LinkSharedPtr link,
-                    boost::optional<double> q = boost::none) const {
+                    boost::optional<double> q = boost::none,
+                      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
     return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
 
@@ -185,7 +165,10 @@ class ScrewJointBase : public JointTyped<double, double> {
   gtsam::Vector6 transformTwistToImpl(
       const LinkSharedPtr link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
-      boost::optional<gtsam::Vector6> other_twist = boost::none) const {
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_other_twist = boost::none) const {
     double q_ = q ? *q : 0.0;
     double q_dot_ = q_dot ? *q_dot : 0.0;
     gtsam::Vector6 other_twist_ =
@@ -193,6 +176,55 @@ class ScrewJointBase : public JointTyped<double, double> {
 
     return transformToImpl(link, q_).AdjointMap() * other_twist_ +
            screwAxis(link) * q_dot_;
+  }
+
+  gtsam::Vector6 transformTwistAccelToImpl(
+      const LinkSharedPtr link,
+      boost::optional<double> q = boost::none,
+      boost::optional<double> q_dot = boost::none,
+      boost::optional<double> q_ddot = boost::none,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_other_twist = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_other_twist_accel = boost::none) const {
+    double q_dot_ = q_dot ? *q_dot : 0;
+    double q_ddot_ = q_ddot ? *q_ddot : 0;
+    auto other_twist_ = other_twist ? *other_twist : gtsam::Vector6::Zero();
+    auto other_twist_accel_ = other_twist_accel ? *other_twist_accel : gtsam::Vector6::Zero();
+    auto screw_axis_ = isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
+
+    // this link -> j
+    // other link -> i 
+    gtsam::Pose3 jTi = transformTo(link, q);
+
+    gtsam::Vector6 this_twist_accel =
+        jTi.AdjointMap() * other_twist_accel_ +
+        gtsam::Pose3::adjoint(other_twist_, screw_axis_ * q_dot_, H_other_twist) +
+        screw_axis_ * q_ddot_;
+
+    if (H_other_twist_accel) {
+      *H_other_twist_accel = jTi.AdjointMap();
+    }
+    if (H_q) {
+      *H_q = AdjointMapJacobianQ(q, jMi_, screw_axis_) * other_twist_accel
+    }
+    if (H_q_dot) {
+      *H_q_dot = gtsam::Pose3::adjointMap(other_twist) * screw_axis_;
+    }
+    if (H_q_ddot) {
+      *H_q_ddot = screw_axis_;
+    }
+
+    return this_twist_accel
+  }
+
+  JointAngleTangentType transformWrenchToTorqueImpl(
+      boost::optional<gtsam::Vector6> wrench = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_wrench = boost::none) const {
+    return 0;
   }
 
   /// Return joint angle lower limit.
@@ -257,7 +289,7 @@ class ScrewJointBase : public JointTyped<double, double> {
   gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<TwistAccelFactor>(
+    graph.emplace_shared<TwistAccelFactor<ScrewJointBase>(
         TwistKey(child_link_->getID(), t),
         TwistAccelKey(parent_link_->getID(), t),
         TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
