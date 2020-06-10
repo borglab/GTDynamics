@@ -74,7 +74,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @param[in] child_link                 Shared pointer to the child Link.
   */
   PrismaticJoint(const sdf::Joint &sdf_joint,
-                 const JointParams &parameters,
+                 const Params &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : PrismaticJoint(
           sdf_joint,
@@ -84,12 +84,12 @@ class PrismaticJoint : public ScrewJointBase {
           parameters.torque_limit_threshold, parent_link, child_link) {}
 
   /** 
-   * @brief Create PrismaticJoint using JointParams and screw axes.
+   * @brief Create PrismaticJoint using Params and screw axes.
    * 
-   * @param[in] params        Joint::JointParams struct
+   * @param[in] params        Joint::Params struct
    * @param[in] axis          joint axis expressed in joint frame
   */
-  PrismaticJoint(const JointParams &params, gtsam::Vector3 axis)
+  PrismaticJoint(const Params &params, gtsam::Vector3 axis)
       : ScrewJointBase(params,
                        axis,
                        getScrewAxis(axis)) {}

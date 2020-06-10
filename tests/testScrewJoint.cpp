@@ -33,7 +33,7 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  Joint::JointParams parameters;
+  Joint::Params parameters;
   parameters.name = "j1";
   parameters.joint_type = Joint::JointType::Screw;
   parameters.effort_type = Joint::JointEffortType::Actuated;
@@ -108,7 +108,7 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
   // constructor for j1
-  Joint::JointParams j1_parameters;
+  Joint::Params j1_parameters;
   j1_parameters.name = "j1";
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   ScrewJointSharedPtr j1 =

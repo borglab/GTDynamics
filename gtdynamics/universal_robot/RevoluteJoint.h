@@ -69,12 +69,12 @@ class RevoluteJoint : public ScrewJointBase {
    * @brief Create RevoluteJoint using sdf::Joint instance and joint parameters. 
    * 
    * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parameters                 Joint::JointParams struct
+   * @param[in] parameters                 Joint::Params struct
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
   */
   RevoluteJoint(const sdf::Joint &sdf_joint,
-                 const JointParams &parameters,
+                 const Params &parameters,
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : RevoluteJoint(
           sdf_joint,
@@ -84,12 +84,12 @@ class RevoluteJoint : public ScrewJointBase {
           parameters.torque_limit_threshold, parent_link, child_link) {}
 
   /** 
-   * @brief Create RevoluteJoint using JointParams and screw axes.
+   * @brief Create RevoluteJoint using Params and screw axes.
    * 
-   * @param[in] params        Joint::JointParams struct
+   * @param[in] params        Joint::Params struct
    * @param[in] axis          joint axis expressed in joint frame
   */
-  RevoluteJoint(const JointParams &params, gtsam::Vector3 axis)
+  RevoluteJoint(const Params &params, gtsam::Vector3 axis)
       : ScrewJointBase(params,
                        axis,
                        getScrewAxis(axis)) {}

@@ -39,15 +39,15 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-Joint::JointParams getJointParams(
+Joint::Params getJointParams(
     const sdf::Joint &joint_i,
-    const boost::optional<std::vector<Joint::JointParams>> joint_params) {
-  Joint::JointParams default_params;
-  Joint::JointParams jps;
+    const boost::optional<std::vector<Joint::Params>> joint_params) {
+  Joint::Params default_params;
+  Joint::Params jps;
   if (joint_params) {
     auto jparams =
         std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                     [=](const Joint::JointParams &jps) {
+                     [=](const Joint::Params &jps) {
                        return (jps.name == joint_i.Name());
                      });
     jps = jparams == joint_params.get().end() ? default_params : *jparams;
@@ -59,7 +59,7 @@ Joint::JointParams getJointParams(
 
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<Joint::JointParams>> joint_params) {
+    const boost::optional<std::vector<Joint::Params>> joint_params) {
   // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -89,7 +89,7 @@ LinkJointPair extractRobotFromSdf(
     LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Obtain joint params.
-    Joint::JointParams parameters =
+    Joint::Params parameters =
         getJointParams(sdf_joint, joint_params);
 
     // Construct Joint and insert into name_to_joint.
@@ -130,7 +130,7 @@ LinkJointPair extractRobotFromSdf(
 
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<Joint::JointParams>> joint_params) {
+    const boost::optional<std::vector<Joint::Params>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 

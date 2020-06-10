@@ -124,7 +124,7 @@ class ScrewJointBase : public Joint {
 
   /** Construct joint using sdf::Joint instance and joint parameters. */
   ScrewJointBase(const sdf::Joint &sdf_joint, gtsam::Vector6 jScrewAxis,
-                 const JointParams &jps, LinkSharedPtr parent_link,
+                 const Params &jps, LinkSharedPtr parent_link,
                  LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint, jScrewAxis, jps.effort_type,
                        jps.spring_coefficient, jps.joint_limit_threshold,
@@ -132,8 +132,8 @@ class ScrewJointBase : public Joint {
                        jps.acceleration_limit_threshold, jps.torque_limit_threshold,
                        parent_link, child_link) {}
 
-  /** constructor using JointParams and screw axes */
-  ScrewJointBase(const JointParams &params, gtsam::Vector3 axis,
+  /** constructor using Params and screw axes */
+  ScrewJointBase(const Params &params, gtsam::Vector3 axis,
                  gtsam::Vector6 jScrewAxis)
       : Joint(params),
         joint_type_(params.joint_type),

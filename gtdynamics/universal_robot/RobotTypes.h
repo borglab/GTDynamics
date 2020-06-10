@@ -29,7 +29,6 @@ LINK_TYPEDEF_CLASS_POINTER(Joint);
 LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
 LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
 LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
-struct JointParams;
 
 }  // namespace gtdynamics.
 

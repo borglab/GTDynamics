@@ -71,7 +71,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /**
    * This struct contains all parameters needed to construct a joint.
    */
-  struct JointParams {
+  struct Params {
     std::string name;                                                        // name of the joint as described in the URDF file
     JointType joint_type;                                                    // type of joint
     JointEffortType effort_type = Joint::JointEffortType::Actuated;;         // joint effort type
@@ -180,11 +180,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   /**
-   * @brief Constructor to create Joint from gtdynamics::JointParams instance.
+   * @brief Constructor to create Joint from gtdynamics::Params instance.
    *
-   * @param[in] params  gtdynamics::JointParams object.
+   * @param[in] params  gtdynamics::Params object.
    */
-  explicit Joint(const JointParams &params)
+  explicit Joint(const Params &params)
       : name_(params.name),
         parent_link_(params.parent_link),
         child_link_(params.child_link),
