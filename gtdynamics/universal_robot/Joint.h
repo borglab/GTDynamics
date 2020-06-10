@@ -85,12 +85,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     double velocity_limit_threshold = 0.0;                                   // joint velocity limit threshold
     double acceleration_limit = 10000;                                       // joint acceleration limit
     double acceleration_limit_threshold = 0.0;                               // joint acceleration limit threshold
-    double torque_limit_threshold = 0.0;                                     // joint torque limit threshold
-
-    // std::string name;  // Name of this joint as described in the URDF file.
-    // Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
-    // double joint_limit_threshold = 0.0;  // joint angle limit threshold.
-    
+    double torque_limit_threshold = 0.0;                                     // joint torque limit threshold   
   };
 
   static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
