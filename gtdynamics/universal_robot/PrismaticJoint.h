@@ -69,7 +69,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @brief Create PrismaticJoint using sdf::Joint instance and joint parameters. 
    * 
    * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parameters                 Joint::JoinParams struct
+   * @param[in] parameters                 Joint::Params struct.
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
   */
