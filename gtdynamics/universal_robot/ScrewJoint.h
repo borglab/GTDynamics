@@ -42,36 +42,36 @@ class ScrewJoint : public ScrewJointBase {
   /**
    * @brief Create ScrewJoint from a sdf::Joint instance.
    *
-   * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] joint_effort_type          Joint effort type.
-   * @param[in] springCoefficient          Spring coefficient.
-   * @param[in] jointLimitThreshold        Joint angle limit threshold.
-   * @param[in] velocityLimitThreshold     Joint velocity limit threshold.
-   * @param[in] accelerationLimit          Joint acceleration limit.
-   * @param[in] accelerationLimitThreshold Joint Acceleration limit threshold.
-   * @param[in] torqueLimitThreshold       Joint torque limit threshold.
-   * @param[in] parent_link                Shared pointer to the parent Link.
-   * @param[in] child_link                 Shared pointer to the child Link.
+   * @param[in] sdf_joint                      sdf::Joint object.
+   * @param[in] effort_type                    Joint effort type.
+   * @param[in] spring_coefficient             Spring coefficient.
+   * @param[in] joint_limit_threshold          Joint angle limit threshold.
+   * @param[in] velocity_limit_threshold       Joint velocity limit threshold.
+   * @param[in] acceleration_limit             Joint acceleration limit.
+   * @param[in] acceleration_limit_threshold   Joint Acceleration limit threshold.
+   * @param[in] torque_limit_threshold         Joint torque limit threshold.
+   * @param[in] parent_link                    Shared pointer to the parent Link.
+   * @param[in] child_link                     Shared pointer to the child Link.
    */
   ScrewJoint(const sdf::Joint &sdf_joint,
-                JointEffortType joint_effort_type,
-                double springCoefficient, double jointLimitThreshold,
-                double velocityLimitThreshold, double accelerationLimit,
-                double accelerationLimitThreshold, double torqueLimitThreshold,
+                JointEffortType effort_type,
+                double spring_coefficient, double joint_limit_threshold,
+                double velocity_limit_threshold, double acceleration_limit,
+                double acceleration_limit_threshold, double torque_limit_threshold,
                 LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(sdf_joint,
                        getScrewAxis(getSdfAxis(sdf_joint),
                                     sdf_joint.ThreadPitch()),
-                       joint_effort_type, springCoefficient,
-                       jointLimitThreshold, velocityLimitThreshold,
-                       accelerationLimit, accelerationLimitThreshold,
-                       torqueLimitThreshold, parent_link, child_link) {}
+                       effort_type, spring_coefficient,
+                       joint_limit_threshold, velocity_limit_threshold,
+                       acceleration_limit, acceleration_limit_threshold,
+                       torque_limit_threshold, parent_link, child_link) {}
 
   /** 
    * @brief Create ScrewJoint using sdf::Joint instance and joint parameters. 
    * 
    * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parameters                 Joint::Params struct
+   * @param[in] parameters                 Joint::JointParams struct
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
   */
@@ -80,19 +80,19 @@ class ScrewJoint : public ScrewJointBase {
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJoint(
           sdf_joint,
-          parameters.jointEffortType, parameters.springCoefficient,
-          parameters.jointLimitThreshold, parameters.velocityLimitThreshold,
-          parameters.accelerationLimit, parameters.accelerationLimitThreshold,
-          parameters.torqueLimitThreshold, parent_link, child_link) {}
+          parameters.effort_type, parameters.spring_coefficient,
+          parameters.joint_limit_threshold, parameters.velocity_limit_threshold,
+          parameters.acceleration_limit, parameters.acceleration_limit_threshold,
+          parameters.torque_limit_threshold, parent_link, child_link) {}
 
   /** 
    * @brief Create ScrewJoint using JointParams and screw axes.
    * 
-   * @param[in] params        Joint::Params struct
+   * @param[in] params        Joint::JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
   */
-  ScrewJoint(const Params &params, gtsam::Vector3 axis, double thread_pitch)
+  ScrewJoint(const JointParams &params, gtsam::Vector3 axis, double thread_pitch)
       : ScrewJointBase(params,
                        axis,
                        getScrewAxis(axis, thread_pitch)) {}

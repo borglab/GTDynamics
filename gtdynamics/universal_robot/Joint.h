@@ -69,18 +69,28 @@ class Joint : public std::enable_shared_from_this<Joint> {
   };
 
   /**
-   * JointParams contains all parameters to construct a joint
+   * This struct contains all parameters needed to construct a joint.
    */
-  struct Params {
-    std::string name;                    // name of the joint
-    JointType joint_type;                // type of joint
-    JointEffortType effort_type;         // joint effort type
-    LinkSharedPtr parent_link;           // shared pointer to parent link
-    LinkSharedPtr child_link;            // shared pointer to child link
-    gtsam::Pose3 wTj;                    // joint pose expressed in world frame
+  struct JointParams {
+    std::string name;                                                        // name of the joint as described in the URDF file
+    JointType joint_type;                                                    // type of joint
+    JointEffortType effort_type = Joint::JointEffortType::Actuated;;         // joint effort type
+    LinkSharedPtr parent_link;                                               // shared pointer to parent link
+    LinkSharedPtr child_link;                                                // shared pointer to child link
+    gtsam::Pose3 wTj;                                                        // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
-    double joint_limit_threshold;
+    double joint_limit_threshold = 0.0;                                      // joint angle limit threshold
+    double spring_coefficient = 0.0;                                         // spring coefficient for Impedance joint
+    double velocity_limit_threshold = 0.0;                                   // joint velocity limit threshold
+    double acceleration_limit = 10000;                                       // joint acceleration limit
+    double acceleration_limit_threshold = 0.0;                               // joint acceleration limit threshold
+    double torque_limit_threshold = 0.0;                                     // joint torque limit threshold
+
+    // std::string name;  // Name of this joint as described in the URDF file.
+    // Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
+    // double joint_limit_threshold = 0.0;  // joint angle limit threshold.
+    
   };
 
   static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
@@ -179,7 +189,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    *
    * @param[in] params  gtdynamics::JointParams object.
    */
-  explicit Joint(const Params &params)
+  explicit Joint(const JointParams &params)
       : name_(params.name),
         parent_link_(params.parent_link),
         child_link_(params.child_link),
@@ -351,19 +361,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) = 0;
 
   /**@}*/
-};
-
-struct JointParams {
-  std::string name;  // Name of this joint as described in the URDF file.
-
-  Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
-  double springCoefficient = 0;      // spring coefficient for Impedance joint.
-  double jointLimitThreshold = 0.0;  // joint angle limit threshold.
-  double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
-  double accelerationLimit = 10000;     // joint acceleration limit.
-  double accelerationLimitThreshold =
-      0.0;                            // joint acceleration limit threshold.
-  double torqueLimitThreshold = 0.0;  // joint torque limit threshold.
 };
 
 }  // namespace gtdynamics

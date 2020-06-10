@@ -33,7 +33,7 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  Joint::Params parameters;
+  Joint::JointParams parameters;
   parameters.name = "j1";
   parameters.joint_type = Joint::JointType::Screw;
   parameters.effort_type = Joint::JointEffortType::Actuated;
@@ -108,16 +108,16 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
   // constructor for j1
-  JointParams j1_parameters;
+  Joint::JointParams j1_parameters;
   j1_parameters.name = "j1";
-  j1_parameters.jointEffortType = Joint::JointEffortType::Actuated;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>(ScrewJoint(
-          *model.JointByName("joint_1"), j1_parameters.jointEffortType,
-          j1_parameters.springCoefficient, j1_parameters.jointLimitThreshold,
-          j1_parameters.velocityLimitThreshold, j1_parameters.accelerationLimit,
-          j1_parameters.accelerationLimitThreshold,
-          j1_parameters.torqueLimitThreshold, l0, l1));
+          *model.JointByName("joint_1"), j1_parameters.effort_type,
+          j1_parameters.spring_coefficient, j1_parameters.joint_limit_threshold,
+          j1_parameters.velocity_limit_threshold, j1_parameters.acceleration_limit,
+          j1_parameters.acceleration_limit_threshold,
+          j1_parameters.torque_limit_threshold, l0, l1));
 
   // expected values for screw about z axis
   // check screw axis

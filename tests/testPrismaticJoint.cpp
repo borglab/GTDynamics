@@ -36,17 +36,17 @@ TEST(Joint, urdf_constructor_prismatic) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  JointParams j1_params;
+  Joint::JointParams j1_params;
   j1_params.name = "j1";
-  j1_params.jointEffortType = Joint::JointEffortType::Actuated;
+  j1_params.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
   PrismaticJointSharedPtr j1 =
       std::make_shared<PrismaticJoint>(PrismaticJoint(
-          *simple_urdf.JointByName("j1"), j1_params.jointEffortType,
-          j1_params.springCoefficient, j1_params.jointLimitThreshold,
-          j1_params.velocityLimitThreshold, j1_params.accelerationLimit,
-          j1_params.accelerationLimitThreshold, j1_params.torqueLimitThreshold,
+          *simple_urdf.JointByName("j1"), j1_params.effort_type,
+          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
+          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
+          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
           l1, l2));
 
   // get shared ptr
@@ -122,7 +122,7 @@ TEST(Joint, params_constructor_prismatic) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  Joint::Params params;
+  Joint::JointParams params;
   params.name = "j1";
   params.joint_type = Joint::JointType::Prismatic;
   params.effort_type = Joint::JointEffortType::Actuated;
