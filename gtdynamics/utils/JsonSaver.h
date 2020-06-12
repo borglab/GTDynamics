@@ -243,15 +243,13 @@ class JsonSaver {
       return "Pose";
     } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
       return "Twist";
-    } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
-      return "TwistAccel";
+    } else if (dynamic_cast<const TwistAccelFactor<ScrewJointBase>*>(&(*factor))) {
+      return "TwistAccel";  // TODO(G+S): figure out how to make this work for other joint types
     } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
       return "Torque";
-    } else if (dynamic_cast<const WrenchPlanarFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
       return "WrenchEq";
     } else if (dynamic_cast<const PriorFactor<double>*>(&(*factor))) {
       return "Prior";
