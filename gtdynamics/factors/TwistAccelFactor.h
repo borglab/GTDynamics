@@ -15,6 +15,9 @@
 #ifndef GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 #define GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/universal_robot/Joint.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -23,8 +26,6 @@
 #include <string>
 
 #include <boost/optional.hpp>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -43,13 +44,13 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
                                    gtsam::Vector6, JointAngleType,
                                    JointAngleTangentType, JointAngleTangentType>
       Base;
-  JointSharedPtr joint_;
+  JointConstSharedPtr joint_;
 
  public:
   /** factor linking child link's twist_accel, joint_coordinate, joint_vel,
      joint_accel with previous link's twist_accel.
      Keyword arguments:
-        joint         -- JointSharedPtr to the joint
+        joint         -- JointConstSharedPtr to the joint
         
     Will create factor corresponding to Lynch & Park book: twist acceleration,
     Equation 8.47, page 293
@@ -58,7 +59,7 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
                    gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointSharedPtr joint)
+                   JointConstSharedPtr joint)
       : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
         joint_(joint) {}
@@ -86,15 +87,14 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
-    
-    auto error = std::static_pointer_cast<JointTyped>(joint_).transformTwistAccelTo(
-                     joint_->parentLink(),
-                     q, qVel, qAccel, twist_c, twistAccel_c,
-                     H_q, H_qVel, H_qAccel, H_twist_c, H_twistAccel_c) -
-                     twistAccel_p;
+    auto error = std::static_pointer_cast<const JointTyped>(joint_)->transformTwistAccelTo(
+                     joint_->childLink(),
+                     q, qVel, qAccel, twist_c, twistAccel_p,
+                     H_q, H_qVel, H_qAccel, H_twist_c, H_twistAccel_p) -
+                     twistAccel_c;
 
-    if (H_twistAccel_p) {
-      *H_twistAccel_p = -gtsam::I_6x6;
+    if (H_twistAccel_c) {
+      *H_twistAccel_c = -gtsam::I_6x6;
     }
 
     return error;
