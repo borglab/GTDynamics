@@ -27,7 +27,6 @@
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
@@ -256,18 +255,17 @@ class ScrewJointBase : public Joint {
     return graph;
   }
 
-  /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<TwistAccelFactor>(
-        TwistKey(child_link_->getID(), t),
-        TwistAccelKey(parent_link_->getID(), t),
-        TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
-        JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
-        getConstSharedPtr());
-
-    return graph;
+  /// Return forward dynamics priors on torque.
+  gtsam::GaussianFactorGraph linearFDPriors(
+      size_t t, const JointValues &torques,
+      const OptimizerSetting &opt) const {
+    gtsam::GaussianFactorGraph priors;
+    gtsam::Vector1 rhs;
+    rhs << torques.at<double>(getKey());
+    // TODO(alejandro): use optimizer settings
+    priors.add(TorqueKey(getID(), t), gtsam::I_1x1, rhs,
+               gtsam::noiseModel::Constrained::All(1));
+    return priors;
   }
 
   /// Return linearized acceleration factors.
