@@ -412,6 +412,11 @@ class JointTyped : public Joint {
   /// Inherit constructors
   using Joint::Joint;
 
+  /// Inherit overloaded functions
+  using Joint::transformFrom;
+  using Joint::transformTwistFrom;
+  using Joint::transformTwistAccelFrom;
+
   /// Convenience method. Return the transform from this link com to the other link
   /// com frame
   gtsam::Pose3 transformFrom(
@@ -419,15 +424,6 @@ class JointTyped : public Joint {
       boost::optional<AngleType> q,
       gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
     return transformToImpl(otherLink(link), q, H_q);
-  }
-
-  /// Convenience method. Return the transform from this link com to the other link
-  /// com frame
-  gtsam::Pose3 transformFrom(
-      const LinkSharedPtr link,
-      boost::optional<const gtsam::Values&> q = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const  {
-    return transformTo(otherLink(link), q, H_q);
   }
 
   /// Convenience method. Return the twist of the other link given this link's
