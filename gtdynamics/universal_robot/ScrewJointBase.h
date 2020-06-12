@@ -27,7 +27,6 @@
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
@@ -288,20 +287,6 @@ class ScrewJointBase : public JointTyped<double, double> {
         TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
         JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
         transformTo(child_link_), screwAxis(child_link_));
-
-    return graph;
-  }
-
-  /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<TwistAccelFactor<ScrewJointBase>>(
-        TwistKey(child_link_->getID(), t),
-        TwistAccelKey(parent_link_->getID(), t),
-        TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
-        JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
-        getConstSharedPtr());
 
     return graph;
   }

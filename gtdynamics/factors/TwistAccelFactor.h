@@ -16,7 +16,7 @@
 #define GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 
 #include "gtdynamics/utils/utils.h"
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>

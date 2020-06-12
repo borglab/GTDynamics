@@ -14,6 +14,11 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/factors/TwistAccelFactor.h"
+
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -21,10 +26,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 
@@ -431,6 +432,7 @@ class JointTyped : public Joint {
   // typedef typename AngleType::TangentVector JointAngleTangentType;
   typedef JointAngleTangentType AngleTangentType;
   enum { N = gtsam::traits<AngleType>::dimension };
+  typedef JointTyped<AngleType, AngleTangentType> This;
 
  protected:
   /// Abstract method. Return the transform from the other link com to this link
@@ -718,6 +720,20 @@ class JointTyped : public Joint {
     gtsam::Values torque;
     // torque.insert(key, transformWrenchToTorqueImpl(wrench, H_wrench));
     return torque;
+  }
+
+  /// Return joint accel factors.  // TODO(G+S): CRTP and put in Joint class
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
+                                       const OptimizerSetting &opt) const {
+    gtsam::NonlinearFactorGraph graph;
+    graph.emplace_shared<TwistAccelFactor<This>>(
+        TwistKey(child_link_->getID(), t),
+        TwistAccelKey(parent_link_->getID(), t),
+        TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
+        JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
+        getConstSharedPtr());
+
+    return graph;
   }
 };
 
