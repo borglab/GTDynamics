@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testDynamicsGraph.cpp
- * @brief Test forward and inverse dynamics factor graph.
+ * @file  testGTDSymbol.cpp
+ * @brief Test GTDSymbol.
  * @Author: Yetong Zhang, Stephanie McCormick
  */
 
