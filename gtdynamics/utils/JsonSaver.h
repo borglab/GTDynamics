@@ -98,16 +98,8 @@ class JsonSaver {
    */
   static inline std::string GetName(const gtsam::Key& key) {
     std::stringstream ss;
-    auto symb = LabeledSymbol(key);
-    char ch = symb.chr();
-    int index = symb.label();
-    int t = symb.index();
-    if (ch == 'F') {
-      ss << ch << int(index / 16) << index % 16 << "_" << t;
-    } else {
-      ss << ch << index << "_" << t;
-    }
-    return ss.str();
+    auto symb = gtdynamics::GTDSymbol(key);
+    return (std::string)(symb);
   }
 
   /**

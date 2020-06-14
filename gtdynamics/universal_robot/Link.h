@@ -16,7 +16,6 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
@@ -34,29 +33,29 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/GTDSymbol.h"
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline gtsam::LabeledSymbol PoseKey(int i, int t) {
-  return gtsam::LabeledSymbol('p', i, t);
+inline GTDSymbol PoseKey(int i, int t) {
+  return GTDSymbol::LinkSymbol("p", i, t);
 }
 
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline gtsam::LabeledSymbol TwistKey(int i, int t) {
-  return gtsam::LabeledSymbol('V', i, t);
+inline GTDSymbol TwistKey(int i, int t) {
+  return GTDSymbol::LinkSymbol("V", i, t);
 }
 
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline gtsam::LabeledSymbol TwistAccelKey(int i, int t) {
-  return gtsam::LabeledSymbol('A', i, t);
+inline GTDSymbol TwistAccelKey(int i, int t) {
+  return GTDSymbol::LinkSymbol("A", i, t);
 }
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline gtsam::LabeledSymbol WrenchKey(int i, int j, int t) {
-  return gtsam::LabeledSymbol('F', i * 16 + j,
-                              t);  // a hack here for a key with 3 numbers
+inline GTDSymbol WrenchKey(int i, int j, int t) {
+  return GTDSymbol("F", i, j, t); 
 }
 
 /**
@@ -267,7 +266,7 @@ class Link : public std::enable_shared_from_this<Link> {
    */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
-      const std::vector<gtsam::LabeledSymbol> &wrenches,
+      const std::vector<GTDSymbol> &wrenches,
       const boost::optional<gtsam::Vector3> &gravity) const {
     gtsam::NonlinearFactorGraph graph;
     // Add wrench factors.

@@ -15,7 +15,6 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <cmath>

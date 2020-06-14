@@ -318,7 +318,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     int i = link->getID();
     if (!link->isFixed()) {
       const auto &connected_joints = link->getJoints();
-      std::vector<gtsam::LabeledSymbol> wrenches;
+      std::vector<GTDSymbol> wrenches;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -716,24 +716,8 @@ Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
 }
 
 void printKey(const gtsam::Key &key) {
-  auto symb = gtsam::LabeledSymbol(key);
-  char ch = symb.chr();
-  int index = symb.label();
-  int t = symb.index();
-  if (ch == 'F') {
-    std::cout << ch << int(index / 16) << index % 16 << "_" << t;
-  } else if (ch == 't') {
-    if (index == 0) {  // phase key
-      std::cout << "dt" << t;
-    } else if (index == 1) {  // time key
-      std::cout << "t" << t;
-    } else {  // time to open valve
-      std::cout << "ti" << t;
-    }
-  } else {
-    std::cout << ch << index << "_" << t;
-  }
-  std::cout << "\t";
+  auto symb = GTDSymbol(key);
+  std::cout << (std::string)(symb) << "\t";
 }
 
 // print the factors of the factor graph
@@ -865,25 +849,23 @@ void DynamicsGraph::saveGraphMultiSteps(
 typedef std::pair<std::string, int> ClusterInfo;
 
 inline ClusterInfo getCluster(const gtsam::Key &key) {
-  gtsam::LabeledSymbol symb(key);
-  char ch = symb.chr();
-  int index = symb.label();
-  int t = symb.index();
-  if (ch == 'q' || ch == 'p') {
+  GTDSymbol symb(key);
+  std::string label = symb.label();
+  int t = symb.time();
+  if (label == "q" || label == "p") {
     return ClusterInfo("q", t);
   }
-  if (ch == 'v' || ch == 'V') {
+  if (label == "v" || label == "V") {
     return ClusterInfo("v", t);
   }
-  if (ch == 'a' || ch == 'A') {
+  if (label == "a" || label == "A") {
     return ClusterInfo("a", t);
   }
-  if (ch == 'T' || ch == 'F') {
+  if (label == "T" || label == "F") {
     return ClusterInfo("f", t);
   }
-  if ((ch == 't' && index != 1) ||
-      (ch = 'P' && t == 1000000)) {  // intial time and pressure
-    return ClusterInfo("s", 1000000);
+  if (label == "ti" || label == "Pi") {
+    return ClusterInfo("s", t);
   }
   return ClusterInfo("o", t);
 }
