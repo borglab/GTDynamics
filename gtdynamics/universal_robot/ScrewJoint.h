@@ -86,16 +86,21 @@ class ScrewJoint : public ScrewJointBase {
           parameters.torque_limit_threshold, parent_link, child_link) {}
 
   /** 
-   * @brief Create ScrewJoint using Params and screw axes.
+   * @brief Create ScrewJoint using Params, screw axes,
+   * and parent and child links.
    * 
    * @param[in] params        Joint::Params struct
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
+   * @param[in] parent_link   Shared pointer to the parent Link.
+   * @param[in] child_link    Shared pointer to the child Link.
   */
-  ScrewJoint(const Params &params, gtsam::Vector3 axis, double thread_pitch)
+  ScrewJoint(const Params &params, gtsam::Vector3 axis, double thread_pitch, 
+             LinkSharedPtr parent_link, LinkSharedPtr child_link)
       : ScrewJointBase(params,
                        axis,
-                       getScrewAxis(axis, thread_pitch)) {}
+                       getScrewAxis(axis, thread_pitch),
+                       parent_link, child_link) {}
 
   /// Return jointType for use in reconstructing robot from Parameters.
   JointType jointType() const { return JointType::Screw; }

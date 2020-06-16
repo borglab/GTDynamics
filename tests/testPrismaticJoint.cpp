@@ -126,8 +126,6 @@ TEST(Joint, params_constructor_prismatic) {
   params.name = "j1";
   params.joint_type = Joint::JointType::Prismatic;
   params.effort_type = Joint::JointEffortType::Actuated;
-  params.parent_link = l1;
-  params.child_link = l2;
   params.wTj =
       gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = 0;
@@ -136,7 +134,7 @@ TEST(Joint, params_constructor_prismatic) {
 
   PrismaticJointSharedPtr j1 =
       std::make_shared<PrismaticJoint>(PrismaticJoint(
-          params, gtsam::Vector3(0, 0, 1)));
+          params, gtsam::Vector3(0, 0, 1), l1, l2));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);

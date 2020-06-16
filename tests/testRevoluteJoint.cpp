@@ -119,8 +119,6 @@ TEST(Joint, params_constructor) {
   params.name = "j1";
   params.joint_type = Joint::JointType::Revolute;
   params.effort_type = Joint::JointEffortType::Actuated;
-  params.parent_link = l1;
-  params.child_link = l2;
   params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = -1.57;
   params.joint_upper_limit = 1.57;
@@ -128,7 +126,7 @@ TEST(Joint, params_constructor) {
 
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(
-          RevoluteJoint(params, gtsam::Vector3(1, 0, 0)));
+          RevoluteJoint(params, gtsam::Vector3(1, 0, 0), l1, l2));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));

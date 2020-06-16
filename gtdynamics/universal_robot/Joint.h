@@ -72,11 +72,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * This struct contains all parameters needed to construct a joint.
    */
   struct Params {
-    std::string name;                                                        // name of the joint as described in the URDF file
+    std::string name;                                                        // name of joint
     JointType joint_type;                                                    // type of joint
     JointEffortType effort_type = Joint::JointEffortType::Actuated;;         // joint effort type
-    LinkSharedPtr parent_link;                                               // shared pointer to parent link
-    LinkSharedPtr child_link;                                                // shared pointer to child link
     gtsam::Pose3 wTj;                                                        // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
@@ -180,14 +178,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   /**
-   * @brief Constructor to create Joint from gtdynamics::Params instance.
+   * @brief Constructor to create Joint from gtdynamics::Params instance and
+   * shared pointers to the parent and child links.
    *
-   * @param[in] params  gtdynamics::Params object.
+   * @param[in] params       gtdynamics::Params object.
+   * @param[in] parent_link  Shared pointer to the parent Link.
+   * @param[in] child_link   Shared pointer to the child Link.
    */
-  explicit Joint(const Params &params)
+  explicit Joint(const Params &params, LinkSharedPtr parent_link,
+        LinkSharedPtr child_link)
       : name_(params.name),
-        parent_link_(params.parent_link),
-        child_link_(params.child_link),
+        parent_link_(parent_link),
+        child_link_(child_link),
         wTj_(params.wTj) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
