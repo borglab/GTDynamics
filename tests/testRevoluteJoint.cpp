@@ -34,7 +34,7 @@ TEST(Joint, urdf_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  Joint::Params j1_params;
+  ScrewJointBase::Params j1_params;
   j1_params.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
@@ -114,7 +114,7 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  Joint::Params params;
+  ScrewJointBase::Params params;
   params.joint_type = Joint::JointType::Revolute;
   params.effort_type = Joint::JointEffortType::Actuated;
   params.joint_lower_limit = -1.57;
@@ -187,7 +187,7 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
   // constructor for j1
-  Joint::Params j1_params;
+  ScrewJointBase::Params j1_params;
   j1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -215,7 +215,7 @@ TEST(Joint, sdf_constructor) {
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
-  Joint::Params j2_params;
+  ScrewJointBase::Params j2_params;
   j2_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j2 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -249,7 +249,7 @@ TEST(Joint, limit_params) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("l1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
-  Joint::Params j1_params;
+  ScrewJointBase::Params j1_params;
   j1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -270,7 +270,7 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(Link(*model2.LinkByName("link_0")));
   LinkSharedPtr link_1 =
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
-  Joint::Params joint_1_params;
+  ScrewJointBase::Params joint_1_params;
   joint_1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr joint_1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(

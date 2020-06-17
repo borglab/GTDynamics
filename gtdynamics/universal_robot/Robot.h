@@ -49,7 +49,7 @@ typedef std::pair<LinkMap, JointMap> LinkJointPair;
  */
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<Joint::Params>> joint_params =
+    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params =
         boost::none);
 
 /** @fn Construct all Link and Joint objects from an input urdf or sdf file.
@@ -62,7 +62,7 @@ LinkJointPair extractRobotFromSdf(
  */
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<Joint::Params>> joint_params =
+    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params =
         boost::none);
 
 /**

@@ -68,24 +68,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
     Screw = 'C'
   };
 
-  /**
-   * This struct contains all parameters needed to construct a joint.
-   */
-  struct Params {
-    //std::string name;                                                        // name of joint
-    JointType joint_type;                                                    // type of joint
-    JointEffortType effort_type = Joint::JointEffortType::Actuated;;         // joint effort type
-    //gtsam::Pose3 wTj;                                                        // joint pose expressed in world frame
-    double joint_lower_limit;
-    double joint_upper_limit;
-    double joint_limit_threshold = 0.0;                                      // joint angle limit threshold
-    double spring_coefficient = 0.0;                                         // spring coefficient for Impedance joint
-    double velocity_limit_threshold = 0.0;                                   // joint velocity limit threshold
-    double acceleration_limit = 10000;                                       // joint acceleration limit
-    double acceleration_limit_threshold = 0.0;                               // joint acceleration limit threshold
-    double torque_limit_threshold = 0.0;                                     // joint torque limit threshold   
-  };
-
   static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
     auto axis = sdf_joint.Axis()->Xyz();
     return gtsam::Vector3(axis[0], axis[1], axis[2]);
@@ -178,16 +160,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
   }
 
   /**
-   * @brief Constructor to create Joint from gtdynamics::Params instance and
-   * shared pointers to the parent and child links.
+   * @brief Constructor to create Joint from joint name, joint pose in 
+   * world frame, and shared pointers to the parent and child links.
    *
-   * @param[in] params       gtdynamics::Params object.
+   * @param[in] name         name of joint
+   * @param[in] wTj          joint pose expressed in world frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    */
-  explicit Joint(const Params &params, const std::string &name, 
-        const gtsam::Pose3 &wTj, const LinkSharedPtr &parent_link, 
-        const LinkSharedPtr &child_link)
+  explicit Joint(const std::string &name, const gtsam::Pose3 &wTj, 
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
       : name_(name),
         parent_link_(parent_link),
         child_link_(child_link),

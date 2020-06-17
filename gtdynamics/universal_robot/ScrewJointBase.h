@@ -43,7 +43,27 @@ namespace gtdynamics {
 class ScrewJointBase : public Joint {
   using Pose3 = gtsam::Pose3;
 
+ public:
+ /**
+   * This struct contains all parameters needed to construct a joint.
+   */
+  struct Params {
+    Joint::JointType joint_type;                                             // type of joint
+    Joint::JointEffortType effort_type = Joint::JointEffortType::Actuated;;  // joint effort type
+    double joint_lower_limit;
+    double joint_upper_limit;
+    double joint_limit_threshold = 0.0;                                      // joint angle limit threshold
+    double spring_coefficient = 0.0;                                         // spring coefficient
+    double velocity_limit_threshold = 0.0;                                   // joint velocity limit threshold
+    double acceleration_limit = 10000;                                       // joint acceleration limit
+    double acceleration_limit_threshold = 0.0;                               // joint acceleration limit threshold
+    double torque_limit_threshold = 0.0;                                     // joint torque limit threshold   
+  };
+
  protected:
+  // // Joint parameters struct.
+  // Params params_;
+
   char joint_type_;
   JointEffortType jointEffortType_;
   gtsam::Vector3 axis_;
@@ -138,7 +158,7 @@ class ScrewJointBase : public Joint {
                  const gtsam::Pose3 &wTj, gtsam::Vector3 axis,
                  gtsam::Vector6 jScrewAxis, LinkSharedPtr parent_link,
                  LinkSharedPtr child_link)
-      : Joint(params, name, wTj, parent_link, child_link),
+      : Joint(name, wTj, parent_link, child_link),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(axis),

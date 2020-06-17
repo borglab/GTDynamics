@@ -39,16 +39,16 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-Joint::Params getJointParams(
+ScrewJointBase::Params getJointParams(
     JointConstSharedPtr joint,
     const sdf::Joint &joint_i,
-    const boost::optional<std::vector<Joint::Params>> joint_params) {
-  Joint::Params default_params;
-  Joint::Params jps;
+    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
+  ScrewJointBase::Params default_params;
+  ScrewJointBase::Params jps;
   if (joint_params) {
     auto jparams =
         std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                     [=](const Joint::Params &jps) {
+                     [=](const ScrewJointBase::Params &jps) {
                        return (joint->name() == joint_i.Name());
                      });
     jps = jparams == joint_params.get().end() ? default_params : *jparams;
@@ -60,7 +60,7 @@ Joint::Params getJointParams(
 
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<Joint::Params>> joint_params) {
+    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
   // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -93,7 +93,7 @@ LinkJointPair extractRobotFromSdf(
     JointSharedPtr joint;
 
     // Obtain joint params.
-    Joint::Params parameters =
+    ScrewJointBase::Params parameters =
         getJointParams(joint, sdf_joint, joint_params);
 
     switch (sdf_joint.Type()) {
@@ -131,7 +131,7 @@ LinkJointPair extractRobotFromSdf(
 
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<Joint::Params>> joint_params) {
+    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 

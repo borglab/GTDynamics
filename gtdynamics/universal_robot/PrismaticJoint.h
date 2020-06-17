@@ -69,7 +69,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @brief Create PrismaticJoint using sdf::Joint instance and joint parameters. 
    * 
    * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parameters                 Joint::Params struct.
+   * @param[in] parameters                 ScrewJointBase::Params struct.
    * @param[in] parent_link                Shared pointer to the parent Link.
    * @param[in] child_link                 Shared pointer to the child Link.
   */
@@ -87,7 +87,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @brief Create PrismaticJoint using Params, joint name, joint pose in 
    * world frame, screw axes, and parent and child links.
    * 
-   * @param[in] params        Joint::Params struct
+   * @param[in] params        ScrewJointBase::Params struct
    * @param[in] name          Name of the joint
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] axis          joint axis expressed in joint frame

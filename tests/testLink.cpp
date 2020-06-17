@@ -35,7 +35,7 @@ TEST(Link, urdf_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
-  Joint::Params j1_params;
+  ScrewJointBase::Params j1_params;
   j1_params.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
