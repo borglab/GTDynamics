@@ -35,17 +35,13 @@ TEST(Link, urdf_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
-  ScrewJointBase::Params j1_params;
-  j1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *simple_urdf.JointByName("j1"), j1_params.effort_type,
-          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
-          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
-          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
-          l1, l2));
+          *simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
 
   // get shared ptr
   EXPECT(l1->getSharedPtr() == l1);
@@ -97,14 +93,14 @@ TEST(Link, urdf_constructor) {
  * Construct the same link via Params and ensure all values are as expected.
  */
 TEST(Link, params_constructor) {
-  Link::Params params;
-  params.mass = 100;
-  params.name = "l1";
-  params.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
-  params.wTl = gtsam::Pose3();
-  params.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
+  Link::Params parameters;
+  parameters.mass = 100;
+  parameters.name = "l1";
+  parameters.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
+  parameters.wTl = gtsam::Pose3();
+  parameters.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
 
-  LinkSharedPtr l1 = std::make_shared<Link>(Link(params));
+  LinkSharedPtr l1 = std::make_shared<Link>(Link(parameters));
 
   // name
   EXPECT(assert_equal("l1", l1->name()));

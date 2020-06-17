@@ -34,17 +34,12 @@ TEST(Joint, urdf_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  ScrewJointBase::Params j1_params;
-  j1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  RevoluteJointSharedPtr j1 =
-      std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *simple_urdf.JointByName("j1"), j1_params.effort_type,
-          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
-          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
-          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
-          l1, l2));
+  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
+      RevoluteJoint(*simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -105,7 +100,7 @@ TEST(Joint, urdf_constructor) {
 }
 
 /**
- * Construct the same joint via Params and ensure all values are as expected.
+ * Construct the same joint via Parameters and ensure all values are as expected.
  */
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -114,18 +109,17 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  ScrewJointBase::Params params;
-  params.joint_type = Joint::JointType::Revolute;
-  params.effort_type = Joint::JointEffortType::Actuated;
-  params.joint_lower_limit = -1.57;
-  params.joint_upper_limit = 1.57;
-  params.joint_limit_threshold = 0;
+  ScrewJointBase::Parameters parameters;
+  parameters.effort_type = Joint::JointEffortType::Actuated;
+  parameters.joint_lower_limit = -1.57;
+  parameters.joint_upper_limit = 1.57;
+  parameters.joint_limit_threshold = 0;
 
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(
-          RevoluteJoint(params, "j1", 
+          RevoluteJoint("j1", 
                         gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                        gtsam::Vector3(1, 0, 0), l1, l2));
+                        l1, l2, parameters, gtsam::Vector3(1, 0, 0)));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -187,15 +181,11 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
   // constructor for j1
-  ScrewJointBase::Params j1_params;
-  j1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("joint_1"), j1_params.effort_type,
-          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
-          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
-          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
-          l0, l1));
+          *model.JointByName("joint_1"), l0, l1, j1_parameters));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -215,15 +205,12 @@ TEST(Joint, sdf_constructor) {
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
-  ScrewJointBase::Params j2_params;
-  j2_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j2_parameters;
+  j2_parameters.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j2 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("joint_2"), j2_params.effort_type,
-          j2_params.spring_coefficient, j2_params.joint_limit_threshold,
-          j2_params.velocity_limit_threshold, j2_params.acceleration_limit,
-          j2_params.acceleration_limit_threshold, j2_params.torque_limit_threshold,
-          l1, l2));
+          *model.JointByName("joint_2"),
+          l1, l2, j2_parameters));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -249,15 +236,12 @@ TEST(Joint, limit_params) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("l1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
-  ScrewJointBase::Params j1_params;
-  j1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("j1"), j1_params.effort_type,
-          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
-          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
-          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
-          l1, l2));
+          *model.JointByName("j1"),
+          l1, l2, j1_parameters));
 
   EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
@@ -270,16 +254,11 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(Link(*model2.LinkByName("link_0")));
   LinkSharedPtr link_1 =
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
-  ScrewJointBase::Params joint_1_params;
-  joint_1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters joint_1_parameters;
+  joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr joint_1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model2.JointByName("joint_1"), joint_1_params.effort_type,
-          joint_1_params.spring_coefficient, joint_1_params.joint_limit_threshold,
-          joint_1_params.velocity_limit_threshold,
-          joint_1_params.acceleration_limit,
-          joint_1_params.acceleration_limit_threshold,
-          joint_1_params.torque_limit_threshold, link_0, link_1));
+          *model2.JointByName("joint_1"), link_0, link_1, joint_1_parameters));
 
   EXPECT(assert_equal(-1e16, joint_1->jointLowerLimit()));
   EXPECT(assert_equal(1e16, joint_1->jointUpperLimit()));

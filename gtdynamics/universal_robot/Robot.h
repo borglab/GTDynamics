@@ -32,8 +32,8 @@ namespace gtdynamics {
 
 /** Construct all Link and Joint objects from an input
  * urdf::ModelInterfaceSharedPtr. Keyword arguments: urdf_ptr         -- a
- * shared pointer to a urdf::ModelInterface object. joint_params     -- a vector
- * contanining optional params for joints.
+ * shared pointer to a urdf::ModelInterface object. joint_parameters     -- a vector
+ * contanining optional parameters for joints.
  *
  */
 
@@ -44,12 +44,12 @@ typedef std::pair<LinkMap, JointMap> LinkJointPair;
 /** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
  * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the robot
  * model.
- * @param joint_params a vector contanining optional params for joints.
+ * @param joint_parameters a vector contanining optional parameters for joints.
  * @return LinkMap and JointMap as a pair
  */
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params =
+    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters =
         boost::none);
 
 /** @fn Construct all Link and Joint objects from an input urdf or sdf file.
@@ -57,12 +57,12 @@ LinkJointPair extractRobotFromSdf(
  * robot description.
  * @param[in] model_name name of the robot we care about. Must be specified in case
  * sdf_file_path points to a world file.
- * @param[in] joint_params a vector contanining optional params for joints.
+ * @param[in] joint_parameters a vector contanining optional parameters for joints.
  * @return LinkMap and JointMap as a pair
  */
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params =
+    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters =
         boost::none);
 
 /**

@@ -39,28 +39,28 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-ScrewJointBase::Params getJointParams(
+ScrewJointBase::Parameters getJointParameters(
     JointConstSharedPtr joint,
     const sdf::Joint &joint_i,
-    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
-  ScrewJointBase::Params default_params;
-  ScrewJointBase::Params jps;
-  if (joint_params) {
-    auto jparams =
-        std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                     [=](const ScrewJointBase::Params &jps) {
+    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
+  ScrewJointBase::Parameters default_parameters;
+  ScrewJointBase::Parameters jps;
+  if (joint_parameters) {
+    auto jparameters =
+        std::find_if(joint_parameters.get().begin(), joint_parameters.get().end(),
+                     [=](const ScrewJointBase::Parameters &jps) {
                        return (joint->name() == joint_i.Name());
                      });
-    jps = jparams == joint_params.get().end() ? default_params : *jparams;
+    jps = jparameters == joint_parameters.get().end() ? default_parameters : *jparameters;
   } else {
-    jps = default_params;
+    jps = default_parameters;
   }
   return jps;
 }
 
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
-    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
+    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
   // Loop through all links in the urdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -92,25 +92,22 @@ LinkJointPair extractRobotFromSdf(
     // Construct Joint and insert into name_to_joint.
     JointSharedPtr joint;
 
-    // Obtain joint params.
-    ScrewJointBase::Params parameters =
-        getJointParams(joint, sdf_joint, joint_params);
+    // Obtain joint parameters.
+    ScrewJointBase::Parameters parameters =
+        getJointParameters(joint, sdf_joint, joint_parameters);
 
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:
         joint = std::make_shared<PrismaticJoint>(
-            PrismaticJoint(sdf_joint, parameters,
-                                   parent_link, child_link));
+            PrismaticJoint(sdf_joint, parent_link, child_link, parameters));
         break;
       case sdf::JointType::REVOLUTE:
         joint = std::make_shared<RevoluteJoint>(
-            RevoluteJoint(sdf_joint, parameters,
-                                      parent_link, child_link));
+            RevoluteJoint(sdf_joint, parent_link, child_link, parameters));
         break;
       case sdf::JointType::SCREW:
         joint = std::make_shared<ScrewJoint>(
-            ScrewJoint(sdf_joint, parameters,
-                                   parent_link, child_link));
+            ScrewJoint(sdf_joint, parent_link, child_link, parameters));
         break;
       default:
         throw std::runtime_error("Joint type for [" +
@@ -131,14 +128,14 @@ LinkJointPair extractRobotFromSdf(
 
 LinkJointPair extractRobotFromFile(
     const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<ScrewJointBase::Params>> joint_params) {
+    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
   if (file_ext == "urdf")
-    return extractRobotFromSdf(get_sdf(file_path), joint_params);
+    return extractRobotFromSdf(get_sdf(file_path), joint_parameters);
   else if (file_ext == "sdf")
-    return extractRobotFromSdf(get_sdf(file_path, model_name), joint_params);
+    return extractRobotFromSdf(get_sdf(file_path, model_name), joint_parameters);
 
   throw std::runtime_error("Invalid file extension.");
 }

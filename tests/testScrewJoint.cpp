@@ -24,7 +24,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Construct the same joint via Params and ensure all values are as expected.
+ * Construct the same joint via Parameters and ensure all values are as expected.
  */
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -33,8 +33,7 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  ScrewJointBase::Params parameters;
-  parameters.joint_type = Joint::JointType::Screw;
+  ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
   parameters.joint_lower_limit = -1.57;
   parameters.joint_upper_limit = 1.57;
@@ -42,8 +41,8 @@ TEST(Joint, params_constructor) {
 
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>(
-          ScrewJoint(parameters, "j1", Pose3(Rot3(), Point3(0, 0, 2)),
-                     gtsam::Vector3(1, 0, 0), 0.5, l1, l2));
+          ScrewJoint("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
+                     gtsam::Vector3(1, 0, 0), 0.5));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -105,15 +104,11 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
   // constructor for j1
-  ScrewJointBase::Params j1_parameters;
+  ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>(ScrewJoint(
-          *model.JointByName("joint_1"), j1_parameters.effort_type,
-          j1_parameters.spring_coefficient, j1_parameters.joint_limit_threshold,
-          j1_parameters.velocity_limit_threshold, j1_parameters.acceleration_limit,
-          j1_parameters.acceleration_limit_threshold,
-          j1_parameters.torque_limit_threshold, l0, l1));
+          *model.JointByName("joint_1"), l0, l1, j1_parameters));
 
   // expected values for screw about z axis
   // check screw axis

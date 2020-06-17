@@ -62,11 +62,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    */
   enum JointEffortType { Actuated, Unactuated, Impedance };
 
-  enum JointType : char {
-    Revolute = 'R',
-    Prismatic = 'P',
-    Screw = 'C'
-  };
+  enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
 
   static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
     auto axis = sdf_joint.Axis()->Xyz();
@@ -123,6 +119,26 @@ class Joint : public std::enable_shared_from_this<Joint> {
   Joint() {}
 
   /**
+   * @brief Constructor to create Joint from joint name, joint pose in
+   * world frame, and shared pointers to the parent and child links.
+   *
+   * @param[in] name         name of joint
+   * @param[in] wTj          joint pose expressed in world frame
+   * @param[in] parent_link  Shared pointer to the parent Link.
+   * @param[in] child_link   Shared pointer to the child Link.
+   */
+  Joint(const std::string &name, const gtsam::Pose3 &wTj,
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
+      : name_(name),
+        parent_link_(parent_link),
+        child_link_(child_link),
+        wTj_(wTj) {
+    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
+    jTccom_ = wTj_.inverse() * child_link_->wTcom();
+    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+  }
+
+  /**
    * @brief Constructor to create Joint from a sdf::Joint instance.
    *
    * @param[in] sdf_joint    sdf::Joint object to derive joint attributes from.
@@ -150,30 +166,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
     } else {
       // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
       // though.
-      throw std::runtime_error("joint pose frames other than world, parent, or "
-                               "child not yet supported");
+      throw std::runtime_error(
+          "joint pose frames other than world, parent, or "
+          "child not yet supported");
     }
 
-    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-    jTccom_ = wTj_.inverse() * child_link_->wTcom();
-    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
-  }
-
-  /**
-   * @brief Constructor to create Joint from joint name, joint pose in 
-   * world frame, and shared pointers to the parent and child links.
-   *
-   * @param[in] name         name of joint
-   * @param[in] wTj          joint pose expressed in world frame
-   * @param[in] parent_link  Shared pointer to the parent Link.
-   * @param[in] child_link   Shared pointer to the child Link.
-   */
-  explicit Joint(const std::string &name, const gtsam::Pose3 &wTj, 
-        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
-      : name_(name),
-        parent_link_(parent_link),
-        child_link_(child_link),
-        wTj_(wTj) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
@@ -253,7 +250,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
 
   /** @fn (ABSTRACT) Return pose factors in the dynamics graph.
-   * 
+   *
    * @param[in] t   The timestep for which to generate q factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return pose factors.
@@ -262,7 +259,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /** @fn (ABSTRACT) Return velocity factors in the dynamics graph.
-   * 
+   *
    * @param[in] t   The timestep for which to generate v factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return velocity factors.
@@ -271,7 +268,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /** @fn (ABSTRACT) Return accel factors in the dynamics graph.
-   * 
+   *
    * @param[in] t   The timestep for which to generate a factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return accel factors.
@@ -280,7 +277,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /** @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
-   * 
+   *
    * @param[in] t             The timestep for which to generate factors.
    * @param[in] poses         Link poses.
    * @param[in] twists        Link twists.
@@ -301,7 +298,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
           boost::none) const = 0;
 
   /** @fn (ABSTRACT) Return dynamics factors in the dynamics graph.
-   * 
+   *
    * @param[in] t   The timestep for which to generate dynamics factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return dynamics factors.
@@ -311,7 +308,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
 
   /** @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
-   * 
+   *
    * @param[in] t             The timestep for which to generate factors.
    * @param[in] poses         Link poses.
    * @param[in] twists        Link twists.
@@ -332,7 +329,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
           boost::none) const = 0;
 
   /** @fn (ABSTRACT) Return joint limit factors in the dynamics graph.
-   * 
+   *
    * @param[in] t   The timestep for which to generate joint limit factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return joint limit factors.

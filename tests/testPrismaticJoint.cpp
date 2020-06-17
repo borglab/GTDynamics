@@ -36,17 +36,12 @@ TEST(Joint, urdf_constructor_prismatic) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  ScrewJointBase::Params j1_params;
-  j1_params.effort_type = Joint::JointEffortType::Actuated;
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  PrismaticJointSharedPtr j1 =
-      std::make_shared<PrismaticJoint>(PrismaticJoint(
-          *simple_urdf.JointByName("j1"), j1_params.effort_type,
-          j1_params.spring_coefficient, j1_params.joint_limit_threshold,
-          j1_params.velocity_limit_threshold, j1_params.acceleration_limit,
-          j1_params.acceleration_limit_threshold, j1_params.torque_limit_threshold,
-          l1, l2));
+  PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
+      PrismaticJoint(*simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -110,7 +105,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 }
 
 /**
- * Construct the same prismatic joint via Params and ensure all values are as
+ * Construct the same prismatic joint via Parameters and ensure all values are as
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
@@ -121,18 +116,17 @@ TEST(Joint, params_constructor_prismatic) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
-  ScrewJointBase::Params params;
-  params.joint_type = Joint::JointType::Prismatic;
-  params.effort_type = Joint::JointEffortType::Actuated;
-  params.joint_lower_limit = 0;
-  params.joint_upper_limit = 2;
-  params.joint_limit_threshold = 0;
+  ScrewJointBase::Parameters parameters;
+  parameters.effort_type = Joint::JointEffortType::Actuated;
+  parameters.joint_lower_limit = 0;
+  parameters.joint_upper_limit = 2;
+  parameters.joint_limit_threshold = 0;
 
   PrismaticJointSharedPtr j1 =
       std::make_shared<PrismaticJoint>(PrismaticJoint(
-          params, "j1",
+          "j1",
           gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2)),
-          gtsam::Vector3(0, 0, 1), l1, l2));
+          l1, l2, parameters, gtsam::Vector3(0, 0, 1)));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
