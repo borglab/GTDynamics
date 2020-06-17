@@ -34,17 +34,16 @@ TEST(Joint, params_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
   Joint::Params parameters;
-  parameters.name = "j1";
   parameters.joint_type = Joint::JointType::Screw;
   parameters.effort_type = Joint::JointEffortType::Actuated;
-  parameters.wTj = Pose3(Rot3(), Point3(0, 0, 2));
   parameters.joint_lower_limit = -1.57;
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
 
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>(
-          ScrewJoint(parameters, gtsam::Vector3(1, 0, 0), 0.5, l1, l2));
+          ScrewJoint(parameters, "j1", Pose3(Rot3(), Point3(0, 0, 2)),
+                     gtsam::Vector3(1, 0, 0), 0.5, l1, l2));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -107,7 +106,6 @@ TEST(Joint, sdf_constructor) {
 
   // constructor for j1
   Joint::Params j1_parameters;
-  j1_parameters.name = "j1";
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>(ScrewJoint(

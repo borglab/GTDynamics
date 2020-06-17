@@ -40,6 +40,7 @@ std::vector<V> getValues(std::map<K, V> m) {
 }
 
 Joint::Params getJointParams(
+    JointConstSharedPtr joint,
     const sdf::Joint &joint_i,
     const boost::optional<std::vector<Joint::Params>> joint_params) {
   Joint::Params default_params;
@@ -48,7 +49,7 @@ Joint::Params getJointParams(
     auto jparams =
         std::find_if(joint_params.get().begin(), joint_params.get().end(),
                      [=](const Joint::Params &jps) {
-                       return (jps.name == joint_i.Name());
+                       return (joint->name() == joint_i.Name());
                      });
     jps = jparams == joint_params.get().end() ? default_params : *jparams;
   } else {
@@ -88,12 +89,12 @@ LinkJointPair extractRobotFromSdf(
     LinkSharedPtr parent_link = name_to_link[parent_link_name];
     LinkSharedPtr child_link = name_to_link[child_link_name];
 
-    // Obtain joint params.
-    Joint::Params parameters =
-        getJointParams(sdf_joint, joint_params);
-
     // Construct Joint and insert into name_to_joint.
     JointSharedPtr joint;
+
+    // Obtain joint params.
+    Joint::Params parameters =
+        getJointParams(joint, sdf_joint, joint_params);
 
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:

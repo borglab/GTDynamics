@@ -35,7 +35,6 @@ TEST(Joint, urdf_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
   Joint::Params j1_params;
-  j1_params.name = "j1";
   j1_params.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
@@ -116,17 +115,17 @@ TEST(Joint, params_constructor) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
   Joint::Params params;
-  params.name = "j1";
   params.joint_type = Joint::JointType::Revolute;
   params.effort_type = Joint::JointEffortType::Actuated;
-  params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = -1.57;
   params.joint_upper_limit = 1.57;
   params.joint_limit_threshold = 0;
 
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(
-          RevoluteJoint(params, gtsam::Vector3(1, 0, 0), l1, l2));
+          RevoluteJoint(params, "j1", 
+                        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
+                        gtsam::Vector3(1, 0, 0), l1, l2));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -189,7 +188,6 @@ TEST(Joint, sdf_constructor) {
 
   // constructor for j1
   Joint::Params j1_params;
-  j1_params.name = "j1";
   j1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -218,7 +216,6 @@ TEST(Joint, sdf_constructor) {
 
   // constructor for j2
   Joint::Params j2_params;
-  j2_params.name = "j2";
   j2_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j2 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -253,7 +250,6 @@ TEST(Joint, limit_params) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("l1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
   Joint::Params j1_params;
-  j1_params.name = "j1";
   j1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -275,7 +271,6 @@ TEST(Joint, limit_params) {
   LinkSharedPtr link_1 =
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
   Joint::Params joint_1_params;
-  joint_1_params.name = "j1";
   joint_1_params.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr joint_1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(

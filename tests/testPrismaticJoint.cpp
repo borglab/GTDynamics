@@ -37,7 +37,6 @@ TEST(Joint, urdf_constructor_prismatic) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
   Joint::Params j1_params;
-  j1_params.name = "j1";
   j1_params.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
@@ -123,18 +122,17 @@ TEST(Joint, params_constructor_prismatic) {
       std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
 
   Joint::Params params;
-  params.name = "j1";
   params.joint_type = Joint::JointType::Prismatic;
   params.effort_type = Joint::JointEffortType::Actuated;
-  params.wTj =
-      gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2));
   params.joint_lower_limit = 0;
   params.joint_upper_limit = 2;
   params.joint_limit_threshold = 0;
 
   PrismaticJointSharedPtr j1 =
       std::make_shared<PrismaticJoint>(PrismaticJoint(
-          params, gtsam::Vector3(0, 0, 1), l1, l2));
+          params, "j1",
+          gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2)),
+          gtsam::Vector3(0, 0, 1), l1, l2));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);

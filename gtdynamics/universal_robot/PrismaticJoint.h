@@ -84,19 +84,21 @@ class PrismaticJoint : public ScrewJointBase {
           parameters.torque_limit_threshold, parent_link, child_link) {}
 
   /** 
-   * @brief Create PrismaticJoint using Params and screw axes,
-   * and parent and child links.
+   * @brief Create PrismaticJoint using Params, joint name, joint pose in 
+   * world frame, screw axes, and parent and child links.
    * 
    * @param[in] params        Joint::Params struct
+   * @param[in] name          Name of the joint
+   * @param[in] wTj           joint pose expressed in world frame
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
   */
-  PrismaticJoint(const Params &params, gtsam::Vector3 axis, 
+  PrismaticJoint(const Params &params, const std::string &name, 
+                 const gtsam::Pose3 &wTj, gtsam::Vector3 axis, 
                  LinkSharedPtr parent_link, LinkSharedPtr child_link)
-      : ScrewJointBase(params,
-                       axis,
-                       getScrewAxis(axis), parent_link, child_link) {}
+      : ScrewJointBase(params, name, wTj, axis, getScrewAxis(axis),
+                       parent_link, child_link) {}
 
   /// Return jointType for use in reconstructing robot from Parameters.
   JointType jointType() const { return JointType::Prismatic; }

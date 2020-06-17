@@ -72,10 +72,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * This struct contains all parameters needed to construct a joint.
    */
   struct Params {
-    std::string name;                                                        // name of joint
+    //std::string name;                                                        // name of joint
     JointType joint_type;                                                    // type of joint
     JointEffortType effort_type = Joint::JointEffortType::Actuated;;         // joint effort type
-    gtsam::Pose3 wTj;                                                        // joint pose expressed in world frame
+    //gtsam::Pose3 wTj;                                                        // joint pose expressed in world frame
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold = 0.0;                                      // joint angle limit threshold
@@ -185,12 +185,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    */
-  explicit Joint(const Params &params, LinkSharedPtr parent_link,
-        LinkSharedPtr child_link)
-      : name_(params.name),
+  explicit Joint(const Params &params, const std::string &name, 
+        const gtsam::Pose3 &wTj, const LinkSharedPtr &parent_link, 
+        const LinkSharedPtr &child_link)
+      : name_(name),
         parent_link_(parent_link),
         child_link_(child_link),
-        wTj_(params.wTj) {
+        wTj_(wTj) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();

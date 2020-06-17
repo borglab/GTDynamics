@@ -132,11 +132,13 @@ class ScrewJointBase : public Joint {
                        jps.acceleration_limit_threshold, jps.torque_limit_threshold,
                        parent_link, child_link) {}
 
-  /** constructor using Params, screw axes, and parent and child links. */
-  ScrewJointBase(const Params &params, gtsam::Vector3 axis,
+  /** constructor using Params, joint name, wTj, screw axes, and parent 
+   * and child links. */
+  ScrewJointBase(const Params &params, const std::string &name, 
+                 const gtsam::Pose3 &wTj, gtsam::Vector3 axis,
                  gtsam::Vector6 jScrewAxis, LinkSharedPtr parent_link,
                  LinkSharedPtr child_link)
-      : Joint(params, parent_link, child_link),
+      : Joint(params, name, wTj, parent_link, child_link),
         joint_type_(params.joint_type),
         jointEffortType_(params.effort_type),
         axis_(axis),
