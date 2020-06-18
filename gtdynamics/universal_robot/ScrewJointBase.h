@@ -70,16 +70,12 @@ class ScrewJointBase : public Joint {
 
     parameters.joint_lower_limit = sdf_joint.Axis()->Lower();
     parameters.joint_upper_limit = sdf_joint.Axis()->Upper();
-    // joint_limit_threshold_(joint_limit_threshold),               // No matching function? (/usr/include/sdformat-8.7/sdf)
     parameters.damping_coefficient = sdf_joint.Axis()->Damping();
 
     // parameters.spring_coefficient = sdf_joint.Axis()->SpringReference() or SpringStiffness()? ; // spring_coeff_(spring_coefficient),
     parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
-    // velocity_limit_threshold_(velocity_limit_threshold),         // No matching function? (/usr/include/sdformat-8.7/sdf)
     // acceleration_limit_(acceleration_limit),                     // No matching function? (/usr/include/sdformat-8.7/sdf)
-    // acceleration_limit_threshold_(acceleration_limit_threshold), // No matching function? (/usr/include/sdformat-8.7/sdf)
     parameters.torque_limit = sdf_joint.Axis()->Effort();
-    // torque_limit_threshold_(torque_limit_threshold)              // No matching function? (/usr/include/sdformat-8.7/sdf)
 
     return parameters;
   }

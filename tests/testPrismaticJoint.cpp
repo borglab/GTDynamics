@@ -31,17 +31,16 @@ TEST(Joint, urdf_constructor_prismatic) {
   auto simple_urdf =
       get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
 
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+  auto l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  auto l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  ScrewJointBase::Parameters j1_parameters;
+  auto joint1 = *simple_urdf.JointByName("j1");
+
+  auto j1_parameters = ScrewJointBase::ParametersFromSDF(joint1);
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   // Test constructor.
-  PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
-      PrismaticJoint(*simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
+  auto j1 = std::make_shared<PrismaticJoint>(joint1, l1, l2, j1_parameters);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
