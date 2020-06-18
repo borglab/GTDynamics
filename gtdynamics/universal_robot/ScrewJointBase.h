@@ -117,38 +117,6 @@ class ScrewJointBase : public Joint {
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
-  /** constructor using Parameters, sdf_joint, screw axes, and parent 
-   * and child links. */
-  ScrewJointBase(const sdf::Joint &sdf_joint, const LinkSharedPtr &parent_link,
-                 const LinkSharedPtr &child_link, const Parameters &parameters,
-                 gtsam::Vector3 axis, gtsam::Vector6 jScrewAxis)
-      : Joint(sdf_joint, parent_link, child_link),
-        parameters_(parameters),
-        axis_(axis),
-        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
-        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
-
-  /**
-   * @brief Create ScrewJointBase from a sdf::Joint instance.
-   *
-   * @param[in] sdf_joint                       sdf::Joint object.
-   * @param[in] jScrewAxis                      Screw axis in joint frame.
-   * @param[in] parent_link                     Shared pointer to the parent Link.
-   * @param[in] child_link                      Shared pointer to the child Link.
-   */
-  ScrewJointBase(const sdf::Joint &sdf_joint, const LinkSharedPtr &parent_link,
-                 const LinkSharedPtr &child_link, gtsam::Vector6 jScrewAxis)
-      : ScrewJointBase(sdf_joint, parent_link, child_link,
-                       ParametersFromSDF(sdf_joint), getSdfAxis(sdf_joint),
-                       jScrewAxis) {}
-
-  /** Construct joint using sdf::Joint instance and joint parameters. */
-  ScrewJointBase(const sdf::Joint &sdf_joint, LinkSharedPtr parent_link,
-                 LinkSharedPtr child_link, const Parameters &parameters,
-                 gtsam::Vector6 jScrewAxis)
-      : ScrewJointBase(sdf_joint, parent_link, child_link, parameters,
-                       getSdfAxis(sdf_joint), jScrewAxis) {}
-
   /// Return joint effort type
   JointEffortType jointEffortType() const { return parameters_.effort_type; }
 

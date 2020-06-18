@@ -38,10 +38,12 @@ TEST(Link, urdf_constructor) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  Pose3 wTj = getJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+
   // Test constructor.
-  RevoluteJointSharedPtr j1 =
-      std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
+  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
+      RevoluteJoint("j1", wTj, l1, l2, j1_parameters, *simple_urdf.Axis()));
 
   // get shared ptr
   EXPECT(l1->getSharedPtr() == l1);

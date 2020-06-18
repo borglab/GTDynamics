@@ -37,9 +37,12 @@ TEST(Joint, urdf_constructor) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  wTj = getJointFrame(*simple_urdf.JointByName("j1"), l1, l2)
+
   // Test constructor.
   RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
-      RevoluteJoint(*simple_urdf.JointByName("j1"), l1, l2, j1_parameters));
+      RevoluteJoint("j1", wTj, l1, l2, j1_parameters, *simple_urdf.Axis()));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -180,12 +183,15 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  wTj = getJointFrame(*model.JointByName("joint_1"), l0, l1)  
+  
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("joint_1"), l0, l1, j1_parameters));
+          "joint_1", wTj, l0, l1, j1_parameters, *model.Axis()));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -207,10 +213,13 @@ TEST(Joint, sdf_constructor) {
   // constructor for j2
   ScrewJointBase::Parameters j2_parameters;
   j2_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  wTj = getJointFrame(*model.JointByName("joint_2"), l1, l2)
+  
   RevoluteJointSharedPtr j2 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("joint_2"),
-          l1, l2, j2_parameters));
+          "joint_2", wTj, l1, l2, j2_parameters, *model.Axis()));
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -238,10 +247,13 @@ TEST(Joint, limit_params) {
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("l2")));
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  wTj = getJointFrame(*model.JointByName("j1"), l1, l2)
+
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model.JointByName("j1"),
-          l1, l2, j1_parameters));
+          "j1", wTj, l1, l2, j1_parameters, *model.Axis()));
 
   EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
@@ -256,9 +268,13 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(Link(*model2.LinkByName("link_1")));
   ScrewJointBase::Parameters joint_1_parameters;
   joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  wTj = getJointFrame(*model2.JointByName("joint_1"), link_0, link_1)
+
   RevoluteJointSharedPtr joint_1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
-          *model2.JointByName("joint_1"), link_0, link_1, joint_1_parameters));
+          "joint_1", link_0, link_1, joint_1_parameters, *model2.Axis()));
 
   EXPECT(assert_equal(-1e16, joint_1->jointLowerLimit()));
   EXPECT(assert_equal(1e16, joint_1->jointUpperLimit()));

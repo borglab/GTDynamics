@@ -55,31 +55,6 @@ class RevoluteJoint : public ScrewJointBase {
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
 
-  /**
-   * @brief Create RevoluteJoint from a sdf::Joint instance.
-   *
-   * @param[in] sdf_joint                      sdf::Joint object.
-   * @param[in] parent_link                    Shared pointer to the parent Link.
-   * @param[in] child_link                     Shared pointer to the child Link.
-   */
-  RevoluteJoint(const sdf::Joint &sdf_joint, LinkSharedPtr parent_link,
-                LinkSharedPtr child_link)
-      : ScrewJointBase(sdf_joint, parent_link, child_link,
-                       getScrewAxis(getSdfAxis(sdf_joint))) {}
-
-  /** 
-   * @brief Create RevoluteJoint using sdf::Joint instance and joint parameters. 
-   * 
-   * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parent_link                Shared pointer to the parent Link.
-   * @param[in] child_link                 Shared pointer to the child Link.
-   * @param[in] parameters                 ScrewJointBase::Parameters struct
-  */
-  RevoluteJoint(const sdf::Joint &sdf_joint, LinkSharedPtr parent_link,
-                LinkSharedPtr child_link, const Parameters &parameters)
-      : ScrewJointBase(sdf_joint, parent_link, child_link,
-                       getScrewAxis(getSdfAxis(sdf_joint))) {}
-
   /// Return jointType for use in reconstructing robot from Parameters.
   JointType jointType() const { return JointType::Revolute; }
 };

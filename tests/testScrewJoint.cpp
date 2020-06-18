@@ -103,12 +103,15 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  Pose3 wTj = getJointFrame(*model.JointByName("joint_1"), l0, l1);
+
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
-  ScrewJointSharedPtr j1 =
-      std::make_shared<ScrewJoint>(ScrewJoint(
-          *model.JointByName("joint_1"), l0, l1, j1_parameters));
+  ScrewJointSharedPtr j1 = std::make_shared<ScrewJoint>(ScrewJoint("joint_1", wTj, l0, l1,
+                                                                    j1_parameters, *model.Axis(), 
+                                                                    *model.ThreadPitch());
 
   // expected values for screw about z axis
   // check screw axis

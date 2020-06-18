@@ -39,8 +39,11 @@ TEST(Joint, urdf_constructor_prismatic) {
   auto j1_parameters = ScrewJointBase::ParametersFromSDF(joint1);
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
+  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
+  Pose3 wTj = getJointFrame(joint1, l1, l2);
+
   // Test constructor.
-  auto j1 = std::make_shared<PrismaticJoint>(joint1, l1, l2, j1_parameters);
+  auto j1 = std::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters, joint1.Axis());
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);

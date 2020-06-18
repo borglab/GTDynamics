@@ -58,6 +58,33 @@ ScrewJointBase::Parameters getJointParameters(
   return jps;
 }
 
+Pose3 getJointFrame(const sdf::Joint &sdf_joint,
+                    const LinkSharedPtr &parent_link,
+                    const LinkSharedPtr &child_link) {
+  Pose3 wTj;
+  if (sdf_joint.PoseFrame() == "" ||
+      sdf_joint.PoseFrame() == child_link->name()) {
+    if (sdf_joint.Pose() == ignition::math::Pose3d())
+      wTj = child_link->wTl();
+    else
+      wTj = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+  } else if (sdf_joint.PoseFrame() == parent_link->name()) {
+    if (sdf_joint.Pose() == ignition::math::Pose3d())
+      wTj = parent_link->wTl();
+    else
+      wTj = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+  } else if (sdf_joint.PoseFrame() == "world") {
+    wTj = parse_ignition_pose(sdf_joint.Pose());
+  } else {
+    // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
+    // though.
+    throw std::runtime_error(
+        "joint pose frames other than world, parent, or "
+        "child not yet supported");
+  }
+  return wTj;
+}
+
 LinkJointPair extractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
@@ -96,18 +123,22 @@ LinkJointPair extractRobotFromSdf(
     ScrewJointBase::Parameters parameters =
         getJointParameters(joint, sdf_joint, joint_parameters);
 
+    auto name = sdf_joint.Name();
+    Pose3 wTj = getJointFrame(sdf_joint, parent_link, child_link);
+
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:
         joint = std::make_shared<PrismaticJoint>(
-            PrismaticJoint(sdf_joint, parent_link, child_link, parameters));
+            name, wTj, parent_link, child_link, parameters, sdf_joint.Axis());
         break;
       case sdf::JointType::REVOLUTE:
         joint = std::make_shared<RevoluteJoint>(
-            RevoluteJoint(sdf_joint, parent_link, child_link, parameters));
+            name, wTj, parent_link, child_link, parameters, sdf_joint.Axis());
         break;
       case sdf::JointType::SCREW:
-        joint = std::make_shared<ScrewJoint>(
-            ScrewJoint(sdf_joint, parent_link, child_link, parameters));
+        joint = std::make_shared<ScrewJoint>(name, wTj, parent_link, child_link,
+                                             parameters, sdf_joint.Axis(),
+                                             sdf_joint.ThreadPitch());
         break;
       default:
         throw std::runtime_error("Joint type for [" +

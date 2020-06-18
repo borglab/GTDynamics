@@ -58,32 +58,6 @@ class ScrewJoint : public ScrewJointBase {
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis, thread_pitch)) {}
 
-  /**
-   * @brief Create ScrewJoint from a sdf::Joint instance.
-   *
-   * @param[in] sdf_joint                      sdf::Joint object.
-   * @param[in] parent_link                    Shared pointer to the parent Link.
-   * @param[in] child_link                     Shared pointer to the child Link.
-   */
-  ScrewJoint(const sdf::Joint &sdf_joint, LinkSharedPtr parent_link,
-             LinkSharedPtr child_link)
-      : ScrewJointBase(sdf_joint, parent_link, child_link,
-            getScrewAxis(getSdfAxis(sdf_joint), sdf_joint.ThreadPitch())) {}
-
-  /** 
-   * @brief Create ScrewJoint using sdf::Joint instance and joint parameters. 
-   * 
-   * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] parent_link                Shared pointer to the parent Link.
-   * @param[in] child_link                 Shared pointer to the child Link.
-   * @param[in] parameters                 ScrewJointBase::Parameters struct
-  */
-  ScrewJoint(const sdf::Joint &sdf_joint,
-                 LinkSharedPtr parent_link, LinkSharedPtr child_link,
-                 const Parameters &parameters)
-      : ScrewJointBase(sdf_joint, parent_link, child_link,
-            getScrewAxis(getSdfAxis(sdf_joint), sdf_joint.ThreadPitch())) {}
-
   /// Return jointType for use in reconstructing robot from Parameters.
   JointType jointType() const { return JointType::Screw; }
 };
