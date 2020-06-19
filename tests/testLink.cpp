@@ -33,9 +33,9 @@ TEST(Link, urdf_constructor) {
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
   LinkSharedPtr l1 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
@@ -43,7 +43,7 @@ TEST(Link, urdf_constructor) {
 
   // Test constructor.
   RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
-      RevoluteJoint("j1", wTj, l1, l2, j1_parameters, *simple_urdf.Axis()));
+      "j1", wTj, l1, l2, j1_parameters, *simple_urdf.Axis());
 
   // get shared ptr
   EXPECT(l1->getSharedPtr() == l1);
@@ -102,7 +102,7 @@ TEST(Link, params_constructor) {
   parameters.wTl = gtsam::Pose3();
   parameters.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
 
-  LinkSharedPtr l1 = std::make_shared<Link>(Link(parameters));
+  LinkSharedPtr l1 = std::make_shared<Link>(parameters);
 
   // name
   EXPECT(assert_equal("l1", l1->name()));

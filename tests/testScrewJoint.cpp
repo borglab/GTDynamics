@@ -30,9 +30,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   LinkSharedPtr l1 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
@@ -40,9 +40,9 @@ TEST(Joint, params_constructor) {
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
 
-  ScrewJointSharedPtr j1 = std::make_shared<ScrewJoint>(
-      ScrewJoint("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
-                 gtsam::Vector3(1, 0, 0), 0.5));
+  ScrewJointSharedPtr j1 =
+      std::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
+                                   parameters, gtsam::Vector3(1, 0, 0), 0.5);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -99,17 +99,17 @@ TEST(Joint, sdf_constructor) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
                        "simple_screw_joint_sdf");
 
-  LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
-  LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
+  LinkSharedPtr l0 = std::make_shared<Link>(*model.LinkByName("link_0"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("link_1"));
 
   Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
 
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
-  ScrewJointSharedPtr j1 = std::make_shared<ScrewJoint>(ScrewJoint("joint_1", wTj, l0, l1,
-                                                                    j1_parameters, *model.Axis(), 
-                                                                    *model.ThreadPitch());
+  ScrewJointSharedPtr j1 =
+      std::make_shared<ScrewJoint>("joint_1", wTj, l0, l1, j1_parameters,
+                                   *model.Axis(), *model.ThreadPitch());
 
   // expected values for screw about z axis
   // check screw axis

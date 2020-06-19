@@ -114,9 +114,9 @@ TEST(Joint, params_constructor_prismatic) {
   auto simple_urdf =
       get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
   LinkSharedPtr l1 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l1")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 =
-      std::make_shared<Link>(Link(*simple_urdf.LinkByName("l2")));
+      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
@@ -124,11 +124,9 @@ TEST(Joint, params_constructor_prismatic) {
   parameters.joint_upper_limit = 2;
   parameters.joint_limit_threshold = 0;
 
-  PrismaticJointSharedPtr j1 =
-      std::make_shared<PrismaticJoint>(PrismaticJoint(
-          "j1",
-          gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2)),
-          l1, l2, parameters, gtsam::Vector3(0, 0, 1)));
+  PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
+      "j1", gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2)),
+      l1, l2, parameters, gtsam::Vector3(0, 0, 1));
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
