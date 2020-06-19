@@ -11,20 +11,21 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/ScrewJoint.h"
-#include "gtdynamics/utils/utils.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
-#include <CppUnitLite/TestHarness.h>
-using namespace gtdynamics; 
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/ScrewJoint.h"
+#include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/utils.h"
+using namespace gtdynamics;
 
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Construct the same joint via Parameters and ensure all values are as expected.
+ * Construct the same joint via Parameters and ensure all values are as
+ * expected.
  */
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -39,10 +40,9 @@ TEST(Joint, params_constructor) {
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
 
-  ScrewJointSharedPtr j1 =
-      std::make_shared<ScrewJoint>(
-          ScrewJoint("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
-                     gtsam::Vector3(1, 0, 0), 0.5));
+  ScrewJointSharedPtr j1 = std::make_shared<ScrewJoint>(
+      ScrewJoint("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
+                 gtsam::Vector3(1, 0, 0), 0.5));
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -59,8 +59,8 @@ TEST(Joint, params_constructor) {
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
-  screw_axis_l1 << -1, 0, 0, -0.5 / 2 / M_PI, -1, 0; // parent frame
-  screw_axis_l2 << 1, 0, 0, 0.5 / 2 / M_PI, -1, 0;   // child frame
+  screw_axis_l1 << -1, 0, 0, -0.5 / 2 / M_PI, -1, 0;  // parent frame
+  screw_axis_l2 << 1, 0, 0, 0.5 / 2 / M_PI, -1, 0;    // child frame
   EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2)));
   EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
 
@@ -96,15 +96,13 @@ TEST(Joint, params_constructor) {
 }
 
 TEST(Joint, sdf_constructor) {
-  auto model =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
-              "simple_screw_joint_sdf");
+  auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
+                       "simple_screw_joint_sdf");
 
   LinkSharedPtr l0 = std::make_shared<Link>(Link(*model.LinkByName("link_0")));
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  Pose3 wTj = getJointFrame(*model.JointByName("joint_1"), l0, l1);
+  Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
 
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;

@@ -30,6 +30,7 @@
 #include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
@@ -481,7 +482,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Load the robot from urdf file
   Robot biped =
-      Robot(std::string(URDF_PATH) + "/biped.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/biped.urdf");
 
   // Add some contact points.
   std::vector<ContactPoint> contact_points;
@@ -570,7 +571,7 @@ TEST(jointlimitFactors, simple_urdf) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
-  Robot my_robot = Robot(
+  Robot my_robot = CreateRobotFromFile(
       std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.

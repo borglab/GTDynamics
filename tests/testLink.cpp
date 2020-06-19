@@ -13,6 +13,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Testable.h>
@@ -38,8 +39,7 @@ TEST(Link, urdf_constructor) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  Pose3 wTj = getJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+  Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
 
   // Test constructor.
   RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(

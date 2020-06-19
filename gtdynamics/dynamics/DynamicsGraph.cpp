@@ -31,6 +31,7 @@
 #include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/JsonSaver.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -172,8 +173,8 @@ Values DynamicsGraph::linearSolveFD(
 
 Values DynamicsGraph::linearSolveID(
     const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels, const Robot::JointValues &joint_accels,
-    const Robot::FKResults &fk_results,
+    const Robot::JointValues &joint_vels,
+    const Robot::JointValues &joint_accels, const Robot::FKResults &fk_results,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis) {
   // construct and solve linear graph

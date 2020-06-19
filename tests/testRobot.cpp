@@ -19,6 +19,7 @@
 #include <gtsam/linear/VectorValues.h>
 
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics; 
@@ -30,7 +31,7 @@ TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  LinkJointPair links_and_joints = extractRobotFromSdf(simple_urdf);
+  LinkJointPair links_and_joints = ExtractRobotFromSdf(simple_urdf);
   LinkMap name_to_link = links_and_joints.first;
   JointMap name_to_joint = links_and_joints.second;
   EXPECT(assert_equal(2, name_to_link.size()));

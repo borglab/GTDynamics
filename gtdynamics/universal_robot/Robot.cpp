@@ -26,7 +26,7 @@
 #include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
-      gtsam::GaussianFactorGraph, gtsam::Vector3;
+    gtsam::GaussianFactorGraph, gtsam::Vector3;
 
 namespace gtdynamics {
 
@@ -39,144 +39,9 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-ScrewJointBase::Parameters getJointParameters(
-    JointConstSharedPtr joint,
-    const sdf::Joint &joint_i,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
-  ScrewJointBase::Parameters default_parameters;
-  ScrewJointBase::Parameters jps;
-  if (joint_parameters) {
-    auto jparameters =
-        std::find_if(joint_parameters.get().begin(), joint_parameters.get().end(),
-                     [=](const ScrewJointBase::Parameters &jps) {
-                       return (joint->name() == joint_i.Name());
-                     });
-    jps = jparameters == joint_parameters.get().end() ? default_parameters : *jparameters;
-  } else {
-    jps = default_parameters;
-  }
-  return jps;
-}
-
-Pose3 getJointFrame(const sdf::Joint &sdf_joint,
-                    const LinkSharedPtr &parent_link,
-                    const LinkSharedPtr &child_link) {
-  Pose3 wTj;
-  if (sdf_joint.PoseFrame() == "" ||
-      sdf_joint.PoseFrame() == child_link->name()) {
-    if (sdf_joint.Pose() == ignition::math::Pose3d())
-      wTj = child_link->wTl();
-    else
-      wTj = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
-  } else if (sdf_joint.PoseFrame() == parent_link->name()) {
-    if (sdf_joint.Pose() == ignition::math::Pose3d())
-      wTj = parent_link->wTl();
-    else
-      wTj = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
-  } else if (sdf_joint.PoseFrame() == "world") {
-    wTj = parse_ignition_pose(sdf_joint.Pose());
-  } else {
-    // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
-    // though.
-    throw std::runtime_error(
-        "joint pose frames other than world, parent, or "
-        "child not yet supported");
-  }
-  return wTj;
-}
-
-LinkJointPair extractRobotFromSdf(
-    const sdf::Model sdf,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
-  // Loop through all links in the urdf interface and construct Link
-  // objects without parents or children.
-  LinkMap name_to_link;
-  for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link =
-        std::make_shared<Link>(*sdf.LinkByIndex(i));
-    link->setID(i);
-    name_to_link.insert(std::make_pair(link->name(), link));
-  }
-
-  // Create Joint objects and update list of parent and child links/joints.
-  JointMap name_to_joint;
-  for (uint j = 0; j < sdf.JointCount(); j++) {
-    sdf::Joint sdf_joint = *sdf.JointByIndex(j);
-
-    // Get this joint's parent and child links.
-    std::string parent_link_name = sdf_joint.ParentLinkName();
-    std::string child_link_name = sdf_joint.ChildLinkName();
-    if (parent_link_name == "world") {
-      // This joint fixes the child link in the world frame.
-      LinkSharedPtr child_link = name_to_link[child_link_name];
-      Pose3 fixed_pose = child_link->wTcom();
-      child_link->fix(fixed_pose);
-      continue;
-    }
-    LinkSharedPtr parent_link = name_to_link[parent_link_name];
-    LinkSharedPtr child_link = name_to_link[child_link_name];
-
-    // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint;
-
-    // Obtain joint parameters.
-    ScrewJointBase::Parameters parameters =
-        getJointParameters(joint, sdf_joint, joint_parameters);
-
-    auto name = sdf_joint.Name();
-    Pose3 wTj = getJointFrame(sdf_joint, parent_link, child_link);
-
-    switch (sdf_joint.Type()) {
-      case sdf::JointType::PRISMATIC:
-        joint = std::make_shared<PrismaticJoint>(
-            name, wTj, parent_link, child_link, parameters, sdf_joint.Axis());
-        break;
-      case sdf::JointType::REVOLUTE:
-        joint = std::make_shared<RevoluteJoint>(
-            name, wTj, parent_link, child_link, parameters, sdf_joint.Axis());
-        break;
-      case sdf::JointType::SCREW:
-        joint = std::make_shared<ScrewJoint>(name, wTj, parent_link, child_link,
-                                             parameters, sdf_joint.Axis(),
-                                             sdf_joint.ThreadPitch());
-        break;
-      default:
-        throw std::runtime_error("Joint type for [" +
-                               std::string(sdf_joint.Name()) +
-                               "] not yet supported");
-    }
-
-    name_to_joint.insert(std::make_pair(sdf_joint.Name(), joint));
-    joint->setID(j);
-
-    // Update list of parent and child links/joints for each Link.
-    parent_link->addJoint(joint);
-    child_link->addJoint(joint);
-  }
-
-  return std::make_pair(name_to_link, name_to_joint);
-}
-
-LinkJointPair extractRobotFromFile(
-    const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>> joint_parameters) {
-  std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
-  std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
-
-  if (file_ext == "urdf")
-    return extractRobotFromSdf(get_sdf(file_path), joint_parameters);
-  else if (file_ext == "sdf")
-    return extractRobotFromSdf(get_sdf(file_path, model_name), joint_parameters);
-
-  throw std::runtime_error("Invalid file extension.");
-}
-
 Robot::Robot(LinkJointPair links_and_joints)
     : name_to_link_(links_and_joints.first),
       name_to_joint_(links_and_joints.second) {}
-
-Robot::Robot(const std::string file_path, std::string model_name)
-    : Robot(extractRobotFromFile(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, LinkSharedPtr>(name_to_link_);
@@ -325,7 +190,7 @@ Robot::FKResults Robot::forwardKinematics(
 }
 
 NonlinearFactorGraph Robot::qFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->qFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->qFactors(t, opt));
@@ -333,7 +198,7 @@ NonlinearFactorGraph Robot::qFactors(const int &t,
 }
 
 NonlinearFactorGraph Robot::vFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->vFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->vFactors(t, opt));
@@ -341,7 +206,7 @@ NonlinearFactorGraph Robot::vFactors(const int &t,
 }
 
 NonlinearFactorGraph Robot::aFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->aFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));

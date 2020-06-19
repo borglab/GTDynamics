@@ -13,6 +13,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
 #include <gtsam/base/Testable.h>
@@ -37,8 +38,7 @@ TEST(Joint, urdf_constructor) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  wTj = getJointFrame(*simple_urdf.JointByName("j1"), l1, l2)
+  wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2)
 
   // Test constructor.
   RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
@@ -183,8 +183,7 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(Link(*model.LinkByName("link_1")));
   LinkSharedPtr l2 = std::make_shared<Link>(Link(*model.LinkByName("link_2")));
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  wTj = getJointFrame(*model.JointByName("joint_1"), l0, l1)  
+  wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1)  
   
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
@@ -214,8 +213,7 @@ TEST(Joint, sdf_constructor) {
   ScrewJointBase::Parameters j2_parameters;
   j2_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  wTj = getJointFrame(*model.JointByName("joint_2"), l1, l2)
+  wTj = GetJointFrame(*model.JointByName("joint_2"), l1, l2)
   
   RevoluteJointSharedPtr j2 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -248,8 +246,7 @@ TEST(Joint, limit_params) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  wTj = getJointFrame(*model.JointByName("j1"), l1, l2)
+  wTj = GetJointFrame(*model.JointByName("j1"), l1, l2)
 
   RevoluteJointSharedPtr j1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(
@@ -269,8 +266,7 @@ TEST(Joint, limit_params) {
   ScrewJointBase::Parameters joint_1_parameters;
   joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  //TODO (stephanie): move this function out of Robot.cpp so it can be called here
-  wTj = getJointFrame(*model2.JointByName("joint_1"), link_0, link_1)
+  wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1)
 
   RevoluteJointSharedPtr joint_1 =
       std::make_shared<RevoluteJoint>(RevoluteJoint(

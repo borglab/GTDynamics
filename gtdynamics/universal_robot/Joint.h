@@ -64,11 +64,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
 
-  static gtsam::Vector3 getSdfAxis(const sdf::Joint &sdf_joint) {
-    auto axis = sdf_joint.Axis()->Xyz();
-    return gtsam::Vector3(axis[0], axis[1], axis[2]);
-  }
-
  protected:
   // This joint's name.
   std::string name_;
@@ -107,7 +102,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Check if the link is a child link, throw an error if link is not
   /// connected to this joint.
-  bool isChildLink(const LinkSharedPtr link) const {
+  bool isChildLink(const LinkSharedPtr& link) const {
     LinkSharedPtr link_ptr = link;
     if (link_ptr != child_link_ && link_ptr != parent_link_)
       throw std::runtime_error("link " + link_ptr->name() +
@@ -161,7 +156,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   std::string name() const { return name_; }
 
   /// Return the connected link other than the one provided.
-  LinkSharedPtr otherLink(const LinkSharedPtr link) const {
+  LinkSharedPtr otherLink(const LinkSharedPtr& link) const {
     return isChildLink(link) ? parent_link_ : child_link_;
   }
 
@@ -188,26 +183,26 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame
   virtual gtsam::Pose3 transformFrom(
-      const LinkSharedPtr link,
+      const LinkSharedPtr& link,
       boost::optional<double> q = boost::none) const = 0;
 
   /// Abstract method. Return the twist of the other link given this link's
   /// twist and joint angle.
   virtual gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      const LinkSharedPtr& link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> this_twist = boost::none) const = 0;
 
   /// Abstract method. Return the transform from the other link com to this link
   /// com frame
   virtual gtsam::Pose3 transformTo(
-      const LinkSharedPtr link,
+      const LinkSharedPtr& link,
       boost::optional<double> q = boost::none) const = 0;
 
   /// Abstract method. Return the twist of this link given the other link's
   /// twist and joint angle.
   virtual gtsam::Vector6 transformTwistTo(
-      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      const LinkSharedPtr& link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none) const = 0;
 

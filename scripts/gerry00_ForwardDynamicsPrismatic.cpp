@@ -15,6 +15,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 
@@ -23,7 +24,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
   // constraints.
-  auto simple_rpr = Robot(
+  auto simple_rpr = CreateRobotFromFile(
     "../../sdfs/test/simple_rpr.sdf", "simple_rpr_sdf");
   std::cout << "\033[1;31m" << "Robot Model:" << "\033[0m\n" << std::endl;
   simple_rpr.printRobot();

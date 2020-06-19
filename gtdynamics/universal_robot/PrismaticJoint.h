@@ -31,27 +31,28 @@ namespace gtdynamics {
 class PrismaticJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
-  gtsam::Vector6 getScrewAxis(gtsam::Vector3 axis) {
+  gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
     gtsam::Vector6 screw_axis;
     screw_axis << 0, 0, 0, axis;
     return screw_axis;
   }
 
  public:
-  /** 
-   * @brief Create PrismaticJoint using Parameters, joint name, joint pose in 
+  /**
+   * @brief Create PrismaticJoint using Parameters, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
-   * 
+   *
    * @param[in] name          Name of the joint
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
    * @param[in] parameters    ScrewJointBase::Parameters struct
    * @param[in] axis          joint axis expressed in joint frame
-  */
+   */
   PrismaticJoint(const std::string &name, const gtsam::Pose3 &wTj,
-                 LinkSharedPtr parent_link, LinkSharedPtr child_link,
-                 const Parameters &parameters, gtsam::Vector3 axis)
+                 const LinkSharedPtr &parent_link,
+                 const LinkSharedPtr &child_link, const Parameters &parameters,
+                 const gtsam::Vector3 &axis)
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
 
