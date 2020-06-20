@@ -19,6 +19,7 @@
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
+
 using namespace gtdynamics;
 
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
@@ -107,9 +108,11 @@ TEST(Joint, sdf_constructor) {
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
+
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>("joint_1", wTj, l0, l1, j1_parameters,
-                                   *model.Axis(), *model.ThreadPitch());
+                                   j1_axis, model.JointByName("joint_1")->ThreadPitch());
 
   // expected values for screw about z axis
   // check screw axis

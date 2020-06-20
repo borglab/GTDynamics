@@ -39,11 +39,12 @@ TEST(Link, urdf_constructor) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+  gtsam::Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
   RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
-      "j1", wTj, l1, l2, j1_parameters, *simple_urdf.Axis());
+      "j1", wTj, l1, l2, j1_parameters, j1_axis);
 
   // get shared ptr
   EXPECT(l1->getSharedPtr() == l1);

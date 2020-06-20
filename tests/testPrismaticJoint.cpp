@@ -37,13 +37,15 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   auto joint1 = *simple_urdf.JointByName("j1");
 
-  auto j1_parameters = ScrewJointBase::ParametersFromSDF(joint1);
+  auto j1_parameters = ParametersFromSDF(joint1);
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  Pose3 wTj = GetJointFrame(joint1, l1, l2);
+  gtsam::Pose3 wTj = GetJointFrame(joint1, l1, l2);
+
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  auto j1 = std::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters, joint1.Axis());
+  auto j1 = std::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -124,9 +126,11 @@ TEST(Joint, params_constructor_prismatic) {
   parameters.joint_upper_limit = 2;
   parameters.joint_limit_threshold = 0;
 
+  const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
+
   PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
       "j1", gtsam::Pose3(gtsam::Rot3::Rx(1.5707963268), gtsam::Point3(0, 0, 2)),
-      l1, l2, parameters, gtsam::Vector3(0, 0, 1));
+      l1, l2, parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);

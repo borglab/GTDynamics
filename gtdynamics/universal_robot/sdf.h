@@ -63,7 +63,13 @@ LinkJointPair ExtractRobotFromSdf(
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
         joint_parameters = boost::none);
 
+ScrewJointBase::Parameters ParametersFromSDF(
+    const sdf::Joint &sdf_joint);
+
 gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                            const LinkSharedPtr &parent_link,
                            const LinkSharedPtr &child_link);
+
+gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint);
+
 }

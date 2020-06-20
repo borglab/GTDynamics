@@ -11,7 +11,7 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-static ScrewJointBase::Parameters ParametersFromSDF(
+ScrewJointBase::Parameters ParametersFromSDF(
     const sdf::Joint &sdf_joint) {
   ScrewJointBase::Parameters parameters;
   // TODO (stephanie): make this work
@@ -78,7 +78,7 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   }
 }
 
-static gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
+gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   auto axis = sdf_joint.Axis()->Xyz();
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }

@@ -66,7 +66,7 @@ TEST(Robot, simple_urdf) {
 
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
-  Robot four_bar = Robot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -89,7 +89,7 @@ TEST(Robot, four_bar_sdf) {
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
   Robot simple_rr =
-      Robot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -108,7 +108,7 @@ TEST(Robot, simple_rr_sdf) {
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
   Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.removeLink(four_bar.getLinkByName("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
@@ -117,7 +117,7 @@ TEST(Robot, removeLink) {
 }
 
 TEST(Robot, forwardKinematics) {
-  Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  Robot simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   Robot::JointValues joint_angles, joint_vels;
   joint_angles["j1"] = 0;
@@ -183,7 +183,7 @@ TEST(Robot, forwardKinematics) {
 
 TEST(Robot, forwardKinematics_rpr) {
   Robot rpr_robot =
-      Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Robot::JointValues joint_angles, joint_vels;
   joint_angles["joint_1"] = 0;
@@ -250,7 +250,7 @@ TEST(Robot, forwardKinematics_rpr) {
 // test fk for a four bar linkage (loopy)
 TEST(forwardKinematics, four_bar) {
   Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.getLinkByName("l1")->fix();
 
   Robot::JointValues joint_angles, joint_vels;

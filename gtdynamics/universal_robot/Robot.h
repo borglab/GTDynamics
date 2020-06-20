@@ -28,10 +28,10 @@
 namespace gtdynamics {
 
 /** Construct all Link and Joint objects from an input
- * urdf::ModelInterfaceSharedPtr. Keyword arguments: urdf_ptr         -- a
- * shared pointer to a urdf::ModelInterface object. joint_parameters     -- a vector
- * contanining optional parameters for joints.
- *
+ * urdf::ModelInterfaceSharedPtr.
+ * Keyword arguments:
+ *  urdf_ptr             -- a shared pointer to a urdf::ModelInterface object.
+ *  joint_parameters     -- a vector containing optional parameters for joints.
  */
 
 typedef std::map<std::string, LinkSharedPtr> LinkMap;
