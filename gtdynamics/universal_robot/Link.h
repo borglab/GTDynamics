@@ -33,29 +33,29 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/factors/WrenchFactors.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/GTDSymbol.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline GTDSymbol PoseKey(int i, int t) {
-  return GTDSymbol::LinkSymbol("p", i, t);
+inline DynamicsSymbol PoseKey(int i, int t) {
+  return DynamicsSymbol::LinkSymbol("p", i, t);
 }
 
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline GTDSymbol TwistKey(int i, int t) {
-  return GTDSymbol::LinkSymbol("V", i, t);
+inline DynamicsSymbol TwistKey(int i, int t) {
+  return DynamicsSymbol::LinkSymbol("V", i, t);
 }
 
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline GTDSymbol TwistAccelKey(int i, int t) {
-  return GTDSymbol::LinkSymbol("A", i, t);
+inline DynamicsSymbol TwistAccelKey(int i, int t) {
+  return DynamicsSymbol::LinkSymbol("A", i, t);
 }
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline GTDSymbol WrenchKey(int i, int j, int t) {
-  return GTDSymbol("F", i, j, t); 
+inline DynamicsSymbol WrenchKey(int i, int j, int t) {
+  return DynamicsSymbol::LinkJointSymbol("F", i, j, t); 
 }
 
 /**
@@ -266,7 +266,7 @@ class Link : public std::enable_shared_from_this<Link> {
    */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
-      const std::vector<GTDSymbol> &wrenches,
+      const std::vector<DynamicsSymbol> &wrenches,
       const boost::optional<gtsam::Vector3> &gravity) const {
     gtsam::NonlinearFactorGraph graph;
     // Add wrench factors.

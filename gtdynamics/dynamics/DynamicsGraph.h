@@ -33,18 +33,18 @@ namespace gtdynamics {
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
-inline GTDSymbol ContactWrenchKey(int i, int k, int t) {
-  return GTDSymbol("C", i, k, t);
+inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, k, t);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
-inline GTDSymbol PhaseKey(int k) {
-  return GTDSymbol::SimpleSymbol("dt", k);
+inline DynamicsSymbol PhaseKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("dt", k);
 }
 
 /* Shorthand for t_t, time at time step t. */
-inline GTDSymbol TimeKey(int t) {
-  return GTDSymbol::SimpleSymbol("t", t);
+inline DynamicsSymbol TimeKey(int t) {
+  return DynamicsSymbol::SimpleSymbol("t", t);
 }
 
 /**

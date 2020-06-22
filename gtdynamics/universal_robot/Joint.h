@@ -25,30 +25,30 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-// #include "gtdynamics/utils/GTDSymbol.h"
+// #include "gtdynamics/utils/DynamicsSymbol.h"
 
 namespace gtdynamics {
 
 // TODO(aescontrela): Make toString method to display joint info.
 
 /* Shorthand for q_j_t, for j-th joint angle at time t. */
-inline GTDSymbol JointAngleKey(int j, int t) {
-  return GTDSymbol::JointSymbol("q", j, t);
+inline DynamicsSymbol JointAngleKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("q", j, t);
 }
 
 /* Shorthand for v_j_t, for j-th joint velocity at time t. */
-inline GTDSymbol JointVelKey(int j, int t) {
-  return GTDSymbol::JointSymbol("v", j, t);
+inline DynamicsSymbol JointVelKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("v", j, t);
 }
 
 /* Shorthand for a_j_t, for j-th joint acceleration at time t. */
-inline GTDSymbol JointAccelKey(int j, int t) {
-  return GTDSymbol::JointSymbol("a", j, t);
+inline DynamicsSymbol JointAccelKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("a", j, t);
 }
 
 /* Shorthand for T_j_t, for torque on the j-th joint at time t. */
-inline GTDSymbol TorqueKey(int j, int t) {
-  return GTDSymbol::JointSymbol("T", j, t);
+inline DynamicsSymbol TorqueKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("T", j, t);
 }
 
 /**
@@ -93,7 +93,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   // This joint's name, as described in the URDF file.
   std::string name_;
 
-  // ID reference to GTDSymbol.
+  // ID reference to DynamicsSymbol.
   int id_ = -1;
 
   LinkSharedPtr parent_link_;

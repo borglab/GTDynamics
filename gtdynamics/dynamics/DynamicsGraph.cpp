@@ -318,7 +318,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     int i = link->getID();
     if (!link->isFixed()) {
       const auto &connected_joints = link->getJoints();
-      std::vector<GTDSymbol> wrenches;
+      std::vector<DynamicsSymbol> wrenches;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -716,7 +716,7 @@ Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
 }
 
 void printKey(const gtsam::Key &key) {
-  auto symb = GTDSymbol(key);
+  auto symb = DynamicsSymbol(key);
   std::cout << (std::string)(symb) << "\t";
 }
 
@@ -758,9 +758,9 @@ gtsam::Vector3 corner_location(double r, double j, int n) {
   return (gtsam::Vector(3) << x, y, 0).finished();
 }
 
-gtsam::JsonSaver::LocationType get_locations(const Robot &robot, const int t,
+JsonSaver::LocationType get_locations(const Robot &robot, const int t,
                                              bool radial) {
-  gtsam::JsonSaver::LocationType locations;
+  JsonSaver::LocationType locations;
 
   if (radial) {
     int n = robot.numLinks();
@@ -817,8 +817,8 @@ void DynamicsGraph::saveGraph(const std::string &file_path,
                               const int t, bool radial) {
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::LocationType locations = get_locations(robot, t, radial);
-  gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+  JsonSaver::LocationType locations = get_locations(robot, t, radial);
+  JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
   json_file.close();
 }
 
@@ -828,10 +828,10 @@ void DynamicsGraph::saveGraphMultiSteps(
     bool radial) {
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::LocationType locations;
+  JsonSaver::LocationType locations;
 
   for (int t = 0; t <= num_steps; t++) {
-    gtsam::JsonSaver::LocationType locations_t =
+    JsonSaver::LocationType locations_t =
         get_locations(robot, t, radial);
     gtsam::Vector offset = (gtsam::Vector(3) << 20.0 * t, 0, 0).finished();
     for (auto it = locations_t.begin(); it != locations_t.end(); it++) {
@@ -841,7 +841,7 @@ void DynamicsGraph::saveGraphMultiSteps(
     locations.insert(locations_t.begin(), locations_t.end());
   }
 
-  gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+  JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
   json_file.close();
 }
 
@@ -849,9 +849,9 @@ void DynamicsGraph::saveGraphMultiSteps(
 typedef std::pair<std::string, int> ClusterInfo;
 
 inline ClusterInfo getCluster(const gtsam::Key &key) {
-  GTDSymbol symb(key);
-  std::string label = symb.label();
-  int t = symb.time();
+  const DynamicsSymbol symb(key);
+  const std::string label = symb.label();
+  const int t = symb.time();
   if (label == "q" || label == "p") {
     return ClusterInfo("q", t);
   }
@@ -936,7 +936,7 @@ void DynamicsGraph::saveGraphTraj(const std::string &file_path,
   }
 
   // specify locations
-  gtsam::JsonSaver::StrLocationType locations;
+  JsonSaver::StrLocationType locations;
   for (int t = 0; t <= num_steps; t++) {
     locations["q" + std::to_string(t)] =
         (gtsam::Vector(3) << t, 0, 0).finished();
@@ -959,7 +959,7 @@ void DynamicsGraph::saveGraphTraj(const std::string &file_path,
   // save to file
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::SaveClusteredGraph(json_file, clustered_graphs,
+  JsonSaver::SaveClusteredGraph(json_file, clustered_graphs,
                                        clustered_values, values, locations);
   json_file.close();
 }
