@@ -14,7 +14,6 @@
 #ifndef GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 #define GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -34,18 +33,18 @@ namespace gtdynamics {
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
-inline gtsam::LabeledSymbol ContactWrenchKey(int i, int k, int t) {
-  return gtsam::LabeledSymbol('C', i * 16 + k, t);
+inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, k, t);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
-inline gtsam::LabeledSymbol PhaseKey(int k) {
-  return gtsam::LabeledSymbol('t', 0, k);
+inline DynamicsSymbol PhaseKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("dt", k);
 }
 
 /* Shorthand for t_t, time at time step t. */
-inline gtsam::LabeledSymbol TimeKey(int t) {
-  return gtsam::LabeledSymbol('t', 1, t);
+inline DynamicsSymbol TimeKey(int t) {
+  return DynamicsSymbol::SimpleSymbol("t", t);
 }
 
 /**

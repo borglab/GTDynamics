@@ -25,29 +25,30 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+// #include "gtdynamics/utils/DynamicsSymbol.h"
 
 namespace gtdynamics {
 
 // TODO(aescontrela): Make toString method to display joint info.
 
 /* Shorthand for q_j_t, for j-th joint angle at time t. */
-inline gtsam::LabeledSymbol JointAngleKey(int j, int t) {
-  return gtsam::LabeledSymbol('q', j, t);
+inline DynamicsSymbol JointAngleKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("q", j, t);
 }
 
 /* Shorthand for v_j_t, for j-th joint velocity at time t. */
-inline gtsam::LabeledSymbol JointVelKey(int j, int t) {
-  return gtsam::LabeledSymbol('v', j, t);
+inline DynamicsSymbol JointVelKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("v", j, t);
 }
 
 /* Shorthand for a_j_t, for j-th joint acceleration at time t. */
-inline gtsam::LabeledSymbol JointAccelKey(int j, int t) {
-  return gtsam::LabeledSymbol('a', j, t);
+inline DynamicsSymbol JointAccelKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("a", j, t);
 }
 
 /* Shorthand for T_j_t, for torque on the j-th joint at time t. */
-inline gtsam::LabeledSymbol TorqueKey(int j, int t) {
-  return gtsam::LabeledSymbol('T', j, t);
+inline DynamicsSymbol TorqueKey(int j, int t) {
+  return DynamicsSymbol::JointSymbol("T", j, t);
 }
 
 /**
@@ -92,7 +93,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   // This joint's name, as described in the URDF file.
   std::string name_;
 
-  // ID reference to gtsam::LabeledSymbol.
+  // ID reference to DynamicsSymbol.
   int id_ = -1;
 
   LinkSharedPtr parent_link_;
@@ -197,10 +198,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return a shared ptr to this joint.
   JointSharedPtr getSharedPtr() { return shared_from_this(); }
 
-  /// Set the joint's ID to track reference to gtsam::LabeledSymbol.
+  /// Set the joint's ID.
   void setID(unsigned char id) { id_ = id; }
 
-  /// Get the joint's ID to track reference to gtsam::LabeledSymbol.
+  /// Get the joint's ID.
   int getID() const {
     if (id_ == -1)
       throw std::runtime_error(

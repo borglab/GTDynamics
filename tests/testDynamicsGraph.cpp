@@ -17,7 +17,6 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/inference/Key.h>
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -461,7 +460,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
+  auto contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
@@ -539,7 +538,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
     LinkSharedPtr l = biped.getLinkByName("lower0");
-    gtsam::LabeledSymbol contact_wrench_key =
+    auto contact_wrench_key =
         ContactWrenchKey(l->getID(), contact_point.contact_id, 0);
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
@@ -622,7 +621,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
+  auto contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
