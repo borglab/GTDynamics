@@ -35,15 +35,15 @@ TEST(Joint, urdf_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  ScrewJointBase::Parameters j1_parameters;
+  auto j1_parameters = ParametersFromSDF(*simple_urdf.JointByName("j1"));
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  gtsam::Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2)
+  gtsam::Pose3 j1_wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
-      "j1", wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<RevoluteJoint>(
+      "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -121,7 +121,7 @@ TEST(Joint, params_constructor) {
 
   const gtsam::Vector3 axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
+  auto j1 = std::make_shared<RevoluteJoint>(
       "j1", gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)), l1, l2,
       parameters, axis);
 
@@ -184,15 +184,15 @@ TEST(Joint, sdf_constructor) {
   LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("link_1"));
   LinkSharedPtr l2 = std::make_shared<Link>(*model.LinkByName("link_2"));
 
-  gtsam::Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
+  gtsam::Pose3 j1_wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
   
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
-  RevoluteJointSharedPtr j1 =
+  auto j1 =
       std::make_shared<RevoluteJoint>(
-          "joint_1", wTj, l0, l1, j1_parameters, j1_axis);
+          "joint_1", j1_wTj, l0, l1, j1_parameters, j1_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -215,11 +215,11 @@ TEST(Joint, sdf_constructor) {
   ScrewJointBase::Parameters j2_parameters;
   j2_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  gtsam::Pose3 wTj = GetJointFrame(*model.JointByName("joint_2"), l1, l2)
+  gtsam::Pose3 j2_wTj = GetJointFrame(*model.JointByName("joint_2"), l1, l2);
   const gtsam::Vector3 j2_axis = GetSdfAxis(*model.JointByName("joint_2"));
 
-  RevoluteJointSharedPtr j2 = std::make_shared<RevoluteJoint>(
-          "joint_2", wTj, l1, l2, j2_parameters, j2_axis);
+  auto j2 = std::make_shared<RevoluteJoint>(
+          "joint_2", j2_wTj, l1, l2, j2_parameters, j2_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -245,14 +245,14 @@ TEST(Joint, limit_params) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("l1"));
   LinkSharedPtr l2 = std::make_shared<Link>(*model.LinkByName("l2"));
-  ScrewJointBase::Parameters j1_parameters;
+  auto j1_parameters = ParametersFromSDF(*model.JointByName("j1"));
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  gtsam::Pose3 wTj = GetJointFrame(*model.JointByName("j1"), l1, l2)
+  gtsam::Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
 
-  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
-          "j1", wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<RevoluteJoint>(
+          "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
 
   EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
@@ -265,14 +265,14 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(*model2.LinkByName("link_0"));
   LinkSharedPtr link_1 =
       std::make_shared<Link>(*model2.LinkByName("link_1"));
-  ScrewJointBase::Parameters joint_1_parameters;
+  auto joint_1_parameters = ParametersFromSDF(*model2.JointByName("joint_1"));
   joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
-  gtsam::Pose3 wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1)
-  const gtsam::Vector3 j1_axis = GetSdfAxis(*model2.JointByName("joint_1"));
+  gtsam::Pose3 joint_1_wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
+  const gtsam::Vector3 joint_1_axis = GetSdfAxis(*model2.JointByName("joint_1"));
 
-  RevoluteJointSharedPtr joint_1 = std::make_shared<RevoluteJoint>(
-          "joint_1", link_0, link_1, joint_1_parameters, j1_axis);
+  auto joint_1 = std::make_shared<RevoluteJoint>(
+          "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
 
   EXPECT(assert_equal(-1e16, joint_1->jointLowerLimit()));
   EXPECT(assert_equal(1e16, joint_1->jointUpperLimit()));
