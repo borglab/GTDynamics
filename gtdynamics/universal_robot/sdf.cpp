@@ -11,29 +11,41 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
+/** @fn Extract joint parameter values from an input sdf::Joint.
+ * @param[in] sdf_joint a joint object which allows access to functions
+ * needed to populate joint parameters.
+ * @return a struct of parameters whose values have been set using
+ * sdf::Joint functions.
+ */
 ScrewJointBase::Parameters ParametersFromSDF(
     const sdf::Joint &sdf_joint) {
   ScrewJointBase::Parameters parameters;
-  // TODO (stephanie): make this work
 
   parameters.joint_lower_limit = sdf_joint.Axis()->Lower();
   parameters.joint_upper_limit = sdf_joint.Axis()->Upper();
   parameters.damping_coefficient = sdf_joint.Axis()->Damping();
+  parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
+  parameters.torque_limit = sdf_joint.Axis()->Effort();
+
+  // TODO (stephanie): make this work
 
   // parameters.spring_coefficient = sdf_joint.Axis()->SpringReference() or
-  // SpringStiffness()? ; // spring_coeff_(spring_coefficient),
-
-  parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
+  // SpringStiffness()? ;
 
   // No matching function? (/usr/include/sdformat-8.7/sdf)
-  // acceleration_limit_(acceleration_limit),
-
-  parameters.torque_limit = sdf_joint.Axis()->Effort();
+  // parameters.acceleration_limit = ???;
 
   return parameters;
 }
 
-// TODO(dellaert): document !!!!!!!!!!
+/** @fn Populate a joint parameters struct for a given joint, either with 
+ * parameter values passed in directly or with the default values.
+ * @param[in] joint shared pointer to joint.
+ * @param[in] joint_i an sdf::Joint object.
+ * @param[in] joint_parameters a vector containing optional parameters for
+ * joints.
+ * @return a joint parameter struct.
+ */
 static ScrewJointBase::Parameters GetJointParameters(
     JointConstSharedPtr joint, const sdf::Joint &joint_i,
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
@@ -54,6 +66,13 @@ static ScrewJointBase::Parameters GetJointParameters(
   return jps;
 }
 
+/** @fn Get joint pose defined in world frame from an sdf::Joint object
+ * @param[in] sdf_joint    a joint object which allows access to
+ * functions needed to populate joint parameters.
+ * @param[in] parent_link  Shared pointer to the parent Link.
+ * @param[in] child_link   Shared pointer to the child Link.
+ * @return Joint pose defined in world frame 
+ */
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                            const LinkSharedPtr &parent_link,
                            const LinkSharedPtr &child_link) {
@@ -78,6 +97,13 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   }
 }
 
+
+/** @fn Converts an axis taken from input sdf::Joint into the Vector3 format
+ * that GTSAM uses.
+ * @param[in] sdf_joint a joint object which allows access to functions
+ * needed to populate joint parameters.
+ * @return a vector containing axis values extracted from SDF.
+ */
 gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   auto axis = sdf_joint.Axis()->Xyz();
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
@@ -92,7 +118,7 @@ LinkJointPair ExtractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
         joint_parameters) {
-  // Loop through all links in the urdf interface and construct Link
+  // Loop through all links in the sdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
@@ -163,14 +189,13 @@ LinkJointPair ExtractRobotFromSdf(
 /** @fn Construct all Link and Joint objects from an input urdf or sdf file.
  * @param[in] file_path absolute path to the urdf or sdf file containing the
  * robot description.
- * @param[in] model_name name of the robot we care about. Must be specified
- in
+ * @param[in] model_name name of the robot we care about. Must be specified in
  * case sdf_file_path points to a world file.
- * @param[in] joint_parameters a vector contanining optional parameters for
+ * @param[in] joint_parameters a vector containing optional parameters for
  * joints.
  * @return LinkMap and JointMap as a pair
  */
-LinkJointPair ExtractRobotFromFile(
+static LinkJointPair ExtractRobotFromFile(
     const std::string file_path, const std::string model_name,
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
         joint_parameters = boost::none) {

@@ -50,9 +50,12 @@ class ScrewJointBase : public Joint {
    */
   struct Parameters {
     Joint::JointEffortType effort_type = Joint::JointEffortType::Actuated;
+
+    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
     double joint_lower_limit;
     double joint_upper_limit;
     double joint_limit_threshold = 0.0;
+
     double velocity_limit;
     double velocity_limit_threshold = 0.0;
     double acceleration_limit = 10000;

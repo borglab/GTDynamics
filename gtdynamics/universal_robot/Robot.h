@@ -27,13 +27,6 @@
 
 namespace gtdynamics {
 
-/** Construct all Link and Joint objects from an input
- * urdf::ModelInterfaceSharedPtr.
- * Keyword arguments:
- *  urdf_ptr             -- a shared pointer to a urdf::ModelInterface object.
- *  joint_parameters     -- a vector containing optional parameters for joints.
- */
-
 typedef std::map<std::string, LinkSharedPtr> LinkMap;
 typedef std::map<std::string, JointSharedPtr> JointMap;
 typedef std::pair<LinkMap, JointMap> LinkJointPair;
@@ -54,7 +47,7 @@ class Robot {
   /** Default Constructor */
   Robot() {}
 
-  /** Constructor from link and joint elements..
+  /** Constructor from link and joint elements.
    *  @param[in] robot_links_and_joints LinkJointPair containing links
    *    and joints.
    */
