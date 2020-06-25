@@ -28,7 +28,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Ensure that all parameters read from an URDF or SDF file are parsed correctly.
+ * Test parsing of all joint parameters from URDF or SDF files.
  */
 TEST(File, parameters_from_file) {
   // Test for reading parameters from a simple URDF.
@@ -41,8 +41,8 @@ TEST(File, parameters_from_file) {
   EXPECT(assert_equal(0.5, j1_parameters.velocity_limit));
   EXPECT(assert_equal(1000.0, j1_parameters.torque_limit));
 
-  // Test for reading parameters (damping coefficient,
-  // velocity limit, and torque limit) from a simple SDF .
+  // Test for reading parameters (damping coefficient, velocity limit, and
+  // torque limit) from a simple SDF.
   auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
   auto joint_1_parameters = ParametersFromFile(*simple_sdf.JointByName("joint_1"));
 
@@ -56,6 +56,73 @@ TEST(File, parameters_from_file) {
 
   EXPECT(assert_equal(-0.349066, knee_1_parameters.joint_lower_limit));
   EXPECT(assert_equal(2.44346, knee_1_parameters.joint_upper_limit));
+}
+
+/**
+ * Construct a Link via URDF and ensure all values are as expected.
+ */
+TEST(Link, urdf_constructor_link) {
+  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+
+  // Initialize Robot instance using urdf::ModelInterfacePtr.
+  LinkSharedPtr l1 =
+      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 =
+      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  ScrewJointBase::Parameters j1_parameters;
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
+
+  // Test constructor.
+  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
+      "j1", wTj, l1, l2, j1_parameters, j1_axis);
+
+  // get shared ptr
+  EXPECT(l1->getSharedPtr() == l1);
+
+  // // get, set ID
+  l1->setID(1);
+  EXPECT(l1->getID() == 1);
+
+  // name
+  EXPECT(assert_equal("l1", l1->name()));
+
+  // mass
+  EXPECT(assert_equal(100, l1->mass()));
+
+  // Check center of mass.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
+                      l1->lTcom()));
+
+  // Check inertia.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 3, 0, 0, 0, 2, 0, 0, 0, 1).finished(),
+      l1->inertia()));
+
+  // Check general mass matrix.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(6, 6) << 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+       0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 100)
+          .finished(),
+      l1->inertiaMatrix()));
+
+  // Assert correct center of mass in link frame.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
+                      l1->lTcom()));
+
+  // Check that no child links/joints have yet been added.
+  EXPECT(assert_equal(0, l1->getJoints().size()));
+
+  // add joint
+  l1->addJoint(j1);
+  EXPECT(assert_equal(1, l1->getJoints().size()));
+  EXPECT(l1->getJoints()[0] == j1);
+
+  // remove joint
+  l1->removeJoint(j1);
+  EXPECT(assert_equal(0, l1->getJoints().size()));
 }
 
 /**
@@ -203,6 +270,48 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2)));
   EXPECT(assert_equal(T_12com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));
   EXPECT(assert_equal(T_12com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
+}
+
+/**
+ * Test parsing of Revolute joint limit values from various robots.
+ */
+TEST(Joint, limit_params) {
+  // Check revolute joint limits parsed correctly for first test robot.
+  auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*model.LinkByName("l2"));
+  auto j1_parameters = ParametersFromFile(*model.JointByName("j1"));
+  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
+
+  auto j1 = std::make_shared<RevoluteJoint>(
+          "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
+
+  EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
+  EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
+  EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
+
+  // Check revolute joint limits parsed correctly for a robot with no limits.
+  auto model2 =
+      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  LinkSharedPtr link_0 =
+      std::make_shared<Link>(*model2.LinkByName("link_0"));
+  LinkSharedPtr link_1 =
+      std::make_shared<Link>(*model2.LinkByName("link_1"));
+  auto joint_1_parameters = ParametersFromFile(*model2.JointByName("joint_1"));
+  joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
+
+  Pose3 joint_1_wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
+  const gtsam::Vector3 joint_1_axis = GetSdfAxis(*model2.JointByName("joint_1"));
+
+  auto joint_1 = std::make_shared<RevoluteJoint>(
+          "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
+
+  EXPECT(assert_equal(-1e16, joint_1->jointLowerLimit()));
+  EXPECT(assert_equal(1e16, joint_1->jointUpperLimit()));
+  EXPECT(assert_equal(0.0, joint_1->jointLimitThreshold()));
 }
 
 /**

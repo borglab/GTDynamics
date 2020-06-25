@@ -97,48 +97,6 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
 }
 
-/**
- * Test parsing of Revolute joint limit values from various robots.
- */
-TEST(Joint, limit_params) {
-  // Check revolute joint limits parsed correctly for first test robot.
-  auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
-  LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("l1"));
-  LinkSharedPtr l2 = std::make_shared<Link>(*model.LinkByName("l2"));
-  auto j1_parameters = ParametersFromFile(*model.JointByName("j1"));
-  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
-
-  Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
-  const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
-
-  auto j1 = std::make_shared<RevoluteJoint>(
-          "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
-
-  EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
-  EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
-  EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
-
-  // Check revolute joint limits parsed correctly for a robot with no limits.
-  auto model2 =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  LinkSharedPtr link_0 =
-      std::make_shared<Link>(*model2.LinkByName("link_0"));
-  LinkSharedPtr link_1 =
-      std::make_shared<Link>(*model2.LinkByName("link_1"));
-  auto joint_1_parameters = ParametersFromFile(*model2.JointByName("joint_1"));
-  joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
-
-  Pose3 joint_1_wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
-  const gtsam::Vector3 joint_1_axis = GetSdfAxis(*model2.JointByName("joint_1"));
-
-  auto joint_1 = std::make_shared<RevoluteJoint>(
-          "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
-
-  EXPECT(assert_equal(-1e16, joint_1->jointLowerLimit()));
-  EXPECT(assert_equal(1e16, joint_1->jointUpperLimit()));
-  EXPECT(assert_equal(0.0, joint_1->jointLimitThreshold()));
-}
-
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
