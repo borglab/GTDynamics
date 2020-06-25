@@ -25,7 +25,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Construct the same joint via Parameters and ensure all values are as
+ * Construct a Screw joint via Parameters and ensure all values are as
  * expected.
  */
 TEST(Joint, params_constructor) {
@@ -94,44 +94,6 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
   EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
-}
-
-TEST(Joint, sdf_constructor) {
-  auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
-                       "simple_screw_joint_sdf");
-
-  LinkSharedPtr l0 = std::make_shared<Link>(*model.LinkByName("link_0"));
-  LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("link_1"));
-
-  Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
-
-  // constructor for j1
-  ScrewJointBase::Parameters j1_parameters;
-  j1_parameters.effort_type = Joint::JointEffortType::Actuated;
-  const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
-
-  ScrewJointSharedPtr j1 =
-      std::make_shared<ScrewJoint>("joint_1", wTj, l0, l1, j1_parameters,
-                                   j1_axis, model.JointByName("joint_1")->ThreadPitch());
-
-  // expected values for screw about z axis
-  // check screw axis
-  gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
-  screw_axis_j1_l0 << 0, 0, -1, 0, 0, -0.5 / 2 / M_PI; // parent frame
-  screw_axis_j1_l1 << 0, 0, 1, 0, 0, 0.5 / 2 / M_PI;   // child frame
-  EXPECT(assert_equal(screw_axis_j1_l0, j1->screwAxis(l0)));
-  EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
-
-  // Check transform from l0 com to l1 com at rest and at various angles.
-  Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2),
-                           Point3(0, 0, 0.4-0.125));
-  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2),
-                           Point3(0, 0, 0.4+0.125));
-
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
-  EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 }
 
 int main() {

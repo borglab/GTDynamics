@@ -11,13 +11,7 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-/** @fn Extract joint parameter values from an input sdf::Joint.
- * @param[in] sdf_joint a joint object which allows access to functions
- * needed to populate joint parameters.
- * @return a struct of parameters whose values have been set using
- * sdf::Joint functions.
- */
-ScrewJointBase::Parameters ParametersFromSDF(
+ScrewJointBase::Parameters ParametersFromFile(
     const sdf::Joint &sdf_joint) {
   ScrewJointBase::Parameters parameters;
 
@@ -66,13 +60,6 @@ static ScrewJointBase::Parameters GetJointParameters(
   return jps;
 }
 
-/** @fn Get joint pose defined in world frame from an sdf::Joint object
- * @param[in] sdf_joint    a joint object which allows access to
- * functions needed to populate joint parameters.
- * @param[in] parent_link  Shared pointer to the parent Link.
- * @param[in] child_link   Shared pointer to the child Link.
- * @return Joint pose defined in world frame 
- */
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                            const LinkSharedPtr &parent_link,
                            const LinkSharedPtr &child_link) {
@@ -97,23 +84,11 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   }
 }
 
-
-/** @fn Converts an axis taken from input sdf::Joint into the Vector3 format
- * that GTSAM uses.
- * @param[in] sdf_joint a joint object which allows access to functions
- * needed to populate joint parameters.
- * @return a vector containing axis values extracted from SDF.
- */
 gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   auto axis = sdf_joint.Axis()->Xyz();
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-/** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
- * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
- * @param joint_parameters a vector containing optional parameters for joints.
- * @return LinkMap and JointMap as a pair
- */
 LinkJointPair ExtractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
