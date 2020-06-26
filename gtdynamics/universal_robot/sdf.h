@@ -28,16 +28,6 @@ namespace gtdynamics {
 Robot CreateRobotFromFile(const std::string file_path,
                           std::string model_name = "");
 
-/** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
- * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
- * @param joint_parameters a vector containing optional parameters for joints.
- * @return LinkMap and JointMap as a pair
- */
-LinkJointPair ExtractRobotFromSdf(
-    const sdf::Model sdf,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>>
-        joint_parameters = boost::none);
-
 /** @fn Extract joint parameter values from an input sdf::Joint.
  * @param[in] sdf_joint a joint object which allows access to functions
  * needed to populate joint parameters.

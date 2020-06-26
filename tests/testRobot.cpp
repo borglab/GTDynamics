@@ -25,45 +25,6 @@
 using namespace gtdynamics; 
 using gtsam::assert_equal;
 
-// Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
-// that all transforms, link/joint properties, etc. are correct.
-TEST(Robot, simple_urdf) {
-  // Load urdf file into sdf::Model
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-
-  LinkJointPair links_and_joints = ExtractRobotFromSdf(simple_urdf);
-  LinkMap name_to_link = links_and_joints.first;
-  JointMap name_to_joint = links_and_joints.second;
-  EXPECT(assert_equal(2, name_to_link.size()));
-  EXPECT(assert_equal(1, name_to_joint.size()));
-
-  LinkConstSharedPtr l1 = name_to_link.at("l1");
-  LinkConstSharedPtr l2 = name_to_link.at("l2");
-  JointSharedPtr j1 = name_to_joint.at("j1");
-  EXPECT(assert_equal(1, l1->getJoints().size()));
-  EXPECT(assert_equal(1, l2->getJoints().size()));
-  EXPECT(l1->getID() == 0);
-  EXPECT(l2->getID() == 1);
-  EXPECT(j1->getID() == 0);
-
-  // Initialize Robot instance using Link and Joint
-  // instances.
-  Robot simple_robot = Robot(links_and_joints);
-
-  // Check that number of links and joints in the Robot instance is
-  // correct.
-  EXPECT(assert_equal(2, simple_robot.links().size()));
-  EXPECT(assert_equal(1, simple_robot.joints().size()));
-  EXPECT(simple_robot.links()[0] == l1);
-  EXPECT(simple_robot.links()[1] == l2);
-  EXPECT(simple_robot.joints()[0] == j1);
-
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      j1->transformTo(j1->childLink())));
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      j1->transformFrom(j1->childLink())));
-}
-
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
   Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");

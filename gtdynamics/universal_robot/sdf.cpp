@@ -21,14 +21,6 @@ ScrewJointBase::Parameters ParametersFromFile(
   parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
   parameters.torque_limit = sdf_joint.Axis()->Effort();
 
-  // TODO (stephanie): make this work
-
-  // parameters.spring_coefficient = sdf_joint.Axis()->SpringReference() or
-  // SpringStiffness()? ;
-
-  // No matching function? (/usr/include/sdformat-8.7/sdf)
-  // parameters.acceleration_limit = ???;
-
   return parameters;
 }
 
@@ -89,7 +81,12 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkJointPair ExtractRobotFromSdf(
+/** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
+ * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
+ * @param joint_parameters a vector containing optional parameters for joints.
+ * @return LinkMap and JointMap as a pair
+ */
+static LinkJointPair ExtractRobotFromSdf(
     const sdf::Model sdf,
     const boost::optional<std::vector<ScrewJointBase::Parameters>>
         joint_parameters) {

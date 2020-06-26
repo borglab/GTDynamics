@@ -204,7 +204,6 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
 }
 
-
 /**
  * Construct a Revolute Joint from SDF and ensure all values are as expected.
  */
@@ -438,6 +437,50 @@ TEST(Joint, sdf_constructor_screw) {
   EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
   EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
+}
+
+// Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
+// that all transforms, link/joint properties, etc. are correct.
+TEST(Robot, simple_urdf) {
+  // Load urdf file into sdf::Model
+  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+
+  auto l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  auto l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+
+  auto j1_parameters = ParametersFromFile(*simple_urdf.JointByName("j1"));
+  Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
+  const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
+
+  RevoluteJointSharedPtr j1 = std::make_shared<RevoluteJoint>(
+      "j1", wTj, l1, l2, j1_parameters, j1_axis);
+
+  // Initialize Robot instance.
+  auto simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+
+  EXPECT(assert_equal(1, simple_robot.getLinkByName("l1")->getJoints().size()));
+  EXPECT(assert_equal(1, simple_robot.getLinkByName("l2")->getJoints().size()));
+  EXPECT(simple_robot.getLinkByName("l1")->getID() == 0);
+  EXPECT(simple_robot.getLinkByName("l2")->getID() == 1);
+  EXPECT(simple_robot.getJointByName("j1")->getID() == 0);
+
+  // Check that number of links and joints in the Robot instance is
+  // correct.
+  EXPECT(assert_equal(2, simple_robot.links().size()));
+  EXPECT(assert_equal(1, simple_robot.joints().size()));
+  EXPECT(simple_robot.numLinks() == 2);
+  EXPECT(simple_robot.numJoints() == 1);
+
+  // Check link and joint names.
+  EXPECT(assert_equal("l1", simple_robot.getLinkByName("l1")->name()));
+  EXPECT(assert_equal("l2", simple_robot.getLinkByName("l2")->name()));
+  EXPECT(assert_equal("j1", simple_robot.getJointByName("j1")->name()));
+
+  // Check transforms between link CoM frames.
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
+                      j1->transformTo(j1->childLink())));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
+                      j1->transformFrom(j1->childLink())));
 }
 
 int main() {
