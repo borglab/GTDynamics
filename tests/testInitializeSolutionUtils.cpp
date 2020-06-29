@@ -22,6 +22,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
 using namespace gtdynamics; 
@@ -109,7 +110,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
 
 TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   auto my_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -187,7 +188,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   auto my_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -213,7 +214,7 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   auto my_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");

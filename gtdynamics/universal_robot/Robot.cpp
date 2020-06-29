@@ -26,7 +26,7 @@
 #include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
-      gtsam::GaussianFactorGraph, gtsam::Vector3;
+    gtsam::GaussianFactorGraph, gtsam::Vector3;
 
 namespace gtdynamics {
 
@@ -39,115 +39,9 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-JointParams getJointParams(
-    const sdf::Joint &joint_i,
-    const boost::optional<std::vector<JointParams>> joint_params) {
-  JointParams default_params;
-  JointParams jps;
-  if (joint_params) {
-    auto jparams =
-        std::find_if(joint_params.get().begin(), joint_params.get().end(),
-                     [=](const JointParams &jps) {
-                       return (jps.name == joint_i.Name());
-                     });
-    jps = jparams == joint_params.get().end() ? default_params : *jparams;
-  } else {
-    jps = default_params;
-  }
-  return jps;
-}
-
-LinkJointPair extractRobotFromSdf(
-    const sdf::Model sdf,
-    const boost::optional<std::vector<JointParams>> joint_params) {
-  // Loop through all links in the urdf interface and construct Link
-  // objects without parents or children.
-  LinkMap name_to_link;
-  for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link =
-        std::make_shared<Link>(*sdf.LinkByIndex(i));
-    link->setID(i);
-    name_to_link.insert(std::make_pair(link->name(), link));
-  }
-
-  // Create Joint objects and update list of parent and child links/joints.
-  JointMap name_to_joint;
-  for (uint j = 0; j < sdf.JointCount(); j++) {
-    sdf::Joint sdf_joint = *sdf.JointByIndex(j);
-
-    // Get this joint's parent and child links.
-    std::string parent_link_name = sdf_joint.ParentLinkName();
-    std::string child_link_name = sdf_joint.ChildLinkName();
-    if (parent_link_name == "world") {
-      // This joint fixes the child link in the world frame.
-      LinkSharedPtr child_link = name_to_link[child_link_name];
-      Pose3 fixed_pose = child_link->wTcom();
-      child_link->fix(fixed_pose);
-      continue;
-    }
-    LinkSharedPtr parent_link = name_to_link[parent_link_name];
-    LinkSharedPtr child_link = name_to_link[child_link_name];
-
-    // Obtain joint params.
-    JointParams parameters =
-        getJointParams(sdf_joint, joint_params);
-
-    // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint;
-
-    switch (sdf_joint.Type()) {
-      case sdf::JointType::PRISMATIC:
-        joint = std::make_shared<PrismaticJoint>(
-            PrismaticJoint(sdf_joint, parameters,
-                                   parent_link, child_link));
-        break;
-      case sdf::JointType::REVOLUTE:
-        joint = std::make_shared<RevoluteJoint>(
-            RevoluteJoint(sdf_joint, parameters,
-                                      parent_link, child_link));
-        break;
-      case sdf::JointType::SCREW:
-        joint = std::make_shared<ScrewJoint>(
-            ScrewJoint(sdf_joint, parameters,
-                                   parent_link, child_link));
-        break;
-      default:
-        throw std::runtime_error("Joint type for [" +
-                               std::string(sdf_joint.Name()) +
-                               "] not yet supported");
-    }
-
-    name_to_joint.insert(std::make_pair(sdf_joint.Name(), joint));
-    joint->setID(j);
-
-    // Update list of parent and child links/joints for each Link.
-    parent_link->addJoint(joint);
-    child_link->addJoint(joint);
-  }
-
-  return std::make_pair(name_to_link, name_to_joint);
-}
-
-LinkJointPair extractRobotFromFile(
-    const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<JointParams>> joint_params) {
-  std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
-  std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
-
-  if (file_ext == "urdf")
-    return extractRobotFromSdf(get_sdf(file_path), joint_params);
-  else if (file_ext == "sdf")
-    return extractRobotFromSdf(get_sdf(file_path, model_name), joint_params);
-
-  throw std::runtime_error("Invalid file extension.");
-}
-
 Robot::Robot(LinkJointPair links_and_joints)
     : name_to_link_(links_and_joints.first),
       name_to_joint_(links_and_joints.second) {}
-
-Robot::Robot(const std::string file_path, std::string model_name)
-    : Robot(extractRobotFromFile(file_path, model_name)) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, LinkSharedPtr>(name_to_link_);
@@ -296,7 +190,7 @@ Robot::FKResults Robot::forwardKinematics(
 }
 
 NonlinearFactorGraph Robot::qFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->qFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->qFactors(t, opt));
@@ -304,7 +198,7 @@ NonlinearFactorGraph Robot::qFactors(const int &t,
 }
 
 NonlinearFactorGraph Robot::vFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->vFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->vFactors(t, opt));
@@ -312,7 +206,7 @@ NonlinearFactorGraph Robot::vFactors(const int &t,
 }
 
 NonlinearFactorGraph Robot::aFactors(const int &t,
-                                            const OptimizerSetting &opt) const {
+                                     const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->aFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));

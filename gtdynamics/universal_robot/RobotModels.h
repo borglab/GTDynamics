@@ -18,6 +18,7 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/sdf.h"
 
 // TODO(aescontrela): The entire program shouldn't crash when a single file
 // doesn't load.
@@ -29,8 +30,8 @@ using namespace gtdynamics;
 
 namespace four_bar_linkage {
 Robot getFourBar() {
-  Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+  Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) +
+                                       "/test/four_bar_linkage_pure.sdf");
   return four_bar;
 }
 // Load the robot from urdf file
@@ -43,7 +44,8 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_urdf {
 Robot getSimpleUrdf() {
-  Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  Robot simple_robot =
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -56,8 +58,8 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_urdf_zero_inertia {
 Robot getSimpleUrdf() {
-  Robot simple_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
+  Robot simple_robot = CreateRobotFromFile(
+      std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
   simple_robot.getLinkByName("l1")->fix();
   return simple_robot;
 }
@@ -70,8 +72,8 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_urdf_eq_mass {
 Robot getSimpleUrdfEqMass() {
-  Robot simple_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf_eq_mass.urdf");
+  Robot simple_robot = CreateRobotFromFile(std::string(URDF_PATH) +
+                                           "/test/simple_urdf_eq_mass.urdf");
   return simple_robot;
 }
 Robot my_robot = getSimpleUrdfEqMass();
@@ -83,8 +85,8 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 
 namespace simple_rr {
 Robot getSimpleRR() {
-  Robot simple_robot =
-      Robot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  Robot simple_robot = CreateRobotFromFile(
+      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
   return simple_robot;
 }
 Robot my_robot = getSimpleRR();
@@ -97,7 +99,7 @@ gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 namespace jumping_robot {
 Robot getJumpingRobot() {
   Robot jumping_robot =
-      Robot(std::string(SDF_PATH) + "/test/jumping_robot.sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/jumping_robot.sdf");
   jumping_robot.getLinkByName("l0")->fix();
   return jumping_robot;
 }
