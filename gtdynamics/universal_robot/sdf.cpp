@@ -39,13 +39,13 @@ static ScrewJointBase::Parameters GetJointParameters(
   ScrewJointBase::Parameters default_parameters;
   ScrewJointBase::Parameters jps;
   if (joint_parameters) {
-    auto jparameters = std::find_if(joint_parameters.get().begin(),
-                                    joint_parameters.get().end(),
-                                    [=](const ScrewJointBase::Parameters &jps) {
-                                      return (joint->name() == joint_i.Name());
-                                    });
-    jps = jparameters == joint_parameters.get().end() ? default_parameters
-                                                      : *jparameters;
+    // auto jparameters = std::find_if(joint_parameters.get().begin(),
+    //                                 joint_parameters.get().end(),
+    //                                 [=](const ScrewJointBase::Parameters &jps) {
+    //                                   return (joint->name() == joint_i.Name());
+    //                                 });
+    // jps = jparameters == joint_parameters.get().end() ? default_parameters
+    //                                                   : *jparameters;
   } else {
     jps = default_parameters;
   }

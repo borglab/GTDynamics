@@ -15,17 +15,19 @@
 #ifndef GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 #define GTDYNAMICS_FACTORS_TWISTACCELFACTOR_H_
 
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
+#include <string>
+
+#include <boost/optional.hpp>
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
-#include <boost/optional.hpp>
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 
@@ -79,19 +81,20 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_c, const gtsam::Vector6 &twistAccel_p,
-      const gtsam::Vector6 &twistAccel_c, const JointAngleType &q, const JointAngleTangentType &qVel,
-      const JointAngleTangentType &qAccel,
+      const gtsam::Vector6 &twistAccel_c, const JointAngleType &q,
+      const JointAngleTangentType &qVel, const JointAngleTangentType &qAccel,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
-    auto error = std::static_pointer_cast<const JointTyped>(joint_)->transformTwistAccelTo(
-                     joint_->childLink(),
-                     q, qVel, qAccel, twist_c, twistAccel_p,
-                     H_q, H_qVel, H_qAccel, H_twist_c, H_twistAccel_p) -
-                     twistAccel_c;
+    auto error =
+        std::static_pointer_cast<const JointTyped>(joint_)
+            ->transformTwistAccelTo(joint_->childLink(), q, qVel, qAccel,
+                                    twist_c, twistAccel_p, H_q, H_qVel,
+                                    H_qAccel, H_twist_c, H_twistAccel_p) -
+        twistAccel_c;
 
     if (H_twistAccel_c) {
       *H_twistAccel_c = -gtsam::I_6x6;

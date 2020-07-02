@@ -57,9 +57,6 @@ class ScrewJoint : public ScrewJointBase {
              double thread_pitch)
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis, thread_pitch)) {}
-
-  /// Return jointType for use in reconstructing robot from Parameters.
-  JointType jointType() const { return JointType::Screw; }
 };
 
 }  // namespace gtdynamics

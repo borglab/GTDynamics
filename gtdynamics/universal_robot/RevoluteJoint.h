@@ -55,9 +55,6 @@ class RevoluteJoint : public ScrewJointBase {
                 const gtsam::Vector3 &axis)
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
-
-  /// Return jointType for use in reconstructing robot from Parameters.
-  JointType jointType() const { return JointType::Revolute; }
 };
 
 }  // namespace gtdynamics

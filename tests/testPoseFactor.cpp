@@ -25,6 +25,7 @@
 
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
 
 using namespace gtdynamics; 
 using gtsam::assert_equal;

@@ -48,7 +48,7 @@ class ScrewJointBase : public Joint {
    * TODO (stephanie): Make sure all parameters have meaningful default values.
    */
   struct Parameters {
-    Joint::JointEffortType effort_type = Joint::JointEffortType::Actuated;
+    JointEffortType effort_type = JointEffortType::Actuated;
 
     //TODO (stephanie): replace these three parameters with ScalarLimit struct.
     double joint_lower_limit;
@@ -96,13 +96,15 @@ class ScrewJointBase : public Joint {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const Parameters &parameters,
                  const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
+<<<<<<< HEAD
       : Joint(name, wTj, parent_link, child_link),
+=======
+      : JointTyped(name, wTj, parent_link, child_link),
+>>>>>>> 91bc6e9... Attempt to merge from master, not quite done yet
         parameters_(parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
-
-  JointType jointType() const override { return JointType::ScrewBase; }
 
   /// Return joint effort type
   JointEffortType jointEffortType() const { return parameters_.effort_type; }
@@ -113,16 +115,16 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return the transform from the other link com to this link com frame
-  Pose3 transformToImpl(const LinkSharedPtr link,
-                    boost::optional<double> q = boost::none,
-                      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+  Pose3 transformToImpl(
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
     return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
 
   /// Return the twist of this link given the other link's twist and
   /// joint angle.
-  gtsam::Vector6 transformTwistTo(
-      const LinkSharedPtr& link, boost::optional<double> q = boost::none,
+  gtsam::Vector6 transformTwistToImpl(
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none,
@@ -139,7 +141,7 @@ class ScrewJointBase : public Joint {
   }
 
   gtsam::Vector6 transformTwistAccelToImpl(
-      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<double> q_ddot = boost::none,
       boost::optional<gtsam::Vector6> this_twist = boost::none,
@@ -233,8 +235,8 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph qFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<PoseFactor>(
         PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
@@ -244,8 +246,8 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph vFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<TwistFactor>(
         TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
@@ -258,7 +260,7 @@ class ScrewJointBase : public Joint {
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const JointValues &torques,
-      const OptimizerSetting &opt) const {
+      const OptimizerSetting &opt) const override {
     gtsam::GaussianFactorGraph priors;
     gtsam::Vector1 rhs;
     rhs << torques.at<double>(getKey());
@@ -275,7 +277,7 @@ class ScrewJointBase : public Joint {
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
       const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
     const Pose3 T_wi1 = poses.at(parent_link_->name());
@@ -299,7 +301,7 @@ class ScrewJointBase : public Joint {
   /// Return joint dynamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<WrenchEquivalenceFactor>(
         WrenchKey(parent_link_->getID(), getID(), t),
@@ -322,7 +324,7 @@ class ScrewJointBase : public Joint {
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
       const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
     const Pose3 T_wi1 = poses.at(parent_link_->name());
@@ -357,8 +359,8 @@ class ScrewJointBase : public Joint {
   }
 
   /// Return joint limit factors.
-  gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
-                                                const OptimizerSetting &opt) {
+  gtsam::NonlinearFactorGraph jointLimitFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     auto id = getID();
     // Add joint angle limit factor.

@@ -37,7 +37,7 @@ TEST(Joint, params_constructor_prismatic) {
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
-  parameters.effort_type = Joint::JointEffortType::Actuated;
+  parameters.effort_type = JointEffortType::Actuated;
   parameters.joint_lower_limit = 0;
   parameters.joint_upper_limit = 2;
   parameters.joint_limit_threshold = 0;
@@ -57,9 +57,6 @@ TEST(Joint, params_constructor_prismatic) {
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
-
-  // joint type
-  EXPECT(j1->jointType() == Joint::JointType::Prismatic);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);

@@ -77,6 +77,8 @@ Values InitializeSolutionInterpolation(
         addGaussianNoiseToPose(Pose3(wRl_t, wPl_t), gaussian_noise, sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
+    // TODO(Alejandro): forwardKinematics needs to get passed the prev link
+    // twist
     auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_t);
     for (auto&& pose_result : fk_results.first)
       init_vals.insert(

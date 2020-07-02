@@ -140,6 +140,8 @@ Robot::FKResults Robot::forwardKinematics(
   }
   if (prior_link_name) {
     root_link = getLinkByName(*prior_link_name);
+    // TODO(Yetong): `prior_link_pose` and `prior_link_twist` need to be checked
+    // if are boost::none.  It causes a very difficult-to-find runtime error
     link_poses[*prior_link_name] = *prior_link_pose;
     link_twists[*prior_link_name] = *prior_link_twist;
   }
@@ -189,7 +191,7 @@ Robot::FKResults Robot::forwardKinematics(
   return FKResults(link_poses, link_twists);
 }
 
-NonlinearFactorGraph Robot::qFactors(const int &t,
+NonlinearFactorGraph Robot::qFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->qFactors(t, opt));
@@ -197,7 +199,7 @@ NonlinearFactorGraph Robot::qFactors(const int &t,
   return graph;
 }
 
-NonlinearFactorGraph Robot::vFactors(const int &t,
+NonlinearFactorGraph Robot::vFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->vFactors(t, opt));
@@ -205,11 +207,20 @@ NonlinearFactorGraph Robot::vFactors(const int &t,
   return graph;
 }
 
-NonlinearFactorGraph Robot::aFactors(const int &t,
+NonlinearFactorGraph Robot::aFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->aFactors(t, opt));
   for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));
+  return graph;
+}
+
+GaussianFactorGraph Robot::linearFDPriors(size_t t,
+                                          const JointValues &torques,
+                                          const OptimizerSetting &opt) const {
+  GaussianFactorGraph graph;
+  for (auto &&joint : joints())
+    graph += joint->linearFDPriors(t, torques, opt);
   return graph;
 }
 

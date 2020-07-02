@@ -36,7 +36,7 @@ TEST(Joint, params_constructor) {
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
-  parameters.effort_type = Joint::JointEffortType::Actuated;
+  parameters.effort_type = JointEffortType::Actuated;
   parameters.joint_lower_limit = -1.57;
   parameters.joint_upper_limit = 1.57;
   parameters.joint_limit_threshold = 0;
@@ -47,9 +47,6 @@ TEST(Joint, params_constructor) {
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
-
-  // joint type
-  EXPECT(j1->jointType() == Joint::JointType::Screw);
 
   // joint effort type
   EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
