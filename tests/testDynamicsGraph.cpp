@@ -17,7 +17,6 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/inference/Key.h>
-#include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -30,6 +29,7 @@
 #include "gtdynamics/factors/MinTorqueFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
@@ -472,7 +472,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
+  auto contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
@@ -492,7 +492,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Load the robot from urdf file
   Robot biped =
-      Robot(std::string(URDF_PATH) + "/biped.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/biped.urdf");
 
   // Add some contact points.
   std::vector<ContactPoint> contact_points;
@@ -550,7 +550,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
     LinkSharedPtr l = biped.getLinkByName("lower0");
-    gtsam::LabeledSymbol contact_wrench_key =
+    auto contact_wrench_key =
         ContactWrenchKey(l->getID(), contact_point.contact_id, 0);
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
@@ -581,7 +581,7 @@ TEST(jointlimitFactors, simple_urdf) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
-  Robot my_robot = Robot(
+  Robot my_robot = CreateRobotFromFile(
       std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.
@@ -633,7 +633,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
-  gtsam::LabeledSymbol contact_wrench_key = ContactWrenchKey(
+  auto contact_wrench_key = ContactWrenchKey(
       l0->getID(), contact_points[0].contact_id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);

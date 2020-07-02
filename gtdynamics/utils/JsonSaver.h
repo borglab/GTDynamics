@@ -40,8 +40,8 @@
 
 #define kQuote_ "\""
 
-using namespace gtdynamics;
-namespace gtsam {
+// using namespace gtdynamics;
+namespace gtdynamics {
 /**
  * @brief
  * store optimization results history, export factor graph in json format. The
@@ -56,7 +56,7 @@ class JsonSaver {
  public:
   typedef std::pair<std::string, std::string> AttributeType;
   typedef boost::shared_ptr<gtsam::Value> ValuePtr;
-  typedef std::map<Key, gtsam::Vector3> LocationType;
+  typedef std::map<gtsam::Key, gtsam::Vector3> LocationType;
   typedef std::map<std::string, gtsam::Vector3> StrLocationType;
 
   /**
@@ -98,16 +98,8 @@ class JsonSaver {
    */
   static inline std::string GetName(const gtsam::Key& key) {
     std::stringstream ss;
-    auto symb = LabeledSymbol(key);
-    char ch = symb.chr();
-    int index = symb.label();
-    int t = symb.index();
-    if (ch == 'F') {
-      ss << ch << int(index / 16) << index % 16 << "_" << t;
-    } else {
-      ss << ch << index << "_" << t;
-    }
-    return ss.str();
+    auto symb = DynamicsSymbol(key);
+    return (std::string)(symb);
   }
 
   /**
@@ -211,14 +203,14 @@ class JsonSaver {
     if (const TorqueFactor* f =
             dynamic_cast<const TorqueFactor*>(&(*factor))) {
       ss << GetVector(f->getScrewAxis().transpose());
-    } else if (const PriorFactor<Vector3>* f =
-                   dynamic_cast<const PriorFactor<Vector3>*>(&(*factor))) {
+    } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
+                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(&(*factor))) {
       ss << GetVector(f->prior().transpose());
-    } else if (const PriorFactor<Vector6>* f =
-                   dynamic_cast<const PriorFactor<Vector6>*>(&(*factor))) {
+    } else if (const gtsam::PriorFactor<gtsam::Vector6>* f =
+                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector6>*>(&(*factor))) {
       ss << GetVector(f->prior().transpose());
-    } else if (const PriorFactor<double>* f =
-                   dynamic_cast<const PriorFactor<double>*>(&(*factor))) {
+    } else if (const gtsam::PriorFactor<double>* f =
+                   dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       ss << f->prior();
     }
     return ss.str();
@@ -251,11 +243,11 @@ class JsonSaver {
       return "WrenchPlanar";
     } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
       return "WrenchEq";
-    } else if (dynamic_cast<const PriorFactor<double>*>(&(*factor))) {
+    } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";
-    } else if (dynamic_cast<const PriorFactor<Vector>*>(&(*factor))) {
+    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(&(*factor))) {
       return "Prior";
-    } else if (dynamic_cast<const PriorFactor<Pose3>*>(&(*factor))) {
+    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Pose3>*>(&(*factor))) {
       return "PriorPose";
     } else {
       return typeid(factor).name();
@@ -313,7 +305,7 @@ class JsonSaver {
    * @return                  a string displaying the error
    */
   static inline std::string GetError(
-      const gtsam::NonlinearFactor::shared_ptr& factor, const Values& values) {
+      const gtsam::NonlinearFactor::shared_ptr& factor, const gtsam::Values& values) {
     std::stringstream ss;
     ss << factor->error(values);
     return ss.str();
@@ -326,7 +318,7 @@ class JsonSaver {
    * @return                  a string displaying the whitened error
    */
   static inline std::string GetWhitenedError(
-      const gtsam::NonlinearFactor::shared_ptr& factor, const Values& values) {
+      const gtsam::NonlinearFactor::shared_ptr& factor, const gtsam::Values& values) {
     std::stringstream ss;
     if (const gtsam::NoiseModelFactor* noise_factor =
             dynamic_cast<const gtsam::NoiseModelFactor*>(&(*factor))) {
@@ -404,7 +396,7 @@ class JsonSaver {
    * @return                  a string displaying the factor in json
    */
   static inline std::string GetFactor(const size_t idx,
-                                      const NonlinearFactorGraph& graph,
+                                      const gtsam::NonlinearFactorGraph& graph,
                                       const gtsam::Values& values) {
     const gtsam::NonlinearFactor::shared_ptr& factor = graph.at(idx);
 
@@ -453,7 +445,7 @@ class JsonSaver {
   // TODO: add option to include GT values
    */
   static inline void SaveFactorGraph(
-      const NonlinearFactorGraph& graph, std::ostream& stm,
+      const gtsam::NonlinearFactorGraph& graph, std::ostream& stm,
       const gtsam::Values& values = gtsam::Values(),
       const LocationType& locations = LocationType()) {
     std::vector<std::string> variable_strings;
@@ -692,7 +684,7 @@ class StorageManager {
    * @param[in] locations     manually specify the location of variables
    */
   void SaveFactorGraphSequence(
-      const NonlinearFactorGraph& graph, std::ostream& stm,
+      const gtsam::NonlinearFactorGraph& graph, std::ostream& stm,
       const gtsam::Values& values = gtsam::Values(),
       const JsonSaver::LocationType& locations = JsonSaver::LocationType()) {
     std::vector<std::string> variable_strings;

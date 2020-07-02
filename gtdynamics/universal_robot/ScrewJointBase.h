@@ -42,27 +42,34 @@ namespace gtdynamics {
 class ScrewJointBase : public JointTyped<double, double> {
   using Pose3 = gtsam::Pose3;
 
+ public:
+  /**
+   * This struct contains all parameters needed to construct a joint.
+   * TODO (stephanie): Make sure all parameters have meaningful default values.
+   */
+  struct Parameters {
+    JointEffortType effort_type = JointEffortType::Actuated;
+
+    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
+    double joint_lower_limit;
+    double joint_upper_limit;
+    double joint_limit_threshold = 0.0;
+
+    double velocity_limit;
+    double velocity_limit_threshold = 0.0;
+    double acceleration_limit = 10000;
+    double acceleration_limit_threshold = 0.0;
+    double torque_limit;
+    double torque_limit_threshold = 0.0;
+    double damping_coefficient;
+    double spring_coefficient = 0.0;
+  };
+
  protected:
-  char joint_type_;
-  JointEffortType jointEffortType_;
+  // Joint parameters struct.
+  Parameters parameters_;
+
   gtsam::Vector3 axis_;
-
-  // Joint limit parameters.
-  double joint_lower_limit_;
-  double joint_upper_limit_;
-  double joint_limit_threshold_;
-
-  double damping_coeff_;
-  double spring_coeff_;
-
-  double velocity_limit_;
-  double velocity_limit_threshold_;
-
-  double acceleration_limit_;
-  double acceleration_limit_threshold_;
-
-  double torque_limit_;
-  double torque_limit_threshold_;
 
   // Screw axis in parent and child COM frames.
   gtsam::Vector6 pScrewAxis_;
@@ -83,88 +90,37 @@ class ScrewJointBase : public JointTyped<double, double> {
   const gtsam::Vector3 &axis() const { return axis_; }
 
  public:
-  /**
-   * @brief Create ScrewJointBase from a sdf::Joint instance.
-   *
-   * @param[in] sdf_joint                  sdf::Joint object.
-   * @param[in] jScrewAxis                 Screw axis in joint frame
-   * @param[in] joint_effort_type          Joint effort type.
-   * @param[in] springCoefficient          Spring coefficient.
-   * @param[in] jointLimitThreshold        Joint angle limit threshold.
-   * @param[in] velocityLimitThreshold     Joint velocity limit threshold.
-   * @param[in] accelerationLimit          Joint acceleration limit.
-   * @param[in] accelerationLimitThreshold Joint Acceleration limit threshold.
-   * @param[in] torqueLimitThreshold       Joint torque limit threshold.
-   * @param[in] parent_link                Shared pointer to the parent Link.
-   * @param[in] child_link                 Shared pointer to the child Link.
-   */
-  ScrewJointBase(const sdf::Joint &sdf_joint, gtsam::Vector6 jScrewAxis,
-                 JointEffortType joint_effort_type, double springCoefficient,
-                 double jointLimitThreshold, double velocityLimitThreshold,
-                 double accelerationLimit, double accelerationLimitThreshold,
-                 double torqueLimitThreshold, LinkSharedPtr parent_link,
-                 LinkSharedPtr child_link)
-      : JointTyped(sdf_joint, parent_link, child_link),
-        jointEffortType_(joint_effort_type),
-        axis_(getSdfAxis(sdf_joint)),
-        joint_lower_limit_(sdf_joint.Axis()->Lower()),
-        joint_upper_limit_(sdf_joint.Axis()->Upper()),
-        joint_limit_threshold_(jointLimitThreshold),
-        damping_coeff_(sdf_joint.Axis()->Damping()),
-        spring_coeff_(springCoefficient),
-        velocity_limit_(sdf_joint.Axis()->MaxVelocity()),
-        velocity_limit_threshold_(velocityLimitThreshold),
-        acceleration_limit_(accelerationLimit),
-        acceleration_limit_threshold_(accelerationLimitThreshold),
-        torque_limit_(sdf_joint.Axis()->Effort()),
-        torque_limit_threshold_(torqueLimitThreshold),
-        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
-        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
-
-  /** Construct joint using sdf::Joint instance and joint parameters. */
-  ScrewJointBase(const sdf::Joint &sdf_joint, gtsam::Vector6 jScrewAxis,
-                 const JointParams &jps, LinkSharedPtr parent_link,
-                 LinkSharedPtr child_link)
-      : ScrewJointBase(sdf_joint, jScrewAxis, jps.jointEffortType,
-                       jps.springCoefficient, jps.jointLimitThreshold,
-                       jps.velocityLimitThreshold, jps.accelerationLimit,
-                       jps.accelerationLimitThreshold, jps.torqueLimitThreshold,
-                       parent_link, child_link) {}
-
-  /** constructor using JointParams and screw axes */
-  ScrewJointBase(const Params &params, gtsam::Vector3 axis,
-                 gtsam::Vector6 jScrewAxis)
-      : JointTyped(params),
-        joint_type_(params.joint_type),
-        jointEffortType_(params.effort_type),
+  /** constructor using Parameters, joint name, wTj, screw axes, and parent
+   * and child links. */
+  ScrewJointBase(const std::string &name, const gtsam::Pose3 &wTj,
+                 const LinkSharedPtr &parent_link,
+                 const LinkSharedPtr &child_link, const Parameters &parameters,
+                 const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
+      : JointTyped(name, wTj, parent_link, child_link),
+        parameters_(parameters),
         axis_(axis),
-        joint_lower_limit_(params.joint_lower_limit),
-        joint_upper_limit_(params.joint_upper_limit),
-        joint_limit_threshold_(params.joint_limit_threshold),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
-
-  JointType jointType() const override { return JointType::ScrewBase; }
 
   /// Return joint effort type
-  JointEffortType jointEffortType() const { return jointEffortType_; }
+  JointEffortType jointEffortType() const { return parameters_.effort_type; }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6 &screwAxis(const LinkSharedPtr link) const {
+  const gtsam::Vector6 screwAxis(const LinkSharedPtr &link) const {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
   /// Return the transform from the other link com to this link com frame
-  Pose3 transformToImpl(const LinkSharedPtr link,
-                    boost::optional<double> q = boost::none,
-                      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+  Pose3 transformToImpl(
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
+      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
     return isChildLink(link) ? cMpCom(q) : pMcCom(q);
   }
 
   /// Return the twist of this link given the other link's twist and
   /// joint angle.
   gtsam::Vector6 transformTwistToImpl(
-      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none,
@@ -181,7 +137,7 @@ class ScrewJointBase : public JointTyped<double, double> {
   }
 
   gtsam::Vector6 transformTwistAccelToImpl(
-      const LinkSharedPtr link, boost::optional<double> q = boost::none,
+      const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<double> q_ddot = boost::none,
       boost::optional<gtsam::Vector6> this_twist = boost::none,
@@ -234,43 +190,49 @@ class ScrewJointBase : public JointTyped<double, double> {
   }
 
   /// Return joint angle lower limit.
-  double jointLowerLimit() const { return joint_lower_limit_; }
+  double jointLowerLimit() const { return parameters_.joint_lower_limit; }
 
   /// Return joint angle upper limit.
-  double jointUpperLimit() const { return joint_upper_limit_; }
+  double jointUpperLimit() const { return parameters_.joint_upper_limit; }
 
   /// Return joint angle limit threshold.
-  double jointLimitThreshold() const { return joint_limit_threshold_; }
+  double jointLimitThreshold() const {
+    return parameters_.joint_limit_threshold;
+  }
 
   /// Return joint damping coefficient
-  double dampCoefficient() const { return damping_coeff_; }
+  double dampCoefficient() const { return parameters_.damping_coefficient; }
 
   /// Return joint spring coefficient
-  double springCoefficient() const { return spring_coeff_; }
+  double springCoefficient() const { return parameters_.spring_coefficient; }
 
   /// Return joint velocity limit.
-  double velocityLimit() const { return velocity_limit_; }
+  double velocityLimit() const { return parameters_.velocity_limit; }
 
   /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const { return velocity_limit_threshold_; }
+  double velocityLimitThreshold() const {
+    return parameters_.velocity_limit_threshold;
+  }
 
   /// Return joint acceleration limit.
-  double accelerationLimit() const { return acceleration_limit_; }
+  double accelerationLimit() const { return parameters_.acceleration_limit; }
 
   /// Return joint acceleration limit threshold.
   double accelerationLimitThreshold() const {
-    return acceleration_limit_threshold_;
+    return parameters_.acceleration_limit_threshold;
   }
 
   /// Return joint torque limit.
-  double torqueLimit() const { return torque_limit_; }
+  double torqueLimit() const { return parameters_.torque_limit; }
 
   /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const { return torque_limit_threshold_; }
+  double torqueLimitThreshold() const {
+    return parameters_.torque_limit_threshold;
+  }
 
   /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph qFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<PoseFactor>(
         PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
@@ -280,8 +242,8 @@ class ScrewJointBase : public JointTyped<double, double> {
   }
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph vFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<TwistFactor>(
         TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
@@ -294,7 +256,7 @@ class ScrewJointBase : public JointTyped<double, double> {
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const JointValues &torques,
-      const OptimizerSetting &opt) const {
+      const OptimizerSetting &opt) const override {
     gtsam::GaussianFactorGraph priors;
     gtsam::Vector1 rhs;
     rhs << torques.at<double>(getKey());
@@ -311,7 +273,7 @@ class ScrewJointBase : public JointTyped<double, double> {
       const JointValues &joint_angles,
       const JointValues &joint_vels,
       const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
     const Pose3 T_wi1 = poses.at(parent_link_->name());
@@ -335,7 +297,7 @@ class ScrewJointBase : public JointTyped<double, double> {
   /// Return joint dynamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<WrenchEquivalenceFactor>(
         WrenchKey(parent_link_->getID(), getID(), t),
@@ -358,7 +320,7 @@ class ScrewJointBase : public JointTyped<double, double> {
       const JointValues &joint_angles,
       const JointValues &joint_vels,
       const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const {
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
     const Pose3 T_wi1 = poses.at(parent_link_->name());
@@ -392,8 +354,8 @@ class ScrewJointBase : public JointTyped<double, double> {
   }
 
   /// Return joint limit factors.
-  gtsam::NonlinearFactorGraph jointLimitFactors(size_t t,
-                                                const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph jointLimitFactors(
+      size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
     auto id = getID();
     // Add joint angle limit factor.

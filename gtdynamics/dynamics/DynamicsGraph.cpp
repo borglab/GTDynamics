@@ -31,6 +31,7 @@
 #include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/JsonSaver.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -310,7 +311,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     int i = link->getID();
     if (!link->isFixed()) {
       const auto &connected_joints = link->getJoints();
-      std::vector<gtsam::LabeledSymbol> wrenches;
+      std::vector<DynamicsSymbol> wrenches;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -656,24 +657,8 @@ JointValues DynamicsGraph::jointTorques(const Robot &robot,
 }
 
 void printKey(const gtsam::Key &key) {
-  auto symb = gtsam::LabeledSymbol(key);
-  char ch = symb.chr();
-  int index = symb.label();
-  int t = symb.index();
-  if (ch == 'F') {
-    std::cout << ch << int(index / 16) << index % 16 << "_" << t;
-  } else if (ch == 't') {
-    if (index == 0) {  // phase key
-      std::cout << "dt" << t;
-    } else if (index == 1) {  // time key
-      std::cout << "t" << t;
-    } else {  // time to open valve
-      std::cout << "ti" << t;
-    }
-  } else {
-    std::cout << ch << index << "_" << t;
-  }
-  std::cout << "\t";
+  auto symb = DynamicsSymbol(key);
+  std::cout << (std::string)(symb) << "\t";
 }
 
 // print the factors of the factor graph
@@ -714,9 +699,9 @@ gtsam::Vector3 corner_location(double r, double j, int n) {
   return (gtsam::Vector(3) << x, y, 0).finished();
 }
 
-gtsam::JsonSaver::LocationType get_locations(const Robot &robot, const int t,
+JsonSaver::LocationType get_locations(const Robot &robot, const int t,
                                              bool radial) {
-  gtsam::JsonSaver::LocationType locations;
+  JsonSaver::LocationType locations;
 
   if (radial) {
     int n = robot.numLinks();
@@ -773,8 +758,8 @@ void DynamicsGraph::saveGraph(const std::string &file_path,
                               const int t, bool radial) {
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::LocationType locations = get_locations(robot, t, radial);
-  gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+  JsonSaver::LocationType locations = get_locations(robot, t, radial);
+  JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
   json_file.close();
 }
 
@@ -784,10 +769,10 @@ void DynamicsGraph::saveGraphMultiSteps(
     bool radial) {
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::LocationType locations;
+  JsonSaver::LocationType locations;
 
   for (int t = 0; t <= num_steps; t++) {
-    gtsam::JsonSaver::LocationType locations_t =
+    JsonSaver::LocationType locations_t =
         get_locations(robot, t, radial);
     gtsam::Vector offset = (gtsam::Vector(3) << 20.0 * t, 0, 0).finished();
     for (auto it = locations_t.begin(); it != locations_t.end(); it++) {
@@ -797,7 +782,7 @@ void DynamicsGraph::saveGraphMultiSteps(
     locations.insert(locations_t.begin(), locations_t.end());
   }
 
-  gtsam::JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
+  JsonSaver::SaveFactorGraph(graph, json_file, values, locations);
   json_file.close();
 }
 
@@ -805,25 +790,23 @@ void DynamicsGraph::saveGraphMultiSteps(
 typedef std::pair<std::string, int> ClusterInfo;
 
 inline ClusterInfo getCluster(const gtsam::Key &key) {
-  gtsam::LabeledSymbol symb(key);
-  char ch = symb.chr();
-  int index = symb.label();
-  int t = symb.index();
-  if (ch == 'q' || ch == 'p') {
+  const DynamicsSymbol symb(key);
+  const std::string label = symb.label();
+  const int t = symb.time();
+  if (label == "q" || label == "p") {
     return ClusterInfo("q", t);
   }
-  if (ch == 'v' || ch == 'V') {
+  if (label == "v" || label == "V") {
     return ClusterInfo("v", t);
   }
-  if (ch == 'a' || ch == 'A') {
+  if (label == "a" || label == "A") {
     return ClusterInfo("a", t);
   }
-  if (ch == 'T' || ch == 'F') {
+  if (label == "T" || label == "F") {
     return ClusterInfo("f", t);
   }
-  if ((ch == 't' && index != 1) ||
-      (ch = 'P' && t == 1000000)) {  // intial time and pressure
-    return ClusterInfo("s", 1000000);
+  if (label == "ti" || label == "Pi") {
+    return ClusterInfo("s", t);
   }
   return ClusterInfo("o", t);
 }
@@ -894,7 +877,7 @@ void DynamicsGraph::saveGraphTraj(const std::string &file_path,
   }
 
   // specify locations
-  gtsam::JsonSaver::StrLocationType locations;
+  JsonSaver::StrLocationType locations;
   for (int t = 0; t <= num_steps; t++) {
     locations["q" + std::to_string(t)] =
         (gtsam::Vector(3) << t, 0, 0).finished();
@@ -917,7 +900,7 @@ void DynamicsGraph::saveGraphTraj(const std::string &file_path,
   // save to file
   std::ofstream json_file;
   json_file.open(file_path);
-  gtsam::JsonSaver::SaveClusteredGraph(json_file, clustered_graphs,
+  JsonSaver::SaveClusteredGraph(json_file, clustered_graphs,
                                        clustered_values, values, locations);
   json_file.close();
 }

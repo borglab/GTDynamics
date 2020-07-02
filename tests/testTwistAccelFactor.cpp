@@ -57,21 +57,18 @@ ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 jMi,
   LinkSharedPtr l2 = std::make_shared<Link>(Link(link2_params));
 
   // create joint
-  Joint::Params joint_params;
-  joint_params.name = "j1";
-  joint_params.joint_type = Joint::JointType::ScrewBase;
+  ScrewJointBase::Parameters joint_params;
   joint_params.effort_type = JointEffortType::Actuated;
-  joint_params.parent_link = l1;
-  joint_params.child_link = l2;
-  joint_params.wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   joint_params.joint_lower_limit = -1.57;
   joint_params.joint_upper_limit = 1.57;
   joint_params.joint_limit_threshold = 0;
-  gtsam::Pose3 jTccom = joint_params.wTj.inverse() * l2->wTcom();
+  gtsam::Pose3 wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
+  gtsam::Pose3 jTccom = wTj.inverse() * l2->wTcom();
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
   return std::make_shared<const ScrewJointBase>(
-      ScrewJointBase(joint_params, jScrewAxis.head<3>(), jScrewAxis));
+      ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
+      jScrewAxis));
 }
 
 // Test twistAccel factor for stationary case

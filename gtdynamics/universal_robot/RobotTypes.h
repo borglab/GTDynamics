@@ -35,7 +35,6 @@ LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
 LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
 LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
 LINK_TYPEDEF_CLASS_POINTER(SphericalJoint);
-struct JointParams;
 
 // map from joint Key to joint angle/vel/accel/torque
 typedef gtsam::Values JointValues;
