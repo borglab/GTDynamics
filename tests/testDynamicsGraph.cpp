@@ -33,7 +33,7 @@
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 int DEBUG_SIMPLE_OPTIMIZATION_EXAMPLE = 0;
 int DEBUG_FOUR_BAR_LINKAGE_ILS_EXAMPLE = 0;
