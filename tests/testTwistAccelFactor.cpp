@@ -11,7 +11,7 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 #include <CppUnitLite/TestHarness.h>
