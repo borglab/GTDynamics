@@ -140,10 +140,10 @@ Robot::FKResults Robot::forwardKinematics(
   }
   if (prior_link_name) {
     root_link = getLinkByName(*prior_link_name);
-    // TODO(Yetong): `prior_link_pose` and `prior_link_twist` need to be checked
-    // if are boost::none.  It causes a very difficult-to-find runtime error
-    link_poses[*prior_link_name] = *prior_link_pose;
-    link_twists[*prior_link_name] = *prior_link_twist;
+    link_poses[*prior_link_name] =
+        prior_link_pose ? *prior_link_pose : gtsam::Pose3();
+    link_twists[*prior_link_name] =
+        prior_link_twist ? *prior_link_twist : gtsam::Vector6();
   }
   if (link_poses.size() == 0) {
     throw std::runtime_error("cannot find a fixed link");
