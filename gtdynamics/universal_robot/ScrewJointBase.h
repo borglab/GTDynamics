@@ -27,7 +27,6 @@
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
@@ -96,11 +95,7 @@ class ScrewJointBase : public Joint {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const Parameters &parameters,
                  const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
-<<<<<<< HEAD
-      : Joint(name, wTj, parent_link, child_link),
-=======
       : JointTyped(name, wTj, parent_link, child_link),
->>>>>>> 91bc6e9... Attempt to merge from master, not quite done yet
         parameters_(parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
@@ -136,7 +131,22 @@ class ScrewJointBase : public Joint {
     gtsam::Vector6 other_twist_ =
         other_twist ? *other_twist : gtsam::Vector6::Zero();
 
-    return transformTo(link, q_).AdjointMap() * other_twist_ +
+    // i = other link
+    // j = this link
+    auto this_ad_other = transformTo(link, q_).AdjointMap();
+
+    if (H_q) {
+      *H_q = AdjointMapJacobianQ(q_, transformTo(link), screwAxis(link)) *
+             other_twist_;
+    }
+    if (H_q_dot) {
+      *H_q_dot = screwAxis(link);
+    }
+    if (H_other_twist) {
+      *H_other_twist = this_ad_other;
+    }
+
+    return this_ad_other * other_twist_ +
            screwAxis(link) * q_dot_;
   }
 
@@ -160,8 +170,8 @@ class ScrewJointBase : public Joint {
         other_twist_accel ? *other_twist_accel : gtsam::Vector6::Zero();
     gtsam::Vector6 screw_axis_ = isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
 
-    // this link -> j
-    // other link -> i 
+    // i = other link
+    // j = this link
     gtsam::Pose3 jTi = transformTo(link, q);
 
     gtsam::Vector6 this_twist_accel =
@@ -242,18 +252,6 @@ class ScrewJointBase : public Joint {
         PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
         JointAngleKey(getID(), t), opt.p_cost_model, transformTo(child_link_),
         screwAxis(child_link_));
-    return graph;
-  }
-
-  /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(
-      size_t t, const OptimizerSetting &opt) const override {
-    gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<TwistFactor>(
-        TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
-        JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
-        transformTo(child_link_), screwAxis(child_link_));
-
     return graph;
   }
 
