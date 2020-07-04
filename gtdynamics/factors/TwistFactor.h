@@ -24,76 +24,69 @@
 #include <boost/optional.hpp>
 
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
 /** TwistFactor is a four-way nonlinear factor which enforces relation
  * between twist on previous link and this link*/
+template <class JointTypedClass>
 class TwistFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
-                                      double> {
+    : public gtsam::NoiseModelFactor4<
+          gtsam::Vector6, gtsam::Vector6, typename JointTypedClass::AngleType,
+          typename JointTypedClass::AngleTangentType> {
  private:
+  typedef typename JointTypedClass::AngleType JointAngleType;
+  typedef typename JointTypedClass::AngleTangentType JointAngleTangentType;
   typedef TwistFactor This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
-                                   double>
+  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                   typename JointTypedClass::AngleType,
+                                   typename JointTypedClass::AngleTangentType>
       Base;
   gtsam::Pose3 jMi_;
-  gtsam::Vector6 screw_axis_;
+  JointConstSharedPtr joint_;
 
  public:
   /** Create single factor relating this link's twist with previous one.
       Keyword arguments:
-          jMi -- previous COM frame, expressed in this link's COM frame, at rest
-     configuration screw_axis -- screw axis expressed in link's COM frame Will
-     create factor corresponding to Lynch & Park book: -Equation 8.45, page 292
-   */
+          joint -- JointConstSharedPtr to the joint
+  */
   TwistFactor(gtsam::Key twistI_key, gtsam::Key twistJ_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
               const gtsam::noiseModel::Base::shared_ptr &cost_model,
-              const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
+              JointConstSharedPtr joint)
       : Base(cost_model, twistI_key, twistJ_key, q_key, qVel_key),
-        jMi_(jMi),
-        screw_axis_(screw_axis) {}
+        joint_(joint) {}
   virtual ~TwistFactor() {}
-
- private:
-  /* calculate jacobian of AdjointMap term w.r.t. joint coordinate q */
-  gtsam::Matrix61 qJacobian_(const double &q,
-                             const gtsam::Vector6 &twist_i) const {
-    auto H = AdjointMapJacobianQ(q, jMi_, screw_axis_);
-    return H * twist_i;
-  }
 
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit_i       -- twist on the previous link
-          twsit_j       -- twist on this link
+          twist_i       -- twist on the previous link
+          twist_j       -- twist on this link
           q             -- joint coordination
           qVel          -- joint velocity
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
-      const double &q, const double &qVel,
-      boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
+      const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
+      const JointAngleType &q, const JointAngleTangentType &qVel,
+      boost::optional<gtsam::Matrix &> H_twist_p = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
-    gtsam::Pose3 jTi = gtsam::Pose3::Expmap(-screw_axis_ * q) * jMi_;
-    if (H_twist_i) {
-      *H_twist_i = -jTi.AdjointMap();
-    }
-    if (H_twist_j) {
-      *H_twist_j = gtsam::I_6x6;
-    }
-    if (H_q) {
-      *H_q = -qJacobian_(q, twist_i);
-    }
-    if (H_qVel) {
-      *H_qVel = -screw_axis_;
+    auto error =
+        std::static_pointer_cast<const JointTypedClass>(joint_)
+            ->transformTwistTo(joint_->childLink(), q, qVel,
+                                    twist_p, H_q, H_qVel,
+                                    H_twist_p) -
+        twist_c;
+
+    if (H_twist_c) {
+      *H_twist_c = -gtsam::I_6x6;
     }
 
-    return twist_j - jTi.AdjointMap() * twist_i - screw_axis_ * qVel;
+    return error;
   }
 
   // @return a deep copy of this factor

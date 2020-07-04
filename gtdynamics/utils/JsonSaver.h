@@ -233,7 +233,7 @@ class JsonSaver {
       return "Wrench";
     } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
       return "Pose";
-    } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const TwistFactor<ScrewJointBase>*>(&(*factor))) {
       return "Twist";
     } else if (dynamic_cast<const TwistAccelFactor<ScrewJointBase>*>(&(*factor))) {
       return "TwistAccel";  // TODO(G+S): figure out how to make this work for other joint types

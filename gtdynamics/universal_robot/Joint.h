@@ -659,10 +659,15 @@ class JointTyped : public Joint {
   /// Return joint accel factors.  // TODO(G+S): CRTP and put in Joint class
   gtsam::NonlinearFactorGraph aFactors(
       size_t t, const OptimizerSetting &opt) const override;
+
+  /// Return joint vel factors.
+  gtsam::NonlinearFactorGraph vFactors(
+      size_t t, const OptimizerSetting &opt) const override;
 };
 
 }  // namespace gtdynamics
 
+#include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
 
 namespace gtdynamics {
@@ -676,6 +681,18 @@ gtsam::NonlinearFactorGraph JointTyped<A, B>::aFactors(
       TwistAccelKey(parent_link_->getID(), t),
       TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
       JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
+      getConstSharedPtr());
+
+  return graph;
+}
+
+template <class A, class B>
+gtsam::NonlinearFactorGraph JointTyped<A, B>::vFactors(
+    size_t t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<TwistFactor<This>>(
+      TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
+      JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
       getConstSharedPtr());
 
   return graph;
