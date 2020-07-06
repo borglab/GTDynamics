@@ -11,7 +11,7 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-ScrewJointBase::Parameters ParametersFromFile(
+ScrewJointBase::Parameters ParametersFromSdfJoint(
     const sdf::Joint &sdf_joint) {
   ScrewJointBase::Parameters parameters;
 
@@ -58,7 +58,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromSdf(
-    const sdf::Model sdf) {
+    const sdf::Model &sdf) {
   // Loop through all links in the sdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -134,7 +134,7 @@ static LinkJointPair ExtractRobotFromSdf(
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromFile(
-    const std::string file_path, const std::string model_name) {
+    const std::string &file_path, const std::string &model_name) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 

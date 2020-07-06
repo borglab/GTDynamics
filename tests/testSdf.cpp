@@ -33,7 +33,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 TEST(File, parameters_from_file) {
   // Test for reading parameters from a simple URDF.
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  auto j1_parameters = ParametersFromFile(*simple_urdf.JointByName("j1"));
+  auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
 
   EXPECT(assert_equal(-1.57, j1_parameters.joint_lower_limit));
   EXPECT(assert_equal(1.57, j1_parameters.joint_upper_limit));
@@ -44,7 +44,7 @@ TEST(File, parameters_from_file) {
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a simple SDF.
   auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  auto joint_1_parameters = ParametersFromFile(*simple_sdf.JointByName("joint_1"));
+  auto joint_1_parameters = ParametersFromSdfJoint(*simple_sdf.JointByName("joint_1"));
 
   EXPECT(assert_equal(0.5, joint_1_parameters.damping_coefficient));
   EXPECT(assert_equal(10, joint_1_parameters.velocity_limit));
@@ -52,7 +52,7 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (joint limits) from spider.sdf.
   auto spider_sdf = get_sdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
-  auto knee_1_parameters = ParametersFromFile(*spider_sdf.JointByName("knee_1"));
+  auto knee_1_parameters = ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
   EXPECT(assert_equal(-0.349066, knee_1_parameters.joint_lower_limit));
   EXPECT(assert_equal(2.44346, knee_1_parameters.joint_upper_limit));
@@ -136,7 +136,7 @@ TEST(Joint, urdf_constructor_revolute) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  auto j1_parameters = ParametersFromFile(*simple_urdf.JointByName("j1"));
+  auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   Pose3 j1_wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
@@ -279,7 +279,7 @@ TEST(Joint, limit_params) {
   auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = std::make_shared<Link>(*model.LinkByName("l1"));
   LinkSharedPtr l2 = std::make_shared<Link>(*model.LinkByName("l2"));
-  auto j1_parameters = ParametersFromFile(*model.JointByName("j1"));
+  auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
@@ -299,7 +299,7 @@ TEST(Joint, limit_params) {
       std::make_shared<Link>(*model2.LinkByName("link_0"));
   LinkSharedPtr link_1 =
       std::make_shared<Link>(*model2.LinkByName("link_1"));
-  auto joint_1_parameters = ParametersFromFile(*model2.JointByName("joint_1"));
+  auto joint_1_parameters = ParametersFromSdfJoint(*model2.JointByName("joint_1"));
   joint_1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   Pose3 joint_1_wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
@@ -326,7 +326,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   auto joint1 = *simple_urdf.JointByName("j1");
 
-  auto j1_parameters = ParametersFromFile(joint1);
+  auto j1_parameters = ParametersFromSdfJoint(joint1);
   j1_parameters.effort_type = Joint::JointEffortType::Actuated;
 
   Pose3 wTj = GetJointFrame(joint1, l1, l2);
@@ -448,7 +448,7 @@ TEST(Robot, simple_urdf) {
   auto l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
   auto l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  auto j1_parameters = ParametersFromFile(*simple_urdf.JointByName("j1"));
+  auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
