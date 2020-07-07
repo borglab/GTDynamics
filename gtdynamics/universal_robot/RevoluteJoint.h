@@ -46,7 +46,7 @@ class RevoluteJoint : public ScrewJointBase {
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    ScrewJointBase::Parameters struct
+   * @param[in] parameters    Joint::Parameters struct
    * @param[in] axis          joint axis expressed in joint frame
    */
   RevoluteJoint(const std::string &name, const gtsam::Pose3 &wTj,

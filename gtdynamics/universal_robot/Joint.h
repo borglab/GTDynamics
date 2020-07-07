@@ -65,9 +65,34 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
 
+  /**
+   * This struct contains all parameters needed to construct a joint.
+   * TODO (stephanie): Make sure all parameters have meaningful default values.
+   */
+  struct Parameters {
+    JointEffortType effort_type = JointEffortType::Actuated;
+
+    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
+    double joint_lower_limit;
+    double joint_upper_limit;
+    double joint_limit_threshold = 0.0;
+
+    double velocity_limit;
+    double velocity_limit_threshold = 0.0;
+    double acceleration_limit = 10000;
+    double acceleration_limit_threshold = 0.0;
+    double torque_limit;
+    double torque_limit_threshold = 0.0;
+    double damping_coefficient;
+    double spring_coefficient = 0.0;
+  };
+
  protected:
   // This joint's name.
   std::string name_;
+
+  // Joint parameters struct.
+  Parameters parameters_;
 
   // ID reference to DynamicsSymbol.
   int id_ = -1;
@@ -124,11 +149,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] child_link   Shared pointer to the child Link.
    */
   Joint(const std::string &name, const gtsam::Pose3 &wTj,
-        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+        const Parameters &parameters)
       : name_(name),
         parent_link_(parent_link),
         child_link_(child_link),
-        wTj_(wTj) {
+        wTj_(wTj),
+        parameters_(parameters) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
@@ -171,6 +198,34 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Return a shared ptr to the child link.
   LinkSharedPtr childLink() { return child_link_; }
+
+  /// Return joint parameters.
+  Parameters jointParameters() const { return parameters_; }
+
+  // TODO (stephanie): remove the functions below as part of this PR; shouldn't 
+  // need them when instead jointParameters() can be called and dot notation 
+  // used there to retrieve the individual parameter. (find+replace)
+
+  /// Return joint velocity limit threshold.
+  double velocityLimitThreshold() const {
+    return parameters_.velocity_limit_threshold;
+  }
+
+  /// Return joint acceleration limit.
+  double accelerationLimit() const { return parameters_.acceleration_limit; }
+
+  /// Return joint acceleration limit threshold.
+  double accelerationLimitThreshold() const {
+    return parameters_.acceleration_limit_threshold;
+  }
+
+  /// Return joint torque limit.
+  double torqueLimit() const { return parameters_.torque_limit; }
+
+  /// Return joint torque limit threshold.
+  double torqueLimitThreshold() const {
+    return parameters_.torque_limit_threshold;
+  }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

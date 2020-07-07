@@ -34,7 +34,7 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l2 =
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  ScrewJointBase::Parameters parameters;
+  Joint::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
   parameters.joint_lower_limit = -1.57;
   parameters.joint_upper_limit = 1.57;
@@ -53,7 +53,7 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointParameters().joint_effort_type == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -92,9 +92,9 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(-1.57, j1->jointLowerLimit()));
-  EXPECT(assert_equal(1.57, j1->jointUpperLimit()));
-  EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
+  EXPECT(assert_equal(-1.57, j1->jointParameters().joint_lower_limit));
+  EXPECT(assert_equal(1.57, j1->jointParameters().joint_upper_limit));
+  EXPECT(assert_equal(0.0, j1->jointParameters().joint_limit_threshold));
 }
 
 int main() {

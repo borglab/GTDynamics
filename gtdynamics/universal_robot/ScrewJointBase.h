@@ -43,33 +43,7 @@ namespace gtdynamics {
 class ScrewJointBase : public Joint {
   using Pose3 = gtsam::Pose3;
 
- public:
-  /**
-   * This struct contains all parameters needed to construct a joint.
-   * TODO (stephanie): Make sure all parameters have meaningful default values.
-   */
-  struct Parameters {
-    Joint::JointEffortType effort_type = Joint::JointEffortType::Actuated;
-
-    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
-    double joint_lower_limit;
-    double joint_upper_limit;
-    double joint_limit_threshold = 0.0;
-
-    double velocity_limit;
-    double velocity_limit_threshold = 0.0;
-    double acceleration_limit = 10000;
-    double acceleration_limit_threshold = 0.0;
-    double torque_limit;
-    double torque_limit_threshold = 0.0;
-    double damping_coefficient;
-    double spring_coefficient = 0.0;
-  };
-
  protected:
-  // Joint parameters struct.
-  Parameters parameters_;
-
   gtsam::Vector3 axis_;
 
   // Screw axis in parent and child COM frames.
@@ -97,14 +71,10 @@ class ScrewJointBase : public Joint {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const Parameters &parameters,
                  const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
-      : Joint(name, wTj, parent_link, child_link),
-        parameters_(parameters),
+      : Joint(name, wTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
-
-  /// Return joint effort type
-  JointEffortType jointEffortType() const { return parameters_.effort_type; }
 
   /// Return screw axis expressed in the specified link frame
   const gtsam::Vector6 screwAxis(const LinkSharedPtr &link) const {
@@ -151,47 +121,6 @@ class ScrewJointBase : public Joint {
 
     return transformTo(link, q_).AdjointMap() * other_twist_ +
            screwAxis(link) * q_dot_;
-  }
-
-  /// Return joint angle lower limit.
-  double jointLowerLimit() const { return parameters_.joint_lower_limit; }
-
-  /// Return joint angle upper limit.
-  double jointUpperLimit() const { return parameters_.joint_upper_limit; }
-
-  /// Return joint angle limit threshold.
-  double jointLimitThreshold() const {
-    return parameters_.joint_limit_threshold;
-  }
-
-  /// Return joint damping coefficient
-  double dampCoefficient() const { return parameters_.damping_coefficient; }
-
-  /// Return joint spring coefficient
-  double springCoefficient() const { return parameters_.spring_coefficient; }
-
-  /// Return joint velocity limit.
-  double velocityLimit() const { return parameters_.velocity_limit; }
-
-  /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const {
-    return parameters_.velocity_limit_threshold;
-  }
-
-  /// Return joint acceleration limit.
-  double accelerationLimit() const { return parameters_.acceleration_limit; }
-
-  /// Return joint acceleration limit threshold.
-  double accelerationLimitThreshold() const {
-    return parameters_.acceleration_limit_threshold;
-  }
-
-  /// Return joint torque limit.
-  double torqueLimit() const { return parameters_.torque_limit; }
-
-  /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const {
-    return parameters_.torque_limit_threshold;
   }
 
   /// Return joint angle factors.
@@ -326,13 +255,13 @@ class ScrewJointBase : public Joint {
     auto id = getID();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
-        JointAngleKey(id, t), opt.jl_cost_model, jointLowerLimit(),
-        jointUpperLimit(), jointLimitThreshold());
+        JointAngleKey(id, t), opt.jl_cost_model, jointParameters().joint_lower_limit,
+        jointParameters().joint_upper_limit, jointParameters().joint_limit_threshold);
 
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointVelKey(id, t), opt.jl_cost_model, -velocityLimit(),
-        velocityLimit(), velocityLimitThreshold());
+        JointVelKey(id, t), opt.jl_cost_model, -jointParameters().velocity_limit,
+        jointParameters().velocity_limit, velocityLimitThreshold());
 
     // Add joint acceleration limit factors.
     graph.emplace_shared<JointLimitFactor>(
