@@ -118,6 +118,9 @@ static LinkJointPair ExtractRobotFromSdf(
     name_to_joint.emplace(name, joint);
     joint->setID(j);
 
+    // Set joint parameter values for this robot.
+    joint->setJointParameters(ParametersFromSdfJoint(sdf_joint));
+
     // Update list of parent and child links/joints for each Link.
     parent_link->addJoint(joint);
     child_link->addJoint(joint);

@@ -91,9 +91,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
   // This joint's name.
   std::string name_;
 
-  // Joint parameters struct.
-  Parameters parameters_;
-
   // ID reference to DynamicsSymbol.
   int id_ = -1;
 
@@ -108,6 +105,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   gtsam::Pose3 jTccom_;
   // Rest transform to parent link com frame from child link com frame at rest.
   gtsam::Pose3 pMccom_;
+
+  // Joint parameters struct.
+  Parameters parameters_;
 
   /// Transform from the world frame to the joint frame.
   const gtsam::Pose3 &wTj() const { return wTj_; }
@@ -199,8 +199,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return a shared ptr to the child link.
   LinkSharedPtr childLink() { return child_link_; }
 
-  /// Return joint parameters.
-  Parameters jointParameters() const { return parameters_; }
+  /// Set joint parameters.
+  void setJointParameters(Parameters parameters) { parameters_ = parameters; }
+
+  /// Get joint parameters.
+  Parameters getJointParameters() const { return parameters_; }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
