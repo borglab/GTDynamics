@@ -261,17 +261,17 @@ class ScrewJointBase : public Joint {
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(
         JointVelKey(id, t), opt.jl_cost_model, -jointParameters().velocity_limit,
-        jointParameters().velocity_limit, velocityLimitThreshold());
+        jointParameters().velocity_limit, jointParameters().velocity_limit_threshold);
 
     // Add joint acceleration limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointAccelKey(id, t), opt.jl_cost_model, -accelerationLimit(),
-        accelerationLimit(), accelerationLimitThreshold());
+        JointAccelKey(id, t), opt.jl_cost_model, -jointParameters().acceleration_limit,
+        jointParameters().acceleration_limit, jointParameters().acceleration_limit_threshold);
 
     // Add joint torque limit factors.
     graph.emplace_shared<JointLimitFactor>(TorqueKey(id, t), opt.jl_cost_model,
-                                           -torqueLimit(), torqueLimit(),
-                                           torqueLimitThreshold());
+                                           -jointParameters().torque_limit, jointParameters().torque_limit,
+                                           jointParameters().torque_limit_threshold);
     return graph;
   }
 };

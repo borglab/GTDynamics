@@ -202,31 +202,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint parameters.
   Parameters jointParameters() const { return parameters_; }
 
-  // TODO (stephanie): remove the functions below as part of this PR; shouldn't 
-  // need them when instead jointParameters() can be called and dot notation 
-  // used there to retrieve the individual parameter. (find+replace)
-
-  /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const {
-    return parameters_.velocity_limit_threshold;
-  }
-
-  /// Return joint acceleration limit.
-  double accelerationLimit() const { return parameters_.acceleration_limit; }
-
-  /// Return joint acceleration limit threshold.
-  double accelerationLimitThreshold() const {
-    return parameters_.acceleration_limit_threshold;
-  }
-
-  /// Return joint torque limit.
-  double torqueLimit() const { return parameters_.torque_limit; }
-
-  /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const {
-    return parameters_.torque_limit_threshold;
-  }
-
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
    * @{

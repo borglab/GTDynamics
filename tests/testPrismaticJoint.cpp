@@ -62,7 +62,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->jointType() == Joint::JointType::Prismatic);
 
   // joint effort type
-  EXPECT(j1->jointParameters().joint_effort_type == Joint::JointEffortType::Actuated);
+  EXPECT(j1->jointParameters().effort_type == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
