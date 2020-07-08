@@ -255,8 +255,8 @@ class ScrewJointBase : public Joint {
     auto id = getID();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
-        JointAngleKey(id, t), opt.jl_cost_model, getJointParameters().joint_lower_limit,
-        getJointParameters().joint_upper_limit, getJointParameters().joint_limit_threshold);
+        JointAngleKey(id, t), opt.jl_cost_model, getJointParameters().value_lower_limit,
+        getJointParameters().value_upper_limit, getJointParameters().value_limit_threshold);
 
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(

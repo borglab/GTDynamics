@@ -15,11 +15,11 @@ Joint::Parameters ParametersFromSdfJoint(
     const sdf::Joint &sdf_joint) {
   Joint::Parameters parameters;
 
-  parameters.joint_lower_limit = sdf_joint.Axis()->Lower();
-  parameters.joint_upper_limit = sdf_joint.Axis()->Upper();
-  parameters.damping_coefficient = sdf_joint.Axis()->Damping();
+  parameters.value_lower_limit = sdf_joint.Axis()->Lower();
+  parameters.value_upper_limit = sdf_joint.Axis()->Upper();
   parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
   parameters.torque_limit = sdf_joint.Axis()->Effort();
+  parameters.damping_coefficient = sdf_joint.Axis()->Damping();
 
   return parameters;
 }

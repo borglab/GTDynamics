@@ -73,9 +73,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
     JointEffortType effort_type = JointEffortType::Actuated;
 
     //TODO (stephanie): replace these three parameters with ScalarLimit struct.
-    double joint_lower_limit;
-    double joint_upper_limit;
-    double joint_limit_threshold = 0.0;
+    double value_lower_limit;
+    double value_upper_limit;
+    double value_limit_threshold = 0.0;
 
     double velocity_limit;
     double velocity_limit_threshold = 0.0;
@@ -94,9 +94,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
   // ID reference to DynamicsSymbol.
   int id_ = -1;
 
-  LinkSharedPtr parent_link_;
-  LinkSharedPtr child_link_;
-
   // Joint frame defined in world frame.
   gtsam::Pose3 wTj_;
   // Rest transform to parent link CoM frame from joint frame.
@@ -105,6 +102,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   gtsam::Pose3 jTccom_;
   // Rest transform to parent link com frame from child link com frame at rest.
   gtsam::Pose3 pMccom_;
+
+  LinkSharedPtr parent_link_;
+  LinkSharedPtr child_link_;
 
   // Joint parameters struct.
   Parameters parameters_;
@@ -152,9 +152,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
         const Parameters &parameters)
       : name_(name),
+        wTj_(wTj),
         parent_link_(parent_link),
         child_link_(child_link),
-        wTj_(wTj),
         parameters_(parameters) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();

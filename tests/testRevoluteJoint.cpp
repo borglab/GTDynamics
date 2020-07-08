@@ -36,9 +36,9 @@ TEST(Joint, params_constructor) {
 
   Joint::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
-  parameters.joint_lower_limit = -1.57;
-  parameters.joint_upper_limit = 1.57;
-  parameters.joint_limit_threshold = 0;
+  parameters.value_lower_limit = -1.57;
+  parameters.value_upper_limit = 1.57;
+  parameters.value_limit_threshold = 0;
 
   const gtsam::Vector3 axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
@@ -92,9 +92,9 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(-1.57, j1->getJointParameters().joint_lower_limit));
-  EXPECT(assert_equal(1.57, j1->getJointParameters().joint_upper_limit));
-  EXPECT(assert_equal(0.0, j1->getJointParameters().joint_limit_threshold));
+  EXPECT(assert_equal(-1.57, j1->getJointParameters().value_lower_limit));
+  EXPECT(assert_equal(1.57, j1->getJointParameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->getJointParameters().value_limit_threshold));
 }
 
 int main() {
