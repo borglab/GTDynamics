@@ -61,9 +61,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * Unactuated: not powered, free to move, exert zero torque
    * Impedance: with spring resistance
    */
-  enum JointEffortType { Actuated, Unactuated, Impedance };
+  enum EffortType { Actuated, Unactuated, Impedance };
 
-  enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
+  enum Type : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
 
   /**
    * This struct contains information for scalar limits.
@@ -82,7 +82,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * TODO (stephanie): Make sure all parameters have meaningful default values.
    */
   struct Parameters {
-    JointEffortType effort_type = JointEffortType::Actuated;
+    EffortType effort_type = EffortType::Actuated;
     ScalarLimit scalar_limits;
 
     double velocity_limit;
@@ -217,7 +217,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Abstract method: Return joint type for use in reconstructing robot from
   /// Parameters.
-  virtual JointType jointType() const = 0;
+  virtual Type type() const = 0;
 
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame

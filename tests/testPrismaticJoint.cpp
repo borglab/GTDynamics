@@ -37,7 +37,7 @@ TEST(Joint, params_constructor_prismatic) {
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   Joint::Parameters parameters;
-  parameters.effort_type = Joint::JointEffortType::Actuated;
+  parameters.effort_type = Joint::EffortType::Actuated;
   parameters.scalar_limits.value_lower_limit = 0;
   parameters.scalar_limits.value_upper_limit = 2;
   parameters.scalar_limits.value_limit_threshold = 0;
@@ -59,7 +59,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint type
-  EXPECT(j1->jointType() == Joint::JointType::Prismatic);
+  EXPECT(j1->type() == Joint::Type::Prismatic);
 
   // joint effort type
   EXPECT(j1->parameters().effort_type == Joint::JointEffortType::Actuated);
@@ -104,9 +104,9 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(0, j1->parameters().scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(2, j1->parameters().scalar_limits.value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->parameters().scalar_limits.value_limit_threshold));
+  EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit, j1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(parameters.scalar_limits.value_upper_limit, j1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold, j1->parameters().scalar_limits.value_limit_threshold));
 }
 
 int main() {
