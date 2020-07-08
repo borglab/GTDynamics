@@ -66,16 +66,24 @@ class Joint : public std::enable_shared_from_this<Joint> {
   enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
 
   /**
+   * This struct contains information for scalar limits.
+   * The lower and upper limits denote physical axis limits of the joint,
+   * and the threshold is an error threshold used in calculations.
+   * TODO (stephanie): Make sure lower and upper limits have meaningful default values.
+   */
+  struct ScalarLimit {
+    double value_lower_limit;
+    double value_upper_limit = -value_lower_limit;
+    double value_limit_threshold = 1e-9;
+  };
+
+  /**
    * This struct contains all parameters needed to construct a joint.
    * TODO (stephanie): Make sure all parameters have meaningful default values.
    */
   struct Parameters {
     JointEffortType effort_type = JointEffortType::Actuated;
-
-    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
-    double value_lower_limit;
-    double value_upper_limit;
-    double value_limit_threshold = 0.0;
+    ScalarLimit scalar_limits;
 
     double velocity_limit;
     double velocity_limit_threshold = 0.0;

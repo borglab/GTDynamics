@@ -37,9 +37,9 @@ TEST(Joint, params_constructor) {
 
   Joint::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
-  parameters.value_lower_limit = -1.57;
-  parameters.value_upper_limit = 1.57;
-  parameters.value_limit_threshold = 0;
+  parameters.scalar_limits.value_lower_limit = -1.57;
+  parameters.scalar_limits.value_upper_limit = 1.57;
+  parameters.scalar_limits.value_limit_threshold = 0;
 
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
@@ -91,9 +91,9 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(-1.57, j1->parameters().value_lower_limit));
-  EXPECT(assert_equal(1.57, j1->parameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
+  EXPECT(assert_equal(-1.57, j1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(1.57, j1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().scalar_limits.value_limit_threshold));
 }
 
 int main() {

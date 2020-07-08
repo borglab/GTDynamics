@@ -38,9 +38,9 @@ TEST(Joint, params_constructor_prismatic) {
 
   Joint::Parameters parameters;
   parameters.effort_type = Joint::JointEffortType::Actuated;
-  parameters.value_lower_limit = 0;
-  parameters.value_upper_limit = 2;
-  parameters.value_limit_threshold = 0;
+  parameters.scalar_limits.value_lower_limit = 0;
+  parameters.scalar_limits.value_upper_limit = 2;
+  parameters.scalar_limits.value_limit_threshold = 0;
 
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
@@ -104,9 +104,9 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(0, j1->parameters().value_lower_limit));
-  EXPECT(assert_equal(2, j1->parameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
+  EXPECT(assert_equal(0, j1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(2, j1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().scalar_limits.value_limit_threshold));
 }
 
 int main() {
