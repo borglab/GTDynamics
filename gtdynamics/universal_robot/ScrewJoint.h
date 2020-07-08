@@ -47,7 +47,7 @@ class ScrewJoint : public ScrewJointBase {
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    ScrewJointBase::Parameters struct
+   * @param[in] parameters    Joint::Parameters struct
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
    */
@@ -58,8 +58,8 @@ class ScrewJoint : public ScrewJointBase {
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis, thread_pitch)) {}
 
-  /// Return jointType for use in reconstructing robot from Parameters.
-  JointType jointType() const { return JointType::Screw; }
+  /// Return joint type for use in reconstructing robot from Parameters.
+  Type type() const { return Type::Screw; }
 };
 
 }  // namespace gtdynamics

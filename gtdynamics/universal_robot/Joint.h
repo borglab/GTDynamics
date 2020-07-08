@@ -61,9 +61,39 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * Unactuated: not powered, free to move, exert zero torque
    * Impedance: with spring resistance
    */
-  enum JointEffortType { Actuated, Unactuated, Impedance };
+  enum EffortType { Actuated, Unactuated, Impedance };
 
-  enum JointType : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
+  enum Type : char { Revolute = 'R', Prismatic = 'P', Screw = 'C' };
+
+  /**
+   * This struct contains information for scalar limits.
+   * The lower and upper limits denote physical axis limits of the joint,
+   * and the threshold is an error threshold used in calculations.
+   * TODO (stephanie): Make sure lower and upper limits have meaningful default values.
+   */
+  struct ScalarLimit {
+    double value_lower_limit;
+    double value_upper_limit = -value_lower_limit;
+    double value_limit_threshold = 1e-9;
+  };
+
+  /**
+   * This struct contains all parameters needed to construct a joint.
+   * TODO (stephanie): Make sure all parameters have meaningful default values.
+   */
+  struct Parameters {
+    EffortType effort_type = EffortType::Actuated;
+    ScalarLimit scalar_limits;
+
+    double velocity_limit;
+    double velocity_limit_threshold = 0.0;
+    double acceleration_limit = 10000;
+    double acceleration_limit_threshold = 0.0;
+    double torque_limit;
+    double torque_limit_threshold = 0.0;
+    double damping_coefficient;
+    double spring_coefficient = 0.0;
+  };
 
  protected:
   // This joint's name.
@@ -71,9 +101,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   // ID reference to DynamicsSymbol.
   int id_ = -1;
-
-  LinkSharedPtr parent_link_;
-  LinkSharedPtr child_link_;
 
   // Joint frame defined in world frame.
   gtsam::Pose3 wTj_;
@@ -83,6 +110,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
   gtsam::Pose3 jTccom_;
   // Rest transform to parent link com frame from child link com frame at rest.
   gtsam::Pose3 pMccom_;
+
+  LinkSharedPtr parent_link_;
+  LinkSharedPtr child_link_;
+
+  // Joint parameters struct.
+  Parameters parameters_;
 
   /// Transform from the world frame to the joint frame.
   const gtsam::Pose3 &wTj() const { return wTj_; }
@@ -124,11 +157,13 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] child_link   Shared pointer to the child Link.
    */
   Joint(const std::string &name, const gtsam::Pose3 &wTj,
-        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+        const Parameters &parameters)
       : name_(name),
+        wTj_(wTj),
         parent_link_(parent_link),
         child_link_(child_link),
-        wTj_(wTj) {
+        parameters_(parameters) {
     jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
     jTccom_ = wTj_.inverse() * child_link_->wTcom();
     pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
@@ -172,6 +207,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return a shared ptr to the child link.
   LinkSharedPtr childLink() { return child_link_; }
 
+  /// Return joint parameters.
+  const Parameters &parameters() const { return parameters_; }
+
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
    * @{
@@ -179,7 +217,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Abstract method: Return joint type for use in reconstructing robot from
   /// Parameters.
-  virtual JointType jointType() const = 0;
+  virtual Type type() const = 0;
 
   /// Abstract method. Return the transform from this link com to the other link
   /// com frame
