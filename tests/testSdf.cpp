@@ -35,7 +35,6 @@ TEST(File, parameters_from_file) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
 
-  EXPECT(j1_parameters == 
   EXPECT(assert_equal(-1.57, j1_parameters.value_lower_limit));
   EXPECT(assert_equal(1.57, j1_parameters.value_upper_limit));
   EXPECT(assert_equal(500, j1_parameters.damping_coefficient));
@@ -67,27 +66,27 @@ TEST(File, create_robot_from_file) {
   auto simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   auto simple_j1 = simple_robot.getJointByName("j1");
 
-  EXPECT(assert_equal(-1.57, simple_j1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(1.57, simple_j1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(500, simple_j1->getJointParameters().damping_coefficient));
-  EXPECT(assert_equal(0.5, simple_j1->getJointParameters().velocity_limit));
-  EXPECT(assert_equal(1000.0, simple_j1->getJointParameters().torque_limit));
+  EXPECT(assert_equal(-1.57, simple_j1->parameters().value_lower_limit));
+  EXPECT(assert_equal(1.57, simple_j1->parameters().value_upper_limit));
+  EXPECT(assert_equal(500, simple_j1->parameters().damping_coefficient));
+  EXPECT(assert_equal(0.5, simple_j1->parameters().velocity_limit));
+  EXPECT(assert_equal(1000.0, simple_j1->parameters().torque_limit));
 
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a robot created via simple SDF.
   auto simple_rr_robot = CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
   auto simple_rr_j1 =  simple_rr_robot.getJointByName("joint_1");
 
-  EXPECT(assert_equal(0.5, simple_rr_j1->getJointParameters().damping_coefficient));
-  EXPECT(assert_equal(10, simple_rr_j1->getJointParameters().velocity_limit));
-  EXPECT(assert_equal(300, simple_rr_j1->getJointParameters().torque_limit));
+  EXPECT(assert_equal(0.5, simple_rr_j1->parameters().damping_coefficient));
+  EXPECT(assert_equal(10, simple_rr_j1->parameters().velocity_limit));
+  EXPECT(assert_equal(300, simple_rr_j1->parameters().torque_limit));
 
   // Test for reading parameters (joint limits) from a robot created via spider.sdf.
   auto spider_robot = CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
   auto spider_knee1 = spider_robot.getJointByName("knee_1");
 
-  EXPECT(assert_equal(-0.349066, spider_knee1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(2.44346, spider_knee1->getJointParameters().value_upper_limit));
+  EXPECT(assert_equal(-0.349066, spider_knee1->parameters().value_lower_limit));
+  EXPECT(assert_equal(2.44346, spider_knee1->parameters().value_upper_limit));
 }
 
 /**
@@ -192,7 +191,7 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->getJointParameters().effort_type == Joint::JointEffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -231,9 +230,9 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(-1.57, j1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(1.57, j1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->getJointParameters().value_limit_threshold));
+  EXPECT(assert_equal(-1.57, j1->parameters().value_lower_limit));
+  EXPECT(assert_equal(1.57, j1->parameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
 }
 
 /**
@@ -320,9 +319,9 @@ TEST(Joint, limit_params) {
   auto j1 = std::make_shared<RevoluteJoint>(
           "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
 
-  EXPECT(assert_equal(-1.57, j1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(1.57, j1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->getJointParameters().value_limit_threshold));
+  EXPECT(assert_equal(-1.57, j1->parameters().value_lower_limit));
+  EXPECT(assert_equal(1.57, j1->parameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
 
   // Check revolute joint limits parsed correctly for a robot with no limits.
   auto model2 =
@@ -340,9 +339,9 @@ TEST(Joint, limit_params) {
   auto joint_1 = std::make_shared<RevoluteJoint>(
           "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
 
-  EXPECT(assert_equal(-1e16, joint_1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(1e16, joint_1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, joint_1->getJointParameters().value_limit_threshold));
+  EXPECT(assert_equal(-1e16, joint_1->parameters().value_lower_limit));
+  EXPECT(assert_equal(1e16, joint_1->parameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, joint_1->parameters().value_limit_threshold));
 }
 
 /**
@@ -382,7 +381,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->jointType() == Joint::JointType::Prismatic);
 
   // joint effort type
-  EXPECT(j1->getJointParameters().effort_type == Joint::JointEffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -424,9 +423,9 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(0, j1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(2, j1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->getJointParameters().value_limit_threshold));
+  EXPECT(assert_equal(0, j1->parameters().value_lower_limit));
+  EXPECT(assert_equal(2, j1->parameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
 }
 
 /**

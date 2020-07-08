@@ -199,11 +199,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return a shared ptr to the child link.
   LinkSharedPtr childLink() { return child_link_; }
 
-  /// Set joint parameters.
-  void setJointParameters(Parameters parameters) { parameters_ = parameters; }
-
-  /// Get joint parameters.
-  Parameters getJointParameters() const { return parameters_; }
+  /// Return joint parameters.
+  const Parameters &parameters() const { return parameters_; }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

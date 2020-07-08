@@ -53,7 +53,7 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->jointType() == Joint::JointType::Revolute);
 
   // joint effort type
-  EXPECT(j1->getJointParameters().effort_type == Joint::JointEffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == Joint::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -92,9 +92,9 @@ TEST(Joint, params_constructor) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(-1.57, j1->getJointParameters().value_lower_limit));
-  EXPECT(assert_equal(1.57, j1->getJointParameters().value_upper_limit));
-  EXPECT(assert_equal(0.0, j1->getJointParameters().value_limit_threshold));
+  EXPECT(assert_equal(-1.57, j1->parameters().value_lower_limit));
+  EXPECT(assert_equal(1.57, j1->parameters().value_upper_limit));
+  EXPECT(assert_equal(0.0, j1->parameters().value_limit_threshold));
 }
 
 int main() {

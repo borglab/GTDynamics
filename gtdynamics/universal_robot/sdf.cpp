@@ -89,8 +89,8 @@ static LinkJointPair ExtractRobotFromSdf(
     // Construct Joint and insert into name_to_joint.
     JointSharedPtr joint;
 
-    // Generate a joint parameters struct with default values.
-    Joint::Parameters parameters;
+    // Generate a joint parameters struct with values from the SDF.
+    Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
 
     std::string name(sdf_joint.Name());
     Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
@@ -117,9 +117,6 @@ static LinkJointPair ExtractRobotFromSdf(
 
     name_to_joint.emplace(name, joint);
     joint->setID(j);
-
-    // Set joint parameter values for this robot.
-    joint->setJointParameters(ParametersFromSdfJoint(sdf_joint));
 
     // Update list of parent and child links/joints for each Link.
     parent_link->addJoint(joint);

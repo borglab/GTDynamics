@@ -255,23 +255,23 @@ class ScrewJointBase : public Joint {
     auto id = getID();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
-        JointAngleKey(id, t), opt.jl_cost_model, getJointParameters().value_lower_limit,
-        getJointParameters().value_upper_limit, getJointParameters().value_limit_threshold);
+        JointAngleKey(id, t), opt.jl_cost_model, parameters().value_lower_limit,
+        parameters().value_upper_limit, parameters().value_limit_threshold);
 
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointVelKey(id, t), opt.jl_cost_model, -getJointParameters().velocity_limit,
-        getJointParameters().velocity_limit, getJointParameters().velocity_limit_threshold);
+        JointVelKey(id, t), opt.jl_cost_model, -parameters().velocity_limit,
+        parameters().velocity_limit, parameters().velocity_limit_threshold);
 
     // Add joint acceleration limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointAccelKey(id, t), opt.jl_cost_model, -getJointParameters().acceleration_limit,
-        getJointParameters().acceleration_limit, getJointParameters().acceleration_limit_threshold);
+        JointAccelKey(id, t), opt.jl_cost_model, -parameters().acceleration_limit,
+        parameters().acceleration_limit, parameters().acceleration_limit_threshold);
 
     // Add joint torque limit factors.
     graph.emplace_shared<JointLimitFactor>(TorqueKey(id, t), opt.jl_cost_model,
-                                           -getJointParameters().torque_limit, getJointParameters().torque_limit,
-                                           getJointParameters().torque_limit_threshold);
+                                           -parameters().torque_limit, parameters().torque_limit,
+                                           parameters().torque_limit_threshold);
     return graph;
   }
 };
