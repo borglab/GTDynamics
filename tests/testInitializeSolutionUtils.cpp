@@ -255,7 +255,7 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
 TEST(initialize_solution_utils,
      initialize_solution_muli_phase_inverse_kinematics_trajectory) {
   auto my_robot =
-      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
