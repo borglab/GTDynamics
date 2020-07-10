@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  RevoluteJoint.h
- * @brief Representation of revolute joint.
+ * @file  ScrewJoint.h
+ * @brief Representation of screw joint.
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela
@@ -16,30 +16,31 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
+#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
+#define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
 /**
- * @class RevoluteJoint is an implementation of the ScrewJointBase class
- *  which represents a revolute joint and contains all necessary factor
+ * @class ScrewJoint is an implementation of the ScrewJointBase class
+ *  which represents a screw joint and contains all necessary factor
  *  construction methods.
  */
-class RevoluteJoint : public ScrewJointBase {
+class ScrewJoint : public ScrewJointBase {
  protected:
-  /// Returns the screw axis in the joint frame given the joint axis
-  gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
+  /// Returns the screw axis in the joint frame given the joint axis and thread
+  /// pitch
+  gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis, double thread_pitch) {
     gtsam::Vector6 screw_axis;
-    screw_axis << axis, 0, 0, 0;
+    screw_axis << axis, axis * thread_pitch / 2 / M_PI;
     return screw_axis;
   }
 
  public:
   /**
-   * @brief Create RevoluteJoint using Parameters, joint name, joint pose in
+   * @brief Create ScrewJoint using Parameters, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
    * @param[in] name          Name of the joint
@@ -48,18 +49,19 @@ class RevoluteJoint : public ScrewJointBase {
    * @param[in] child_link    Shared pointer to the child Link.
    * @param[in] parameters    Joint::Parameters struct
    * @param[in] axis          joint axis expressed in joint frame
+   * @param[in] thread_pitch  joint's thread pitch in dist per rev
    */
-  RevoluteJoint(const std::string &name, const gtsam::Pose3 &wTj,
-                const LinkSharedPtr &parent_link,
-                const LinkSharedPtr &child_link, const Parameters &parameters,
-                const gtsam::Vector3 &axis)
+  ScrewJoint(const std::string &name, const gtsam::Pose3 &wTj,
+             const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+             const Parameters &parameters, const gtsam::Vector3 &axis,
+             double thread_pitch)
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
-                       getScrewAxis(axis)) {}
+                       getScrewAxis(axis, thread_pitch)) {}
 
   /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Revolute; }
+  Type type() const { return Type::Screw; }
 };
 
 }  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_REVOLUTEJOINT_H_
+#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_

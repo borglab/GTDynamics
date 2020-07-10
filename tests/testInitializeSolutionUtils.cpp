@@ -22,8 +22,10 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
@@ -36,29 +38,31 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
 
   double T_i = 0, T_f = 10, dt = 1;
 
-  gtsam::Values init_vals = gtdynamics::InitializeSolutionInterpolation(
+  gtsam::Values init_vals = InitializeSolutionInterpolation(
       my_robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-  EXPECT(assert_equal(wTb_i, init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                                 my_robot.getLinkByName("l1")->getID(), 0))));
+  EXPECT(assert_equal(wTb_i,
+    init_vals.at<gtsam::Pose3>(
+        PoseKey(my_robot.getLinkByName("l1")->getID(), 0))));
 
-  EXPECT(
-      assert_equal(gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
-                                gtsam::Point3(0.5, 0.5, 0.5)),
-                   init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                       my_robot.getLinkByName("l1")->getID(), 5))));
+  EXPECT(assert_equal(
+      gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
+                   gtsam::Point3(0.5, 0.5, 0.5)),
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l1")->getID(), 5))));
 
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
                    gtsam::Point3(0.9, 0.9, 0.9)),
-      init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-          my_robot.getLinkByName("l1")->getID(), n_steps_final - 1))));
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1))));
 
   EXPECT(assert_equal(
-      wTb_f, init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                 my_robot.getLinkByName("l1")->getID(), n_steps_final))));
+      wTb_f,
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final))));
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
@@ -74,36 +78,39 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   double dt = 1;
 
   gtsam::Values init_vals =
-      gtdynamics::InitializeSolutionInterpolationMultiPhase(
+      InitializeSolutionInterpolationMultiPhase(
           my_robot, "l1", wTb_i, wTb_t, ts, dt);
 
-  EXPECT(assert_equal(wTb_i, init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                                 my_robot.getLinkByName("l1")->getID(), 0))));
+  EXPECT(assert_equal(wTb_i,
+    init_vals.at<gtsam::Pose3>(
+        PoseKey(my_robot.getLinkByName("l1")->getID(), 0))));
 
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
-                                   gtsam::Point3(0, -1, 1)),
-                      init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                          my_robot.getLinkByName("l2")->getID(), 0)),
-                      1e-3));
+  EXPECT(assert_equal(
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
+                   gtsam::Point3(0, -1, 1)),
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l2")->getID(), 0)), 1e-3));
 
-  EXPECT(
-      assert_equal(wTb_t[0], init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                                 my_robot.getLinkByName("l1")->getID(), 5))));
+  EXPECT(assert_equal(
+      wTb_t[0],
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l1")->getID(), 5))));
 
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_t[0].rotation().slerp(0.8, wTb_t[1].rotation()),
                    gtsam::Point3(1.8, 1, 1)),
       init_vals.at<gtsam::Pose3>(
-          gtdynamics::PoseKey(my_robot.getLinkByName("l1")->getID(), 9))));
+          PoseKey(my_robot.getLinkByName("l1")->getID(), 9))));
 
-  EXPECT(
-      assert_equal(wTb_t[1], init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                                 my_robot.getLinkByName("l1")->getID(), 10))));
+  EXPECT(assert_equal(
+      wTb_t[1],
+      init_vals.at<gtsam::Pose3>(
+          PoseKey(my_robot.getLinkByName("l1")->getID(), 10))));
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   auto my_robot =
-      gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -116,8 +123,8 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   double dt = 1;
 
   gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
-  gtdynamics::ContactPoints contact_points = {
-      gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
+  ContactPoints contact_points = {
+      ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
   /**
    * The aim of this test is to initialize a trajectory for the simple two-link
@@ -150,50 +157,49 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
   double gaussian_noise = 1e-8;
-  gtsam::Values init_vals = gtdynamics::InitializeSolutionInverseKinematics(
+  gtsam::Values init_vals = InitializeSolutionInverseKinematics(
       my_robot, l2->name(), wTb_i, wTb_t, ts, dt, gaussian_noise,
       contact_points);
 
   EXPECT(assert_equal(
-      wTb_i, init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(l2->getID(), 0)),
-      1e-3));
+      wTb_i, init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), 0)), 1e-3));
 
   EXPECT(assert_equal(
       0.0,
-      (init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(l1->getID(), 0)) * oTc_l1)
+      (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), 0)) * oTc_l1)
           .translation()
           .z(),
-      1e-3))
+       1e-3))
   EXPECT(assert_equal(0.0,
-                      init_vals.atDouble(gtdynamics::JointAngleKey(
+                      init_vals.atDouble(JointAngleKey(
                           my_robot.getJointByName("j1")->getID(), 0)),
                       1e-3));
 
   for (int t = 0; t <= std::roundl(ts[0] / dt); t++)
     EXPECT(assert_equal(
         0.0,
-        (init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(l1->getID(), t)) *
-         oTc_l1)
+        (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), t)) *
+        oTc_l1)
             .translation()
             .z(),
         1e-3));
 
   EXPECT(assert_equal(wTb_t[0],
-                      init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
+                      init_vals.at<gtsam::Pose3>(PoseKey(
                           l2->getID(), std::roundl(ts[0] / dt))),
                       1e-3));
   EXPECT(assert_equal(0.0,
-                      (init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(
-                           l1->getID(), std::roundl(ts[0] / dt))) *
-                       oTc_l1)
-                          .translation()
-                          .z(),
-                      1e-3));
+                      (init_vals.at<gtsam::Pose3>(PoseKey(
+                          l1->getID(), std::roundl(ts[0] / dt))) *
+                          oTc_l1)
+                             .translation()
+                             .z(),
+                       1e-3));
 }
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   auto my_robot =
-      gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -201,25 +207,26 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   gtsam::Pose3 wTb_i = l2->wTcom();
 
   gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
-  gtdynamics::ContactPoints contact_points = {
-      gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
+  ContactPoints contact_points = {
+      ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
   gtsam::Values init_vals =
-      gtdynamics::ZeroValues(my_robot, 0, 0.0, contact_points);
+      ZeroValues(my_robot, 0, 0.0, contact_points);
 
   for (auto&& link : my_robot.links())
     EXPECT(assert_equal(
-        link->wTcom(),
-        init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(link->getID(), 0))));
+        link->wTcom(), 
+        init_vals.at<gtsam::Pose3>(
+            PoseKey(link->getID(), 0))));
 
   for (auto&& joint : my_robot.joints())
     EXPECT(assert_equal(
-        0.0, init_vals.atDouble(gtdynamics::JointAngleKey(joint->getID(), 0))));
+        0.0, init_vals.atDouble(JointAngleKey(joint->getID(), 0))));
 }
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   auto my_robot =
-      gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -227,20 +234,20 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   gtsam::Pose3 wTb_i = l2->wTcom();
 
   gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
-  gtdynamics::ContactPoints contact_points = {
-      gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
+  ContactPoints contact_points = {
+      ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
   gtsam::Values init_vals =
-      gtdynamics::ZeroValuesTrajectory(my_robot, 100, -1, 0.0, contact_points);
+      ZeroValuesTrajectory(my_robot, 100, -1, 0.0, contact_points);
 
   for (int t = 0; t <= 100; t++) {
     for (auto&& link : my_robot.links())
       EXPECT(assert_equal(
           link->wTcom(),
-          init_vals.at<gtsam::Pose3>(gtdynamics::PoseKey(link->getID(), t))));
+          init_vals.at<gtsam::Pose3>(PoseKey(link->getID(), t))));
 
     for (auto&& joint : my_robot.joints())
-      EXPECT(assert_equal(0.0, init_vals.atDouble(gtdynamics::JointAngleKey(
+      EXPECT(assert_equal(0.0, init_vals.atDouble(JointAngleKey(
                                    joint->getID(), t))));
   }
 }
@@ -248,7 +255,7 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
 TEST(initialize_solution_utils,
      initialize_solution_muli_phase_inverse_kinematics_trajectory) {
   auto my_robot =
-      gtdynamics::Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   auto l1 = my_robot.getLinkByName("l1");
   auto l2 = my_robot.getLinkByName("l2");
@@ -257,21 +264,21 @@ TEST(initialize_solution_utils,
 
   gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
 
-  gtdynamics::ContactPoint c =
-      gtdynamics::ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0};
-  gtdynamics::ContactPoints p0 = {c};
-  gtdynamics::ContactPoints p1 = {};
-  gtdynamics::ContactPoints p2 = {c};
+  ContactPoint c =
+      ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0};
+  ContactPoints p0 = {c};
+  ContactPoints p1 = {};
+  ContactPoints p2 = {c};
 
-  std::vector<gtdynamics::ContactPoints> phase_contact_points = {p0, p1, p2};
-  std::vector<gtdynamics::Robot> robots(3, my_robot);
+  std::vector<ContactPoints> phase_contact_points = {p0, p1, p2};
+  std::vector<Robot> robots(3, my_robot);
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;
   std::vector<int> phase_steps(3, steps_per_phase);
   double gaussian_noise = 1e-8;
 
-  auto graph_builder = gtdynamics::DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   // Transition graphs.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
@@ -290,23 +297,23 @@ TEST(initialize_solution_utils,
 
   // Initial values for transition graphs.
   std::vector<gtsam::Values> transition_graph_init;
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
+  transition_graph_init.push_back(ZeroValues(
       robots[0], 1 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
+  transition_graph_init.push_back(ZeroValues(
       robots[1], 2 * steps_per_phase, gaussian_noise, p0));
 
-  gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
+  gtsam::Values init_vals = MultiPhaseInverseKinematicsTrajectory(
       robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
       1. / 240, gaussian_noise, phase_contact_points);
 
   EXPECT(assert_equal(
       wTb_i,
-      init_vals.at(gtdynamics::PoseKey(l2->getID(), 0)).cast<gtsam::Pose3>(),
+      init_vals.at(PoseKey(l2->getID(), 0)).cast<gtsam::Pose3>(),
       1e-3));
 
   for (int i = 0; i < wTb_t.size(); i++)
     EXPECT(assert_equal(wTb_t[i],
-                        init_vals.at(gtdynamics::PoseKey(l2->getID(), ts[i]))
+                        init_vals.at(PoseKey(l2->getID(), ts[i]))
                             .cast<gtsam::Pose3>(),
                         1e-3));
 
@@ -314,13 +321,13 @@ TEST(initialize_solution_utils,
   // points.
   for (int i = 0; i < 100; i++) {  // Phase 0.
     gtsam::Pose3 wTol1 =
-        init_vals.at(gtdynamics::PoseKey(l1->getID(), i)).cast<gtsam::Pose3>();
+        init_vals.at(PoseKey(l1->getID(), i)).cast<gtsam::Pose3>();
     gtsam::Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
   }
   for (int i = 200; i < 299; i++) {  // Phase 2.
     gtsam::Pose3 wTol1 =
-        init_vals.at(gtdynamics::PoseKey(l1->getID(), i)).cast<gtsam::Pose3>();
+        init_vals.at(PoseKey(l1->getID(), i)).cast<gtsam::Pose3>();
     gtsam::Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
   }

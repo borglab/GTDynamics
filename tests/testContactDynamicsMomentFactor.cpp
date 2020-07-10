@@ -27,6 +27,7 @@
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -42,7 +43,7 @@ TEST(ContactDynamicsMomentFactor, error) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
+  ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                                  cTcom);
 
   // A link with zero contact wrench should have zero
@@ -89,7 +90,7 @@ TEST(ContactDynamicsMomentFactor, optimization) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
+  ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
                                                  cTcom);
 
   // Initial link twist.

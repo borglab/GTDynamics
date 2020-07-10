@@ -18,20 +18,23 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
+using namespace gtdynamics; 
+
 int main(int argc, char** argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
-  using three_link::my_robot;
+  using simple_rr::my_robot;
 
   // Build the factor graph for the robot.
+  my_robot.getLinkByName("link_0")->fix();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  auto graph_builder = gtdynamics::DynamicsGraph();
+  auto graph_builder = DynamicsGraph();
   auto graph =
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
 
   // Add forward dynamics priors to factor graph.
-  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques;
+  Robot::JointValues joint_angles, joint_vels, joint_torques;
   joint_angles["joint_1"] = 0;
   joint_vels["joint_1"] = 0;
   joint_torques["joint_1"] = 0;
@@ -44,7 +47,7 @@ int main(int argc, char** argv) {
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = gtdynamics::ZeroValues(my_robot, 0);
+  auto init_values = ZeroValues(my_robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

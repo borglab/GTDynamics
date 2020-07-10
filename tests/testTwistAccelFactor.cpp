@@ -26,6 +26,7 @@
 
 #include "gtdynamics/factors/TwistAccelFactor.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 namespace example {
@@ -46,7 +47,7 @@ TEST(TwistAccelFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  gtdynamics::TwistAccelFactor factor(
+  TwistAccelFactor factor(
       example::twistKey, example::twistAccel_i_key, example::twistAccel_j_key,
       example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
       jMi, screw_axis);
@@ -81,7 +82,7 @@ TEST(TwistAccelFactor, error_1) {
   gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
   gtsam::Vector6 screw_axis = (gtsam::Vector(6) << 0, 0, 1, 0, 1, 0).finished();
 
-  gtdynamics::TwistAccelFactor factor(
+  TwistAccelFactor factor(
       example::twistKey, example::twistAccel_i_key, example::twistAccel_j_key,
       example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
       jMi, screw_axis);

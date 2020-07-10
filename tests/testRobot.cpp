@@ -19,54 +19,15 @@
 #include <gtsam/linear/VectorValues.h>
 
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
-using gtdynamics::get_sdf, gtdynamics::Robot, gtdynamics::LinkJointPair,
-    gtdynamics::extractRobotFromSdf;
+using namespace gtdynamics; 
 using gtsam::assert_equal;
-
-// Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
-// that all transforms, link/joint properties, etc. are correct.
-TEST(Robot, simple_urdf) {
-  // Load urdf file into sdf::Model
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-
-  LinkJointPair links_and_joints = extractRobotFromSdf(simple_urdf);
-  gtdynamics::LinkMap name_to_link = links_and_joints.first;
-  gtdynamics::JointMap name_to_joint = links_and_joints.second;
-  EXPECT(assert_equal(2, name_to_link.size()));
-  EXPECT(assert_equal(1, name_to_joint.size()));
-
-  gtdynamics::LinkConstSharedPtr l1 = name_to_link.at("l1");
-  gtdynamics::LinkConstSharedPtr l2 = name_to_link.at("l2");
-  gtdynamics::JointSharedPtr j1 = name_to_joint.at("j1");
-  EXPECT(assert_equal(1, l1->getJoints().size()));
-  EXPECT(assert_equal(1, l2->getJoints().size()));
-  EXPECT(l1->getID() == 0);
-  EXPECT(l2->getID() == 1);
-  EXPECT(j1->getID() == 0);
-
-  // Initialize Robot instance using Link and Joint
-  // instances.
-  Robot simple_robot = Robot(links_and_joints);
-
-  // Check that number of links and joints in the Robot instance is
-  // correct.
-  EXPECT(assert_equal(2, simple_robot.links().size()));
-  EXPECT(assert_equal(1, simple_robot.joints().size()));
-  EXPECT(simple_robot.links()[0] == l1);
-  EXPECT(simple_robot.links()[1] == l2);
-  EXPECT(simple_robot.joints()[0] == j1);
-
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      j1->transformTo(j1->childLink())));
-  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      j1->transformFrom(j1->childLink())));
-}
 
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
-  Robot four_bar = Robot(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -89,7 +50,7 @@ TEST(Robot, four_bar_sdf) {
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
   Robot simple_rr =
-      Robot(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -108,7 +69,7 @@ TEST(Robot, simple_rr_sdf) {
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
   Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.removeLink(four_bar.getLinkByName("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
@@ -117,7 +78,7 @@ TEST(Robot, removeLink) {
 }
 
 TEST(Robot, forwardKinematics) {
-  Robot simple_robot = Robot(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  Robot simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   Robot::JointValues joint_angles, joint_vels;
   joint_angles["j1"] = 0;
@@ -183,7 +144,7 @@ TEST(Robot, forwardKinematics) {
 
 TEST(Robot, forwardKinematics_rpr) {
   Robot rpr_robot =
-      Robot(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Robot::JointValues joint_angles, joint_vels;
   joint_angles["joint_1"] = 0;
@@ -250,11 +211,11 @@ TEST(Robot, forwardKinematics_rpr) {
 // test fk for a four bar linkage (loopy)
 TEST(forwardKinematics, four_bar) {
   Robot four_bar =
-      Robot(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
   four_bar.getLinkByName("l1")->fix();
 
   Robot::JointValues joint_angles, joint_vels;
-  for (gtdynamics::JointSharedPtr joint : four_bar.joints()) {
+  for (JointSharedPtr joint : four_bar.joints()) {
     joint_angles[joint->name()] = 0;
     joint_vels[joint->name()] = 0;
   }

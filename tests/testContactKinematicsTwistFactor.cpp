@@ -27,6 +27,7 @@
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 /**
@@ -42,7 +43,7 @@ TEST(ContactKinematicsTwistFactor, error) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
+  ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // A link with zero linear/angular velocity at its CoM should have a
   // stationary contact point.
@@ -99,7 +100,7 @@ TEST(ContactKinematicsTwistFactor, optimization) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
+  ContactKinematicsTwistFactor factor(twist_key, cost_model, cTcom);
 
   // Initial link twist.
   gtsam::Vector6 link_twist_init =

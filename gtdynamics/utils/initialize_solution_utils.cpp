@@ -463,7 +463,7 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     std::cout << "pid: " << parent_link->getID() << ", cid: " << child_link->getID() << ", j: " << j << std::endl;
     zero_values.insert(WrenchKey(parent_link->getID(), j, t), sampler.sample());
     zero_values.insert(WrenchKey(child_link->getID(), j, t), sampler.sample());
-    std::vector<gtsam::LabeledSymbol> keys = {
+    std::vector<DynamicsSymbol> keys = {
         TorqueKey(j, t), JointAngleKey(j, t), JointVelKey(j, t),
         JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)

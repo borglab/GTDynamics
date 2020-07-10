@@ -1,0 +1,106 @@
+<sdf version='1.6'>
+<world name='default'>
+  <model name='simple_screw_joint_sdf'>
+    <plugin name='set_joint_velocity_plugin' filename='libSetJointVelocityPlugin.so'/>
+    <!-- A simple robot with 2 links and 1 screw joint -->
+
+    <link name='link_0'>
+      <pose frame=''>0 0 0.0 0 -0 0</pose>
+      <inertial>
+        <pose frame=''>0 0 0.1 0 -0 0</pose>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.06</iyy>
+          <iyz>0</iyz>
+          <izz>0.03</izz>
+        </inertia>
+      </inertial>
+      <collision name='link_0_collision'>
+        <pose frame=''>0 0 0.1 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <length>0.2</length>
+                <radius>0.2</radius>
+            </cylinder>
+        </geometry>
+      </collision>
+      <visual name='link_0_visual'>
+        <pose frame=''>0 0 0.1 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <length>0.2</length>
+                <radius>0.2</radius>
+            </cylinder>
+        </geometry>
+        <material>
+            <ambient>1 0 0 0.6</ambient>
+            <diffuse>1 0 0 0.6</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name='link_1'>
+      <pose frame=''>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose frame=''>0 0 0.5 0 -0 0</pose>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.06</iyy>
+          <iyz>0</iyz>
+          <izz>0.03</izz>
+        </inertia>
+      </inertial>
+      <collision name='link_1_collision'>
+        <pose frame=''>0 0 0.5 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <length>0.6</length>
+                <radius>0.1</radius>
+            </cylinder>
+        </geometry>
+      </collision>
+      <visual name='link_1_visual'>
+        <pose frame=''>0 0 0.5 0 -0 0</pose>
+        <geometry>
+            <cylinder>
+                <length>0.6</length>
+                <radius>0.1</radius>
+            </cylinder>
+        </geometry>
+        <material>
+            <ambient>0 1 0 0.6</ambient>
+            <diffuse>0 1 0 0.6</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <joint name='joint_1' type='screw'>
+      <pose frame=''>0 0 0.2 0 -0 0</pose>
+      <child>link_1</child>
+      <parent>link_0</parent>
+      <thread_pitch>0.5</thread_pitch>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>300</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <damping>0.5</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>0</use_parent_model_frame>
+      </axis>
+    </joint>
+
+  </model>
+</world>
+</sdf>
