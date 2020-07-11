@@ -102,8 +102,7 @@ int main(int argc, char** argv) {
   auto c7 = CP{"tarsus_7", Point3(0, 1.741, 0), 0, GROUND_HEIGHT}; // Front right.
   auto c8 = CP{"tarsus_8", Point3(0, 1.741, 0), 0, GROUND_HEIGHT}; // Hind right.
 
-  // Contact points for each phase. First move one leg at a time then switch
-  // to a more dynamic gait with two legs in swing per phase.
+  // Contact points for each phase. This gait moves one leg at a time.
   typedef ContactPoints CPs;
   CPs p0  = {c1, c2, c3, c4, c5, c6, c7, c8};  // Initially stationary.
   CPs t01 = {    c2, c3, c4, c5, c6, c7, c8};
@@ -331,7 +330,6 @@ int main(int argc, char** argv) {
   //   }
   // }
   // traj_file.close();
-
 
   return 0;
 }
