@@ -10,12 +10,14 @@
  * @brief Spider trajectory optimization with pre-specified footholds.
  * @Author: Alejandro Escontrela
  * @Author: Stephanie McCormick
+ * @Author: Disha Das
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -46,7 +48,7 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
 int main(int argc, char** argv) {
 
   // Load Stephanie's spider robot.
-  auto spider = Robot("../spider.sdf", "spider");
+  auto spider = gtdynamics::CreateRobotFromFile("../spider.sdf", "spider");
   spider.printRobot();
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
