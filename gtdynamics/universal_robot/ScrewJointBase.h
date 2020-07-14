@@ -25,7 +25,6 @@
 #include <string>
 
 #include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
@@ -75,13 +74,42 @@ class ScrewJointBase : public JointTyped<double, double> {
   gtsam::Vector6 cScrewAxis_;
 
   /// Return transform of child link com frame w.r.t parent link com frame
-  Pose3 pMcCom(boost::optional<double> q = boost::none) const {
-    return q ? pMccom_ * Pose3::Expmap(cScrewAxis_ * (*q)) : pMccom_;
+  Pose3 pMcCom(boost::optional<double> q = boost::none,
+               gtsam::OptionalJacobian<6, 1> pMc_H_q = boost::none) const {
+    if (pMc_H_q) {
+      // For reference:
+      // pMc = jMi * exp([S]q)
+      // pMc_H_q = pMc_H_exp * exp_H_q
+      //         = pMc_H_exp * exp_H_Sq * Sq_pMc_H_q
+      //         = pMc_H_exp * exp_H_Sq * [S]
+      gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
+      gtsam::Vector6 Sq = q ? static_cast<gtsam::Vector6>(cScrewAxis_ * *q) :
+                              gtsam::Vector6::Zero();
+      Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
+      Pose3 pMc = pMccom_.compose(exp, boost::none, pMc_H_exp);
+      *pMc_H_q = pMc_H_exp * exp_H_Sq * cScrewAxis_;
+      return pMc;
+    } else {
+      return q ? pMccom_ * Pose3::Expmap(cScrewAxis_ * (*q)) : pMccom_;
+    }
   }
 
   /// Return transform of parent link com frame w.r.t child link com frame
-  Pose3 cMpCom(boost::optional<double> q = boost::none) const {
-    return pMcCom(q).inverse();
+  Pose3 cMpCom(boost::optional<double> q = boost::none,
+               gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const {
+    if (cMp_H_q) {
+      // For reference:
+      // cMp = inverse(pMc(q))
+      // cMp_H_q = cMp_H_pMc * pMc_H_q
+      gtsam::Matrix6 cMp_H_pMc;
+      gtsam::Vector6 pMc_H_q;
+      Pose3 pMc = pMcCom(q, pMc_H_q);      // pMc(q)    ->  pMc_H_q
+      Pose3 cMp = pMc.inverse(cMp_H_pMc);  // cMp(pMc)  ->  cMp_H_pMc
+      *cMp_H_q = cMp_H_pMc * pMc_H_q;
+      return cMp;
+    } else {
+      return pMcCom(q).inverse();
+    }
   }
 
   /// Return the joint axis in the joint frame. Rotational axis for revolute and
@@ -113,7 +141,7 @@ class ScrewJointBase : public JointTyped<double, double> {
   Pose3 transformToImpl(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
-    return isChildLink(link) ? cMpCom(q) : pMcCom(q);
+    return isChildLink(link) ? cMpCom(q, H_q) : pMcCom(q, H_q);
   }
 
   /// Return the twist of this link given the other link's twist and
@@ -242,17 +270,6 @@ class ScrewJointBase : public JointTyped<double, double> {
   /// Return joint torque limit threshold.
   double torqueLimitThreshold() const {
     return parameters_.torque_limit_threshold;
-  }
-
-  /// Return joint angle factors.
-  gtsam::NonlinearFactorGraph qFactors(
-      size_t t, const OptimizerSetting &opt) const override {
-    gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<PoseFactor>(
-        PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
-        JointAngleKey(getID(), t), opt.p_cost_model, transformTo(child_link_),
-        screwAxis(child_link_));
-    return graph;
   }
 
   /// Return forward dynamics priors on torque.

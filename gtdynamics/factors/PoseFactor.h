@@ -14,81 +14,46 @@
 #ifndef GTDYNAMICS_FACTORS_POSEFACTOR_H_
 #define GTDYNAMICS_FACTORS_POSEFACTOR_H_
 
+#include <memory>
+#include <string>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
-/** PoseFunctor is functor predicting link's pose (COM) with previous one*/
-class PoseFunctor {
- private:
-  gtsam::Pose3 iMj_;
-  gtsam::Vector6 screw_axis_;
-
- public:
-  /** Create functor predicting this link's pose (COM) with previous one.
-      Keyword arguments:
-          jMi        -- previous COM frame, expressed in this link's COM frame,
-     at rest configuration screw_axis -- screw axis expressed in link's COM
-     frame
-   */
-  PoseFunctor(const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
-      : iMj_(jMi.inverse()), screw_axis_(screw_axis) {}
-
-  /** predict link pose
-      Keyword argument:
-          pose_i        -- previous link pose
-          q             -- joint coordination
-      Returns:
-          pose_j        -- this link pose
-  */
-  gtsam::Pose3 operator()(
-      const gtsam::Pose3 &pose_i, const double &q,
-      gtsam::OptionalJacobian<6, 6> H_pose_i = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-
-    gtsam::Matrix6 Hexp, iTj_H_jrestTj;
-    gtsam::Pose3 jrestTj = gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
-    gtsam::Pose3 iTj = iMj_.compose(jrestTj, boost::none, iTj_H_jrestTj);
-
-    gtsam::Matrix6 pose_j_H_iTj;
-    auto pose_j = pose_i.compose(iTj, H_pose_i, pose_j_H_iTj);
-    if (H_q) {
-      *H_q = pose_j_H_iTj * (iTj_H_jrestTj * Hexp * screw_axis_);
-    }
-
-    return pose_j;
-  }
-};
-
-/** PoseFactor is a three-way nonlinear factor between the previuse link pose
+/** PoseFactor is a three-way nonlinear factor between the previous link pose
  * and this link pose*/
+template <class JointTypedClass>
 class PoseFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, double> {
+    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
+                                      typename JointTypedClass::AngleType> {
  private:
   typedef PoseFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, double> Base;
+  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
+                                   typename JointTypedClass::AngleType>
+      Base;
+  typedef typename JointTypedClass::AngleType JointAngleType;
 
-  PoseFunctor predict_;
+  std::shared_ptr<const JointTypedClass> joint_;
 
  public:
   /** Create single factor relating this link's pose (COM) with previous one.
       Keyword arguments:
-          jMi -- previous COM frame, expressed in this link's COM frame, at rest
-     configuration screw_axis -- screw axis expressed in link's COM frame
+          joint -- the joint connecting the two poses
    */
   PoseFactor(gtsam::Key pose_key_i, gtsam::Key pose_key_j, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
+             JointConstSharedPtr joint)
       : Base(cost_model, pose_key_i, pose_key_j, q_key),
-        predict_(jMi, screw_axis) {}
+        joint_(std::static_pointer_cast<const JointTypedClass>(joint)) {}
 
   virtual ~PoseFactor() {}
 
@@ -99,19 +64,35 @@ class PoseFactor
           q              -- joint coordination
   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j, const double &q,
+      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j,
+      const JointAngleType &q,
       boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
       boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
+    gtsam::Pose3 pose_j_hat;
+    if (H_q) {
+      gtsam::Matrix6 pose_j_hat_H_iTjhat;
+      gtsam::Matrix iTjhat_H_q;
+      gtsam::Pose3 iTjhat =
+          joint_->transformTo(joint_->parentLink(), q, iTjhat_H_q);
+      pose_j_hat = pose_i.compose(iTjhat, H_pose_i, pose_j_hat_H_iTjhat);
+      *H_q = pose_j_hat_H_iTjhat * iTjhat_H_q;
+    } else {
+      gtsam::Pose3 iTjhat = joint_->transformTo(joint_->parentLink(), q);
+      pose_j_hat = pose_i.compose(iTjhat, H_pose_i);
+    }
+    gtsam::Vector6 error;
+    if (!(H_q || H_pose_i)) {
+      error = pose_j.logmap(pose_j_hat, H_pose_j);
+    } else {
+      gtsam::Matrix6 H_pose_j_hat;
+      error = pose_j.logmap(pose_j_hat, H_pose_j, H_pose_j_hat);
 
-    gtsam::Matrix6 H_pose_j_hat;
-    gtsam::Vector6 error = pose_j.logmap(pose_j_hat, H_pose_j, H_pose_j_hat);
-
-    if (H_pose_i)
-      *H_pose_i = H_pose_j_hat * (*H_pose_i);
-    if (H_q)
-      *H_q = H_pose_j_hat * (*H_q);
+      if (H_pose_i)
+        *H_pose_i = H_pose_j_hat * (*H_pose_i);
+      if (H_q)
+        *H_q = H_pose_j_hat * (*H_q);
+    }
 
     return error;
   }

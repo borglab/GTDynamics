@@ -231,7 +231,7 @@ class JsonSaver {
       return "Wrench";
     } else if (dynamic_cast<const WrenchFactor4*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const PoseFactor<ScrewJointBase>*>(&(*factor))) {
       return "Pose";
     } else if (dynamic_cast<const TwistFactor<ScrewJointBase>*>(&(*factor))) {
       return "Twist";
