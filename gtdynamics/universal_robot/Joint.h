@@ -646,32 +646,34 @@ class JointTyped : public Joint {
     return torque;
   }
 
-  /// Return joint accel factors.  // TODO(G+S): CRTP and put in Joint class
-  gtsam::NonlinearFactorGraph aFactors(
+  /// Return joint pose factors.
+  gtsam::NonlinearFactorGraph qFactors(
       size_t t, const OptimizerSetting &opt) const override;
 
   /// Return joint vel factors.
   gtsam::NonlinearFactorGraph vFactors(
       size_t t, const OptimizerSetting &opt) const override;
+
+  /// Return joint accel factors.  // TODO(G+S): CRTP and put in Joint class
+  gtsam::NonlinearFactorGraph aFactors(
+      size_t t, const OptimizerSetting &opt) const override;
+
 };
 
 }  // namespace gtdynamics
 
+#include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
 
 namespace gtdynamics {
 
-gtsam::NonlinearFactorGraph JointTyped::aFactors(
+gtsam::NonlinearFactorGraph JointTyped::qFactors(
     size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<TwistAccelFactor<This>>(
-      TwistKey(child_link_->getID(), t),
-      TwistAccelKey(parent_link_->getID(), t),
-      TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
-      JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
-      getConstSharedPtr());
-
+  graph.emplace_shared<PoseFactor>(
+      PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
+      JointAngleKey(getID(), t), opt.p_cost_model, getConstSharedPtr());
   return graph;
 }
 
@@ -681,6 +683,19 @@ gtsam::NonlinearFactorGraph JointTyped::vFactors(
   graph.emplace_shared<TwistFactor>(
       TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
       JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
+      getConstSharedPtr());
+
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph JointTyped::aFactors(
+    size_t t, const OptimizerSetting &opt) const {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<TwistAccelFactor>(
+      TwistKey(child_link_->getID(), t),
+      TwistAccelKey(parent_link_->getID(), t),
+      TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
+      JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
       getConstSharedPtr());
 
   return graph;
