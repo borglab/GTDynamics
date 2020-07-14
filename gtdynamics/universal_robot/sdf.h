@@ -5,13 +5,13 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
-#pragma once
-
 /**
  * @file sdf.h
  * @brief Reading from SDF files.
  * @Author: Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
+
+#pragma once
 
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"

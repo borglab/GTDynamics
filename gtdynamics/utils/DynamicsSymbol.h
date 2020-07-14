@@ -11,6 +11,8 @@
  * @Author: Yetong Zhang and Stephanie McCormick
  */
 
+# pragma once
+
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
 

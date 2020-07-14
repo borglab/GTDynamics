@@ -18,6 +18,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtsam/linear/NoiseModel.h>
