@@ -16,12 +16,13 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-robot_id = p.loadSDF("spider.sdf")
+robot = p.loadSDF("spider.sdf")
+robot_id = robot[0] # loadSDF returns a list of objects; the first is the integer ID.
 
 # TODO (disha + stephanie): check whether this function is necessary/correct
 #      for initially setting basePosition and baseOrientation
 #      (in prior examples, this was done in the call to p.loadURDF().)
-p.resetBasePositionAndOrientation([0, 0, 0.21], [0, 0, 0, 1])
+p.resetBasePositionAndOrientation(robot_id, [0, 0, 0.21], [0, 0, 0, 1])
 
 joint_to_jid_map = {}
 for i in range(p.getNumJoints(robot_id)):
