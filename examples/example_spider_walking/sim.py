@@ -16,21 +16,25 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-quad_id = p.loadURDF("spider.sdf", [0, 0, 0.21], [0, 0, 0, 1], False,
-                     False)
+robot_id = p.loadSDF("spider.sdf")
+
+# TODO (disha + stephanie): check whether this function is necessary/correct
+#      for initially setting basePosition and baseOrientation
+#      (in prior examples, this was done in the call to p.loadURDF().)
+p.resetBasePositionAndOrientation([0, 0, 0.21], [0, 0, 0, 1])
 
 joint_to_jid_map = {}
-for i in range(p.getNumJoints(quad_id)):
-    jinfo = p.getJointInfo(quad_id, i)
+for i in range(p.getNumJoints(robot_id)):
+    jinfo = p.getJointInfo(robot_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
 def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
-    """Actuate to the suppplied joint angles using PD control."""
+    """Actuate to the supplied joint angles using PD control."""
     for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=5000)
+        p.setJointMotorControl2(robot_id, jid, p.VELOCITY_CONTROL, force=5000)
 
     for k, v in joint_angles.items():
-        p.setJointMotorControl2(bodyUniqueId=quad_id,
+        p.setJointMotorControl2(bodyUniqueId=robot_id,
                                 jointIndex=joint_to_jid_map[k],
                                 controlMode=p.POSITION_CONTROL,
                                 targetPosition=v,
@@ -41,7 +45,7 @@ print(df.columns)
 
 input("Press ENTER to continue.")
 
-pos, orn = p.getBasePositionAndOrientation(quad_id)
+pos, orn = p.getBasePositionAndOrientation(robot_id)
 
 print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                p.getEulerFromQuaternion(orn)))
@@ -76,7 +80,7 @@ while True:
     set_joint_angles(jangles, jvels)
 
     # Update body CoM coordinate frame.
-    new_pos, new_orn = p.getBasePositionAndOrientation(quad_id)
+    new_pos, new_orn = p.getBasePositionAndOrientation(robot_id)
     new_pos = np.array(new_pos)
     new_R = np.array(p.getMatrixFromQuaternion(new_orn)).reshape(3, 3)
 
@@ -112,7 +116,7 @@ while True:
     i+=1
 
 
-pos, orn = p.getBasePositionAndOrientation(quad_id)
+pos, orn = p.getBasePositionAndOrientation(robot_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                 p.getEulerFromQuaternion(orn)))
 
