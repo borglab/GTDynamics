@@ -26,9 +26,9 @@
 
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 /**
@@ -178,6 +178,8 @@ class ScrewJointBase : public JointTyped {
            screwAxis(link) * q_dot_;
   }
 
+  /// Return the twist acceleration of this link given the other link's twist
+  /// acceleration, twist, and joint angle and this link's twist.
   gtsam::Vector6 transformTwistAccelToImpl(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
@@ -229,6 +231,11 @@ class ScrewJointBase : public JointTyped {
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<6, 1> H_wrench = boost::none) const override {
     return 0;  // TODO
+  }
+
+  gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
+      boost::optional<double> q = boost::none) const override {
+    return AdjointMapJacobianQ(q ? *q : 0, transformTo(link), screwAxis(link));
   }
 
   /// Return joint angle lower limit.
@@ -318,10 +325,11 @@ class ScrewJointBase : public JointTyped {
       size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::NonlinearFactorGraph graph;
-    graph.emplace_shared<WrenchEquivalenceFactor>(
-        WrenchKey(parent_link_->getID(), getID(), t),
-        WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
-        opt.f_cost_model, transformTo(child_link_), screwAxis(child_link_));
+    // TODO(G+S): temporary measure bc of override; delete later
+    // graph.push_back(
+    //     JointTyped<double, double>::dynamicsFactors(t, opt, planar_axis));
+
+    // TODO(G+S): move to Joint.h when generalized
     graph.emplace_shared<TorqueFactor>(
         WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
         opt.t_cost_model, screwAxis(child_link_));
