@@ -656,6 +656,12 @@ class JointTyped : public Joint {
     return torque;
   }
 
+  /// Calculate AdjointMap jacobian w.r.t. joint coordinate q.
+  /// TODO(gerry + stephanie): change to calculate the jacobian of Ad_T(v) wrt T
+  /// rather than jacobian of Ad_T wrt q (and put in utils or PR to GTSAM)
+  virtual gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
+      boost::optional<AngleType> q = boost::none) const = 0;
+
   /// Return joint pose factors.
   gtsam::NonlinearFactorGraph qFactors(
       size_t t, const OptimizerSetting &opt) const override;
@@ -668,6 +674,10 @@ class JointTyped : public Joint {
   gtsam::NonlinearFactorGraph aFactors(
       size_t t, const OptimizerSetting &opt) const override;
 
+  // /// Return joint dynamics factors.
+  // gtsam::NonlinearFactorGraph dynamicsFactors(
+  //     size_t t, const OptimizerSetting &opt,
+  //     const boost::optional<gtsam::Vector3> &planar_axis) const override;
 };
 
 }  // namespace gtdynamics
@@ -675,6 +685,8 @@ class JointTyped : public Joint {
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
 
 namespace gtdynamics {
 
