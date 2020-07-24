@@ -47,7 +47,8 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
                                    gtsam::Vector6, JointAngleType,
                                    JointAngleTangentType, JointAngleTangentType>
       Base;
-  JointConstSharedPtr joint_;
+  typedef std::shared_ptr<const JointTypedClass> MyJointConstSharedPtr;
+  MyJointConstSharedPtr joint_;
 
  public:
   /** factor linking child link's twist_accel, joint_coordinate, joint_vel,
@@ -62,7 +63,7 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
                    gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointConstSharedPtr joint)
+                   MyJointConstSharedPtr joint)
       : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
         joint_(joint) {}
@@ -91,10 +92,9 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
     auto error =
-        std::static_pointer_cast<const JointTypedClass>(joint_)
-            ->transformTwistAccelTo(joint_->childLink(), q, qVel, qAccel,
-                                    twist_c, twistAccel_p, H_q, H_qVel,
-                                    H_qAccel, H_twist_c, H_twistAccel_p) -
+        joint_->transformTwistAccelTo(joint_->childLink(), q, qVel, qAccel,
+                                      twist_c, twistAccel_p, H_q, H_qVel,
+                                      H_qAccel, H_twist_c, H_twistAccel_p) -
         twistAccel_c;
 
     if (H_twistAccel_c) {

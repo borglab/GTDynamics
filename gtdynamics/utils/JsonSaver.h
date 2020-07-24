@@ -200,9 +200,10 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    if (const TorqueFactor* f =
-            dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      ss << GetVector(f->getScrewAxis().transpose());
+    if (const TorqueFactor<ScrewJointBase>* f =
+            dynamic_cast<const TorqueFactor<ScrewJointBase>*>(&(*factor))) {
+      auto joint = f->getJoint();
+      ss << GetVector(joint->screwAxis(joint->childLink()).transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(&(*factor))) {
       ss << GetVector(f->prior().transpose());
@@ -237,11 +238,11 @@ class JsonSaver {
       return "Twist";
     } else if (dynamic_cast<const TwistAccelFactor<ScrewJointBase>*>(&(*factor))) {
       return "TwistAccel";  // TODO(G+S): figure out how to make this work for other joint types
-    } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const TorqueFactor<ScrewJointBase>*>(&(*factor))) {
       return "Torque";
     } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const WrenchEquivalenceFactor<ScrewJointBase>*>(&(*factor))) {
       return "WrenchEq";
     } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";

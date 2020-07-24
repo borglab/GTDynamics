@@ -210,11 +210,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const = 0;
 
-  /// Return the torque of the joint given the wrench on the child link.
-  virtual gtsam::Values transformWrenchToTorque(
-      boost::optional<gtsam::Vector6> wrench = boost::none,
-      boost::optional<gtsam::Matrix &> H_wrench = boost::none) const = 0;
-
   /** @fn (ABSTRACT) Return pose factors in the dynamics graph.
    *
    * @param[in] t   The timestep for which to generate q factors.
@@ -401,8 +396,9 @@ class JointTyped : public Joint {
           boost::none) const = 0;
 
   virtual AngleTangentType transformWrenchToTorqueImpl(
+      const LinkSharedPtr & link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
-      gtsam::OptionalJacobian<6, N> H_wrench = boost::none) const = 0;
+      gtsam::OptionalJacobian<N, 6> H_wrench = boost::none) const = 0;
 
  public:
   /// Inherit constructors
@@ -648,12 +644,11 @@ class JointTyped : public Joint {
   }
 
   /// Return the torque of the joint given the wrench on the child link.
-  gtsam::Values transformWrenchToTorque(
+  JointAngleTangentType transformWrenchToTorque(
+      const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
-      boost::optional<gtsam::Matrix &> H_wrench = boost::none) const override {
-    gtsam::Values torque;
-    // torque.insert(key, transformWrenchToTorqueImpl(wrench, H_wrench));
-    return torque;
+      boost::optional<gtsam::Matrix &> H_wrench = boost::none) const {
+    return transformWrenchToTorqueImpl(link, wrench, H_wrench);
   }
 
   /// Calculate AdjointMap jacobian w.r.t. joint coordinate q.
@@ -721,7 +716,7 @@ gtsam::NonlinearFactorGraph JointTyped<A, B>::aFactors(
       TwistAccelKey(parent_link_->getID(), t),
       TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
       JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
-      getConstSharedPtr());
+      std::static_pointer_cast<const This>(getConstSharedPtr()));
 
   return graph;
 }

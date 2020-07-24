@@ -14,28 +14,37 @@
 #ifndef GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
 #define GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
 
+#include <string>
+
+#include <boost/optional.hpp>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
-#include <boost/optional.hpp>
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
 /** TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link*/
-class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
+template <class JointTypedClass>
+class TorqueFactor
+    : public gtsam::NoiseModelFactor2<gtsam::Vector6,
+        typename JointTypedClass::AngleTangentType> {
  private:
+  typedef typename JointTypedClass::AngleTangentType JointAngleTangentType;
+  typedef typename gtsam::traits<typename JointTypedClass::AngleType>::TangentVector JointAngleTangentVector;
   typedef TorqueFactor This;
-  typedef gtsam::NoiseModelFactor2<gtsam::Vector6, double> Base;
-  gtsam::Vector6 screw_axis_;
+  typedef gtsam::NoiseModelFactor2<gtsam::Vector6, JointAngleTangentType> Base;
+  typedef std::shared_ptr<const JointTypedClass> MyJointConstSharedPtr;
+  MyJointConstSharedPtr joint_;
 
  public:
   /** torque factor, common between forward and inverse dynamics.
       Keyword argument:
-          screw_axis -- screw axis expressed in this link's COM frame
+          joint         -- JointConstSharedPtr to the joint
       Will create factor corresponding to Lynch & Park book:
       Torque is always wrench projected on screw axis.
       Equation 8.49, page 293 can be written as
@@ -43,8 +52,8 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    */
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, wrench_key, torque_key), screw_axis_(screw_axis) {}
+               MyJointConstSharedPtr joint)
+      : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
   virtual ~TorqueFactor() {}
 
  public:
@@ -54,20 +63,20 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
           torque       -- torque on this link joint
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &wrench, const double &torque,
+      const gtsam::Vector6 &wrench, const JointAngleTangentType &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
-    if (H_wrench) {
-      *H_wrench = screw_axis_.transpose();
-    }
     if (H_torque) {
       *H_torque = -gtsam::I_1x1;
     }
-
-    return screw_axis_.transpose() * wrench - gtsam::Vector1(torque);
+    // TODO(G+S): make this work nicer for double
+    return (JointAngleTangentVector() <<
+        joint_->transformWrenchToTorque(joint_->childLink(), wrench, H_wrench) -
+        torque).finished();
   }
 
-  gtsam::Vector6 getScrewAxis() const { return screw_axis_; }
+  // Returns the joint
+  MyJointConstSharedPtr getJoint() const { return joint_; }
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
@@ -92,6 +101,16 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
 };
+
+// TODO(G+S): fix this so that will return Vector1 instead of double
+// template <>
+// TorqueFactor<JointTyped<double, double>>::evaluateError(
+//     const gtsam::Vector6 &wrench, const JointAngleTangentType &torque,
+//     boost::optional<gtsam::Matrix &> H_wrench = boost::none,
+//     boost::optional<gtsam::Matrix &> H_torque = boost::none) {
+
+// }
+
 }  // namespace gtdynamics
 
 #endif  // GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
