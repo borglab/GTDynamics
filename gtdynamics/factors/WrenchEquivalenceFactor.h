@@ -33,17 +33,16 @@ namespace gtdynamics {
 
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
-template <class JointTypedClass>
 class WrenchEquivalenceFactor
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTypedClass::AngleType> {
+                                      typename JointTyped::AngleType> {
  private:
-  typedef typename JointTypedClass::AngleType JointAngleType;
+  typedef typename JointTyped::AngleType JointAngleType;
   typedef WrenchEquivalenceFactor This;
   typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                   typename JointTypedClass::AngleType>
+                                   typename JointTyped::AngleType>
       Base;
-  typedef std::shared_ptr<const JointTypedClass> MyJointConstSharedPtr;
+  typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
   MyJointConstSharedPtr joint_;
 
  public:

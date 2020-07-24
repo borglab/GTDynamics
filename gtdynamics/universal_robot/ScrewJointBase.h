@@ -25,7 +25,6 @@
 #include <string>
 
 #include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/utils.h"
@@ -228,9 +227,15 @@ class ScrewJointBase : public JointTyped {
   }
 
   AngleTangentType transformWrenchToTorqueImpl(
+      const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_wrench = boost::none) const override {
-    return 0;  // TODO
+      gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override {
+    auto screw_axis_ = screwAxis(link);
+    if (H_wrench) {
+      *H_wrench = screw_axis_.transpose();
+    }
+    return screw_axis_.transpose() *
+        (wrench ? *wrench : gtsam::Vector6::Zero());
   }
 
   gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,

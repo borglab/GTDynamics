@@ -84,7 +84,7 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
 
 //   auto joint = make_joint(kMj, screw_axis);
 
-//   WrenchEquivalenceFactor<ScrewJointBase> factor(example::wrench_j_key,
+//   WrenchEquivalenceFactor factor(example::wrench_j_key,
 //   example::wrench_k_key, example::qKey, example::cost_model, joint);
 
 //   double q = 0;
@@ -117,7 +117,7 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
 
 //   auto joint = make_joint(kMj, screw_axis);
 
-//   WrenchEquivalenceFactor<ScrewJointBase> factor(example::wrench_j_key,
+//   WrenchEquivalenceFactor factor(example::wrench_j_key,
 //       example::wrench_k_key, example::qKey, example::cost_model, joint);
 //   double q = -M_PI_2;
 //   Vector wrench_j, wrench_k;
@@ -149,7 +149,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
 
   auto joint = make_joint(kMj, screw_axis);
 
-  WrenchEquivalenceFactor<ScrewJointBase> factor(
+  WrenchEquivalenceFactor factor(
       example::wrench_j_key, example::wrench_k_key, example::qKey,
       example::cost_model, joint);
   double q = 0;
