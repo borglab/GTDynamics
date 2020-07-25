@@ -24,7 +24,8 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
