@@ -665,14 +665,14 @@ class JointTyped : public Joint {
   gtsam::NonlinearFactorGraph vFactors(
       size_t t, const OptimizerSetting &opt) const override;
 
-  /// Return joint accel factors.  // TODO(G+S): CRTP and put in Joint class
+  /// Return joint accel factors.
   gtsam::NonlinearFactorGraph aFactors(
       size_t t, const OptimizerSetting &opt) const override;
 
-  // /// Return joint dynamics factors.
-  // gtsam::NonlinearFactorGraph dynamicsFactors(
-  //     size_t t, const OptimizerSetting &opt,
-  //     const boost::optional<gtsam::Vector3> &planar_axis) const override;
+  /// Return joint dynamics factors.
+  gtsam::NonlinearFactorGraph dynamicsFactors(
+      size_t t, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis) const override;
 };
 
 }  // namespace gtdynamics
@@ -680,6 +680,7 @@ class JointTyped : public Joint {
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 
@@ -718,6 +719,27 @@ gtsam::NonlinearFactorGraph JointTyped<A, B>::aFactors(
       JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
       std::static_pointer_cast<const This>(getConstSharedPtr()));
 
+  return graph;
+}
+
+template <class A, class B>
+gtsam::NonlinearFactorGraph JointTyped<A, B>::dynamicsFactors(
+    size_t t, const OptimizerSetting &opt,
+    const boost::optional<gtsam::Vector3> &planar_axis) const {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<WrenchEquivalenceFactor<This>>(
+      WrenchKey(parent_link_->getID(), getID(), t),
+      WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
+      opt.f_cost_model,
+      std::static_pointer_cast<const This>(getConstSharedPtr()));
+  graph.emplace_shared<TorqueFactor<This>>(
+      WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
+      opt.t_cost_model,
+      std::static_pointer_cast<const This>(getConstSharedPtr()));
+  if (planar_axis)
+    graph.emplace_shared<WrenchPlanarFactor>(
+        WrenchKey(child_link_->getID(), getID(), t), opt.planar_cost_model,
+        *planar_axis);
   return graph;
 }
 

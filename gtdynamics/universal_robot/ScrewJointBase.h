@@ -325,26 +325,6 @@ class ScrewJointBase : public JointTyped<double, double> {
     return graph;
   }
 
-  /// Return joint dynamics factors.
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const override {
-    gtsam::NonlinearFactorGraph graph;
-    // TODO(G+S): temporary measure bc of override; delete later
-    // graph.push_back(
-    //     JointTyped<double, double>::dynamicsFactors(t, opt, planar_axis));
-
-    // TODO(G+S): move to Joint.h when generalized
-    graph.emplace_shared<TorqueFactor>(
-        WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
-        opt.t_cost_model, screwAxis(child_link_));
-    if (planar_axis)
-      graph.emplace_shared<WrenchPlanarFactor>(
-          WrenchKey(child_link_->getID(), getID(), t), opt.planar_cost_model,
-          *planar_axis);
-    return graph;
-  }
-
   /// Return linearized dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const LinkPoses &poses,
