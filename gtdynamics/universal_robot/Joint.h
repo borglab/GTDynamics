@@ -55,6 +55,8 @@ inline DynamicsSymbol TorqueKey(int j, int t) {
  */
 class Joint : public std::enable_shared_from_this<Joint> {
  protected:
+  using Pose3 = gtsam::Pose3;
+
   // This joint's name.
   std::string name_;
 
@@ -65,22 +67,22 @@ class Joint : public std::enable_shared_from_this<Joint> {
   LinkSharedPtr child_link_;
 
   // Joint frame defined in world frame.
-  gtsam::Pose3 wTj_;
+  Pose3 wTj_;
   // Rest transform to parent link CoM frame from joint frame.
-  gtsam::Pose3 jTpcom_;
+  Pose3 jTpcom_;
   // Rest transform to child link CoM frame from joint frame.
-  gtsam::Pose3 jTccom_;
+  Pose3 jTccom_;
   // Rest transform to parent link com frame from child link com frame at rest.
-  gtsam::Pose3 pMccom_;
+  Pose3 pMccom_;
 
   /// Transform from the world frame to the joint frame.
-  const gtsam::Pose3 &wTj() const { return wTj_; }
+  const Pose3 &wTj() const { return wTj_; }
 
   /// Transform from the joint frame to the parent's center of mass.
-  const gtsam::Pose3 &jTpcom() const { return jTpcom_; }
+  const Pose3 &jTpcom() const { return jTpcom_; }
 
   /// Transform from the joint frame to the child's center of mass.
-  const gtsam::Pose3 &jTccom() const { return jTccom_; }
+  const Pose3 &jTccom() const { return jTccom_; }
 
   /// Abstract method. Return transform of child link com frame w.r.t parent
   /// link com frame
@@ -112,7 +114,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    */
-  Joint(const std::string &name, const gtsam::Pose3 &wTj,
+  Joint(const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link)
       : name_(name),
         parent_link_(parent_link),
@@ -141,8 +143,16 @@ class Joint : public std::enable_shared_from_this<Joint> {
   int getID() const {
     if (id_ == -1)
       throw std::runtime_error(
-          "Calling getID on a link whose ID has not been set");
+          "Calling getID on a joint whose ID has not been set");
     return id_;
+  }
+
+  /// Get a gtsam::Key for this joint
+  gtsam::Key getKey() const {
+    if (id_ == -1)
+      throw std::runtime_error(
+          "Calling getKey on a joint whose ID has not been set");
+    return gtsam::Key(id_);
   }
 
   /// Return joint name.
@@ -170,8 +180,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
    */
 
   /// Abstract method. Return the transform from the other link com to this link
-  /// com frame
-  virtual gtsam::Pose3 transformTo(
+  /// com frame given a Values object containing this joint's angle Value
+  virtual Pose3 transformTo(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
@@ -295,7 +305,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Return the transform from this link com to the other link
   /// com frame given a Values object containing this joint's angle Value
-  gtsam::Pose3 transformFrom(
+  Pose3 transformFrom(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
@@ -351,12 +361,14 @@ class JointTyped : public Joint {
   // typedef typename AngleType::TangentVector JointAngleTangentType;
   typedef JointAngleTangentType AngleTangentType;
   enum { N = gtsam::traits<AngleType>::dimension };
+  typedef Eigen::Matrix<double, N, 1> VectorN;
+  typedef Eigen::Matrix<double, N, N> MatrixN;
   typedef JointTyped This;
 
  protected:
   /// Abstract method. Return the transform from the other link com to this link
   /// com frame
-  virtual gtsam::Pose3 transformToImpl(
+  virtual Pose3 transformToImpl(
       const LinkSharedPtr &link,
       boost::optional<AngleType> q = boost::none,
       gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
@@ -401,7 +413,7 @@ class JointTyped : public Joint {
 
   /// Convenience method. Return the transform from this link com to the other
   /// link com frame
-  gtsam::Pose3 transformFrom(
+  Pose3 transformFrom(
       const LinkSharedPtr &link,
       boost::optional<AngleType> q,
       gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
@@ -472,7 +484,7 @@ class JointTyped : public Joint {
 
   /// Convenience method. Return the transform from this link com to the other
   /// link com frame
-  gtsam::Pose3 transformTo(
+  Pose3 transformTo(
       const LinkSharedPtr &link, boost::optional<AngleType> q,
       gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
     return transformToImpl(link, q, H_q);
@@ -480,7 +492,7 @@ class JointTyped : public Joint {
 
   /// Return the transform from the other link com to this link
   /// com frame given a Values object containing this joint's angle Value
-  gtsam::Pose3 transformTo(
+  Pose3 transformTo(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
@@ -714,12 +726,12 @@ gtsam::NonlinearFactorGraph JointTyped<A, B>::dynamicsFactors(
     size_t t, const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<WrenchEquivalenceFactor<This>>(
+  graph.emplace_shared<WrenchEquivalenceFactor>(
       WrenchKey(parent_link_->getID(), getID(), t),
       WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
       opt.f_cost_model,
       std::static_pointer_cast<const This>(getConstSharedPtr()));
-  graph.emplace_shared<TorqueFactor<This>>(
+  graph.emplace_shared<TorqueFactor>(
       WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
       opt.t_cost_model,
       std::static_pointer_cast<const This>(getConstSharedPtr()));

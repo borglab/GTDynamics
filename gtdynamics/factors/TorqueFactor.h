@@ -66,7 +66,7 @@ class TorqueFactor
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
-      *H_torque = -gtsam::I_1x1;
+      *H_torque = -JointTypedClass::MatrixN::Identity();
     }
     // TODO(G+S): make this work nicer for double
     return (JointAngleTangentVector() <<

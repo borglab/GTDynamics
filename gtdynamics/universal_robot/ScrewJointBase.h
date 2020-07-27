@@ -37,8 +37,6 @@ namespace gtdynamics {
  *  It is the base class for RevoluteJoint, PrismaticJoint, and ScrewJoint.
  */
 class ScrewJointBase : public JointTyped {
-  using Pose3 = gtsam::Pose3;
-
  public:
   /**
    * This struct contains all parameters needed to construct a joint.
