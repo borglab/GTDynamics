@@ -292,6 +292,12 @@ class Link : public std::enable_shared_from_this<Link> {
                               wrenches[0], wrenches[1], wrenches[2],
                               wrenches[3], PoseKey(getID(), t),
                               opt.fa_cost_model, inertiaMatrix(), gravity));
+    } else if (wrenches.size() == 8) {
+      graph.add(WrenchFactor8(TwistKey(getID(), t), TwistAccelKey(getID(), t),
+                              wrenches[0], wrenches[1], wrenches[2],
+                              wrenches[3], wrenches[4], wrenches[5],
+                              wrenches[6], wrenches[7], PoseKey(getID(), t),
+                              opt.fa_cost_model, inertiaMatrix(), gravity));
     } else {
       throw std::runtime_error("Wrench factor not defined");
     }

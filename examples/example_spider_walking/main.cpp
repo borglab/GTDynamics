@@ -125,11 +125,10 @@ int main(int argc, char** argv) {
   CPs t78 = {c1, c2, c3, c4, c5, c6,       };
   CPs p8  = {c1, c2, c3, c4, c5, c6, c7    };
   CPs t89 = {c1, c2, c3, c4, c5, c6, c7    };
-  CPs p9  = {c1, c2, c3, c4, c5, c6, c7, c8};  // End stationary.
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
-  vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9};
+  vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
   vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t89};
   vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
 
@@ -289,49 +288,19 @@ int main(int argc, char** argv) {
     robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
     phase_cps);
 
-  std::ifstream ifile;
-  ifile.open("../optimization_result.txt");
-  if(!ifile) {
-    // The file containing optimization results has not been generated yet,
-    // so optimize and save the results to a text file.
+  // TODO (stephanie + disha): revisit the code below once optimization works again
+  // (switch back to version that reads optimization results into a file)
 
-    // Optimize!
-    gtsam::LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    params.setlambdaInitial(1e0);
-    params.setlambdaLowerBound(1e-7);
-    params.setlambdaUpperBound(1e10);
-    gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
-    gtsam::Values results = optimizer.optimize();
+  // Optimize!
+  gtsam::LevenbergMarquardtParams params;
+  params.setVerbosityLM("SUMMARY");
+  params.setlambdaInitial(1e0);
+  params.setlambdaLowerBound(1e-7);
+  params.setlambdaUpperBound(1e10);
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
+  gtsam::Values results = optimizer.optimize();
 
-    // Write result of optimization to file
-    std::ofstream myfile ("../optimization_result.txt");
-    if (myfile.is_open())
-    {
-      int t = 0;
-      for (int phase = 0; phase < phase_steps.size(); phase++) {
-        for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-          vector<string> vals;
-          for (auto&& joint : spider.joints())
-            myfile << std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))) + "\n";
-          for (auto&& joint : spider.joints())
-            myfile << std::to_string(results.atDouble(JointVelKey(joint->getID(), t))) + "\n";
-          for (auto&& joint : spider.joints())
-            myfile << std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))) + "\n";
-          for (auto&& joint : spider.joints())
-            myfile << std::to_string(results.atDouble(TorqueKey(joint->getID(), t))) + "\n";
-
-          myfile << std::to_string(results.atDouble(PhaseKey(phase))) + "\n";
-
-          t++;
-        }
-      }
-      myfile.close();
-    }
-    else std::cout << "Unable to open file" << std::endl;
-  }
-
-  // Using variables populated from reading the file optimization_result.txt,
+    // Using variables populated from reading the file optimization_result.txt,
   // log the joint angles, velocities, accels, torques, and current goal pose.
   vector<string> jnames;
   for (auto&& joint : spider.joints()) jnames.push_back(joint->name());
@@ -342,35 +311,110 @@ int main(int argc, char** argv) {
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
             << jnames_str << ",t"
             << "\n";
-  std::ifstream myfile ("../optimization_result.txt");
+
   int t = 0;
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-      
-      //Read from optimization_result.txt
-      string joint_angle_key, joint_vel_key, joint_accel_key, torque_key, phase_key;
-      getline(myfile, joint_angle_key);
-      getline(myfile, joint_vel_key);
-      getline(myfile, joint_accel_key);
-      getline(myfile, torque_key);
-      getline(myfile, phase_key);
+
       vector<string> vals;
       for (auto&& joint : spider.joints())
-        vals.push_back(joint_angle_key);
+        vals.push_back(std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
       for (auto&& joint : spider.joints())
-        vals.push_back(joint_vel_key);
+        vals.push_back(std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
       for (auto&& joint : spider.joints())
-        vals.push_back(joint_accel_key);
+        vals.push_back(std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
       for (auto&& joint : spider.joints())
-        vals.push_back(torque_key);
-      vals.push_back(phase_key);
+        vals.push_back(std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
+      vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
       t++;
       string vals_str = boost::algorithm::join(vals, ",");
       traj_file << vals_str << "\n";
     }
   }
   traj_file.close();
-  myfile.close();
+
+  // std::ifstream ifile;
+  // ifile.open("../optimization_result.txt");
+  // if(!ifile) {
+  //   // The file containing optimization results has not been generated yet,
+  //   // so optimize and save the results to a text file.
+
+  //   // Optimize!
+  //   gtsam::LevenbergMarquardtParams params;
+  //   params.setVerbosityLM("SUMMARY");
+  //   params.setlambdaInitial(1e0);
+  //   params.setlambdaLowerBound(1e-7);
+  //   params.setlambdaUpperBound(1e10);
+  //   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
+  //   gtsam::Values results = optimizer.optimize();
+
+  //   // Write result of optimization to file
+  //   std::ofstream myfile ("../optimization_result.txt");
+  //   if (myfile.is_open())
+  //   {
+  //     int t = 0;
+  //     for (int phase = 0; phase < phase_steps.size(); phase++) {
+  //       for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
+  //         vector<string> vals;
+  //         for (auto&& joint : spider.joints())
+  //           myfile << std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))) + "\n";
+  //         for (auto&& joint : spider.joints())
+  //           myfile << std::to_string(results.atDouble(JointVelKey(joint->getID(), t))) + "\n";
+  //         for (auto&& joint : spider.joints())
+  //           myfile << std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))) + "\n";
+  //         for (auto&& joint : spider.joints())
+  //           myfile << std::to_string(results.atDouble(TorqueKey(joint->getID(), t))) + "\n";
+
+  //         myfile << std::to_string(results.atDouble(PhaseKey(phase))) + "\n";
+
+  //         t++;
+  //       }
+  //     }
+  //     myfile.close();
+  //   }
+  //   else std::cout << "Unable to open file" << std::endl;
+  // }
+
+  // // Using variables populated from reading the file optimization_result.txt,
+  // // log the joint angles, velocities, accels, torques, and current goal pose.
+  // vector<string> jnames;
+  // for (auto&& joint : spider.joints()) jnames.push_back(joint->name());
+  // string jnames_str = boost::algorithm::join(jnames, ",");
+  // std::ofstream traj_file;
+  // traj_file.open("../traj.csv");
+  // // angles, vels, accels, torques, time.
+  // traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
+  //           << jnames_str << ",t"
+  //           << "\n";
+  // std::ifstream myfile ("../optimization_result.txt");
+  // int t = 0;
+  // for (int phase = 0; phase < phase_steps.size(); phase++) {
+  //   for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
+      
+  //     //Read from optimization_result.txt
+  //     string joint_angle_key, joint_vel_key, joint_accel_key, torque_key, phase_key;
+  //     getline(myfile, joint_angle_key);
+  //     getline(myfile, joint_vel_key);
+  //     getline(myfile, joint_accel_key);
+  //     getline(myfile, torque_key);
+  //     getline(myfile, phase_key);
+  //     vector<string> vals;
+  //     for (auto&& joint : spider.joints())
+  //       vals.push_back(joint_angle_key);
+  //     for (auto&& joint : spider.joints())
+  //       vals.push_back(joint_vel_key);
+  //     for (auto&& joint : spider.joints())
+  //       vals.push_back(joint_accel_key);
+  //     for (auto&& joint : spider.joints())
+  //       vals.push_back(torque_key);
+  //     vals.push_back(phase_key);
+  //     t++;
+  //     string vals_str = boost::algorithm::join(vals, ",");
+  //     traj_file << vals_str << "\n";
+  //   }
+  // }
+  // traj_file.close();
+  // myfile.close();
 
   return 0;
 }
