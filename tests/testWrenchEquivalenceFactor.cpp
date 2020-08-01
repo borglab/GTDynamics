@@ -26,6 +26,7 @@
 
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

@@ -25,8 +25,7 @@
 #include <string>
 
 #include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
@@ -284,11 +283,11 @@ class ScrewJointBase : public JointTyped {
 
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
-      size_t t, const JointValues &torques,
+      size_t t, const std::map<std::string, double> &torques,
       const OptimizerSetting &opt) const override {
     gtsam::GaussianFactorGraph priors;
     gtsam::Vector1 rhs;
-    rhs << torques.at<double>(getKey());
+    rhs << torques.at(name());
     // TODO(alejandro): use optimizer settings
     priors.add(TorqueKey(getID(), t), gtsam::I_1x1, rhs,
                gtsam::noiseModel::Constrained::All(1));

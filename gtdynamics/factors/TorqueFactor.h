@@ -34,7 +34,8 @@ class TorqueFactor
         typename JointTyped::AngleTangentType> {
  private:
   typedef typename JointTyped::AngleTangentType JointAngleTangentType;
-  typedef typename gtsam::traits<typename JointTyped::AngleType>::TangentVector JointAngleTangentVector;
+  typedef typename gtsam::traits<typename JointTyped::AngleType>::TangentVector
+      JointAngleTangentVector;
   typedef TorqueFactor This;
   typedef gtsam::NoiseModelFactor2<gtsam::Vector6, JointAngleTangentType> Base;
   typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
@@ -66,7 +67,7 @@ class TorqueFactor
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
-      *H_torque = -JointTypedClass::MatrixN::Identity();
+      *H_torque = -JointTyped::MatrixN::Identity();
     }
     // TODO(G+S): make this work nicer for double
     return (JointAngleTangentVector() <<

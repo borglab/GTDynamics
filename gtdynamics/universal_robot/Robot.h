@@ -116,7 +116,7 @@ class Robot {
    * @param[in] opt  OptimizerSetting object.
    * @return pose factors.
    */
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
+  gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const;
 
   /** @fn Returns v factors for the robot.
@@ -125,7 +125,7 @@ class Robot {
    * @param[in]opt  OptimizerSetting object.
    * @return velocity factors.
    */
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
+  gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const;
 
   /** @fn Returns a factors for the robot.
@@ -134,8 +134,19 @@ class Robot {
    * @param[in] opt  OptimizerSetting object.
    * @return acceleration factors.
    */
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
+  gtsam::NonlinearFactorGraph aFactors(size_t t,
                                        const OptimizerSetting &opt) const;
+
+  /** @fn Returns linear forward dynamics priors for the robot.
+   * 
+   * @param[in] t             Timestep to return q factors for.
+   * @param[in] torques       Joint torques.
+   * @param[in] opt           OptimizerSetting object.
+   * @return Linear forward dynamics priors.
+   */
+  gtsam::GaussianFactorGraph linearFDPriors(size_t t,
+                                            const JointValues &torques,
+                                            const OptimizerSetting &opt) const;
 
   /** @fn Returns accel factors linearized about specified operating
    *    condition.
@@ -150,7 +161,7 @@ class Robot {
    * @return Linearized accel factors.
    */
   gtsam::GaussianFactorGraph linearAFactors(
-    const int &t,
+    size_t t,
     const std::map<std::string, gtsam::Pose3> &poses,
     const std::map<std::string, gtsam::Vector6> &twists,
     const std::map<std::string, double> &joint_angles,
@@ -166,7 +177,7 @@ class Robot {
    * @return dynamics factors.
    */
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
+      size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const;
 
   /** @fn Returns dynamics factors linearized about specified operating
@@ -182,7 +193,7 @@ class Robot {
    * @return Linearized dynamics factors.
    */
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-    const int &t,
+    size_t t,
     const std::map<std::string, gtsam::Pose3> &poses,
     const std::map<std::string, gtsam::Vector6> &twists,
     const std::map<std::string, double> &joint_angles,
@@ -197,7 +208,7 @@ class Robot {
    * @return joint limit factors.
    */
   gtsam::NonlinearFactorGraph jointLimitFactors(
-      const int &t, const OptimizerSetting &opt) const;
+      size_t t, const OptimizerSetting &opt) const;
 };
 }  // namespace gtdynamics
 
