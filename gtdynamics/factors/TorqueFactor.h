@@ -69,7 +69,7 @@ class TorqueFactor
       *H_torque = -JointTyped::MatrixN::Identity();
     }
     // TODO(G+S): next PR will generalize this from Vector1
-    return Vector1(
+    return gtsam::Vector1(
         joint_->transformWrenchToTorque(joint_->childLink(), wrench, H_wrench) -
         torque);
   }
