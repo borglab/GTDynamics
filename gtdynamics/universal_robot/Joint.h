@@ -69,29 +69,27 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * This struct contains information for scalar limits.
    * The lower and upper limits denote physical axis limits of the joint,
    * and the threshold is an error threshold used in calculations.
-   * TODO (stephanie): Make sure lower and upper limits have meaningful default values.
    */
   struct ScalarLimit {
-    double value_lower_limit;
-    double value_upper_limit = -value_lower_limit;
+    double value_lower_limit = -M_PI_2;
+    double value_upper_limit = M_PI_2;
     double value_limit_threshold = 1e-9;
   };
 
   /**
    * This struct contains all parameters needed to construct a joint.
-   * TODO (stephanie): Make sure all parameters have meaningful default values.
    */
   struct Parameters {
     EffortType effort_type = EffortType::Actuated;
     ScalarLimit scalar_limits;
 
-    double velocity_limit;
+    double velocity_limit = 10000.0;
     double velocity_limit_threshold = 0.0;
-    double acceleration_limit = 10000;
+    double acceleration_limit = 10000.0;
     double acceleration_limit_threshold = 0.0;
-    double torque_limit;
+    double torque_limit = 10000.0;
     double torque_limit_threshold = 0.0;
-    double damping_coefficient;
+    double damping_coefficient = 0.0;
     double spring_coefficient = 0.0;
   };
 
