@@ -23,11 +23,11 @@
 
 #include <iostream>
 
-#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/factors/TwistFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {

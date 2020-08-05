@@ -23,8 +23,8 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 
 using namespace gtdynamics;

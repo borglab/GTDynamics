@@ -27,6 +27,7 @@
 #include <map>
 #include <utility>
 
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
@@ -237,7 +238,7 @@ class JsonSaver {
     } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
       return "Twist";
     } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
-      return "TwistAccel";  // TODO(G+S): figure out how to make this work for other joint types
+      return "TwistAccel";
     } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
       return "Torque";
     } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {

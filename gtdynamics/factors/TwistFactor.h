@@ -23,9 +23,7 @@
 
 #include <boost/optional.hpp>
 
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 namespace gtdynamics {
 

@@ -27,8 +27,6 @@ class JointTyped : public Joint {
   typedef double JointAngleType;
   typedef double JointAngleTangentType;
   typedef JointAngleType AngleType;
-  // TODO(gerry+stephanie): fix this for double
-  // typedef typename AngleType::TangentVector JointAngleTangentType;
   typedef JointAngleTangentType AngleTangentType;
   enum { N = gtsam::traits<AngleType>::dimension };
   typedef Eigen::Matrix<double, N, 1> VectorN;

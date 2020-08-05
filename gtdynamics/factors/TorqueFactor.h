@@ -22,8 +22,7 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 namespace gtdynamics {
 
@@ -69,10 +68,10 @@ class TorqueFactor
     if (H_torque) {
       *H_torque = -JointTyped::MatrixN::Identity();
     }
-    // TODO(G+S): make this work nicer for double
-    return (JointAngleTangentVector() <<
+    // TODO(G+S): next PR will generalize this from Vector1
+    return Vector1(
         joint_->transformWrenchToTorque(joint_->childLink(), wrench, H_wrench) -
-        torque).finished();
+        torque);
   }
 
   // Returns the joint

@@ -23,12 +23,11 @@
 
 #include <iostream>
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/factors/PoseFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
@@ -138,7 +137,7 @@ TEST(PoseFactor, breaking_rr) {
   double joint_angle = M_PI / 4;
 
   auto l2 = my_robot.getLinkByName("l2");
-  auto j1 = std::dynamic_pointer_cast<gtdynamics::RevoluteJoint>(
+  auto j1 = std::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
       my_robot.getJointByName("j1"));
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
