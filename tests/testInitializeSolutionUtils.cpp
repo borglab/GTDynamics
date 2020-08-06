@@ -311,7 +311,7 @@ TEST(initialize_solution_utils,
       init_vals.at(PoseKey(l2->getID(), 0)).cast<gtsam::Pose3>(),
       1e-3));
 
-  for (int i = 0; i < wTb_t.size(); i++)
+  for (size_t i = 0; i < wTb_t.size(); i++)
     EXPECT(assert_equal(wTb_t[i],
                         init_vals.at(PoseKey(l2->getID(), ts[i]))
                             .cast<gtsam::Pose3>(),
