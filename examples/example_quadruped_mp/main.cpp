@@ -14,6 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -183,7 +184,7 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
 int main(int argc, char **argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  Robot vision60 = Robot("../vision60.urdf");
+  Robot vision60 = CreateRobotFromFile("../vision60.urdf");
 
   // Coordinate system:
   //  z

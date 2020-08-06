@@ -15,6 +15,7 @@
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
 
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = Robot("../vision60.urdf");
+  auto vision60 = gtdynamics::CreateRobotFromFile("../vision60.urdf");
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-4;  // std of additional objectives.
