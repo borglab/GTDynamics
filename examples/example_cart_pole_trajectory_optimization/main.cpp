@@ -14,6 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -33,7 +34,7 @@ using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto cp = Robot("../cart_pole.urdf");
+  auto cp = CreateRobotFromFile("../cart_pole.urdf");
   int j0_id = cp.getJointByName("j0")->getID(),
       j1_id = cp.getJointByName("j1")->getID();
   cp.getLinkByName("l0")->fix();
