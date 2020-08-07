@@ -73,10 +73,10 @@ while True:
             t_f = t
         num_traj_replays += 1
 
-    jangles = df.loc[i][[str(i) for i in range(12)]]
-    jvels = df.loc[i][[str(i) + '.1' for i in range(12)]]
-    jaccels = df.loc[i][[str(i) + '.2' for i in range(12)]]
-    jtorques = df.loc[i][[str(i) + '.3' for i in range(12)]]
+    jangles = df.loc[i][np.arange(32)]
+    jvels = df.loc[i][np.arange(32,64)]
+    jaccels = df.loc[i][np.arange(64, 96)]
+    jtorques = df.loc[i][np.arange(96, 128)]
 
     set_joint_angles(jangles, jvels)
 
