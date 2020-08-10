@@ -2,8 +2,6 @@
 <sdf version='1.6'>
 <world name='default'>
 	<model name="spider">
-		
-		<!--TODO: Fix all inertia/mass values!-->
 
 		<!-- Floating base link -->
 		
@@ -12,12 +10,12 @@
 			<inertial>
 				<mass>5</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.116666667</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.116666667</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.225</izz>
 				</inertia>
 			</inertial>
 			<collision name="body_collision">
@@ -46,14 +44,14 @@
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_1_collision">
@@ -84,14 +82,14 @@
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_1_collision">
@@ -122,14 +120,14 @@
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_1_collision">
@@ -160,14 +158,14 @@
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_1_collision">
@@ -257,14 +255,14 @@
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_2_collision">
@@ -295,14 +293,14 @@
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_2_collision">
@@ -333,14 +331,14 @@
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_2_collision">
@@ -371,14 +369,14 @@
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_2_collision">
@@ -468,14 +466,14 @@
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_3_collision">
@@ -506,14 +504,14 @@
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_3_collision">
@@ -544,14 +542,14 @@
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_3_collision">
@@ -582,14 +580,14 @@
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_3_collision">
@@ -679,14 +677,14 @@
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_4_collision">
@@ -717,14 +715,14 @@
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_4_collision">
@@ -755,14 +753,14 @@
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_4_collision">
@@ -793,14 +791,14 @@
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_4_collision">
@@ -890,14 +888,14 @@
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_5_collision">
@@ -928,14 +926,14 @@
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_5_collision">
@@ -966,14 +964,14 @@
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_5_collision">
@@ -1004,14 +1002,14 @@
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_5_collision">
@@ -1101,14 +1099,14 @@
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_6_collision">
@@ -1139,14 +1137,14 @@
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_6_collision">
@@ -1177,14 +1175,14 @@
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_6_collision">
@@ -1215,14 +1213,14 @@
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_6_collision">
@@ -1312,14 +1310,14 @@
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_7_collision">
@@ -1350,14 +1348,14 @@
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_7_collision">
@@ -1388,14 +1386,14 @@
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_7_collision">
@@ -1426,14 +1424,14 @@
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_7_collision">
@@ -1523,14 +1521,14 @@
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.1</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00004</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00004</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00008</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_8_collision">
@@ -1561,14 +1559,14 @@
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
 				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_8_collision">
@@ -1599,14 +1597,14 @@
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
 				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_8_collision">
@@ -1637,14 +1635,14 @@
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
-				<mass>5</mass>
+				<mass>0.3</mass>
 				<inertia>
-					<ixx>5</ixx>
+					<ixx>0.00588</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>5</iyy>
+					<iyy>0.00588</iyy>
 					<iyz>0</iyz>
-					<izz>5</izz>
+					<izz>0.00024</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_8_collision">
