@@ -33,31 +33,32 @@ namespace example {
 // nosie model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key pose_i_key = gtsam::Symbol('p', 1),
-           pose_j_key = gtsam::Symbol('p', 2), qKey = gtsam::Symbol('q', 0);
+gtsam::Key pose_p_key = gtsam::Symbol('p', 1),
+           pose_c_key = gtsam::Symbol('p', 2),
+           qKey = gtsam::Symbol('q', 0);
 }  // namespace example
 
 // Test twist factor for stationary case
 TEST(PoseFactor, error) {
   // create functor
-  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
+  gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  PoseFunctor predictPose(jMi, screw_axis);
+  PoseFunctor predictPose(cMp, screw_axis);
 
   // check prediction
   double jointAngle = 0;
-  gtsam::Pose3 pose_i(gtsam::Rot3(), gtsam::Point3(1, 0, 0)),
-      pose_j(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
-  EXPECT(assert_equal(pose_j, predictPose(pose_i, jointAngle), 1e-6));
+  gtsam::Pose3 pose_p(gtsam::Rot3(), gtsam::Point3(1, 0, 0)),
+               pose_c(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
+  EXPECT(assert_equal(pose_c, predictPose(pose_p, jointAngle), 1e-6));
 
   // Create factor
-  PoseFactor factor(example::pose_i_key, example::pose_j_key,
-                                example::qKey, example::cost_model, jMi,
+  PoseFactor factor(example::pose_p_key, example::pose_c_key,
+                                example::qKey, example::cost_model, cMp,
                                 screw_axis);
 
   // call evaluateError
-  auto actual_errors = factor.evaluateError(pose_i, pose_j, jointAngle);
+  auto actual_errors = factor.evaluateError(pose_p, pose_c, jointAngle);
 
   // check value
   auto expected_errors = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -65,8 +66,8 @@ TEST(PoseFactor, error) {
 
   // Make sure linearization is correct
   gtsam::Values values;
-  values.insert(example::pose_i_key, pose_i);
-  values.insert(example::pose_j_key, pose_j);
+  values.insert(example::pose_p_key, pose_p);
+  values.insert(example::pose_c_key, pose_c);
   values.insert(example::qKey, jointAngle);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
@@ -75,24 +76,24 @@ TEST(PoseFactor, error) {
 // Test breaking case
 TEST(PoseFactor, breaking) {
   // create functor
-  gtsam::Pose3 jMi = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
+  gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  PoseFunctor predictPose(jMi, screw_axis);
+  PoseFunctor predictPose(cMp, screw_axis);
 
   double jointAngle;
-  gtsam::Pose3 pose_i, pose_j;
+  gtsam::Pose3 pose_p, pose_c;
   // check prediction at zero joint angle
   jointAngle = 0;
-  pose_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
-  pose_j = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
-  EXPECT(assert_equal(pose_j, predictPose(pose_i, jointAngle), 1e-6));
+  pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+  pose_c = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
+  EXPECT(assert_equal(pose_c, predictPose(pose_p, jointAngle), 1e-6));
 
   // check prediction at half PI
   jointAngle = M_PI / 2;
-  pose_i = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
-  pose_j = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
-  EXPECT(assert_equal(pose_j, predictPose(pose_i, jointAngle), 1e-6));
+  pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+  pose_c = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
+  EXPECT(assert_equal(pose_c, predictPose(pose_p, jointAngle), 1e-6));
 }
 
 // Test breaking case for rr link
@@ -109,8 +110,8 @@ TEST(PoseFactor, breaking_rr) {
   auto j1 = my_robot.getJointByName("j1");
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
-  gtsam::Pose3 jMi = j1->transformTo(l2);
-  PoseFunctor predictPose(jMi, screw_axis);
+  gtsam::Pose3 cMp = j1->transformTo(l2);
+  PoseFunctor predictPose(cMp, screw_axis);
 
   EXPECT(assert_equal(j1->transformFrom(l2, joint_angle),
                       predictPose(base_pose, joint_angle), 1e-6));
