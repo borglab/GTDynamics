@@ -207,6 +207,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return a shared ptr to the child link.
   LinkSharedPtr childLink() { return child_link_; }
 
+  /// Return the ID of the parent link.
+  int parentID() const { return parent_link_->getID(); }
+
+  /// Return the ID of the child link.
+  int childID() const { return child_link_->getID(); }
+
+  /// Return the name of the parent link.
+  std::string parentName() const { return parent_link_->name(); }
+
+  /// Return the name of the child link.
+  std::string childName() const { return child_link_->name(); }
+
   /// Return joint parameters.
   const Parameters &parameters() const { return parameters_; }
 

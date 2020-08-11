@@ -92,9 +92,9 @@ Values InitializeSolutionInterpolation(
     // Initialize joint kinematics/dynamics to 0.
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
-      init_vals.insert(WrenchKey(joint->parentLink()->getID(), j, t),
+      init_vals.insert(WrenchKey(joint->parentID(), j, t),
                        sampler.sample());
-      init_vals.insert(WrenchKey(joint->childLink()->getID(), j, t),
+      init_vals.insert(WrenchKey(joint->childID(), j, t),
                        sampler.sample());
       init_vals.insert(TorqueKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointAngleKey(j, t), sampler.sample()[0]);
@@ -227,9 +227,9 @@ Values InitializeSolutionInverseKinematics(
     }
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
-      init_vals.insert(WrenchKey(joint->parentLink()->getID(), j, t),
+      init_vals.insert(WrenchKey(joint->parentID(), j, t),
                        sampler.sample());
-      init_vals.insert(WrenchKey(joint->childLink()->getID(), j, t),
+      init_vals.insert(WrenchKey(joint->childID(), j, t),
                        sampler.sample());
       init_vals.insert(TorqueKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointVelKey(j, t), sampler.sample()[0]);
