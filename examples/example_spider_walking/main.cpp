@@ -105,7 +105,8 @@ int main(int argc, char** argv) {
   auto c7 = CP{"tarsus_7", Point3(0, 1.741, 0), 0, GROUND_HEIGHT}; // Front right.
   auto c8 = CP{"tarsus_8", Point3(0, 1.741, 0), 0, GROUND_HEIGHT}; // Hind right.
 
-  // Contact points for each phase. This gait moves one leg at a time.
+  // Contact points for each phase. 
+  // This gait moves one leg at a time.
   typedef ContactPoints CPs;
   CPs p0  = {c1, c2, c3, c4, c5, c6, c7, c8};  // Initially stationary.
   CPs t01 = {    c2, c3, c4, c5, c6, c7, c8};
@@ -126,11 +127,24 @@ int main(int argc, char** argv) {
   CPs p8  = {c1, c2, c3, c4, c5, c6, c7    };
   CPs t89 = {c1, c2, c3, c4, c5, c6, c7    };
 
+  // This gait moves four legs at a time (alternating tetrapod).
+  CPs t0a = {    c2,     c4,     c6,     c8};
+  CPs pa  = {    c2,     c4,     c6,     c8};
+  CPs tab = {                              };
+  CPs pb  = {c1,     c3,     c5,     c7    };
+  CPs tb0 = {c1,     c3,     c5,     c7    };
+
   // Define contact points for each phase, transition contact points,
   // and phase durations.
+  // Gait one leg at a time: 
   vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
   vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t89};
   vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
+
+  // Alternating Tetrapod:
+  // vector<CPs> phase_cps =   {p0, pa, pb, pa, pb, pa, pb, p0};
+  // vector<CPs> trans_cps =   {t0a, tab, tab, tab, tab, tab, tb0};
+  // vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60};
 
   // Define the cumulative phase steps.
   vector<int> cum_phase_steps;
