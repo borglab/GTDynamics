@@ -441,7 +441,8 @@
 			<child>tibia_2</child>
 			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-0.349066</lower>
 					<upper>2.44346</upper>
@@ -454,7 +455,8 @@
 			<child>tarsus_2</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-1.090831</lower>
 					<upper>1.090831</upper>
@@ -653,7 +655,8 @@
 			<child>tibia_3</child>
 			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-0.349066</lower>
 					<upper>2.44346</upper>
@@ -866,7 +869,8 @@
 			<child>tibia_4</child>
 			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-0.349066</lower>
 					<upper>2.44346</upper>
@@ -879,7 +883,8 @@
 			<child>tarsus_4</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-1.090831</lower>
 					<upper>1.090831</upper>
@@ -1078,7 +1083,8 @@
 			<child>tibia_5</child>
 			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-0.349066</lower>
 					<upper>2.44346</upper>
@@ -1091,7 +1097,8 @@
 			<child>tarsus_5</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-1.090831</lower>
 					<upper>1.090831</upper>
@@ -1290,7 +1297,8 @@
 			<child>tibia_6</child>
 			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-0.349066</lower>
 					<upper>2.44346</upper>
@@ -1303,7 +1311,8 @@
 			<child>tarsus_6</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<xyz>0 -1 0</xyz>
+				<!-- gazebo expects x-axis, pybullet expects y-axis -->
+				<xyz>0 1 0</xyz>
 				<limit>
 					<lower>-1.090831</lower>
 					<upper>1.090831</upper>
