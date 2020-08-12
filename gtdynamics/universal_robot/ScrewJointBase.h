@@ -128,7 +128,7 @@ class ScrewJointBase : public Joint {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<PoseFactor>(
-        PoseKey(parent_link_->getID(), t), PoseKey(child_link_->getID(), t),
+        PoseKey(parentID(), t), PoseKey(childID(), t),
         JointAngleKey(getID(), t), opt.p_cost_model, transformTo(child_link_),
         screwAxis(child_link_));
     return graph;
@@ -139,7 +139,7 @@ class ScrewJointBase : public Joint {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<TwistFactor>(
-        TwistKey(parent_link_->getID(), t), TwistKey(child_link_->getID(), t),
+        TwistKey(parentID(), t), TwistKey(childID(), t),
         JointAngleKey(getID(), t), JointVelKey(getID(), t), opt.v_cost_model,
         transformTo(child_link_), screwAxis(child_link_));
 
@@ -151,9 +151,9 @@ class ScrewJointBase : public Joint {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<TwistAccelFactor>(
-        TwistKey(child_link_->getID(), t),
-        TwistAccelKey(parent_link_->getID(), t),
-        TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
+        TwistKey(childID(), t),
+        TwistAccelKey(parentID(), t),
+        TwistAccelKey(childID(), t), JointAngleKey(getID(), t),
         JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
         transformTo(child_link_), screwAxis(child_link_));
 
@@ -170,18 +170,18 @@ class ScrewJointBase : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = poses.at(parent_link_->name());
-    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_wi1 = poses.at(parentName());
+    const Pose3 T_wi2 = poses.at(childName());
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
+    const gtsam::Vector6 V_i2 = twists.at(childName());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
     const double v_j = joint_vels.at(name());
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     gtsam::Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child_link_->getID(), t), gtsam::I_6x6,
-              TwistAccelKey(parent_link_->getID(), t), -T_i2i1.AdjointMap(),
+    graph.add(TwistAccelKey(childID(), t), gtsam::I_6x6,
+              TwistAccelKey(parentID(), t), -T_i2i1.AdjointMap(),
               JointAccelKey(getID(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
@@ -194,15 +194,15 @@ class ScrewJointBase : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::NonlinearFactorGraph graph;
     graph.emplace_shared<WrenchEquivalenceFactor>(
-        WrenchKey(parent_link_->getID(), getID(), t),
-        WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
+        WrenchKey(parentID(), getID(), t),
+        WrenchKey(childID(), getID(), t), JointAngleKey(getID(), t),
         opt.f_cost_model, transformTo(child_link_), screwAxis(child_link_));
     graph.emplace_shared<TorqueFactor>(
-        WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
+        WrenchKey(childID(), getID(), t), TorqueKey(getID(), t),
         opt.t_cost_model, screwAxis(child_link_));
     if (planar_axis)
       graph.emplace_shared<WrenchPlanarFactor>(
-          WrenchKey(child_link_->getID(), getID(), t), opt.planar_cost_model,
+          WrenchKey(childID(), getID(), t), opt.planar_cost_model,
           *planar_axis);
     return graph;
   }
@@ -217,31 +217,31 @@ class ScrewJointBase : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = poses.at(parent_link_->name());
-    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_wi1 = poses.at(parentName());
+    const Pose3 T_wi2 = poses.at(childName());
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    // const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
+    // const gtsam::Vector6 V_i2 = twists.at(childName());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
 
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child_link_->getID(), getID(), t), S_i2_j.transpose(),
+    graph.add(WrenchKey(childID(), getID(), t), S_i2_j.transpose(),
               TorqueKey(getID(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     gtsam::Vector6 rhs_weq = gtsam::Vector6::Zero();
-    graph.add(WrenchKey(parent_link_->getID(), getID(), t), gtsam::I_6x6,
-              WrenchKey(child_link_->getID(), getID(), t),
+    graph.add(WrenchKey(parentID(), getID(), t), gtsam::I_6x6,
+              WrenchKey(childID(), getID(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child_link_->getID(), getID(), t), J_wrench,
+      graph.add(WrenchKey(childID(), getID(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 

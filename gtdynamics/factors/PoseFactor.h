@@ -29,44 +29,44 @@ namespace gtdynamics {
 /** PoseFunctor is functor predicting link's pose (COM) with previous one*/
 class PoseFunctor {
  private:
-  gtsam::Pose3 iMj_;
+  gtsam::Pose3 pMc_;
   gtsam::Vector6 screw_axis_;
 
  public:
   /** Create functor predicting this link's pose (COM) with previous one.
       Keyword arguments:
-          jMi        -- previous COM frame, expressed in this link's COM frame,
-     at rest configuration screw_axis -- screw axis expressed in link's COM
-     frame
+          cMp        -- previous (parent) COM frame, expressed in this (child)
+     link's COM frame, at rest configuration
+          screw_axis -- screw axis expressed in link's COM frame
    */
-  PoseFunctor(const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
-      : iMj_(jMi.inverse()), screw_axis_(screw_axis) {}
+  PoseFunctor(const gtsam::Pose3 &cMp, const gtsam::Vector6 &screw_axis)
+      : pMc_(cMp.inverse()), screw_axis_(screw_axis) {}
 
   /** predict link pose
       Keyword argument:
-          pose_i        -- previous link pose
-          q             -- joint coordination
+          wTp        -- previous (parent) link pose
+          q          -- joint angle
       Returns:
-          pose_j        -- this link pose
+          wTc        -- this (child) link pose
   */
   gtsam::Pose3 operator()(
-      const gtsam::Pose3 &pose_i, const double &q,
-      gtsam::OptionalJacobian<6, 6> H_pose_i = boost::none,
+      const gtsam::Pose3 &wTp, const double &q,
+      gtsam::OptionalJacobian<6, 6> H_wTp = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
     gtsam::Matrix6 Hexp;
-    gtsam::Pose3 jTi = iMj_ * gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
+    gtsam::Pose3 cTp = pMc_ * gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
 
-    gtsam::Matrix6 pose_j_H_jTi;
-    auto pose_j = pose_i.compose(jTi, H_pose_i, pose_j_H_jTi);
+    gtsam::Matrix6 wTc_H_cTp;
+    auto wTc = wTp.compose(cTp, H_wTp, wTc_H_cTp);
     if (H_q) {
-      *H_q = pose_j_H_jTi * (Hexp * screw_axis_);
+      *H_q = wTc_H_cTp * (Hexp * screw_axis_);
     }
 
-    return pose_j;
+    return wTc;
   }
 };
 
-/** PoseFactor is a three-way nonlinear factor between the previuse link pose
+/** PoseFactor is a three-way nonlinear factor between the previous link pose
  * and this link pose*/
 class PoseFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, double> {
@@ -79,32 +79,32 @@ class PoseFactor
  public:
   /** Create single factor relating this link's pose (COM) with previous one.
       Keyword arguments:
-          jMi -- previous COM frame, expressed in this link's COM frame, at rest
-     configuration screw_axis -- screw axis expressed in link's COM frame
+          cMp -- previous (parent) COM frame, expressed in this (child) link's
+     COM frame, at rest configuration
+          screw_axis -- screw axis expressed in link's COM frame
    */
-  PoseFactor(gtsam::Key pose_key_i, gtsam::Key pose_key_j, gtsam::Key q_key,
+  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             const gtsam::Pose3 &jMi, const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, pose_key_i, pose_key_j, q_key),
-        predict_(jMi, screw_axis) {}
+             const gtsam::Pose3 &cMp, const gtsam::Vector6 &screw_axis)
+      : Base(cost_model, wTp_key, wTc_key, q_key), predict_(cMp, screw_axis) {}
 
   virtual ~PoseFactor() {}
 
   /** evaluate link pose errors
       Keyword argument:
-          pose_i         -- previous link pose
-          pose_j         -- this link pose
-          q              -- joint coordination
+          wTp         -- previous (parent) link pose
+          wTc         -- this (child) link pose
+          q           -- joint angle
   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j, const double &q,
-      boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
+      const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc, const double &q,
+      boost::optional<gtsam::Matrix &> H_wTp = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    auto pose_j_hat = predict_(pose_i, q, H_pose_i, H_q);
-    gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
-    if (H_pose_j) {
-      *H_pose_j = -gtsam::I_6x6;
+    auto wTc_hat = predict_(wTp, q, H_wTp, H_q);
+    gtsam::Vector6 error = wTc.logmap(wTc_hat);
+    if (H_wTc) {
+      *H_wTc = -gtsam::I_6x6;
     }
     return error;
   }
@@ -127,7 +127,7 @@ class PoseFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
