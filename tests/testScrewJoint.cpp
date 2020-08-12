@@ -45,9 +45,13 @@ TEST(Joint, params_constructor) {
   ScrewJointSharedPtr j1 =
       std::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
                                    parameters, gtsam::Vector3(1, 0, 0), 0.5);
+  j1->setID(123);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
+
+  // ID
+  EXPECT(123 == j1->getID());
 
   // joint effort type
   EXPECT(j1->jointEffortType() == JointEffortType::Actuated);
@@ -75,9 +79,13 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(T_12com, j1->transformFrom(l2, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->transformFrom(l1, -M_PI / 2)));
 
-  // transfrom to (rotating -pi/2)
+  // transform to (rotating -pi/2)
   EXPECT(assert_equal(T_12com, j1->transformTo(l1, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
+
+  // should throw error
+  CHECK_EXCEPTION(j1->transformTo(l1, gtsam::Values()),
+                  gtsam::ValuesKeyDoesNotExist);
 
   // links
   auto links = j1->links();

@@ -162,11 +162,12 @@ class JointTyped : public Joint {
 
   /// Return the transform from the other link com to this link
   /// com frame given a Values object containing this joint's angle Value
+  /// @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
   Pose3 transformTo(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    if (q && q->exists<AngleType>(getKey()))
+    if (q)
       return transformToImpl(link, q->at<AngleType>(getKey()), H_q);
     else
       return transformToImpl(link, boost::none, H_q);
@@ -200,6 +201,7 @@ class JointTyped : public Joint {
 
   /// Return the twist of this link given the other link's
   /// twist and a Values object containing this joint's angle Value.
+  /// @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
   gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Values> q_dot = boost::none,
@@ -208,8 +210,8 @@ class JointTyped : public Joint {
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist =
           boost::none) const override {
-    if (q && q->exists<AngleType>(getKey())) {
-      if (q_dot && q_dot->exists<AngleTangentType>(getKey())) {
+    if (q) {
+      if (q_dot) {
         return transformTwistToImpl(link,
             q->at<AngleType>(getKey()),
             q_dot->at<AngleTangentType>(getKey()),
@@ -266,6 +268,7 @@ class JointTyped : public Joint {
   /// Return the twist acceleration of the other link given this link's
   /// twist accel and a Values object containing this joint's angle Value and
   /// derivatives.
+  /// @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
   gtsam::Vector6 transformTwistAccelTo(
       const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Values> q_dot = boost::none,
@@ -278,9 +281,9 @@ class JointTyped : public Joint {
       boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const override {
-    if (q && q->exists<AngleType>(getKey())) {
-      if (q_dot && q_dot->exists<AngleTangentType>(getKey())) {
-        if (q_ddot && q_ddot->exists<AngleTangentType>(getKey())) {
+    if (q) {
+      if (q_dot) {
+        if (q_ddot) {
           return transformTwistAccelToImpl(link,
               q->at<AngleType>(getKey()),
               q_dot->at<AngleTangentType>(getKey()),
