@@ -15,18 +15,18 @@
 #ifndef GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
 #define GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
 
-#include <string>
-#include <vector>
-#include <memory>
-
-#include <boost/optional.hpp>
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include <boost/optional.hpp>
+
+#include <string>
+#include <vector>
+#include <memory>
 
 namespace gtdynamics {
 

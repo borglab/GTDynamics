@@ -14,16 +14,16 @@
 #ifndef GTDYNAMICS_FACTORS_TWISTFACTOR_H_
 #define GTDYNAMICS_FACTORS_TWISTFACTOR_H_
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
 #include <boost/optional.hpp>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include <string>
 
 namespace gtdynamics {
 

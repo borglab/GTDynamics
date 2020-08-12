@@ -13,6 +13,11 @@
 
 #include "gtdynamics/universal_robot/Robot.h"
 
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 
@@ -21,11 +26,6 @@
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
     gtsam::GaussianFactorGraph, gtsam::Vector3;

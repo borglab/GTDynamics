@@ -14,8 +14,7 @@
 #ifndef GTDYNAMICS_FACTORS_POSEFACTOR_H_
 #define GTDYNAMICS_FACTORS_POSEFACTOR_H_
 
-#include <memory>
-#include <string>
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -23,7 +22,8 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include <memory>
+#include <string>
 
 namespace gtdynamics {
 

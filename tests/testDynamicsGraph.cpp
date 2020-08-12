@@ -11,7 +11,14 @@
  * @Author: Yetong Zhang, Alejandro Escontrela
  */
 
-#include <CppUnitLite/TestHarness.h>
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/factors/MinTorqueFactor.h"
+#include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
+
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,15 +30,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <iostream>
+#include <CppUnitLite/TestHarness.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/factors/MinTorqueFactor.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
+#include <iostream>
 
 using namespace gtdynamics;
 

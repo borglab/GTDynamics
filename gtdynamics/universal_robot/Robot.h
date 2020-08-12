@@ -14,16 +14,16 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+
+#include <boost/optional.hpp>
+
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <boost/optional.hpp>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 

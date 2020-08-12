@@ -13,9 +13,6 @@
 
 #include "gtdynamics/universal_robot/JointTyped.h"
 
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
@@ -23,6 +20,9 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+
+#include <gtsam/linear/GaussianFactorGraph.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtdynamics {
 

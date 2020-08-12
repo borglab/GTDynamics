@@ -14,15 +14,15 @@
 #ifndef GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
 #define GTDYNAMICS_FACTORS_TORQUEFACTOR_H_
 
-#include <string>
-
-#include <boost/optional.hpp>
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include <boost/optional.hpp>
+
+#include <string>
 
 namespace gtdynamics {
 

@@ -14,6 +14,8 @@
 #ifndef GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
 #define GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
 
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -24,14 +26,12 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <string>
-#include <vector>
-
 #include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
 
-#include "gtdynamics/utils/utils.h"
+#include <string>
+#include <vector>
 
 namespace gtdynamics {
 

@@ -11,14 +11,15 @@
  * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
+
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
+
+#include <CppUnitLite/TestHarness.h>
 
 using namespace gtdynamics;
 

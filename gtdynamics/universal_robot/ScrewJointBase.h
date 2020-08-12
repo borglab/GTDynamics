@@ -20,13 +20,13 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
 
-#include <cmath>
-#include <map>
-#include <string>
-
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/utils/utils.h"
+
+#include <cmath>
+#include <map>
+#include <string>
 
 namespace gtdynamics {
 /**

@@ -11,7 +11,10 @@
  * @Author: Frank Dellaert and Mandy Xie
  */
 
-#include <CppUnitLite/TestHarness.h>
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/factors/PoseFactor.h"
+
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -21,11 +24,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <iostream>
+#include <CppUnitLite/TestHarness.h>
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/factors/PoseFactor.h"
+#include <iostream>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

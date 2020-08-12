@@ -14,19 +14,19 @@
 #ifndef GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 #define GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Robot.h"
+
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+
+#include <boost/optional.hpp>
 
 #include <cmath>
 #include <iosfwd>
 #include <string>
 #include <vector>
-
-#include <boost/optional.hpp>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Robot.h"
 
 namespace gtdynamics {
 

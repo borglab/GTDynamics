@@ -14,6 +14,10 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -21,10 +25,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 

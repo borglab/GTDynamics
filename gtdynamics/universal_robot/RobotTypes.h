@@ -14,12 +14,12 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
 
-#include <memory>
-#include <string>
-
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+
+#include <memory>
+#include <string>
 
 #define LINK_TYPEDEF_CLASS_POINTER(Class)                     \
   class Class;                                                \

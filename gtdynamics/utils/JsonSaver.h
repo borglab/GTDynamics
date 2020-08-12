@@ -10,23 +10,6 @@
 #ifndef GTDYNAMICS_UTILS_JSONSAVER_H_
 #define GTDYNAMICS_UTILS_JSONSAVER_H_
 
-#include <gtsam/base/Matrix.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/PriorFactor.h>
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <typeinfo>
-#include <vector>
-#include <map>
-#include <utility>
-
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
@@ -37,7 +20,24 @@
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/utils/utils.h"
 
+#include <gtsam/base/Matrix.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/PriorFactor.h>
+
 #include <boost/optional.hpp>
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <typeinfo>
+#include <vector>
+#include <map>
+#include <utility>
 
 #define kQuote_ "\""
 
