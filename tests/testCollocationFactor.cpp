@@ -49,9 +49,9 @@ TEST(PoseTwistFunctor, error) {
   EXPECT(assert_equal(pose_c, predictPose(pose_p, twistdt), 1e-6));
 
   // Create factor
-  EulerPoseColloFactor factor(
-      example::pose_p_key, example::pose_c_key, example::twist_p_key,
-      example::dt_key, example::cost_model);
+  EulerPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+                              example::twist_p_key, example::dt_key,
+                              example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_p, pose_c, twist, dt);
@@ -82,9 +82,9 @@ TEST(RandomData, EulerPose) {
   EXPECT(assert_equal(pose_c, predictPose(pose_p, twistdt), 1e-6));
 
   // Create factor
-  EulerPoseColloFactor factor(
-      example::pose_p_key, example::pose_c_key, example::twist_p_key,
-      example::dt_key, example::cost_model);
+  EulerPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+                              example::twist_p_key, example::dt_key,
+                              example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_p, pose_c, twist, dt);
@@ -114,9 +114,9 @@ TEST(RandomData, TrapezoidalPose) {
   Pose3 pose_c = pose_p * Pose3::Expmap(twistdt);
 
   // Create factor
-  TrapezoidalPoseColloFactor factor(
-      example::pose_p_key, example::pose_c_key, example::twist_p_key,
-      example::twist_c_key, example::dt_key, example::cost_model);
+  TrapezoidalPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+                                    example::twist_p_key, example::twist_c_key,
+                                    example::dt_key, example::cost_model);
 
   // call evaluateError
   auto actual_errors =
@@ -146,9 +146,9 @@ TEST(RandomData, EulerTwist) {
   double dt = 0.1;
 
   // Create factor
-  EulerTwistColloFactor factor(
-      example::twist_p_key, example::twist_c_key, example::accel_p_key,
-      example::dt_key, example::cost_model);
+  EulerTwistColloFactor factor(example::twist_p_key, example::twist_c_key,
+                               example::accel_p_key, example::dt_key,
+                               example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(twist_p, twist_c, accel_p, dt);
@@ -177,9 +177,9 @@ TEST(RandomData, TrapezoidalTwist) {
   double dt = 0.1;
 
   // Create factor
-  TrapezoidalTwistColloFactor factor(
-      example::twist_p_key, example::twist_c_key, example::accel_p_key,
-      example::accel_c_key, example::dt_key, example::cost_model);
+  TrapezoidalTwistColloFactor factor(example::twist_p_key, example::twist_c_key,
+                                     example::accel_p_key, example::accel_c_key,
+                                     example::dt_key, example::cost_model);
 
   // call evaluateError
   auto actual_errors =

@@ -92,10 +92,8 @@ Values InitializeSolutionInterpolation(
     // Initialize joint kinematics/dynamics to 0.
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
-      init_vals.insert(WrenchKey(joint->parentID(), j, t),
-                       sampler.sample());
-      init_vals.insert(WrenchKey(joint->childID(), j, t),
-                       sampler.sample());
+      init_vals.insert(WrenchKey(joint->parentID(), j, t), sampler.sample());
+      init_vals.insert(WrenchKey(joint->childID(), j, t), sampler.sample());
       init_vals.insert(TorqueKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointAngleKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointVelKey(j, t), sampler.sample()[0]);
@@ -227,10 +225,8 @@ Values InitializeSolutionInverseKinematics(
     }
     for (auto&& joint : robot.joints()) {
       int j = joint->getID();
-      init_vals.insert(WrenchKey(joint->parentID(), j, t),
-                       sampler.sample());
-      init_vals.insert(WrenchKey(joint->childID(), j, t),
-                       sampler.sample());
+      init_vals.insert(WrenchKey(joint->parentID(), j, t), sampler.sample());
+      init_vals.insert(WrenchKey(joint->childID(), j, t), sampler.sample());
       init_vals.insert(TorqueKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointVelKey(j, t), sampler.sample()[0]);
       init_vals.insert(JointAccelKey(j, t), sampler.sample()[0]);
@@ -282,9 +278,8 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     auto child_link = joint->childLink();
     zero_values.insert(WrenchKey(parent_link->getID(), j, t), sampler.sample());
     zero_values.insert(WrenchKey(child_link->getID(), j, t), sampler.sample());
-    std::vector<DynamicsSymbol> keys = {
-        TorqueKey(j, t), JointAngleKey(j, t), JointVelKey(j, t),
-        JointAccelKey(j, t)};
+    std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
+                                        JointVelKey(j, t), JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)
       zero_values.insert(keys[i], sampler.sample()[0]);
   }

@@ -38,8 +38,8 @@ gtsam::Pose3 predictPose(
   gtsam::Pose3 t1Tt0 = gtsam::Pose3::Expmap(twistdt, Hexp);
 
   gtsam::Matrix6 pose_t1_H_t1Tt0;
-  auto pose_t1 = pose_t0.compose(t1Tt0, H_pose_t0,
-                                 H_twistdt ? & pose_t1_H_t1Tt0 : nullptr);
+  auto pose_t1 =
+      pose_t0.compose(t1Tt0, H_pose_t0, H_twistdt ? &pose_t1_H_t1Tt0 : nullptr);
   if (H_twistdt) {
     *H_twistdt = pose_t1_H_t1Tt0 * (Hexp);
   }
@@ -125,8 +125,8 @@ class TrapezoidalPoseColloFactor
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
   typedef TrapezoidalPoseColloFactor This;
-  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3, gtsam::Vector6,
-                                   gtsam::Vector6, double>;
+  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
+                                        gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
   TrapezoidalPoseColloFactor(
@@ -149,7 +149,8 @@ class TrapezoidalPoseColloFactor
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose_t0, const gtsam::Pose3 &pose_t1,
       const gtsam::Vector6 &twist_t0, const gtsam::Vector6 &twist_t1,
-      const double &dt, boost::optional<gtsam::Matrix &> H_pose_t0 = boost::none,
+      const double &dt,
+      boost::optional<gtsam::Matrix &> H_pose_t0 = boost::none,
       boost::optional<gtsam::Matrix &> H_pose_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_t0 = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_t1 = boost::none,
@@ -308,8 +309,8 @@ class TrapezoidalTwistColloFactor
       boost::optional<gtsam::Matrix &> H_accel_t0 = boost::none,
       boost::optional<gtsam::Matrix &> H_accel_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_dt = boost::none) const override {
-    gtsam::Vector6 error = twist_t0 + 0.5 * dt * (accel_t0 + accel_t1) -
-                           twist_t1;
+    gtsam::Vector6 error =
+        twist_t0 + 0.5 * dt * (accel_t0 + accel_t1) - twist_t1;
     if (H_twist_t1) {
       *H_twist_t1 = -gtsam::I_6x6;
     }

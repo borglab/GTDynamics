@@ -80,14 +80,13 @@ class PoseFactor
   /** Create single factor relating this link's pose (COM) with previous one.
       Keyword arguments:
           cMp -- previous (parent) COM frame, expressed in this (child) link's
-     COM frame, at rest configuration 
+     COM frame, at rest configuration
           screw_axis -- screw axis expressed in link's COM frame
    */
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              const gtsam::Pose3 &cMp, const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, wTp_key, wTc_key, q_key),
-        predict_(cMp, screw_axis) {}
+      : Base(cost_model, wTp_key, wTc_key, q_key), predict_(cMp, screw_axis) {}
 
   virtual ~PoseFactor() {}
 
@@ -128,7 +127,7 @@ class PoseFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }

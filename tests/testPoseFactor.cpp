@@ -26,7 +26,7 @@
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
@@ -49,13 +49,12 @@ TEST(PoseFactor, error) {
   // check prediction
   double jointAngle = 0;
   gtsam::Pose3 pose_p(gtsam::Rot3(), gtsam::Point3(1, 0, 0)),
-               pose_c(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
+      pose_c(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
   EXPECT(assert_equal(pose_c, predictPose(pose_p, jointAngle), 1e-6));
 
   // Create factor
-  PoseFactor factor(example::pose_p_key, example::pose_c_key,
-                                example::qKey, example::cost_model, cMp,
-                                screw_axis);
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+                    example::cost_model, cMp, screw_axis);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_p, pose_c, jointAngle);

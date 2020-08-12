@@ -19,9 +19,8 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
 #include <boost/optional.hpp>
+#include <string>
 
 #include "gtdynamics/utils/utils.h"
 
@@ -114,7 +113,7 @@ class TwistFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }

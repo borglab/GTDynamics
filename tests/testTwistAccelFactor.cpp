@@ -26,7 +26,7 @@
 
 #include "gtdynamics/factors/TwistAccelFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
@@ -47,10 +47,10 @@ TEST(TwistAccelFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TwistAccelFactor factor(
-      example::twistKey, example::twistAccel_p_key, example::twistAccel_c_key,
-      example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
-      cMp, screw_axis);
+  TwistAccelFactor factor(example::twistKey, example::twistAccel_p_key,
+                          example::twistAccel_c_key, example::qKey,
+                          example::qVelKey, example::qAccelKey,
+                          example::cost_model, cMp, screw_axis);
   double q = M_PI / 4, qVel = 10, qAccel = 10;
   gtsam::Vector twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -82,10 +82,10 @@ TEST(TwistAccelFactor, error_1) {
   gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
   gtsam::Vector6 screw_axis = (gtsam::Vector(6) << 0, 0, 1, 0, 1, 0).finished();
 
-  TwistAccelFactor factor(
-      example::twistKey, example::twistAccel_p_key, example::twistAccel_c_key,
-      example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
-      cMp, screw_axis);
+  TwistAccelFactor factor(example::twistKey, example::twistAccel_p_key,
+                          example::twistAccel_c_key, example::qKey,
+                          example::qVelKey, example::qAccelKey,
+                          example::cost_model, cMp, screw_axis);
   double q = 0, qVel = 0, qAccel = -9.8;
   gtsam::Vector6 twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();

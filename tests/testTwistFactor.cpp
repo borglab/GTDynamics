@@ -25,7 +25,7 @@
 
 #include "gtdynamics/factors/TwistFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
@@ -43,9 +43,8 @@ TEST(TwistFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  TwistFactor factor(example::twist_p_key, example::twist_c_key,
-                                 example::qKey, example::qVelKey,
-                                 example::cost_model, cMp, screw_axis);
+  TwistFactor factor(example::twist_p_key, example::twist_c_key, example::qKey,
+                     example::qVelKey, example::cost_model, cMp, screw_axis);
   double q = M_PI / 4, qVel = 10;
   gtsam::Vector twist_p, twist_c;
   twist_p = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
