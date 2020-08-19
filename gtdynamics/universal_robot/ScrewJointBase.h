@@ -133,8 +133,13 @@ class ScrewJointBase : public JointTyped {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
+  // inherit overloads
+  using JointTyped::transformTo;
+  using JointTyped::transformTwistTo;
+  using JointTyped::transformTwistAccelTo;
+
   /// Return the transform from the other link com to this link com frame
-  Pose3 transformToImpl(
+  Pose3 transformTo(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
     return isChildLink(link) ? cMpCom(q, H_q) : pMcCom(q, H_q);
@@ -142,7 +147,7 @@ class ScrewJointBase : public JointTyped {
 
   /// Return the twist of this link given the other link's twist and
   /// joint angle.
-  gtsam::Vector6 transformTwistToImpl(
+  gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
@@ -176,7 +181,7 @@ class ScrewJointBase : public JointTyped {
 
   /// Return the twist acceleration of this link given the other link's twist
   /// acceleration, twist, and joint angle and this link's twist.
-  gtsam::Vector6 transformTwistAccelToImpl(
+  gtsam::Vector6 transformTwistAccelTo(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
       boost::optional<double> q_ddot = boost::none,
@@ -223,7 +228,7 @@ class ScrewJointBase : public JointTyped {
     return this_twist_accel;
   }
 
-  AngleTangentType transformWrenchToTorqueImpl(
+  AngleTangentType transformWrenchToTorque(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override {
