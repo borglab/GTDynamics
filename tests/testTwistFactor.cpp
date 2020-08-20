@@ -78,9 +78,8 @@ TEST(TwistFactor, error) {
 
   auto joint = make_joint(jMi, screw_axis);
 
-  TwistFactor factor(example::twist_i_key, example::twist_j_key,
-                                     example::qKey, example::qVelKey,
-                                     example::cost_model, joint);
+  TwistFactor factor(example::twist_i_key, example::twist_j_key, example::qKey,
+                     example::qVelKey, example::cost_model, joint);
   double q = M_PI / 4, qVel = 10;
   gtsam::Vector twist_i, twist_j;
   twist_i = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();

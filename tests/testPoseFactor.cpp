@@ -107,8 +107,8 @@ TEST(PoseFactor, breaking) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(jMi, screw_axis);
-  PoseFactor factor(example::pose_i_key, example::pose_j_key,
-                                example::qKey, example::cost_model, joint);
+  PoseFactor factor(example::pose_i_key, example::pose_j_key, example::qKey,
+                    example::cost_model, joint);
   double jointAngle;
   gtsam::Pose3 pose_i, pose_j;
 
@@ -144,8 +144,8 @@ TEST(PoseFactor, breaking_rr) {
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 jMi = j1->transformTo(l2);
   auto joint = make_joint(jMi, screw_axis);
-  PoseFactor factor(example::pose_i_key, example::pose_j_key,
-                                example::qKey, example::cost_model, joint);
+  PoseFactor factor(example::pose_i_key, example::pose_j_key, example::qKey,
+                    example::cost_model, joint);
 
   EXPECT(assert_equal(
       gtsam::Vector6::Zero(),
@@ -161,8 +161,8 @@ TEST(PoseFactor, nonzero_rest) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(jMi, screw_axis);
-  PoseFactor factor(example::pose_i_key, example::pose_j_key,
-                                    example::qKey, example::cost_model, joint);
+  PoseFactor factor(example::pose_i_key, example::pose_j_key, example::qKey,
+                    example::cost_model, joint);
 
   double jointAngle;
   gtsam::Pose3 pose_i, pose_j;

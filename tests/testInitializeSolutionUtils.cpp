@@ -11,22 +11,21 @@
  * @Author: Alejandro Escontrela and Yetong Zhang
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-
-#include <CppUnitLite/TestHarness.h>
 
 #include <cmath>
 #include <iostream>
 #include <string>
 
-using namespace gtdynamics;
+#include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
+
+using namespace gtdynamics; 
 using gtsam::assert_equal;
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
@@ -67,7 +66,6 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
-
   using simple_urdf_eq_mass::my_robot;
 
   gtsam::Pose3 wTb_i =
