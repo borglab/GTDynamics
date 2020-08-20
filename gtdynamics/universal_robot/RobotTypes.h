@@ -36,15 +36,6 @@ LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
 LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
 LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
 
-// map from joint Key to joint angle/vel/accel/torque
-typedef gtsam::Values JointValues;
-
-// map from link name to link pose
-typedef std::map<std::string, gtsam::Pose3> LinkPoses;
-
-// map from link name to link twist
-typedef std::map<std::string, gtsam::Vector6> LinkTwists;
-
 }  // namespace gtdynamics.
 
 #endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_

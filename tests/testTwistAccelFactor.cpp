@@ -83,10 +83,10 @@ TEST(TwistAccelFactor, error) {
   auto joint = make_joint(cMp, screw_axis);
 
   // create factor
-  TwistAccelFactor factor(
-      example::twistKey, example::twistAccel_p_key, example::twistAccel_c_key,
-      example::qKey, example::qVelKey, example::qAccelKey, example::cost_model,
-      joint);
+  TwistAccelFactor factor(example::twistKey, example::twistAccel_p_key,
+                          example::twistAccel_c_key, example::qKey,
+                          example::qVelKey, example::qAccelKey,
+                          example::cost_model, joint);
   double q = M_PI / 4, qVel = 10, qAccel = 10;
   gtsam::Vector twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();

@@ -55,7 +55,6 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
 
 /** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
  * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
- * @param joint_parameters a vector containing optional parameters for joints.
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromSdf(

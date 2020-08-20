@@ -81,7 +81,7 @@ TEST(TorqueFactor, error) {
   auto joint = make_joint(kMj, screw_axis);
 
   TorqueFactor factor(example::wrench_key, example::torque_key,
-                                      example::cost_model, joint);
+                      example::cost_model, joint);
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   gtsam::Vector1 actual_errors, expected_errors;
