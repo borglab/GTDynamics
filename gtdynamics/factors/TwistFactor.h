@@ -22,7 +22,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
-
 #include <string>
 
 namespace gtdynamics {
@@ -41,33 +40,36 @@ class TwistFactor
                                    typename JointTyped::AngleType,
                                    typename JointTyped::AngleTangentType>
       Base;
-  gtsam::Pose3 jMi_;
+  gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
+  gtsam::Vector6 screw_axis_;
 
  public:
-  /** Create single factor relating this link's twist with previous one.
+  /** Create single factor relating child link's twist with parent one.
       Keyword arguments:
-          joint -- JointConstSharedPtr to the joint
-  */
-  TwistFactor(gtsam::Key twistI_key, gtsam::Key twistJ_key, gtsam::Key q_key,
+          joint -- a Joint
+      Will create factor corresponding to Lynch & Park book:
+        -Equation 8.45, page 292
+   */
+  TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
               const gtsam::noiseModel::Base::shared_ptr &cost_model,
               JointConstSharedPtr joint)
-      : Base(cost_model, twistI_key, twistJ_key, q_key, qVel_key),
+      : Base(cost_model, twistP_key, twistC_key, q_key, qVel_key),
         joint_(joint) {}
   virtual ~TwistFactor() {}
 
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twist_i       -- twist on the previous link
-          twist_j       -- twist on this link
+          twist_p       -- twist on the previous link
+          twist_c       -- twist on this link
           q             -- joint coordination
           qVel          -- joint velocity
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
-      const JointAngleType &q, const JointAngleTangentType &qVel,
+      const double &q, const double &qVel,
       boost::optional<gtsam::Matrix &> H_twist_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
@@ -104,7 +106,7 @@ class TwistFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }

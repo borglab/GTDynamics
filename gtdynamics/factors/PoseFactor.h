@@ -46,49 +46,49 @@ class PoseFactor
       Keyword arguments:
           joint -- the joint connecting the two poses
    */
-  PoseFactor(gtsam::Key pose_key_i, gtsam::Key pose_key_j, gtsam::Key q_key,
+  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
-      : Base(cost_model, pose_key_i, pose_key_j, q_key),
+      : Base(cost_model, wTp_key, wTc_key, q_key),
         joint_(std::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~PoseFactor() {}
 
   /** evaluate link pose errors
       Keyword argument:
-          pose_i         -- previous link pose
-          pose_j         -- this link pose
-          q              -- joint coordination
+          wTp         -- previous (parent) link pose
+          wTc         -- this (child) link pose
+          q           -- joint angle
   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j,
+      const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc,
       const JointAngleType &q,
-      boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTp = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    gtsam::Pose3 pose_j_hat;
+    gtsam::Pose3 wTc_hat;
     if (H_q) {
-      gtsam::Matrix6 pose_j_hat_H_iTjhat;
-      gtsam::Matrix iTjhat_H_q;
-      gtsam::Pose3 iTjhat =
-          joint_->transformTo(joint_->parentLink(), q, iTjhat_H_q);
-      pose_j_hat = pose_i.compose(iTjhat, H_pose_i, pose_j_hat_H_iTjhat);
-      *H_q = pose_j_hat_H_iTjhat * iTjhat_H_q;
+      gtsam::Matrix6 wTc_hat_H_pTjhat;
+      gtsam::Matrix pTc_hat_H_q;
+      gtsam::Pose3 pTc_hat =
+          joint_->transformTo(joint_->parentLink(), q, pTc_hat_H_q);
+      wTc_hat = wTp.compose(pTc_hat, H_wTp, wTc_hat_H_pTjhat);
+      *H_q = wTc_hat_H_pTjhat * pTc_hat_H_q;
     } else {
-      gtsam::Pose3 iTjhat = joint_->transformTo(joint_->parentLink(), q);
-      pose_j_hat = pose_i.compose(iTjhat, H_pose_i);
+      gtsam::Pose3 pTc_hat = joint_->transformTo(joint_->parentLink(), q);
+      wTc_hat = wTp.compose(pTc_hat, H_wTp);
     }
     gtsam::Vector6 error;
-    if (!(H_q || H_pose_i)) {
-      error = pose_j.logmap(pose_j_hat, H_pose_j);
+    if (!(H_q || H_wTp)) {
+      error = wTc.logmap(wTc_hat, H_wTc);
     } else {
-      gtsam::Matrix6 H_pose_j_hat;
-      error = pose_j.logmap(pose_j_hat, H_pose_j, H_pose_j_hat);
+      gtsam::Matrix6 H_wTc_hat;
+      error = wTc.logmap(wTc_hat, H_wTc, H_wTc_hat);
 
-      if (H_pose_i)
-        *H_pose_i = H_pose_j_hat * (*H_pose_i);
+      if (H_wTp)
+        *H_wTp = H_wTc_hat * (*H_wTp);
       if (H_q)
-        *H_q = H_pose_j_hat * (*H_q);
+        *H_q = H_wTc_hat * (*H_q);
     }
 
     return error;
@@ -112,7 +112,7 @@ class PoseFactor
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }

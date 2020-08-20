@@ -63,10 +63,10 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
 
   // create joint
   ScrewJointBase::Parameters joint_params;
-  joint_params.effort_type = JointEffortType::Actuated;
-  joint_params.joint_lower_limit = -1.57;
-  joint_params.joint_upper_limit = 1.57;
-  joint_params.joint_limit_threshold = 0;
+  joint_params.effort_type = Joint::EffortType::Actuated;
+  joint_params.scalar_limits.value_lower_limit = -1.57;
+  joint_params.scalar_limits.value_upper_limit = 1.57;
+  joint_params.scalar_limits.value_limit_threshold = 0;
   Pose3 wTj = Pose3(Rot3(), Point3(0, 0, 2));
   Pose3 jTccom = wTj.inverse() * l2->wTcom();
   Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;

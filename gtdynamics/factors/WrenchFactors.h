@@ -44,7 +44,6 @@ class WrenchFactor0
   typedef WrenchFactor0 This;
   typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
       Base;
-  gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
@@ -90,8 +89,8 @@ class WrenchFactor0
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist of this link
-          twsit_accel   -- twist acceleration of this link
+          twist         -- twist of this link
+          twist_accel   -- twist acceleration of this link
           pose          -- pose of this link
   */
   gtsam::Vector evaluateError(
@@ -162,7 +161,6 @@ class WrenchFactor1
   typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                    gtsam::Vector6, gtsam::Pose3>
       Base;
-  gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
@@ -286,7 +284,6 @@ class WrenchFactor2
   typedef gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
                                    gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
       Base;
-  gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
@@ -419,7 +416,6 @@ class WrenchFactor3
                                    gtsam::Vector6, gtsam::Vector6,
                                    gtsam::Vector6, gtsam::Pose3>
       Base;
-  gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
@@ -661,7 +657,6 @@ class WrenchFactor4
                             gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
                             gtsam::Pose3>
       Base;
-  gtsam::Pose3 kMj_;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 

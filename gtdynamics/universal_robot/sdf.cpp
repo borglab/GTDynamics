@@ -11,45 +11,17 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-ScrewJointBase::Parameters ParametersFromFile(
+Joint::Parameters ParametersFromSdfJoint(
     const sdf::Joint &sdf_joint) {
-  ScrewJointBase::Parameters parameters;
+  Joint::Parameters parameters;
 
-  parameters.joint_lower_limit = sdf_joint.Axis()->Lower();
-  parameters.joint_upper_limit = sdf_joint.Axis()->Upper();
-  parameters.damping_coefficient = sdf_joint.Axis()->Damping();
+  parameters.scalar_limits.value_lower_limit = sdf_joint.Axis()->Lower();
+  parameters.scalar_limits.value_upper_limit = sdf_joint.Axis()->Upper();
   parameters.velocity_limit = sdf_joint.Axis()->MaxVelocity();
   parameters.torque_limit = sdf_joint.Axis()->Effort();
+  parameters.damping_coefficient = sdf_joint.Axis()->Damping();
 
   return parameters;
-}
-
-/** @fn Populate a joint parameters struct for a given joint, either with 
- * parameter values passed in directly or with the default values.
- * @param[in] joint shared pointer to joint.
- * @param[in] joint_i an sdf::Joint object.
- * @param[in] joint_parameters a vector containing optional parameters for
- * joints.
- * @return a joint parameter struct.
- */
-static ScrewJointBase::Parameters GetJointParameters(
-    JointConstSharedPtr joint, const sdf::Joint &joint_i,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>>
-        joint_parameters) {
-  ScrewJointBase::Parameters default_parameters;
-  ScrewJointBase::Parameters jps;
-  if (joint_parameters) {
-    // auto jparameters = std::find_if(joint_parameters.get().begin(),
-    //                                 joint_parameters.get().end(),
-    //                                 [=](const ScrewJointBase::Parameters &jps) {
-    //                                   return (joint->name() == joint_i.Name());
-    //                                 });
-    // jps = jparameters == joint_parameters.get().end() ? default_parameters
-    //                                                   : *jparameters;
-  } else {
-    jps = default_parameters;
-  }
-  return jps;
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
@@ -87,9 +59,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromSdf(
-    const sdf::Model sdf,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>>
-        joint_parameters) {
+    const sdf::Model &sdf) {
   // Loop through all links in the sdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -120,9 +90,8 @@ static LinkJointPair ExtractRobotFromSdf(
     // Construct Joint and insert into name_to_joint.
     JointSharedPtr joint;
 
-    // Obtain joint parameters.
-    ScrewJointBase::Parameters parameters =
-        GetJointParameters(joint, sdf_joint, joint_parameters);
+    // Generate a joint parameters struct with values from the SDF.
+    Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
 
     std::string name(sdf_joint.Name());
     Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
@@ -163,22 +132,17 @@ static LinkJointPair ExtractRobotFromSdf(
  * robot description.
  * @param[in] model_name name of the robot we care about. Must be specified in
  * case sdf_file_path points to a world file.
- * @param[in] joint_parameters a vector containing optional parameters for
- * joints.
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromFile(
-    const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<ScrewJointBase::Parameters>>
-        joint_parameters = boost::none) {
+    const std::string &file_path, const std::string &model_name) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
   if (file_ext == "urdf")
-    return ExtractRobotFromSdf(get_sdf(file_path), joint_parameters);
+    return ExtractRobotFromSdf(get_sdf(file_path));
   else if (file_ext == "sdf")
-    return ExtractRobotFromSdf(get_sdf(file_path, model_name),
-                               joint_parameters);
+    return ExtractRobotFromSdf(get_sdf(file_path, model_name));
 
   throw std::runtime_error("Invalid file extension.");
 }

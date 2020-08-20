@@ -37,10 +37,10 @@ TEST(Joint, params_constructor_prismatic) {
       std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
-  parameters.effort_type = JointEffortType::Actuated;
-  parameters.joint_lower_limit = 0;
-  parameters.joint_upper_limit = 2;
-  parameters.joint_limit_threshold = 0;
+  parameters.effort_type = Joint::EffortType::Actuated;
+  parameters.scalar_limits.value_lower_limit = 0;
+  parameters.scalar_limits.value_upper_limit = 2;
+  parameters.scalar_limits.value_limit_threshold = 0;
 
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
@@ -59,7 +59,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint effort type
-  EXPECT(j1->jointEffortType() == JointEffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == Joint::EffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -101,9 +101,12 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->childLink() == l2);
 
   // joint limit
-  EXPECT(assert_equal(0, j1->jointLowerLimit()));
-  EXPECT(assert_equal(2, j1->jointUpperLimit()));
-  EXPECT(assert_equal(0.0, j1->jointLimitThreshold()));
+  EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit,
+                      j1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(parameters.scalar_limits.value_upper_limit,
+                      j1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold,
+                      j1->parameters().scalar_limits.value_limit_threshold));
 }
 
 int main() {

@@ -36,33 +36,9 @@ namespace gtdynamics {
  *  It is the base class for RevoluteJoint, PrismaticJoint, and ScrewJoint.
  */
 class ScrewJointBase : public JointTyped {
- public:
-  /**
-   * This struct contains all parameters needed to construct a joint.
-   * TODO (stephanie): Make sure all parameters have meaningful default values.
-   */
-  struct Parameters {
-    JointEffortType effort_type = JointEffortType::Actuated;
-
-    //TODO (stephanie): replace these three parameters with ScalarLimit struct.
-    double joint_lower_limit;
-    double joint_upper_limit;
-    double joint_limit_threshold = 0.0;
-
-    double velocity_limit;
-    double velocity_limit_threshold = 0.0;
-    double acceleration_limit = 10000;
-    double acceleration_limit_threshold = 0.0;
-    double torque_limit;
-    double torque_limit_threshold = 0.0;
-    double damping_coefficient;
-    double spring_coefficient = 0.0;
-  };
+  using Pose3 = gtsam::Pose3;
 
  protected:
-  // Joint parameters struct.
-  Parameters parameters_;
-
   gtsam::Vector3 axis_;
 
   // Screw axis in parent and child COM frames.
@@ -119,14 +95,13 @@ class ScrewJointBase : public JointTyped {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const Parameters &parameters,
                  const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
-      : JointTyped(name, wTj, parent_link, child_link),
-        parameters_(parameters),
+      : JointTyped(name, wTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
-  /// Return joint effort type
-  JointEffortType jointEffortType() const { return parameters_.effort_type; }
+  /// Return joint type for use in reconstructing robot from Parameters.
+  Type type() const override { return Type::ScrewAxis; }
 
   /// Return screw axis expressed in the specified link frame
   const gtsam::Vector6 screwAxis(const LinkSharedPtr &link) const {
@@ -160,8 +135,6 @@ class ScrewJointBase : public JointTyped {
     gtsam::Vector6 other_twist_ =
         other_twist ? *other_twist : gtsam::Vector6::Zero();
 
-    // i = other link
-    // j = this link
     auto this_ad_other = transformTo(link, q_).AdjointMap();
 
     if (H_q) {
@@ -245,47 +218,6 @@ class ScrewJointBase : public JointTyped {
     return AdjointMapJacobianQ(q ? *q : 0, transformTo(link), screwAxis(link));
   }
 
-  /// Return joint angle lower limit.
-  double jointLowerLimit() const { return parameters_.joint_lower_limit; }
-
-  /// Return joint angle upper limit.
-  double jointUpperLimit() const { return parameters_.joint_upper_limit; }
-
-  /// Return joint angle limit threshold.
-  double jointLimitThreshold() const {
-    return parameters_.joint_limit_threshold;
-  }
-
-  /// Return joint damping coefficient
-  double dampCoefficient() const { return parameters_.damping_coefficient; }
-
-  /// Return joint spring coefficient
-  double springCoefficient() const { return parameters_.spring_coefficient; }
-
-  /// Return joint velocity limit.
-  double velocityLimit() const { return parameters_.velocity_limit; }
-
-  /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const {
-    return parameters_.velocity_limit_threshold;
-  }
-
-  /// Return joint acceleration limit.
-  double accelerationLimit() const { return parameters_.acceleration_limit; }
-
-  /// Return joint acceleration limit threshold.
-  double accelerationLimitThreshold() const {
-    return parameters_.acceleration_limit_threshold;
-  }
-
-  /// Return joint torque limit.
-  double torqueLimit() const { return parameters_.torque_limit; }
-
-  /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const {
-    return parameters_.torque_limit_threshold;
-  }
-
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const std::map<std::string, double> &torques,
@@ -309,18 +241,18 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = poses.at(parent_link_->name());
-    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_wi1 = poses.at(parentName());
+    const Pose3 T_wi2 = poses.at(childName());
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
+    const gtsam::Vector6 V_i2 = twists.at(childName());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
     const double v_j = joint_vels.at(name());
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     gtsam::Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child_link_->getID(), t), gtsam::I_6x6,
-              TwistAccelKey(parent_link_->getID(), t), -T_i2i1.AdjointMap(),
+    graph.add(TwistAccelKey(childID(), t), gtsam::I_6x6,
+              TwistAccelKey(parentID(), t), -T_i2i1.AdjointMap(),
               JointAccelKey(getID(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
@@ -337,31 +269,31 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = poses.at(parent_link_->name());
-    const Pose3 T_wi2 = poses.at(child_link_->name());
+    const Pose3 T_wi1 = poses.at(parentName());
+    const Pose3 T_wi2 = poses.at(childName());
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    // const gtsam::Vector6 V_i2 = twists.at(child_link_->name());
+    // const gtsam::Vector6 V_i2 = twists.at(childName());
     const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
 
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child_link_->getID(), getID(), t), S_i2_j.transpose(),
+    graph.add(WrenchKey(childID(), getID(), t), S_i2_j.transpose(),
               TorqueKey(getID(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     gtsam::Vector6 rhs_weq = gtsam::Vector6::Zero();
-    graph.add(WrenchKey(parent_link_->getID(), getID(), t), gtsam::I_6x6,
-              WrenchKey(child_link_->getID(), getID(), t),
+    graph.add(WrenchKey(parentID(), getID(), t), gtsam::I_6x6,
+              WrenchKey(childID(), getID(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child_link_->getID(), getID(), t), J_wrench,
+      graph.add(WrenchKey(childID(), getID(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
@@ -375,23 +307,26 @@ class ScrewJointBase : public JointTyped {
     auto id = getID();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
-        JointAngleKey(id, t), opt.jl_cost_model, jointLowerLimit(),
-        jointUpperLimit(), jointLimitThreshold());
+        JointAngleKey(id, t), opt.jl_cost_model,
+        parameters().scalar_limits.value_lower_limit,
+        parameters().scalar_limits.value_upper_limit,
+        parameters().scalar_limits.value_limit_threshold);
 
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointVelKey(id, t), opt.jl_cost_model, -velocityLimit(),
-        velocityLimit(), velocityLimitThreshold());
+        JointVelKey(id, t), opt.jl_cost_model, -parameters().velocity_limit,
+        parameters().velocity_limit, parameters().velocity_limit_threshold);
 
     // Add joint acceleration limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointAccelKey(id, t), opt.jl_cost_model, -accelerationLimit(),
-        accelerationLimit(), accelerationLimitThreshold());
+        JointAccelKey(id, t), opt.jl_cost_model,
+        -parameters().acceleration_limit, parameters().acceleration_limit,
+        parameters().acceleration_limit_threshold);
 
     // Add joint torque limit factors.
-    graph.emplace_shared<JointLimitFactor>(TorqueKey(id, t), opt.jl_cost_model,
-                                           -torqueLimit(), torqueLimit(),
-                                           torqueLimitThreshold());
+    graph.emplace_shared<JointLimitFactor>(
+        TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
+        parameters().torque_limit, parameters().torque_limit_threshold);
     return graph;
   }
 };
