@@ -60,17 +60,17 @@ ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 jMi,
 
   // create joint
   ScrewJointBase::Parameters joint_params;
-  joint_params.effort_type = JointEffortType::Actuated;
-  joint_params.joint_lower_limit = -1.57;
-  joint_params.joint_upper_limit = 1.57;
-  joint_params.joint_limit_threshold = 0;
+  joint_params.effort_type = Joint::EffortType::Actuated;
+  joint_params.scalar_limits.value_lower_limit = -1.57;
+  joint_params.scalar_limits.value_upper_limit = 1.57;
+  joint_params.scalar_limits.value_limit_threshold = 0;
   gtsam::Pose3 wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
   gtsam::Pose3 jTccom = wTj.inverse() * l2->wTcom();
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
   return std::make_shared<const ScrewJointBase>(
       ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
-      jScrewAxis));
+                     jScrewAxis));
 }
 
 // Test twistAccel factor for stationary case

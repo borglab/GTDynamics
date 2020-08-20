@@ -46,7 +46,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    ScrewJointBase::Parameters struct
+   * @param[in] parameters    Joint::Parameters struct
    * @param[in] axis          joint axis expressed in joint frame
    */
   PrismaticJoint(const std::string &name, const gtsam::Pose3 &wTj,
@@ -55,6 +55,9 @@ class PrismaticJoint : public ScrewJointBase {
                  const gtsam::Vector3 &axis)
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
+
+  /// Return joint type for use in reconstructing robot from Parameters.
+  Type type() const { return Type::Prismatic; }
 };
 
 }  // namespace gtdynamics
