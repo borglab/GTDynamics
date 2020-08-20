@@ -104,16 +104,8 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
 
 GaussianFactorGraph DynamicsGraph::linearFDPriors(
     const Robot &robot, const int t, const Robot::JointValues &torques) {
-  GaussianFactorGraph graph;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->getID();
-    double torque = torques.at(joint->name());
-    gtsam::Vector1 rhs;
-    rhs << torque;
-    graph.add(TorqueKey(j, t), I_1x1, rhs,
-              gtsam::noiseModel::Constrained::All(1));
-  }
-  return graph;
+  OptimizerSetting opt_ = OptimizerSetting();
+  return robot.linearFDPriors(t, torques, opt_);
 }
 
 GaussianFactorGraph DynamicsGraph::linearIDPriors(
