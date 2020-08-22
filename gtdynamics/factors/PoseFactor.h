@@ -102,20 +102,20 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     if (H_wTp || H_q) {
-      gtsam::Matrix H_wTp_predict, H_q_predict, H_wTc_logmap;
-      auto wTc_predict = predict_(wTp, q, H_wTp_predict, H_q_predict);
-      gtsam::Vector6 error = wTc.logmap(wTc_predict, H_wTc, H_wTc_logmap);
+      gtsam::Matrix H_wTp_predicted, H_q_predicted, H_wTc_logmap;
+      auto wTc_predicted = predict_(wTp, q, H_wTp_predicted, H_q_predicted);
+      gtsam::Vector6 error = wTc.logmap(wTc_predicted, H_wTc, H_wTc_logmap);
       if (H_wTp) {
-        *H_wTp = H_wTc_logmap * H_wTp_predict;
+        *H_wTp = H_wTc_logmap * H_wTp_predicted;
       }
       if (H_q) {
-        *H_q = H_wTc_logmap * H_q_predict;
+        *H_q = H_wTc_logmap * H_q_predicted;
       }
       return error;
     }
     else {
-      auto wTc_predict = predict_(wTp, q);
-      return wTc.logmap(wTc_predict, H_wTc, boost::none);
+      auto wTc_predicted = predict_(wTp, q);
+      return wTc.logmap(wTc_predicted, H_wTc, boost::none);
     }
   }
 
