@@ -53,13 +53,13 @@ class PoseFunctor {
       const gtsam::Pose3 &wTp, const double &q,
       gtsam::OptionalJacobian<6, 6> H_wTp = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-    gtsam::Matrix6 Hexp;
-    gtsam::Pose3 cTp = pMc_ * gtsam::Pose3::Expmap(screw_axis_ * q, Hexp);
+    gtsam::Matrix6 Hexp, Hcom;
+    gtsam::Pose3 cTp = pMc_.compose(gtsam::Pose3::Expmap(screw_axis_ * q, Hexp), boost::none, Hcom);
 
     gtsam::Matrix6 wTc_H_cTp;
     auto wTc = wTp.compose(cTp, H_wTp, wTc_H_cTp);
     if (H_q) {
-      *H_q = wTc_H_cTp * (Hexp * screw_axis_);
+      *H_q = wTc_H_cTp * (Hcom * (Hexp * screw_axis_));
     }
 
     return wTc;
@@ -101,12 +101,22 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_wTp = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    auto wTc_hat = predict_(wTp, q, H_wTp, H_q);
-    gtsam::Vector6 error = wTc.logmap(wTc_hat);
-    if (H_wTc) {
-      *H_wTc = -gtsam::I_6x6;
+    if (H_wTp || H_q) {
+      gtsam::Matrix H_wTp_predict, H_q_predict, H_wTc_logmap;
+      auto wTc_predict = predict_(wTp, q, H_wTp_predict, H_q_predict);
+      gtsam::Vector6 error = wTc.logmap(wTc_predict, H_wTc, H_wTc_logmap);
+      if (H_wTp) {
+        *H_wTp = H_wTc_logmap * H_wTp_predict;
+      }
+      if (H_q) {
+        *H_q = H_wTc_logmap * H_q_predict;
+      }
+      return error;
     }
-    return error;
+    else {
+      auto wTc_predict = predict_(wTp, q);
+      return wTc.logmap(wTc_predict, H_wTc, boost::none);
+    }
   }
 
   // @return a deep copy of this factor
