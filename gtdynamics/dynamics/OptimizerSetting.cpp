@@ -41,6 +41,8 @@ OptimizerSetting::OptimizerSetting()
       prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      pose_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
+      twist_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
       time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
       rel_thresh(1e-2),

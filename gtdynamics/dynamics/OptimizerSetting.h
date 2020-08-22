@@ -53,6 +53,8 @@ class OptimizerSetting {
       prior_t_cost_model,   // joint torque prior factor
       q_col_cost_model,     // joint collocation factor
       v_col_cost_model,     // joint vel collocation factor
+      pose_col_cost_model,  // pose collocation factor
+      twist_col_cost_model, // twist collocation factor
       time_cost_model,      // time prior
       jl_cost_model;        // joint limit factor
 
