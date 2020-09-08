@@ -188,6 +188,39 @@ TEST(PoseFactor, nonzero_rest) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
+TEST(PoseFactor, gradient) {
+  using namespace gtsam;
+  // create functor
+  Pose3 cMp = Pose3(Rot3(), Point3(-0.5, 0, 0));
+  Vector6 screw_axis;
+  screw_axis << 0, 0, 1, 0, 0.25, 0;
+  PoseFunctor predictPose(cMp, screw_axis);
+
+  // check prediction
+  double jointAngle = 2.928282;
+  Matrix Ri = (Matrix(3, 3) << -0.999467542665, -0.0326286861324, 0,
+               0.0326286861324, -0.999467542665, 0, 0, 0, 1)
+                  .finished();
+  Matrix Rj = (Matrix(3, 3) << 0.983719675006, -0.179709768814, 0,
+               0.179709768814, 0.983719675006, 0, 0, 0, 1)
+                  .finished();
+  Rot3 rot3i(Ri), rot3j(Rj);
+  Pose3 pose_p(rot3i, Point3(-0.249561117759, 0.000237810877085, 0)),
+      pose_c(rot3j, Point3(-0.245265857966, -0.050829234479, 0));
+
+  // Create factor
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+                    example::cost_model, cMp, screw_axis);
+
+  // Make sure linearization is correct
+  gtsam::Values values;
+  values.insert(example::pose_p_key, pose_p);
+  values.insert(example::pose_c_key, pose_c);
+  values.insert(example::qKey, jointAngle);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
