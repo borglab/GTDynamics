@@ -100,6 +100,24 @@ class JointTyped : public Joint {
    */
   ///@{
 
+  /// Convenience method. Return the pose of this link com
+  Pose3 transformTo(
+      const LinkSharedPtr &link,
+      boost::optional<AngleType> q,
+      gtsam::Pose3 T_other,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
+    if (!H_q) {
+      return T_other.compose(transformFrom(link, q), H_T_other);
+    } else {
+      gtsam::Matrix66 H_relPose;
+      Pose3 error =
+          T_other.compose(transformFrom(link, q, H_q), H_T_other, H_relPose);
+      *H_q = H_relPose * (*H_q);
+      return error;
+    }
+  }
+
   /// Convenience method. Return the transform from this link com to the other
   /// link com frame
   Pose3 transformFrom(
@@ -107,6 +125,16 @@ class JointTyped : public Joint {
       boost::optional<AngleType> q,
       gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
     return transformTo(otherLink(link), q, H_q);
+  }
+
+  /// Convenience method. Return the pose of other link com
+  Pose3 transformFrom(
+      const LinkSharedPtr &link,
+      boost::optional<AngleType> q,
+      gtsam::Pose3 T_this,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_T_this = boost::none) const {
+    return transformTo(otherLink(link), q, T_this, H_q, H_T_this);
   }
 
   /// Convenience method. Return the twist of the other link given this link's

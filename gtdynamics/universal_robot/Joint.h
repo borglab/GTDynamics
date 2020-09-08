@@ -385,6 +385,26 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /**@}*/
 
+  /// Return the pose of this link com given a Values object containing this
+  /// joint's angle Value, and also given the other link's pose.
+  /// Equivalent to T_other.compose(transformFrom(link, q))
+  Pose3 transformTo(
+      const LinkSharedPtr &link,
+      boost::optional<gtsam::Values> q,
+      gtsam::Pose3 T_other,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
+    if (!H_q) {
+      return T_other.compose(transformFrom(link, q), H_T_other);
+    } else {
+      gtsam::Matrix66 H_relPose;
+      Pose3 error =
+          T_other.compose(transformFrom(link, q, H_q), H_T_other, H_relPose);
+      *H_q = H_relPose * (*H_q);
+      return error;
+    }
+  }
+
   /// Return the transform from this link com to the other link
   /// com frame given a Values object containing this joint's angle Value
   Pose3 transformFrom(
@@ -392,6 +412,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Values> q = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
     return transformTo(otherLink(link), q, H_q);
+  }
+
+  /// Return the pose of other link com given a Values object containing other
+  /// joint's angle Value, and also given the this link's pose.
+  /// Equivalent to T_this.compose(transformTo(link, q))
+  Pose3 transformFrom(
+      const LinkSharedPtr &link,
+      boost::optional<gtsam::Values> q,
+      gtsam::Pose3 T_this,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_T_this = boost::none) const {
+    return transformTo(otherLink(link), q, T_this, H_q, H_T_this);
   }
 
   /// Return the twist of the other link given this link's

@@ -38,6 +38,7 @@ class PoseFactor
                                    typename JointTyped::AngleType>
       Base;
   typedef typename JointTyped::AngleType JointAngleType;
+  enum { N = JointTyped::N };
 
   std::shared_ptr<const JointTyped> joint_;
 
@@ -66,31 +67,16 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_wTp = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    gtsam::Pose3 wTc_hat;
-    if (H_q) {
-      gtsam::Matrix6 wTc_hat_H_pTjhat;
-      gtsam::Matrix pTc_hat_H_q;
-      gtsam::Pose3 pTc_hat =
-          joint_->transformTo(joint_->parentLink(), q, pTc_hat_H_q);
-      wTc_hat = wTp.compose(pTc_hat, H_wTp, wTc_hat_H_pTjhat);
-      *H_q = wTc_hat_H_pTjhat * pTc_hat_H_q;
-    } else {
-      gtsam::Pose3 pTc_hat = joint_->transformTo(joint_->parentLink(), q);
-      wTc_hat = wTp.compose(pTc_hat, H_wTp);
-    }
-    gtsam::Vector6 error;
-    if (!(H_q || H_wTp)) {
-      error = wTc.logmap(wTc_hat, H_wTc);
-    } else {
-      gtsam::Matrix6 H_wTc_hat;
-      error = wTc.logmap(wTc_hat, H_wTc, H_wTc_hat);
-
-      if (H_wTp)
-        *H_wTp = H_wTc_hat * (*H_wTp);
-      if (H_q)
-        *H_q = H_wTc_hat * (*H_q);
-    }
-
+    Eigen::Matrix<double, 6, 6> wTc_hat_H_wTp, H_wTc_hat;
+    Eigen::Matrix<double, 6, N> wTc_hat_H_q;
+    auto wTc_hat = joint_->transformTo(joint_->childLink(), q, wTp,
+                                        H_q ? &wTc_hat_H_q : 0,
+                                        H_wTp ? &wTc_hat_H_wTp : 0);
+    gtsam::Vector6 error =
+        wTc.logmap(wTc_hat,
+                   H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
+    if (H_wTp) *H_wTp = H_wTc_hat * wTc_hat_H_wTp;
+    if (H_q) *H_q = H_wTc_hat * wTc_hat_H_q;
     return error;
   }
 
