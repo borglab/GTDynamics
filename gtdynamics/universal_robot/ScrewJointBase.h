@@ -201,7 +201,7 @@ class ScrewJointBase : public JointTyped {
     return this_twist_accel;
   }
 
-  AngleTangentType transformWrenchToTorque(
+  JointTorque transformWrenchToTorque(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override {

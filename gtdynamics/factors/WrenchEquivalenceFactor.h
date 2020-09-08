@@ -34,12 +34,12 @@ namespace gtdynamics {
  * relation between wrench expressed in two link frames*/
 class WrenchEquivalenceFactor
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::AngleType> {
+                                      typename JointTyped::JointCoordinate> {
  private:
-  typedef typename JointTyped::AngleType JointAngleType;
+  typedef typename JointTyped::JointCoordinate JointCoordinate;
   typedef WrenchEquivalenceFactor This;
   typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                   typename JointTyped::AngleType>
+                                   JointCoordinate>
       Base;
   typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
   MyJointConstSharedPtr joint_;
@@ -67,7 +67,7 @@ class WrenchEquivalenceFactor
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
-      const JointAngleType &q,
+      const JointCoordinate &q,
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {

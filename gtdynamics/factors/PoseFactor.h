@@ -31,13 +31,12 @@ namespace gtdynamics {
  * and this link pose*/
 class PoseFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
-                                      typename JointTyped::AngleType> {
+                                      typename JointTyped::JointCoordinate> {
  private:
+  typedef typename JointTyped::JointCoordinate JointCoordinate;
   typedef PoseFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
-                                   typename JointTyped::AngleType>
+  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>
       Base;
-  typedef typename JointTyped::AngleType JointAngleType;
   enum { N = JointTyped::N };
 
   std::shared_ptr<const JointTyped> joint_;
@@ -63,7 +62,7 @@ class PoseFactor
   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc,
-      const JointAngleType &q,
+      const JointCoordinate &q,
       boost::optional<gtsam::Matrix &> H_wTp = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {

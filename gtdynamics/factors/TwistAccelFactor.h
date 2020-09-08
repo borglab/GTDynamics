@@ -23,8 +23,8 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
-#include <string>
 
+#include <memory>
 #include <string>
 
 namespace gtdynamics {
@@ -33,16 +33,17 @@ namespace gtdynamics {
  * between acceleration on previous link and this link*/
 class TwistAccelFactor : public gtsam::NoiseModelFactor6<
                              gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-                             JointTyped::AngleType,
-                             JointTyped::AngleTangentType,
-                             JointTyped::AngleTangentType> {
+                             JointTyped::JointCoordinate,
+                             JointTyped::JointVelocity,
+                             JointTyped::JointAcceleration> {
  private:
-  typedef JointTyped::AngleType JointAngleType;
-  typedef JointTyped::AngleTangentType JointAngleTangentType;
+  typedef JointTyped::JointCoordinate JointCoordinate;
+  typedef JointTyped::JointVelocity JointVelocity;
+  typedef JointTyped::JointVelocity JointAcceleration;
   typedef TwistAccelFactor This;
   typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, JointAngleType,
-                                   JointAngleTangentType, JointAngleTangentType>
+                                   gtsam::Vector6, JointCoordinate,
+                                   JointVelocity, JointAcceleration>
       Base;
   typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
   MyJointConstSharedPtr joint_;
@@ -80,8 +81,8 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor6<
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_c, const gtsam::Vector6 &twistAccel_p,
-      const gtsam::Vector6 &twistAccel_c, const JointAngleType &q,
-      const JointAngleTangentType &qVel, const JointAngleTangentType &qAccel,
+      const gtsam::Vector6 &twistAccel_c, const JointCoordinate &q,
+      const JointAcceleration &qVel, const JointAcceleration &qAccel,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_c = boost::none,

@@ -22,6 +22,7 @@
 
 #include <boost/optional.hpp>
 
+#include <memory>
 #include <string>
 
 namespace gtdynamics {
@@ -30,13 +31,11 @@ namespace gtdynamics {
  * wrench and torque on each link*/
 class TorqueFactor
     : public gtsam::NoiseModelFactor2<gtsam::Vector6,
-        typename JointTyped::AngleTangentType> {
+        typename JointTyped::JointTorque> {
  private:
-  typedef typename JointTyped::AngleTangentType JointAngleTangentType;
-  typedef typename gtsam::traits<typename JointTyped::AngleType>::TangentVector
-      JointAngleTangentVector;
+  typedef typename JointTyped::JointTorque JointTorque;
   typedef TorqueFactor This;
-  typedef gtsam::NoiseModelFactor2<gtsam::Vector6, JointAngleTangentType> Base;
+  typedef gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque> Base;
   typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
   MyJointConstSharedPtr joint_;
 
@@ -62,7 +61,7 @@ class TorqueFactor
           torque       -- torque on this link joint
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &wrench, const JointAngleTangentType &torque,
+      const gtsam::Vector6 &wrench, const JointTorque &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
