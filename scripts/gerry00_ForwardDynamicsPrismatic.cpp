@@ -66,10 +66,10 @@ int main(int argc, char** argv) {
   }
   std::cout << "\033[1;31m" << "Link Poses:" << "\033[0m\n" << std::endl;
   for (int t = 0; t <= T; t++) {
-    results.at<gtsam::Pose3>(PoseKey(0, t)).translation().print();
-    results.at<gtsam::Pose3>(PoseKey(1, t)).translation().print();
-    results.at<gtsam::Pose3>(PoseKey(2, t)).translation().print();
-    results.at<gtsam::Pose3>(PoseKey(3, t)).translation().print();
+    std::cout << results.at<gtsam::Pose3>(PoseKey(0, t)).translation() << std::endl;
+    std::cout << results.at<gtsam::Pose3>(PoseKey(1, t)).translation() << std::endl;
+    std::cout << results.at<gtsam::Pose3>(PoseKey(2, t)).translation() << std::endl;
+    std::cout << results.at<gtsam::Pose3>(PoseKey(3, t)).translation() << std::endl;
     std::cout << std::endl;
   }
 
