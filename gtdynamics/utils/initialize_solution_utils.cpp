@@ -36,7 +36,7 @@ namespace gtdynamics {
 inline Pose3 addGaussianNoiseToPose(const Pose3& T, double std,
                                     Sampler sampler) {
   Vector rand_vec = sampler.sample();
-  Point3 p = Point3(T.translation().vector() + rand_vec.head(3));
+  Point3 p = Point3(T.translation() + rand_vec.head(3));
   Rot3 R = Rot3::Expmap(Rot3::Logmap(T.rotation()) + rand_vec.tail<3>());
   return Pose3(R, p);
 }

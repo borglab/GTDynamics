@@ -12,6 +12,7 @@
  */
 
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/sdf.h"
 
 #include <string>
 
@@ -19,7 +20,7 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   const auto spider =
-      Robot(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
 
   spider.printRobot();
 
