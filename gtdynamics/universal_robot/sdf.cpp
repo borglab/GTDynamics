@@ -1,11 +1,11 @@
 #include "gtdynamics/universal_robot/sdf.h"
 
-#include <sdf/parser_urdf.hh>
-
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
+
+#include <sdf/parser_urdf.hh>
 
 namespace gtdynamics {
 

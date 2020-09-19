@@ -13,6 +13,11 @@
 
 #include "gtdynamics/universal_robot/Robot.h"
 
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 
@@ -21,9 +26,6 @@
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
     gtsam::GaussianFactorGraph, gtsam::Vector3;
@@ -119,7 +121,8 @@ void Robot::printRobot() const {
 }
 
 Robot::FKResults Robot::forwardKinematics(
-    const JointValues &joint_angles, const JointValues &joint_vels,
+    const Robot::JointValues &joint_angles,
+    const Robot::JointValues &joint_vels,
     const boost::optional<std::string> prior_link_name,
     const boost::optional<Pose3> &prior_link_pose,
     const boost::optional<Vector6> &prior_link_twist) const {
@@ -140,8 +143,10 @@ Robot::FKResults Robot::forwardKinematics(
   }
   if (prior_link_name) {
     root_link = getLinkByName(*prior_link_name);
-    link_poses[*prior_link_name] = *prior_link_pose;
-    link_twists[*prior_link_name] = *prior_link_twist;
+    link_poses[*prior_link_name] =
+        prior_link_pose ? *prior_link_pose : gtsam::Pose3();
+    link_twists[*prior_link_name] =
+        prior_link_twist ? *prior_link_twist : gtsam::Vector6();
   }
   if (link_poses.size() == 0) {
     throw std::runtime_error("cannot find a fixed link");
@@ -157,7 +162,8 @@ Robot::FKResults Robot::forwardKinematics(
     const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
     for (JointSharedPtr joint : link1->getJoints()) {
-      JointSharedPtr joint_ptr = joint;
+      ScrewJointBaseSharedPtr joint_ptr =
+          dynamic_pointer_cast<ScrewJointBase>(joint);
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
@@ -166,7 +172,7 @@ Robot::FKResults Robot::forwardKinematics(
       const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
       const Pose3 T_w2 = T_w1 * T_12;
       const Vector6 V_2 =
-          joint->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
+          joint_ptr->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
 
       // check if link 2 is already assigned
       if (link_poses.find(link2->name()) == link_poses.end()) {
@@ -189,7 +195,7 @@ Robot::FKResults Robot::forwardKinematics(
   return FKResults(link_poses, link_twists);
 }
 
-NonlinearFactorGraph Robot::qFactors(const int &t,
+NonlinearFactorGraph Robot::qFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->qFactors(t, opt));
@@ -197,7 +203,7 @@ NonlinearFactorGraph Robot::qFactors(const int &t,
   return graph;
 }
 
-NonlinearFactorGraph Robot::vFactors(const int &t,
+NonlinearFactorGraph Robot::vFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->vFactors(t, opt));
@@ -205,7 +211,7 @@ NonlinearFactorGraph Robot::vFactors(const int &t,
   return graph;
 }
 
-NonlinearFactorGraph Robot::aFactors(const int &t,
+NonlinearFactorGraph Robot::aFactors(size_t t,
                                      const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&link : links()) graph.add(link->aFactors(t, opt));
@@ -213,8 +219,17 @@ NonlinearFactorGraph Robot::aFactors(const int &t,
   return graph;
 }
 
+GaussianFactorGraph Robot::linearFDPriors(size_t t,
+                                          const Robot::JointValues &torques,
+                                          const OptimizerSetting &opt) const {
+  GaussianFactorGraph graph;
+  for (auto &&joint : joints())
+    graph += joint->linearFDPriors(t, torques, opt);
+  return graph;
+}
+
 GaussianFactorGraph Robot::linearAFactors(
-    const int &t, const std::map<std::string, Pose3> &poses,
+    size_t t, const std::map<std::string, Pose3> &poses,
     const std::map<std::string, Vector6> &twists,
     const std::map<std::string, double> &joint_angles,
     const std::map<std::string, double> &joint_vels,
@@ -229,7 +244,7 @@ GaussianFactorGraph Robot::linearAFactors(
 }
 
 NonlinearFactorGraph Robot::dynamicsFactors(
-    const int &t, const OptimizerSetting &opt,
+    size_t t, const OptimizerSetting &opt,
     const boost::optional<Vector3> &planar_axis) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : joints())
@@ -238,7 +253,7 @@ NonlinearFactorGraph Robot::dynamicsFactors(
 }
 
 GaussianFactorGraph Robot::linearDynamicsFactors(
-    const int &t, const std::map<std::string, Pose3> &poses,
+    size_t t, const std::map<std::string, Pose3> &poses,
     const std::map<std::string, Vector6> &twists,
     const std::map<std::string, double> &joint_angles,
     const std::map<std::string, double> &joint_vels,
@@ -252,7 +267,7 @@ GaussianFactorGraph Robot::linearDynamicsFactors(
 }
 
 NonlinearFactorGraph Robot::jointLimitFactors(
-    const int &t, const OptimizerSetting &opt) const {
+    size_t t, const OptimizerSetting &opt) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : joints()) graph.add(joint->jointLimitFactors(t, opt));
   return graph;

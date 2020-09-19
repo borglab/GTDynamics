@@ -10,23 +10,7 @@
 #ifndef GTDYNAMICS_UTILS_JSONSAVER_H_
 #define GTDYNAMICS_UTILS_JSONSAVER_H_
 
-#include <gtsam/base/Matrix.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/PriorFactor.h>
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <typeinfo>
-#include <vector>
-#include <map>
-#include <utility>
-
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
@@ -36,7 +20,24 @@
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/utils/utils.h"
 
+#include <gtsam/base/Matrix.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/PriorFactor.h>
+
 #include <boost/optional.hpp>
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <typeinfo>
+#include <vector>
+#include <map>
+#include <utility>
 
 #define kQuote_ "\""
 
@@ -202,7 +203,8 @@ class JsonSaver {
     std::stringstream ss;
     if (const TorqueFactor* f =
             dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      ss << GetVector(f->getScrewAxis().transpose());
+      auto joint = f->getJoint();
+      ss << GetVector(static_pointer_cast<const ScrewJointBase>(joint)->screwAxis(joint->childLink()).transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(&(*factor))) {
       ss << GetVector(f->prior().transpose());
@@ -239,11 +241,9 @@ class JsonSaver {
       return "TwistAccel";
     } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
       return "Torque";
-    } else if (dynamic_cast<const WrenchPlanarFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
       return "WrenchEq";
     } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";

@@ -14,6 +14,8 @@
 #ifndef GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
 #define GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
 
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -24,14 +26,12 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <string>
-#include <vector>
-
 #include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
 
-#include "gtdynamics/utils/utils.h"
+#include <string>
+#include <vector>
 
 namespace gtdynamics {
 
@@ -45,7 +45,6 @@ class WrenchFactor0
   typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
       Base;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -163,7 +162,6 @@ class WrenchFactor1
                                    gtsam::Vector6, gtsam::Pose3>
       Base;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -287,7 +285,6 @@ class WrenchFactor2
                                    gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
       Base;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -420,7 +417,6 @@ class WrenchFactor3
                                    gtsam::Vector6, gtsam::Pose3>
       Base;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:
@@ -662,7 +658,6 @@ class WrenchFactor4
                             gtsam::Pose3>
       Base;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector6 screw_axis_;
   gtsam::Vector3 gravity_;
 
  public:

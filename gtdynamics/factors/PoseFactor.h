@@ -14,79 +14,43 @@
 #ifndef GTDYNAMICS_FACTORS_POSEFACTOR_H_
 #define GTDYNAMICS_FACTORS_POSEFACTOR_H_
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <memory>
 #include <string>
 
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
-
-/** PoseFunctor is functor predicting link's pose (COM) with previous one*/
-class PoseFunctor {
- private:
-  gtsam::Pose3 pMc_;
-  gtsam::Vector6 screw_axis_;
-
- public:
-  /** Create functor predicting this link's pose (COM) with previous one.
-      Keyword arguments:
-          cMp        -- previous (parent) COM frame, expressed in this (child)
-     link's COM frame, at rest configuration
-          screw_axis -- screw axis expressed in link's COM frame
-   */
-  PoseFunctor(const gtsam::Pose3 &cMp, const gtsam::Vector6 &screw_axis)
-      : pMc_(cMp.inverse()), screw_axis_(screw_axis) {}
-
-  /** predict link pose
-      Keyword argument:
-          wTp        -- previous (parent) link pose
-          q          -- joint angle
-      Returns:
-          wTc        -- this (child) link pose
-  */
-  gtsam::Pose3 operator()(
-      const gtsam::Pose3 &wTp, const double &q,
-      gtsam::OptionalJacobian<6, 6> H_wTp = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-    gtsam::Matrix6 Hexp, Hcom;
-    gtsam::Pose3 cTp = pMc_.compose(gtsam::Pose3::Expmap(screw_axis_ * q, Hexp), boost::none, Hcom);
-
-    gtsam::Matrix6 wTc_H_cTp;
-    auto wTc = wTp.compose(cTp, H_wTp, wTc_H_cTp);
-    if (H_q) {
-      *H_q = wTc_H_cTp * (Hcom * (Hexp * screw_axis_));
-    }
-
-    return wTc;
-  }
-};
 
 /** PoseFactor is a three-way nonlinear factor between the previous link pose
  * and this link pose*/
 class PoseFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, double> {
+    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
+                                      typename JointTyped::JointCoordinate> {
  private:
+  typedef typename JointTyped::JointCoordinate JointCoordinate;
   typedef PoseFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, double> Base;
+  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>
+      Base;
+  enum { N = JointTyped::N };
 
-  PoseFunctor predict_;
+  std::shared_ptr<const JointTyped> joint_;
 
  public:
   /** Create single factor relating this link's pose (COM) with previous one.
       Keyword arguments:
-          cMp -- previous (parent) COM frame, expressed in this (child) link's
-     COM frame, at rest configuration
-          screw_axis -- screw axis expressed in link's COM frame
+          joint -- the joint connecting the two poses
    */
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             const gtsam::Pose3 &cMp, const gtsam::Vector6 &screw_axis)
-      : Base(cost_model, wTp_key, wTc_key, q_key), predict_(cMp, screw_axis) {}
+             JointConstSharedPtr joint)
+      : Base(cost_model, wTp_key, wTc_key, q_key),
+        joint_(std::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~PoseFactor() {}
 
@@ -97,26 +61,22 @@ class PoseFactor
           q           -- joint angle
   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc, const double &q,
+      const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc,
+      const JointCoordinate &q,
       boost::optional<gtsam::Matrix &> H_wTp = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    if (H_wTp || H_q) {
-      gtsam::Matrix H_wTp_predicted, H_q_predicted, H_wTc_logmap;
-      auto wTc_predicted = predict_(wTp, q, H_wTp_predicted, H_q_predicted);
-      gtsam::Vector6 error = wTc.logmap(wTc_predicted, H_wTc, H_wTc_logmap);
-      if (H_wTp) {
-        *H_wTp = H_wTc_logmap * H_wTp_predicted;
-      }
-      if (H_q) {
-        *H_q = H_wTc_logmap * H_q_predicted;
-      }
-      return error;
-    }
-    else {
-      auto wTc_predicted = predict_(wTp, q);
-      return wTc.logmap(wTc_predicted, H_wTc, boost::none);
-    }
+    Eigen::Matrix<double, 6, 6> wTc_hat_H_wTp, H_wTc_hat;
+    Eigen::Matrix<double, 6, N> wTc_hat_H_q;
+    auto wTc_hat = joint_->transformTo(joint_->childLink(), q, wTp,
+                                        H_q ? &wTc_hat_H_q : 0,
+                                        H_wTp ? &wTc_hat_H_wTp : 0);
+    gtsam::Vector6 error =
+        wTc.logmap(wTc_hat,
+                   H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
+    if (H_wTp) *H_wTp = H_wTc_hat * wTc_hat_H_wTp;
+    if (H_q) *H_q = H_wTc_hat * wTc_hat_H_q;
+    return error;
   }
 
   // @return a deep copy of this factor
