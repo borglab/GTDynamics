@@ -53,7 +53,7 @@ print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
 
 debug_iters = 20
 
-max_traj_replays = 5
+max_traj_replays = 50
 num_traj_replays = 0
 
 t = 0

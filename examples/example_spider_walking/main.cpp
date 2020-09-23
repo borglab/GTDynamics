@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   CPs t78 = {c1, c2, c3, c4, c5, c6,       };
   CPs p8  = {c1, c2, c3, c4, c5, c6, c7    };
   CPs t80 = {    c2, c3, c4, c5, c6, c7    };
-  // CPs t05 = {c1, c2, c3, c4,     c6, c7, c8};
+  CPs t05 = {c1, c2, c3, c4,     c6, c7, c8};
 
   // This gait moves four legs at a time (alternating tetrapod).
   CPs t0a = {    c2,     c4,     c6,     c8};
@@ -138,10 +138,11 @@ int main(int argc, char** argv) {
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
+
   // Gait one leg at a time: 
-  vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
-  vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t80, t01, t12, t23, t34, t45, t56, t67, t78, t80};
-  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50, 60, 50};
+  // vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
+  // vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t80};
+  // vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50, 60};
 
   //Only one leg movement
   // vector<CPs> phase_cps =   {p0, p1, p0, p5, p0, p1, p0, p5, p0, p1, p0, p5, p0};
@@ -151,14 +152,32 @@ int main(int argc, char** argv) {
   // Alternating Tetrapod:
   // vector<CPs> phase_cps =   {p0, pa, p0, pb, p0, pa, p0, pb, p0};
   // vector<CPs> trans_cps =   {t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0};
-  // vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60, 50};
+  vector<CPs> phase_cps =   {pa, pb, pa, pb, pa, pb, pa, pb};
+  vector<CPs> trans_cps =   {tab, tab, tab, tab, tab, tab, tab};
+  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60};
   // vector<int> phase_steps = {25, 25, 25, 25, 25, 25, 25, 25, 25};
+  // vector<int> phase_steps = {5, 5, 5, 5, 5, 5, 5, 5, 5};
+  // vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20};
+
+  // vector<CPs> phase_cps =   {p0, pa, pb, pa, pb, pa, pb, pa, pb, pa, p0};
+  // vector<CPs> trans_cps =   {t0a, tab, tab, tab, tab, tab, tab, tab, tab, t0a};
+
 
   // Define noise to be added to initial values, desired timestep duration,
   // vector of link name strings, robot model for each phase, and
   // phase transition initial values.
   double gaussian_noise = 1e-5;
-  double dt_des = 1. / 240. ; //  1/240
+
+  //TODO: Adjust hip joint limit
+  //TODO: Extend the walk cycle for a normal jump-free walk cycle
+  //TODO: Once walk-cycle is established, use prior joint angles
+  //Note: To limit movement, decrease dt_des.
+  //Note: Increase phase steps to decrease speed of movement.
+  //Note: Works well for 1/50 for alternating tetrapod with phase 5, mass 100
+  //Note: Works well for 1/175 for alternating tetrapod with phase 20, mass 1000
+  //Note: Works well for 1/240 for alternating tetrapod with phase 20, mass 500
+  //Note: Works well for 1/140 for pa, pb,pa,pb sequence with phase_steps 20
+  double dt_des = 1./200 ; 
   vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
   vector<Robot> robots(phase_cps.size(), spider);
   vector<Values> transition_graph_init;
@@ -231,7 +250,7 @@ int main(int argc, char** argv) {
     }
         
     // Distance to move contact point during swing.
-    auto contact_offset = Point3(0.55, 0, 0);
+    auto contact_offset = Point3(0.1, 0, 0);
         
     // Add contact point objectives to factor graph.
     for (int p = 0; p < phase_cps.size(); p++) {
@@ -255,10 +274,6 @@ int main(int argc, char** argv) {
         // if (p==2)
         // contact_offset = 2 * contact_offset;
 
-        // Update the goal point for the swing links.
-        for (auto && psl : phase_swing_links)
-          prev_cp[psl] = prev_cp[psl] + contact_offset;
-
         for (int t = t_p_i; t <= t_p_f; t++) {
             // Normalized phase progress.
             double t_normed = (double) (t - t_p_i) / (double) (t_p_f - t_p_i);
@@ -267,15 +282,30 @@ int main(int argc, char** argv) {
                 // TODO(aescontrela): Use correct contact point for each link.
                 objective_factors.add(gtdynamics::PointGoalFactor(
                 PoseKey(link_map[pcl]->getID(), t), objectives_model_3,
-                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.03)));
+                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 1.03)));
             }
 
             double h = GROUND_HEIGHT + 0.05 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
-            for (auto&& psl : phase_swing_links)
+            for (auto&& psl : phase_swing_links){
+                // std::cout<< "Point: "<< Point3(prev_cp["tarsus_5"].x(), prev_cp["tarsus_5"].y(), GROUND_HEIGHT - 1.03) << std::endl;
+
+                double x = prev_cp[psl].x() + (contact_offset.x()*t)/(t_p_f - t_p_i);
+                double y = prev_cp[psl].y() + (contact_offset.y()*t)/(t_p_f - t_p_i);
+                double z = GROUND_HEIGHT + (h*t)/(t_p_f - t_p_i);
+
                 objective_factors.add(gtdynamics::PointGoalFactor(
                 PoseKey(link_map[psl]->getID(), t), objectives_model_3,
-                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+                Pose3(Rot3(), c1.contact_point), Point3(x,y,z)));
+
+                // objective_factors.add(gtdynamics::PointGoalFactor(
+                // PoseKey(link_map[psl]->getID(), t), objectives_model_3,
+                // Pose3(Rot3(), c1.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+            }
+
+            // Update the goal point for the swing links.
+            for (auto && psl : phase_swing_links)
+                prev_cp[psl] = prev_cp[psl] + contact_offset;
         }
     }
 
@@ -288,7 +318,7 @@ int main(int argc, char** argv) {
     for (int t = 0; t <= t_f; t++){
         objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         PoseKey(base_link->getID(), t),
-        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0.0, 0.0, 0.13)),
+        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0.0, 0.13)),
         base_pose_model));
     }
 
