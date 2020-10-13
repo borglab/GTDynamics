@@ -17,6 +17,7 @@ p.setGravity(0, 0, -9.8)
 planeId = p.loadURDF("plane.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
 robot = p.loadSDF("spider.sdf")
+
 robot_id = robot[0] # loadSDF returns a list of objects; the first is the integer ID.
 
 # TODO (disha + stephanie): check whether this function is necessary/correct
@@ -41,7 +42,10 @@ def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float
                                 targetPosition=v,
                                 targetVelocity=joint_vels[k + '.1'])
 
-df = pd.read_csv('traj.csv')
+#Read walk forward trajectory file
+df = pd.read_csv('forward_traj.csv')
+#Read rotation trajectory file
+# df = pd.read_csv('rotation_traj.csv')
 print(df.columns)
 
 input("Press ENTER to continue.")
@@ -51,9 +55,9 @@ pos, orn = p.getBasePositionAndOrientation(robot_id)
 print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                p.getEulerFromQuaternion(orn)))
 
-debug_iters = 20
+debug_iters = 5
 
-max_traj_replays = 50
+max_traj_replays = 20
 num_traj_replays = 0
 
 t = 0

@@ -13,7 +13,7 @@
  * @Author: Disha Das
  * @Author: Tarushree Gandhi
  */
-// #include <gtdynamics/utils/phase_utils.h>
+
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -38,7 +38,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 
-#define GROUND_HEIGHT -1.75 //-1.75
+#define GROUND_HEIGHT -1.75
 
 using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
     gtdynamics::JointAngleKey, gtdynamics::JointVelKey, gtsam::Point3,
@@ -48,9 +48,8 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
     gtdynamics::TwistKey, gtdynamics::TwistAccelKey, gtdynamics::Robot,
     std::vector, std::string, gtsam::noiseModel::Isotropic;
 
-
 int main(int argc, char** argv) {
-  
+
   // Load Stephanie's spider robot.
   auto spider = gtdynamics::CreateRobotFromFile("../spider.sdf", "spider");
   spider.printRobot();
@@ -113,7 +112,7 @@ int main(int argc, char** argv) {
   // Contact points for each phase. 
   // This gait moves one leg at a time.
   typedef ContactPoints CPs;
-  
+  CPs t00 = {c1, c2, c3, c4, c5, c6, c7, c8};
   CPs p0  = {c1, c2, c3, c4, c5, c6, c7, c8};  // Initially stationary.
   CPs t01 = {    c2, c3, c4, c5, c6, c7, c8};
   CPs p1  = {    c2, c3, c4, c5, c6, c7, c8};
@@ -134,7 +133,6 @@ int main(int argc, char** argv) {
   CPs t80 = {    c2, c3, c4, c5, c6, c7    };
 
   // This gait moves four legs at a time (alternating tetrapod).
-  CPs t00 = {c1, c2, c3, c4, c5, c6, c7, c8};
   CPs t0a = {    c2,     c4,     c6,     c8};
   CPs pa  = {    c2,     c4,     c6,     c8};
   CPs tab = {                              };
@@ -143,27 +141,15 @@ int main(int argc, char** argv) {
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
-
   // One leg at a time: 
-  // vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
-  // vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t80};
-  // vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
+//   vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
+//   vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t80};
+//   vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
 
   // Alternating Tetrapod:
-  vector<CPs> phase_cps =   {p0, pa, p0, pb, p0, pa, p0, pb, p0, pa, p0, pb};
-  vector<CPs> trans_cps =   {t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0};
-  vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
-
-  // Alternating Tetrapod:
-//   vector<CPs> phase_cps =   {p0, pa, p0, pb};
-//   vector<CPs> trans_cps =   {t0a, t0a, tb0};
-//   vector<int> phase_steps = {20, 20, 20, 20};
-
-
-// One step movement
-//   vector<CPs> phase_cps =   {p0, pa, p0};
-//   vector<CPs> trans_cps =   {t0a, t0a};
-//   vector<int> phase_steps = {20, 20, 20};
+  vector<CPs> phase_cps =   {p0, pa, p0, pb, p0, pa, p0, pb, p0, pa, p0, pb, p0, pa, p0, pb, p0, pa, p0, pb};
+  vector<CPs> trans_cps =   {t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0};
+  vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
   
   // Define noise to be added to initial values, desired timestep duration,
   // vector of link name strings, robot model for each phase, and
@@ -174,7 +160,6 @@ int main(int argc, char** argv) {
   vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
   vector<Robot> robots(phase_cps.size(), spider);
   vector<Values> transition_graph_init;
-  
 
   // Define the cumulative phase steps.
     vector<int> cum_phase_steps;
@@ -221,7 +206,10 @@ int main(int argc, char** argv) {
     }
         
     // Distance to move contact point per time step during swing.
-    auto contact_offset = Point3(0, 0.02, 0);
+    auto contact_offset = Point3(0, 0.007, 0);
+
+    //Set this to 'right' or 'left' to make the spider rotate in place
+    std::string turn = "right";
         
     // Add contact point objectives to factor graph.
     for (int p = 0; p < phase_cps.size(); p++) {
@@ -237,8 +225,9 @@ int main(int argc, char** argv) {
         vector<string> phase_swing_links;
         for (auto&& l : links) {
             if (std::find(phase_contact_links.begin(),
-                    phase_contact_links.end(), l) == phase_contact_links.end())
-                phase_swing_links.push_back(l); 
+                    phase_contact_links.end(), l) == phase_contact_links.end()){
+                phase_swing_links.push_back(l);
+                }    
         }
 
         for (int t = t_p_i; t <= t_p_f; t++) {
@@ -248,21 +237,33 @@ int main(int argc, char** argv) {
             for (auto&& pcl : phase_contact_links){
                 // TODO(aescontrela): Use correct contact point for each link.
                 objective_factors.add(gtdynamics::PointGoalFactor(
-                PoseKey(link_map[pcl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
-                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05))); //-0.05
+                PoseKey(link_map[pcl]->getID(), t), Isotropic::Sigma(3, 1e-7),
+                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
             }
         
             double h = GROUND_HEIGHT +  std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
             for (auto&& psl : phase_swing_links){
                 objective_factors.add(gtdynamics::PointGoalFactor(
-                PoseKey(link_map[psl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
+                PoseKey(link_map[psl]->getID(), t), Isotropic::Sigma(3, 1e-7),
                 Pose3(Rot3(), c1.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
             }
 
             // Update the goal point for the swing links.
-            for (auto && psl : phase_swing_links)
-                prev_cp[psl] = prev_cp[psl] + contact_offset;
+            for (auto && psl : phase_swing_links){
+                if(turn.compare("right")== 0){
+                    if(psl.find_first_of("1234") != std::string::npos)
+                        prev_cp[psl] = prev_cp[psl] + contact_offset;
+                    else
+                        prev_cp[psl] = prev_cp[psl] - contact_offset;
+                }
+                else{
+                    if(psl.find_first_of("5678") != std::string::npos)
+                        prev_cp[psl] = prev_cp[psl] + contact_offset;
+                    else
+                        prev_cp[psl] = prev_cp[psl] - contact_offset;
+                }              
+            }
         }
     }
 
@@ -270,8 +271,8 @@ int main(int argc, char** argv) {
     for (int t = 0; t <= t_f; t++){
         objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         PoseKey(base_link->getID(), t),
-        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),  //0.5
-        Isotropic::Sigma(6, 5e-5))); //6.2e-5 //5e-5
+        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),
+        Isotropic::Sigma(6, 6e-5))); //6.2e-5
     }
 
     // Add link boundary conditions to FG.
@@ -295,19 +296,23 @@ int main(int argc, char** argv) {
         
         //Add priors to joint angles
         for (int t = 0; t<= t_f; t++){
-            if (joint->name().find("hip_") == 0)
-                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0, dynamics_model_1_2));    
-            else if (joint->name().find("hip2") == 0)
+            if (joint->name().find("hip_") == 0){
+                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0, dynamics_model_1_2)); 
+              }
+            else if (joint->name().find("hip2") == 0){
                 objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.9, dynamics_model_1_2));
-            else if (joint->name().find("knee") == 0)
+              }
+            else if (joint->name().find("knee") == 0){
                 objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), -1.22, dynamics_model_1_2));
-            else
+              }
+              else{
                 objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.26, dynamics_model_1_2));
+              }
         }
-        // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), 0), 0.0, dynamics_model_1_2));
-        // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t_f), 0.0, dynamics_model_1_2));
+        
         objective_factors.add(gtsam::PriorFactor<double>(
             JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
+
         objective_factors.add(gtsam::PriorFactor<double>(
             JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
         objective_factors.add(gtsam::PriorFactor<double>(
@@ -354,14 +359,13 @@ int main(int argc, char** argv) {
   char* fgh = getcwd(cwd, PATH_MAX);
   string example_directory = strcat(cwd ,"/..");
 
-  traj_file.open(example_directory + "/forward_traj.csv");
+  traj_file.open(example_directory + "/rotation_traj.csv");
   // angles, vels, accels, torques, time.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
             << jnames_str << ",t"
             << "\n";
   int t = 0;
   for (int phase = 0; phase < phase_steps.size(); phase++) {
-    // Write a single phase to disk
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
 
       vector<string> vals;
