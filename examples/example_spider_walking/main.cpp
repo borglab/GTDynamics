@@ -49,6 +49,7 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
 
 //Returns a Phase object for a single spider walk cycle.
 gtdynamics::Phase getSpiderWalk(gtdynamics::ContactPoints CPs, std::string sequence_name){
+  //Create Phase object
   auto spider_phase = Phase();
   spider_phase.addContactPoints(CPs);
 

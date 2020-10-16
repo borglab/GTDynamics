@@ -36,8 +36,8 @@ using gtdynamics::ContactPoints, gtdynamics::ContactPoint,
 
 /**
  * @class Phase is a class that stores information related
- * to Contact Points, stances and sequence of stances and implements 
- * functions derived from phase-related calculations.
+ * to Contact Points, stances and sequence of stances and 
+ * implements functions derived from phase-related calculations.
  */
 class Phase {
 
