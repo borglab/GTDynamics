@@ -13,14 +13,13 @@
  * @Author: Disha Das
  * @Author: Tarushree Gandhi
  */
-// #include <gtdynamics/utils/phase_utils.h>
+#include <gtdynamics/utils/phase_utils.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/utils/initialize_example.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -46,7 +45,35 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
     gtdynamics::JointAccelKey, gtdynamics::TorqueKey, gtdynamics::ContactPoints,
     gtdynamics::ContactPoint, gtdynamics::ZeroValues, gtdynamics::PhaseKey,
     gtdynamics::TwistKey, gtdynamics::TwistAccelKey, gtdynamics::Robot,
-    std::vector, std::string, gtsam::noiseModel::Isotropic;
+    std::vector, std::string, gtsam::noiseModel::Isotropic, gtdynamics::Phase;
+
+//Returns a Phase object for a single spider walk cycle.
+gtdynamics::Phase getSpiderWalk(gtdynamics::ContactPoints CPs, std::string sequence_name){
+  auto spider_phase = Phase();
+  spider_phase.addContactPoints(CPs);
+
+  if(sequence_name == "motion_in_sequence"){
+    vector<string> sequence = {"stationary", "l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8"};
+    spider_phase.addStance(sequence[0], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[1], {            "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[2], {"tarsus_1",            "tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[3], {"tarsus_1", "tarsus_2",           "tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[4], {"tarsus_1", "tarsus_2","tarsus_3",           "tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[5], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4",           "tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[6], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5",           "tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[7], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6",           "tarsus_8"});
+    spider_phase.addStance(sequence[8], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7"           });
+    spider_phase.addSequence(sequence);
+  }
+  else if(sequence_name == "alternating_tetrapod"){
+    vector<string> sequence = {"stationary", "even_legs", "stationary", "odd_legs"};
+    spider_phase.addStance(sequence[0], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
+    spider_phase.addStance(sequence[1], {"tarsus_2","tarsus_4","tarsus_6","tarsus_8"});
+    spider_phase.addStance(sequence[3], {"tarsus_1","tarsus_3","tarsus_5","tarsus_7"});
+    spider_phase.addSequence(sequence);
+  }
+  return spider_phase;
+}
 
 
 int main(int argc, char** argv) {
@@ -100,71 +127,31 @@ int main(int argc, char** argv) {
 
   // All contacts.
   typedef ContactPoint CP;
-  auto c1 = CP{"tarsus_1", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Front left.
-  auto c2 = CP{"tarsus_2", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Hind left.
-  auto c3 = CP{"tarsus_3", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Front right.
-  auto c4 = CP{"tarsus_4", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Hind right.
-  auto c5 = CP{"tarsus_5", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Front left.
-  auto c6 = CP{"tarsus_6", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Hind left.
-  auto c7 = CP{"tarsus_7", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Front right.
-  auto c8 = CP{"tarsus_8", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; // Hind right.
-
-
-  // Contact points for each phase. 
-  // This gait moves one leg at a time.
   typedef ContactPoints CPs;
+  auto c1 = CP{"tarsus_1", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c2 = CP{"tarsus_2", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c3 = CP{"tarsus_3", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c4 = CP{"tarsus_4", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c5 = CP{"tarsus_5", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c6 = CP{"tarsus_6", Point3(0, 0.19, 0), 0, GROUND_HEIGHT};
+  auto c7 = CP{"tarsus_7", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; 
+  auto c8 = CP{"tarsus_8", Point3(0, 0.19, 0), 0, GROUND_HEIGHT}; 
+  CPs stat  = {c1, c2, c3, c4, c5, c6, c7, c8};
   
-  CPs p0  = {c1, c2, c3, c4, c5, c6, c7, c8};  // Initially stationary.
-  CPs t01 = {    c2, c3, c4, c5, c6, c7, c8};
-  CPs p1  = {    c2, c3, c4, c5, c6, c7, c8};
-  CPs t12 = {        c3, c4, c5, c6, c7, c8};
-  CPs p2  = {c1,     c3, c4, c5, c6, c7, c8};
-  CPs t23 = {c1,         c4, c5, c6, c7, c8};
-  CPs p3  = {c1, c2,     c4, c5, c6, c7, c8};
-  CPs t34 = {c1, c2,         c5, c6, c7, c8};
-  CPs p4  = {c1, c2, c3,     c5, c6, c7, c8};
-  CPs t45 = {c1, c2, c3,         c6, c7, c8};
-  CPs p5  = {c1, c2, c3, c4,     c6, c7, c8};
-  CPs t56 = {c1, c2, c3, c4,         c7, c8};
-  CPs p6  = {c1, c2, c3, c4, c5,     c7, c8};
-  CPs t67 = {c1, c2, c3, c4, c5,         c8};
-  CPs p7  = {c1, c2, c3, c4, c5, c6,     c8};
-  CPs t78 = {c1, c2, c3, c4, c5, c6,       };
-  CPs p8  = {c1, c2, c3, c4, c5, c6, c7    };
-  CPs t80 = {    c2, c3, c4, c5, c6, c7    };
+  //Various sequences or gaits
+  std::string sequence_1 = "motion_in_sequence";
+  std::string sequence_2 = "alternating_tetrapod";
 
-  // This gait moves four legs at a time (alternating tetrapod).
-  CPs t00 = {c1, c2, c3, c4, c5, c6, c7, c8};
-  CPs t0a = {    c2,     c4,     c6,     c8};
-  CPs pa  = {    c2,     c4,     c6,     c8};
-  CPs tab = {                              };
-  CPs pb  = {c1,     c3,     c5,     c7    };
-  CPs tb0 = {c1,     c3,     c5,     c7    };
+  //Get the Phase object for a single sequence or gait
+  auto spider_phase = getSpiderWalk(stat, sequence_2);
 
-  // Define contact points for each phase, transition contact points,
-  // and phase durations.
+  //Get phase information
+  int repeat = 2;
+  int time_step = 20;
+  vector<CPs> phase_cps = spider_phase.getPhaseCPs(repeat);
+  vector<CPs> trans_cps = spider_phase.getTransitionCPs();
+  vector<int> phase_steps = spider_phase.getPhaseSteps(time_step);
 
-  // One leg at a time: 
-  // vector<CPs> phase_cps =   {p0, p1, p2, p3, p4, p5, p6, p7, p8, p0};
-  // vector<CPs> trans_cps =   {t01, t12, t23, t34, t45, t56, t67, t78, t80};
-  // vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
-
-  // Alternating Tetrapod:
-  vector<CPs> phase_cps =   {p0, pa, p0, pb, p0, pa, p0, pb, p0, pa, p0, pb};
-  vector<CPs> trans_cps =   {t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0};
-  vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
-
-  // Alternating Tetrapod:
-//   vector<CPs> phase_cps =   {p0, pa, p0, pb};
-//   vector<CPs> trans_cps =   {t0a, t0a, tb0};
-//   vector<int> phase_steps = {20, 20, 20, 20};
-
-
-// One step movement
-//   vector<CPs> phase_cps =   {p0, pa, p0};
-//   vector<CPs> trans_cps =   {t0a, t0a};
-//   vector<int> phase_steps = {20, 20, 20};
-  
   // Define noise to be added to initial values, desired timestep duration,
   // vector of link name strings, robot model for each phase, and
   // phase transition initial values.
@@ -175,159 +162,146 @@ int main(int argc, char** argv) {
   vector<Robot> robots(phase_cps.size(), spider);
   vector<Values> transition_graph_init;
   
+  // Get the cumulative phase steps.
+  vector<int> cum_phase_steps = spider_phase.getCumulativePhaseSteps();
+  int t_f = cum_phase_steps[cum_phase_steps.size() - 1];  // Final timestep.
 
-  // Define the cumulative phase steps.
-    vector<int> cum_phase_steps;
-    for (int i = 0; i < phase_steps.size(); i++) {
-        int cum_val = i == 0 ? phase_steps[0] : phase_steps[i] + cum_phase_steps[i-1];
-        cum_phase_steps.push_back(cum_val);
-        std::cout << cum_val << std::endl;
-    }
-    int t_f = cum_phase_steps[cum_phase_steps.size() - 1];  // Final timestep.
+  // Collocation scheme.
+  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
 
-    // Collocation scheme.
-    auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
+  // Graphs for transition between phases + their initial values.
+  vector<gtsam::NonlinearFactorGraph> transition_graphs;
+  for (int p = 1; p < phase_cps.size(); p++) {
+      std::cout << "Creating transition graph" << std::endl;
+      transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
+      robots[p], cum_phase_steps[p - 1], gravity, boost::none, trans_cps[p - 1], mu));
+      std::cout << "Creating initial values" << std::endl;
+      transition_graph_init.push_back(
+      ZeroValues(robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
+  }
 
-    // Graphs for transition between phases + their initial values.
-    vector<gtsam::NonlinearFactorGraph> transition_graphs;
-    for (int p = 1; p < phase_cps.size(); p++) {
-        std::cout << "Creating transition graph" << std::endl;
-        transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        robots[p], cum_phase_steps[p - 1], gravity, boost::none, trans_cps[p - 1], mu));
-        std::cout << "Creating initial values" << std::endl;
-        transition_graph_init.push_back(
-        ZeroValues(robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
-    }
+  // Construct the multi-phase trajectory factor graph.
+  std::cout << "Creating dynamics graph" << std::endl;
+  auto graph = graph_builder.multiPhaseTrajectoryFG(
+      robots, phase_steps, transition_graphs, collocation, gravity, boost::none,
+      phase_cps, mu);
 
-    // Construct the multi-phase trajectory factor graph.
-    std::cout << "Creating dynamics graph" << std::endl;
-    auto graph = graph_builder.multiPhaseTrajectoryFG(
-        robots, phase_steps, transition_graphs, collocation, gravity, boost::none,
-        phase_cps, mu);
+  // Build the objective factors.
+  gtsam::NonlinearFactorGraph objective_factors;
+  auto base_link = spider.getLinkByName("body");
 
-    // Build the objective factors.
-    gtsam::NonlinearFactorGraph objective_factors;
-    auto base_link = spider.getLinkByName("body");
+  std::map<string, gtdynamics::LinkSharedPtr> link_map;
+  for (auto&& link : links)
+      link_map.insert(std::make_pair(link, spider.getLinkByName(link)));
 
-    std::map<string, gtdynamics::LinkSharedPtr> link_map;
-    for (auto&& link : links)
-        link_map.insert(std::make_pair(link, spider.getLinkByName(link)));
-
-    // Previous contact point goal.
-    std::map<string, Point3> prev_cp;
-    for (auto&& link : links){
-        prev_cp.insert(std::make_pair(link,
-        (link_map[link]->wTcom() * Pose3(Rot3(), c1.contact_point)).translation()));
-    }
+  // Previous contact point goal.
+  std::map<string, Point3> prev_cp;
+  for (auto&& link : links){
+      prev_cp.insert(std::make_pair(link,
+      (link_map[link]->wTcom() * Pose3(Rot3(), c1.contact_point)).translation()));
+  }
         
-    // Distance to move contact point per time step during swing.
-    auto contact_offset = Point3(0, 0.02, 0);
-        
-    // Add contact point objectives to factor graph.
-    for (int p = 0; p < phase_cps.size(); p++) {
-        // Phase start and end timesteps.
-        int t_p_i = cum_phase_steps[p] - phase_steps[p];
-        if (p != 0) t_p_i += 1;
-        int t_p_f = cum_phase_steps[p];
+  // Distance to move contact point per time step during swing.
+  auto contact_offset = Point3(0, 0.02, 0);
+      
+  // Add contact point objectives to factor graph.
+  for (int p = 0; p < phase_cps.size(); p++) {
+      // Phase start and end timesteps.
+      int t_p_i = spider_phase.getStartTimeStep(p);
+      int t_p_f = spider_phase.getEndTimeStep(p);
 
-        // Obtain the contact links and swing links for this phase.
-        vector<string> phase_contact_links;
-        for (auto&& cp : phase_cps[p])
-          phase_contact_links.push_back(cp.name);
-        vector<string> phase_swing_links;
-        for (auto&& l : links) {
-            if (std::find(phase_contact_links.begin(),
-                    phase_contact_links.end(), l) == phase_contact_links.end())
-                phase_swing_links.push_back(l); 
-        }
+      // Obtain the contact links and swing links for this phase.
+      vector<string> phase_contact_links = spider_phase.getPhaseContactLinks(p);
+      vector<string> phase_swing_links = spider_phase.getPhaseSwingLinks(p);
+    
 
-        for (int t = t_p_i; t <= t_p_f; t++) {
-            // Normalized phase progress.
-            double t_normed = (double) (t - t_p_i) / (double) (t_p_f - t_p_i);
+      for (int t = t_p_i; t <= t_p_f; t++) {
+          // Normalized phase progress.
+          double t_normed = (double) (t - t_p_i) / (double) (t_p_f - t_p_i);
 
-            for (auto&& pcl : phase_contact_links){
-                // TODO(aescontrela): Use correct contact point for each link.
-                objective_factors.add(gtdynamics::PointGoalFactor(
-                PoseKey(link_map[pcl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
-                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05))); //-0.05
-            }
-        
-            double h = GROUND_HEIGHT +  std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
+          for (auto&& pcl : phase_contact_links){
+              // TODO(aescontrela): Use correct contact point for each link.
+              objective_factors.add(gtdynamics::PointGoalFactor(
+              PoseKey(link_map[pcl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
+              Pose3(Rot3(), c1.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05))); //-0.05
+          }
+      
+          double h = GROUND_HEIGHT +  std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
-            for (auto&& psl : phase_swing_links){
-                objective_factors.add(gtdynamics::PointGoalFactor(
-                PoseKey(link_map[psl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
-                Pose3(Rot3(), c1.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
-            }
+          for (auto&& psl : phase_swing_links){
+              objective_factors.add(gtdynamics::PointGoalFactor(
+              PoseKey(link_map[psl]->getID(), t), Isotropic::Sigma(3, 1e-7), //1e-7
+              Pose3(Rot3(), c1.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+          }
 
-            // Update the goal point for the swing links.
-            for (auto && psl : phase_swing_links)
-                prev_cp[psl] = prev_cp[psl] + contact_offset;
-        }
-    }
+          // Update the goal point for the swing links.
+          for (auto && psl : phase_swing_links)
+              prev_cp[psl] = prev_cp[psl] + contact_offset;
+      }
+  }
 
-    // Add base goal objectives to the factor graph.
-    for (int t = 0; t <= t_f; t++){
-        objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(base_link->getID(), t),
-        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),  //0.5
-        Isotropic::Sigma(6, 5e-5))); //6.2e-5 //5e-5
-    }
+  // Add base goal objectives to the factor graph.
+  for (int t = 0; t <= t_f; t++){
+      objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+      PoseKey(base_link->getID(), t),
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),  //0.5
+      Isotropic::Sigma(6, 5e-5))); //6.2e-5 //5e-5
+  }
 
-    // Add link boundary conditions to FG.
-    for (auto&& link : spider.links()) {
-        // Initial link pose, twists.
-        objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-            PoseKey(link->getID(), 0), link->wTcom(), dynamics_model_6));
-        objective_factors.add(gtsam::PriorFactor<Vector6>(
-            TwistKey(link->getID(), 0), Vector6::Zero(), dynamics_model_6));
+  // Add link boundary conditions to FG.
+  for (auto&& link : spider.links()) {
+      // Initial link pose, twists.
+      objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
+          PoseKey(link->getID(), 0), link->wTcom(), dynamics_model_6));
+      objective_factors.add(gtsam::PriorFactor<Vector6>(
+          TwistKey(link->getID(), 0), Vector6::Zero(), dynamics_model_6));
 
-        // Final link twists, accelerations.
-        objective_factors.add(gtsam::PriorFactor<Vector6>(
-            TwistKey(link->getID(), t_f), Vector6::Zero(), objectives_model_6));
-        objective_factors.add(gtsam::PriorFactor<Vector6>(
-            TwistAccelKey(link->getID(), t_f), Vector6::Zero(),
-            objectives_model_6));
-    }
+      // Final link twists, accelerations.
+      objective_factors.add(gtsam::PriorFactor<Vector6>(
+          TwistKey(link->getID(), t_f), Vector6::Zero(), objectives_model_6));
+      objective_factors.add(gtsam::PriorFactor<Vector6>(
+          TwistAccelKey(link->getID(), t_f), Vector6::Zero(),
+          objectives_model_6));
+  }
 
-    // Add joint boundary conditions to FG.
-    for (auto&& joint : spider.joints()) {   
-        
-        //Add priors to joint angles
-        for (int t = 0; t<= t_f; t++){
-            if (joint->name().find("hip_") == 0)
-                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0, dynamics_model_1_2));    
-            else if (joint->name().find("hip2") == 0)
-                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.9, dynamics_model_1_2));
-            else if (joint->name().find("knee") == 0)
-                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), -1.22, dynamics_model_1_2));
-            else
-                objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.26, dynamics_model_1_2));
-        }
-        // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), 0), 0.0, dynamics_model_1_2));
-        // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t_f), 0.0, dynamics_model_1_2));
-        objective_factors.add(gtsam::PriorFactor<double>(
-            JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
-        objective_factors.add(gtsam::PriorFactor<double>(
-            JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
-        objective_factors.add(gtsam::PriorFactor<double>(
-            JointAccelKey(joint->getID(), t_f), 0.0, objectives_model_1));
-    }
+  // Add joint boundary conditions to FG.
+  for (auto&& joint : spider.joints()) {   
+      
+      //Add priors to joint angles
+      for (int t = 0; t<= t_f; t++){
+          if (joint->name().find("hip_") == 0)
+              objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0, dynamics_model_1_2));    
+          else if (joint->name().find("hip2") == 0)
+              objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.9, dynamics_model_1_2));
+          else if (joint->name().find("knee") == 0)
+              objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), -1.22, dynamics_model_1_2));
+          else
+              objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 0.26, dynamics_model_1_2));
+      }
+      // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), 0), 0.0, dynamics_model_1_2));
+      // objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t_f), 0.0, dynamics_model_1_2));
+      objective_factors.add(gtsam::PriorFactor<double>(
+          JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
+      objective_factors.add(gtsam::PriorFactor<double>(
+          JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
+      objective_factors.add(gtsam::PriorFactor<double>(
+          JointAccelKey(joint->getID(), t_f), 0.0, objectives_model_1));
+  }
 
-    // Add prior factor constraining all Phase keys to have duration of 1 / 240.
-    for (int phase = 0; phase < phase_steps.size(); phase++)
-        objective_factors.add(gtsam::PriorFactor<double>(
-            PhaseKey(phase), dt_des,
-            gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
+  // Add prior factor constraining all Phase keys to have duration of 1 / 240.
+  for (int phase = 0; phase < phase_steps.size(); phase++)
+      objective_factors.add(gtsam::PriorFactor<double>(
+          PhaseKey(phase), dt_des,
+          gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
 
-    // Add min torque objectives.
-    for (int t = 0; t <= t_f; t++) {
-        for (auto&& joint : spider.joints())
-        objective_factors.add(gtdynamics::MinTorqueFactor(
-            TorqueKey(joint->getID(), t),
-            gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
-    }
-    graph.add(objective_factors);
+  // Add min torque objectives.
+  for (int t = 0; t <= t_f; t++) {
+      for (auto&& joint : spider.joints())
+      objective_factors.add(gtdynamics::MinTorqueFactor(
+          TorqueKey(joint->getID(), t),
+          gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+  }
+  graph.add(objective_factors);
 
     // Initialize solution.
   gtsam::Values init_vals;
@@ -343,7 +317,9 @@ int main(int argc, char** argv) {
   params.setlambdaUpperBound(1e10);
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   auto results =  optimizer.optimize();
+  
 
+  //Write results to traj file
   vector<string> jnames;
   for (auto&& joint : spider.joints()) jnames.push_back(joint->name());
   string jnames_str = boost::algorithm::join(jnames, ",");
@@ -362,22 +338,7 @@ int main(int argc, char** argv) {
   int t = 0;
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     // Write a single phase to disk
-    for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-
-      vector<string> vals;
-      for (auto&& joint : spider.joints())
-        vals.push_back(std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
-      for (auto&& joint : spider.joints())
-        vals.push_back(std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
-      for (auto&& joint : spider.joints())
-        vals.push_back(std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
-      for (auto&& joint : spider.joints())
-        vals.push_back(std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
-      vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-      t++;
-      string vals_str = boost::algorithm::join(vals, ",");
-      traj_file << vals_str << "\n";
-    }
+    spider_phase.writePhaseToFile(traj_file, results, spider, phase);
   }
   traj_file.close();
 
