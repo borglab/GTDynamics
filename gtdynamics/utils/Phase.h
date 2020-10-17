@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  phase_utils.h
+ * @file  Phase.h
  * @brief Utility methods for extracting information from Phases.
  * @Author: Disha Das
  * @Author: Tarushree Gandhi
@@ -28,11 +28,10 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 
-
-namespace gtdynamics {
-
 using gtdynamics::ContactPoints, gtdynamics::ContactPoint, 
       std::vector, std::string;
+
+namespace gtdynamics {
 
 /**
  * @class Phase is a class that stores information related
@@ -42,44 +41,35 @@ using gtdynamics::ContactPoints, gtdynamics::ContactPoint,
 class Phase {
 
   protected:
-    //Map from CP name to CP object
-    std::map<std::string, gtdynamics::ContactPoint > contact_point_map;
+    /** Map from CP name to CP object */
+    std::map<std::string, ContactPoint > contact_point_map_;
 
-    //Map from stance name to constituent CP names
-    std::map<std::string, vector<std::string> > stance_map;
+    /** Map from stance name to constituent CP names */
+    std::map<std::string, vector<std::string> > stance_map_;
 
-    //List of stances
-    std::vector<string> stances;
+    const std::vector<string> stances_; ///< List of stances
 
-    //Number of repetitions of stance sequence
-    int repeat; 
+    int repeat_ = 1;                    ///< Number of repetitions of stance sequence
 
-    //Time step for each phase
-    int step_size;
+    int step_size_ = 20;                ///< Time step for each phase
 
-    //Vector of constructed walk cycle time steps
-    vector<int> phase_steps;
+    vector<int> phase_steps_;           ///< Vector of constructed walk cycle time steps
 
-    //Vector of cumulative time steps
-    vector<int> cum_phase_steps;
+    vector<int> cum_phase_steps_;       ///< Vector of cumulative time steps
 
-    //List of all links or CP names
-    vector<string> links;
+    vector<string> links_;              ///< List of all links or CP names
 
-    //Repeats a sequence of stances
-    vector<gtdynamics::ContactPoints> repeatSequence(vector<gtdynamics::ContactPoints> cps_, int repetition){
-        vector<gtdynamics::ContactPoints> cps;
+    /** Repeats a sequence of stances */
+    const vector<ContactPoints> repeatSequence(const vector<ContactPoints>& cps_original, const int& repetition) {
+        vector<ContactPoints> cps;
         for(int i = 0; i < repetition; i++){
-            cps.insert(std::end(cps), std::begin(cps_), std::end(cps_));
+            cps.insert(std::end(cps), std::begin(cps_original), std::end(cps_original));
         }
-        if (repetition == 0)
-          return cps_;
-        else
-          return cps;
+        return cps;
     }
     
-    //Gets the intersection between two string vectors of contact links
-    vector<string> getIntersection(vector<string> CPs_1, vector<string> CPs_2){
+    /** Gets the intersection between two string vectors of contact links */
+    const vector<string> getIntersection(vector<string> CPs_1, vector<string> CPs_2) {
         std::sort(CPs_1.begin(), CPs_1.end());
         std::sort(CPs_2.begin(), CPs_2.end());
         std::vector<string> intersection;
@@ -89,33 +79,33 @@ class Phase {
         return intersection;
     }
 
-    //Returns the ContactPoints object from vector of string of CP names
-    gtdynamics::ContactPoints getCPs(vector<std::string> CPs){
-        gtdynamics::ContactPoints CP_vec;
+    /** Returns the ContactPoints object from vector of string of CP names */
+    const ContactPoints getContactPoints(const vector<std::string>& CPs) {
+        ContactPoints CP_vec;
         for (auto&& CP : CPs)
-            CP_vec.push_back(contact_point_map[CP]);
+            CP_vec.push_back(contact_point_map_[CP]);
         return CP_vec;
     }
 
   public:
     /** Default Constructor */
-    Phase(){}
+    Phase(const vector<string>& sequence):stances_(sequence){}
 
     /** @fn Maps a Contact Point name to its ContactPoint object.
      * @param[in] CP   Single ContactPoint object.
      */
-    void addContactPoint(gtdynamics::ContactPoint CP){
-        contact_point_map.insert(std::make_pair(CP.name, CP));
-        links.push_back(CP.name);
+    void addContactPoint(const ContactPoint& CP){
+        contact_point_map_.insert(std::make_pair(CP.name, CP));
+        links_.push_back(CP.name);
     }
 
     /** @fn Maps a vector of ContactPoint names to their ContactPoint objects.
      * @param[in] CPs   Vector of ContactPoint objects.
      */
-    void addContactPoints(gtdynamics::ContactPoints CPs){
+    void addContactPoints(const ContactPoints& CPs){
         for (auto&& cp : CPs){
-          contact_point_map.insert(std::make_pair(cp.name, cp));
-          links.push_back(cp.name);
+          contact_point_map_.insert(std::make_pair(cp.name, cp));
+          links_.push_back(cp.name);
         }
     }
 
@@ -123,15 +113,30 @@ class Phase {
      * @param[in] name   Name of the stance.
      * @param[in] CPs    Constituent Contact points of the stance.
      */
-    void addStance(std::string name, vector<string> CPs){
-        stance_map.insert(std::make_pair(name, CPs));
+    void addStance(const std::string& name, const vector<string>& CPs){
+      if(std::find (stances_.begin(), stances_.end(), name) != stances_.end())
+        stance_map_.insert(std::make_pair(name, CPs));
     }
 
-    /** @fn Stores a sequence of stances or phases.
-     * @param[in] phases   Sequence of stances.
+    /** @fn Sets the number of repetitions to be made of the sequence.
+     * @param[in] repetitions   Number of repetitions.
      */
-    void addSequence(vector<string> phases){
-        stances = phases;
+    void setRepetitions(const int& repetitions){
+      repeat_ = repetitions;
+    }
+
+    /** @fn Sets the time step for each phase.
+     * @param[in] time_step   Time step for each phase.
+     */
+    void setPhaseStep(const int& time_step){
+      step_size_ = time_step;
+      phase_steps_.resize(stances_.size()*repeat_);
+      std::fill (phase_steps_.begin(), phase_steps_.end(), step_size_);
+
+      for (int i = 0; i < (int)phase_steps_.size(); i++) {
+        int cum_val = i == 0 ? phase_steps_[0] : phase_steps_[i] + cum_phase_steps_[i-1];
+        cum_phase_steps_.push_back(cum_val);
+      }
     }
 
     /** @fn Returns a vector of ContactPoints objects for all phases after 
@@ -139,15 +144,14 @@ class Phase {
      * @param[in]repetitions    Number of repetitions of stance sequence.
      * @return Phase CPs.
      */
-    vector<gtdynamics::ContactPoints> getPhaseCPs(int repetitions=0){
-      repeat = repetitions;
-      vector<gtdynamics::ContactPoints> phase_cps_;
+    const vector<ContactPoints> getPhaseCPs(){
+      vector<ContactPoints> phase_cps_original;
 
-      for (auto&& stance : stances){
-          vector<std::string> CPs = stance_map[stance];
-          phase_cps_.push_back(getCPs(CPs));
+      for (auto&& stance : stances_){
+          vector<std::string> CPs = stance_map_[stance];
+          phase_cps_original.push_back(getContactPoints(CPs));
       }
-      vector<gtdynamics::ContactPoints> phase_cps = repeatSequence(phase_cps_, repeat);
+      vector<ContactPoints> phase_cps = repeatSequence(phase_cps_original, repeat_);
       return phase_cps;
     }
 
@@ -155,20 +159,20 @@ class Phase {
      * applying repetition on the original sequence.
      * @return Transition CPs.
      */
-    vector<gtdynamics::ContactPoints> getTransitionCPs(){
-        vector<gtdynamics::ContactPoints> trans_cps_;
+    const vector<ContactPoints> getTransitionCPs() {
+        vector<ContactPoints> trans_cps_original;
 
-        for(int p = 0; p < stances.size(); p++ ){
-            vector<string> stance_1 = stance_map[stances[p]];
+        for(int p = 0; p < (int)stances_.size(); p++ ){
+            vector<string> stance_1 = stance_map_[stances_[p]];
             vector<string> stance_2;
-            if(p == stances.size()-1)
-              stance_2 = stance_map[stances[0]];
+            if(p == (int)stances_.size()-1)
+              stance_2 = stance_map_[stances_[0]];
             else
-              stance_2 = stance_map[stances[p + 1]];
+              stance_2 = stance_map_[stances_[p + 1]];
             std::vector<string> intersection = getIntersection(stance_1, stance_2);
-            trans_cps_.push_back(getCPs(intersection));
+            trans_cps_original.push_back(getContactPoints(intersection));
         }
-        vector<gtdynamics::ContactPoints> trans_cps = repeatSequence(trans_cps_, repeat);
+        vector<ContactPoints> trans_cps = repeatSequence(trans_cps_original, repeat_);
         trans_cps.erase(trans_cps.end());
         
         return trans_cps;
@@ -179,30 +183,23 @@ class Phase {
      * @param[in]step    Time step for each phase.
      * @return Phase steps.
      */
-    vector<int> getPhaseSteps(int step){
-        step_size = step;
-        phase_steps.resize(stances.size()*repeat);
-        std::fill (phase_steps.begin(), phase_steps.end(), step_size);
-        return phase_steps;
+    const vector<int> getPhaseSteps(){
+        return phase_steps_;
     }
 
     /** @fn Returns cumulative phase steps. 
      * @return Cumulative phase steps.
      */
-    vector<int> getCumulativePhaseSteps(){
-      for (int i = 0; i < phase_steps.size(); i++) {
-          int cum_val = i == 0 ? phase_steps[0] : phase_steps[i] + cum_phase_steps[i-1];
-          cum_phase_steps.push_back(cum_val);
-      }
-      return cum_phase_steps;
+    const vector<int> getCumulativePhaseSteps(){
+      return cum_phase_steps_;
     }
 
     /** @fn Returns the start time step for a given phase.
      * @param[in]phase    Phase number.
      * @return Initial time step.
      */
-    int getStartTimeStep(int phase){
-      int t_p_i = cum_phase_steps[phase] - phase_steps[phase];
+    const int getStartTimeStep(const int& phase){
+      int t_p_i = cum_phase_steps_[phase] - phase_steps_[phase];
       if (phase != 0) t_p_i += 1;
       return t_p_i;
     }
@@ -211,17 +208,17 @@ class Phase {
      * @param[in]phase    Phase number.
      * @return Final time step.
      */
-    int getEndTimeStep(int phase){
-      return cum_phase_steps[phase];
+    const int getEndTimeStep(const int& phase){
+      return cum_phase_steps_[phase];
     }
 
     /** @fn Returns the contact links for a given phase.
      * @param[in]phase    Phase number.
      * @return Vector of contact links.
      */
-    vector<string> getPhaseContactLinks(int phase){
-      std::string current_stance = stances[phase%stances.size()];
-      vector<string> stance_CPs = stance_map[current_stance];
+    const vector<string> getPhaseContactLinks(const int& phase) {
+      std::string current_stance = stances_[phase%stances_.size()];
+      vector<string> stance_CPs = stance_map_[current_stance];
       return stance_CPs;
     }
 
@@ -229,11 +226,11 @@ class Phase {
      * @param[in]phase    Phase number.
      * @return Vector of swing links.
      */
-    vector<string> getPhaseSwingLinks(int phase){
+    const vector<string> getPhaseSwingLinks(const int& phase) {
       vector<string> phase_swing_links;
-      std::string current_stance = stances[phase%stances.size()];
-      vector<string> stance_CPs = stance_map[current_stance];
-      for (auto&& l : links) {
+      std::string current_stance = stances_[phase%stances_.size()];
+      vector<string> stance_CPs = stance_map_[current_stance];
+      for (auto&& l : links_) {
         if (std::find(stance_CPs.begin(),
                 stance_CPs.end(), l) == stance_CPs.end())
             phase_swing_links.push_back(l); 
@@ -247,10 +244,10 @@ class Phase {
      * @param[in]robot        Robot model.
      * @param[in]phase        Phase number.
      */
-    void writePhaseToFile(std::ofstream& traj_file, gtsam::Values results, 
-                          gtdynamics::Robot robot, int phase){
+    const void writePhaseToFile(std::ofstream& traj_file, const gtsam::Values& results, 
+                          const Robot& robot, const int& phase) {
       int t = getStartTimeStep(phase);
-      for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
+      for (int phase_step = 0; phase_step < phase_steps_[phase]; phase_step++) {
 
         vector<string> vals;
         for (auto&& joint : robot.joints())
@@ -268,4 +265,4 @@ class Phase {
       }
     }
 };
-}
+} //namespace gtdynamics

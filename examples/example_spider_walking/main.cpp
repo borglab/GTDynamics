@@ -13,7 +13,7 @@
  * @Author: Disha Das
  * @Author: Tarushree Gandhi
  */
-#include <gtdynamics/utils/phase_utils.h>
+#include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -34,6 +34,10 @@
 #include <utility>
 #include <algorithm>
 
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
+
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 
@@ -46,15 +50,18 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
     gtdynamics::ContactPoint, gtdynamics::ZeroValues, gtdynamics::PhaseKey,
     gtdynamics::TwistKey, gtdynamics::TwistAccelKey, gtdynamics::Robot,
     std::vector, std::string, gtsam::noiseModel::Isotropic, gtdynamics::Phase;
+using namespace gtsam;
+
+namespace gtdynamics{
 
 //Returns a Phase object for a single spider walk cycle.
 gtdynamics::Phase getSpiderWalk(gtdynamics::ContactPoints CPs, std::string sequence_name){
   //Create Phase object
-  auto spider_phase = Phase();
-  spider_phase.addContactPoints(CPs);
 
   if(sequence_name == "motion_in_sequence"){
     vector<string> sequence = {"stationary", "l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8"};
+    auto spider_phase = Phase(sequence);
+    spider_phase.addContactPoints(CPs);
     spider_phase.addStance(sequence[0], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
     spider_phase.addStance(sequence[1], {            "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
     spider_phase.addStance(sequence[2], {"tarsus_1",            "tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
@@ -64,18 +71,18 @@ gtdynamics::Phase getSpiderWalk(gtdynamics::ContactPoints CPs, std::string seque
     spider_phase.addStance(sequence[6], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5",           "tarsus_7","tarsus_8"});
     spider_phase.addStance(sequence[7], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6",           "tarsus_8"});
     spider_phase.addStance(sequence[8], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7"           });
-    spider_phase.addSequence(sequence);
+    return spider_phase;
   }
   else if(sequence_name == "alternating_tetrapod"){
     vector<string> sequence = {"stationary", "even_legs", "stationary", "odd_legs"};
+    auto spider_phase = Phase(sequence);
+    spider_phase.addContactPoints(CPs);
     spider_phase.addStance(sequence[0], {"tarsus_1", "tarsus_2","tarsus_3","tarsus_4","tarsus_5","tarsus_6","tarsus_7","tarsus_8"});
     spider_phase.addStance(sequence[1], {"tarsus_2","tarsus_4","tarsus_6","tarsus_8"});
     spider_phase.addStance(sequence[3], {"tarsus_1","tarsus_3","tarsus_5","tarsus_7"});
-    spider_phase.addSequence(sequence);
+    return spider_phase;
   }
-  return spider_phase;
 }
-
 
 int main(int argc, char** argv) {
   
@@ -147,11 +154,13 @@ int main(int argc, char** argv) {
   auto spider_phase = getSpiderWalk(stat, sequence_2);
 
   //Get phase information
-  int repeat = 2;
+  int repeat = 3;
   int time_step = 20;
-  vector<CPs> phase_cps = spider_phase.getPhaseCPs(repeat);
+  spider_phase.setRepetitions(repeat);
+  spider_phase.setPhaseStep(time_step);
+  vector<CPs> phase_cps = spider_phase.getPhaseCPs();
   vector<CPs> trans_cps = spider_phase.getTransitionCPs();
-  vector<int> phase_steps = spider_phase.getPhaseSteps(time_step);
+  vector<int> phase_steps = spider_phase.getPhaseSteps();
 
   // Define noise to be added to initial values, desired timestep duration,
   // vector of link name strings, robot model for each phase, and
@@ -341,8 +350,16 @@ int main(int argc, char** argv) {
     // Write a single phase to disk
     spider_phase.writePhaseToFile(traj_file, results, spider, phase);
   }
+
+  //Write the last 4 phases to disk 5 times
+  for(int i = 0; i < 5; i++){
+    for (int phase = 8; phase < phase_steps.size(); phase++) {
+        spider_phase.writePhaseToFile(traj_file, results, spider, phase);
+    }
+  }
   traj_file.close();
 
   return 0;
 
 } //namespace gtdynamics
+}
