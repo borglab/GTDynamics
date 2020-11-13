@@ -601,7 +601,7 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
    * so must be implemented in the derived class. */
   virtual gtsam::Vector unwhitenedError(
       const gtsam::Values &x,
-      boost::optional<std::vector<Matrix> &> H = boost::none) const {
+      boost::optional<std::vector<Matrix> &> H = boost::none) const override {
     if (this->active(x)) {
       if (H)
         return evaluateError(x.at<X1>(keys_[0]), x.at<X2>(keys_[1]),
