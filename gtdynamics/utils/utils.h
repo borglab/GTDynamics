@@ -133,9 +133,7 @@ std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
 std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
                                        gtsam::Point3 &origin,  // NOLINT
                                        double &cell_size);     // NOLINT
-}  // namespace gtdynamics
 
-namespace gtdynamics {
 /** Obtain the sdf ElementPtr associated with the robot model.
  * @param sdf_file_path a string containing the absolute to the sdf file.
  * @param model_name name of the robot we care about. Must be specified in case

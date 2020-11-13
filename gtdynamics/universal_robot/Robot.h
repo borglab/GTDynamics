@@ -14,8 +14,8 @@
 #ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 #define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
 
-#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 
 #include <boost/optional.hpp>
@@ -95,7 +95,7 @@ class Robot {
   /**
    * @fn calculate forward kinematics by performing bfs in the link-joint graph
    * (will throw an error when invalid joint angle specification detected)
-   * 
+   *
    * @param[in] joint_angles     joint angles for all joints
    * @param[in] joint_vels       joint velocities for all joints
    * @param[in] prior_link_name  name of link with known pose & twist
@@ -129,7 +129,7 @@ class Robot {
                                        const OptimizerSetting &opt) const;
 
   /** @fn Returns a factors for the robot.
-   * 
+   *
    * @param[in] t    Timestep to return q factors for.
    * @param[in] opt  OptimizerSetting object.
    * @return acceleration factors.
@@ -138,7 +138,7 @@ class Robot {
                                        const OptimizerSetting &opt) const;
 
   /** @fn Returns linear forward dynamics priors for the robot.
-   * 
+   *
    * @param[in] t             Timestep to return q factors for.
    * @param[in] torques       Joint torques.
    * @param[in] opt           OptimizerSetting object.
@@ -150,7 +150,7 @@ class Robot {
 
   /** @fn Returns accel factors linearized about specified operating
    *    condition.
-   * 
+   *
    * @param[in] t             Timestep to return q factors for.
    * @param[in] poses         Link poses.
    * @param[in] twists        Link twists.
@@ -161,13 +161,12 @@ class Robot {
    * @return Linearized accel factors.
    */
   gtsam::GaussianFactorGraph linearAFactors(
-    size_t t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
+      const std::map<std::string, gtsam::Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
   /** @fn Returns dynamics factors for the robot.
    *
@@ -182,7 +181,7 @@ class Robot {
 
   /** @fn Returns dynamics factors linearized about specified operating
    *    condition.
-   * 
+   *
    * @param[in] t             Timestep to return q factors for.
    * @param[in] poses         Link poses.
    * @param[in] twists        Link twists.
@@ -193,13 +192,12 @@ class Robot {
    * @return Linearized dynamics factors.
    */
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-    size_t t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
+      const std::map<std::string, gtsam::Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
   /** @fn Returns joint limit factors for the robot.
    *
