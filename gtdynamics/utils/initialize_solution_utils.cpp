@@ -8,7 +8,7 @@
 /**
  * @file  initialize_solution_utils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @authors Alejandro Escontrela and Yetong Zhang
  */
 
 #include "gtdynamics/utils/initialize_solution_utils.h"
@@ -37,7 +37,7 @@ namespace gtdynamics {
 inline Pose3 addGaussianNoiseToPose(const Pose3& T, double std,
                                     Sampler sampler) {
   Vector rand_vec = sampler.sample();
-  Point3 p = Point3(T.translation().vector() + rand_vec.head(3));
+  Point3 p = T.translation() + rand_vec.head(3);
   Rot3 R = Rot3::Expmap(Rot3::Logmap(T.rotation()) + rand_vec.tail<3>());
   return Pose3(R, p);
 }
