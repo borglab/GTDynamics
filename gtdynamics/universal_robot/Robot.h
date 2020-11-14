@@ -110,7 +110,7 @@ class Robot {
       const boost::optional<gtsam::Vector6> &prior_link_twist =
           boost::none) const;
 
-  /** @fn Returns q factors for the robot.
+  /** @fn Returns pose factors for the robot.
    *
    * @param[in] t    Timestep to return q factors for.
    * @param[in] opt  OptimizerSetting object.
@@ -119,7 +119,7 @@ class Robot {
   gtsam::NonlinearFactorGraph qFactors(size_t t,
                                        const OptimizerSetting &opt) const;
 
-  /** @fn Returns v factors for the robot.
+  /** @fn Returns velocity factors for the robot.
    *
    * @param[in]t    Timestep to return q factors for.
    * @param[in]opt  OptimizerSetting object.
@@ -128,7 +128,7 @@ class Robot {
   gtsam::NonlinearFactorGraph vFactors(size_t t,
                                        const OptimizerSetting &opt) const;
 
-  /** @fn Returns a factors for the robot.
+  /** @fn Returns acceleration factors for the robot.
    *
    * @param[in] t    Timestep to return q factors for.
    * @param[in] opt  OptimizerSetting object.
