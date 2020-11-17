@@ -2,22 +2,22 @@
 from typing import Dict
 
 import time
-
 import matplotlib.pyplot as plt
 import pybullet as p
 import pybullet_data
 import pandas as pd
 import numpy as np
+import inspect
 
 # pylint: disable=I1101, C0103
 
 _ = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
-planeId = p.loadURDF("plane.urdf")
+p.setRealTimeSimulation(0)
+planeId = p.loadURDF("walls.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-robot = p.loadSDF("spider.sdf")
-
+robot = p.loadSDF("spider_alt.sdf")
 robot_id = robot[0] # loadSDF returns a list of objects; the first is the integer ID.
 
 # TODO (disha + stephanie): check whether this function is necessary/correct
@@ -65,6 +65,10 @@ t_f = None
 ts = []
 all_pos_sim = []
 
+link_dict = {}
+link_to_num = {3:0 , 7:1 , 11:2 , 15:3 , 19:4 , 23:5 , 27:6 , 31:7 }
+constrained=[]
+
 i=0
 while True:
 
@@ -89,9 +93,33 @@ while True:
     new_pos = np.array(new_pos)
     new_R = np.array(p.getMatrixFromQuaternion(new_orn)).reshape(3, 3)
 
+    # print(i)
+
+    #Detect collision points and constrain them.
+    cp = np.asarray(p.getContactPoints(bodyA = planeId, bodyB = robot_id))       
+    if cp.shape[0]>1 and i>1:
+        new_cps = set(cp[:,4])
+
+        change = list(df.loc[i][np.arange(16,24)] - df.loc[i-1][np.arange(16,24)])
+        # Initial collision
+        just_collided = [x for x in new_cps if x not in constrained and x in link_to_num.keys()]
+        for x in just_collided:
+            if (link_to_num[x]<4 and change[link_to_num[x]] >= 0) or (link_to_num[x]>=4 and change[link_to_num[x]] <= 0):
+                link_dict[x] = p.createConstraint(robot_id, x, planeId, -1, p.JOINT_POINT2POINT, [0,0,0], [0,0,0] , p.getLinkState(robot_id, x)[0])
+                constrained.append(x)
+
+        #Wants to lift
+        for x in constrained:
+            if (link_to_num[x]<4 and change[link_to_num[x]] <= 0) or (link_to_num[x]>=4 and change[link_to_num[x]] >= 0) and link_dict.get(x) != None:
+                numConstraints_before = p.getNumConstraints()
+                p.removeConstraint(link_dict[x])
+                if numConstraints_before != p.getNumConstraints():
+                    constrained.remove(x)
+
+
     if (i % debug_iters) == 0:
-        print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
-            i, new_pos, p.getEulerFromQuaternion(new_orn)))
+        # print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
+            # i, new_pos, p.getEulerFromQuaternion(new_orn)))
 
         if (num_traj_replays == 0):
             p.addUserDebugLine(pos, new_pos, lineColorRGB=[1, 0, 1], lineWidth=2.5)
