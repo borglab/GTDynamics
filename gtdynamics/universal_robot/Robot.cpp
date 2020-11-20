@@ -146,7 +146,7 @@ Robot::FKResults Robot::forwardKinematics(
     link_poses[*prior_link_name] =
         prior_link_pose ? *prior_link_pose : gtsam::Pose3();
     link_twists[*prior_link_name] =
-        prior_link_twist ? *prior_link_twist : gtsam::Vector6();
+        prior_link_twist ? *prior_link_twist : gtsam::Vector6::Zero();
   }
   if (link_poses.size() == 0) {
     throw std::runtime_error("cannot find a fixed link");
