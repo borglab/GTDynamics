@@ -63,6 +63,15 @@ gtdynamics::TrajectoryParams getSpiderTrajParams(vector<string> links, std::stri
     vector<pair<string, int>> walk_cycle; 
 
     if (walk_cycle_name == "motion_in_sequence"){
+        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l1", robot, {"tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l2", robot, {"tarsus_1", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l3", robot, {"tarsus_1", "tarsus_2", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l4", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l5", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l6", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("l7", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_8"});
+        traj_params.addStance("l8", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7"});
         walk_cycle.push_back(pair<string, int>("stationary", 20));
         walk_cycle.push_back(pair<string, int>("l1", 20));
         walk_cycle.push_back(pair<string, int>("l2", 20));
@@ -73,26 +82,18 @@ gtdynamics::TrajectoryParams getSpiderTrajParams(vector<string> links, std::stri
         walk_cycle.push_back(pair<string, int>("l7", 20));
         walk_cycle.push_back(pair<string, int>("l8", 20));
         traj_params.setWalkCycle(walk_cycle);
-        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l1", robot, {"tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l2", robot, {"tarsus_1", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l3", robot, {"tarsus_1", "tarsus_2", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l4", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l5", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l6", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l7", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_8"});
-        traj_params.addStance("l8", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7"});
         return traj_params;
     }
     if (walk_cycle_name == "alternating_tetrapod"){
+        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
+        traj_params.addStance("even_legs",robot, {"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"});
+        traj_params.addStance("odd_legs", robot, {"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"});
         walk_cycle.push_back(pair<string, int>("stationary", 40));
         walk_cycle.push_back(pair<string, int>("even_legs", 20));
         walk_cycle.push_back(pair<string, int>("stationary", 40));
         walk_cycle.push_back(pair<string, int>("odd_legs", 20));
         traj_params.setWalkCycle(walk_cycle);
-        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("even_legs",robot, {"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"});
-        traj_params.addStance("odd_legs", robot, {"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"});
+
         return traj_params;
     }
 }
@@ -201,6 +202,7 @@ int main(int argc, char **argv)
     // Add contact point objectives to factor graph.
     for (int p = 0; p < spider_trajectory.numPhases(); p++)
     {
+        // if(p <2) contact_offset /=2 ;
         // Phase start and end timesteps.
         int t_p_i = spider_trajectory.getStartTimeStep(p);
         int t_p_f = spider_trajectory.getEndTimeStep(p);
@@ -328,7 +330,7 @@ int main(int argc, char **argv)
         spider_trajectory.writePhaseToFile(traj_file, results, phase);
 
     //Write the last 4 phases to disk n times
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 10; i++)
     {
         for (int phase = 4; phase < phase_durations.size(); phase++)
             spider_trajectory.writePhaseToFile(traj_file, results, phase);

@@ -110,8 +110,12 @@ namespace gtdynamics
          */
         void setWalkCycle(const vector<pair<string, int>>& walk_cycle){
             for (auto elem : walk_cycle){
-                walk_cycle_.push_back(elem.first);
-                durations_.push_back(elem.second);
+                if (stance_map_.find(elem.first) == stance_map_.end())
+                    throw std::runtime_error("Stance " + elem.first + " not found.");
+                else{
+                    walk_cycle_.push_back(elem.first);
+                    durations_.push_back(elem.second);
+                }
             }
         }
 
@@ -123,10 +127,12 @@ namespace gtdynamics
         void addStance(const std::string &name,
                        const Robot &robot, const vector<string> &CPs)
         {
-            if (std::find(walk_cycle_.begin(), walk_cycle_.end(), name) == walk_cycle_.end())
-                throw std::runtime_error("Stance " + name + " not found in walk cycle.");
             if (stance_map_.find(name) != stance_map_.end())
                 stance_map_.erase(name);
+            for (auto link : CPs){
+                if (std::find(links_.begin(), links_.end(), link) == links_.end())
+                    throw std::runtime_error("Contact Link " + link + " not found.");
+            }
             stance_map_.insert(std::make_pair(name, Stance{name, robot, CPs}));
         }
 
