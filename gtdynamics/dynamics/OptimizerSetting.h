@@ -70,6 +70,38 @@ class OptimizerSetting {
   // default constructor
   OptimizerSetting();
 
+  //Constructor
+  OptimizerSetting(const double& sigma_dynamics)
+    : bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      bv_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      p_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      v_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      linear_a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
+      f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      linear_f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
+      fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
+      t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      linear_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      cp_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      cfriction_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      cv_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
+      ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
+      cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
+      planar_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
+      linear_planar_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
+      prior_q_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      prior_qv_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      prior_qa_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
+      jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
+      rel_thresh(1e-2),
+      max_iter(50) {}
+
   // default destructor
   ~OptimizerSetting() {}
 

@@ -16,139 +16,125 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
-#include <fstream>
-#include <iostream>
 #include <string>
-#include <utility>
-#include <algorithm>
-#include <unistd.h>
 #include <stdio.h>
-#include <limits.h>
-
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 
 using gtdynamics::ContactPoints, gtdynamics::ContactPoint,
     std::vector, std::string;
 
 namespace gtdynamics
 {
+    /// Stance struct stores data for a single stance in a walk cycle
     struct Stance
     {
-        string name;
         Robot robot_configuration;
         vector<string> contact_points;
     };
 
     /**
- * @class TrajectoryParams class stores information related
- * to Contact Points, stances and walk cycles required
- * for calculation of Trajectory phases in the Trajectory class
- */
-    class TrajectoryParams
-    {
-    protected:
-        /** Map from CP name to CP object */
-        std::map<std::string, ContactPoint> contact_point_map_;
+     * @class TrajectoryParams class stores information related
+     * to Contact Points, stances and walk cycles required
+     * for calculation of Trajectory phases in the Trajectory class
+     */
+    class TrajectoryParams{
+        protected:
+            /// Contact points, indexed by contact point name (a string)
+            std::map<std::string, ContactPoint> contact_points_;
 
-        /** Map from stance name to Stance struct */
-        std::map<std::string, Stance> stance_map_;
+            /// Stances, indexed by stance name (a string)
+            std::map<std::string, Stance> stances_;
 
-        std::vector<string> walk_cycle_ = {};   ///< Sequence of stances
-        std::vector<int> durations_ = {};       ///< Stance durations in walk cycle
-        vector<string> links_ = {};             ///< List of all contact links
+            WalkCycle walk_cycle_;                  ///< WalkCycle
+            vector<string> links_ = {};             ///< List of all contact links
 
-    public:
-        /** Default Constructor */
-        TrajectoryParams() {}
+        public:
+            /// Default Constructor
+            TrajectoryParams() {}
 
-        /** @fn Stores contact links
-         * @param[in] links   List of contact links
-         */
-        void addLinks(const vector<string> &links){links_ = links;}
+            /** @fn Stores contact links
+             * @param[in] links   List of contact links
+             */
+            void addLinks(const vector<string> &links){links_ = links;}
 
-        /** @fn Maps a Contact Point name to its ContactPoint object.
-         * @param[in] CP   Single ContactPoint object.
-         */
-        void addContactPoint(const ContactPoint &CP)
-        {
-            if (std::find(links_.begin(), links_.end(), CP.name) != links_.end())
-                contact_point_map_.insert(std::make_pair(CP.name, CP));
-            else
-                throw std::runtime_error("Contact Point \"" + CP.name +
-                                         "\" does not belong to a contact link!");
-        }
-
-        /** @fn Maps a vector of ContactPoint names to their ContactPoint objects.
-         * @param[in] CPs   Vector of ContactPoint objects.
-         */
-        void addContactPoints(const ContactPoints &CPs)
-        {
-            for (auto &&cp : CPs)
+            /** @fn Maps a Contact Point name to its ContactPoint object.
+             * @param[in] CP   Single ContactPoint object.
+             */
+            void addContactPoint(const ContactPoint &CP)
             {
-                if (std::find(links_.begin(), links_.end(), cp.name) != links_.end())
-                    contact_point_map_.insert(std::make_pair(cp.name, cp));
+                if (std::find(links_.begin(), links_.end(), CP.name) != links_.end())
+                    contact_points_.insert(std::make_pair(CP.name, CP));
                 else
-                    throw std::runtime_error("Contact Point \"" + cp.name +
-                                             "\" does not belong to a contact link!");
+                    throw std::runtime_error("Contact Point \"" + CP.name +
+                                            "\" does not belong to a contact link!");
             }
-        }
 
-        /** @fn Generates Contact Point object for each contact link
-         * @param[in] point            Location of contact point in link frame.
-         * @param[in] contact_height   Height of contact point 
-         */
-        void generateContactPoints (const gtsam::Point3 &point, const double &contact_height)
-        {
-            int i = 0;
-            for (auto &&l : links_)
-                addContactPoint(ContactPoint{l, point, i++, contact_height});
-        }
-
-        /** @fn Stores walk cycle
-         * @param[in] walk_cycle   List of stances and their durations in a sequence that make up a walk cycle
-         */
-        void setWalkCycle(const vector<pair<string, int>>& walk_cycle){
-            for (auto elem : walk_cycle){
-                if (stance_map_.find(elem.first) == stance_map_.end())
-                    throw std::runtime_error("Stance " + elem.first + " not found.");
-                else{
-                    walk_cycle_.push_back(elem.first);
-                    durations_.push_back(elem.second);
+            /** @fn Maps a vector of ContactPoint names to their ContactPoint objects.
+             * @param[in] CPs   Vector of ContactPoint objects.
+             */
+            void addContactPoints(const ContactPoints &CPs)
+            {
+                for (auto &&cp : CPs)
+                {
+                    if (std::find(links_.begin(), links_.end(), cp.name) != links_.end())
+                        contact_points_.insert(std::make_pair(cp.name, cp));
+                    else
+                        throw std::runtime_error("Contact Point \"" + cp.name +
+                                                "\" does not belong to a contact link!");
                 }
             }
-        }
 
-        /** @fn Maps a stance to a Stance struct.
-         * @param[in] name   Name of the stance.
-         * @param[in] robot  Robot model used for this stance.
-         * @param[in] CPs    Constituent Contact points of the stance.
-         */
-        void addStance(const std::string &name,
-                       const Robot &robot, const vector<string> &CPs)
-        {
-            if (stance_map_.find(name) != stance_map_.end())
-                stance_map_.erase(name);
-            for (auto link : CPs){
-                if (std::find(links_.begin(), links_.end(), link) == links_.end())
-                    throw std::runtime_error("Contact Link " + link + " not found.");
+            /** @fn Generates Contact Point object for each contact link
+             * @param[in] point            Location of contact point in link frame.
+             * @param[in] contact_height   Height of contact point 
+             */
+            void generateContactPoints (const gtsam::Point3 &point, const double &contact_height)
+            {
+                int i = 0;
+                for (auto &&l : links_)
+                    addContactPoint(ContactPoint{l, point, i++, contact_height});
             }
-            stance_map_.insert(std::make_pair(name, Stance{name, robot, CPs}));
-        }
 
-        /** Returns list of links */
-        vector<string> getLinks() const { return links_; }
+            /** @fn Stores walk cycle
+             * @param[in] walk_cycle   WalkCycle object
+             */
+            void setWalkCycle(const WalkCycle& walk_cycle){
+                walk_cycle_ = walk_cycle;
+                for (auto elem : walk_cycle.getWalkCycle()){
+                    if (stances_.find(elem) == stances_.end())
+                        throw std::runtime_error("Stance " + elem + " not found.");
+                }
+            }
 
-        /** Returns CP name to CP map */
-        std::map<std::string, ContactPoint> getContactPointMap() const { return contact_point_map_; }
+            /** @fn Maps a stance to a Stance struct.
+             * @param[in] name   Name of the stance.
+             * @param[in] robot  Robot model used for this stance.
+             * @param[in] CPs    Constituent Contact points of the stance.
+             */
+            void addStance(const std::string &name,
+                        const Robot &robot, const vector<string> &CPs)
+            {
+                if (stances_.find(name) != stances_.end())
+                    stances_.erase(name);
+                for (auto link : CPs){
+                    if (std::find(links_.begin(), links_.end(), link) == links_.end())
+                        throw std::runtime_error("Contact Link " + link + " not found.");
+                }
+                stances_.insert(std::make_pair(name, Stance{robot, CPs}));
+            }
 
-        /** Returns walk cycle */
-        vector<string> getWalkCycle() const { return walk_cycle_; }
+            /// Returns list of links
+            vector<string> getLinks() const { return links_; }
 
-        /** Returns walk cycle durations */
-        vector<int> getDurations() const {return durations_; }
+            /// Returns CP name to CP map
+            std::map<std::string, ContactPoint> getContactPointMap() const { return contact_points_; }
 
-        /** Returns stance name to Stance struct map */
-        std::map<std::string,Stance> getStanceMap() const { return stance_map_; }
+            /// Returns walk cycle 
+            vector<string> getWalkCycle() const { return walk_cycle_.getWalkCycle(); }
+
+            /// Returns walk cycle durations
+            vector<int> getDurations() const {return walk_cycle_.getDurations(); }
+
+            /// Returns stance name to Stance struct map 
+            std::map<std::string,Stance> getStanceMap() const { return stances_; }
     };
 } //namespace gtdynamics
