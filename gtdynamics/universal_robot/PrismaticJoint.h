@@ -57,7 +57,7 @@ class PrismaticJoint : public ScrewJointBase {
                        getScrewAxis(axis)) {}
 
   /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Prismatic; }
+  Type type() const override { return Type::Prismatic; }
 };
 
 }  // namespace gtdynamics

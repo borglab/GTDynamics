@@ -25,7 +25,7 @@ namespace gtdynamics {
 
 /**
  * PointGoalFactor is a unary factor enforcing that a point on a link
- * reach a desired goal point.
+ * reaches a desired goal point.
  */
 class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  private:

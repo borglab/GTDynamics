@@ -11,8 +11,7 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-Joint::Parameters ParametersFromSdfJoint(
-    const sdf::Joint &sdf_joint) {
+Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   Joint::Parameters parameters;
 
   parameters.scalar_limits.value_lower_limit = sdf_joint.Axis()->Lower();
@@ -25,8 +24,8 @@ Joint::Parameters ParametersFromSdfJoint(
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                           const LinkSharedPtr &parent_link,
-                           const LinkSharedPtr &child_link) {
+                    const LinkSharedPtr &parent_link,
+                    const LinkSharedPtr &child_link) {
   auto frame = sdf_joint.PoseFrame();
   if (frame == "" || frame == child_link->name()) {
     if (sdf_joint.Pose() == ignition::math::Pose3d())
@@ -57,8 +56,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
  * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
  * @return LinkMap and JointMap as a pair
  */
-static LinkJointPair ExtractRobotFromSdf(
-    const sdf::Model &sdf) {
+static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
   // Loop through all links in the sdf interface and construct Link
   // objects without parents or children.
   LinkMap name_to_link;
@@ -126,7 +124,8 @@ static LinkJointPair ExtractRobotFromSdf(
   return std::make_pair(name_to_link, name_to_joint);
 }
 
-/** @fn Construct all Link and Joint objects from an input urdf or sdf file.
+/**
+ * @fn Construct all Link and Joint objects from an input urdf or sdf file.
  * @param[in] file_path absolute path to the urdf or sdf file containing the
  * robot description.
  * @param[in] model_name name of the robot we care about. Must be specified in

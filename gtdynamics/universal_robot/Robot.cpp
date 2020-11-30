@@ -95,9 +95,9 @@ void Robot::printRobot() const {
   for (const auto &link : links()) {
     std::cout << link->name() << ":\n";
     std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
-              << ", " << link->wTl().translation() << "\n";
+              << ", " << link->wTl().translation().transpose() << "\n";
     std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
-              << ", " << link->wTcom().translation() << "\n";
+              << ", " << link->wTcom().translation().transpose() << "\n";
     std::cout << "\tjoints: ";
     for (const auto &joint : link->getJoints()) {
       std::cout << joint->name() << " ";
@@ -116,7 +116,7 @@ void Robot::printRobot() const {
     // << joint->Mpc().translation() << "\n";
     std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
-              << ", " << joint->transformTo(child_link).translation() << "\n";
+              << ", " << joint->transformTo(child_link).translation().transpose() << "\n";
   }
 }
 
@@ -146,7 +146,7 @@ Robot::FKResults Robot::forwardKinematics(
     link_poses[*prior_link_name] =
         prior_link_pose ? *prior_link_pose : gtsam::Pose3();
     link_twists[*prior_link_name] =
-        prior_link_twist ? *prior_link_twist : gtsam::Vector6();
+        prior_link_twist ? *prior_link_twist : gtsam::Vector6::Zero();
   }
   if (link_poses.size() == 0) {
     throw std::runtime_error("cannot find a fixed link");

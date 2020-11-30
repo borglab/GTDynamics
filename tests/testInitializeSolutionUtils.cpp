@@ -32,7 +32,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
   using simple_urdf::my_robot;
 
   gtsam::Pose3 wTb_i =
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3());
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3(0, 0, 0));
   gtsam::Pose3 wTb_f = gtsam::Pose3(
       gtsam::Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2), gtsam::Point3(1, 1, 1));
 
@@ -69,7 +69,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   using simple_urdf_eq_mass::my_robot;
 
   gtsam::Pose3 wTb_i =
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3());
+      gtsam::Pose3(gtsam::Rot3::RzRyRx(0, 0, 0), gtsam::Point3(0, 0, 0));
   std::vector<gtsam::Pose3> wTb_t = {
       gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 1, 1)),
       gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2),
