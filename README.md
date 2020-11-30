@@ -78,11 +78,11 @@ make
 
 The core paper behind this work is:
 ```
-@misc{1911.10065,
-    Author = {Mandy Xie and Frank Dellaert},
-    Title = {A Unified Method for Solving Inverse, Forward, and Hybrid Robot Dynamics using Factor Graphs},
-    Year = {2019},
-    Eprint = {arXiv:1911.10065},
+@misc{2011.06194,
+    Author = {Mandy Xie, Alejandro Escontrela, and Frank Dellaert},
+    Title = {A Factor-Graph Approach for Optimization Problems with Dynamics Constraints},
+    Year = {2020},
+    Eprint = {arXiv:2011.06194},
 }
 ```
 
