@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/utils/WalkCycle.h>
-#include <gtdynamics/utils/TrajectoryParams.h>
+#include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
@@ -52,46 +52,28 @@ using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
 using namespace gtsam;
 
 //Returns a Trajectory object for a single spider walk cycle.
-gtdynamics::TrajectoryParams getTrajParams(vector<string> links, WalkCycle walk_cycle, Robot robot)
+gtdynamics::Trajectory getTrajectory(vector<string> links, Robot robot)
 {
-    //Create Trajectory object
-    gtdynamics::TrajectoryParams traj_params;
-    traj_params.addLinks(links);
-    traj_params.generateContactPoints(gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT); 
+    auto stationary = gtdynamics::Phase(robot, 40);
+    stationary.generateContactPoints(links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
 
-    if (walk_cycle.name() == "motion_in_sequence"){
-        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l1", robot, {"tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l2", robot, {"tarsus_1", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l3", robot, {"tarsus_1", "tarsus_2", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l4", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l5", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l6", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("l7", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_8"});
-        traj_params.addStance("l8", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7"});
-        walk_cycle.addNextStance("stationary", 20);
-        walk_cycle.addNextStance("l1", 20);
-        walk_cycle.addNextStance("l2", 20);
-        walk_cycle.addNextStance("l3", 20);
-        walk_cycle.addNextStance("l4", 20);
-        walk_cycle.addNextStance("l5", 20);
-        walk_cycle.addNextStance("l6", 20);
-        walk_cycle.addNextStance("l7", 20);
-        walk_cycle.addNextStance("l8", 20);
-        traj_params.setWalkCycle(walk_cycle);
-        return traj_params;
-    }
-    if (walk_cycle.name() == "alternating_tetrapod"){
-        traj_params.addStance("stationary", robot, {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"});
-        traj_params.addStance("even_legs",robot, {"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"});
-        traj_params.addStance("odd_legs", robot, {"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"});
-        walk_cycle.addNextStance("stationary", 40);
-        walk_cycle.addNextStance("even_legs", 20);
-        walk_cycle.addNextStance("stationary", 40);
-        walk_cycle.addNextStance("odd_legs", 20);
-        traj_params.setWalkCycle(walk_cycle);
-        return traj_params;
-    }
+    auto odd = gtdynamics::Phase(robot,20);
+    odd.generateContactPoints({{"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"}},
+                                        gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+
+    auto even = gtdynamics::Phase(robot,20);
+    even.generateContactPoints({{"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"}},
+                                        gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+                                        
+    auto walk_cycle = gtdynamics::WalkCycle();
+    walk_cycle.addPhase(stationary);
+    walk_cycle.addPhase(even);
+    walk_cycle.addPhase(stationary);
+    walk_cycle.addPhase(odd);
+
+    size_t repeat = 3;
+    auto trajectory = gtdynamics::Trajectory(walk_cycle, repeat);
+    return trajectory;
 }
 
 int main(int argc, char **argv)
@@ -120,16 +102,11 @@ int main(int argc, char **argv)
     Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
     double mu = 1.0;
     
-    vector<string> walk = {"alternating_tetrapod", "motion_in_sequence"};
-    auto walk_cycle = WalkCycle(walk[0]);
     vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4", "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
-
-    gtdynamics::TrajectoryParams traj_params = getTrajParams(links, walk_cycle, spider);
-    int repeat = 2;
-    auto spider_trajectory = gtdynamics::Trajectory(traj_params, repeat);
+    auto spider_trajectory = getTrajectory(links, spider);
 
     //Get phase information
-    vector<CPs> phase_cps = spider_trajectory.phaseCPs();
+    vector<ContactPoints> phase_cps = spider_trajectory.phaseCPs();
     vector<int> phase_durations = spider_trajectory.phaseDurations();
     vector<Robot> robots = spider_trajectory.phaseRobotModels();
 

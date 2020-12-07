@@ -7,7 +7,6 @@ import pybullet as p
 import pybullet_data
 import pandas as pd
 import numpy as np
-import inspect
 
 # pylint: disable=I1101, C0103
 
@@ -55,7 +54,7 @@ pos, orn = p.getBasePositionAndOrientation(robot_id)
 print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                p.getEulerFromQuaternion(orn)))
 
-debug_iters = 5
+debug_iters = 1
 
 max_traj_replays = 20
 num_traj_replays = 0
@@ -71,7 +70,6 @@ constrained=[]
 
 i=0
 while True:
-
     if num_traj_replays == max_traj_replays:
         break
 
@@ -175,5 +173,4 @@ plt.show()
 while True:
     p.stepSimulation()
     time.sleep(1. / 240)
-
 p.disconnect()
