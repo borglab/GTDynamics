@@ -20,6 +20,7 @@
 #include "gtdynamics/universal_robot/sdf.h"
 
 using namespace gtdynamics;
+using namespace gtsam;
 
 TEST(Trajectory, error) 
 {
@@ -75,6 +76,17 @@ TEST(Trajectory, error)
 
     auto prev_cp = trajectory.initContactPointGoal();
     EXPECT(prev_cp.size() == 5);
+
+    double gaussian_noise = 1e-5;
+    vector<Values> transition_graph_init = trajectory.getInitTransitionValues(gaussian_noise);
+    EXPECT(transition_graph_init.size() == 9);
+
+    gtsam::Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
+    double mu = 1.0;
+    double sigma_dynamics = 1e-5;   // std of dynamics constraints.
+    auto opt = gtdynamics::OptimizerSetting(sigma_dynamics);
+    auto graph_builder = gtdynamics::DynamicsGraph(opt);
+    vector<gtsam::NonlinearFactorGraph> transition_graphs = trajectory.getTransitionGraphs(graph_builder, gravity, mu);
 }
 
 int main() {

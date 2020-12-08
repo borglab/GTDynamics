@@ -48,7 +48,7 @@ gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const gtsam::Pose3& wTl_f, const double& T_s, const double& T_f,
     const double& dt, const double& gaussian_noise = 0.0,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
+    const boost::optional<ContactPoints>& contact_points =
         boost::none);
 
 /** @fn Initialize interpolated solution for multiple phases.
@@ -69,7 +69,7 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise = 0.0,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
+    const boost::optional<ContactPoints>& contact_points =
         boost::none);
 
 /** @fn Iteratively solve for the robot kinematics with contacts.
@@ -90,8 +90,7 @@ gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise = 1e-8,
-    const boost::optional<std::vector<ContactPoint>>& contact_points =
-        boost::none);
+    const boost::optional<ContactPoints>& contact_points = boost::none );
 
 /** @fn Initialize solution for multi-phase trajectory to nominal pose.
  *

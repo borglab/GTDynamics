@@ -50,21 +50,19 @@ inline DynamicsSymbol TimeKey(int t) {
 }
 
 /**
- * ContactPoint defines a single contact point at a link.
+ * ContactPoint defines a single contact point.
  * Keyword Arguments:
- *  name -- The name of the link in contact.
  *  contact_point -- The location of the contact point relative to the link
  *    Com.
  *  contact_id -- Each link's contact points must have a unique contact id.
  *  contact_height -- Height at which contact is made.
  */
 typedef struct {
-  std::string name;
   gtsam::Point3 contact_point;
   int contact_id;
   double contact_height = 0.0;
 } ContactPoint;
-typedef std::vector<ContactPoint> ContactPoints;
+typedef std::map<std::string, ContactPoint> ContactPoints;
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic

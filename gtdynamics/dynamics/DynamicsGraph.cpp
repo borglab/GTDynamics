@@ -225,7 +225,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     // Check if the link has contact points. If so, add pose constraints.
     if (contact_points) {
       for (auto &&contact_point : *contact_points) {
-        if (contact_point.name != link->name()) continue;
+        if (contact_point.first != link->name()) continue;
 
         gtsam::Vector3 gravity_;
         if (gravity)
@@ -235,8 +235,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
         ContactKinematicsPoseFactor contact_pose_factor(
             PoseKey(i, t), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point), gravity_,
-            contact_point.contact_height);
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point), gravity_,
+            contact_point.second.contact_height);
         graph.add(contact_pose_factor);
       }
     }
@@ -257,11 +257,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     // Check if the link has contact points. If so, add twist constraints.
     if (contact_points) {
       for (auto &&contact_point : *contact_points) {
-        if (contact_point.name != link->name()) continue;
+        if (contact_point.first != link->name()) continue;
 
         ContactKinematicsTwistFactor contact_twist_factor(
             TwistKey(i, t), opt_.cv_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point));
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point));
         graph.add(contact_twist_factor);
       }
     }
@@ -283,11 +283,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     // Check if the link has contact points. If so, add accel constraints.
     if (contact_points) {
       for (auto &&contact_point : *contact_points) {
-        if (contact_point.name != link->name()) continue;
+        if (contact_point.first != link->name()) continue;
 
         ContactKinematicsAccelFactor contact_accel_factor(
             TwistAccelKey(i, t), opt_.ca_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point));
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point));
         graph.add(contact_accel_factor);
       }
     }
@@ -328,9 +328,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       // Add wrench keys for contact points.
       if (contact_points) {
         for (auto &&contact_point : *contact_points) {
-          if (contact_point.name != link->name()) continue;
+          if (contact_point.first != link->name()) continue;
 
-          wrenches.push_back(ContactWrenchKey(i, contact_point.contact_id, t));
+          wrenches.push_back(ContactWrenchKey(i, contact_point.second.contact_id, t));
 
           // Add contact dynamics constraints.
           gtsam::Vector3 gravity_;
@@ -346,13 +346,13 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
             mu_ = DEFAULT_MU;
 
           graph.add(ContactDynamicsFrictionConeFactor(
-              PoseKey(i, t), ContactWrenchKey(i, contact_point.contact_id, t),
+              PoseKey(i, t), ContactWrenchKey(i, contact_point.second.contact_id, t),
               opt_.cfriction_cost_model, mu_, gravity_));
 
           graph.add(ContactDynamicsMomentFactor(
-              ContactWrenchKey(i, contact_point.contact_id, t),
+              ContactWrenchKey(i, contact_point.second.contact_id, t),
               opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.contact_point)));
+              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point)));
         }
       }
 

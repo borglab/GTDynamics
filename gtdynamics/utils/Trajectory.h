@@ -37,27 +37,16 @@ namespace gtdynamics
     int repeat_;                   ///< Number of repetitions of walk cycle
     WalkCycle walk_cycle_;         ///< Walk Cycle 
 
-    static bool comparator(ContactPoint i,ContactPoint j){
-       return (i.name < j.name); 
-    }
-
-    /// Gets the intersection between two string vectors of contact points
+    /// Gets the intersection between two ContactPoints objects
     const ContactPoints getIntersection(ContactPoints CPs_1, ContactPoints CPs_2) const
     {
-      std::sort(CPs_1.begin(), CPs_1.end(), comparator);
-      std::sort(CPs_2.begin(), CPs_2.end(), comparator);
       ContactPoints intersection;
-      ContactPoints::iterator it;
       bool found = false;
       for(auto &&cp : CPs_1){
-        it = std::find_if(CPs_2.begin(), CPs_2.end(), 
-                            [cp](const ContactPoint& cp_){
-                                    return cp_.name==cp.name;});
-        if(it != CPs_2.end()){
-            intersection.push_back(it[0]); 
-            found = true;
-        }
-        else if(found) break;
+        if(CPs_2.find(cp.first) != CPs_2.end()){
+          intersection.emplace(cp.first, cp.second); 
+          found = true;
+        }else if(found) break;
       }
       return intersection;
     }
@@ -182,6 +171,7 @@ namespace gtdynamics
       vector<int> final_timesteps = finalTimeSteps();
       for (int p = 1; p < numPhases(); p++)
       {
+        std::cout<< p<< std::endl;
         transition_graph_init.push_back(ZeroValues(
             phase_robots[p],
             final_timesteps[p-1], gaussian_noise, trans_cps[p - 1]));
@@ -232,7 +222,7 @@ namespace gtdynamics
 
     const vector<string> getLinks() const{
       vector<string> link_list;
-      for(auto &&elem : walk_cycle_.links())
+      for(auto &&elem : walk_cycle_.allContactPoints())
         link_list.push_back(elem.first);
       return link_list;
     }
@@ -246,7 +236,7 @@ namespace gtdynamics
       auto phases = walk_cycle_.phases();
       ContactPoints contact_points = phases[phase % walk_cycle_.numPhases()].getAllContactPoints();
       vector<string> contact_links;
-      for(auto &&cp : contact_points) contact_links.push_back(cp.name);
+      for(auto &&cp : contact_points) contact_links.push_back(cp.first);
       return contact_links;
     }
 
@@ -273,12 +263,12 @@ namespace gtdynamics
     const std::map<string, gtsam::Point3> initContactPointGoal() const
     {
       std::map<string, gtsam::Point3> prev_cp;
-      std::map<string, ContactPoint> link_map = walk_cycle_.links();
-      for (auto &&link : link_map){
+      ContactPoints wc_cps = walk_cycle_.allContactPoints();
+      for (auto &&cp : wc_cps){
         gtdynamics::LinkSharedPtr link_ptr = walk_cycle_.phases()[0].
-                                        getRobotConfiguration().getLinkByName(link.second.name);
-          prev_cp.insert(std::make_pair(link.second.name,
-                                        (link_ptr->wTcom() * Pose3(Rot3(), link.second.contact_point)).translation()));
+                                        getRobotConfiguration().getLinkByName(cp.first);
+          prev_cp.insert(std::make_pair(cp.first,
+                                        (link_ptr->wTcom() * Pose3(Rot3(), cp.second.contact_point)).translation()));
       }
       return prev_cp;
     }
@@ -296,7 +286,7 @@ namespace gtdynamics
       gtdynamics::LinkSharedPtr link_ptr = walk_cycle_.phases()[0].
                                               getRobotConfiguration().getLinkByName(link);
       gtsam::Key pose_key = PoseKey(link_ptr->getID(), t);
-      gtsam::Pose3 comTp = Pose3(Rot3(), walk_cycle_.links()[link].contact_point);
+      gtsam::Pose3 comTp = Pose3(Rot3(), walk_cycle_.allContactPoints()[link].contact_point);
       return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
     }
 

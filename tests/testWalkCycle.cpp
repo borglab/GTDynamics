@@ -50,7 +50,7 @@ TEST(WalkCycle, error)
     EXPECT(walk_cycle_phases[0].getAllContactPoints().size() == 3);
     EXPECT(walk_cycle_phases[1].getAllContactPoints().size() == 4);
     EXPECT(walk_cycle.numPhases() == 2);
-    EXPECT(walk_cycle.links().size() == 5);
+    EXPECT(walk_cycle.allContactPoints().size() == 5);
 }
 
 int main() {

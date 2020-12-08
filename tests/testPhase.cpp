@@ -26,24 +26,18 @@ TEST(Phase, error)
     size_t num_time_steps = 20;
     auto phase = gtdynamics::Phase(robot_configuration, num_time_steps);
     double contact_height = 5;
-    phase.addContactPoint("tarsus_1" , gtsam::Point3(3,3,3), contact_height);
-    phase.addContactPoint("tarsus_2" , gtsam::Point3(3,3,3), contact_height);
+    phase.addContactPoint("tarsus_1" , gtsam::Point3(1,1,1), contact_height);
+    phase.addContactPoint("tarsus_2" , gtsam::Point3(2,2,2), contact_height);
     phase.addContactPoint("tarsus_3" , gtsam::Point3(3,3,3), contact_height);
-    phase.addContactPoint("tarsus_3" , gtsam::Point3(2,2,2), contact_height + 5);
     auto robot = phase.getRobotConfiguration();
     EXPECT(robot.numLinks() == 33);
 
     ContactPoint cp = phase.getContactPointAtLink("tarsus_3");
-    EXPECT(cp.name == "tarsus_3");
+    EXPECT(cp.contact_point == gtsam::Point3(3,3,3));
     
     ContactPoints cps = phase.getAllContactPoints();
     EXPECT(cps.size() == 3);
-    EXPECT(cps[0].name == "tarsus_1");
-
-    phase.generateContactPoints({"tarsus_6", "tarsus_7"}, 
-                            gtsam::Point3(3,3,3), contact_height);
-    ContactPoints cps_2 = phase.getAllContactPoints();
-    EXPECT(cps_2.size() == 5);
+    EXPECT(cps["tarsus_1"].contact_point == gtsam::Point3(1,1,1));
     EXPECT(phase.numTimeSteps() == 20);
 }
 

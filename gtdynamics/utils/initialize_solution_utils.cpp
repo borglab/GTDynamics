@@ -45,7 +45,7 @@ Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const Pose3& wTl_f, const double& T_s, const double& T_f, const double& dt,
     const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Values init_vals;
 
   auto sampler_noise_model =
@@ -107,10 +107,10 @@ Values InitializeSolutionInterpolation(
       for (auto&& contact_point : *contact_points) {
         int link_id = -1;
         for (auto& link : robot.links()) {
-          if (link->name() == contact_point.name) link_id = link->getID();
+          if (link->name() == contact_point.first) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+        init_vals.insert(ContactWrenchKey(link_id, contact_point.second.contact_id, t),
                          sampler.sample());
       }
     }
@@ -124,7 +124,7 @@ Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Values init_vals;
   Pose3 pose = wTl_i;
   double curr_t = 0.0;
@@ -144,7 +144,7 @@ Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Point3 wPl_i = wTl_i.translation();  // Initial translation.
   Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
   double t_i = 0.0;                    // Time elapsed.
@@ -239,10 +239,10 @@ Values InitializeSolutionInverseKinematics(
       for (auto&& contact_point : *contact_points) {
         int link_id = -1;
         for (auto& link : robot.links()) {
-          if (link->name() == contact_point.name) link_id = link->getID();
+          if (link->name() == contact_point.first) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+        init_vals.insert(ContactWrenchKey(link_id, contact_point.second.contact_id, t),
                          sampler.sample());
       }
     }
@@ -473,12 +473,12 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     for (auto&& contact_point : *contact_points) {
       int link_id = -1;
       for (auto& link : robot.links()) {
-        if (link->name() == contact_point.name) link_id = link->getID();
+        if (link->name() == contact_point.first) link_id = link->getID();
       }
 
       if (link_id == -1) throw std::runtime_error("Link not found.");
 
-      zero_values.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+      zero_values.insert(ContactWrenchKey(link_id, contact_point.second.contact_id, t),
                          sampler.sample());
     }
   }
