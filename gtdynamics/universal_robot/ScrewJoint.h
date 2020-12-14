@@ -16,8 +16,7 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
+#pragma once
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
@@ -30,8 +29,10 @@ namespace gtdynamics {
  */
 class ScrewJoint : public ScrewJointBase {
  protected:
-  /// Returns the screw axis in the joint frame given the joint axis and thread
-  /// pitch
+  /**
+   * Returns the screw axis in the joint frame given the joint axis and thread
+   * pitch.
+   */
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis, double thread_pitch) {
     gtsam::Vector6 screw_axis;
     screw_axis << axis, axis * thread_pitch / 2 / M_PI;

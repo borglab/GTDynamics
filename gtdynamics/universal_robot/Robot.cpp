@@ -8,15 +8,10 @@
 /**
  * @file Robot.h
  * @brief Robot structure.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include "gtdynamics/universal_robot/Robot.h"
-
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -26,6 +21,11 @@
 #include <queue>
 #include <sstream>
 #include <stdexcept>
+
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
     gtsam::GaussianFactorGraph, gtsam::Vector3;
@@ -109,20 +109,21 @@ void Robot::printRobot() const {
     std::cout << joint->name() << ":\n";
     LinkSharedPtr parent_link = joint->parentLink();
     LinkSharedPtr child_link = joint->childLink();
-    // TODO(aescontrela): Call link and joint toString methods here.
+    //TODO(aescontrela): Call link and joint toString methods here.
     std::cout << "\tparent: " << parent_link->name()
               << "\tchild: " << child_link->name() << "\n";
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
     std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
-              << ", " << joint->transformTo(child_link).translation().transpose() << "\n";
+              << ", "
+              << joint->transformTo(child_link).translation().transpose()
+              << "\n";
   }
 }
 
-Robot::FKResults Robot::forwardKinematics(
-    const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels,
+FKResults Robot::forwardKinematics(
+    const JointValues &joint_angles, const JointValues &joint_vels,
     const boost::optional<std::string> prior_link_name,
     const boost::optional<Pose3> &prior_link_pose,
     const boost::optional<Vector6> &prior_link_twist) const {
@@ -131,7 +132,7 @@ Robot::FKResults Robot::forwardKinematics(
 
   // link_poses["aa"] = Pose3();
 
-  //// set root link
+  // set root link
   LinkSharedPtr root_link;
   // check fixed links
   for (LinkSharedPtr link : links()) {
@@ -152,7 +153,7 @@ Robot::FKResults Robot::forwardKinematics(
     throw std::runtime_error("cannot find a fixed link");
   }
 
-  //// bfs to set the pose
+  // bfs to set the pose
   std::queue<LinkSharedPtr> q;
   q.push(root_link);
   int loop_count = 0;
@@ -219,12 +220,10 @@ NonlinearFactorGraph Robot::aFactors(size_t t,
   return graph;
 }
 
-GaussianFactorGraph Robot::linearFDPriors(size_t t,
-                                          const Robot::JointValues &torques,
+GaussianFactorGraph Robot::linearFDPriors(size_t t, const JointValues &torques,
                                           const OptimizerSetting &opt) const {
   GaussianFactorGraph graph;
-  for (auto &&joint : joints())
-    graph += joint->linearFDPriors(t, torques, opt);
+  for (auto &&joint : joints()) graph += joint->linearFDPriors(t, torques, opt);
   return graph;
 }
 

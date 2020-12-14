@@ -17,16 +17,15 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
-
-#include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/universal_robot/JointTyped.h"
-#include "gtdynamics/utils/utils.h"
+#pragma once
 
 #include <cmath>
 #include <map>
 #include <string>
+
+#include "gtdynamics/factors/JointLimitFactor.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 /**
@@ -55,8 +54,8 @@ class ScrewJointBase : public JointTyped {
       //         = pMc_H_exp * exp_H_Sq * Sq_pMc_H_q
       //         = pMc_H_exp * exp_H_Sq * [S]
       gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
-      gtsam::Vector6 Sq = q ? static_cast<gtsam::Vector6>(cScrewAxis_ * *q) :
-                              gtsam::Vector6::Zero();
+      gtsam::Vector6 Sq = q ? static_cast<gtsam::Vector6>(cScrewAxis_ * *q)
+                            : gtsam::Vector6::Zero();
       Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
       Pose3 pMc = pMccom_.compose(exp, boost::none, pMc_H_exp);
       *pMc_H_q = pMc_H_exp * exp_H_Sq * cScrewAxis_;
@@ -84,13 +83,17 @@ class ScrewJointBase : public JointTyped {
     }
   }
 
-  /// Return the joint axis in the joint frame. Rotational axis for revolute and
-  /// translation direction for prismatic in the joint frame.
+  /**
+   * Return the joint axis in the joint frame. Rotational axis for revolute and
+   * translation direction for prismatic in the joint frame.
+   */
   const gtsam::Vector3 &axis() const { return axis_; }
 
  public:
-  /** constructor using Parameters, joint name, wTj, screw axes, and parent
-   * and child links. */
+  /**
+   * Constructor using Parameters, joint name, wTj, screw axes,
+   * and parent and child links.
+   */
   ScrewJointBase(const std::string &name, const gtsam::Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const Parameters &parameters,
@@ -110,8 +113,8 @@ class ScrewJointBase : public JointTyped {
 
   // inherit overloads
   using JointTyped::transformTo;
-  using JointTyped::transformTwistTo;
   using JointTyped::transformTwistAccelTo;
+  using JointTyped::transformTwistTo;
 
   /// Return the transform from the other link com to this link com frame
   Pose3 transformTo(
@@ -120,8 +123,9 @@ class ScrewJointBase : public JointTyped {
     return isChildLink(link) ? cMpCom(q, H_q) : pMcCom(q, H_q);
   }
 
-  /// Return the twist of this link given the other link's twist and
-  /// joint angle.
+  /**
+   * Return the twist of this link given the other link's twist and joint angle.
+   */
   gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
@@ -148,12 +152,13 @@ class ScrewJointBase : public JointTyped {
       *H_other_twist = this_ad_other;
     }
 
-    return this_ad_other * other_twist_ +
-           screwAxis(link) * q_dot_;
+    return this_ad_other * other_twist_ + screwAxis(link) * q_dot_;
   }
 
-  /// Return the twist acceleration of this link given the other link's twist
-  /// acceleration, twist, and joint angle and this link's twist.
+  /**
+   * Return the twist acceleration of this link given the other link's twist
+   * acceleration, twist, and joint angle and this link's twist.
+   */
   gtsam::Vector6 transformTwistAccelTo(
       const LinkSharedPtr &link, boost::optional<double> q = boost::none,
       boost::optional<double> q_dot = boost::none,
@@ -180,8 +185,7 @@ class ScrewJointBase : public JointTyped {
 
     gtsam::Vector6 this_twist_accel =
         jTi.AdjointMap() * other_twist_accel_ +
-        gtsam::Pose3::adjoint(this_twist_, screw_axis_ * q_dot_,
-                              H_this_twist) +
+        gtsam::Pose3::adjoint(this_twist_, screw_axis_ * q_dot_, H_this_twist) +
         screw_axis_ * q_ddot_;
 
     if (H_other_twist_accel) {
@@ -210,10 +214,11 @@ class ScrewJointBase : public JointTyped {
       *H_wrench = screw_axis_.transpose();
     }
     return screw_axis_.transpose() *
-        (wrench ? *wrench : gtsam::Vector6::Zero());
+           (wrench ? *wrench : gtsam::Vector6::Zero());
   }
 
-  gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
+  gtsam::Matrix6 AdjointMapJacobianJointAngle(
+      const LinkSharedPtr &link,
       boost::optional<double> q = boost::none) const override {
     return AdjointMapJacobianQ(q ? *q : 0, transformTo(link), screwAxis(link));
   }
@@ -286,9 +291,8 @@ class ScrewJointBase : public JointTyped {
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     gtsam::Vector6 rhs_weq = gtsam::Vector6::Zero();
     graph.add(WrenchKey(parentID(), getID(), t), gtsam::I_6x6,
-              WrenchKey(childID(), getID(), t),
-              T_i2i1.AdjointMap().transpose(), rhs_weq,
-              gtsam::noiseModel::Constrained::All(6));
+              WrenchKey(childID(), getID(), t), T_i2i1.AdjointMap().transpose(),
+              rhs_weq, gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
@@ -332,5 +336,3 @@ class ScrewJointBase : public JointTyped {
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINTBASE_H_
