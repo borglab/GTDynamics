@@ -8,7 +8,7 @@
 /**
  * @file  OptimizerSetting.h
  * @brief Factor graph optimizer settings.
- * @Author: Mandy Xie
+ * @author Mandy Xie
  */
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
@@ -51,4 +51,5 @@ OptimizerSetting::OptimizerSetting()
 // void OptimizerSetting::setQcModelPose3(const gtsam::Matrix &Qc) {
 //   Qc_model_pose3 = gtsam::noiseModel::Gaussian::Covariance(Qc);
 // }
+
 }  // namespace gtdynamics
