@@ -9,7 +9,7 @@
  * @file  forward_dynamics_simple.cpp
  * @brief Simple forward dynamics optimization for a two link robot with one
  * revolute joint.
- * @Author: Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
+ * @author Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>

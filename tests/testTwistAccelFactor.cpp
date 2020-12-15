@@ -8,13 +8,10 @@
 /**
  * @file  testTwistAccelFactor.cpp
  * @brief Test twistAccel factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,12 +21,14 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
-
 #include <cmath>
 #include <iostream>
 
-using namespace gtdynamics; 
+#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
@@ -68,9 +67,8 @@ ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 cMp,
   gtsam::Pose3 jTccom = wTj.inverse() * l2->wTcom();
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
-  return std::make_shared<const ScrewJointBase>(
-      ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
-      jScrewAxis));
+  return std::make_shared<const ScrewJointBase>(ScrewJointBase(
+      "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
 }
 
 // Test twistAccel factor for stationary case

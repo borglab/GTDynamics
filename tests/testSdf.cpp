@@ -8,9 +8,13 @@
 /**
  * @file  testSdf.cpp
  * @brief Test functions in sdf.cpp.
- * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang,
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang,
  * Disha Das, Stephanie McCormick
  */
+
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
@@ -19,12 +23,7 @@
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
-#include <CppUnitLite/TestHarness.h>
-
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
@@ -43,50 +42,65 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a simple SDF.
-  auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  auto joint_1_parameters = ParametersFromSdfJoint(*simple_sdf.JointByName("joint_1"));
+  auto simple_sdf =
+      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto joint_1_parameters =
+      ParametersFromSdfJoint(*simple_sdf.JointByName("joint_1"));
 
   EXPECT(assert_equal(0.5, joint_1_parameters.damping_coefficient));
   EXPECT(assert_equal(10, joint_1_parameters.velocity_limit));
   EXPECT(assert_equal(300, joint_1_parameters.torque_limit));
 
   // Test for reading parameters (joint limits) from spider.sdf.
-  auto spider_sdf = get_sdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
-  auto knee_1_parameters = ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
+  auto spider_sdf =
+      get_sdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+  auto knee_1_parameters =
+      ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
-  EXPECT(assert_equal(-0.349066, knee_1_parameters.scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(2.44346, knee_1_parameters.scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(-0.349066,
+                      knee_1_parameters.scalar_limits.value_lower_limit));
+  EXPECT(
+      assert_equal(2.44346, knee_1_parameters.scalar_limits.value_upper_limit));
 }
 
 /**
- * Test parsing of all joint parameters from a robot created via URDF or SDF files.
+ * Test parsing of all joint parameters from a robot created via URDF or SDF
+ * files.
  */
 TEST(File, create_robot_from_file) {
   // Test for reading parameters from a robot created via simple URDF.
-  auto simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_robot =
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   auto simple_j1 = simple_robot.getJointByName("j1");
 
-  EXPECT(assert_equal(-1.57, simple_j1->parameters().scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(1.57, simple_j1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(-1.57,
+                      simple_j1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(1.57,
+                      simple_j1->parameters().scalar_limits.value_upper_limit));
   EXPECT(assert_equal(500, simple_j1->parameters().damping_coefficient));
   EXPECT(assert_equal(0.5, simple_j1->parameters().velocity_limit));
   EXPECT(assert_equal(1000.0, simple_j1->parameters().torque_limit));
 
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a robot created via simple SDF.
-  auto simple_rr_robot = CreateRobotFromFile(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  auto simple_rr_j1 =  simple_rr_robot.getJointByName("joint_1");
+  auto simple_rr_robot = CreateRobotFromFile(
+      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto simple_rr_j1 = simple_rr_robot.getJointByName("joint_1");
 
   EXPECT(assert_equal(0.5, simple_rr_j1->parameters().damping_coefficient));
   EXPECT(assert_equal(10, simple_rr_j1->parameters().velocity_limit));
   EXPECT(assert_equal(300, simple_rr_j1->parameters().torque_limit));
 
-  // Test for reading parameters (joint limits) from a robot created via spider.sdf.
-  auto spider_robot = CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+  // Test for reading parameters (joint limits) from a robot created via
+  // spider.sdf.
+  auto spider_robot =
+      CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
   auto spider_knee1 = spider_robot.getJointByName("knee_1");
 
-  EXPECT(assert_equal(-0.349066, spider_knee1->parameters().scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(2.44346, spider_knee1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(
+      -0.349066, spider_knee1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(
+      2.44346, spider_knee1->parameters().scalar_limits.value_upper_limit));
 }
 
 /**
@@ -96,10 +110,8 @@ TEST(Link, urdf_constructor_link) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::EffortType::Actuated;
 
@@ -124,8 +136,7 @@ TEST(Link, urdf_constructor_link) {
   EXPECT(assert_equal(100, l1->mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
-                      l1->lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->lTcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -140,8 +151,7 @@ TEST(Link, urdf_constructor_link) {
       l1->inertiaMatrix()));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
-                      l1->lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->lTcom()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1->getJoints().size()));
@@ -162,10 +172,8 @@ TEST(Link, urdf_constructor_link) {
 TEST(Joint, urdf_constructor_revolute) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   j1_parameters.effort_type = Joint::EffortType::Actuated;
@@ -174,8 +182,8 @@ TEST(Joint, urdf_constructor_revolute) {
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  auto j1 = std::make_shared<RevoluteJoint>(
-      "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2, j1_parameters,
+                                            j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -249,13 +257,12 @@ TEST(Joint, sdf_constructor_revolute) {
 
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
-  
+
   // constructor for j1
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::EffortType::Actuated;
-  auto j1 =
-      std::make_shared<RevoluteJoint>(
-          "joint_1", j1_wTj, l0, l1, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<RevoluteJoint>("joint_1", j1_wTj, l0, l1,
+                                            j1_parameters, j1_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -266,8 +273,7 @@ TEST(Joint, sdf_constructor_revolute) {
 
   // Check transform from l0 com to l1 com at rest and at various angles.
   Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2),
-                           Point3(0, 0, 0.4));
+  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
   Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
   EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
@@ -281,8 +287,8 @@ TEST(Joint, sdf_constructor_revolute) {
   Pose3 j2_wTj = GetJointFrame(*model.JointByName("joint_2"), l1, l2);
   const gtsam::Vector3 j2_axis = GetSdfAxis(*model.JointByName("joint_2"));
 
-  auto j2 = std::make_shared<RevoluteJoint>(
-          "joint_2", j2_wTj, l1, l2, j2_parameters, j2_axis);
+  auto j2 = std::make_shared<RevoluteJoint>("joint_2", j2_wTj, l1, l2,
+                                            j2_parameters, j2_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -293,10 +299,8 @@ TEST(Joint, sdf_constructor_revolute) {
 
   // Check transform from l1 com to l2 com at rest and at various angles.
   Pose3 T_12com_rest(Rot3::identity(), Point3(0, 0, 0.6));
-  Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2),
-                            Point3(0.3, 0.0, 0.3));
-  Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4),
-                            Point3(0.2121, 0.0, 0.5121));
+  Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
+  Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
   EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2)));
   EXPECT(assert_equal(T_12com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));
@@ -317,28 +321,30 @@ TEST(Joint, limit_params) {
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
 
-  auto j1 = std::make_shared<RevoluteJoint>(
-          "j1", j1_wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2, j1_parameters,
+                                            j1_axis);
 
   EXPECT(assert_equal(-1.57, j1->parameters().scalar_limits.value_lower_limit));
   EXPECT(assert_equal(1.57, j1->parameters().scalar_limits.value_upper_limit));
-  EXPECT(assert_equal(1e-9, j1->parameters().scalar_limits.value_limit_threshold));
+  EXPECT(
+      assert_equal(1e-9, j1->parameters().scalar_limits.value_limit_threshold));
 
   // Check revolute joint limits parsed correctly for a robot with no limits.
   auto model2 =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  LinkSharedPtr link_0 =
-      std::make_shared<Link>(*model2.LinkByName("link_0"));
-  LinkSharedPtr link_1 =
-      std::make_shared<Link>(*model2.LinkByName("link_1"));
-  auto joint_1_parameters = ParametersFromSdfJoint(*model2.JointByName("joint_1"));
+  LinkSharedPtr link_0 = std::make_shared<Link>(*model2.LinkByName("link_0"));
+  LinkSharedPtr link_1 = std::make_shared<Link>(*model2.LinkByName("link_1"));
+  auto joint_1_parameters =
+      ParametersFromSdfJoint(*model2.JointByName("joint_1"));
   joint_1_parameters.effort_type = Joint::EffortType::Actuated;
 
-  Pose3 joint_1_wTj = GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
-  const gtsam::Vector3 joint_1_axis = GetSdfAxis(*model2.JointByName("joint_1"));
+  Pose3 joint_1_wTj =
+      GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
+  const gtsam::Vector3 joint_1_axis =
+      GetSdfAxis(*model2.JointByName("joint_1"));
 
   auto joint_1 = std::make_shared<RevoluteJoint>(
-          "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
+      "joint_1", joint_1_wTj, link_0, link_1, joint_1_parameters, joint_1_axis);
 
   EXPECT(assert_equal(-1e16,
                       joint_1->parameters().scalar_limits.value_lower_limit));
@@ -369,7 +375,8 @@ TEST(Joint, urdf_constructor_prismatic) {
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  auto j1 = std::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = std::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters,
+                                             j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -392,17 +399,14 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(1.5707963268),
-                           Point3(0, -1, 1));
-  Pose3 T_21comRest(Rot3::Rx(-1.5707963268),
-                           Point3(0, -1, -1));
+  Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
+  Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
   EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2), 1e-5));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2), 1e-5));
 
   // transform from (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
-  Pose3 T_21com(Rot3::Rx(-1.5707963268),
-                       Point3(0, -1, -2));
+  Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
   EXPECT(assert_equal(T_12com, j1->transformFrom(l2, 1), 1e-5));
   EXPECT(assert_equal(T_21com, j1->transformFrom(l1, 1), 1e-5));
 
@@ -451,24 +455,22 @@ TEST(Joint, sdf_constructor_screw) {
   j1_parameters.effort_type = Joint::EffortType::Actuated;
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
 
-  ScrewJointSharedPtr j1 =
-      std::make_shared<ScrewJoint>("joint_1", wTj, l0, l1, j1_parameters,
-                                   j1_axis, model.JointByName("joint_1")->ThreadPitch());
+  ScrewJointSharedPtr j1 = std::make_shared<ScrewJoint>(
+      "joint_1", wTj, l0, l1, j1_parameters, j1_axis,
+      model.JointByName("joint_1")->ThreadPitch());
 
   // expected values for screw about z axis
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
-  screw_axis_j1_l0 << 0, 0, -1, 0, 0, -0.5 / 2 / M_PI; // parent frame
-  screw_axis_j1_l1 << 0, 0, 1, 0, 0, 0.5 / 2 / M_PI;   // child frame
+  screw_axis_j1_l0 << 0, 0, -1, 0, 0, -0.5 / 2 / M_PI;  // parent frame
+  screw_axis_j1_l1 << 0, 0, 1, 0, 0, 0.5 / 2 / M_PI;    // child frame
   EXPECT(assert_equal(screw_axis_j1_l0, j1->screwAxis(l0)));
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
   Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2),
-                           Point3(0, 0, 0.4-0.125));
-  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2),
-                           Point3(0, 0, 0.4+0.125));
+  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4 - 0.125));
+  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4 + 0.125));
 
   EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
   EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
@@ -492,7 +494,8 @@ TEST(Robot, simple_urdf) {
       "j1", wTj, l1, l2, j1_parameters, j1_axis);
 
   // Initialize Robot instance.
-  auto simple_robot = CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_robot =
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   EXPECT(assert_equal(1, simple_robot.getLinkByName("l1")->getJoints().size()));
   EXPECT(assert_equal(1, simple_robot.getLinkByName("l2")->getJoints().size()));

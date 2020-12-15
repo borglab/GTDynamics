@@ -8,7 +8,7 @@
 /**
  * @file  testContactKinematicsPoseFactor.cpp
  * @brief test contact kinematics pose factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -27,7 +27,7 @@
 
 #include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**

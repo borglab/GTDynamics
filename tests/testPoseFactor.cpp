@@ -8,13 +8,10 @@
 /**
  * @file  testPoseFactor.cpp
  * @brief Test forward kinematics factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/factors/PoseFactor.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,9 +21,11 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
-
 #include <iostream>
+
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -36,8 +35,7 @@ namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 gtsam::Key pose_p_key = gtsam::Symbol('p', 1),
-           pose_c_key = gtsam::Symbol('p', 2),
-           qKey = gtsam::Symbol('q', 0);
+           pose_c_key = gtsam::Symbol('p', 2), qKey = gtsam::Symbol('q', 0);
 }  // namespace example
 
 ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 cMp,
@@ -65,9 +63,8 @@ ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 cMp,
   gtsam::Pose3 jTccom = wTj.inverse() * l2->wTcom();
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
-  return std::make_shared<const ScrewJointBase>(
-      ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
-      jScrewAxis));
+  return std::make_shared<const ScrewJointBase>(ScrewJointBase(
+      "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
 }
 
 // Test twist factor for stationary case
@@ -80,8 +77,8 @@ TEST(PoseFactor, error) {
   double jointAngle = 0;
 
   // Create factor
-  PoseFactor factor(example::pose_p_key, example::pose_c_key,
-                                    example::qKey, example::cost_model, joint);
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+                    example::cost_model, joint);
 
   // call evaluateError
   gtsam::Pose3 pose_p(gtsam::Rot3(), gtsam::Point3(1, 0, 0));

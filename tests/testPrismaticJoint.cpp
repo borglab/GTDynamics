@@ -8,20 +8,19 @@
 /**
  * @file  testPrismaticJoint.cpp
  * @brief Test Joint class.
- * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
+
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
-#include <CppUnitLite/TestHarness.h>
-
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
@@ -31,10 +30,8 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 TEST(Joint, params_constructor_prismatic) {
   auto simple_urdf =
       get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::EffortType::Actuated;
@@ -45,8 +42,8 @@ TEST(Joint, params_constructor_prismatic) {
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
   PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
-      "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)),
-      l1, l2, parameters, j1_axis);
+      "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, parameters,
+      j1_axis);
 
   // get shared ptr
   EXPECT(j1->getSharedPtr() == j1);
@@ -66,17 +63,14 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(1.5707963268),
-                           Point3(0, -1, 1));
-  Pose3 T_21comRest(Rot3::Rx(-1.5707963268),
-                           Point3(0, -1, -1));
+  Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
+  Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
   EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2), 1e-5));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2), 1e-5));
 
   // transform from (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
-  Pose3 T_21com(Rot3::Rx(-1.5707963268),
-                       Point3(0, -1, -2));
+  Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
   EXPECT(assert_equal(T_12com, j1->transformFrom(l2, 1), 1e-5));
   EXPECT(assert_equal(T_21com, j1->transformFrom(l1, 1), 1e-5));
 

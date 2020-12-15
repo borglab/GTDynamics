@@ -8,7 +8,7 @@
 /**
  * @file  main.cpp
  * @brief Kinematic motion planning for the vision 60 quadruped.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -32,7 +32,7 @@ typedef std::vector<gtsam::Vector> CoeffVector;
 typedef std::map<int, std::map<std::string, gtsam::Pose3>> TargetFootholds;
 typedef std::map<std::string, gtsam::Pose3> TargetPoses;
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 #define GROUND_HEIGHT -0.2
 
@@ -107,9 +107,8 @@ TargetFootholds compute_target_footholds(
     for (auto &&bTf : bTfs) {
       gtsam::Pose3 wTf = wTb * bTf.second;
       gtsam::Pose3 wTf_gh = gtsam::Pose3(
-          wTf.rotation(),
-          gtsam::Point3(wTf.translation()[0],
-                        wTf.translation()[1], GROUND_HEIGHT));
+          wTf.rotation(), gtsam::Point3(wTf.translation()[0],
+                                        wTf.translation()[1], GROUND_HEIGHT));
       target_footholds_i.insert(std::make_pair(bTf.first, wTf_gh));
     }
     target_footholds.insert(std::make_pair(i, target_footholds_i));
@@ -170,8 +169,7 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
   t_poses.insert(std::make_pair(
       swing_sequence[swing_leg_idx],
       gtsam::Pose3(gtsam::Rot3(),
-                   gtsam::Point3(curr_foot_pos[0],
-                                 curr_foot_pos[1], h))));
+                   gtsam::Point3(curr_foot_pos[0], curr_foot_pos[1], h))));
 
   // Yet to complete swing phase in this support phase.
   for (int i = swing_leg_idx + 1; i < 4; i++)
@@ -276,15 +274,14 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(vision60.getLinkByName("body")->getID(), ti),
-      tposes["body"], gtsam::noiseModel::Constrained::All(6)));
+        PoseKey(vision60.getLinkByName("body")->getID(), ti), tposes["body"],
+        gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
     for (auto &&leg : swing_sequence)
-      kfg.add(PointGoalFactor(
-          PoseKey(vision60.getLinkByName(leg)->getID(), ti),
-          gtsam::noiseModel::Constrained::All(3), comTc,
-          tposes[leg].translation()));
+      kfg.add(PointGoalFactor(PoseKey(vision60.getLinkByName(leg)->getID(), ti),
+                              gtsam::noiseModel::Constrained::All(3), comTc,
+                              tposes[leg].translation()));
 
     gtsam::GaussNewtonOptimizer optimizer(kfg, values);
     gtsam::Values results = optimizer.optimize();
@@ -297,16 +294,13 @@ int main(int argc, char **argv) {
     values.clear();
     for (auto &&link : vision60.links())
       values.insert(PoseKey(link->getID(), ti + 1),
-          results.at<gtsam::Pose3>(PoseKey(link->getID(), ti)));
+                    results.at<gtsam::Pose3>(PoseKey(link->getID(), ti)));
     for (auto &&joint : vision60.joints())
-      values.insert(
-          JointAngleKey(joint->getID(), ti + 1),
-          results.atDouble(JointAngleKey(joint->getID(), ti)));
+      values.insert(JointAngleKey(joint->getID(), ti + 1),
+                    results.atDouble(JointAngleKey(joint->getID(), ti)));
 
     for (auto &&joint : vision60.joints())
-      pose_file << ","
-                << results.atDouble(
-                       JointAngleKey(joint->getID(), ti));
+      pose_file << "," << results.atDouble(JointAngleKey(joint->getID(), ti));
 
     pose_file << "\n";
     curr_t = curr_t + dt;

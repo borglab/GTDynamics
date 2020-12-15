@@ -8,13 +8,10 @@
 /**
  * @file  testWrenchEquivalenceFactor.cpp
  * @brief Test wrench factor.
- * @Author: Yetong Zhang
+ * @author Yetong Zhang
  */
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,16 +21,17 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
-
 #include <cmath>
 #include <iostream>
 
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
+
 using namespace gtdynamics;
 using gtsam::assert_equal;
-using gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
-      gtsam::Pose3, gtsam::Rot3, gtsam::Point3,
-      gtsam::Values;
+using gtsam::Vector6, gtsam::Vector3, gtsam::Vector, gtsam::Pose3, gtsam::Rot3,
+    gtsam::Point3, gtsam::Values;
 
 namespace example {
 // Noise model.
@@ -46,8 +44,7 @@ gtsam::Key twist_key = gtsam::Symbol('V', 1),
            pKey = gtsam::Symbol('p', 1);
 }  // namespace example
 
-ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
-                                        Vector6 cScrewAxis) {
+ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi, Vector6 cScrewAxis) {
   // create links
   Link::Params link1_params, link2_params;
   link1_params.mass = 100;
@@ -71,9 +68,8 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
   Pose3 jTccom = wTj.inverse() * l2->wTcom();
   Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
-  return std::make_shared<const ScrewJointBase>(
-      ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
-      jScrewAxis));
+  return std::make_shared<const ScrewJointBase>(ScrewJointBase(
+      "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
 }
 
 // /**
@@ -152,9 +148,8 @@ TEST(WrenchEquivalenceFactor, error_3) {
 
   auto joint = make_joint(kMj, screw_axis);
 
-  WrenchEquivalenceFactor factor(
-      example::wrench_j_key, example::wrench_k_key, example::qKey,
-      example::cost_model, joint);
+  WrenchEquivalenceFactor factor(example::wrench_j_key, example::wrench_k_key,
+                                 example::qKey, example::cost_model, joint);
   double q = 0;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();

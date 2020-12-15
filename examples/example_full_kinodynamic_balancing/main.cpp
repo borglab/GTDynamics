@@ -8,7 +8,7 @@
 /**
  * @file  main.cpp
  * @brief Trajectory optimization for a legged robot with contacts.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -23,16 +23,15 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/algorithm/string/join.hpp>
+#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
-
 #define GROUND_HEIGHT -0.191839
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
@@ -45,14 +44,14 @@ int main(int argc, char** argv) {
 
   // Contact points at feet.
   std::vector<ContactPoint> contact_points;
-  contact_points.push_back(ContactPoint{
-      "lower0", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(ContactPoint{
-      "lower1", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(ContactPoint{
-      "lower2", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(ContactPoint{
-      "lower3", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  contact_points.push_back(
+      ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  contact_points.push_back(
+      ContactPoint{"lower1", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  contact_points.push_back(
+      ContactPoint{"lower2", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  contact_points.push_back(
+      ContactPoint{"lower3", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)
@@ -201,11 +200,11 @@ int main(int argc, char** argv) {
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = ZeroValuesTrajectory(
-      vision60, t_steps, 0, 0.0, contact_points);
+    init_vals = ZeroValuesTrajectory(vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = InitializeSolutionInverseKinematics(vision60,
-      "body", base_pose_init, des_poses, des_poses_t, dt, 0.0, contact_points);
+    init_vals = InitializeSolutionInverseKinematics(
+        vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
+        contact_points);
 
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
@@ -215,8 +214,7 @@ int main(int argc, char** argv) {
   gtsam::Pose3 optimized_pose_init =
       results.at<gtsam::Pose3>(PoseKey(base_link->getID(), 0));
   gtsam::Pose3 optimized_pose_final =
-      results.at<gtsam::Pose3>(
-          PoseKey(base_link->getID(), t_steps - 1));
+      results.at<gtsam::Pose3>(PoseKey(base_link->getID(), t_steps - 1));
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()
@@ -246,35 +244,41 @@ int main(int argc, char** argv) {
   traj_file.open("../traj.csv");
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
-            << jnames_str << ",gol_x" << ",gol_y" << ",gol_z" << ",gol_qx"
-            << ",gol_qy" << ",gol_qz" << ",gol_qw" << "\n";
+            << jnames_str << ",gol_x"
+            << ",gol_y"
+            << ",gol_z"
+            << ",gol_qx"
+            << ",gol_qy"
+            << ",gol_qz"
+            << ",gol_qw"
+            << "\n";
   for (int t = 0; t <= t_steps; t++) {
     std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())
-      vals.push_back(std::to_string(
-          results.atDouble(JointAngleKey(joint->getID(), t))));
+      vals.push_back(
+          std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      vals.push_back(std::to_string(
-          results.atDouble(JointVelKey(joint->getID(), t))));
+      vals.push_back(
+          std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      vals.push_back(std::to_string(
-          results.atDouble(JointAccelKey(joint->getID(), t))));
+      vals.push_back(
+          std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
     for (auto&& joint : vision60.joints())
-      vals.push_back(std::to_string(
-          results.atDouble(TorqueKey(joint->getID(), t))));
+      vals.push_back(
+          std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
 
     for (size_t i = 0; i < des_poses.size(); i++) {
-        gtsam::Pose3 dp = des_poses[i];
-        if (t <= static_cast<int>(std::round(des_poses_t[i] / dt))) {
-            vals.push_back(std::to_string(dp.x()));
-            vals.push_back(std::to_string(dp.y()));
-            vals.push_back(std::to_string(dp.z()));
-            vals.push_back(std::to_string(dp.rotation().toQuaternion().x()));
-            vals.push_back(std::to_string(dp.rotation().toQuaternion().y()));
-            vals.push_back(std::to_string(dp.rotation().toQuaternion().z()));
-            vals.push_back(std::to_string(dp.rotation().toQuaternion().w()));
-            break;
-        }
+      gtsam::Pose3 dp = des_poses[i];
+      if (t <= static_cast<int>(std::round(des_poses_t[i] / dt))) {
+        vals.push_back(std::to_string(dp.x()));
+        vals.push_back(std::to_string(dp.y()));
+        vals.push_back(std::to_string(dp.z()));
+        vals.push_back(std::to_string(dp.rotation().toQuaternion().x()));
+        vals.push_back(std::to_string(dp.rotation().toQuaternion().y()));
+        vals.push_back(std::to_string(dp.rotation().toQuaternion().z()));
+        vals.push_back(std::to_string(dp.rotation().toQuaternion().w()));
+        break;
+      }
     }
 
     std::string vals_str = boost::algorithm::join(vals, ",");

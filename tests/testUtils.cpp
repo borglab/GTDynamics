@@ -8,23 +8,23 @@
 /**
  * @file  testUtils.cpp
  * @brief Test utils functions.
- * @Author: Mandy Xie and Alejandro Escontrela
+ * @author Mandy Xie and Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-#include <ignition/math/Pose3.hh>
 #include <limits.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <ignition/math/Pose3.hh>
 #include <string>
 
 #include "gtdynamics/utils/utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 // Test unit_twist function
@@ -66,8 +66,7 @@ TEST(utils, calcQ) {
 // Load a URDF file and ensure its joints and links were parsed correctly.
 TEST(utils, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
-  auto simple_urdf =
-      get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Check that physical and inertial properties were properly parsed..
   EXPECT(assert_equal(2, simple_urdf.LinkCount()));
@@ -88,16 +87,15 @@ TEST(utils, load_and_parse_urdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_file) {
-  auto simple_sdf =
-      get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
+  auto simple_sdf = get_sdf(std::string(SDF_PATH) + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));
 }
 
 TEST(utils, load_and_parse_sdf_world_file) {
-  auto simple_sdf = get_sdf(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto simple_sdf =
+      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
   EXPECT(assert_equal(2, simple_sdf.JointCount()));
@@ -117,14 +115,11 @@ TEST(utils, load_and_parse_sdf_world_file) {
 TEST(utils, parse_ignition_pose) {
   ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
 
-  gtsam::Pose3 parsed_pose = parse_ignition_pose(
-    pose_to_parse);
+  gtsam::Pose3 parsed_pose = parse_ignition_pose(pose_to_parse);
 
-  EXPECT(assert_equal(
-    gtsam::Pose3(
-      gtsam::Rot3::RzRyRx(M_PI / 2, 0, -M_PI),
-      gtsam::Point3(-1, 1, -1)),
-    parsed_pose));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, -M_PI),
+                                   gtsam::Point3(-1, 1, -1)),
+                      parsed_pose));
 }
 
 int main() {

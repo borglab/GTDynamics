@@ -8,7 +8,7 @@
 /**
  * @file  testInitializeSolutionUtils.cpp
  * @brief Test solution initialization utilities.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @author Alejandro Escontrela and Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -25,7 +25,7 @@
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
@@ -43,15 +43,14 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-  EXPECT(assert_equal(wTb_i,
-    init_vals.at<gtsam::Pose3>(
-        PoseKey(my_robot.getLinkByName("l1")->getID(), 0))));
+  EXPECT(assert_equal(wTb_i, init_vals.at<gtsam::Pose3>(PoseKey(
+                                 my_robot.getLinkByName("l1")->getID(), 0))));
 
-  EXPECT(assert_equal(
-      gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
-                   gtsam::Point3(0.5, 0.5, 0.5)),
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l1")->getID(), 5))));
+  EXPECT(
+      assert_equal(gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
+                                gtsam::Point3(0.5, 0.5, 0.5)),
+                   init_vals.at<gtsam::Pose3>(
+                       PoseKey(my_robot.getLinkByName("l1")->getID(), 5))));
 
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
@@ -60,9 +59,8 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
           PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1))));
 
   EXPECT(assert_equal(
-      wTb_f,
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final))));
+      wTb_f, init_vals.at<gtsam::Pose3>(PoseKey(
+                 my_robot.getLinkByName("l1")->getID(), n_steps_final))));
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
@@ -77,24 +75,21 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   std::vector<double> ts = {5, 10};
   double dt = 1;
 
-  gtsam::Values init_vals =
-      InitializeSolutionInterpolationMultiPhase(
-          my_robot, "l1", wTb_i, wTb_t, ts, dt);
+  gtsam::Values init_vals = InitializeSolutionInterpolationMultiPhase(
+      my_robot, "l1", wTb_i, wTb_t, ts, dt);
 
-  EXPECT(assert_equal(wTb_i,
-    init_vals.at<gtsam::Pose3>(
-        PoseKey(my_robot.getLinkByName("l1")->getID(), 0))));
+  EXPECT(assert_equal(wTb_i, init_vals.at<gtsam::Pose3>(PoseKey(
+                                 my_robot.getLinkByName("l1")->getID(), 0))));
 
-  EXPECT(assert_equal(
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
-                   gtsam::Point3(0, -1, 1)),
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l2")->getID(), 0)), 1e-3));
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
+                                   gtsam::Point3(0, -1, 1)),
+                      init_vals.at<gtsam::Pose3>(
+                          PoseKey(my_robot.getLinkByName("l2")->getID(), 0)),
+                      1e-3));
 
-  EXPECT(assert_equal(
-      wTb_t[0],
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l1")->getID(), 5))));
+  EXPECT(
+      assert_equal(wTb_t[0], init_vals.at<gtsam::Pose3>(PoseKey(
+                                 my_robot.getLinkByName("l1")->getID(), 5))));
 
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_t[0].rotation().slerp(0.8, wTb_t[1].rotation()),
@@ -102,10 +97,9 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
       init_vals.at<gtsam::Pose3>(
           PoseKey(my_robot.getLinkByName("l1")->getID(), 9))));
 
-  EXPECT(assert_equal(
-      wTb_t[1],
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(my_robot.getLinkByName("l1")->getID(), 10))));
+  EXPECT(
+      assert_equal(wTb_t[1], init_vals.at<gtsam::Pose3>(PoseKey(
+                                 my_robot.getLinkByName("l1")->getID(), 10))));
 }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
@@ -137,7 +131,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
    * in contact with the ground. This problem is addressed by adding a small
    * amount of gaussian noise to the initial solution, which prevents it from
    * being a singular configuration.
-   * 
+   *
    *  1. Desired trajectory obtained by adding noise to the initial solution:
    *  z                   |                 ı
    *  |                   | l2              |  l2
@@ -166,24 +160,34 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
 
   EXPECT(assert_equal(
       0.0,
-      (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), 0)) *
-          oTc_l1).translation().z(), 1e-3))
-  EXPECT(assert_equal(
-      0.0, init_vals.atDouble(JointAngleKey(
-          my_robot.getJointByName("j1")->getID(), 0)), 1e-3));
+      (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), 0)) * oTc_l1)
+          .translation()
+          .z(),
+      1e-3))
+  EXPECT(assert_equal(0.0,
+                      init_vals.atDouble(JointAngleKey(
+                          my_robot.getJointByName("j1")->getID(), 0)),
+                      1e-3));
 
   for (int t = 0; t <= std::roundl(ts[0] / dt); t++)
     EXPECT(assert_equal(
-        0.0, (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), t)) *
-        oTc_l1).translation().z(), 1e-3));
+        0.0,
+        (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(), t)) * oTc_l1)
+            .translation()
+            .z(),
+        1e-3));
 
   EXPECT(assert_equal(
       wTb_t[0],
-      init_vals.at<gtsam::Pose3>(
-          PoseKey(l2->getID(), std::roundl(ts[0] / dt))), 1e-3));
-  EXPECT(assert_equal(
-      0.0, (init_vals.at<gtsam::Pose3>(PoseKey(l1->getID(),
-      std::roundl(ts[0] / dt))) * oTc_l1).translation().z(), 1e-3));
+      init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), std::roundl(ts[0] / dt))),
+      1e-3));
+  EXPECT(assert_equal(0.0,
+                      (init_vals.at<gtsam::Pose3>(
+                           PoseKey(l1->getID(), std::roundl(ts[0] / dt))) *
+                       oTc_l1)
+                          .translation()
+                          .z(),
+                      1e-3));
 }
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
@@ -199,17 +203,15 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   ContactPoints contact_points = {
       ContactPoint{l1->name(), oTc_l1.translation(), 1, 0.0}};
 
-  gtsam::Values init_vals =
-      ZeroValues(my_robot, 0, 0.0, contact_points);
+  gtsam::Values init_vals = ZeroValues(my_robot, 0, 0.0, contact_points);
 
   for (auto&& link : my_robot.links())
-    EXPECT(assert_equal(
-        link->wTcom(), init_vals.at<gtsam::Pose3>(
-            PoseKey(link->getID(), 0))));
+    EXPECT(assert_equal(link->wTcom(),
+                        init_vals.at<gtsam::Pose3>(PoseKey(link->getID(), 0))));
 
   for (auto&& joint : my_robot.joints())
-    EXPECT(assert_equal(
-        0.0, init_vals.atDouble(JointAngleKey(joint->getID(), 0))));
+    EXPECT(assert_equal(0.0,
+                        init_vals.atDouble(JointAngleKey(joint->getID(), 0))));
 }
 
 TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
@@ -230,12 +232,12 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
 
   for (int t = 0; t <= 100; t++) {
     for (auto&& link : my_robot.links())
-      EXPECT(assert_equal(link->wTcom(),
-        init_vals.at<gtsam::Pose3>(PoseKey(link->getID(), t))));
+      EXPECT(assert_equal(link->wTcom(), init_vals.at<gtsam::Pose3>(
+                                             PoseKey(link->getID(), t))));
 
     for (auto&& joint : my_robot.joints())
-      EXPECT(assert_equal(0.0,
-        init_vals.atDouble(JointAngleKey(joint->getID(), t))));
+      EXPECT(assert_equal(
+          0.0, init_vals.atDouble(JointAngleKey(joint->getID(), t))));
   }
 }
 

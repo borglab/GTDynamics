@@ -23,6 +23,7 @@ for i in range(p.getNumJoints(quad_id)):
     jinfo = p.getJointInfo(quad_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
+
 def set_joint_angles(joint_angles: Dict[str, float]):
     """Actuate to the suppplied joint angles using PD control."""
     for jid in joint_to_jid_map.values():
@@ -33,6 +34,7 @@ def set_joint_angles(joint_angles: Dict[str, float]):
                                 jointIndex=joint_to_jid_map[k],
                                 controlMode=p.POSITION_CONTROL,
                                 targetPosition=v)
+
 
 df = pd.read_csv('traj.csv')
 
@@ -63,7 +65,8 @@ for i in range(len(df)):
         print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
             i, new_pos, p.getEulerFromQuaternion(new_orn)))
         p.addUserDebugLine(pos, new_pos, lineColorRGB=[0, 1, 0], lineWidth=3)
-        p.addUserDebugLine(pos_des, new_pos_des, lineColorRGB=[1, 0, 0], lineWidth=3)
+        p.addUserDebugLine(pos_des, new_pos_des, lineColorRGB=[
+                           1, 0, 0], lineWidth=3)
         pos, orn = new_pos, new_orn
         pos_des = new_pos_des
 

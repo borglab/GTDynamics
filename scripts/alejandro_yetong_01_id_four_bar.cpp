@@ -8,7 +8,7 @@
 /**
  * @file  quadruped_pose_control.cpp
  * @brief Compute the inverse dynamics of a four-bar linkage.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @author Alejandro Escontrela and Yetong Zhang
  */
 
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

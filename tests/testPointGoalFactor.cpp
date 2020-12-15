@@ -8,7 +8,7 @@
 /**
  * @file  testPointGoalFactor.cpp
  * @brief test point goal factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -24,7 +24,7 @@
 #include "gtdynamics/factors/PointGoalFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
@@ -78,7 +78,8 @@ TEST(PointGoalFactor, optimization) {
 
   // Initial link pose.
   gtsam::Pose3 pose_init = my_robot.getLinkByName("l1")->wTcom();
-  // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose() << std::endl;
+  // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose()
+  // << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);

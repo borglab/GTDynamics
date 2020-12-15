@@ -8,7 +8,7 @@
 /**
  * @file  testContactKinematicsTwistFactor.cpp
  * @brief test contact kinematics twist factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -27,7 +27,7 @@
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
@@ -66,17 +66,15 @@ TEST(ContactKinematicsTwistFactor, error) {
   // linear component v = 1.
   gtsam::Vector6 link_twist_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_twist_angular).norm(),
-                      1.0));
+  EXPECT(assert_equal(factor.evaluateError(link_twist_angular).norm(), 1.0));
 
   // A link with both angular velocity and linear velocity at the CoM should
   // have a linear velocity at the contact point (unless they cancel each other
   // out).
   gtsam::Vector6 link_twist_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
-  EXPECT(assert_equal(
-      factor.evaluateError(link_twist_angular_linear).norm(),
-      std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
+  EXPECT(assert_equal(factor.evaluateError(link_twist_angular_linear).norm(),
+                      std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
   gtsam::Values values;

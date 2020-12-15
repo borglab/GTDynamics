@@ -8,7 +8,7 @@
 /**
  * @file  testDynamicsSymbol.cpp
  * @brief Test DynamicsSymbol.
- * @Author: Yetong Zhang, Stephanie McCormick
+ * @author Yetong Zhang, Stephanie McCormick
  */
 
 #include <CppUnitLite/TestHarness.h>
