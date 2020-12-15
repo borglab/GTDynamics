@@ -8,13 +8,10 @@
 /**
  * @file  PoseFactor.h
  * @brief Forward kinematics factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
-#ifndef GTDYNAMICS_FACTORS_POSEFACTOR_H_
-#define GTDYNAMICS_FACTORS_POSEFACTOR_H_
-
-#include "gtdynamics/universal_robot/JointTyped.h"
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -25,26 +22,30 @@
 #include <memory>
 #include <string>
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 namespace gtdynamics {
 
-/** PoseFactor is a three-way nonlinear factor between the previous link pose
- * and this link pose*/
+/**
+ * PoseFactor is a three-way nonlinear factor between the previous link pose and
+ * this link pose
+ */
 class PoseFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
                                       typename JointTyped::JointCoordinate> {
  private:
-  typedef typename JointTyped::JointCoordinate JointCoordinate;
-  typedef PoseFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>
-      Base;
+  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using This = PoseFactor;
+  using Base =
+      gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>;
   enum { N = JointTyped::N };
 
   std::shared_ptr<const JointTyped> joint_;
 
  public:
-  /** Create single factor relating this link's pose (COM) with previous one.
-      Keyword arguments:
-          joint -- the joint connecting the two poses
+  /**
+   * Create single factor relating this link's pose (COM) with previous one.
+   * @param joint The joint connecting the two poses
    */
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -54,12 +55,12 @@ class PoseFactor
 
   virtual ~PoseFactor() {}
 
-  /** evaluate link pose errors
-      Keyword argument:
-          wTp         -- previous (parent) link pose
-          wTc         -- this (child) link pose
-          q           -- joint angle
-  */
+  /**
+   * Evaluate link pose errors
+   * @param wTp previous (parent) link pose
+   * @param wTc this (child) link pose
+   * @param q joint angle
+   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc,
       const JointCoordinate &q,
@@ -68,24 +69,23 @@ class PoseFactor
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     Eigen::Matrix<double, 6, 6> wTc_hat_H_wTp, H_wTc_hat;
     Eigen::Matrix<double, 6, N> wTc_hat_H_q;
-    auto wTc_hat = joint_->transformTo(joint_->childLink(), q, wTp,
-                                        H_q ? &wTc_hat_H_q : 0,
-                                        H_wTp ? &wTc_hat_H_wTp : 0);
+    auto wTc_hat =
+        joint_->transformTo(joint_->childLink(), q, wTp, H_q ? &wTc_hat_H_q : 0,
+                            H_wTp ? &wTc_hat_H_wTp : 0);
     gtsam::Vector6 error =
-        wTc.logmap(wTc_hat,
-                   H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
+        wTc.logmap(wTc_hat, H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
     if (H_wTp) *H_wTp = H_wTc_hat * wTc_hat_H_wTp;
     if (H_q) *H_q = H_wTc_hat * wTc_hat_H_q;
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -94,7 +94,7 @@ class PoseFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
@@ -102,6 +102,5 @@ class PoseFactor
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_FACTORS_POSEFACTOR_H_
+}  // namespace gtdynamics

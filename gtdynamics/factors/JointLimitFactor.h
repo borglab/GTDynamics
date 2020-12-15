@@ -8,42 +8,42 @@
 /**
  * @file  JointLimitFactor.h
  * @brief apply joint limit
- * @Author: Frank Dellaert and Mandy Xie
+ * @author: Frank Dellaert and Mandy Xie
  */
-#ifndef GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_
-#define GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_
+
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/optional.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
 
-#include <boost/optional.hpp>
-
 namespace gtdynamics {
 
-/** JointLimitFactor is a class which enforces joint angle, velocity,
- * acceleration and torque value to be within limit*/
+/**
+ * JointLimitFactor is a class which enforces joint angle, velocity,
+ * acceleration and torque value to be within limi
+ */
 class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
  private:
-  typedef JointLimitFactor This;
-  typedef gtsam::NoiseModelFactor1<double> Base;
+  using This = JointLimitFactor;
+  using Base = gtsam::NoiseModelFactor1<double>;
   double lower_limit_, upper_limit_, limit_threshold_;
 
  public:
   /**
    * Construct from joint limits
-   * Keyword arguments:
-      q_key              -- joint value key
-      cost_model         -- noise model
-      lower_limit        -- joint lower limit
-      upper_limit        -- joint upper limit
-      limit_threshold    -- joint limit threshold
+   * @param q_key joint value key
+   * @param cost_model noise model
+   * @param lower_limit joint lower limit
+   * @param upper_limit joint upper limit
+   * @param limit_threshold joint limit threshold
    */
   JointLimitFactor(gtsam::Key q_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -57,37 +57,44 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   virtual ~JointLimitFactor() {}
 
  public:
-  /** evaluate joint limit errors
-      Keyword argument:
-          q  -- joint value
-      hingloss function:
-      error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit -
-     limit_threshold error = lower_limit_ + limit_threshold - q if q <
-     lower_limit + limit_threshold error = q - upper_limit_ + limit_threshold if
-     q > upper_limit + limit_threshold
-  */
+  /**
+   * Evaluate joint limit errors
+   * @param q joint value
+   */
   gtsam::Vector evaluateError(
       const double &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    // clang-format off
+    // (don't format below documentation)
+    /**
+     * hinge-loss function:
+     *  error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit - limit_threshold
+     *  error = lower_limit_ + limit_threshold - q if q < lower_limit + limit_threshold
+     *  error = q - upper_limit_ + limit_threshold if q > upper_limit + limit_threshold
+     */
+    // clang-format on
+    gtsam::Vector error(1);
+
     if (q < lower_limit_ + limit_threshold_) {
       if (H_q) *H_q = -gtsam::I_1x1;
-      return gtsam::Vector1(lower_limit_ + limit_threshold_ - q);
+      error << lower_limit_ + limit_threshold_ - q;
     } else if (q <= upper_limit_ - limit_threshold_) {
       if (H_q) *H_q = gtsam::Z_1x1;
-      return gtsam::Vector1(0.0);
+      error << 0.0;
     } else {
       if (H_q) *H_q = gtsam::I_1x1;
-      return gtsam::Vector1(q - upper_limit_ + limit_threshold_);
+      error << q - upper_limit_ + limit_threshold_;
     }
+    return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -96,14 +103,13 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_FACTORS_JOINTLIMITFACTOR_H_
+}  // namespace gtdynamics
