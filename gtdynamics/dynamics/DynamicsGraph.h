@@ -28,7 +28,7 @@
 
 namespace gtdynamics {
 
-// TODO(aescontrela3, yetongumich): can we not use inline here?
+//TODO(aescontrela3, yetongumich): can we not use inline here?
 
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
 inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {

@@ -64,5 +64,3 @@ class ScrewJoint : public ScrewJointBase {
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_

@@ -11,8 +11,6 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
-#pragma once
-
 #include "gtdynamics/universal_robot/sdf.h"
 
 #include <sdf/parser_urdf.hh>

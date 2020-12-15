@@ -24,16 +24,18 @@ namespace gtdynamics {
  */
 class JointTyped : public Joint {
  public:
-  typedef double JointCoordinateType;         // standin for template
-  typedef double JointCoordinateTangentType;  // standin for template
-  typedef JointCoordinateType JointCoordinate;
-  typedef JointCoordinateTangentType JointVelocity;
-  typedef JointCoordinateTangentType JointAcceleration;
-  typedef JointCoordinateTangentType JointTorque;
+  using This = JointTyped;
+
+  using JointCoordinateType = double;         // standin for template
+  using JointCoordinateTangentType = double;  // standin for template
+  using JointCoordinate = JointCoordinateType;
+  using JointVelocity = JointCoordinateTangentType;
+  using JointAcceleration = JointCoordinateTangentType;
+  using JointTorque = JointCoordinateTangentType;
+
   enum { N = gtsam::traits<JointCoordinate>::dimension };
-  typedef Eigen::Matrix<double, N, 1> VectorN;
-  typedef Eigen::Matrix<double, N, N> MatrixN;
-  typedef JointTyped This;
+  using VectorN = Eigen::Matrix<double, N, 1>;
+  using MatrixN = Eigen::Matrix<double, N, N>;
 
  public:
   /// Inherit constructors

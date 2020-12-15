@@ -65,20 +65,20 @@ class Link : public std::enable_shared_from_this<Link> {
 
   int id_ = -1;
 
-  ///< Inertial elements.
+  /// Inertial elements.
   double mass_;
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
-  ///< SDF Elements.
+  /// SDF Elements.
   gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
   gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
 
-  ///< Option to fix the link, used for ground link
+  /// Option to fix the link, used for ground link
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  ///< Joints connected to the link
+  /// Joints connected to the link
   std::vector<JointSharedPtr> joints_;
 
  public:
