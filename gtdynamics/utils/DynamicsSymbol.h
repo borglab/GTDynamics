@@ -8,7 +8,7 @@
 /**
  * @file  DynamicsSymbol.h
  * @brief Symbols to represent keys in dynamics factor graph.
- * @Author: Yetong Zhang and Stephanie McCormick
+ * @author Yetong Zhang and Stephanie McCormick
  */
 
 #pragma once
@@ -24,7 +24,8 @@ class DynamicsSymbol {
   std::uint64_t t_;
 
  private:
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] link_idx  index of the link
@@ -41,7 +42,8 @@ class DynamicsSymbol {
   /** Copy constructor */
   DynamicsSymbol(const DynamicsSymbol& key);
 
-  /** Constructor for symbol related to both link and joint.
+  /**
+   * Constructor for symbol related to both link and joint.
    *  See private constructor
    */
   static DynamicsSymbol LinkJointSymbol(const std::string& s,
@@ -49,7 +51,8 @@ class DynamicsSymbol {
                                         unsigned char joint_idx,
                                         std::uint64_t t);
 
-  /** Constructor for symbol related to only joint (e.g. joint angle).
+  /**
+   * Constructor for symbol related to only joint (e.g. joint angle).
    *
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] joint_idx index of the joint
@@ -58,7 +61,8 @@ class DynamicsSymbol {
   static DynamicsSymbol JointSymbol(const std::string& s,
                                     unsigned char joint_idx, std::uint64_t t);
 
-  /** Constructor for symbol related to only link (e.g. link pose).
+  /**
+   * Constructor for symbol related to only link (e.g. link pose).
    *
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] joint_idx index of the joint
@@ -67,14 +71,17 @@ class DynamicsSymbol {
   static DynamicsSymbol LinkSymbol(const std::string& s, unsigned char link_idx,
                                    std::uint64_t t);
 
-  /** Constructor for symbol related to neither joint or link (e.g. time).
+  /**
+   * Constructor for symbol related to neither joint or link (e.g. time).
    *
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] t         time step
    */
   static DynamicsSymbol SimpleSymbol(const std::string& s, std::uint64_t t);
 
-  /** Constructor that decodes an integer gtsam::Key */
+  /**
+   * Constructor that decodes an integer gtsam::Key
+   */
   DynamicsSymbol(const gtsam::Key& key);
 
   /** Cast to integer */
@@ -91,24 +98,24 @@ class DynamicsSymbol {
 
   inline unsigned char jointIdx() const { return joint_idx_; }
 
-  /** Retrieve key index */
+  /// Retrieve key index
   inline size_t time() const { return t_; }
 
-  // Testable Requirements
+  /// Testable Requirements
   void print(const std::string& s = "") const;
 
   bool equals(const DynamicsSymbol& expected, double tol = 0.0) const {
     return (*this) == expected;
   }
 
-  /** return the integer version */
+  /// return the integer version
   gtsam::Key key() const { return (gtsam::Key) * this; }
 
-  /** Create a string from the key */
+  /// Create a string from the key
   operator std::string() const;
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE& ar, const unsigned int /*version*/) {
@@ -120,7 +127,7 @@ class DynamicsSymbol {
   }
 };
 
-/** key formatter function */
+/// key formatter function
 std::string _GTDKeyFormatter(gtsam::Key key);
 
 static const gtsam::KeyFormatter GTDKeyFormatter = &_GTDKeyFormatter;

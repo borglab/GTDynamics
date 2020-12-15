@@ -8,7 +8,7 @@
 /**
  * @file  initialize_solution_utils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
- * @authors Alejandro Escontrela and Yetong Zhang
+ * @authors Alejandro Escontrela, Yetong Zhang
  */
 
 #include "gtdynamics/utils/initialize_solution_utils.h"
@@ -16,7 +16,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/Sampler.h>
@@ -61,7 +60,7 @@ Values InitializeSolutionInterpolation(
   Rot3 wRl_i = wTl_i.rotation(), wRl_f = wTl_f.rotation();
 
   // Initialize joint angles and velocities to 0.
-  Robot::JointValues jangles, jvels;
+  JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
     jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
     jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
@@ -111,7 +110,7 @@ Values InitializeSolutionInterpolation(
           if (link->name() == contact_point.name) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+        init_vals.insert(ContactWrenchKey(link_id, contact_point.id, t),
                          sampler.sample());
       }
     }
@@ -193,7 +192,7 @@ Values InitializeSolutionInverseKinematics(
   Values init_vals, init_vals_t;
 
   // Initial pose and joint angles are known a priori.
-  Robot::JointValues jangles, jvels;
+  JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
     jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
     jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
@@ -241,7 +240,7 @@ Values InitializeSolutionInverseKinematics(
           if (link->name() == contact_point.name) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+        init_vals.insert(ContactWrenchKey(link_id, contact_point.id, t),
                          sampler.sample());
       }
     }
@@ -295,7 +294,7 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
 
       if (link_id == -1) throw std::runtime_error("Link not found.");
 
-      zero_values.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
+      zero_values.insert(ContactWrenchKey(link_id, contact_point.id, t),
                          sampler.sample());
     }
   }

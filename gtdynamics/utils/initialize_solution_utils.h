@@ -8,11 +8,10 @@
 /**
  * @file  initialize_solution_utils.h
  * @brief Utility methods for initializing trajectory optimization solutions.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @author: Alejandro Escontrela, Yetong Zhang
  */
 
-#ifndef GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
-#define GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
+#pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -21,15 +20,15 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/optional.hpp>
 #include <random>
 #include <string>
 #include <vector>
 
-#include <boost/optional.hpp>
-
 namespace gtdynamics {
 
-/** @fn Initialize solution via linear interpolation of initial and final pose.
+/**
+ * @fn Initialize solution via linear interpolation of initial and final pose.
  *
  * @param[in] robot           A gtdynamics::Robot object.
  * @param[in] link_name       The name of the link whose pose to interpolate.
@@ -51,7 +50,8 @@ gtsam::Values InitializeSolutionInterpolation(
     const boost::optional<std::vector<ContactPoint>>& contact_points =
         boost::none);
 
-/** @fn Initialize interpolated solution for multiple phases.
+/**
+ * @fn Initialize interpolated solution for multiple phases.
  *
  * @param[in] robot           A gtdynamics::Robot object.
  * @param[in] link_name       The name of the link whose pose to interpolate.
@@ -72,7 +72,8 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const boost::optional<std::vector<ContactPoint>>& contact_points =
         boost::none);
 
-/** @fn Iteratively solve for the robot kinematics with contacts.
+/**
+ * @fn Iteratively solve for the robot kinematics with contacts.
  *
  * @param[in] robot           A gtdynamics::Robot object.
  * @param[in] link_name       The name of the link whose pose to interpolate.
@@ -93,7 +94,8 @@ gtsam::Values InitializeSolutionInverseKinematics(
     const boost::optional<std::vector<ContactPoint>>& contact_points =
         boost::none);
 
-/** @fn Return zero values for all variables for initial value of optimization.
+/**
+ * @fn Return zero values for all variables for initial value of optimization.
  *
  * @param[in] robot          A gtdynamics::Robot object.
  * @param[in] t              Timestep to return zero initial values for.
@@ -106,7 +108,8 @@ gtsam::Values ZeroValues(
     const Robot& robot, const int t, const double& gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
-/** @fn Return zero values of the trajectory for initial value of optimization.
+/**
+ * @fn Return zero values of the trajectory for initial value of optimization.
  *
  * @param[in] robot          A gtdynamics::Robot object.
  * @param[in] num_steps      Total number of time steps.
@@ -123,5 +126,3 @@ gtsam::Values ZeroValuesTrajectory(
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
