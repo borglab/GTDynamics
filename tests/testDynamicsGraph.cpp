@@ -452,12 +452,12 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   gtsam::Values init_values =
       ZeroValues(my_robot, 0, 0.0, contact_points);
 
-  graph_builder.printGraph(graph);
+//   graph_builder.printGraph(graph);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values results = optimizer.optimize();
-  std::cout << "Error: " << graph.error(results) << std::endl;
+//   std::cout << "Error: " << graph.error(results) << std::endl;
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
@@ -509,13 +509,13 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   auto body = biped.getLinkByName("body");
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
       PoseKey(body->getID(), 0), body->wTcom(),
-      gtsam::noiseModel::Constrained::All(6)));
+      graph_builder.opt().bp_cost_model));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistKey(body->getID(), 0), gtsam::Vector6::Zero(),
-      gtsam::noiseModel::Constrained::All(6)));
+      graph_builder.opt().bv_cost_model));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistAccelKey(body->getID(), 0), gtsam::Vector6::Zero(),
-      gtsam::noiseModel::Constrained::All(6)));
+      graph_builder.opt().ba_cost_model));
   graph.add(prior_factors);
 
   // Add min torque factor.
@@ -528,13 +528,13 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   gtsam::Values init_values =
       ZeroValues(biped, 0, 0.0, contact_points);
 
-  graph_builder.printGraph(graph);
+//   graph_builder.printGraph(graph);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   gtsam::Values results = optimizer.optimize();
 
-  std::cout << "Error: " << graph.error(results) << std::endl;
+//   std::cout << "Error: " << graph.error(results) << std::endl;
 
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
