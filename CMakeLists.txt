@@ -95,11 +95,12 @@ message(STATUS "Build Python Wrapper: ${BUILD_PYTHON_WRAPPER}")
 if(BUILD_PYTHON_WRAPPER)
     find_package(gtwrap)
 
-    set(WRAP_PYTHON_VERSION "3.8" CACHE STRING "The Python version to use for wrapping")
+    set(WRAP_PYTHON_VERSION "Default" CACHE STRING "The Python version to use for wrapping")
+    gtwrap_get_python_version(${WRAP_PYTHON_VERSION})
+    message(STATUS "Wrapper Python Version: ${WRAP_PYTHON_VERSION}")
+    
     set(PYTHON_REQUIREMENTS_PATH "requirements.txt")
     set(PYTHON_TESTS "${PROJECT_NAME}.tests")
-
-    include(PybindWrap)
 
     set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
     configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
