@@ -72,13 +72,13 @@ TEST(PointGoalFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
 
   // Initialize factor with goal point.
-  gtsam::Point3 goal_point = gtsam::Point3(-12, 15, 6);
+  gtsam::Point3 goal_point = gtsam::Point3(2, 15, 6);
   gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Initial link pose.
   gtsam::Pose3 pose_init = my_robot.getLinkByName("l1")->wTcom();
-  std::cout << "Error Init: " << factor.evaluateError(pose_init) << std::endl;
+  // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose() << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -86,7 +86,8 @@ TEST(PointGoalFactor, optimization) {
   init_values.insert(pose_key, pose_init);
 
   gtsam::LevenbergMarquardtParams params;
-  params.setVerbosity("ERROR");
+  params.setVerbosity("SILENT");
+  params.setVerbosityLM("SILENT");
   params.setAbsoluteErrorTol(1e-12);
 
   // Optimize the initial link twist to ensure no linear velocity
@@ -95,8 +96,8 @@ TEST(PointGoalFactor, optimization) {
   optimizer.optimize();
   gtsam::Values results = optimizer.values();
   gtsam::Pose3 pose_optimized = results.at<gtsam::Pose3>(pose_key);
-  std::cout << "Error Final: "
-            << factor.evaluateError(pose_optimized) << std::endl;
+  // std::cout << "Error Final: "
+  //           << factor.evaluateError(pose_optimized).transpose() << std::endl;
   EXPECT(assert_equal(factor.evaluateError(pose_optimized),
                       gtsam::Vector3::Zero(), 1e-4));
 }

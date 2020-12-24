@@ -77,7 +77,7 @@ std::vector<std::vector<gtsam::Point3>> sphereCenters(
   for (int j = 0; j < dof; ++j) {
     std::vector<gtsam::Point3> sphere_centers;
     if (lengths[j] == 0) {
-      sphere_centers.assign(1, gtsam::Point3());
+      sphere_centers.assign(1, gtsam::Point3(0, 0, 0));
     } else {
       int num = ceil(lengths[j] / radii[j]);
       double distance = lengths[j] / num;
@@ -166,10 +166,6 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
   return data;
 }
 
-}  // namespace gtdynamics
-
-namespace gtdynamics {
-
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   auto sdf = sdf::readFile(sdf_file_path);
 
@@ -190,8 +186,7 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
     if (curr_model.Name() == model_name) return curr_model;
   }
 
-  // TODO(aescontrela): Make this error message more clear.
-  throw std::runtime_error("Model not found.");
+  throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
 gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {

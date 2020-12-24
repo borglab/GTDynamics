@@ -57,7 +57,7 @@ class RevoluteJoint : public ScrewJointBase {
                        getScrewAxis(axis)) {}
 
   /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Revolute; }
+  Type type() const override { return Type::Revolute; }
 };
 
 }  // namespace gtdynamics

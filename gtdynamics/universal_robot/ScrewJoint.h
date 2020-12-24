@@ -59,7 +59,7 @@ class ScrewJoint : public ScrewJointBase {
                        getScrewAxis(axis, thread_pitch)) {}
 
   /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Screw; }
+  Type type() const override { return Type::Screw; }
 };
 
 }  // namespace gtdynamics

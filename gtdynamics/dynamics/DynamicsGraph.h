@@ -14,19 +14,19 @@
 #ifndef GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 #define GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Robot.h"
+
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+
+#include <boost/optional.hpp>
 
 #include <cmath>
 #include <iosfwd>
 #include <string>
 #include <vector>
-
-#include <boost/optional.hpp>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Robot.h"
 
 namespace gtdynamics {
 
@@ -108,7 +108,7 @@ class DynamicsGraph {
   static gtsam::GaussianFactorGraph linearIDPriors(
       const Robot &robot, const int t, const Robot::JointValues &joint_accels);
 
-  /** sovle forward kinodynamics using linear factor graph, return values of all
+  /** solve forward kinodynamics using linear factor graph, return values of all
   variables
   * Keyword arguments:
      robot               -- the robot
@@ -128,7 +128,7 @@ class DynamicsGraph {
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
 
-  /** sovle inverse kinodynamics using linear factor graph, return values of all
+  /** solve inverse kinodynamics using linear factor graph, return values of all
   variables
   * Keyword arguments:
      robot               -- the robot
@@ -196,7 +196,7 @@ class DynamicsGraph {
      robot                -- the robot
      t                    -- time step
      joint_angles         -- joint angles specified in order of joints
-     joint_vels           -- joint velocites specified in order of joints
+     joint_vels           -- joint velocities specified in order of joints
      torques              -- joint torques specified in order of joints
    */
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
@@ -208,7 +208,7 @@ class DynamicsGraph {
      robot                      -- the robot
      t                          -- time step
      joint_angles               -- joint angles specified in order of joints
-     joint_vels                 -- joint velocites specified in order of joints
+     joint_vels                 -- joint velocities specified in order of joints
      joint_accels               -- joint accels specified in order of joints
    */
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
@@ -233,7 +233,7 @@ class DynamicsGraph {
      robot               -- the robot
      num_steps           -- total time steps
      joint_angles        -- joint angles specified in order of joints
-     joint_vels          -- joint velocites specified in order of joints
+     joint_vels          -- joint velocities specified in order of joints
      torques_seq         -- joint torques along the trajectory
    */
   gtsam::NonlinearFactorGraph trajectoryFDPriors(

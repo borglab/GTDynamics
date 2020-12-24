@@ -15,68 +15,64 @@
 #ifndef GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
 #define GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-#include <vector>
-
 #include <boost/optional.hpp>
 
-#include "gtdynamics/utils/utils.h"
+#include <string>
+#include <vector>
+#include <memory>
 
 namespace gtdynamics {
 
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
 class WrenchEquivalenceFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> {
+    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
+                                      typename JointTyped::JointCoordinate> {
  private:
+  typedef typename JointTyped::JointCoordinate JointCoordinate;
   typedef WrenchEquivalenceFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> Base;
-  gtsam::Pose3 M_21_;
-  gtsam::Vector6 screw_axis_;
+  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
+                                   JointCoordinate>
+      Base;
+  typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
+  MyJointConstSharedPtr joint_;
 
  public:
   /** wrench eq factor, enforce same wrench expressed in different link frames.
       Keyword argument:
-          M_21        -- rest transform between the com frame of two links
-          screw_axis  -- screw axis expressed in link2's COM frame
+          joint       -- JointConstSharedPtr to the joint
    */
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const gtsam::Pose3 &M_21,
-                          const gtsam::Vector6 &screw_axis)
+                          MyJointConstSharedPtr joint)
       : Base(cost_model, wrench_key_1, wrench_key_2, q_key),
-        M_21_(M_21),
-        screw_axis_(screw_axis) {}
+        joint_(joint) {}
   virtual ~WrenchEquivalenceFactor() {}
-
- private:
-  /* calculate joint coordinate q jacobian */
-  gtsam::Matrix61 qJacobian_(double q, const gtsam::Vector6 &wrench_2) const {
-    auto H = AdjointMapJacobianQ(q, M_21_, screw_axis_);
-    return H.transpose() * wrench_2;
-  }
 
  public:
   /** evaluate wrench balance errors
       Keyword argument:
-          twsit         -- twist on this link
-          twsit_accel   -- twist acceleration on this link
+          twist         -- twist on this link
+          twist_accel   -- twist acceleration on this link
           wrench_1      -- wrench on Link 1 expressed in link 1 com frame
           wrench_2      -- wrench on Link 2 expressed in link 2 com frame
   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
-      const double &q,
+      const JointCoordinate &q,
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    gtsam::Pose3 T_21 = gtsam::Pose3::Expmap(-screw_axis_ * q) * M_21_;
+    auto link = joint_->childLink();
+    gtsam::Pose3 T_21 = joint_->transformTo(link, q);
 
     gtsam::Vector6 error = wrench_1 + T_21.AdjointMap().transpose() * wrench_2;
 
@@ -87,7 +83,8 @@ class WrenchEquivalenceFactor
       *H_wrench_2 = T_21.AdjointMap().transpose();
     }
     if (H_q) {
-      *H_q = qJacobian_(q, wrench_2);
+      *H_q = joint_->AdjointMapJacobianJointAngle(link, q).transpose() *
+             wrench_2;
     }
     return error;
   }

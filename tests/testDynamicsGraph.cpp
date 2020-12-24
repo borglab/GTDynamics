@@ -8,7 +8,7 @@
 /**
  * @file  testDynamicsGraph.cpp
  * @brief Test forward and inverse dynamics factor graph.
- * @Author: Yetong Zhang, Alejandro Escontrela
+ * @authors Yetong Zhang, Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -552,7 +552,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   }
 
   // Assert that the normal forces at the contacts sum up to the robot's weight.
-  EXPECT(assert_equal(187.67, normal_force, 1e-2));
+  EXPECT(assert_equal(181.238736, normal_force, 1e-2));
 }
 
 // check joint limit factors

@@ -8,7 +8,7 @@
 /**
  * @file  initialize_solution_utils.cpp
  * @brief Utility methods for initializing trajectory optimization solutions.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @authors Alejandro Escontrela and Yetong Zhang
  */
 
 #include "gtdynamics/utils/initialize_solution_utils.h"
@@ -16,6 +16,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/Sampler.h>
@@ -36,7 +37,7 @@ namespace gtdynamics {
 inline Pose3 addGaussianNoiseToPose(const Pose3& T, double std,
                                     Sampler sampler) {
   Vector rand_vec = sampler.sample();
-  Point3 p = Point3(T.translation() + rand_vec.head(3));
+  Point3 p = T.translation() + rand_vec.head(3);
   Rot3 R = Rot3::Expmap(Rot3::Logmap(T.rotation()) + rand_vec.tail<3>());
   return Pose3(R, p);
 }
@@ -77,6 +78,8 @@ Values InitializeSolutionInterpolation(
         addGaussianNoiseToPose(Pose3(wRl_t, wPl_t), gaussian_noise, sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
+    // TODO(Alejandro): forwardKinematics needs to get passed the prev link
+    // twist
     auto fk_results = robot.forwardKinematics(jangles, jvels, link_name, wTl_t);
     for (auto&& pose_result : fk_results.first)
       init_vals.insert(
