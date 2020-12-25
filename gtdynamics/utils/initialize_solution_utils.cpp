@@ -36,7 +36,7 @@ namespace gtdynamics {
 inline Pose3 addGaussianNoiseToPose(const Pose3& T, double std,
                                     Sampler sampler) {
   Vector rand_vec = sampler.sample();
-  Point3 p = Point3(T.translation().vector() + rand_vec.head(3));
+  Point3 p = T.translation() + rand_vec.head(3);
   Rot3 R = Rot3::Expmap(Rot3::Logmap(T.rotation()) + rand_vec.tail<3>());
   return Pose3(R, p);
 }
@@ -460,7 +460,7 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     int j = joint->getID();
     auto parent_link = joint->parentLink();
     auto child_link = joint->childLink();
-    std::cout << "pid: " << parent_link->getID() << ", cid: " << child_link->getID() << ", j: " << j << std::endl;
+    // std::cout << "pid: " << parent_link->getID() << ", cid: " << child_link->getID() << ", j: " << j << std::endl;
     zero_values.insert(WrenchKey(parent_link->getID(), j, t), sampler.sample());
     zero_values.insert(WrenchKey(child_link->getID(), j, t), sampler.sample());
     std::vector<DynamicsSymbol> keys = {

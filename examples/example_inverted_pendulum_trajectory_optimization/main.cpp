@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   auto ip = CreateRobotFromFile("../inverted_pendulum.urdf");
   auto j1_id = ip.getJointByName("j1")->getID();
   ip.getLinkByName("l1")->fix();
-  ip.printRobot();le
+  ip.printRobot();
   gtsam::Vector3 gravity(0, 0, -9.8), planar_axis(1, 0, 0);
 
   double T = 3, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).

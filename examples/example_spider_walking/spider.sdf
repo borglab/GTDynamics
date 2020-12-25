@@ -3,6 +3,12 @@
 <world name='default'>
 	<model name="spider">
 
+		<!-- Prevents the robot from falling through the world when visualized in Gazebo. -->	
+		<joint name="body2world" type="fixed">
+			<parent>world</parent>
+			<child>body</child>
+		</joint>
+
 		<!-- Floating base link -->
 		
 		<link name="body">

@@ -57,11 +57,20 @@ inline DynamicsSymbol TimeKey(int t) {
  *  contact_id -- Each link's contact points must have a unique contact id.
  *  contact_height -- Height at which contact is made.
  */
-typedef struct {
+struct ContactPoint {
   gtsam::Point3 contact_point;
   int contact_id;
   double contact_height = 0.0;
-} ContactPoint;
+
+  bool operator==(const ContactPoint &other) {
+    return (contact_point == other.contact_point &&
+            contact_id == other.contact_id &&
+            contact_height == other.contact_height);
+  }
+  bool operator!=(const ContactPoint &other) {
+    return !(*this == other);
+  }
+};
 typedef std::map<std::string, ContactPoint> ContactPoints;
 
 /**

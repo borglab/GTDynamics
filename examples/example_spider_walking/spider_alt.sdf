@@ -3,6 +3,12 @@
 <world name='default'>
 	<model name="spider">
 
+		<!-- Prevents the robot from falling through the world when visualized in Gazebo. -->	
+		<joint name="body2world" type="fixed">
+			<parent>world</parent>
+			<child>body</child>
+		</joint>
+
 		<!-- Floating base link -->
 		
 		<link name="body">
@@ -358,6 +364,7 @@
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
 		</joint>
+
 		<joint name="hip2_1" type="revolute">
 			<parent>trochanter_1</parent>
 			<child>femur_1</child>

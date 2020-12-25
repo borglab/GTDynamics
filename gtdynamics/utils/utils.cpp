@@ -77,7 +77,7 @@ std::vector<std::vector<gtsam::Point3>> sphereCenters(
   for (int j = 0; j < dof; ++j) {
     std::vector<gtsam::Point3> sphere_centers;
     if (lengths[j] == 0) {
-      sphere_centers.assign(1, gtsam::Point3());
+      sphere_centers.assign(1, gtsam::Point3(0, 0, 0));
     } else {
       int num = ceil(lengths[j] / radii[j]);
       double distance = lengths[j] / num;

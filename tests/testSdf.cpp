@@ -54,8 +54,8 @@ TEST(File, parameters_from_file) {
   auto spider_sdf = get_sdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
   auto knee_1_parameters = ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
-  EXPECT(assert_equal(-0.349066, knee_1_parameters.scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(2.44346, knee_1_parameters.scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(-2.79, knee_1_parameters.scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(0.0, knee_1_parameters.scalar_limits.value_upper_limit));
 }
 
 /**
@@ -85,8 +85,8 @@ TEST(File, create_robot_from_file) {
   auto spider_robot = CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
   auto spider_knee1 = spider_robot.getJointByName("knee_1");
 
-  EXPECT(assert_equal(-0.349066, spider_knee1->parameters().scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(2.44346, spider_knee1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(assert_equal(-2.79, spider_knee1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(assert_equal(0.0, spider_knee1->parameters().scalar_limits.value_upper_limit));
 }
 
 /**

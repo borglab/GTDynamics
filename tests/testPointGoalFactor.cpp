@@ -72,7 +72,7 @@ TEST(PointGoalFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
 
   // Initialize factor with goal point.
-  gtsam::Point3 goal_point = gtsam::Point3(-12, 15, 6);
+  gtsam::Point3 goal_point = gtsam::Point3(2, 15, 6);
   gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 

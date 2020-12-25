@@ -41,18 +41,21 @@ namespace gtdynamics
     const ContactPoints getIntersection(ContactPoints CPs_1, ContactPoints CPs_2) const
     {
       ContactPoints intersection;
-      bool found = false;
-      for(auto &&cp : CPs_1){
-        if(CPs_2.find(cp.first) != CPs_2.end()){
-          intersection.emplace(cp.first, cp.second); 
-          found = true;
-        }else if(found) break;
+      for (auto &&cp : CPs_1) {
+        if (CPs_2.find(cp.first) != CPs_2.end()) {
+          intersection.emplace(cp.first, cp.second);
+        }
       }
       return intersection;
     }
 
   public:
-    /// Default Constructor
+    /// Default Constructor (for serialization)
+    Trajectory() {};
+
+    /**
+     * Construct trajectory from WalkCycle and specified number of gait repetitions.
+     */
     Trajectory(const WalkCycle &walk_cycle, const int &repeat)
         : repeat_(repeat),
           walk_cycle_(walk_cycle){}
@@ -61,7 +64,7 @@ namespace gtdynamics
        * applying repetition on the walk cycle.
        * @return Phase CPs.
        */
-    const vector<ContactPoints> phaseCPs() const
+    const vector<ContactPoints> phaseContactPoints() const
     {
       vector<ContactPoints> phase_cps;
       vector<Phase> phases = walk_cycle_.phases();
@@ -77,7 +80,7 @@ namespace gtdynamics
        * applying repetition on the original sequence.
        * @return Transition CPs.
        */
-    const vector<ContactPoints> transitionCPs() const
+    const vector<ContactPoints> transitionContactPoints() const
     {
       vector<ContactPoints> trans_cps_orig;
 
@@ -147,7 +150,7 @@ namespace gtdynamics
                                                                   const gtsam::Vector3 &gravity, const double &mu) const
     {
       vector<gtsam::NonlinearFactorGraph> transition_graphs;
-      vector<ContactPoints> trans_cps = transitionCPs();
+      vector<ContactPoints> trans_cps = transitionContactPoints();
       vector<Robot> phase_robots = phaseRobotModels();
       vector<int> final_timesteps = finalTimeSteps();
       for (int p = 1; p < numPhases(); p++)
@@ -165,13 +168,12 @@ namespace gtdynamics
        */
     const vector<gtsam::Values> getInitTransitionValues(const double &gaussian_noise) const
     {
-      vector<ContactPoints> trans_cps = transitionCPs();
+      vector<ContactPoints> trans_cps = transitionContactPoints();
       vector<gtsam::Values> transition_graph_init;
       vector<Robot> phase_robots = phaseRobotModels();
       vector<int> final_timesteps = finalTimeSteps();
       for (int p = 1; p < numPhases(); p++)
       {
-        std::cout<< p<< std::endl;
         transition_graph_init.push_back(ZeroValues(
             phase_robots[p],
             final_timesteps[p-1], gaussian_noise, trans_cps[p - 1]));
@@ -321,7 +323,7 @@ namespace gtdynamics
     // void blahBlah() const
     // {
     //   //Get phase information
-    //   vector<CPs> phase_cps = this->phaseCPs();
+    //   vector<CPs> phase_cps = this->phaseContactPoints();
     //   vector<int> phase_durations = this->phaseDurations();
     //   vector<Robot> robots = this->phaseRobotModels();
 
