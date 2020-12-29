@@ -96,6 +96,8 @@ class Trajectory {
       trans_cps_orig.push_back(intersection);
     }
 
+    // Copy the original transition contact point sequence
+    // `repeat_` number of times.
     std::vector<ContactPoints> trans_cps(trans_cps_orig);
     for (int i = 0; i < repeat_ - 1; i++) {
       trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),

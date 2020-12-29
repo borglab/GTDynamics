@@ -12,12 +12,13 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include "gtdynamics/utils/Trajectory.h"
-#include "gtdynamics/utils/WalkCycle.h"
-#include "gtdynamics/utils/Phase.h"
+
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/Phase.h"
+#include "gtdynamics/utils/Trajectory.h"
+#include "gtdynamics/utils/WalkCycle.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
