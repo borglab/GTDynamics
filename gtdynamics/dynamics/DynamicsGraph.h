@@ -14,21 +14,22 @@
 #ifndef GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 #define GTDYNAMICS_DYNAMICS_DYNAMICSGRAPH_H_
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Robot.h"
-
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
 #include <boost/optional.hpp>
-
 #include <cmath>
 #include <iosfwd>
 #include <string>
 #include <vector>
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/Robot.h"
+
 namespace gtdynamics {
+
+const double DEFAULT_MU = 1.0;
 
 // TODO(aescontrela3, yetongumich): can we not use inline here?
 
@@ -48,21 +49,30 @@ inline DynamicsSymbol TimeKey(int t) {
 }
 
 /**
- * ContactPoint defines a single contact point at a link.
+ * ContactPoint defines a single contact point.
  * Keyword Arguments:
- *  name -- The name of the link in contact.
  *  contact_point -- The location of the contact point relative to the link
  *    Com.
  *  contact_id -- Each link's contact points must have a unique contact id.
  *  contact_height -- Height at which contact is made.
  */
-typedef struct {
-  std::string name;
+struct ContactPoint {
   gtsam::Point3 contact_point;
   int contact_id;
   double contact_height = 0.0;
-} ContactPoint;
-typedef std::vector<ContactPoint> ContactPoints;
+
+  bool operator==(const ContactPoint &other) {
+    return (contact_point == other.contact_point &&
+            contact_id == other.contact_id &&
+            contact_height == other.contact_height);
+  }
+  bool operator!=(const ContactPoint &other) {
+    return !(*this == other);
+  }
+};
+
+///< Map of link name to ContactPoint
+using ContactPoints = std::map<std::string, ContactPoint>;
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
@@ -272,7 +282,10 @@ class DynamicsGraph {
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
+      const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
+          boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /** return collocation factors on angles and velocities from time step t to
   t+1

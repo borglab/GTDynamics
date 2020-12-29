@@ -16,7 +16,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/Sampler.h>
@@ -46,7 +45,7 @@ Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const Pose3& wTl_f, const double& T_s, const double& T_f, const double& dt,
     const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Values init_vals;
 
   auto sampler_noise_model =
@@ -108,11 +107,12 @@ Values InitializeSolutionInterpolation(
       for (auto&& contact_point : *contact_points) {
         int link_id = -1;
         for (auto& link : robot.links()) {
-          if (link->name() == contact_point.name) link_id = link->getID();
+          if (link->name() == contact_point.first) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
-                         sampler.sample());
+        init_vals.insert(
+            ContactWrenchKey(link_id, contact_point.second.contact_id, t),
+            sampler.sample());
       }
     }
     t_elapsed += dt;
@@ -125,7 +125,7 @@ Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Values init_vals;
   Pose3 pose = wTl_i;
   double curr_t = 0.0;
@@ -145,7 +145,7 @@ Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     const double& dt, const double& gaussian_noise,
-    const boost::optional<std::vector<ContactPoint>>& contact_points) {
+    const boost::optional<ContactPoints>& contact_points) {
   Point3 wPl_i = wTl_i.translation();  // Initial translation.
   Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
   double t_i = 0.0;                    // Time elapsed.
@@ -238,11 +238,12 @@ Values InitializeSolutionInverseKinematics(
       for (auto&& contact_point : *contact_points) {
         int link_id = -1;
         for (auto& link : robot.links()) {
-          if (link->name() == contact_point.name) link_id = link->getID();
+          if (link->name() == contact_point.first) link_id = link->getID();
         }
         if (link_id == -1) throw std::runtime_error("Link not found.");
-        init_vals.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
-                         sampler.sample());
+        init_vals.insert(
+            ContactWrenchKey(link_id, contact_point.second.contact_id, t),
+            sampler.sample());
       }
     }
 
@@ -255,6 +256,178 @@ Values InitializeSolutionInverseKinematics(
       init_vals_t.insert(JointAngleKey(joint->getID(), t + 1),
                          results.atDouble(JointAngleKey(joint->getID(), t)));
   }
+
+  return init_vals;
+}
+
+Values MultiPhaseZeroValuesTrajectory(
+    const std::vector<gtdynamics::Robot>& robots,
+    const std::vector<int>& phase_steps,
+    std::vector<Values> transition_graph_init, double dt_i,
+    const double& gaussian_noise,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points) {
+  Values zero_values;
+  int num_phases = robots.size();
+
+  int t = 0;
+  if (phase_contact_points)
+    zero_values.insert(gtdynamics::ZeroValues(robots[0], t, gaussian_noise,
+                                              (*phase_contact_points)[0]));
+  else
+    zero_values.insert(gtdynamics::ZeroValues(robots[0], t, gaussian_noise));
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    // in-phase
+    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
+         phase_step++) {
+      if (phase_contact_points)
+        zero_values.insert(
+            gtdynamics::ZeroValues(robots[phase], ++t, gaussian_noise,
+                                   (*phase_contact_points)[phase]));
+      else
+        zero_values.insert(
+            gtdynamics::ZeroValues(robots[phase], ++t, gaussian_noise));
+    }
+
+    if (phase == num_phases - 1) {
+      if (phase_contact_points)
+        zero_values.insert(
+            gtdynamics::ZeroValues(robots[phase], ++t, gaussian_noise,
+                                   (*phase_contact_points)[phase]));
+      else
+        zero_values.insert(
+            gtdynamics::ZeroValues(robots[phase], ++t, gaussian_noise));
+    } else {
+      t++;
+      zero_values.insert(transition_graph_init[phase]);
+    }
+  }
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    zero_values.insert(gtdynamics::PhaseKey(phase), dt_i);
+  }
+
+  return zero_values;
+}
+
+// TODO(aescontrela3): Refactor this entire method to make use of
+// InitializeSolutionInverseKinematics before merging.
+Values MultiPhaseInverseKinematicsTrajectory(
+    const std::vector<gtdynamics::Robot>& robots, const std::string& link_name,
+    const std::vector<int>& phase_steps, const Pose3& wTl_i,
+    const std::vector<Pose3>& wTl_t, const std::vector<int>& ts,
+    std::vector<Values> transition_graph_init, double dt_i,
+    const double& gaussian_noise,
+    const boost::optional<std::vector<gtdynamics::ContactPoints>>&
+        phase_contact_points) {
+  Point3 wPl_i = wTl_i.translation();  // Initial translation.
+  Rot3 wRl_i = wTl_i.rotation();       // Initial rotation.
+  int t_i = 0;                         // Time elapsed.
+  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
+
+  auto sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+  Sampler sampler(sampler_noise_model);
+
+  // Linearly interpolated pose for link at each discretized timestep.
+  std::vector<Pose3> wTl_dt;
+  for (size_t i = 0; i < ts.size(); i++) {
+    Point3 wPl_t = wTl_t[i].translation();  // des P.
+    Rot3 wRl_t = wTl_t[i].rotation();       // des R.
+    int t_ti = t_i, t_t = ts[i];            // Initial and final times.
+
+    for (int t = t_ti; t < t_t; t++) {
+      double s = static_cast<double>(t_i - t_ti) /
+                 static_cast<double>(t_t - t_ti);  // Normalized phase progress.
+
+      // Compute interpolated pose for link.
+      Point3 wPl_s = (1 - s) * wPl_i + s * wPl_t;
+      Rot3 wRl_s = wRl_i.slerp(s, wRl_t);
+      Pose3 wTl_s = Pose3(wRl_s, wPl_s);
+      wTl_dt.push_back(wTl_s);
+      t_i++;
+    }
+
+    wPl_i = wPl_t;
+    wRl_i = wRl_t;
+  }
+  wTl_dt.push_back(wTl_t[wTl_t.size() - 1]);  // Add the final pose.
+
+  Pose3 wTl_i_processed;
+  if (gaussian_noise > 0.0) {
+    wTl_i_processed = addGaussianNoiseToPose(wTl_i, gaussian_noise, sampler);
+    for (size_t i = 0; i < wTl_dt.size(); i++)
+      wTl_dt[i] = addGaussianNoiseToPose(wTl_dt[i], gaussian_noise, sampler);
+  } else {
+    wTl_i_processed = wTl_i;
+  }
+
+  // Iteratively solve the inverse kinematics problem while statisfying
+  // the contact pose constraint.
+  Values init_vals, init_vals_t;
+
+  // Initial pose and joint angles are known a priori.
+  gtdynamics::Robot::JointValues jangles, jvels;
+  for (auto&& joint : robots[0].joints()) {
+    jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+    jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
+  }
+
+  // Compute forward dynamics to obtain remaining link poses.
+  auto fk_results =
+      robots[0].forwardKinematics(jangles, jvels, link_name, wTl_i_processed);
+  for (auto&& pose_result : fk_results.first)
+    init_vals_t.insert(
+        gtdynamics::PoseKey(robots[0].getLinkByName(pose_result.first)->getID(),
+                            0),
+        pose_result.second);
+  for (auto&& joint : robots[0].joints())
+    init_vals_t.insert(gtdynamics::JointAngleKey(joint->getID(), 0),
+                       sampler.sample()[0]);
+
+  auto dgb = gtdynamics::DynamicsGraph();
+
+  int t = 0;
+  int num_phases = robots.size();
+
+  for (int phase = 0; phase < num_phases; phase++) {
+    // In-phase.
+    int curr_phase_steps =
+        phase == (num_phases - 1) ? phase_steps[phase] + 1 : phase_steps[phase];
+    for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
+      gtsam::NonlinearFactorGraph kfg = dgb.qFactors(
+          robots[phase], t, gravity, (*phase_contact_points)[phase]);
+
+      kfg.add(gtsam::PriorFactor<Pose3>(
+          PoseKey(robots[phase].getLinkByName(link_name)->getID(), t),
+          wTl_dt[t], gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
+
+      gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
+      Values results = optimizer.optimize();
+
+      init_vals.insert(results);
+
+      // Update initial values for next timestep.
+      init_vals_t.clear();
+      for (auto&& link : robots[phase].links())
+        init_vals_t.insert(
+            gtdynamics::PoseKey(link->getID(), t + 1),
+            results.at(gtdynamics::PoseKey(link->getID(), t)).cast<Pose3>());
+      for (auto&& joint : robots[phase].joints())
+        init_vals_t.insert(
+            gtdynamics::JointAngleKey(joint->getID(), t + 1),
+            results.atDouble(gtdynamics::JointAngleKey(joint->getID(), t)));
+      t++;
+    }
+  }
+
+  Values zero_values = MultiPhaseZeroValuesTrajectory(
+      robots, phase_steps, transition_graph_init, dt_i, gaussian_noise,
+      phase_contact_points);
+
+  for (auto&& key_value_pair : zero_values)
+    init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
 
   return init_vals;
 }
@@ -290,13 +463,14 @@ Values ZeroValues(const Robot& robot, const int t, const double& gaussian_noise,
     for (auto&& contact_point : *contact_points) {
       int link_id = -1;
       for (auto& link : robot.links()) {
-        if (link->name() == contact_point.name) link_id = link->getID();
+        if (link->name() == contact_point.first) link_id = link->getID();
       }
 
       if (link_id == -1) throw std::runtime_error("Link not found.");
 
-      zero_values.insert(ContactWrenchKey(link_id, contact_point.contact_id, t),
-                         sampler.sample());
+      zero_values.insert(
+          ContactWrenchKey(link_id, contact_point.second.contact_id, t),
+          sampler.sample());
     }
   }
 
