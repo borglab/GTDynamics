@@ -1,15 +1,15 @@
-// /* ----------------------------------------------------------------------------
-//  * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
-//  * Atlanta, Georgia 30332-0415
-//  * All Rights Reserved
-//  * See LICENSE for the license information
-//  * -------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
-// /**
-//  * @file  testWalkCycle.cpp
-//  * @brief Test WalkCycle class.
-//  * @Author: Frank Dellaert, Tarushree Gandhi, Disha Das
-//  */
+/**
+ * @file  testWalkCycle.cpp
+ * @brief Test WalkCycle class.
+ * @Author: Frank Dellaert, Tarushree Gandhi, Disha Das
+ */
 
 #include <CppUnitLite/TestHarness.h>
 #include "gtdynamics/utils/WalkCycle.h"

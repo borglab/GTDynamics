@@ -276,9 +276,11 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   transition_graph_init.push_back(gtdynamics::ZeroValues(
       robots[1], 2 * steps_per_phase, gaussian_noise, p0));
 
+  double dt = 1.0;
+
   gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
       robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
-      1. / 240, gaussian_noise, phase_contact_points);
+      dt, gaussian_noise, phase_contact_points);
 
   gtsam::Pose3 T = init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), 0));
   EXPECT(assert_equal(wTb_i, T, 1e-3));
