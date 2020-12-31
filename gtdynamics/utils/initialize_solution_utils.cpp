@@ -31,7 +31,7 @@ using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
 
 namespace gtdynamics {
 
-std::vector<Pose3> interpolatePoses(const Pose3& wTl_i,
+std::vector<Pose3> InterpolatePoses(const Pose3& wTl_i,
                                     const std::vector<Pose3>& wTl_t, double t_i,
                                     const std::vector<double>& timesteps,
                                     double dt) {
@@ -57,11 +57,11 @@ std::vector<Pose3> interpolatePoses(const Pose3& wTl_i,
   return wTl_dt;
 }
 
-Values addForwardKinematicsPoses(Values values, size_t t, const Robot& robot,
+Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
                                  const std::string& link_name,
                                  const Robot::JointValues& joint_angles,
                                  const Robot::JointValues& joint_velocities,
-                                 const Pose3& wTl_i) {
+                                 const Pose3& wTl_i, Values values) {
   auto fk_results =
       robot.forwardKinematics(joint_angles, joint_velocities, link_name, wTl_i);
   for (auto&& pose_result : fk_results.first) {
@@ -71,18 +71,18 @@ Values addForwardKinematicsPoses(Values values, size_t t, const Robot& robot,
   return values;
 }
 
-Values initializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
+Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
                                 const std::vector<Pose3>& wTl_t,
                                 const std::string& link_name, double t_i,
                                 const std::vector<double>& timesteps, double dt,
                                 const Sampler& sampler,
                                 std::vector<Pose3>& wTl_dt) {
   // Linearly interpolated pose for link at each discretized timestep.
-  wTl_dt = interpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
+  wTl_dt = InterpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
 
-  Pose3 wTl_i_processed = addGaussianNoiseToPose(wTl_i, sampler);
+  Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
   for (size_t i = 0; i < wTl_dt.size(); i++) {
-    wTl_dt[i] = addGaussianNoiseToPose(wTl_dt[i], sampler);
+    wTl_dt[i] = AddGaussianNoiseToPose(wTl_dt[i], sampler);
   }
 
   // Iteratively solve the inverse kinematics problem while statisfying
@@ -100,8 +100,8 @@ Values initializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
 
   // Compute forward dynamics to obtain remaining link poses.
   init_vals_t =
-      addForwardKinematicsPoses(init_vals_t, 0, robot, link_name, joint_angles,
-                                joint_velocities, wTl_i_processed);
+      AddForwardKinematicsPoses(robot, 0, link_name, joint_angles,
+                                joint_velocities, wTl_i_processed, init_vals_t);
 
   return init_vals_t;
 }
@@ -118,7 +118,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   for (auto&& link : robot.links()) {
     int i = link->getID();
     zero_values.insert(PoseKey(i, t),
-                       addGaussianNoiseToPose(link->wTcom(), sampler));
+                       AddGaussianNoiseToPose(link->wTcom(), sampler));
     zero_values.insert(TwistKey(i, t), sampler.sample());
     zero_values.insert(TwistAccelKey(i, t), sampler.sample());
   }
@@ -180,14 +180,14 @@ Values InitializeSolutionInterpolation(
     double s = (t_elapsed - T_s) / (T_f - T_s);
 
     // Compute interpolated pose for link.
-    Pose3 wTl_t = addGaussianNoiseToPose(
+    Pose3 wTl_t = AddGaussianNoiseToPose(
         gtsam::interpolate<Pose3>(wTl_i, wTl_f, s), sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
     // TODO(Alejandro): forwardKinematics needs to get passed the prev link
     // twist
-    init_vals = addForwardKinematicsPoses(init_vals, t, robot, link_name,
-                                          jangles, jvels, wTl_t);
+    init_vals = AddForwardKinematicsPoses(robot, t, link_name, jangles, jvels,
+                                          wTl_t, init_vals);
 
     for (auto&& kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
       init_vals.tryInsert(kvp.key, kvp.value);
@@ -228,7 +228,7 @@ Values InitializeSolutionInverseKinematics(
     const boost::optional<ContactPoints>& contact_points) {
   double t_i = 0.0;  // Time elapsed.
 
-  Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
+  Vector3 gravity(0, 0, -9.8);
 
   auto sampler_noise_model =
       gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
@@ -240,7 +240,7 @@ Values InitializeSolutionInverseKinematics(
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
   Values init_vals,
-      init_vals_t = initializePosesAndJoints(
+      init_vals_t = InitializePosesAndJoints(
           robot, wTl_i, wTl_t, link_name, t_i, timesteps, dt, sampler, wTl_dt);
 
   DynamicsGraph dgb;
@@ -356,7 +356,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
   Values init_vals,
-      init_vals_t = initializePosesAndJoints(robots[0], wTl_i, wTl_t, link_name,
+      init_vals_t = InitializePosesAndJoints(robots[0], wTl_i, wTl_t, link_name,
                                              t_i, ts, dt, sampler, wTl_dt);
 
   DynamicsGraph dgb;
