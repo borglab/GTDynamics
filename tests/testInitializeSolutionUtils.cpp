@@ -50,14 +50,14 @@ TEST(InitializeSolutionUtils, Interpolation) {
       PoseKey(my_robot.getLinkByName("l1")->getID(), 5));
   gtsam::Pose3 T_2 =
       gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
-                   (wTb_i.translation() * (1 - 0.5)) +
-                       (wTb_f.translation() * 0.5));  // Point3(0.5, 0.5, 0.5)
+                   gtsam::Point3(0.136439103437, 0.863560896563, 0.5));
   EXPECT(assert_equal(T_2, T_1));
 
   T_1 = init_vals.at<gtsam::Pose3>(
       PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1));
-  T_2 = gtsam::Pose3(wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
-                     gtsam::Point3(0.9, 0.9, 0.9));
+  T_2 = gtsam::Pose3(
+      wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
+      gtsam::Point3(0.794193007439, 1.03129011851, 0.961521708273));
   EXPECT(assert_equal(T_1, T_2));
 
   T = init_vals.at<gtsam::Pose3>(
@@ -97,7 +97,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
       PoseKey(my_robot.getLinkByName("l1")->getID(), 9));
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_t[0].rotation().slerp(0.8, wTb_t[1].rotation()),
-                   gtsam::Point3(1.8, 1, 1)),
+                   gtsam::Point3(1.83482681927, 1.03475261944, 1.1679796246)),
       T));
 
   T = init_vals.at<gtsam::Pose3>(
