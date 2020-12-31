@@ -19,6 +19,7 @@
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <boost/optional.hpp>
@@ -27,6 +28,34 @@
 #include <vector>
 
 namespace gtdynamics {
+
+/**
+ * Add zero-mean gaussian noise to a Pose.
+ *
+ * @param sampler Helper to sample values from a gaussian.
+ */
+inline gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
+                                           const gtsam::Sampler& sampler) {
+  gtsam::Vector rand_vec = sampler.sample();
+  gtsam::Point3 p = T.translation() + rand_vec.head(3);
+  gtsam::Rot3 R = gtsam::Rot3::Expmap(gtsam::Rot3::Logmap(T.rotation()) +
+                                      rand_vec.tail<3>());
+  return gtsam::Pose3(R, p);
+}
+
+/**
+ * Linearly interpolate between initial pose and desired poses at each
+ * specified, discrete timestep.
+ *
+ * @param wTl_i Initial pose of the link.
+ * @param wTl_t Vector of desired poses.
+ * @param t_i Initial time.
+ * @param timesteps Times at which poses start and end.
+ * @param dt The duration of a single timestep.
+ */
+std::vector<gtsam::Pose3> interpolatePoses(
+    const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
+    double t_i, const std::vector<double>& timesteps, double dt);
 
 /**
  * @fn Initialize solution via linear interpolation of initial and final pose.
@@ -46,8 +75,8 @@ namespace gtdynamics {
  */
 gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
-    const gtsam::Pose3& wTl_f, const double& T_s, const double& T_f,
-    const double& dt, const double& gaussian_noise = 0.0,
+    const gtsam::Pose3& wTl_f, double T_s, double T_f, double dt,
+    double gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 /**
@@ -68,7 +97,7 @@ gtsam::Values InitializeSolutionInterpolation(
 gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
-    const double& dt, const double& gaussian_noise = 0.0,
+    double dt, double gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 /**
@@ -89,7 +118,7 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
 gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
-    const double& dt, const double& gaussian_noise = 1e-8,
+    double dt, double gaussian_noise = 1e-8,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 /**
@@ -106,7 +135,7 @@ gtsam::Values MultiPhaseZeroValuesTrajectory(
     const std::vector<gtdynamics::Robot>& robots,
     const std::vector<int>& phase_steps,
     std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
-    const double& gaussian_noise = 1e-8,
+    const double gaussian_noise = 1e-8,
     const boost::optional<std::vector<gtdynamics::ContactPoints>>&
         phase_contact_points = boost::none);
 
@@ -132,9 +161,9 @@ gtsam::Values MultiPhaseZeroValuesTrajectory(
 gtsam::Values MultiPhaseInverseKinematicsTrajectory(
     const std::vector<gtdynamics::Robot>& robots, const std::string& link_name,
     const std::vector<int>& phase_steps, const gtsam::Pose3& wTl_i,
-    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<int>& ts,
+    const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
-    const double& gaussian_noise = 1e-8,
+    double gaussian_noise = 1e-8,
     const boost::optional<std::vector<gtdynamics::ContactPoints>>&
         phase_contact_points = boost::none);
 
@@ -149,7 +178,7 @@ gtsam::Values MultiPhaseInverseKinematicsTrajectory(
  * @param[in] contact_points Contact points for timestep t.
  */
 gtsam::Values ZeroValues(
-    const Robot& robot, const int t, const double& gaussian_noise = 0.0,
+    const Robot& robot, const int t, double gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 /**
@@ -166,7 +195,7 @@ gtsam::Values ZeroValues(
  */
 gtsam::Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases = -1,
-    const double& gaussian_noise = 0.0,
+    double gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 }  // namespace gtdynamics
