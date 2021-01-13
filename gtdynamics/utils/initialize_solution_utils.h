@@ -30,19 +30,13 @@
 namespace gtdynamics {
 
 /**
- * Add zero-mean gaussian noise to a Pose.
+ * Add zero-mean gaussian noise to a Pose3.
  *
- * @param T Pose which to add noise to.
+ * @param T Pose3 which to add noise to.
  * @param sampler Helper to sample values from a gaussian distribution.
  */
 inline gtsam::Pose3 AddGaussianNoiseToPose(const gtsam::Pose3& T,
-                                           const gtsam::Sampler& sampler) {
-  gtsam::Vector rand_vec = sampler.sample();
-  gtsam::Point3 p = T.translation() + rand_vec.head(3);
-  gtsam::Rot3 R = gtsam::Rot3::Expmap(gtsam::Rot3::Logmap(T.rotation()) +
-                                      rand_vec.tail<3>());
-  return gtsam::Pose3(R, p);
-}
+                                           const gtsam::Sampler& sampler);
 
 /**
  * Linearly interpolate between initial pose and desired poses at each
@@ -94,37 +88,6 @@ gtsam::Values InitializePosesAndJoints(const Robot& robot,
                                        const std::vector<double>& timesteps,
                                        double dt, const gtsam::Sampler& sampler,
                                        std::vector<gtsam::Pose3>& wTl_dt);
-
-/**
- * @fn Return zero values for all variables for initial value of optimization.
- *
- * @param[in] robot          A gtdynamics::Robot object.
- * @param[in] t              Timestep to return zero initial values for.
- * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
- *      Noise drawn from a zero-mean gaussian distribution with a standard
- *      deviation of gaussian_noise.
- * @param[in] contact_points Contact points for timestep t.
- */
-gtsam::Values ZeroValues(
-    const Robot& robot, const int t, double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
-
-/**
- * @fn Return zero values of the trajectory for initial value of optimization.
- *
- * @param[in] robot          A gtdynamics::Robot object.
- * @param[in] num_steps      Total number of time steps.
- * @param[in] num_phases     Number of phases, -1 if not using.
- * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
- *      Noise drawn from a zero-mean gaussian distribution with a standard
- *      deviation of gaussian_noise.
- * @param[in] contact_points Contact points along the trajectory.
- * @return Initial solution stored in a gtsam::Values object.
- */
-gtsam::Values ZeroValuesTrajectory(
-    const Robot& robot, const int num_steps, const int num_phases = -1,
-    double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
 
 /**
  * @fn Initialize solution via linear interpolation of initial and final pose.
@@ -235,6 +198,37 @@ gtsam::Values MultiPhaseInverseKinematicsTrajectory(
     double gaussian_noise = 1e-8,
     const boost::optional<std::vector<gtdynamics::ContactPoints>>&
         phase_contact_points = boost::none);
+
+/**
+ * @fn Return zero values for all variables for initial value of optimization.
+ *
+ * @param[in] robot          A gtdynamics::Robot object.
+ * @param[in] t              Timestep to return zero initial values for.
+ * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
+ *      Noise drawn from a zero-mean gaussian distribution with a standard
+ *      deviation of gaussian_noise.
+ * @param[in] contact_points Contact points for timestep t.
+ */
+gtsam::Values ZeroValues(
+    const Robot& robot, const int t, double gaussian_noise = 0.0,
+    const boost::optional<ContactPoints>& contact_points = boost::none);
+
+/**
+ * @fn Return zero values of the trajectory for initial value of optimization.
+ *
+ * @param[in] robot          A gtdynamics::Robot object.
+ * @param[in] num_steps      Total number of time steps.
+ * @param[in] num_phases     Number of phases, -1 if not using.
+ * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
+ *      Noise drawn from a zero-mean gaussian distribution with a standard
+ *      deviation of gaussian_noise.
+ * @param[in] contact_points Contact points along the trajectory.
+ * @return Initial solution stored in a gtsam::Values object.
+ */
+gtsam::Values ZeroValuesTrajectory(
+    const Robot& robot, const int num_steps, const int num_phases = -1,
+    double gaussian_noise = 0.0,
+    const boost::optional<ContactPoints>& contact_points = boost::none);
 
 }  // namespace gtdynamics
 
