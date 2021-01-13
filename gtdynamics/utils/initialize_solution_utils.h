@@ -30,18 +30,13 @@
 namespace gtdynamics {
 
 /**
- * Add zero-mean gaussian noise to a Pose.
+ * Add zero-mean gaussian noise to a Pose3.
  *
+ * @param T The Pose3 to which gaussian noise is to be added.
  * @param sampler Helper to sample values from a gaussian.
  */
-inline gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
-                                           const gtsam::Sampler& sampler) {
-  gtsam::Vector rand_vec = sampler.sample();
-  gtsam::Point3 p = T.translation() + rand_vec.head(3);
-  gtsam::Rot3 R = gtsam::Rot3::Expmap(gtsam::Rot3::Logmap(T.rotation()) +
-                                      rand_vec.tail<3>());
-  return gtsam::Pose3(R, p);
-}
+gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
+                                    const gtsam::Sampler& sampler);
 
 /**
  * Linearly interpolate between initial pose and desired poses at each

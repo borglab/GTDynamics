@@ -31,6 +31,12 @@ using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
 
 namespace gtdynamics {
 
+gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
+                                    const gtsam::Sampler& sampler) {
+  gtsam::Vector6 xi = sampler.sample();
+  return T.expmap(xi);
+}
+
 std::vector<Pose3> interpolatePoses(const Pose3& wTl_i,
                                     const std::vector<Pose3>& wTl_t, double t_i,
                                     const std::vector<double>& timesteps,
