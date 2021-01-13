@@ -28,7 +28,7 @@
 using namespace gtdynamics;
 using gtsam::assert_equal;
 
-TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
+TEST(InitializeSolutionUtils, Interpolation) {
   using simple_urdf::my_robot;
 
   gtsam::Pose3 wTb_i = gtsam::Pose3();
@@ -48,9 +48,11 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolation) {
 
   gtsam::Pose3 T_1 = init_vals.at<gtsam::Pose3>(
       PoseKey(my_robot.getLinkByName("l1")->getID(), 5));
-  gtsam::Pose3 T_2 = gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
-                                  gtsam::Point3(0.5, 0.5, 0.5));
-  EXPECT(assert_equal(T_1, T_2));
+  gtsam::Pose3 T_2 =
+      gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
+                   (wTb_i.translation() * (1 - 0.5)) +
+                       (wTb_f.translation() * 0.5));  // Point3(0.5, 0.5, 0.5)
+  EXPECT(assert_equal(T_2, T_1));
 
   T_1 = init_vals.at<gtsam::Pose3>(
       PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1));
@@ -103,7 +105,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   EXPECT(assert_equal(wTb_t[1], T));
 }
 
-TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
+TEST(InitializeSolutionUtils, InverseKinematics) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -179,7 +181,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInverseKinematics) {
   EXPECT(assert_equal(0.0, T.translation().z(), 1e-3));
 }
 
-TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
+TEST(InitializeSolutionUtils, ZeroValues) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -207,7 +209,7 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values) {
   }
 }
 
-TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
+TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -237,9 +239,7 @@ TEST(InitializeSolutionUtils, initialize_solution_zero_values_trajectory) {
   }
 }
 
-// TODO(Varun) test currently fails so need to check for correctness.
-TEST(initialize_solution_utils,
-     initialize_solution_multi_phase_inverse_kinematics_trajectory) {
+TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
@@ -264,7 +264,7 @@ TEST(initialize_solution_utils,
   gtsam::Pose3 wTb_i = l2->wTcom();
 
   std::vector<gtsam::Pose3> wTb_t;
-  std::vector<int> ts;
+  std::vector<double> ts;
 
   wTb_t.push_back(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0.2)));
   ts.push_back(3 * steps_per_phase);
