@@ -22,6 +22,7 @@
 
 using namespace gtdynamics;
 using namespace gtsam;
+using namespace std;
 
 // Class to test protected method
 class TrajectoryTest : public Trajectory {

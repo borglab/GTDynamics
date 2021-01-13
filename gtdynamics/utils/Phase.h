@@ -43,7 +43,7 @@ class Phase {
    * @param[in] point            Point of contact on link.
    * @param[in] contact_height   Height of contact point from ground.
    */
-  void addContactPoint(const string& link, const gtsam::Point3& point,
+  void addContactPoint(const std::string& link, const gtsam::Point3& point,
                        double contact_height) {
     // Check if link exists in the robot
     robot_configuration_.getLinkByName(link);
@@ -62,7 +62,7 @@ class Phase {
    * @param[in] point            Point of contact on link.
    * @param[in] contact_height   Height of contact point from ground.
    */
-  void addContactPoints(const vector<string>& links, const gtsam::Point3& point,
+  void addContactPoints(const std::vector<std::string>& links, const gtsam::Point3& point,
                         double contact_height) {
     for (auto&& link : links) {
       addContactPoint(link, point, contact_height);
@@ -76,7 +76,7 @@ class Phase {
   ContactPoints getAllContactPoints() const { return contact_points_; }
 
   /// Returns the contact point object of link.
-  const ContactPoint getContactPointAtLink(const string& link) {
+  const ContactPoint getContactPointAtLink(const std::string& link) {
     if (contact_points_.find(link) == contact_points_.end()) {
       throw std::runtime_error("Link " + link + " has no contact point!");
     }
