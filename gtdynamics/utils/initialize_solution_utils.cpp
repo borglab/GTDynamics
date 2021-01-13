@@ -78,52 +78,6 @@ Values addForwardKinematicsPoses(Values values, size_t t, const Robot& robot,
   return values;
 }
 
-Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
-                  const boost::optional<ContactPoints>& contact_points) {
-  Values zero_values;
-
-  auto sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
-  Sampler sampler(sampler_noise_model);
-
-  // Initialize link dynamics to 0.
-  for (auto&& link : robot.links()) {
-    int i = link->getID();
-    zero_values.insert(PoseKey(i, t),
-                       addGaussianNoiseToPose(link->wTcom(), sampler));
-    zero_values.insert(TwistKey(i, t), sampler.sample());
-    zero_values.insert(TwistAccelKey(i, t), sampler.sample());
-  }
-
-  // Initialize joint kinematics/dynamics to 0.
-  for (auto&& joint : robot.joints()) {
-    int j = joint->getID();
-    zero_values.insert(WrenchKey(joint->parentID(), j, t), sampler.sample());
-    zero_values.insert(WrenchKey(joint->childID(), j, t), sampler.sample());
-    std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
-                                        JointVelKey(j, t), JointAccelKey(j, t)};
-    for (size_t i = 0; i < keys.size(); i++)
-      zero_values.insert(keys[i], sampler.sample()[0]);
-  }
-
-  if (contact_points) {
-    for (auto&& contact_point : *contact_points) {
-      int link_id = -1;
-      for (auto& link : robot.links()) {
-        if (link->name() == contact_point.first) link_id = link->getID();
-      }
-
-      if (link_id == -1) throw std::runtime_error("Link not found.");
-
-      zero_values.insert(
-          ContactWrenchKey(link_id, contact_point.second.contact_id, t),
-          sampler.sample());
-    }
-  }
-
-  return zero_values;
-}
-
 Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const Pose3& wTl_f, double T_s, double T_f, double dt,
@@ -265,7 +219,51 @@ Values InitializeSolutionInverseKinematics(
   return init_vals;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////
+Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
+                  const boost::optional<ContactPoints>& contact_points) {
+  Values zero_values;
+
+  auto sampler_noise_model =
+      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+  Sampler sampler(sampler_noise_model);
+
+  // Initialize link dynamics to 0.
+  for (auto&& link : robot.links()) {
+    int i = link->getID();
+    zero_values.insert(PoseKey(i, t),
+                       addGaussianNoiseToPose(link->wTcom(), sampler));
+    zero_values.insert(TwistKey(i, t), sampler.sample());
+    zero_values.insert(TwistAccelKey(i, t), sampler.sample());
+  }
+
+  // Initialize joint kinematics/dynamics to 0.
+  for (auto&& joint : robot.joints()) {
+    int j = joint->getID();
+    zero_values.insert(WrenchKey(joint->parentID(), j, t), sampler.sample());
+    zero_values.insert(WrenchKey(joint->childID(), j, t), sampler.sample());
+    std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
+                                        JointVelKey(j, t), JointAccelKey(j, t)};
+    for (size_t i = 0; i < keys.size(); i++)
+      zero_values.insert(keys[i], sampler.sample()[0]);
+  }
+
+  if (contact_points) {
+    for (auto&& contact_point : *contact_points) {
+      int link_id = -1;
+      for (auto& link : robot.links()) {
+        if (link->name() == contact_point.first) link_id = link->getID();
+      }
+
+      if (link_id == -1) throw std::runtime_error("Link not found.");
+
+      zero_values.insert(
+          ContactWrenchKey(link_id, contact_point.second.contact_id, t),
+          sampler.sample());
+    }
+  }
+
+  return zero_values;
+}
 
 Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases,
