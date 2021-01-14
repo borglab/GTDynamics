@@ -31,9 +31,8 @@ using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
 
 namespace gtdynamics {
 
-gtsam::Pose3 AddGaussianNoiseToPose(const gtsam::Pose3& T,
-                                    const gtsam::Sampler& sampler) {
-  gtsam::Vector6 xi = sampler.sample();
+Pose3 AddGaussianNoiseToPose(const Pose3& T, const Sampler& sampler) {
+  Vector6 xi = sampler.sample();
   return T.expmap(xi);
 }
 
