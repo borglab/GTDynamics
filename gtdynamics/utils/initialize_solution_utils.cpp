@@ -350,9 +350,9 @@ Values MultiPhaseInverseKinematicsTrajectory(
 
   for (auto&& key_value_pair : zero_values) {
     init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
-
-    return init_vals;
   }
+
+  return init_vals;
 }
 
 Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
