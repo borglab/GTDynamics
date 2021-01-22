@@ -13,13 +13,19 @@
 
 #pragma once
 
-#include "gtdynamics/utils/Phase.h"
+#include <gtsam/linear/Sampler.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <string>
-#include <stdio.h>
 #include <vector>
 
-using std::vector;
+#include "gtdynamics/utils/Phase.h"
+#include "gtdynamics/utils/initialize_solution_utils.h"
+
+using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
+    gtsam::Point3, gtsam::Rot3, gtsam::Sampler;
 
 namespace gtdynamics {
 /**
@@ -31,9 +37,9 @@ class WalkCycle {
   std::vector<gtdynamics::Phase> phases_;  ///< Phases in walk cycle
   ContactPoints contact_points_;  ///< All Contact points in the walk cycle
 
-        public:
-            /// Default Constructor
-            WalkCycle(){}
+ public:
+  /// Default Constructor
+  WalkCycle() {}
 
   /**
    * @fn Adds phase in walk cycle
@@ -54,12 +60,13 @@ class WalkCycle {
     phases_.push_back(phase);
   }
 
-            /// Returns vector of phases in the walk cycle
-            std::vector<Phase> phases() const { return phases_; }
+  /// Returns vector of phases in the walk cycle
+  std::vector<Phase> phases() const { return phases_; }
 
-            /// Returns count of phases in the walk cycle
-            int numPhases() const { return phases_.size(); }
+  /// Returns count of phases in the walk cycle
+  int numPhases() const { return phases_.size(); }
 
+  /// Return all the contact points.
   ContactPoints allContactPoints() const { return contact_points_; }
 };
 }  // namespace gtdynamics

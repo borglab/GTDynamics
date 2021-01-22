@@ -44,7 +44,7 @@ class Phase {
    * @param[in] contact_height   Height of contact point from ground.
    */
   void addContactPoint(const string& link, const gtsam::Point3& point,
-                       const double& contact_height) {
+                       double contact_height) {
     // Check if link exists in the robot
     robot_configuration_.getLinkByName(link);
 
@@ -63,27 +63,27 @@ class Phase {
    * @param[in] contact_height   Height of contact point from ground.
    */
   void addContactPoints(const vector<string>& links, const gtsam::Point3& point,
-                        const double& contact_height) {
+                        double contact_height) {
     for (auto&& link : links) {
       addContactPoint(link, point, contact_height);
     }
   }
 
   /// Returns the robot configuration of the stance
-  const Robot getRobotConfiguration() const { return robot_configuration_; }
+  Robot getRobotConfiguration() const { return robot_configuration_; }
 
   /// Returns all the contact points in the stance
-  const ContactPoints getAllContactPoints() const { return contact_points_;}
+  ContactPoints getAllContactPoints() const { return contact_points_; }
 
   /// Returns the contact point object of link.
   const ContactPoint getContactPointAtLink(const string& link) {
-    if(contact_points_.find(link) == contact_points_.end())
+    if (contact_points_.find(link) == contact_points_.end()) {
       throw std::runtime_error("Link " + link + " has no contact point!");
+    }
     return contact_points_[link];
   }
 
   /// Returns the number of time steps in this phase
-  const int numTimeSteps() const { return num_time_steps_;}
-
-  };
-} //namespace gtdynamics
+  const int numTimeSteps() const { return num_time_steps_; }
+};
+}  // namespace gtdynamics

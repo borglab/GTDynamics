@@ -32,11 +32,11 @@ namespace gtdynamics {
 /**
  * Add zero-mean gaussian noise to a Pose3.
  *
- * @param T The Pose3 to which gaussian noise is to be added.
- * @param sampler Helper to sample values from a gaussian.
+ * @param T Pose3 which to add noise to.
+ * @param sampler Helper to sample values from a gaussian distribution.
  */
-gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
-                                    const gtsam::Sampler& sampler);
+inline gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
+                                           const gtsam::Sampler& sampler);
 
 /**
  * Linearly interpolate between initial pose and desired poses at each
@@ -51,6 +51,43 @@ gtsam::Pose3 addGaussianNoiseToPose(const gtsam::Pose3& T,
 std::vector<gtsam::Pose3> interpolatePoses(
     const gtsam::Pose3& wTl_i, const std::vector<gtsam::Pose3>& wTl_t,
     double t_i, const std::vector<double>& timesteps, double dt);
+
+/**
+ * Perform forward kinematics (FK) and add the resulting poses to `values`.
+ *
+ * @param robot The robot model.
+ * @param t The time step at which FK is performed.
+ * @param link_name The link on which to perform forward kinematics.
+ * @param joint_angles The current joint angles of the robot.
+ * @param joint_velocities The current joint velocities of the robot.
+ * @param wTl_i The initial pose of the link.
+ * @param[out] values Values dict with the poses after FK is performed.
+ */
+gtsam::Values addForwardKinematicsPoses(
+    const Robot& robot, size_t t, const std::string& link_name,
+    const Robot::JointValues& joint_angles,
+    const Robot::JointValues& joint_velocities, const gtsam::Pose3& wTl_i,
+    gtsam::Values values);
+
+/**
+ * Initialize the poses and joints needed to perform trajectory optimization.
+ *
+ * @param robot The robot model.
+ * @param wTl_i Initial pose of the link.
+ * @param wTl_t Vector of poses at each desired timestep.
+ * @param link_name The name of the link whose pose to initialize.
+ * @param t_i The initial time of the trajectory.
+ * @param timesteps A vector of desired timesteps.
+ * @param dt The duration of a single timestep.
+ * @param sampler Helper to sample values from a gaussian distribution.
+ */
+gtsam::Values InitializePosesAndJoints(const Robot& robot,
+                                       const gtsam::Pose3& wTl_i,
+                                       const std::vector<gtsam::Pose3>& wTl_t,
+                                       const std::string& link_name, double t_i,
+                                       const std::vector<double>& timesteps,
+                                       double dt, const gtsam::Sampler& sampler,
+                                       std::vector<gtsam::Pose3>& wTl_dt);
 
 /**
  * @fn Initialize solution via linear interpolation of initial and final pose.
