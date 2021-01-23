@@ -1,12 +1,16 @@
-"""Run kinematic motion planning using GTDynamics outputs."""
-from typing import Dict
+"""
+Run kinematic motion planning using GTDynamics outputs.
+Author: Alejandro Escontrela
+"""
 
 import time
+from typing import Dict
 
 import matplotlib.pyplot as plt
+
+import pandas as pd
 import pybullet as p
 import pybullet_data
-import pandas as pd
 
 # pylint: disable=I1101, C0103
 

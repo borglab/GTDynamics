@@ -48,18 +48,27 @@ inline DynamicsSymbol TimeKey(int t) {
 /**
  * ContactPoint defines a single contact point at a link.
  *
- * @param name The name of the link in contact.
  * @param point The location of the contact point relative to the link COM.
  * @param id Each link's contact points must have a unique contact id.
  * @param height Height at which contact is made.
  */
 struct ContactPoint {
-  std::string name;
   gtsam::Point3 point;
   int id;
   double height = 0.0;
+
+  bool operator==(const ContactPoint &other) {
+    return (point == other.point &&
+            id == other.id &&
+            height == other.height);
+  }
+  bool operator!=(const ContactPoint &other) {
+    return !(*this == other);
+  }
 };
-using ContactPoints = std::vector<ContactPoint>;
+
+///< Map of link name to ContactPoint
+using ContactPoints = std::map<std::string, ContactPoint>;
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
@@ -70,36 +79,10 @@ class DynamicsGraph {
   OptimizerSetting opt_;
 
  public:
-  /// Default constructor
-  DynamicsGraph() {
-    opt_ = OptimizerSetting();
-    // set all dynamics related factors to be constrained
-    opt_.bp_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.bv_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.ba_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.p_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.v_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.a_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.linear_a_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.f_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.linear_f_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.fa_cost_model = gtsam::noiseModel::Constrained::All(6);
-    opt_.t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.linear_t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.cp_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.cfriction_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.cv_cost_model = gtsam::noiseModel::Constrained::All(3);
-    opt_.ca_cost_model = gtsam::noiseModel::Constrained::All(3);
-    opt_.planar_cost_model = gtsam::noiseModel::Constrained::All(3);
-    opt_.linear_planar_cost_model = gtsam::noiseModel::Constrained::All(3);
-    opt_.prior_q_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.prior_qv_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.prior_qa_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.prior_t_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.q_col_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.v_col_cost_model = gtsam::noiseModel::Constrained::All(1);
-    opt_.time_cost_model = gtsam::noiseModel::Constrained::All(1);
-  }
+  /**
+   * Constructor
+   */
+  DynamicsGraph() : opt_(OptimizerSetting()) {}
 
   explicit DynamicsGraph(const OptimizerSetting &opt) : opt_(opt) {}
 
@@ -294,7 +277,10 @@ class DynamicsGraph {
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation,
       const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
+      const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
+          boost::none,
+      const boost::optional<double> &mu = boost::none) const;
 
   /**
    * Return collocation factors on angles and velocities from time step t to t+1

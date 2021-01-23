@@ -412,9 +412,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   using simple_rr::my_robot;
 
   // Add some contact points.
-  std::vector<ContactPoint> contact_points;
-  contact_points.push_back(
-      ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0});
+  ContactPoints contact_points;
+  contact_points.emplace("link_0", ContactPoint{gtsam::Point3(0, 0, -0.1), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -446,17 +445,17 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   // Set initial values.
   gtsam::Values init_values = ZeroValues(my_robot, 0, 0.0, contact_points);
 
-  graph_builder.printGraph(graph);
+  //   graph_builder.printGraph(graph);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values results = optimizer.optimize();
-  std::cout << "Error: " << graph.error(results) << std::endl;
+  //   std::cout << "Error: " << graph.error(results) << std::endl;
 
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
   auto contact_wrench_key =
-      ContactWrenchKey(l0->getID(), contact_points[0].id, 0);
+      ContactWrenchKey(l0->getID(), contact_points["link_0"].id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
 
@@ -476,11 +475,11 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   Robot biped = CreateRobotFromFile(std::string(URDF_PATH) + "/biped.urdf");
 
   // Add some contact points.
-  std::vector<ContactPoint> contact_points;
-  contact_points.push_back(
-      ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, -0.54});
-  contact_points.push_back(
-      ContactPoint{"lower2", gtsam::Point3(0.14, 0, 0), 0, -0.54});
+  ContactPoints contact_points;
+  contact_points.emplace("lower0",
+                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
+  contact_points.emplace("lower2",
+                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -501,13 +500,13 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   auto body = biped.getLinkByName("body");
   prior_factors.add(
       gtsam::PriorFactor<gtsam::Pose3>(PoseKey(body->getID(), 0), body->wTcom(),
-                                       gtsam::noiseModel::Constrained::All(6)));
+                                       graph_builder.opt().bp_cost_model));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistKey(body->getID(), 0), gtsam::Vector6::Zero(),
-      gtsam::noiseModel::Constrained::All(6)));
+      graph_builder.opt().bv_cost_model));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistAccelKey(body->getID(), 0), gtsam::Vector6::Zero(),
-      gtsam::noiseModel::Constrained::All(6)));
+      graph_builder.opt().ba_cost_model));
   graph.add(prior_factors);
 
   // Add min torque factor.
@@ -518,29 +517,31 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Set initial values.
   gtsam::Values init_values = ZeroValues(biped, 0, 0.0, contact_points);
 
-  graph_builder.printGraph(graph);
+  //   graph_builder.printGraph(graph);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   gtsam::Values results = optimizer.optimize();
 
-  std::cout << "Error: " << graph.error(results) << std::endl;
+  //   std::cout << "Error: " << graph.error(results) << std::endl;
 
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
     LinkSharedPtr l = biped.getLinkByName("lower0");
-    auto contact_wrench_key = ContactWrenchKey(l->getID(), contact_point.id, 0);
+    auto contact_wrench_key =
+        ContactWrenchKey(l->getID(), contact_point.second.id, 0);
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
     gtsam::Pose3 pose_optimized =
         results.at<gtsam::Pose3>(PoseKey(l->getID(), 0));
     gtsam::Pose3 comTc =
-        gtsam::Pose3(pose_optimized.rotation(), contact_point.point);
+        gtsam::Pose3(pose_optimized.rotation(), contact_point.second.point);
     normal_force =
         normal_force + (comTc.AdjointMap() * contact_wrench_optimized)[5];
   }
 
   // Assert that the normal forces at the contacts sum up to the robot's weight.
+  // TODO(Varun) Check this test, total weight should be 187.8615
   EXPECT(assert_equal(187.67, normal_force, 1e-2));
 }
 
@@ -563,9 +564,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.
-  std::vector<ContactPoint> contact_points;
-  contact_points.push_back(
-      ContactPoint{"link_0", gtsam::Point3(0, 0, -0.1), 0, 0});
+  ContactPoints contact_points;
+  contact_points.emplace("link_0",
+                         ContactPoint{gtsam::Point3(0, 0, -0.1), 0, 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -609,7 +610,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
 
   auto contact_wrench_key =
-      ContactWrenchKey(l0->getID(), contact_points[0].id, 0);
+      ContactWrenchKey(l0->getID(), contact_points["link_0"].id, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
 

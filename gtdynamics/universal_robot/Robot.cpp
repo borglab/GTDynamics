@@ -164,7 +164,7 @@ FKResults Robot::forwardKinematics(
     q.pop();
     for (JointSharedPtr joint : link1->getJoints()) {
       ScrewJointBaseSharedPtr joint_ptr =
-          dynamic_pointer_cast<ScrewJointBase>(joint);
+          std::dynamic_pointer_cast<ScrewJointBase>(joint);
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
