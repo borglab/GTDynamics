@@ -24,9 +24,6 @@
 #include "gtdynamics/utils/Phase.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
-    gtsam::Point3, gtsam::Rot3, gtsam::Sampler;
-
 namespace gtdynamics {
 /**
  * @class WalkCycle class stores the sequence of phases
