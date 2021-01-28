@@ -24,6 +24,7 @@ for i in range(p.getNumJoints(quad_id)):
     jinfo = p.getJointInfo(quad_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
+
 def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
     """Actuate to the suppplied joint angles using PD control."""
     for jid in joint_to_jid_map.values():
@@ -35,6 +36,7 @@ def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float
                                 controlMode=p.POSITION_CONTROL,
                                 targetPosition=v,
                                 targetVelocity=joint_vels[k + '.1'])
+
 
 df = pd.read_csv('traj.csv')
 print(df.columns)

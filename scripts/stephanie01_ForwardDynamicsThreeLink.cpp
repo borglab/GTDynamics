@@ -9,7 +9,7 @@
  * @file  stephanie01_ForwardDynamicsThreeLink.cpp
  * @brief Test forward dynamics optimization for a three-link robot with two
  * revolute joints.
- * @Author: Stephanie McCormick
+ * @author: Stephanie McCormick
  */
 
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
       graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
 
   // Add forward dynamics priors to factor graph.
-  Robot::JointValues joint_angles, joint_vels, joint_torques;
+  JointValues joint_angles, joint_vels, joint_torques;
   joint_angles["joint_1"] = 0;
   joint_vels["joint_1"] = 0;
   joint_torques["joint_1"] = 0;

@@ -8,43 +8,43 @@
 /**
  * @file  ContactKinematicsAccelFactor.h
  * @brief Factor to enforce zero linear acceleration at the contact point.
- * @Author: Alejandro Escontrela
+ * @author: Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_
-#define GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-
-#include <boost/optional.hpp>
 
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
-/** ContactKinematicsAccelFactor is unary nonlinear factor which enforces
- *  zero linear acceleration at the contact point for a link. */
+/**
+ * ContactKinematicsAccelFactor is unary nonlinear factor which enforces zero
+ * linear acceleration at the contact point for a link.
+ */
 class ContactKinematicsAccelFactor
     : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
-  typedef ContactKinematicsAccelFactor This;
-  typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
+  using This = ContactKinematicsAccelFactor;
+  using Base = gtsam::NoiseModelFactor1<gtsam::Vector6>;
+
   gtsam::Pose3 cTcom_;
 
  public:
-  /** Contact kinematics factor for zero (linear) acceleration at contact.
-      Keyword argument:
-          accel_key  -- gtsam::LabeledKey corresponding to this link's
-            acceleration.
-          cost_model -- gtsam::noiseModel for this factor.
-          cTcom      -- Contact frame expressed in com frame.
+  /**
+   * Contact kinematics factor for zero (linear) acceleration at contact.
+   * @param accel_key LabeledKey corresponding to this link's acceleration.
+   * @param cost_model Noise model for this factor.
+   * @param cTcom Contact frame expressed in com frame.
    */
   ContactKinematicsAccelFactor(
       gtsam::Key accel_key,
@@ -55,9 +55,8 @@ class ContactKinematicsAccelFactor
 
  public:
   /** Evaluate contact point linear acceleration errors.
-      Keyword argument:
-          twist         -- acceleration on this link
-  */
+   * @param twist Acceleration on this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &accel,
       boost::optional<gtsam::Matrix &> H_accel = boost::none) const override {
@@ -72,13 +71,13 @@ class ContactKinematicsAccelFactor
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -87,14 +86,13 @@ class ContactKinematicsAccelFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_FACTORS_CONTACTKINEMATICSACCELFACTOR_H_
+}  // namespace gtdynamics

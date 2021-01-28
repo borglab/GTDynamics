@@ -1,11 +1,24 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file sdf.cpp
+ * @brief Implementation of SDF related utilities.
+ * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
+ */
+
 #include "gtdynamics/universal_robot/sdf.h"
+
+#include <sdf/parser_urdf.hh>
 
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
-
-#include <sdf/parser_urdf.hh>
 
 namespace gtdynamics {
 
@@ -52,7 +65,8 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-/** @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
+/**
+ * @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
  * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
  * @return LinkMap and JointMap as a pair
  */
@@ -132,8 +146,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
  * case sdf_file_path points to a world file.
  * @return LinkMap and JointMap as a pair
  */
-static LinkJointPair ExtractRobotFromFile(
-    const std::string &file_path, const std::string &model_name) {
+static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
+                                          const std::string &model_name) {
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 

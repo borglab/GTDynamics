@@ -8,11 +8,10 @@
 /**
  * @file  utils.h
  * @brief Utility methods.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UTILS_UTILS_H_
-#define GTDYNAMICS_UTILS_UTILS_H_
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -20,47 +19,44 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <ignition/math/Pose3.hh>
-#include <sdf/sdf.hh>
-
+#include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
+#include <ignition/math/Pose3.hh>
+#include <sdf/sdf.hh>
 #include <string>
 #include <vector>
 
-#include <boost/optional.hpp>
-
 namespace gtdynamics {
 
-/** Create unit twist for axis direction
-    Keyword argument:
-        w -- axis direction
-        p -- p some point on axis
-    return unit twist
-*/
+/**
+ * Create unit twist for axis direction
+ *
+ * @param w Axis direction
+ * @param p Some point on axis
+ * @param return unit twist
+ */
 gtsam::Vector6 unit_twist(const gtsam::Vector3 &w, const gtsam::Vector3 &p);
 
-/* convert angle to radians */
+/// Convert angle to radians
 double radians(double degree);
 
-/* convert a vector of angles to radians */
+/// Convert a vector of angles to radians
 gtsam::Vector radians(const gtsam::Vector &degree);
 
-/** calculate AdjointMap jacobian w.r.t. joint coordinate q
- *  Keyword argument:
-      q            -- joint angle
-      jMi          -- this COM frame, expressed in next link's COM frame at
-                      rest configuration
-      screw_axis   -- screw axis expressed in kth link's COM
-                   frame
-*/
+/**
+ * Calculate AdjointMap jacobian w.r.t. joint coordinate q
+ * @param q joint angle
+ * @param jMi this COM frame, expressed in next link's COM frame at rest
+ * @param screw_axis screw axis expressed in kth link's COM frame
+ */
 gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
                                    const gtsam::Vector6 &screw_axis);
 
-/** calculate Gaussian Process system transition matrix
-    Keyword argument:
-        tau -- timestep
-*/
+/**
+ * Calculate Gaussian Process system transition matrix
+ * @param tau timestep
+ */
 inline gtsam::Matrix3 calcPhi(double tau) {
   return (gtsam::Matrix(3, 3) << 1, tau, 0.5 * tau * tau,  //
           0, 1, tau,                                       //
@@ -68,14 +64,14 @@ inline gtsam::Matrix3 calcPhi(double tau) {
       .finished();
 }
 
-// get Qc covariance matrix from noise model
+/// get Qc covariance matrix from noise model
 gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model);
 
-/** calculate Gaussian Process covaraince
-    Keyword argument:
-        Qc -- covariance matrix
-        tau -- timestep
-*/
+/**
+ * Calculate Gaussian Process covaraince
+ * @param Qc covariance matrix
+ * @param tau timestep
+ */
 inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
   assert(Qc.rows() == Qc.cols());
   return (gtsam::Matrix(3 * Qc.rows(), 3 * Qc.rows())
@@ -87,54 +83,57 @@ inline gtsam::Matrix calcQ(const gtsam::Matrix &Qc, double tau) {
       .finished();
 }
 
-/** initial trajectory for q is a straight line
- * Keyword argument:
-        i           -- the ith time step
-        totol_step  -- total time steps
-        start_q     -- start value of variable q
-        end_q       -- end value of variable q
-*/
+/**
+ * Snitial trajectory for q is a straight line
+ * @param i the ith time step
+ * @param totol_step total time steps
+ * @param start_q start value of variable q
+ * @param end_q end value of variable q
+ */
 gtsam::Vector q_trajectory(int i, int total_step,
                            gtsam::Vector &start_q,  // NOLINT
                            gtsam::Vector &end_q);   // NOLINT
 
-/** calculate center of spheres used to represent this link for collision
- *  check
- * Key arguments:
- *  length   -- a vector of length for each link
- *  radius   -- a vector of sphere radius for each link
- * return sphere centers expressed in COM frame of each link
+/**
+ * Calculate center of spheres used to represent this link for collision check.
+ * @param length a vector of length for each link
+ * @param radius a vector of sphere radius for each link
+ * @return sphere centers expressed in COM frame of each link
  */
 std::vector<std::vector<gtsam::Point3>> sphereCenters(
     std::vector<double> lengths, std::vector<double> radii);
 
-/** generation circular path
- *  Keyword argument:
-      numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle        -- goal angle, assuming start at 0 joint angle
-      radius           -- radius of circular
-*/
+/**
+ * Generate circular path
+ *
+ * @param numOfWayPoints total number of waypoints in cartesian path
+ * @param goalAngle goal angle, assuming start at 0 joint angle
+ * @param radius radius of circular
+ */
 std::vector<gtsam::Pose3> circle(int numOfWayPoints, double goalAngle,
                                  double radius);
 
-/** generation square path
- *  Keyword argument:
-      numOfWayPoints   -- total number of waypoints in cartesian path
-      goalAngle        -- goal angle, assuming start at 0 joint angle
-      length           -- length of square
-*/
+/**
+ * Generate square path
+ *
+ * @param numOfWayPoints total number of waypoints in cartesian path
+ * @param goalAngle goal angle, assuming start at 0 joint angle
+ * @param length length of square
+ */
 std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
                                  double length);
 
-/** read a variable from a text file, and save to vector of matrix
- *  this is used for sdf
- *
+/**
+ * Read a variable from a text file, and save to vector of matrix.
+ * This is used for SDF.
  */
 std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
                                        gtsam::Point3 &origin,  // NOLINT
                                        double &cell_size);     // NOLINT
 
-/** Obtain the sdf ElementPtr associated with the robot model.
+/**
+ * Obtain the sdf ElementPtr associated with the robot model.
+ *
  * @param sdf_file_path a string containing the absolute to the sdf file.
  * @param model_name name of the robot we care about. Must be specified in case
  * sdf_file_path points to a world file.
@@ -142,19 +141,18 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
  */
 sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
 
-/** Parse a ignition::math Pose object into a gtsam::Pose.
- * Keyword arguments:
- *     ignition_pose   -- An ignition::math::Pose object to be parsed.
+/**
+ * Parse a ignition::math Pose object into a gtsam::Pose.
+ *
+ * @param ignition_pose An ignition::math::Pose object to be parsed.
  */
 gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
 
-/** Obtain the planar jacobian for the given planar axis.
- * 
- * Keyword Arguments:
- *  planar_axis -- The planar axis.
+/**
+ * Obtain the planar jacobian for the given planar axis.
+ *
+ * @param planar_axis The planar axis.
  */
 gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UTILS_UTILS_H_

@@ -13,7 +13,6 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 
-#include <gtsam/base/numericalDerivative.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -46,8 +45,8 @@ using gtsam::Vector, gtsam::Vector6;
 namespace gtdynamics {
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
-    const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels, const Robot::FKResults &fk_results,
+    const Robot &robot, const int t, const JointValues &joint_angles,
+    const JointValues &joint_vels, const FKResults &fk_results,
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis) {
   GaussianFactorGraph graph;
@@ -102,14 +101,15 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
   return graph;
 }
 
-GaussianFactorGraph DynamicsGraph::linearFDPriors(
-    const Robot &robot, const int t, const Robot::JointValues &torques) {
+GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
+                                                  const int t,
+                                                  const JointValues &torques) {
   OptimizerSetting opt_ = OptimizerSetting();
   return robot.linearFDPriors(t, torques, opt_);
 }
 
 GaussianFactorGraph DynamicsGraph::linearIDPriors(
-    const Robot &robot, const int t, const Robot::JointValues &joint_accels) {
+    const Robot &robot, const int t, const JointValues &joint_accels) {
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->getID();
@@ -123,10 +123,9 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
 }
 
 Values DynamicsGraph::linearSolveFD(
-    const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels, const Robot::JointValues &torques,
-    const Robot::FKResults &fk_results,
-    const boost::optional<gtsam::Vector3> &gravity,
+    const Robot &robot, const int t, const JointValues &joint_angles,
+    const JointValues &joint_vels, const JointValues &torques,
+    const FKResults &fk_results, const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis) {
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(
@@ -164,10 +163,9 @@ Values DynamicsGraph::linearSolveFD(
 }
 
 Values DynamicsGraph::linearSolveID(
-    const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels,
-    const Robot::JointValues &joint_accels, const Robot::FKResults &fk_results,
-    const boost::optional<gtsam::Vector3> &gravity,
+    const Robot &robot, const int t, const JointValues &joint_angles,
+    const JointValues &joint_vels, const JointValues &joint_accels,
+    const FKResults &fk_results, const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis) {
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(
@@ -227,8 +225,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
         ContactKinematicsPoseFactor contact_pose_factor(
             PoseKey(i, t), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point), gravity_,
-            contact_point.second.contact_height);
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity_,
+            contact_point.second.height);
         graph.add(contact_pose_factor);
       }
     }
@@ -253,7 +251,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
 
         ContactKinematicsTwistFactor contact_twist_factor(
             TwistKey(i, t), opt_.cv_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point));
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         graph.add(contact_twist_factor);
       }
     }
@@ -279,7 +277,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
 
         ContactKinematicsAccelFactor contact_accel_factor(
             TwistAccelKey(i, t), opt_.ca_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point));
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         graph.add(contact_accel_factor);
       }
     }
@@ -322,17 +320,17 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
         for (auto &&contact_point : *contact_points) {
           if (contact_point.first != link->name()) continue;
 
-          wrenches.push_back(ContactWrenchKey(i, contact_point.second.contact_id, t));
+          wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
 
           // Add contact dynamics constraints.
           graph.add(ContactDynamicsFrictionConeFactor(
-              PoseKey(i, t), ContactWrenchKey(i, contact_point.second.contact_id, t),
+              PoseKey(i, t), ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cfriction_cost_model, mu_, gravity_));
 
           graph.add(ContactDynamicsMomentFactor(
-              ContactWrenchKey(i, contact_point.second.contact_id, t),
+              ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.contact_point)));
+              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point)));
         }
       }
 
@@ -543,9 +541,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::inverseDynamicsPriors(
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
-    const Robot &robot, const int t, const Robot::JointValues &joint_angles,
-    const Robot::JointValues &joint_vels,
-    const Robot::JointValues &torques) const {
+    const Robot &robot, const int t, const JointValues &joint_angles,
+    const JointValues &joint_vels, const JointValues &torques) const {
   gtsam::NonlinearFactorGraph graph;
   auto joints = robot.joints();
   for (auto joint : joints) {
@@ -662,10 +659,10 @@ gtsam::Vector DynamicsGraph::jointTorques(const Robot &robot,
   return joint_torques;
 }
 
-Robot::JointValues DynamicsGraph::jointAccelsMap(const Robot &robot,
-                                                 const gtsam::Values &result,
-                                                 const int t) {
-  Robot::JointValues joint_accels;
+JointValues DynamicsGraph::jointAccelsMap(const Robot &robot,
+                                          const gtsam::Values &result,
+                                          const int t) {
+  JointValues joint_accels;
   for (JointSharedPtr joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
@@ -674,10 +671,10 @@ Robot::JointValues DynamicsGraph::jointAccelsMap(const Robot &robot,
   return joint_accels;
 }
 
-Robot::JointValues DynamicsGraph::jointVelsMap(const Robot &robot,
-                                               const gtsam::Values &result,
-                                               const int t) {
-  Robot::JointValues joint_vels;
+JointValues DynamicsGraph::jointVelsMap(const Robot &robot,
+                                        const gtsam::Values &result,
+                                        const int t) {
+  JointValues joint_vels;
   for (JointSharedPtr joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
@@ -686,10 +683,10 @@ Robot::JointValues DynamicsGraph::jointVelsMap(const Robot &robot,
   return joint_vels;
 }
 
-Robot::JointValues DynamicsGraph::jointAnglesMap(const Robot &robot,
-                                                 const gtsam::Values &result,
-                                                 const int t) {
-  Robot::JointValues joint_angles;
+JointValues DynamicsGraph::jointAnglesMap(const Robot &robot,
+                                          const gtsam::Values &result,
+                                          const int t) {
+  JointValues joint_angles;
   for (JointSharedPtr joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
@@ -698,10 +695,10 @@ Robot::JointValues DynamicsGraph::jointAnglesMap(const Robot &robot,
   return joint_angles;
 }
 
-Robot::JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
-                                                  const gtsam::Values &result,
-                                                  const int t) {
-  Robot::JointValues joint_torques;
+JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
+                                           const gtsam::Values &result,
+                                           const int t) {
+  JointValues joint_torques;
   for (JointSharedPtr joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
@@ -754,7 +751,7 @@ gtsam::Vector3 corner_location(double r, double j, int n) {
 }
 
 JsonSaver::LocationType get_locations(const Robot &robot, const int t,
-                                             bool radial) {
+                                      bool radial) {
   JsonSaver::LocationType locations;
 
   if (radial) {
@@ -826,8 +823,7 @@ void DynamicsGraph::saveGraphMultiSteps(
   JsonSaver::LocationType locations;
 
   for (int t = 0; t <= num_steps; t++) {
-    JsonSaver::LocationType locations_t =
-        get_locations(robot, t, radial);
+    JsonSaver::LocationType locations_t = get_locations(robot, t, radial);
     gtsam::Vector offset = (gtsam::Vector(3) << 20.0 * t, 0, 0).finished();
     for (auto it = locations_t.begin(); it != locations_t.end(); it++) {
       auto key = it->first;
@@ -954,8 +950,8 @@ void DynamicsGraph::saveGraphTraj(const std::string &file_path,
   // save to file
   std::ofstream json_file;
   json_file.open(file_path);
-  JsonSaver::SaveClusteredGraph(json_file, clustered_graphs,
-                                       clustered_values, values, locations);
+  JsonSaver::SaveClusteredGraph(json_file, clustered_graphs, clustered_values,
+                                values, locations);
   json_file.close();
 }
 

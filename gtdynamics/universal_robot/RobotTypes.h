@@ -8,15 +8,14 @@
 /**
  * @file  RobotTypes.h
  * @brief Robot smart pointer types.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#pragma once
 
-#include <gtsam/nonlinear/Values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/Values.h>
 
 #include <memory>
 #include <string>
@@ -36,6 +35,4 @@ LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
 LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
 LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
 
-}  // namespace gtdynamics.
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
+}  // namespace gtdynamics

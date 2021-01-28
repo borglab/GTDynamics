@@ -8,11 +8,10 @@
 /**
  * @file  initialize_solution_utils.h
  * @brief Utility methods for initializing trajectory optimization solutions.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @author: Alejandro Escontrela, Yetong Zhang
  */
 
-#ifndef GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
-#define GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_
+#pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -63,11 +62,12 @@ std::vector<gtsam::Pose3> InterpolatePoses(
  * @param wTl_i The initial pose of the link.
  * @param[out] values Values dict with the poses after FK is performed.
  */
-gtsam::Values AddForwardKinematicsPoses(
-    const Robot& robot, size_t t, const std::string& link_name,
-    const Robot::JointValues& joint_angles,
-    const Robot::JointValues& joint_velocities, const gtsam::Pose3& wTl_i,
-    gtsam::Values values);
+gtsam::Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
+                                        const std::string& link_name,
+                                        const JointValues& joint_angles,
+                                        const JointValues& joint_velocities,
+                                        const gtsam::Pose3& wTl_i,
+                                        gtsam::Values values);
 
 /**
  * Initialize the poses and joints needed to perform trajectory optimization.
@@ -231,5 +231,3 @@ gtsam::Values ZeroValuesTrajectory(
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UTILS_INITIALIZESOLUTIONUTILS_H_

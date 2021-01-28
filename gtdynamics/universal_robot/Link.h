@@ -8,11 +8,10 @@
 /**
  * @file  Link.h
  * @brief only link part of a robot, does not include joint part
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -22,13 +21,12 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <sdf/sdf.hh>
+#include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
 #include <memory>
+#include <sdf/sdf.hh>
 #include <string>
 #include <vector>
-
-#include <boost/shared_ptr.hpp>
-#include <boost/optional.hpp>
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/factors/WrenchFactors.h"
@@ -55,12 +53,11 @@ inline DynamicsSymbol TwistAccelKey(int i, int t) {
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
 inline DynamicsSymbol WrenchKey(int i, int j, int t) {
-  return DynamicsSymbol::LinkJointSymbol("F", i, j, t); 
+  return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
 }
 
 /**
- * @class Link is the base class for links taking different format of
- *  parameters.
+ * @class Base class for links taking different format of parameters.
  */
 class Link : public std::enable_shared_from_this<Link> {
  private:
@@ -68,20 +65,21 @@ class Link : public std::enable_shared_from_this<Link> {
 
   int id_ = -1;
 
-  // Inertial elements.
+  /// Inertial elements.
   double mass_;
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
-  // SDF Elements.
+  /// SDF Elements.
   gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
   gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
 
-  // option to fix the link, used for ground link
+  /// Option to fix the link, used for ground link
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  std::vector<JointSharedPtr> joints_;  // joints connected to the link
+  /// Joints connected to the link
+  std::vector<JointSharedPtr> joints_;
 
  public:
   /**
@@ -186,7 +184,7 @@ class Link : public std::enable_shared_from_this<Link> {
     fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
   }
 
-  /// unfix the link
+  /// Unfix the link
   void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
@@ -212,8 +210,9 @@ class Link : public std::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
-  /** @fn Return pose factors in the dynamics graph.
-   * 
+  /**
+   * @fn Return pose factors in the dynamics graph.
+   *
    * @param[in] t   The timestep for which to generate q factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return pose factors.
@@ -227,8 +226,9 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /** @fn Return velocity factors in the dynamics graph.
-   * 
+  /**
+   * @fn Return velocity factors in the dynamics graph.
+   *
    * @param[in] t   The timestep for which to generate v factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return velocity factors.
@@ -242,8 +242,9 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /** @fn Return accel factors in the dynamics graph.
-   * 
+  /**
+   * @fn Return accel factors in the dynamics graph.
+   *
    * @param[in] t   The timestep for which to generate a factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return accel factors.
@@ -258,8 +259,9 @@ class Link : public std::enable_shared_from_this<Link> {
     return graph;
   }
 
-  /** @fn Return dynamics factors in the dynamics graph.
-   * 
+  /**
+   * @fn Return dynamics factors in the dynamics graph.
+   *
    * @param[in] t   The timestep for which to generate dynamics factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return dynamics factors.
@@ -300,5 +302,3 @@ class Link : public std::enable_shared_from_this<Link> {
   }
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_

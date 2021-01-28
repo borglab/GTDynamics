@@ -16,8 +16,7 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
+#pragma once
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
@@ -61,5 +60,3 @@ class PrismaticJoint : public ScrewJointBase {
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_

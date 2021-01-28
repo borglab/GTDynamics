@@ -8,7 +8,7 @@
 /**
  * @file  DynamicsSymbol.cpp
  * @brief Symbols to represent keys in dynamics factor graph.
- * @Author: Yetong Zhang and Stephanie McCormick
+ * @author Yetong Zhang and Stephanie McCormick
  */
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
@@ -37,7 +37,7 @@ DynamicsSymbol::DynamicsSymbol(const DynamicsSymbol& key)
 
 /* ************************************************************************* */
 DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                     unsigned char joint_idx, std::uint64_t t)
+                               unsigned char joint_idx, std::uint64_t t)
     : link_idx_(link_idx), joint_idx_(joint_idx), t_(t) {
   if (s.length() > 2) {
     throw std::runtime_error(
@@ -119,7 +119,7 @@ DynamicsSymbol::operator Key() const {
 
 /* ************************************************************************* */
 void DynamicsSymbol::print(const std::string& s) const {
-  std::cout << s << ": " << (std::string)(*this) << std::endl;
+  std::cout << s << ": " << std::string(*this) << std::endl;
 }
 
 /* ************************************************************************* */
@@ -129,7 +129,7 @@ DynamicsSymbol::operator std::string() const {
     s += "[" + std::to_string((int)(link_idx_)) + "]";
   }
   if (joint_idx_ != kMax_uchar_) {
-    s += "(" + std::to_string((int)(joint_idx_))  + ")";
+    s += "(" + std::to_string((int)(joint_idx_)) + ")";
   }
   s += std::to_string(t_);
   return s;
@@ -137,7 +137,7 @@ DynamicsSymbol::operator std::string() const {
 
 std::string _GTDKeyFormatter(Key key) {
   const DynamicsSymbol asDynamicsSymbol(key);
-  return (std::string) asDynamicsSymbol;
+  return std::string(asDynamicsSymbol);
 }
 
 /* ************************************************************************* */

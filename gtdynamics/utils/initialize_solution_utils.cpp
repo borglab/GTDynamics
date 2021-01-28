@@ -64,8 +64,8 @@ std::vector<Pose3> InterpolatePoses(const Pose3& wTl_i,
 
 Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
                                  const std::string& link_name,
-                                 const Robot::JointValues& joint_angles,
-                                 const Robot::JointValues& joint_velocities,
+                                 const JointValues& joint_angles,
+                                 const JointValues& joint_velocities,
                                  const Pose3& wTl_i, Values values) {
   auto fk_results =
       robot.forwardKinematics(joint_angles, joint_velocities, link_name, wTl_i);
@@ -95,7 +95,7 @@ Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
   Values init_vals_t;
 
   // Initial pose and joint angles are known a priori.
-  Robot::JointValues joint_angles, joint_velocities;
+  JointValues joint_angles, joint_velocities;
   for (auto&& joint : robot.joints()) {
     joint_angles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
     joint_velocities.insert(std::make_pair(joint->name(), sampler.sample()[0]));
@@ -129,7 +129,7 @@ Values InitializeSolutionInterpolation(
   double t_elapsed = T_s;
 
   // Initialize joint angles and velocities to 0.
-  Robot::JointValues jangles, jvels;
+  JointValues jangles, jvels;
   for (auto&& joint : robot.joints()) {
     jangles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
     jvels.insert(std::make_pair(joint->name(), sampler.sample()[0]));
@@ -391,9 +391,8 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
 
       if (link_id == -1) throw std::runtime_error("Link not found.");
 
-      zero_values.insert(
-          ContactWrenchKey(link_id, contact_point.second.contact_id, t),
-          sampler.sample());
+      zero_values.insert(ContactWrenchKey(link_id, contact_point.second.id, t),
+                         sampler.sample());
     }
   }
 

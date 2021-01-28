@@ -8,19 +8,16 @@
 /**
  * @file  OptimizerSetting.h
  * @brief Factor graph optimizer settings.
- * @Author: Mandy Xie
+ * @author Mandy Xie
  */
 
-#ifndef GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_
-#define GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_
+#pragma once
 
 #include <gtsam/linear/NoiseModel.h>
 
 namespace gtdynamics {
 
-/**
- * OptimizerSetting is a class used to set parameters for motion planner
- */
+/// OptimizerSetting is a class used to set parameters for motion planner
 class OptimizerSetting {
  public:
   /// optimization iteration types
@@ -34,19 +31,19 @@ class OptimizerSetting {
       p_cost_model,              // pose factor
       v_cost_model,              // twist factor
       a_cost_model,              // acceleration factor
-      linear_a_cost_model,       //
+      linear_a_cost_model,       // linear acceleration factor
       f_cost_model,              // wrench equivalence factor
-      linear_f_cost_model,       //
+      linear_f_cost_model,       // linear wrench equivalence factor
       fa_cost_model,             // wrench factor
       t_cost_model,              // torque factor
-      linear_t_cost_model,       //
+      linear_t_cost_model,       // linear torque factor
       cp_cost_model,             // contact pose
       cfriction_cost_model,      // contact friction cone
       cv_cost_model,             // contact twist
       ca_cost_model,             // contact acceleration
       cm_cost_model,             // contact moment
       planar_cost_model,         // planar factor
-      linear_planar_cost_model,  //
+      linear_planar_cost_model,  // linear planar factor
       prior_q_cost_model,        // joint angle prior factor
       prior_qv_cost_model,       // joint velocity prior factor
       prior_qa_cost_model,       // joint acceleration prior factor
@@ -132,7 +129,7 @@ class OptimizerSetting {
   // Gauss-Newton optimizer
   void setGaussNewton() { opt_type = GaussNewton; }
 
-  // Levenberg-Marquart optimizer
+  // Levenberg-Marquardt optimizer
   void setLM() { opt_type = LM; }
 
   // Dog-Leg optimizer
@@ -144,6 +141,5 @@ class OptimizerSetting {
   // set maximum iteration number
   void setMaxIteration(size_t iter) { max_iter = iter; }
 };
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_DYNAMICS_OPTIMIZERSETTING_H_
+}  // namespace gtdynamics

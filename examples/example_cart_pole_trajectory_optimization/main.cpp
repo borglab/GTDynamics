@@ -8,7 +8,7 @@
 /**
  * @file  main.cpp
  * @brief Trajectory optimization for a cart pole.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -20,15 +20,14 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
+#include <boost/algorithm/string/join.hpp>
+#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
-
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 
 int main(int argc, char** argv) {
@@ -47,7 +46,7 @@ int main(int argc, char** argv) {
   auto dynamics_model = Isotropic::Sigma(1, 1e-7);  // Dynamics constraints.
   auto pos_objectives_model = Isotropic::Sigma(1, 1e-5);  // Pos objectives.
   auto objectives_model = Isotropic::Sigma(1, 5e-3);  // Additional objectives.
-  auto control_model = Isotropic::Sigma(1, 20);  // Controls.
+  auto control_model = Isotropic::Sigma(1, 20);       // Controls.
 
   // Specify initial conditions and goal state.
   // State: x, dx/dt, d^2x/dt^2, theta, dtheta/dt, d^2theta/dt
@@ -59,8 +58,7 @@ int main(int argc, char** argv) {
   // Create trajectory factor graph.
   auto graph_builder = DynamicsGraph();
   auto graph = graph_builder.trajectoryFG(
-      cp, t_steps, dt,
-      DynamicsGraph::CollocationScheme::Trapezoidal, gravity);
+      cp, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal, gravity);
 
   // Set the pendulum joint to be unactuated.
   for (int t = 0; t <= t_steps; t++)
@@ -92,8 +90,7 @@ int main(int argc, char** argv) {
     }
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.emplace_shared<MinTorqueFactor>(
-        TorqueKey(j0_id, t), control_model);
+    graph.emplace_shared<MinTorqueFactor>(TorqueKey(j0_id, t), control_model);
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
@@ -109,10 +106,11 @@ int main(int argc, char** argv) {
   traj_file << "t,x,xdot,xddot,xtau,theta,thetadot,thetaddot,thetatau\n";
   double t_elapsed = 0;
   for (int t = 0; t <= t_steps; t++, t_elapsed += dt) {
-    std::vector<gtsam::Key> keys = {JointAngleKey(j0_id, t),
-      JointVelKey(j0_id, t), JointAccelKey(j0_id, t), TorqueKey(j0_id, t),
-      JointAngleKey(j1_id, t), JointVelKey(j1_id, t), JointAccelKey(j1_id, t),
-      TorqueKey(j1_id, t)};
+    std::vector<gtsam::Key> keys = {
+        JointAngleKey(j0_id, t), JointVelKey(j0_id, t),
+        JointAccelKey(j0_id, t), TorqueKey(j0_id, t),
+        JointAngleKey(j1_id, t), JointVelKey(j1_id, t),
+        JointAccelKey(j1_id, t), TorqueKey(j1_id, t)};
     std::vector<std::string> vals = {std::to_string(t_elapsed)};
     for (auto&& k : keys) vals.push_back(std::to_string(results.atDouble(k)));
     traj_file << boost::algorithm::join(vals, ",") << "\n";

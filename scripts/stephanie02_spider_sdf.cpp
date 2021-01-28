@@ -8,7 +8,7 @@
 /**
  * @file  stephanie02_spider_sdf.cpp
  * @brief Test reading a spider sdf file and doing something with it.
- * @Author: Stephanie McCormick
+ * @author Stephanie McCormick
  */
 
 #include "gtdynamics/universal_robot/Robot.h"

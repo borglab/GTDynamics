@@ -8,18 +8,17 @@
 /**
  * @file  testScrewJoint.cpp
  * @brief Test ScrewJoint class.
- * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
+
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
-
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
-#include <CppUnitLite/TestHarness.h>
 
 using namespace gtdynamics;
 
@@ -31,10 +30,8 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  */
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::EffortType::Actuated;

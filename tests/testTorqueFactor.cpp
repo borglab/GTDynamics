@@ -8,15 +8,10 @@
 /**
  * @file  testTorqueFactor.cpp
  * @brief Test torque factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
-#include <iostream>
-
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/factors/TorqueFactor.h"
-
+#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -26,7 +21,11 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <CppUnitLite/TestHarness.h>
+#include <iostream>
+
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -41,8 +40,7 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1),
            wrench_key = gtsam::Symbol('F', 1);
 }  // namespace example
 
-ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
-                                        Vector6 cScrewAxis) {
+ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi, Vector6 cScrewAxis) {
   // create links
   Link::Params link1_params, link2_params;
   link1_params.mass = 100;
@@ -66,15 +64,14 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi,
   Pose3 jTccom = wTj.inverse() * l2->wTcom();
   Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
-  return std::make_shared<const ScrewJointBase>(
-      ScrewJointBase("j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(),
-      jScrewAxis));
+  return std::make_shared<const ScrewJointBase>(ScrewJointBase(
+      "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
 }
 
 // Test Torque factor for stationary case
 TEST(TorqueFactor, error) {
   // Create all factors
-  Pose3 kMj = Pose3(Rot3(), Point3(0, 0, -2)); // doesn't matter
+  Pose3 kMj = Pose3(Rot3(), Point3(0, 0, -2));  // doesn't matter
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 

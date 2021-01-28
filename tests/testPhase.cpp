@@ -33,11 +33,11 @@ TEST(Phase, error)
     EXPECT(robot.numLinks() == 33);
 
     ContactPoint cp = phase.getContactPointAtLink("tarsus_3");
-    EXPECT(cp.contact_point == gtsam::Point3(3,3,3));
+    EXPECT(cp.point == gtsam::Point3(3,3,3));
     
     ContactPoints cps = phase.getAllContactPoints();
     EXPECT(cps.size() == 3);
-    EXPECT(cps["tarsus_1"].contact_point == gtsam::Point3(1,1,1));
+    EXPECT(cps["tarsus_1"].point == gtsam::Point3(1,1,1));
     EXPECT(phase.numTimeSteps() == 20);
 }
 

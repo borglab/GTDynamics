@@ -8,13 +8,10 @@
 /**
  * @file  WrenchFactor.h
  * @brief Wrench balance factor, common between forward and inverse dynamics.
- * @Author: Frank Dellaert, Mandy Xie and Yetong Zhang
+ * @author Frank Dellaert, Mandy Xie and Yetong Zhang
  */
 
-#ifndef GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
-#define GTDYNAMICS_FACTORS_WRENCHFACTORS_H_
-
-#include "gtdynamics/utils/utils.h"
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -29,31 +26,37 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <boost/serialization/base_object.hpp>
-
 #include <string>
 #include <vector>
 
+#include "gtdynamics/utils/utils.h"
+
 namespace gtdynamics {
 
-/** WrenchFactor0 is a three-way nonlinear factor which enforces relation
- * between wrenches on this link*/
+/**
+ * WrenchFactor0 is a three-way nonlinear factor which enforces relation
+ * between wrenches on this link
+ */
 class WrenchFactor0
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Pose3> {
  private:
-  typedef WrenchFactor0 This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
-      Base;
+  using This = WrenchFactor0;
+  using Base =
+      gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>;
+
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
-      Keyword argument:
-          inertia    -- moment of inertia and mass for this link
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+  /**
+   * Wrench balance factor, common between forward and inverse dynamics.
+   *
+   * Will create factor corresponding to Lynch & Park book:
+   *  wrench balance, Equation 8.48, page 293
+   *
+   * @param inertia moment of inertia and mass for this link
+   * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   WrenchFactor0(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 gtsam::Key pose_key,
@@ -70,7 +73,7 @@ class WrenchFactor0
   virtual ~WrenchFactor0() {}
 
  private:
-  /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
+  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
@@ -87,12 +90,12 @@ class WrenchFactor0
   }
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twist         -- twist of this link
-          twist_accel   -- twist acceleration of this link
-          pose          -- pose of this link
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist of this link
+   * @param twist_accel twist acceleration of this link
+   * @param pose pose of this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
       const gtsam::Pose3 &pose,
@@ -127,13 +130,13 @@ class WrenchFactor0
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -142,35 +145,38 @@ class WrenchFactor0
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
 
-/** WrenchFactor1 is a four-way nonlinear factor which enforces relation
- * between wrenches on this link*/
+/**
+ * WrenchFactor1 is a four-way nonlinear factor which enforces relation
+ * between wrenches on this link
+ */
 class WrenchFactor1
     : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Pose3> {
  private:
-  typedef WrenchFactor1 This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Pose3>
-      Base;
+  using This = WrenchFactor1;
+  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                        gtsam::Vector6, gtsam::Pose3>;
+
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
-      Keyword argument:
-          inertia    -- moment of inertia and mass for this link
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+  /**
+   * Wrench balance factor, common between forward and inverse dynamics.
+   * Will create factor corresponding to Lynch & Park book:
+   *  wrench balance, Equation 8.48, page 293
+   *
+   * @param inertia moment of inertia and mass for this link
+   * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   WrenchFactor1(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 gtsam::Key wrench_key_1, gtsam::Key pose_key,
@@ -187,7 +193,7 @@ class WrenchFactor1
   virtual ~WrenchFactor1() {}
 
  private:
-  /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
+  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
@@ -204,13 +210,13 @@ class WrenchFactor1
   }
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twsit         -- twist of this link
-          twsit_accel   -- twist acceleration of this link
-          pose          -- pose of this link
-          wrench_1      -- 1st wrench on this link
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist of this link
+   * @param twist_accel twist acceleration of this link
+   * @param pose pose of this link
+   * @param wrench_1 1st wrench on this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
       const gtsam::Vector6 &wrench_1, const gtsam::Pose3 &pose,
@@ -249,13 +255,13 @@ class WrenchFactor1
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -264,36 +270,38 @@ class WrenchFactor1
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
 };
 
-/** WrenchFactor2 is a five-way nonlinear factor which enforces relation
- * between wrenches on this link and the next link*/
+/**
+ * WrenchFactor2 is a five-way nonlinear factor which enforces relation
+ * between wrenches on this link and the next link
+ */
 class WrenchFactor2
     : public gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Pose3> {
  private:
-  typedef WrenchFactor2 This;
-  typedef gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>
-      Base;
+  using This = WrenchFactor2;
+  using Base =
+      gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                               gtsam::Vector6, gtsam::Pose3>;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
-      Keyword argument:
-          inertia    -- moment of inertia and mass for this link
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+  /**
+   * Wrench balance factor, common between forward and inverse dynamics.
+   * Will create factor corresponding to Lynch & Park book:
+   *  wrench balance, Equation 8.48, page 293
+   * @param inertia Moment of inertia and mass for this link
+   * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   WrenchFactor2(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
@@ -312,7 +320,7 @@ class WrenchFactor2
   virtual ~WrenchFactor2() {}
 
  private:
-  /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
+  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
@@ -329,14 +337,14 @@ class WrenchFactor2
   }
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twsit         -- twist of this link
-          twsit_accel   -- twist acceleration of this link
-          pose          -- pose of this link
-          wrench_1      -- 1st wrench on this link
-          wrench_2      -- 2nd wrench on this link
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist of this link
+   * @param twist_accel twist acceleration of this link
+   * @param pose pose of this link
+   * @param wrench_1 1st wrench on this link
+   * @param wrench_2 2nd wrench on this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
@@ -380,13 +388,13 @@ class WrenchFactor2
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -395,37 +403,39 @@ class WrenchFactor2
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
   }
 };
 
-/** WrenchFactor3 is a six-way nonlinear factor which enforces relation
- * between wrenches on this link and the next link*/
+/**
+ * WrenchFactor3 is a six-way nonlinear factor which enforces relation
+ * between wrenches on this link and the next link
+ */
 class WrenchFactor3
     : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Pose3> {
  private:
-  typedef WrenchFactor3 This;
-  typedef gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Pose3>
-      Base;
+  using This = WrenchFactor3;
+  using Base =
+      gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                               gtsam::Vector6, gtsam::Vector6, gtsam::Pose3>;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
-      Keyword argument:
-          inertia    -- moment of inertia and mass for this link
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+  /**
+   * Wrench balance factor, common between forward and inverse dynamics.
+   * Will create factor corresponding to Lynch & Park book:
+   *  wrench balance, Equation 8.48, page 293
+   *
+   * @param inertia Moment of inertia and mass for this link
+   * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   WrenchFactor3(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
@@ -444,7 +454,7 @@ class WrenchFactor3
   virtual ~WrenchFactor3() {}
 
  private:
-  /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
+  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
@@ -461,15 +471,15 @@ class WrenchFactor3
   }
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twsit         -- twist of this link
-          twsit_accel   -- twist acceleration of this link
-          pose          -- pose of this link
-          wrench_1      -- 1st wrench on this link
-          wrench_2      -- 2nd wrench on this link
-          wrench_3      -- 3rd wrench on this link
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist of this link
+   * @param twist_accel twist acceleration of this link
+   * @param pose pose of this link
+   * @param wrench_1 1st wrench on this link
+   * @param wrench_2 2nd wrench on this link
+   * @param wrench_3 3rd wrench on this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
@@ -517,13 +527,13 @@ class WrenchFactor3
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -532,38 +542,41 @@ class WrenchFactor3
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor6", boost::serialization::base_object<Base>(*this));
   }
 };
 
+// TODO(Varun) Move this to GTSAM?
 /* ************************************************************************* */
-/** A convenient base class for creating your own NoiseModelFactor with 7
- * variables.  To derive from this class, implement evaluateError(). */
+/**
+ * A convenient base class for creating your own NoiseModelFactor with 7
+ * variables.
+ * To derive from this class, implement evaluateError().
+ */
 template <class VALUE1, class VALUE2, class VALUE3, class VALUE4, class VALUE5,
           class VALUE6, class VALUE7>
 class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
  public:
   // typedefs for value types pulled from keys
-  typedef VALUE1 X1;
-  typedef VALUE2 X2;
-  typedef VALUE3 X3;
-  typedef VALUE4 X4;
-  typedef VALUE5 X5;
-  typedef VALUE6 X6;
-  typedef VALUE7 X7;
+  using X1 = VALUE1;
+  using X2 = VALUE2;
+  using X3 = VALUE3;
+  using X4 = VALUE4;
+  using X5 = VALUE5;
+  using X6 = VALUE6;
+  using X7 = VALUE7;
 
  protected:
-  typedef gtsam::NoiseModelFactor Base;
-  typedef NoiseModelFactor7<VALUE1, VALUE2, VALUE3, VALUE4, VALUE5, VALUE6,
-                            VALUE7>
-      This;
-  typedef gtsam::Key Key;
-  typedef gtsam::Matrix Matrix;
+  using Base = gtsam::NoiseModelFactor;
+  using This =
+      NoiseModelFactor7<VALUE1, VALUE2, VALUE3, VALUE4, VALUE5, VALUE6, VALUE7>;
+  using Key = gtsam::Key;
+  using Matrix = gtsam::Matrix;
 
  public:
   /**
@@ -588,7 +601,7 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
 
   virtual ~NoiseModelFactor7() {}
 
-  /** methods to retrieve keys */
+  /// methods to retrieve keys
   inline Key key1() const { return keys_[0]; }
   inline Key key2() const { return keys_[1]; }
   inline Key key3() const { return keys_[2]; }
@@ -597,8 +610,10 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
   inline Key key6() const { return keys_[5]; }
   inline Key key7() const { return keys_[6]; }
 
-  /** Calls the 6-key specific version of evaluateError, which is pure virtual
-   * so must be implemented in the derived class. */
+  /**
+   * Calls the 7-key specific version of evaluateError, which is pure virtual
+   * so must be implemented in the derived class.
+   * */
   virtual gtsam::Vector unwhitenedError(
       const gtsam::Values &x,
       boost::optional<std::vector<Matrix> &> H = boost::none) const override {
@@ -620,8 +635,8 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
   }
 
   /**
-   *  Override this method to finish implementing a 6-way factor.
-   *  If any of the optional Matrix reference arguments are specified, it should
+   * Override this method to finish implementing a 7-way factor.
+   * If any of the optional Matrix reference arguments are specified, it should
    * compute both the function evaluation and its derivative(s) in X1 (and/or
    * X2, X3).
    */
@@ -636,37 +651,40 @@ class NoiseModelFactor7 : public gtsam::NoiseModelFactor {
       boost::optional<Matrix &> H7 = boost::none) const = 0;
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int /*version*/) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
 };  // \class NoiseModelFactor7
 
-/** WrenchFactor4 is a six-way nonlinear factor which enforces relation
- * between wrenches on this link and the next link*/
+/**
+ * WrenchFactor4 is a six-way nonlinear factor which enforces relation
+ * between wrenches on this link and the next link
+ */
 class WrenchFactor4
     : public NoiseModelFactor7<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
                                gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
                                gtsam::Pose3> {
  private:
-  typedef WrenchFactor4 This;
-  typedef NoiseModelFactor7<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-                            gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-                            gtsam::Pose3>
-      Base;
+  using This = WrenchFactor4;
+  using Base = NoiseModelFactor7<gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                                 gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+                                 gtsam::Pose3>;
+
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
 
  public:
-  /** wrench balance factor, common between forward and inverse dynamics.
-      Keyword argument:
-          inertia    -- moment of inertia and mass for this link
-          gravity    -- if given, will create gravity wrench. In link
-     COM frame. Will create factor corresponding to Lynch & Park book:
-          - wrench balance, Equation 8.48, page 293
+  /**
+   * Wrench balance factor, common between forward and inverse dynamics.
+   * Will create factor corresponding to Lynch & Park book:
+   *  wrench balance, Equation 8.48, page 293
+   *
+   * @param inertia Moment of inertia and mass for this link
+   * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   WrenchFactor4(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
@@ -686,7 +704,7 @@ class WrenchFactor4
   virtual ~WrenchFactor4() {}
 
  private:
-  /* calculate jacobian of coriolis term w.r.t. joint coordinate twist */
+  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
   gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
     auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
          m = inertia_(3, 3);
@@ -703,16 +721,16 @@ class WrenchFactor4
   }
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twsit         -- twist of this link
-          twsit_accel   -- twist acceleration of this link
-          pose          -- pose of this link
-          wrench_1      -- 1st wrench on this link
-          wrench_2      -- 2nd wrench on this link
-          wrench_3      -- 3rd wrench on this link
-          wrench_4      -- 4th wrench on this link
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist of this link
+   * @param twist_accel twist acceleration of this link
+   * @param pose pose of this link
+   * @param wrench_1 1st wrench on this link
+   * @param wrench_2 2nd wrench on this link
+   * @param wrench_3 3rd wrench on this link
+   * @param wrench_4 4th wrench on this link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist, const gtsam::Vector6 &twistAccel,
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
@@ -765,13 +783,13 @@ class WrenchFactor4
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -780,15 +798,13 @@ class WrenchFactor4
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor7", boost::serialization::base_object<Base>(*this));
   }
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_FACTORS_WRENCHFACTORS_H_

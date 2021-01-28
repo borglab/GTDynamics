@@ -8,31 +8,29 @@
 /**
  * @file  testRevoluteJoint.cpp
  * @brief Test Joint class.
- * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
+
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-
-#include <CppUnitLite/TestHarness.h>
-
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Construct a Revolute joint via Parameters and ensure all values are as expected.
+ * Construct a Revolute joint via Parameters and ensure all values are as
+ * expected.
  */
 TEST(Joint, params_constructor) {
   auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  LinkSharedPtr l1 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 =
-      std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::EffortType::Actuated;
@@ -43,8 +41,7 @@ TEST(Joint, params_constructor) {
   const gtsam::Vector3 axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
   auto j1 = std::make_shared<RevoluteJoint>(
-      "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
-      parameters, axis);
+      "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters, axis);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));

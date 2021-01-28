@@ -8,11 +8,12 @@
 /**
  * @file  testContactDynamicsFrictionConeFactor.cpp
  * @brief test contact dynamics friction cone factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
-#include <math.h>
-
+#include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/LabeledSymbol.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -20,16 +21,13 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
+#include <math.h>
 
 #include <iostream>
 
 #include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
@@ -46,8 +44,8 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
 
   double mu = 1.0;
 
-  ContactDynamicsFrictionConeFactor factor(
-      pose_key, contact_wrench_key, cost_model, mu, gravity);
+  ContactDynamicsFrictionConeFactor factor(pose_key, contact_wrench_key,
+                                           cost_model, mu, gravity);
 
   // Link completely upright with contact wrench pointed normal to ground.
   EXPECT(
@@ -131,8 +129,8 @@ TEST(ContactDynamicsFrictionConeFactor, optimization) {
 
   double mu = 1.0;
 
-  ContactDynamicsFrictionConeFactor factor(
-      pose_key, contact_wrench_key, cost_model, mu, gravity);
+  ContactDynamicsFrictionConeFactor factor(pose_key, contact_wrench_key,
+                                           cost_model, mu, gravity);
 
   // Initial values.
   gtsam::Pose3 link_pose_init = gtsam::Pose3(

@@ -8,7 +8,7 @@
 /**
  * @file  testContactKinematicsAccelFactor.cpp
  * @brief test contact kinematics accel factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -27,7 +27,7 @@
 #include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
@@ -43,8 +43,7 @@ TEST(ContactKinematicsAccelFactor, error) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
-                                                  cTcom);
+  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model, cTcom);
 
   // A link with zero linear/angular accelration at its CoM should have zero
   // acceleration at the contact point.
@@ -67,17 +66,15 @@ TEST(ContactKinematicsAccelFactor, error) {
   // contact r = 1, the linear component a = 1.
   gtsam::Vector6 link_accel_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_accel_angular).norm(),
-                      1.0));
+  EXPECT(assert_equal(factor.evaluateError(link_accel_angular).norm(), 1.0));
 
   // A link with both angular and linear acceleration at the CoM should have
   // a linear acceleration at the contact point (unless they cancel each other
   // out).
   gtsam::Vector6 link_accel_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
-  EXPECT(assert_equal(
-      factor.evaluateError(link_accel_angular_linear).norm(),
-      std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
+  EXPECT(assert_equal(factor.evaluateError(link_accel_angular_linear).norm(),
+                      std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
   gtsam::Values values;
@@ -101,8 +98,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model,
-                                                  cTcom);
+  ContactKinematicsAccelFactor factor(twist_accel_key, cost_model, cTcom);
 
   // Initial link twist.
   gtsam::Vector6 link_accel_init =
@@ -123,8 +119,7 @@ TEST(ContactKinematicsAccelFactor, optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Vector6 accel_optimized =
-      results.at<gtsam::Vector6>(twist_accel_key);
+  gtsam::Vector6 accel_optimized = results.at<gtsam::Vector6>(twist_accel_key);
 
   EXPECT(assert_equal(factor.evaluateError(accel_optimized),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));

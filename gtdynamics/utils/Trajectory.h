@@ -274,7 +274,7 @@ class Trajectory {
               cp.first);
       prev_cp.insert(std::make_pair(
           cp.first, (link_ptr->wTcom() *
-                     gtsam::Pose3(gtsam::Rot3(), cp.second.contact_point))
+                     gtsam::Pose3(gtsam::Rot3(), cp.second.point))
                         .translation()));
     }
     return prev_cp;
@@ -295,7 +295,7 @@ class Trajectory {
         walk_cycle_.phases()[0].getRobotConfiguration().getLinkByName(link);
     gtsam::Key pose_key = PoseKey(link_ptr->getID(), t);
     gtsam::Pose3 comTp = gtsam::Pose3(
-        gtsam::Rot3(), walk_cycle_.allContactPoints()[link].contact_point);
+        gtsam::Rot3(), walk_cycle_.allContactPoints()[link].point);
     return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
   }
 

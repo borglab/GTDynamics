@@ -8,11 +8,10 @@
 /**
  * @file  RobotModels.h
  * @brief robot models for tests
- * @Author: Yetong Zhang and Alejandro Escontrela
+ * @author Yetong Zhang and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_
+#pragma once
 
 #include <string>
 
@@ -20,12 +19,9 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
-// TODO(aescontrela): The entire program shouldn't crash when a single file
+//TODO(aescontrela): The entire program shouldn't crash when a single file
 // doesn't load.
 
-// using namespace std;
-// using namespace gtdynamics;
-// using namespace gtsam;
 using namespace gtdynamics;
 
 namespace four_bar_linkage {
@@ -110,5 +106,3 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 gtsam::Vector joint_angles = gtsam::Vector::Zero(my_robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(my_robot.numJoints());
 }  // namespace jumping_robot
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTMODELS_H_

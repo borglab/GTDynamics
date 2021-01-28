@@ -8,13 +8,10 @@
 /**
  * @file  TwistFactor.h
  * @brief twist factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
-#ifndef GTDYNAMICS_FACTORS_TWISTFACTOR_H_
-#define GTDYNAMICS_FACTORS_TWISTFACTOR_H_
-
-#include "gtdynamics/universal_robot/JointTyped.h"
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -24,31 +21,36 @@
 #include <boost/optional.hpp>
 #include <string>
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 namespace gtdynamics {
 
-/** TwistFactor is a four-way nonlinear factor which enforces relation
- * between twist on previous link and this link*/
+/**
+ * TwistFactor is a four-way nonlinear factor which enforces relation
+ * between twist on previous link and this link
+ */
 class TwistFactor
-    : public gtsam::NoiseModelFactor4<
-          gtsam::Vector6, gtsam::Vector6, typename JointTyped::JointCoordinate,
-          typename JointTyped::JointVelocity> {
+    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                      typename JointTyped::JointCoordinate,
+                                      typename JointTyped::JointVelocity> {
  private:
-  typedef typename JointTyped::JointCoordinate JointCoordinate;
-  typedef typename JointTyped::JointVelocity JointVelocity;
-  typedef TwistFactor This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                   JointCoordinate, JointVelocity>
-      Base;
+  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using JointVelocity = typename JointTyped::JointVelocity;
+  using This = TwistFactor;
+  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                        JointCoordinate, JointVelocity>;
+
   gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
   gtsam::Vector6 screw_axis_;
 
  public:
-  /** Create single factor relating child link's twist with parent one.
-      Keyword arguments:
-          joint -- a Joint
-      Will create factor corresponding to Lynch & Park book:
-        -Equation 8.45, page 292
+  /**
+   * Create single factor relating child link's twist with parent one.
+   * Will create factor corresponding to Lynch & Park book:
+   *  Equation 8.45, page 292
+   *
+   * @param joint a Joint
    */
   TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
@@ -59,13 +61,13 @@ class TwistFactor
   virtual ~TwistFactor() {}
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twist_p       -- twist on the previous link
-          twist_c       -- twist on this link
-          q             -- joint coordination
-          qVel          -- joint velocity
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist_p twist on the previous link
+   * @param twist_c twist on this link
+   * @param q joint coordination
+   * @param qVel joint velocity
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
       const JointCoordinate &q, const JointVelocity &qVel,
@@ -74,10 +76,8 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
     auto error =
-        std::static_pointer_cast<const JointTyped>(joint_)
-            ->transformTwistTo(joint_->childLink(), q, qVel,
-                                    twist_p, H_q, H_qVel,
-                                    H_twist_p) -
+        std::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
+            joint_->childLink(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
         twist_c;
 
     if (H_twist_c) {
@@ -87,13 +87,13 @@ class TwistFactor
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -102,7 +102,7 @@ class TwistFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
@@ -111,5 +111,3 @@ class TwistFactor
   }
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_FACTORS_TWISTFACTOR_H_

@@ -8,7 +8,7 @@
 /**
  * @file  testInitializeSolutionUtils.cpp
  * @brief Test solution initialization utilities.
- * @Author: Alejandro Escontrela and Yetong Zhang
+ * @author Alejandro Escontrela and Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -175,9 +175,9 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
   T = init_vals.at<gtsam::Pose3>(PoseKey(l2->getID(), std::roundl(ts[0] / dt)));
   EXPECT(assert_equal(wTb_t[0], T, 1e-3));
-  T = (init_vals.at<gtsam::Pose3>(
-           PoseKey(l1->getID(), std::roundl(ts[0] / dt))) *
-       oTc_l1);
+  T = init_vals.at<gtsam::Pose3>(
+          PoseKey(l1->getID(), std::roundl(ts[0] / dt))) *
+      oTc_l1;
   EXPECT(assert_equal(0.0, T.translation().z(), 1e-3));
 }
 

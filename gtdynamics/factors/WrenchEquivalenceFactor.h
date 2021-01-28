@@ -9,13 +9,10 @@
  * @file  WrenchEquivalenceFactor.h
  * @brief Wrench eq factor, enforce same wrench expressed in different link
  * frames.
- * @Author: Yetong Zhang
+ * @author Yetong Zhang
  */
 
-#ifndef GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
-#define GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
-
-#include "gtdynamics/universal_robot/JointTyped.h"
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -23,10 +20,11 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
-
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 namespace gtdynamics {
 
@@ -36,35 +34,34 @@ class WrenchEquivalenceFactor
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
                                       typename JointTyped::JointCoordinate> {
  private:
-  typedef typename JointTyped::JointCoordinate JointCoordinate;
-  typedef WrenchEquivalenceFactor This;
-  typedef gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                   JointCoordinate>
-      Base;
-  typedef std::shared_ptr<const JointTyped> MyJointConstSharedPtr;
-  MyJointConstSharedPtr joint_;
+  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using This = WrenchEquivalenceFactor;
+  using Base =
+      gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, JointCoordinate>;
+
+  using JointTypedConstSharedPtr = std::shared_ptr<const JointTyped>;
+  JointTypedConstSharedPtr joint_;
 
  public:
-  /** wrench eq factor, enforce same wrench expressed in different link frames.
-      Keyword argument:
-          joint       -- JointConstSharedPtr to the joint
+  /**
+   * Wrench eq factor, enforce same wrench expressed in different link frames.
+   * @param joint JointConstSharedPtr to the joint
    */
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          MyJointConstSharedPtr joint)
-      : Base(cost_model, wrench_key_1, wrench_key_2, q_key),
-        joint_(joint) {}
+                          JointTypedConstSharedPtr joint)
+      : Base(cost_model, wrench_key_1, wrench_key_2, q_key), joint_(joint) {}
   virtual ~WrenchEquivalenceFactor() {}
 
  public:
-  /** evaluate wrench balance errors
-      Keyword argument:
-          twist         -- twist on this link
-          twist_accel   -- twist acceleration on this link
-          wrench_1      -- wrench on Link 1 expressed in link 1 com frame
-          wrench_2      -- wrench on Link 2 expressed in link 2 com frame
-  */
+  /**
+   * Evaluate wrench balance errors
+   * @param twist twist on this link
+   * @param twist_accel twist acceleration on this link
+   * @param wrench_1 wrench on Link 1 expressed in link 1 com frame
+   * @param wrench_2 wrench on Link 2 expressed in link 2 com frame
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
       const JointCoordinate &q,
@@ -83,19 +80,19 @@ class WrenchEquivalenceFactor
       *H_wrench_2 = T_21.AdjointMap().transpose();
     }
     if (H_q) {
-      *H_q = joint_->AdjointMapJacobianJointAngle(link, q).transpose() *
-             wrench_2;
+      *H_q =
+          joint_->AdjointMapJacobianJointAngle(link, q).transpose() * wrench_2;
     }
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -104,14 +101,12 @@ class WrenchEquivalenceFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_FACTORS_WRENCHEQUIVALENCEFACTOR_H_
