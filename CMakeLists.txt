@@ -27,7 +27,7 @@ include(GtsamMatlabWrap)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # Boost - same requirement as gtsam.
-find_package(Boost 1.43 REQUIRED)
+find_package(Boost 1.58 REQUIRED)
 find_package(
   Boost
   COMPONENTS filesystem
@@ -105,10 +105,10 @@ install(
   RUNTIME DESTINATION bin)
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
-option(BUILD_PYTHON_WRAPPER "Build Python wrapper" ON)
+option(GTDYNAMICS_BUILD_PYTHON_WRAPPER "Build Python wrapper" ON)
 message(STATUS "Build Python Wrapper: ${BUILD_PYTHON_WRAPPER}")
 
-if(BUILD_PYTHON_WRAPPER)
+if(GTDYNAMICS_BUILD_PYTHON_WRAPPER)
     find_package(gtwrap)
 
     set(WRAP_PYTHON_VERSION "Default" CACHE STRING "The Python version to use for wrapping")
@@ -148,4 +148,8 @@ endif()
 
 # Process subdirectories.
 add_subdirectory(tests)
-add_subdirectory(scripts)
+
+option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" OFF)
+if(GTDYNAMICS_BUILD_SCRIPTS)
+  add_subdirectory(scripts)
+endif()
