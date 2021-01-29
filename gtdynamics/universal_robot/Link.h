@@ -132,6 +132,18 @@ class Link : public std::enable_shared_from_this<Link> {
   /** destructor */
   virtual ~Link() = default;
 
+  bool operator==(const Link &other) const {
+    return (this->name_ == other.name_ && this->id_ == other.id_ &&
+            this->mass_ == other.mass_ &&
+            this->centerOfMass_.equals(other.centerOfMass_) &&
+            this->inertia_ == other.inertia_ && this->wTl_.equals(other.wTl_) &&
+            this->lTcom_.equals(other.lTcom_) &&
+            this->is_fixed_ == other.is_fixed_ &&
+            this->fixed_pose_.equals(other.fixed_pose_));
+  }
+
+  bool operator!=(const Link &other) const { return !(*this == other); }
+
   /// return a shared pointer of the link
   LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
 

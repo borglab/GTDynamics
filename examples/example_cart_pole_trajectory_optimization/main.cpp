@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
   auto cp = Robot("../cart_pole.urdf");
   int j0_id = cp.getJointByName("j0")->getID(),
       j1_id = cp.getJointByName("j1")->getID();
-  cp.getLinkByName("l0")->fix();
-  cp.printRobot();
+  cp.fixLink("l0");
+  cp.print();
   gtsam::Vector3 gravity(0, 0, -9.8);
 
   double T = 2, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).

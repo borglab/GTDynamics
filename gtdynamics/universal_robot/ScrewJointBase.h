@@ -225,7 +225,7 @@ class ScrewJointBase : public JointTyped {
 
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
-      size_t t, const std::map<std::string, double> &torques,
+      size_t t, const JointValues &torques,
       const OptimizerSetting &opt) const override {
     gtsam::GaussianFactorGraph priors;
     gtsam::Vector1 rhs;

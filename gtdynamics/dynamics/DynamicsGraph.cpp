@@ -50,9 +50,9 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<gtsam::Vector3> &planar_axis) {
   GaussianFactorGraph graph;
-  auto poses = fk_results.first;
-  auto twists = fk_results.second;
-  for (LinkSharedPtr link : robot.links()) {
+  LinkPoses poses = fk_results.first;
+  LinkTwists twists = fk_results.second;
+  for (auto &&link : robot.links()) {
     int i = link->getID();
     if (link->isFixed()) {
       // prior on twist acceleration for fixed link
@@ -138,7 +138,7 @@ Values DynamicsGraph::linearSolveFD(
 
   // arrange values
   Values values;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     int i1 = joint->parentID();
     int i2 = joint->childID();
@@ -152,7 +152,7 @@ Values DynamicsGraph::linearSolveFD(
   }
   const auto &poses = fk_results.first;
   const auto &twists = fk_results.second;
-  for (LinkSharedPtr link : robot.links()) {
+  for (auto &&link : robot.links()) {
     int i = link->getID();
     std::string name = link->name();
     values.insert(PoseKey(i, t), poses.at(name));
@@ -178,7 +178,7 @@ Values DynamicsGraph::linearSolveID(
 
   // arrange values
   Values values;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     int i1 = joint->parentID();
     int i2 = joint->childID();
@@ -192,7 +192,7 @@ Values DynamicsGraph::linearSolveID(
   }
   const auto &poses = fk_results.first;
   const auto &twists = fk_results.second;
-  for (LinkSharedPtr link : robot.links()) {
+  for (auto &&link : robot.links()) {
     int i = link->getID();
     std::string name = link->name();
     values.insert(PoseKey(i, t), poses.at(name));
@@ -663,7 +663,7 @@ JointValues DynamicsGraph::jointAccelsMap(const Robot &robot,
                                           const gtsam::Values &result,
                                           const int t) {
   JointValues joint_accels;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
     joint_accels[name] = result.atDouble(JointAccelKey(j, t));
@@ -675,7 +675,7 @@ JointValues DynamicsGraph::jointVelsMap(const Robot &robot,
                                         const gtsam::Values &result,
                                         const int t) {
   JointValues joint_vels;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
     joint_vels[name] = result.atDouble(JointVelKey(j, t));
@@ -687,7 +687,7 @@ JointValues DynamicsGraph::jointAnglesMap(const Robot &robot,
                                           const gtsam::Values &result,
                                           const int t) {
   JointValues joint_angles;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
     joint_angles[name] = result.atDouble(JointAngleKey(j, t));
@@ -699,7 +699,7 @@ JointValues DynamicsGraph::jointTorquesMap(const Robot &robot,
                                            const gtsam::Values &result,
                                            const int t) {
   JointValues joint_torques;
-  for (JointSharedPtr joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     int j = joint->getID();
     std::string name = joint->name();
     joint_torques[name] = result.atDouble(TorqueKey(j, t));
@@ -756,14 +756,14 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
 
   if (radial) {
     int n = robot.numLinks();
-    for (auto &link : robot.links()) {
+    for (auto &&link : robot.links()) {
       int i = link->getID();
       locations[PoseKey(i, t)] = radial_location(2, i, n);
       locations[TwistKey(i, t)] = radial_location(3, i, n);
       locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
     }
 
-    for (auto &joint : robot.joints()) {
+    for (auto &&joint : robot.joints()) {
       int j = joint->getID();
       locations[JointAngleKey(j, t)] = corner_location(2.5, j, n);
       locations[JointVelKey(j, t)] = corner_location(3.5, j, n);
@@ -775,14 +775,14 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
       locations[WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
     }
   } else {
-    for (auto &link : robot.links()) {
+    for (auto &&link : robot.links()) {
       int i = link->getID();
       locations[PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
       locations[TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
       locations[TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
     }
 
-    for (auto &joint : robot.joints()) {
+    for (auto &&joint : robot.joints()) {
       int j = joint->getID();
       locations[JointAngleKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 0.5, 0).finished();

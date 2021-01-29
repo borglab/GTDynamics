@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
   //  ‾‾‾‾‾‾‾‾‾‾‾‾‾ x
 
   std::cout << "\033[1;32;7;4mParsed Robot:\033[0m" << std::endl;
-  vision60.printRobot();
+  vision60.print();
   std::cout << "-------------" << std::endl;
 
   // Compute coefficients for cubic spline from current robot position

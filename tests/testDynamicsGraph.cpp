@@ -152,7 +152,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   THROWS_EXCEPTION(optimizer1.optimize());
 
   // test the condition when we fix link "l1"
-  my_robot.getLinkByName("l1")->fix();
+  my_robot.fixLink("l1");
   graph = graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
   graph.add(prior_factors);
 
@@ -294,7 +294,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   using simple_urdf_eq_mass::my_robot, simple_urdf_eq_mass::gravity,
       simple_urdf_eq_mass::planar_axis, simple_urdf_eq_mass::joint_vels,
       simple_urdf_eq_mass::joint_angles;
-  my_robot.getLinkByName("l1")->fix();
+  my_robot.fixLink("l1");
   int j = my_robot.joints()[0]->getID();
   auto graph_builder = DynamicsGraph();
 
