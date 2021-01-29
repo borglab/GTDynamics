@@ -27,8 +27,6 @@
 
 namespace gtdynamics {
 
-// TODO(aescontrela): Make toString method to display joint info.
-
 /// Shorthand for q_j_t, for j-th joint angle at time t.
 inline DynamicsSymbol JointAngleKey(int j, int t) {
   return DynamicsSymbol::JointSymbol("q", j, t);
@@ -234,6 +232,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Return joint parameters.
   const Parameters &parameters() const { return parameters_; }
+
+  friend std::ostream &operator<<(std::ostream &stream, const Joint &j);
+
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const JointSharedPtr &j);
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

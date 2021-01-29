@@ -99,7 +99,7 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void Robot::printRobot() const {
+void Robot::print() const {
   for (const auto &link : links()) {
     std::cout << link->name() << ":\n";
     std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
@@ -114,14 +114,10 @@ void Robot::printRobot() const {
   }
 
   for (const auto &joint : joints()) {
-    std::cout << joint->name() << ":\n";
-    LinkSharedPtr parent_link = joint->parentLink();
-    LinkSharedPtr child_link = joint->childLink();
-    // TODO(aescontrela): Call link and joint toString methods here.
-    std::cout << "\tparent: " << parent_link->name()
-              << "\tchild: " << child_link->name() << "\n";
+    std::cout << joint << std::endl;
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
+    LinkSharedPtr child_link = joint->childLink();
     std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
               << ", "
