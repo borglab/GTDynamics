@@ -44,13 +44,13 @@ $ make
 $ sudo make install
 ```
 
-## Running tests
+## Running Tests
 
 ```bash
 $ make check
 ```
 
-## Running examples
+## Running Examples
 
 The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
 
@@ -74,9 +74,30 @@ make
 ./exec
 ```
 
-## Citing this work
+## Python Wrapper
 
-The core paper behind this work is:
+GTDynamics now supports a Pybind11-based Python API.
+
+To start, please download and install the [GTwrap repository](https://github.com/borglab/wrap).
+
+To compile and install the GTDynamics python library:
+
+1. In the build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
+
+    ```sh
+    cmake -DGTDYNAMICS_BUILD_PYTHON ..
+    ```
+
+2. Build as normal and install the python package.
+
+    ```sh
+    make && make python-install
+    ```
+
+## Citing This Work
+
+Please cite the following paper if you use this code as part of any published research:
+
 ```
 @misc{2011.06194,
     Author = {Mandy Xie, Alejandro Escontrela, and Frank Dellaert},
