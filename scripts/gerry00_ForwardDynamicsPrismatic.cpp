@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
             << "Robot Model:"
             << "\033[0m\n"
             << std::endl;
-  simple_rpr.printRobot();
+  simple_rpr.print();
 
   // Simulation parameters
   int T = 15;

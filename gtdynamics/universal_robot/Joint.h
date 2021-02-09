@@ -27,8 +27,6 @@
 
 namespace gtdynamics {
 
-//TODO(aescontrela): Make toString method to display joint info.
-
 /// Shorthand for q_j_t, for j-th joint angle at time t.
 inline DynamicsSymbol JointAngleKey(int j, int t) {
   return DynamicsSymbol::JointSymbol("q", j, t);
@@ -48,6 +46,10 @@ inline DynamicsSymbol JointAccelKey(int j, int t) {
 inline DynamicsSymbol TorqueKey(int j, int t) {
   return DynamicsSymbol::JointSymbol("T", j, t);
 }
+
+// TODO(G+S): change torque type from map<string, double> to gtsam::Values
+/// Map from joint name to joint angle/vel/accel/torque
+using JointValues = std::map<std::string, double>;
 
 /// Joint is the base class for a joint connecting two Link objects.
 class Joint : public std::enable_shared_from_this<Joint> {
@@ -141,11 +143,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Check if the link is a child link, throw an error if link is not
   /// connected to this joint.
   bool isChildLink(const LinkSharedPtr &link) const {
-    LinkSharedPtr link_ptr = link;
-    if (link_ptr != child_link_ && link_ptr != parent_link_)
-      throw std::runtime_error("link " + link_ptr->name() +
+    if (link != child_link_ && link != parent_link_)
+      throw std::runtime_error("link " + link->name() +
                                " is not connected to this joint " + name_);
-    return link_ptr == child_link_;
+    return link == child_link_;
   }
 
  public:
@@ -232,6 +233,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint parameters.
   const Parameters &parameters() const { return parameters_; }
 
+  friend std::ostream &operator<<(std::ostream &stream, const Joint &j);
+
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const JointSharedPtr &j);
+
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
    * @{
@@ -311,10 +317,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /// Abstract method. Returns forward dynamics priors on torque
-  //TODO(G+S): change torque type from map<string, double> to gtsam::Values
   virtual gtsam::GaussianFactorGraph linearFDPriors(
-      size_t t, const std::map<std::string, double> &torques,
-      const OptimizerSetting &opt) const {
+      size_t t, const JointValues &torques, const OptimizerSetting &opt) const {
     throw std::runtime_error(
         "linearFDPriors not implemented for the desired "
         "joint type.  A linearized version may not be possible.");
@@ -331,14 +335,11 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @param[in] planar_axis   Optional planar axis.
    * @return linear accel factors.
-   * //TODO(G+S): change angle/vel type from map<string, double> to
-   * gtsam::Values
    */
   virtual gtsam::GaussianFactorGraph linearAFactors(
       size_t t, const std::map<std::string, gtsam::Pose3> &poses,
       const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
+      const JointValues &joint_angles, const JointValues &joint_vels,
       const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
     throw std::runtime_error(

@@ -28,7 +28,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::my_robot, simple_urdf::planar_axis;
-  my_robot.getLinkByName("l1")->fix();
+  my_robot.fixLink("l1");
 
   // Build a factor graph with all the kinodynamics constraints.
   DynamicsGraph dg_builder = DynamicsGraph();

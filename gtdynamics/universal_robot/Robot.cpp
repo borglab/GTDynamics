@@ -53,7 +53,7 @@ std::vector<JointSharedPtr> Robot::joints() const {
   return getValues<std::string, JointSharedPtr>(name_to_joint_);
 }
 
-void Robot::removeLink(LinkSharedPtr link) {
+void Robot::removeLink(const LinkSharedPtr &link) {
   // remove all joints associated to the link
   auto joints = link->getJoints();
   for (JointSharedPtr joint : joints) {
@@ -73,14 +73,22 @@ void Robot::removeJoint(JointSharedPtr joint) {
   name_to_joint_.erase(joint->name());
 }
 
-LinkSharedPtr Robot::getLinkByName(std::string name) const {
+LinkSharedPtr Robot::getLinkByName(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
   return name_to_link_.at(name);
 }
 
-JointSharedPtr Robot::getJointByName(std::string name) const {
+Robot Robot::fixLink(const std::string &name) {
+  if (name_to_link_.find(name) == name_to_link_.end()) {
+    throw std::runtime_error("no link named " + name);
+  }
+  name_to_link_.at(name)->fix();
+  return *this;
+}
+
+JointSharedPtr Robot::getJointByName(const std::string &name) const {
   if (name_to_joint_.find(name) == name_to_joint_.end()) {
     throw std::runtime_error("no joint named " + name);
   }
@@ -91,7 +99,7 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void Robot::printRobot() const {
+void Robot::print() const {
   for (const auto &link : links()) {
     std::cout << link->name() << ":\n";
     std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
@@ -106,14 +114,10 @@ void Robot::printRobot() const {
   }
 
   for (const auto &joint : joints()) {
-    std::cout << joint->name() << ":\n";
-    LinkSharedPtr parent_link = joint->parentLink();
-    LinkSharedPtr child_link = joint->childLink();
-    //TODO(aescontrela): Call link and joint toString methods here.
-    std::cout << "\tparent: " << parent_link->name()
-              << "\tchild: " << child_link->name() << "\n";
+    std::cout << joint << std::endl;
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
+    LinkSharedPtr child_link = joint->childLink();
     std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
               << ", "
@@ -135,7 +139,7 @@ FKResults Robot::forwardKinematics(
   // set root link
   LinkSharedPtr root_link;
   // check fixed links
-  for (LinkSharedPtr link : links()) {
+  for (auto &&link : links()) {
     if (link->isFixed()) {
       root_link = link;
       link_poses[link->name()] = link->getFixedPose();

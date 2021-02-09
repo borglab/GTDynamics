@@ -25,14 +25,15 @@
 
 namespace gtdynamics {
 
+/// Map from link name to link shared pointer
 using LinkMap = std::map<std::string, LinkSharedPtr>;
+/// Map from joint name to joint shared pointer
 using JointMap = std::map<std::string, JointSharedPtr>;
+
 using LinkVector = std::vector<std::reference_wrapper<Link>>;
 using JointVector = std::vector<std::reference_wrapper<Joint>>;
 
 using LinkJointPair = std::pair<LinkMap, JointMap>;
-// map from joint name to joint angle/vel/accel/torque
-using JointValues = std::map<std::string, double>;
 // map from link name to link pose
 using LinkPoses = std::map<std::string, gtsam::Pose3>;
 // map from link name to link twist
@@ -58,7 +59,7 @@ class Robot {
 
   /**
    * Constructor from link and joint elements.
-   * 
+   *
    * @param[in] robot_links_and_joints LinkJointPair containing links and
    * joints.
    */
@@ -71,16 +72,19 @@ class Robot {
   std::vector<JointSharedPtr> joints() const;
 
   /// remove specified link from the robot
-  void removeLink(LinkSharedPtr link);
+  void removeLink(const LinkSharedPtr &link);
 
   /// remove specified joint from the robot
   void removeJoint(JointSharedPtr joint);
 
   /// Return the link corresponding to the input string.
-  LinkSharedPtr getLinkByName(std::string name) const;
+  LinkSharedPtr getLinkByName(const std::string &name) const;
+
+  /// Fix the link corresponding to the input string.
+  Robot fixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
-  JointSharedPtr getJointByName(std::string name) const;
+  JointSharedPtr getJointByName(const std::string &name) const;
 
   /// Return number of *moving* links.
   int numLinks() const;
@@ -89,7 +93,7 @@ class Robot {
   int numJoints() const;
 
   // print links and joints of the robot, for debug purposes
-  void printRobot() const;
+  void print() const;
 
   /**
    * Calculate forward kinematics by performing bfs in the link-joint graph

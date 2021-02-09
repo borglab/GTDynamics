@@ -269,33 +269,34 @@ class Trajectory {
     std::map<std::string, gtsam::Point3> prev_cp;
     ContactPoints wc_cps = walk_cycle_.allContactPoints();
     for (auto &&cp : wc_cps) {
-      gtdynamics::LinkSharedPtr link_ptr =
-          walk_cycle_.phases()[0].getRobotConfiguration().getLinkByName(
+      LinkSharedPtr link =
+          walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
               cp.first);
       prev_cp.insert(std::make_pair(
-          cp.first, (link_ptr->wTcom() *
-                     gtsam::Pose3(gtsam::Rot3(), cp.second.point))
-                        .translation()));
+          cp.first,
+          (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
+              .translation()));
     }
     return prev_cp;
   }
 
   /**
    * @fn Generates a PointGoalFactor object
-   * @param[in] link              concerned link
+   * @param[in] link_name         concerned link
    * @param[in] t                 time t
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
   const PointGoalFactor pointGoalFactor(
-      const std::string &link, const int &t,
+      const std::string &link_name, const int &t,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Point3 &goal_point) const {
-    gtdynamics::LinkSharedPtr link_ptr =
-        walk_cycle_.phases()[0].getRobotConfiguration().getLinkByName(link);
-    gtsam::Key pose_key = PoseKey(link_ptr->getID(), t);
+    LinkSharedPtr link =
+        walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
+            link_name);
+    gtsam::Key pose_key = PoseKey(link->getID(), t);
     gtsam::Pose3 comTp = gtsam::Pose3(
-        gtsam::Rot3(), walk_cycle_.allContactPoints()[link].point);
+        gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
     return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
   }
 

@@ -30,10 +30,10 @@ int main(int argc, char** argv) {
     four_bar_linkage::joint_angles, four_bar_linkage::joint_vels;
 
   gtsam::Vector3 gravity(0, -10, 0);
-  my_robot.getLinkByName("l1")->fix();
+  my_robot.fixLink("l1");
 
   std::cout << "\033[1;32;7;4mParsed Robot:\033[0m" << std::endl;
-  my_robot.printRobot();
+  my_robot.print();
   std::cout << "-------------" << std::endl;
 
   // Build the dynamics graph.

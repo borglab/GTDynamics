@@ -19,7 +19,7 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
-//TODO(aescontrela): The entire program shouldn't crash when a single file
+// TODO(aescontrela): The entire program shouldn't crash when a single file
 // doesn't load.
 
 using namespace gtdynamics;
@@ -42,7 +42,7 @@ namespace simple_urdf {
 Robot getSimpleUrdf() {
   Robot simple_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  simple_robot.getLinkByName("l1")->fix();
+  simple_robot.fixLink("l1");
   return simple_robot;
 }
 Robot my_robot = getSimpleUrdf();
@@ -56,7 +56,7 @@ namespace simple_urdf_zero_inertia {
 Robot getSimpleUrdf() {
   Robot simple_robot = CreateRobotFromFile(
       std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
-  simple_robot.getLinkByName("l1")->fix();
+  simple_robot.fixLink("l1");
   return simple_robot;
 }
 Robot my_robot = getSimpleUrdf();
@@ -96,7 +96,7 @@ namespace jumping_robot {
 Robot getJumpingRobot() {
   Robot jumping_robot =
       CreateRobotFromFile(std::string(SDF_PATH) + "/test/jumping_robot.sdf");
-  jumping_robot.getLinkByName("l0")->fix();
+  jumping_robot.fixLink("l0");
   return jumping_robot;
 }
 // Load the robot from urdf file

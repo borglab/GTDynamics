@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
   // constraints.
   auto simple_rr = Robot("../simple_rr.sdf", "simple_rr_sdf");
-  simple_rr.printRobot();
+  simple_rr.print();
 
   auto graph_builder = DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

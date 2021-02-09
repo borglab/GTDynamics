@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   const Robot spider =
       CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
 
-  spider.printRobot();
+  spider.print();
 
   return 0;
 }
