@@ -35,7 +35,7 @@ TEST(Link, params_constructor) {
   parameters.wTl = gtsam::Pose3();
   parameters.lTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
 
-  LinkSharedPtr l1 = std::make_shared<Link>(parameters);
+  LinkSharedPtr l1 = boost::make_shared<Link>(parameters);
 
   // name
   EXPECT(assert_equal("l1", l1->name()));

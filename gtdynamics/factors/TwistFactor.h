@@ -76,7 +76,7 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
     auto error =
-        std::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
+        boost::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
             joint_->childLink(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
         twist_c;
 

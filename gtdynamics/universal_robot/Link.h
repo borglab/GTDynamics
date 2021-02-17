@@ -23,6 +23,7 @@
 
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <sdf/sdf.hh>
 #include <string>
@@ -59,7 +60,7 @@ inline DynamicsSymbol WrenchKey(int i, int j, int t) {
 /**
  * @class Base class for links taking different format of parameters.
  */
-class Link : public std::enable_shared_from_this<Link> {
+class Link : public boost::enable_shared_from_this<Link> {
  private:
   std::string name_;
 
@@ -149,13 +150,7 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /// remove the joint
   void removeJoint(JointSharedPtr joint) {
-    for (auto joint_it = joints_.begin(); joint_it != joints_.end();
-         joint_it++) {
-      if ((*joint_it) == joint) {
-        joints_.erase(joint_it);
-        break;
-      }
-    }
+    joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
   /// set ID for the link
@@ -178,10 +173,10 @@ class Link : public std::enable_shared_from_this<Link> {
   /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
 
-  /// transfrom from link com frame to link frame
+  /// transform from link CoM frame to link frame
   const gtsam::Pose3 &lTcom() const { return lTcom_; }
 
-  /// transform from link com frame to world frame
+  /// transform from link CoM frame to world frame
   inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
   /// the fixed pose of the link
@@ -200,7 +195,7 @@ class Link : public std::enable_shared_from_this<Link> {
   void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
-  const std::vector<JointSharedPtr> &getJoints(void) const { return joints_; }
+  const std::vector<JointSharedPtr> &getJoints() const { return joints_; }
 
   /// Return link name.
   std::string name() const { return name_; }
@@ -221,6 +216,15 @@ class Link : public std::enable_shared_from_this<Link> {
     gmm.push_back(gtsam::I_3x3 * mass_);
     return gtsam::diag(gmm);
   }
+
+  /// Print to ostream
+  friend std::ostream &operator<<(std::ostream &os, const Link &l) {
+    os << l.name();
+    return os;
+  }
+
+  /// Helper print function
+  void print() const { std::cout << *this; }
 
   /**
    * @fn Return pose factors in the dynamics graph.

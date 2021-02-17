@@ -54,7 +54,7 @@ gtsam::NonlinearFactorGraph JointTyped::aFactors(
       TwistAccelKey(parent_link_->getID(), t),
       TwistAccelKey(child_link_->getID(), t), JointAngleKey(getID(), t),
       JointVelKey(getID(), t), JointAccelKey(getID(), t), opt.a_cost_model,
-      std::static_pointer_cast<const This>(getConstSharedPtr()));
+      boost::static_pointer_cast<const This>(getConstSharedPtr()));
 
   return graph;
 }
@@ -67,11 +67,11 @@ gtsam::NonlinearFactorGraph JointTyped::dynamicsFactors(
       WrenchKey(parent_link_->getID(), getID(), t),
       WrenchKey(child_link_->getID(), getID(), t), JointAngleKey(getID(), t),
       opt.f_cost_model,
-      std::static_pointer_cast<const This>(getConstSharedPtr()));
+      boost::static_pointer_cast<const This>(getConstSharedPtr()));
   graph.emplace_shared<TorqueFactor>(
       WrenchKey(child_link_->getID(), getID(), t), TorqueKey(getID(), t),
       opt.t_cost_model,
-      std::static_pointer_cast<const This>(getConstSharedPtr()));
+      boost::static_pointer_cast<const This>(getConstSharedPtr()));
   if (planar_axis)
     graph.emplace_shared<WrenchPlanarFactor>(
         WrenchKey(child_link_->getID(), getID(), t), opt.planar_cost_model,

@@ -42,7 +42,7 @@ class TwistAccelFactor
   using Base = gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, JointCoordinate,
                                         JointVelocity, JointAcceleration>;
-  using JointTypedConstSharedPtr = std::shared_ptr<const JointTyped>;
+  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
   JointTypedConstSharedPtr joint_;
 
  public:
