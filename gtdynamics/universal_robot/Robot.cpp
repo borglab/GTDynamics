@@ -92,9 +92,9 @@ JointSharedPtr Robot::joint(const std::string &name) const {
   return name_to_joint_.at(name);
 }
 
-int Robot::numLinks() const { return name_to_link_.size(); }
+size_t Robot::numLinks() const { return name_to_link_.size(); }
 
-int Robot::numJoints() const { return name_to_joint_.size(); }
+size_t Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::print() const {
   using std::cout;

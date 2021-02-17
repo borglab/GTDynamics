@@ -88,10 +88,10 @@ class Robot {
   JointSharedPtr joint(const std::string &name) const;
 
   /// Return number of *moving* links.
-  int numLinks() const;
+  size_t numLinks() const;
 
   /// Return number of joints.
-  int numJoints() const;
+  size_t numJoints() const;
 
   /// Print links and joints of the robot, for debug purposes
   void print() const;
