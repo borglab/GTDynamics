@@ -58,12 +58,12 @@ class ContactStateEstimator {
 
  public:
   struct Estimate {
-    gtsam::Point3 t_ = Vector3(0, 0, 0);   /// Translation in inertial frame
-    gtsam::Rot3 R_;                        /// Rotation in inertial frame
-    gtsam::Vector3 v_ = Vector3(0, 0, 0);  /// Velocity in inertial frame
+    gtsam::Point3 t = Vector3(0, 0, 0);   /// Translation in inertial frame
+    gtsam::Rot3 R;                        /// Rotation in inertial frame
+    gtsam::Vector3 v = Vector3(0, 0, 0);  /// Velocity in inertial frame
 
     Estimate() = default;
-    // Estimate(Robot robot, JointValues joint_angles) {}
+    Estimate(const Robot& robot, const JointValues& joint_angles) {}
   };
 
   struct Measurement {
@@ -77,16 +77,11 @@ class ContactStateEstimator {
 
   ContactStateEstimator() {}
 
-  ContactStateEstimator(Robot robot, size_t num_contact_states = 2)
+  ContactStateEstimator(const Robot& robot, size_t num_contact_states = 2)
       : robot_(robot), S(num_contact_states) {}
 
-  Estimate initialize() {
-    // TODO(Varun) Do inverse kinematics with all legs at 0 height, LH leg at
-    // (0, 0) and other legs with variance 5 meteres.
-    // That should give us the joint angles.
-    // return Estimate(robot_, joint_angles);
-    Estimate estimate;
-    return estimate;
+  Estimate initialize(const JointValues& joint_angles) {
+    return Estimate(robot_, joint_angles);
   }
 
   /**
@@ -188,28 +183,35 @@ class ContactStateEstimator {
 
 // Test one invocation of the estimator
 TEST(ContactStateEstimator, Invoke) {
-  Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/atlas.urdf");
+  Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/a1.urdf");
   ContactStateEstimator estimator(robot);
 
-  const string base_name = "base";
-  // for (size_t idx = 0; idx < robot.numLinks(); idx++) {
-  //   cout << idx << ": " << robot.links().at(idx)->name() << endl;
-  // }
+  for (size_t idx = 0; idx < robot.numLinks(); idx++) {
+    cout << idx << ": " << robot.links().at(idx)->name() << endl;
+  }
 
   // for (size_t idx = 0; idx < robot.numJoints(); idx++) {
   //   cout << idx << ": " << robot.joints().at(idx)->name() << endl;
   // }
 
-  // JointValues joint_angles_0 = inverseKinematics(robot);
+  const string base_name = "trunk";  //"pelvis";
+
+  JointValues joint_angles_0;
+
+  Point3 base_translation = robot.getLinkByName(base_name)->wTl().translation();
+  EXPECT(assert_equal(Point3(0, 0, 0.9), base_translation));
 
   // Create initial estimate given joint angles, assume all feet on the ground.
   // The constructor below will create the continuous and the discrete states
   // for the initial timestep 0.
-  ContactStateEstimator::Estimate estimate_0 = estimator.initialize();
-  //     estimator.initialize(joint_angles_0);
+  ContactStateEstimator::Estimate estimate_0 =
+      estimator.initialize(joint_angles_0);
+
+  EXPECT(assert_equal(Point3(0, 0, 0.9), estimate_0.t));
 
   // Measurement object containing IMU measurement between state 0 and 1, and
   // joint angles at timestep 1.
+  // PreintegratedCombinedMeasurements imu_measurements;
   // JointValues joint_angles_1;
   // ContactStateEstimator::Measurement measurements_01(imu_measurements,
   //                                                    joint_angles_1);

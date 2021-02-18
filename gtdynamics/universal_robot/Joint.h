@@ -89,7 +89,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     Revolute = 'R',
     Prismatic = 'P',
     Screw = 'C',
-    ScrewAxis = 'A'
+    ScrewAxis = 'A',
+    Fixed = 'F'
   };
 
  protected:
@@ -130,6 +131,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @param[in] wTj          joint pose expressed in world frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
+   * @param[in] parameters   The parameters to the joint.
    */
   Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,

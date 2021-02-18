@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  JointTyped.h
+ * @file JointTyped.h
  * @brief Specialized form of Joint for specific joint angle types
  * @author: Frank Dellaert
  * @author: Mandy Xie
