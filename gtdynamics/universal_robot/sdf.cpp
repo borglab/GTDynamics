@@ -86,7 +86,8 @@ Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const LinkSharedPtr &parent_link,
                     const LinkSharedPtr &child_link) {
-  auto frame = sdf_joint.PoseFrame();
+  auto frame = sdf_joint.PoseRelativeTo();
+  Pose3 sdf_joint_pose = parse_ignition_pose(sdf_joint.RawPose());
   if (frame == "" || frame == child_link->name()) {
     if (sdf_joint.Pose() == ignition::math::Pose3d())
       return child_link->wTl();

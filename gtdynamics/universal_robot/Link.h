@@ -101,7 +101,6 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   Link() {}
 
-
   /**
    * Initialize Link's inertial properties with a Link::Params instance.
    *

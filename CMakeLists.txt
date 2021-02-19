@@ -52,7 +52,8 @@ endif()
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
-find_package(sdformat8 REQUIRED)
+find_package(sdformat9 REQUIRED)
+message(STATUS "SDFormat version: ${sdformat9_VERSION}")
 
 # ##############################################################################
 # Dynamics library
