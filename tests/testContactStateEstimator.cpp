@@ -19,6 +19,8 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -29,6 +31,8 @@
 #include <vector>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
+#include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
+#include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
@@ -50,20 +54,114 @@ class ContactStateEstimator {
  private:
   Robot robot_;
 
-  // Vector of functions for generating foot keys
+  ///< Vector of functions for generating foot keys
+  // TODO(Varun) make this a constructor argument
   vector<function<gtsam::Key(uint64_t)>> foot_key_fns = {LF, RF, LH, RH};
 
-  // Number of contact states
+  ///< Vector of links representing the feet names
+  vector<string> foot_links_;
+
+  ///< Name of the floating base link
+  string base_link_;
+
+  ///< Number of contact states
   size_t S;
 
  public:
   struct Estimate {
-    gtsam::Point3 t = Vector3(0, 0, 0);   /// Translation in inertial frame
-    gtsam::Rot3 R;                        /// Rotation in inertial frame
-    gtsam::Vector3 v = Vector3(0, 0, 0);  /// Velocity in inertial frame
+    Point3 t = Vector3(0, 0, 0);   /// Translation in inertial frame
+    Rot3 R;                        /// Rotation in inertial frame
+    Vector3 v = Vector3(0, 0, 0);  /// Velocity in inertial frame
 
     Estimate() = default;
-    Estimate(const Robot& robot, const JointValues& joint_angles) {}
+
+    Estimate(const Robot& robot, const JointValues& joint_angles,
+             const vector<string>& foot_links, const string& base_link = "base",
+             const string& fixed_leg = "RR_lower", double time = 0) {
+      NonlinearFactorGraph graph;
+
+      // Add PoseFactors for each joint in the robot.
+      auto soft_constraint_model = noiseModel::Isotropic::Sigma(6, 0.1);
+      for (auto&& joint : robot.joints()) {
+        graph.emplace_shared<PoseFactor>(soft_constraint_model, joint, time);
+      }
+
+      // Add unary measurements on joint angles
+      auto joint_angle_model = noiseModel::Isotropic::Sigma(1, 0.01);
+      for (auto&& joint : robot.joints()) {
+        // use .at since joint_angles is const ref
+        double joint_angle = joint_angles.at(joint->name());
+        graph.addPrior<double>(JointAngleKey(joint->getID(), time), joint_angle,
+                               joint_angle_model);
+      }
+
+      // Add prior on foot contacts.
+      // Initially, all feet are on the ground.
+      double height = 0.0;
+      auto foot_prior_model = noiseModel::Isotropic::Sigma(1, 0.001);
+      // This is contact when the leg is straight, and is only valid for the A1
+      // robot.
+      Pose3 lTc_lower(Rot3(), Point3(0, 0, -0.22));
+      Vector3 gravity_n(0, 0, -9.81);
+      for (auto&& foot_link_name : foot_links) {
+        auto foot_link = robot.getLinkByName(foot_link_name);
+
+        Pose3 cTcom = lTc_lower.inverse() * foot_link->lTcom();
+
+        graph.emplace_shared<ContactKinematicsPoseFactor>(
+            PoseKey(foot_link->getID(), time), foot_prior_model, cTcom,
+            gravity_n, height);
+      }
+
+      // Add prior on base link in spatial frame
+      auto base = robot.getLinkByName(base_link);
+      Pose3 sTbase;
+      Vector6 sigmas;
+      sigmas << 0.1, 0.1, 0.1, 0.1, 0.1, 100;  // leaving height free
+      auto base_model = noiseModel::Diagonal::Sigmas(sigmas);
+      graph.addPrior<Pose3>(PoseKey(base->getID(), time), sTbase, base_model);
+
+      // Creating initial values below.
+      Values initial;
+
+      // Add all the initial link frame poses.
+      // For the A1 we add 40 cm to Z.
+      Pose3 iTw(Rot3(), Point3(0, 0, 0.4));
+      for (auto&& link : robot.links()) {
+        std::cout << "Link " << link->name() << " wTl " << std::endl
+                  << link->wTl() << std::endl;
+        initial.insert<Pose3>(PoseKey(link->getID(), time), iTw * link->wTl());
+      }
+
+      // Add the initial values for the joint angles.
+      for (auto&& [joint_name, angle] : joint_angles) {
+        JointSharedPtr joint = robot.getJointByName(joint_name);
+        initial.insert<JointTyped::JointCoordinate>(
+            JointAngleKey(joint->getID(), time), angle);
+      }
+
+      // Create the optimizer and optimizer
+      GaussNewtonOptimizer optimizer(graph, initial);
+      Values result = optimizer.optimize();
+
+      std::cout << "Initial error: " << graph.error(initial) << std::endl;
+      std::cout << "Final error: " << graph.error(result) << std::endl;
+      Pose3 pose = result.at<Pose3>(
+          PoseKey(robot.getLinkByName(base_link)->getID(), time));
+
+      t = pose.translation();
+      R = pose.rotation();
+
+      for (auto&& link : robot.links()) {
+        if (std::find(foot_links.begin(), foot_links.end(), link->name()) !=
+            foot_links.end()) {
+          std::cout << "Pose for foot " << link->name() << " with ID "
+                    << link->getID() << "\n"
+                    << result.at<Pose3>(PoseKey(link->getID(), time))
+                    << std::endl;
+        }
+      }
+    }
   };
 
   struct Measurement {
@@ -77,11 +175,24 @@ class ContactStateEstimator {
 
   ContactStateEstimator() {}
 
-  ContactStateEstimator(const Robot& robot, size_t num_contact_states = 2)
-      : robot_(robot), S(num_contact_states) {}
+  ContactStateEstimator(const Robot& robot, vector<string> foot_links,
+                        string base_link, size_t num_contact_states = 2)
+      : robot_(robot),
+        foot_links_(foot_links),
+        base_link_(base_link),
+        S(num_contact_states) {}
 
-  Estimate initialize(const JointValues& joint_angles) {
-    return Estimate(robot_, joint_angles);
+  /**
+   * @brief Initialize the estimate of the robot's base joint via forward and
+   * contact kinematics.
+   *
+   * @param joint_angles The joint angles measured from the robot.
+   * @param fixed_leg Name of the leg fixed to origin.
+   * @return Estimate
+   */
+  Estimate initialize(const JointValues& joint_angles, string fixed_leg) {
+    return Estimate(robot_, joint_angles, foot_links_, base_link_, fixed_leg,
+                    0);
   }
 
   /**
@@ -183,31 +294,46 @@ class ContactStateEstimator {
 
 // Test one invocation of the estimator
 TEST(ContactStateEstimator, Invoke) {
+  // Load the A1 robot
   Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/a1.urdf");
-  ContactStateEstimator estimator(robot);
-
-  for (size_t idx = 0; idx < robot.numLinks(); idx++) {
-    cout << idx << ": " << robot.links().at(idx)->name() << endl;
-  }
-
-  // for (size_t idx = 0; idx < robot.numJoints(); idx++) {
-  //   cout << idx << ": " << robot.joints().at(idx)->name() << endl;
-  // }
 
   const string base_name = "trunk";  //"pelvis";
 
-  JointValues joint_angles_0;
+  // Foot contact links are FL_lower, FR_lower, RL_lower and RR_lower
+  // trunk_link -> hip_joint -> hip_link -> upper_joint -> upper_link ->
+  // lower_joint -> lower_link
+  vector<string> foot_links = {"FL_lower", "FR_lower", "RL_lower", "RR_lower"};
 
-  Point3 base_translation = robot.getLinkByName(base_name)->wTl().translation();
-  EXPECT(assert_equal(Point3(0, 0, 0.9), base_translation));
+  ContactStateEstimator estimator(robot, foot_links, base_name, 2);
+
+  JointValues joint_angles_0 = {
+      {"FR_hip_joint", 1.71831757e-04},    {"FR_upper_joint", 9.24168539e-01},
+      {"FR_lower_joint", -1.83299289e+00},  // front right
+      {"FL_hip_joint", 1.73695544e-04},    {"FL_upper_joint", 9.23078979e-01},
+      {"FL_lower_joint", -1.83378528e+00},  // front left
+      {"RR_hip_joint", 1.39569334e-04},    {"RR_upper_joint", 8.77893931e-01},
+      {"RR_lower_joint", -1.85187479e+00},  // rear right
+      {"RL_hip_joint", 1.36664882e-04},    {"RL_upper_joint", 8.78340180e-01},
+      {"RL_lower_joint", -1.85270761e+00}  // rear left
+  };
+
+  // Check the CoM of the fused calf and toe in the FR lower link frame
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0.004727, 0, -0.131975)),
+                      robot.getLinkByName("FR_lower")->lTcom(), 1e-5));
+
+  // This is the pose of the contact point in the calf link frame after SDF
+  // merges the calf and toe links connected by a fixed joint.
+  Pose3 lTc_lower(Rot3(), Point3(0, 0, -0.22));
 
   // Create initial estimate given joint angles, assume all feet on the ground.
   // The constructor below will create the continuous and the discrete states
   // for the initial timestep 0.
+  // X is forward, Y is to the left, Z is up.
   ContactStateEstimator::Estimate estimate_0 =
-      estimator.initialize(joint_angles_0);
+      estimator.initialize(joint_angles_0, "RR_lower");
 
-  EXPECT(assert_equal(Point3(0, 0, 0.9), estimate_0.t));
+  EXPECT(
+      assert_equal(Point3(-0.00274313, 0.0023002, 0.26228938), estimate_0.t));
 
   // Measurement object containing IMU measurement between state 0 and 1, and
   // joint angles at timestep 1.
