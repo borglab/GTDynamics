@@ -39,7 +39,7 @@ class ContactKinematicsPoseFactor
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
   gtsam::Pose3 cTcom_;
-  gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
+  double h_;  // Height of the ground plane in the world frame.
 
   gtsam::Matrix13 H_err_;
 
@@ -59,16 +59,14 @@ class ContactKinematicsPoseFactor
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
-      const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), cTcom_(cTcom) {
+      double ground_plane_height = 0.0)
+      : Base(cost_model, pose_key), cTcom_(cTcom), h_(ground_plane_height) {
     if (gravity[0] != 0)
       H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
     else if (gravity[1] != 0)
       H_err_ = (gtsam::Matrix13() << 0, 1, 0).finished();  // y.
     else
       H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
-
-    h_ = (gtsam::Vector(1) << ground_plane_height).finished();
   }
   virtual ~ContactKinematicsPoseFactor() {}
 
@@ -78,18 +76,18 @@ class ContactKinematicsPoseFactor
    * @param pose This link's COM pose in the spatial frame.
    */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose,
+      const gtsam::Pose3 &sTcom,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change contact reference frame from com to spatial.
-    gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
+    // Change contact reference frame from CoM to spatial.
+    gtsam::Pose3 sTc = sTcom.transformPoseFrom(cTcom_.inverse());
 
     // Obtain translation component and corresponding jacobian.
     gtsam::Matrix36 H_trans;
-    gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
+    gtsam::Vector3 sTc_p = sTc.translation(H_trans);
 
     // Compute the error.
-    gtsam::Vector sTc_p_h = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
-    gtsam::Vector error = sTc_p_h - h_;
+    gtsam::Vector error(1);
+    error << H_err_.dot(sTc_p) - h_;
 
     if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
 
