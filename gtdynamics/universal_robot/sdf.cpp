@@ -125,6 +125,10 @@ JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
 
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {
+    case sdf::JointType::FIXED:
+        // SDFormat automatically combines links joined with fixed joints into a
+        // single link.
+        break;
     case sdf::JointType::PRISMATIC:
       joint = boost::make_shared<PrismaticJoint>(id, name, wTj, parent_link,
                                                  child_link, parameters, axis);
