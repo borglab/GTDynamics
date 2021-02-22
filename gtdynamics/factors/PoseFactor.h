@@ -32,8 +32,9 @@ namespace gtdynamics {
 using boost::assign::cref_list_of;
 
 /**
- * PoseFactor is a three-way nonlinear factor between the previous link pose and
- * this link pose
+ * PoseFactor is a three-way nonlinear soft constraint between the joint's
+ * parent link pose, child link pose, and , enforcing the forward kinematics
+ * constraint.
  */
 class PoseFactor : public gtsam::NoiseModelFactor {
  private:

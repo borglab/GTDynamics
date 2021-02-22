@@ -28,7 +28,7 @@ namespace gtdynamics {
 
 /**
  * JointLimitFactor is a class which enforces joint angle, velocity,
- * acceleration and torque value to be within limi
+ * acceleration and torque value to be within limits
  */
 class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
  private:
