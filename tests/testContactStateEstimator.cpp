@@ -187,7 +187,7 @@ class ContactStateEstimator {
    * @return NonlinearFactorGraph
    */
   NonlinearFactorGraph createJointsGraph(const JointValues& joint_angles,
-                                         size_t time) {
+                                         size_t time) const {
     NonlinearFactorGraph graph;
     // Add PoseFactors for forward kinematics for each joint in the robot.
     auto soft_constraint_model = noiseModel::Isotropic::Sigma(6, 0.1);
@@ -214,7 +214,7 @@ class ContactStateEstimator {
    * @param height The height of the foot from the ground plane.
    */
   NonlinearFactorGraph createFeetPriorGraph(double height = 0.0,
-                                            size_t time = 0.0) {
+                                            size_t time = 0.0) const {
     NonlinearFactorGraph graph;
     // Add prior on foot contacts.
     auto foot_prior_model = noiseModel::Isotropic::Sigma(1, 0.001);
@@ -246,24 +246,22 @@ class ContactStateEstimator {
   }
 
   /**
-   * Add Combined IMU factors for the chain of robot states.
+   * Add a Combined IMU factor as a link for the chain of robot states.
    * Each state would correspond to a preintegrated IMU measurement.
+   *
+   * @param imu_measurements Preintegrated IMU measurements between the previous
+   * state and the current state.
+   * @param k The index of the current state.
    */
   NonlinearFactorGraph addImuChain(
-      const Pose3& initial_state, const SharedNoiseModel& noise_model,
-      const vector<PreintegratedCombinedMeasurements>& imu_measurements) const {
+      size_t t,
+      const PreintegratedCombinedMeasurements& imu_measurements) const {
     NonlinearFactorGraph graph;
 
-    // Add prior on initial state and constraint on velocity
-    graph.addPrior<Pose3>(X(0), initial_state, noise_model);
-    graph.add(NonlinearEquality<Point3>(V(0), Point3(0, 0, 0)));
+    // Add the IMU chain
+    graph.emplace_shared<CombinedImuFactor>(X(t - 1), V(t - 1), X(t), V(t),
+                                            B(t - 1), B(t), imu_measurements);
 
-    // Add the rest of the IMU chain
-    for (size_t k = 0; k < imu_measurements.size(); k++) {
-      graph.emplace_shared<CombinedImuFactor>(X(k), V(k), X(k + 1), V(k + 1),
-                                              B(k), B(k + 1),
-                                              imu_measurements.at(k));
-    }
     return graph;
   }
 
@@ -299,19 +297,15 @@ class ContactStateEstimator {
    * specified by `foot_key_fn`.
    */
   NonlinearFactorGraph addLegChain(
-      const function<Key(uint64_t)> foot_key_fn,
-      const Point3& initial_foot_position, const SharedNoiseModel& noise_model,
+      size_t t, const function<Key(uint64_t)> foot_key_fn,
       const vector<size_t>& contact_sequence) const {
     NonlinearFactorGraph graph;
-    // Add prior on initial foot position
-    graph.addPrior<Point3>(foot_key_fn(0), initial_foot_position, noise_model);
-    // Add the rest of the foot evolution chain
-    for (size_t k = 0; k < contact_sequence.size() - 1; ++k) {
-      size_t prev_contact_state = contact_sequence.at(k),
-             contact_state = contact_sequence.at(k + 1);
-      graph.add(footFactor(foot_key_fn(k), prev_contact_state,
-                           foot_key_fn(k + 1), contact_state));
-    }
+    // Add the foot evolution chain
+    size_t prev_contact_state = contact_sequence.at(t - 1),
+           contact_state = contact_sequence.at(t);
+    graph.add(footFactor(foot_key_fn(t - 1), prev_contact_state, foot_key_fn(t),
+                         contact_state));
+
     return graph;
   }
 
@@ -320,15 +314,17 @@ class ContactStateEstimator {
    * Contact Transition factors.
    */
   NonlinearFactorGraph factorGraph(
-      const Pose3& initial_state, const SharedNoiseModel& noise_model,
-      const vector<PreintegratedCombinedMeasurements>& imu_measurements,
-      const vector<pair<Point3, SharedNoiseModel>>& foot_priors,
+      size_t t, const PreintegratedCombinedMeasurements& imu_measurements,
+      const JointValues& joint_angles,
       const vector<size_t>& contact_sequence) const {
     // Create an empty graph
     NonlinearFactorGraph graph;
 
     // Create IMU chain
-    graph += addImuChain(initial_state, noise_model, imu_measurements);
+    graph += addImuChain(t, imu_measurements);
+
+    // Add the forward kinematics factors
+    graph += createJointsGraph(joint_angles, t);
 
     // Create leg plates
     for (size_t i = 0; i < foot_key_fns.size(); ++i) {
@@ -336,28 +332,39 @@ class ContactStateEstimator {
       for (auto&& state : contact_sequence) {
         new_contact_sequence.push_back(state & size_t(pow(S, i)));
       }
-      graph += addLegChain(foot_key_fns.at(i), foot_priors.at(i).first,
-                           foot_priors.at(i).second, new_contact_sequence);
+      graph += addLegChain(t, foot_key_fns.at(i), new_contact_sequence);
     }
 
     return graph;
   }
 
   /**
-   * @brief Run the contact state estimator to return the state estimate for the
-   * next state in the chain.
+   * @brief Run the contact state estimator to return the state estimate for
+   * the next state in the chain.
    *
    * @param estimate
    * @param measurement
-   * @return Values containing the base pose, base velocity, pose of the feet
-   * and the contact states over the last T time steps.
+   * @return Estimate containing the base pose, base velocity, pose of the
+   * feet and the contact states over the last T time steps.
    */
-  Values run(const Estimate& estimate, Measurement measurement) {
-    auto noise_model = noiseModel::Isotropic::Sigma(3, 0.001);
-    // NonlinearFactorGraph graph = factorGraph(estimate.pose(), noise_model,
-    //                                          measurement.imu_measurements, );
+  Estimate run(const Estimate& estimate, const Measurement& measurement,
+               size_t k) {
+    vector<size_t> contact_sequence;
+    for (size_t i = 0; i < k; ++i) {
+      contact_sequence.push_back(estimate.contact_sequence.at(C(i)));
+    }
+    auto graph = factorGraph(k, measurement.imu_measurements,
+                             measurement.joint_angles, contact_sequence);
 
-    return Values();
+    Values initial;
+    initial.update(estimate.continuous_states);
+
+    initial.insert<NavState>(X(k), NavState());
+
+    Values result = initial;
+    DiscreteFactor::Values new_contact_sequence;
+    Estimate new_estimate{result, new_contact_sequence};
+    return new_estimate;
   }
 };
 
@@ -414,6 +421,19 @@ Pose3 getPose(vector<vector<double>> data, size_t index) {
   Point3 t(data[index][0], data[index][1], data[index][2]);
   Pose3 pose(R, t);
   return pose;
+}
+
+/**
+ * @brief Get the state at the specified index.
+ *
+ * @param data The CSV data including the ground truth position.
+ * @param index The row index at which to get the pose and velocity.
+ * @return NavState
+ */
+NavState getState(vector<vector<double>> data, size_t index) {
+  Pose3 pose = getPose(data, index);
+  Vector3 velocity(data[index][7], data[index][8], data[index][9]);
+  return NavState(pose, velocity);
 }
 
 /**
@@ -476,10 +496,10 @@ TEST(ContactStateEstimator, Invoke) {
   // merges the calf and toe links connected by a fixed joint.
   Pose3 lTc_lower(Rot3(), Point3(0, 0, -0.22));
 
-  // Create initial estimate given joint angles, assume all feet on the ground.
-  // The constructor below will create the continuous and the discrete states
-  // for the initial timestep 0.
-  // X is forward, Y is to the left, Z is up.
+  // Create initial estimate given joint angles, assume all feet on the
+  // ground. The constructor below will create the continuous and the discrete
+  // states for the initial timestep 0. X is forward, Y is to the left, Z is
+  // up.
   ContactStateEstimator::Estimate estimate_0 =
       estimator.initialize(joint_angles_0, "RR_lower");
 
@@ -543,10 +563,13 @@ TEST(ContactStateEstimator, Invoke) {
                                                      joint_angles_1);
 
   // Invoke the fixed lag smoother
-  ContactStateEstimator::Estimate estimate_1 =
-      estimator.run(estimate_0, measurements_01);
+  // ContactStateEstimator::Estimate estimate_1 =
+  //     estimator.run(estimate_0, measurements_01, 1);
 
-  // EXPECT(assert_equal(getPose(data, time_idx), estimate_1.pose()));
+  // NavState expected_state = getState(data, time_idx);
+  // EXPECT(assert_equal(expected_state,
+  //                     estimate_1.continuousStates().at<NavState>(X(1)),
+  //                     1e-2));
 
   // // State sequence for fixed lag smoothing from previous invocation
   // Values expected_continuous_states_0_to_1;
@@ -626,10 +649,10 @@ TEST(ContactStateEstimator, ZeroAngles) {
       {"RR_hip_joint", 0}, {"RR_upper_joint", 0}, {"RR_lower_joint", 0},
       {"RL_hip_joint", 0}, {"RL_upper_joint", 0}, {"RL_lower_joint", 0}};
 
-  // Create initial estimate given joint angles, assume all feet on the ground.
-  // The constructor below will create the continuous and the discrete states
-  // for the initial timestep 0.
-  // X is forward, Y is to the left, Z is up.
+  // Create initial estimate given joint angles, assume all feet on the
+  // ground. The constructor below will create the continuous and the discrete
+  // states for the initial timestep 0. X is forward, Y is to the left, Z is
+  // up.
   ContactStateEstimator::Estimate estimate_0 =
       estimator.initialize(joint_angles_0, "RR_lower");
 
@@ -657,7 +680,8 @@ TEST(ContactStateEstimator, ZeroAngles) {
   EXPECT(assert_equal(expected_continuous_states_0.at<NavState>(X(0)),
                       estimate_0.continuousStates().at<NavState>(X(0)), 1e-2));
   // EXPECT(assert_equal(expected_continuous_states_0.at<Pose3>(FR(0)),
-  //                     estimate_0.continuousStates().at<Pose3>(FR(0)), 1e-2));
+  //                     estimate_0.continuousStates().at<Pose3>(FR(0)),
+  //                     1e-2));
 }
 
 TEST(ContactStateEstimator, LegKeys) {
@@ -679,10 +703,9 @@ pair<Pose3, SharedNoiseModel> getStatePrior() {
       Pose3(), noiseModel::Diagonal::Sigmas(Vector6::Ones()));
 }
 
-vector<PreintegratedCombinedMeasurements> getImuMeasurements() {
+PreintegratedCombinedMeasurements getImuMeasurements() {
   auto params = PreintegrationCombinedParams::MakeSharedU(9.81);
-  PreintegratedCombinedMeasurements imu(params);
-  vector<PreintegratedCombinedMeasurements> imu_measurements = {imu, imu};
+  PreintegratedCombinedMeasurements imu_measurements(params);
   return imu_measurements;
 }
 
@@ -702,10 +725,9 @@ TEST(ContactStateEstimator, AddImuChain) {
   ContactStateEstimator estimator;
   auto state_prior = getStatePrior();
   auto imu_measurements = getImuMeasurements();
-  NonlinearFactorGraph graph = estimator.addImuChain(
-      state_prior.first, state_prior.second, imu_measurements);
+  NonlinearFactorGraph graph = estimator.addImuChain(1, imu_measurements);
 
-  EXPECT(assert_equal(4, graph.size()));
+  EXPECT(assert_equal(1, graph.size()));
 }
 
 // Test adding leg chain
@@ -715,23 +737,28 @@ TEST(ContactStateEstimator, AddLegChain) {
   vector<size_t> contact_sequence = {1, 1, 0};
   auto foot_priors = getFootPriors();
   NonlinearFactorGraph graph =
-      estimator.addLegChain(foot_key_fn, foot_priors[0].first,
-                            foot_priors[0].second, contact_sequence);
+      estimator.addLegChain(1, foot_key_fn, contact_sequence);
+  graph += estimator.addLegChain(2, foot_key_fn, contact_sequence);
 
-  EXPECT(assert_equal(3, graph.size()));
+  EXPECT(assert_equal(2, graph.size()));
 }
 
 // Test creating the smoothing factor graph given contact sequence.
 TEST(ContactStateEstimator, FactorGraph) {
-  vector<size_t> contact_sequence = {15, 15, 15};
+  vector<size_t> contact_sequence = {15, 15};
   ContactStateEstimator estimator;
   auto state_prior = getStatePrior();
   auto imu_measurements = getImuMeasurements();
   auto foot_priors = getFootPriors();
-  auto graph =
-      estimator.factorGraph(state_prior.first, state_prior.second,
-                            imu_measurements, foot_priors, contact_sequence);
-  EXPECT(assert_equal(4 + 4 * 3, graph.size()));
+  JointValues joint_angles_0 = {
+      {"FR_hip_joint", 0}, {"FR_upper_joint", 0}, {"FR_lower_joint", 0},
+      {"FL_hip_joint", 0}, {"FL_upper_joint", 0}, {"FL_lower_joint", 0},
+      {"RR_hip_joint", 0}, {"RR_upper_joint", 0}, {"RR_lower_joint", 0},
+      {"RL_hip_joint", 0}, {"RL_upper_joint", 0}, {"RL_lower_joint", 0}};
+
+  auto graph = estimator.factorGraph(1, imu_measurements, joint_angles_0,
+                                     contact_sequence);
+  EXPECT(assert_equal(1 + 4, graph.size()));
 }
 
 int main() {
