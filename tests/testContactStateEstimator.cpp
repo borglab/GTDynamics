@@ -43,29 +43,41 @@ using namespace gtsam;
 using gtsam::assert_equal;
 
 using gtsam::symbol_shorthand::B;
+using gtsam::symbol_shorthand::C;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
-inline gtsam::Key FR(uint64_t j) { return gtsam::Symbol('r', j); }
-inline gtsam::Key FL(uint64_t j) { return gtsam::Symbol('l', j); }
-inline gtsam::Key RR(uint64_t j) { return gtsam::Symbol('s', j); }
-inline gtsam::Key RL(uint64_t j) { return gtsam::Symbol('m', j); }
+
+inline Key FR(uint64_t j) { return PoseKey(6, j); }
+inline Key FL(uint64_t j) { return PoseKey(3, j); }
+inline Key RR(uint64_t j) { return PoseKey(12, j); }
+inline Key RL(uint64_t j) { return PoseKey(9, j); }
+
+// Load the A1 robot
+Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/a1.urdf");
+
+const string base_link_name = "trunk";  //"pelvis";
+
+// Foot contact links are FL_lower, FR_lower, RL_lower and RR_lower
+// trunk_link -> hip_joint -> hip_link -> upper_joint -> upper_link ->
+// lower_joint -> lower_link
+vector<string> lower_links = {"FR_lower", "FL_lower", "RR_lower", "RL_lower"};
 
 class ContactStateEstimator {
  private:
   Robot robot_;
 
-  ///< Vector of functions for generating foot keys
-  // TODO(Varun) make this a constructor argument
-  vector<function<gtsam::Key(uint64_t)>> foot_key_fns = {FR, FL, RR, RL};
-
   ///< Vector of links representing the feet names
-  vector<string> foot_links_;
+  vector<string> lower_links_;
 
   ///< Name of the floating base link
   string base_link_;
 
   ///< Number of contact states
   size_t S;
+
+  ///< Vector of functions for generating foot keys
+  // Default value is for A1 robot.
+  vector<function<Key(uint64_t)>> foot_key_fns = {FR, FL, RR, RL};
 
  public:
   /**
@@ -99,12 +111,16 @@ class ContactStateEstimator {
 
   ContactStateEstimator() {}
 
-  ContactStateEstimator(const Robot& robot, vector<string> foot_links,
-                        string base_link, size_t num_contact_states = 2)
+  ContactStateEstimator(
+      const Robot& robot, const vector<string>& lower_links,
+      const string& base_link, size_t num_contact_states = 2,
+      const vector<function<Key(uint64_t)>>& foot_key_functions = {FR, FL, RR,
+                                                                   RL})
       : robot_(robot),
-        foot_links_(foot_links),
+        lower_links_(lower_links),
         base_link_(base_link),
-        S(num_contact_states) {}
+        S(num_contact_states),
+        foot_key_fns(foot_key_functions) {}
 
   /**
    * @brief Initialize the estimate of the robot's base joint via forward and
@@ -138,7 +154,7 @@ class ContactStateEstimator {
     }
 
     // Create the optimizer and optimizer
-    GaussNewtonOptimizer optimizer(graph, initial);
+    LevenbergMarquardtOptimizer optimizer(graph, initial);
     Values result = optimizer.optimize();
 
     std::cout << "Initial error: " << graph.error(initial) << std::endl;
@@ -148,16 +164,17 @@ class ContactStateEstimator {
 
     Point3 velocity(0, 0, 0);
 
+    // Get the estimate for the current time slice from the optimizer result
     Values continuous_states;
     continuous_states.insert(X(time), NavState(pose, velocity));
 
-    for (size_t idx = 0; idx < foot_links_.size(); ++idx) {
-      Pose3 foot_pose = result.at<Pose3>(
-          PoseKey(robot_.getLinkByName(foot_links_[idx])->getID(), time));
-      continuous_states.insert(foot_key_fns[idx](time), foot_pose);
+    for (auto&& key_fn : foot_key_fns) {
+      continuous_states.insert(key_fn(time), result.at<Pose3>(key_fn(time)));
     }
 
+    // Initially all feet are on the ground.
     DiscreteFactor::Values contact_sequence;
+    contact_sequence[C(time)] = 15;
 
     return Estimate(continuous_states, contact_sequence);
   }
@@ -172,7 +189,7 @@ class ContactStateEstimator {
   NonlinearFactorGraph createJointsGraph(const JointValues& joint_angles,
                                          size_t time) {
     NonlinearFactorGraph graph;
-    // Add PoseFactors for each joint in the robot.
+    // Add PoseFactors for forward kinematics for each joint in the robot.
     auto soft_constraint_model = noiseModel::Isotropic::Sigma(6, 0.1);
     for (auto&& joint : robot_.joints()) {
       graph.emplace_shared<PoseFactor>(soft_constraint_model, joint, time);
@@ -197,29 +214,31 @@ class ContactStateEstimator {
    * @param height The height of the foot from the ground plane.
    */
   NonlinearFactorGraph createFeetPriorGraph(double height = 0.0,
-                                            double time = 0.0) {
+                                            size_t time = 0.0) {
     NonlinearFactorGraph graph;
     // Add prior on foot contacts.
     auto foot_prior_model = noiseModel::Isotropic::Sigma(1, 0.001);
     // This is contact when the leg is straight, and is only valid for the A1
     // robot.
-    Pose3 lTc_lower(Rot3(), Point3(0, 0, -0.22));  // 0.2 for lower link + 0.02 for toe link
-    Vector3 gravity_n(0, 0, -9.81);
-    for (auto&& foot_link_name : foot_links_) {
-      auto foot_link = robot_.getLinkByName(foot_link_name);
+    // 0.2 for lower link + 0.02 for toe sphere
+    Pose3 lTc_lower(Rot3(), Point3(0, 0, -0.22));
 
-      Pose3 cTcom = lTc_lower.inverse() * foot_link->lTcom();
+    Vector3 gravity_n(0, 0, -9.81);
+    for (auto&& lower_link_name : lower_links_) {
+      auto lower_link = robot_.getLinkByName(lower_link_name);
+
+      Pose3 cTcom = lTc_lower.inverse() * lower_link->lTcom();
 
       graph.emplace_shared<ContactKinematicsPoseFactor>(
-          PoseKey(foot_link->getID(), time), foot_prior_model, cTcom, gravity_n,
-          height);
+          PoseKey(lower_link->getID(), time), foot_prior_model, cTcom,
+          gravity_n, height);
     }
 
-    // Add prior on base link in spatial frame
+    // Add prior on base link CoM in spatial frame
     auto base = robot_.getLinkByName(base_link_);
-    Pose3 sTbase;
+    Pose3 sTbase = Pose3() * base->lTcom();
     Vector6 sigmas;
-    sigmas << 0.001, 0.001, 0.001, 0.1, 0.1, 100;  // leaving height free
+    sigmas << 0.001, 0.001, 0.001, 1, 1, 100;  // leaving height free
     auto base_model = noiseModel::Diagonal::Sigmas(sigmas);
     graph.addPrior<Pose3>(PoseKey(base->getID(), time), sTbase, base_model);
 
@@ -230,22 +249,22 @@ class ContactStateEstimator {
    * Add Combined IMU factors for the chain of robot states.
    * Each state would correspond to a preintegrated IMU measurement.
    */
-  void addImuChain(gtsam::NonlinearFactorGraph& graph,
-                   const gtsam::Pose3& initial_state,
-                   const gtsam::SharedNoiseModel& noise_model,
-                   const vector<gtsam::PreintegratedCombinedMeasurements>&
-                       imu_measurements) const {
+  NonlinearFactorGraph addImuChain(
+      const Pose3& initial_state, const SharedNoiseModel& noise_model,
+      const vector<PreintegratedCombinedMeasurements>& imu_measurements) const {
+    NonlinearFactorGraph graph;
+
     // Add prior on initial state and constraint on velocity
-    graph.addPrior<gtsam::Pose3>(X(0), initial_state, noise_model);
-    graph.add(
-        gtsam::NonlinearEquality<gtsam::Point3>(V(0), gtsam::Point3(0, 0, 0)));
+    graph.addPrior<Pose3>(X(0), initial_state, noise_model);
+    graph.add(NonlinearEquality<Point3>(V(0), Point3(0, 0, 0)));
 
     // Add the rest of the IMU chain
     for (size_t k = 0; k < imu_measurements.size(); k++) {
-      graph.emplace_shared<gtsam::CombinedImuFactor>(X(k), V(k), X(k + 1),
-                                                     V(k + 1), B(k), B(k + 1),
-                                                     imu_measurements.at(k));
+      graph.emplace_shared<CombinedImuFactor>(X(k), V(k), X(k + 1), V(k + 1),
+                                              B(k), B(k + 1),
+                                              imu_measurements.at(k));
     }
+    return graph;
   }
 
   /**
@@ -258,22 +277,20 @@ class ContactStateEstimator {
    * @param key1
    * @param state1
    */
-  gtsam::BetweenFactor<gtsam::Point3> footFactor(const gtsam::Key& key0,
-                                                 size_t state0,
-                                                 const gtsam::Key& key1,
-                                                 size_t state1) const {
-    gtsam::Point3 origin_(0.0, 0.0, 0.0);
-    gtsam::SharedNoiseModel tight = gtsam::noiseModel::Diagonal::Sigmas(
-        gtsam::Vector3(0.001, 0.001, 0.001));
-    gtsam::SharedNoiseModel loose =
-        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.3, 0.3, 0.3));
+  BetweenFactor<Point3> footFactor(const Key& key0, size_t state0,
+                                   const Key& key1, size_t state1) const {
+    Point3 origin_(0.0, 0.0, 0.0);
+    SharedNoiseModel tight =
+        noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
+    SharedNoiseModel loose =
+        noiseModel::Diagonal::Sigmas(Vector3(0.3, 0.3, 0.3));
 
     if (state0 > 0 && state1 > 0) {
       // Tight constraint in case of ground contact
-      return gtsam::BetweenFactor<gtsam::Point3>(key0, key1, origin_, tight);
+      return BetweenFactor<Point3>(key0, key1, origin_, tight);
     } else {
       // Otherwise, loose BetweenFactor
-      return gtsam::BetweenFactor<gtsam::Point3>(key0, key1, origin_, loose);
+      return BetweenFactor<Point3>(key0, key1, origin_, loose);
     }
   }
 
@@ -281,14 +298,13 @@ class ContactStateEstimator {
    * Add factor for contact state chain (prev_state -> new_state) for the leg
    * specified by `foot_key_fn`.
    */
-  void addLegChain(gtsam::NonlinearFactorGraph& graph,
-                   const function<gtsam::Key(uint64_t)> foot_key_fn,
-                   const gtsam::Point3& initial_foot_position,
-                   const gtsam::SharedNoiseModel& noise_model,
-                   const vector<size_t>& contact_sequence) const {
+  NonlinearFactorGraph addLegChain(
+      const function<Key(uint64_t)> foot_key_fn,
+      const Point3& initial_foot_position, const SharedNoiseModel& noise_model,
+      const vector<size_t>& contact_sequence) const {
+    NonlinearFactorGraph graph;
     // Add prior on initial foot position
-    graph.addPrior<gtsam::Point3>(foot_key_fn(0), initial_foot_position,
-                                  noise_model);
+    graph.addPrior<Point3>(foot_key_fn(0), initial_foot_position, noise_model);
     // Add the rest of the foot evolution chain
     for (size_t k = 0; k < contact_sequence.size() - 1; ++k) {
       size_t prev_contact_state = contact_sequence.at(k),
@@ -296,23 +312,23 @@ class ContactStateEstimator {
       graph.add(footFactor(foot_key_fn(k), prev_contact_state,
                            foot_key_fn(k + 1), contact_state));
     }
+    return graph;
   }
 
   /**
    * Method to create the complete factor graph using IMU factors and
    * Contact Transition factors.
    */
-  gtsam::NonlinearFactorGraph factorGraph(
-      const gtsam::Pose3& initial_state,
-      const gtsam::SharedNoiseModel& noise_model,
-      const vector<gtsam::PreintegratedCombinedMeasurements>& imu_measurements,
-      const vector<pair<gtsam::Point3, gtsam::SharedNoiseModel>>& foot_priors,
+  NonlinearFactorGraph factorGraph(
+      const Pose3& initial_state, const SharedNoiseModel& noise_model,
+      const vector<PreintegratedCombinedMeasurements>& imu_measurements,
+      const vector<pair<Point3, SharedNoiseModel>>& foot_priors,
       const vector<size_t>& contact_sequence) const {
     // Create an empty graph
-    gtsam::NonlinearFactorGraph graph;
+    NonlinearFactorGraph graph;
 
     // Create IMU chain
-    addImuChain(graph, initial_state, noise_model, imu_measurements);
+    graph += addImuChain(initial_state, noise_model, imu_measurements);
 
     // Create leg plates
     for (size_t i = 0; i < foot_key_fns.size(); ++i) {
@@ -320,8 +336,8 @@ class ContactStateEstimator {
       for (auto&& state : contact_sequence) {
         new_contact_sequence.push_back(state & size_t(pow(S, i)));
       }
-      addLegChain(graph, foot_key_fns.at(i), foot_priors.at(i).first,
-                  foot_priors.at(i).second, new_contact_sequence);
+      graph += addLegChain(foot_key_fns.at(i), foot_priors.at(i).first,
+                           foot_priors.at(i).second, new_contact_sequence);
     }
 
     return graph;
@@ -442,17 +458,7 @@ boost::shared_ptr<PreintegratedCombinedMeasurements::Params> imuParams(
 
 // Test one invocation of the estimator
 TEST(ContactStateEstimator, Invoke) {
-  // Load the A1 robot
-  Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/a1.urdf");
-
-  const string base_name = "trunk";  //"pelvis";
-
-  // Foot contact links are FL_lower, FR_lower, RL_lower and RR_lower
-  // trunk_link -> hip_joint -> hip_link -> upper_joint -> upper_link ->
-  // lower_joint -> lower_link
-  vector<string> foot_links = {"FR_lower", "FL_lower", "RR_lower", "RL_lower"};
-
-  ContactStateEstimator estimator(robot, foot_links, base_name, 2);
+  ContactStateEstimator estimator(robot, lower_links, base_link_name, 2);
 
   CsvData csvData =
       readCsvData("/home/varun/borglab/motion_imitation/a1_data.csv");
@@ -479,68 +485,74 @@ TEST(ContactStateEstimator, Invoke) {
 
   // Set of base and leg states at initial time 0 for the fixed-lag smoother.
   Values expected_continuous_states_0;
-  Pose3 p = getPose(data, 0);
+  Pose3 p = getPose(data, 0) * robot.getLinkByName(base_link_name)->lTcom();
   NavState state_0(p.rotation(), p.translation(), Point3::Zero());
   expected_continuous_states_0.insert(X(0), state_0);
   expected_continuous_states_0.insert(
-      FR(0), Pose3(Rot3::Quaternion(8.98517341e-01, 7.72794163e-05,
-                                    -4.38938014e-01, -3.77520522e-05),
-                   Point3(0.18113069, -0.13200813, 0.01055)));
+      FR(0), Pose3(Rot3::Quaternion(8.96462182e-01, -1.93800697e-04,
+                                    -4.43119974e-01, 8.13348341e-05),
+                   Point3(0.03447161, -0.12761532, 0.1427124)) *
+                 robot.getLinkByName("FR_lower")->lTcom());
+
   expected_continuous_states_0.insert(
-      FL(0), Pose3(Rot3::Quaternion(8.98103210e-01, 7.80407795e-05,
-                                    -4.39784739e-01, -3.82151444e-05),
-                   Point3(0.18149377, 0.13209228, 0.01070472)));
+      FL(0), Pose3(Rot3::Quaternion(8.96044111e-01, -1.92925155e-04,
+                                    -4.43964760e-01, 8.11309202e-05),
+                   Point3(0.03461184, 0.13648479, 0.14241265)) *
+                 robot.getLinkByName("FL_lower")->lTcom());
   expected_continuous_states_0.insert(
-      RR(0), Pose3(Rot3::Quaternion(8.83723084e-01, 6.17210208e-05,
-                                    -4.68010156e-01, -3.26867829e-05),
-                   Point3(-0.17143847, -0.13201645, 0.0)));
+      RR(0), Pose3(Rot3::Quaternion(8.81532617e-01, -2.05365878e-04,
+                                    -4.72122859e-01, 9.51115317e-05),
+                   Point3(-0.32569342, -0.12761457, 0.13209494)) *
+                 robot.getLinkByName("RR_lower")->lTcom());
   expected_continuous_states_0.insert(
-      RL(0), Pose3(Rot3::Quaternion(8.83632450e-01, 6.04441652e-05,
-                                    -4.68181256e-01, -3.20255613e-05),
-                   Point3(-0.17145204, 0.13208284, 0.0)));
+      RL(0), Pose3(Rot3::Quaternion(8.81441187e-01, -2.06621107e-04,
+                                    -4.72293535e-01, 9.58185374e-05),
+                   Point3(-0.32574409, 0.13648506, 0.13203046)) *
+                 robot.getLinkByName("RL_lower")->lTcom());
+
+  DiscreteFactor::Values expected_contact_sequence_0;
+  expected_contact_sequence_0[C(0)] = 15;
 
   // Compare expected sequence with the actual sequence.
   EXPECT(assert_equal(expected_continuous_states_0.at<NavState>(X(0)),
                       estimate_0.continuousStates().at<NavState>(X(0)), 1e-2));
   EXPECT(assert_equal(expected_continuous_states_0,
-                      estimate_0.continuousStates(), 1e-2));
-  // EXPECT(assert_equal(expected_contact_sequence,
-  // estimate_1.contactSequence())); EXPECT(assert_equal(Point3(-0.00274313,
-  // 0.0023002, 0.26228938), estimate_0.t,
-  //                     1e-2));
+                      estimate_0.continuousStates(), 1e-1));
+  EXPECT(
+      assert_equal(expected_contact_sequence_0, estimate_0.contactSequence()));
 
-  // // Measurement object containing IMU measurement between state 0 and 1, and
-  // // joint angles at timestep 1.
-  // auto imu_params = imuParams();
-  // imuBias::ConstantBias prior_imu_bias;  // assume zero initial bias
-  // PreintegratedCombinedMeasurements imu_measurements(imu_params,
-  //                                                    prior_imu_bias);
-  // size_t time_idx = 0;  // The time index
-  // double frequency = 500;
-  // double dt = 1 / frequency;
-  // for (size_t t = time_idx; t < time_idx + frequency; t++) {
-  //   Vector3 measuredOmega(data[t][10], data[t][11], data[t][12]);
-  //   Vector3 measuredAcc(data[t][13], data[t][14], data[t][15]);
+  // Measurement object containing IMU measurement between state 0 and 1, and
+  // joint angles at timestep 1.
+  auto imu_params = imuParams();
+  imuBias::ConstantBias prior_imu_bias;  // assume zero initial bias
+  PreintegratedCombinedMeasurements imu_measurements(imu_params,
+                                                     prior_imu_bias);
+  size_t time_idx = 0;  // The time index
+  double frequency = 500;
+  double dt = 1 / frequency;
+  for (size_t t = time_idx; t < time_idx + frequency; t++) {
+    Vector3 measuredOmega(data[t][10], data[t][11], data[t][12]);
+    Vector3 measuredAcc(data[t][13], data[t][14], data[t][15]);
 
-  //   imu_measurements.integrateMeasurement(measuredAcc, measuredOmega, dt);
-  // }
-  // time_idx += frequency;
+    imu_measurements.integrateMeasurement(measuredAcc, measuredOmega, dt);
+  }
+  time_idx += frequency;
 
-  // JointValues joint_angles_1 = getJointAngles(header, data, time_idx);
-  // ContactStateEstimator::Measurement measurements_01(imu_measurements,
-  //                                                    joint_angles_1);
+  JointValues joint_angles_1 = getJointAngles(header, data, time_idx);
+  ContactStateEstimator::Measurement measurements_01(imu_measurements,
+                                                     joint_angles_1);
 
-  // // Invoke the fixed lag smoother
-  // ContactStateEstimator::Estimate estimate_1 =
-  //     estimator.run(estimate_0, measurements_01);
+  // Invoke the fixed lag smoother
+  ContactStateEstimator::Estimate estimate_1 =
+      estimator.run(estimate_0, measurements_01);
 
   // EXPECT(assert_equal(getPose(data, time_idx), estimate_1.pose()));
 
   // // State sequence for fixed lag smoothing from previous invocation
-  // gtsam::Values expected_continuous_states_0_to_1;
+  // Values expected_continuous_states_0_to_1;
 
   // // Sequence of discrete contact states
-  gtsam::DiscreteFactor::Values expected_contact_sequence;
+  DiscreteFactor::Values expected_contact_sequence;
   // expected_contact_sequence[C(0)] =
   //     15;  // All feet on the ground at initial time (1111)
   // expected_contact_sequence[C(1)] = 11;  // Foot 2 lifted off the ground
@@ -553,54 +565,158 @@ TEST(ContactStateEstimator, Invoke) {
   // estimate_1.contactSequence()));
 }
 
-pair<gtsam::Pose3, gtsam::SharedNoiseModel> getStatePrior() {
-  return make_pair<gtsam::Pose3, gtsam::SharedNoiseModel>(
-      gtsam::Pose3(),
-      gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6::Ones()));
+// Test zero joint angles state
+TEST(ContactStateEstimator, JointGraph) {
+  ContactStateEstimator estimator(robot, lower_links, base_link_name, 2);
+
+  JointValues joint_angles_0 = {
+      {"FR_hip_joint", 0}, {"FR_upper_joint", 0}, {"FR_lower_joint", 0},
+      {"FL_hip_joint", 0}, {"FL_upper_joint", 0}, {"FL_lower_joint", 0},
+      {"RR_hip_joint", 0}, {"RR_upper_joint", 0}, {"RR_lower_joint", 0},
+      {"RL_hip_joint", 0}, {"RL_upper_joint", 0}, {"RL_lower_joint", 0}};
+
+  size_t time = 0;
+  auto graph = estimator.createJointsGraph(joint_angles_0, time);
+
+  auto base_link_key =
+      PoseKey(robot.getLinkByName(base_link_name)->getID(), time);
+
+  // Assume the base link is at the origin
+  graph.addPrior<Pose3>(base_link_key, Pose3());
+
+  // Creating initial values below.
+  Values initial;
+
+  // Add all the initial link frame poses.
+  for (auto&& link : robot.links()) {
+    initial.insert<Pose3>(PoseKey(link->getID(), time),
+                          link->wTl() * link->lTcom());
+  }
+
+  // Add the initial values for the joint angles.
+  for (auto&& [joint_name, angle] : joint_angles_0) {
+    JointSharedPtr joint = robot.getJointByName(joint_name);
+    initial.insert<JointTyped::JointCoordinate>(
+        JointAngleKey(joint->getID(), time), angle);
+  }
+
+  // Create the optimizer and optimizer
+  LevenbergMarquardtOptimizer optimizer(graph, initial);
+  Values result = optimizer.optimize();
+
+  // Set of base and leg states at initial time 0 for the fixed-lag smoother.
+  Pose3 expected_base_pose(Rot3(), Point3(0, 0, 0.0));
+  Pose3 expected_FR_lower_pose = robot.getLinkByName("FR_lower")->wTl() *
+                                 robot.getLinkByName("FR_lower")->lTcom();
+
+  // Compare expected base pose to optimized one.
+  EXPECT(
+      assert_equal(expected_base_pose, result.at<Pose3>(base_link_key), 1e-2));
+  EXPECT(
+      assert_equal(expected_FR_lower_pose, result.at<Pose3>(FR(time)), 1e-1));
 }
 
-vector<gtsam::PreintegratedCombinedMeasurements> getImuMeasurements() {
-  auto params = gtsam::PreintegrationCombinedParams::MakeSharedU(9.81);
-  gtsam::PreintegratedCombinedMeasurements imu(params);
-  vector<gtsam::PreintegratedCombinedMeasurements> imu_measurements = {imu,
-                                                                       imu};
+// Test zero joint angles state
+TEST(ContactStateEstimator, ZeroAngles) {
+  ContactStateEstimator estimator(robot, lower_links, base_link_name, 2);
+
+  JointValues joint_angles_0 = {
+      {"FR_hip_joint", 0}, {"FR_upper_joint", 0}, {"FR_lower_joint", 0},
+      {"FL_hip_joint", 0}, {"FL_upper_joint", 0}, {"FL_lower_joint", 0},
+      {"RR_hip_joint", 0}, {"RR_upper_joint", 0}, {"RR_lower_joint", 0},
+      {"RL_hip_joint", 0}, {"RL_upper_joint", 0}, {"RL_lower_joint", 0}};
+
+  // Create initial estimate given joint angles, assume all feet on the ground.
+  // The constructor below will create the continuous and the discrete states
+  // for the initial timestep 0.
+  // X is forward, Y is to the left, Z is up.
+  ContactStateEstimator::Estimate estimate_0 =
+      estimator.initialize(joint_angles_0, "RR_lower");
+
+  // Set of base and leg states at initial time 0 for the fixed-lag smoother.
+  Values expected_continuous_states_0;
+  Pose3 p = Pose3(Rot3(), Point3(0, 0, 0.42)) *
+            robot.getLinkByName(base_link_name)->lTcom();
+
+  NavState state_0(p.rotation(), p.translation(), Point3::Zero());
+  expected_continuous_states_0.insert(X(0), state_0);
+  expected_continuous_states_0.insert(
+      FR(0), Pose3(Rot3(), Point3(0.183, -0.13205, 0.22)) *
+                 robot.getLinkByName("FR_lower")->lTcom());
+  expected_continuous_states_0.insert(
+      FL(0), Pose3(Rot3(), Point3(0.183, 0.13205, 0.02)) *
+                 robot.getLinkByName("FL_lower")->lTcom());
+  expected_continuous_states_0.insert(
+      RR(0), Pose3(Rot3(), Point3(-0.183, -0.13205, 0.02)) *
+                 robot.getLinkByName("RR_lower")->lTcom());
+  expected_continuous_states_0.insert(
+      RL(0), Pose3(Rot3(), Point3(-0.183, 0.13205, 0.02)) *
+                 robot.getLinkByName("RL_lower")->lTcom());
+
+  // Compare expected sequence with the actual sequence.
+  EXPECT(assert_equal(expected_continuous_states_0.at<NavState>(X(0)),
+                      estimate_0.continuousStates().at<NavState>(X(0)), 1e-2));
+  // EXPECT(assert_equal(expected_continuous_states_0.at<Pose3>(FR(0)),
+  //                     estimate_0.continuousStates().at<Pose3>(FR(0)), 1e-2));
+}
+
+TEST(ContactStateEstimator, LegKeys) {
+  Robot robot = CreateRobotFromFile(string(URDF_PATH) + "/a1.urdf");
+  vector<string> lower_links = {"FR_lower", "FL_lower", "RR_lower", "RL_lower"};
+
+  EXPECT(assert_equal(
+      PoseKey(robot.getLinkByName(lower_links[0])->getID(), 0).key(), FR(0)));
+  EXPECT(assert_equal(
+      PoseKey(robot.getLinkByName(lower_links[1])->getID(), 0).key(), FL(0)));
+  EXPECT(assert_equal(
+      PoseKey(robot.getLinkByName(lower_links[2])->getID(), 0).key(), RR(0)));
+  EXPECT(assert_equal(
+      PoseKey(robot.getLinkByName(lower_links[3])->getID(), 0).key(), RL(0)));
+}
+
+pair<Pose3, SharedNoiseModel> getStatePrior() {
+  return make_pair<Pose3, SharedNoiseModel>(
+      Pose3(), noiseModel::Diagonal::Sigmas(Vector6::Ones()));
+}
+
+vector<PreintegratedCombinedMeasurements> getImuMeasurements() {
+  auto params = PreintegrationCombinedParams::MakeSharedU(9.81);
+  PreintegratedCombinedMeasurements imu(params);
+  vector<PreintegratedCombinedMeasurements> imu_measurements = {imu, imu};
   return imu_measurements;
 }
 
-vector<pair<gtsam::Point3, gtsam::SharedNoiseModel>> getFootPriors() {
-  vector<pair<gtsam::Point3, gtsam::SharedNoiseModel>> foot_priors;
-  vector<gtsam::Point3> feet = {
-      gtsam::Point3(0.5, -0.2, 0), gtsam::Point3(0.5, 0.2, 0),
-      gtsam::Point3(0.0, -0.2, 0), gtsam::Point3(0.0, 0.2, 0)};
+vector<pair<Point3, SharedNoiseModel>> getFootPriors() {
+  vector<pair<Point3, SharedNoiseModel>> foot_priors;
+  vector<Point3> feet = {Point3(0.5, -0.2, 0), Point3(0.5, 0.2, 0),
+                         Point3(0.0, -0.2, 0), Point3(0.0, 0.2, 0)};
   for (size_t index = 0; index < feet.size(); ++index) {
     foot_priors.emplace_back(
-        feet.at(index),
-        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1, 0.1, 0.01)));
+        feet.at(index), noiseModel::Diagonal::Sigmas(Vector3(0.1, 0.1, 0.01)));
   }
   return foot_priors;
 }
 
 // Test adding IMU chain
 TEST(ContactStateEstimator, AddImuChain) {
-  gtsam::NonlinearFactorGraph graph;
   ContactStateEstimator estimator;
   auto state_prior = getStatePrior();
   auto imu_measurements = getImuMeasurements();
-  estimator.addImuChain(graph, state_prior.first, state_prior.second,
-                        imu_measurements);
+  NonlinearFactorGraph graph = estimator.addImuChain(
+      state_prior.first, state_prior.second, imu_measurements);
 
   EXPECT(assert_equal(4, graph.size()));
 }
 
 // Test adding leg chain
 TEST(ContactStateEstimator, AddLegChain) {
-  gtsam::NonlinearFactorGraph graph;
   ContactStateEstimator estimator;
-  function<gtsam::Key(uint64_t)> foot_key_fn = FL;  // Left-front
+  function<Key(uint64_t)> foot_key_fn = FL;  // Left-front
   vector<size_t> contact_sequence = {1, 1, 0};
   auto foot_priors = getFootPriors();
-  estimator.addLegChain(graph, foot_key_fn, foot_priors[0].first,
-                        foot_priors[0].second, contact_sequence);
+  NonlinearFactorGraph graph =
+      estimator.addLegChain(foot_key_fn, foot_priors[0].first,
+                            foot_priors[0].second, contact_sequence);
 
   EXPECT(assert_equal(3, graph.size()));
 }
@@ -615,7 +731,6 @@ TEST(ContactStateEstimator, FactorGraph) {
   auto graph =
       estimator.factorGraph(state_prior.first, state_prior.second,
                             imu_measurements, foot_priors, contact_sequence);
-  // self.assertIsInstance(graph, gtsam.NonlinearFactorGraph)
   EXPECT(assert_equal(4 + 4 * 3, graph.size()));
 }
 
