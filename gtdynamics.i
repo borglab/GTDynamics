@@ -133,54 +133,108 @@ gtdynamics::Robot CreateRobotFromFile(const std::string file_path,
 
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
-// class Link  {
-//     Link();
+class Link  {
+  Link();
 
-    // gtdynamics::LinkSharedPtr getSharedPtr();
+  gtdynamics::LinkSharedPtr getSharedPtr();
 
-    // int getID() const;
+  int getID() const;
 
-    // const gtsam::Pose3 &wTl() const;
+  const gtsam::Pose3 &wTl() const;
 
-//   /// transfrom from link com frame to link frame
-//   const gtsam::Pose3 &lTcom() const;
+  /// transfrom from link com frame to link frame
+  const gtsam::Pose3 &lTcom() const;
 
-//   /// transform from link com frame to world frame
-//   inline const gtsam::Pose3 wTcom() const;
+  /// transform from link com frame to world frame
+  const gtsam::Pose3 wTcom() const;
 
-//   /// the fixed pose of the link
-//   const gtsam::Pose3 &getFixedPose() const;
+  /// the fixed pose of the link
+  const gtsam::Pose3 &getFixedPose() const;
 
-//   /// whether the link is fixed
-//   bool isFixed() const;
+  /// whether the link is fixed
+  bool isFixed() const;
 
 //   /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
-//   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose);
+// //   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose);
 
-//   /// unfix the link
-//   void unfix();
+  /// unfix the link
+  void unfix();
 
-//   /// return all joints of the link
-//   const std::vector<JointSharedPtr> &getJoints() const;
+  /// return all joints of the link
+  const std::vector<gtdynamics::JointSharedPtr> &getJoints() const;
 
-//   /// Return link name.
-//   std::string name() const;
+  /// Return link name.
+  std::string name() const;
 
-//   /// Return link mass.
-//   double mass() const;
+  /// Return link mass.
+  double mass() const;
 
-//   /// Return center of mass (gtsam::Pose3)
-//   const gtsam::Pose3 &centerOfMass();
+  /// Return center of mass (gtsam::Pose3)
+  const gtsam::Pose3 &centerOfMass();
 
-//   /// Return inertia.
-//   const gtsam::Matrix3 &inertia();
-// };
+  /// Return inertia.
+  const gtsam::Matrix3 &inertia();
+};
 
 /********************** joint **********************/
-// #include <gtdynamics/universal_robot/Joint.h>
-// class Joint {
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/ScrewJointBase.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+virtual class Joint {
 
-// };
+};
+
+class RevoluteJoint {
+    RevoluteJoint(const std::string &name, const gtsam::Pose3 &wTj,
+                const gtdynamics::LinkSharedPtr &parent_link,
+                const gtdynamics::LinkSharedPtr &child_link, const gtdynamics::JointTyped::Parameters &parameters,
+                const gtsam::Vector3 &axis);
+    
+  /// Set the joint's ID.
+  void setID(unsigned char id);
+
+  /// Get the joint's ID.
+  int getID() const;
+
+  /// Transform from the world frame to the joint frame.
+  const Pose3 &wTj() const;
+
+  /// Transform from the joint frame to the parent's center of mass.
+  const Pose3 &jTpcom() const;
+
+  /// Transform from the joint frame to the child's center of mass.
+  const Pose3 &jTccom() const;
+
+  /// Get a gtsam::Key for this joint
+  gtsam::Key getKey() const;
+
+  /// Return joint name.
+  std::string name() const;
+
+  /// Return the connected link other than the one provided.
+  gtdynamics::LinkSharedPtr otherLink(const gtdynamics::LinkSharedPtr &link);
+
+  /// Return the links connected to this joint.
+  std::vector<gtdynamics::LinkSharedPtr> links() const;
+
+  /// Return a shared ptr to the parent link.
+  gtdynamics::LinkSharedPtr parentLink() const;
+
+  /// Return a shared ptr to the child link.
+  gtdynamics::LinkSharedPtr childLink() const;
+
+  /// Return the ID of the parent link.
+  int parentID() const;
+
+  /// Return the ID of the child link.
+  int childID() const;
+
+  /// Return the name of the parent link.
+  std::string parentName();
+
+  /// Return the name of the child link.
+  std::string childName();
+};
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
