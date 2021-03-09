@@ -39,7 +39,7 @@ class WrenchEquivalenceFactor
   using Base =
       gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, JointCoordinate>;
 
-  using JointTypedConstSharedPtr = std::shared_ptr<const JointTyped>;
+  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
   JointTypedConstSharedPtr joint_;
 
  public:

@@ -40,7 +40,7 @@ class PoseFactor
       gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>;
   enum { N = JointTyped::N };
 
-  std::shared_ptr<const JointTyped> joint_;
+  boost::shared_ptr<const JointTyped> joint_;
 
  public:
   /**
@@ -51,7 +51,7 @@ class PoseFactor
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
       : Base(cost_model, wTp_key, wTc_key, q_key),
-        joint_(std::static_pointer_cast<const JointTyped>(joint)) {}
+        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~PoseFactor() {}
 

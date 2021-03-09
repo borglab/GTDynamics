@@ -16,6 +16,8 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <map>
 #include <memory>
 #include <string>
@@ -52,7 +54,7 @@ inline DynamicsSymbol TorqueKey(int j, int t) {
 using JointValues = std::map<std::string, double>;
 
 /// Joint is the base class for a joint connecting two Link objects.
-class Joint : public std::enable_shared_from_this<Joint> {
+class Joint : public boost::enable_shared_from_this<Joint> {
  protected:
   using Pose3 = gtsam::Pose3;
 
@@ -123,15 +125,6 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Joint parameters struct.
   Parameters parameters_;
 
-  /// Transform from the world frame to the joint frame.
-  const Pose3 &wTj() const { return wTj_; }
-
-  /// Transform from the joint frame to the parent's center of mass.
-  const Pose3 &jTpcom() const { return jTpcom_; }
-
-  /// Transform from the joint frame to the child's center of mass.
-  const Pose3 &jTccom() const { return jTccom_; }
-
   /// Abstract method. Return transform of child link com frame w.r.t parent
   /// link com frame
   gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none);
@@ -196,6 +189,15 @@ class Joint : public std::enable_shared_from_this<Joint> {
     return id_;
   }
 
+  /// Transform from the world frame to the joint frame.
+  const Pose3 &wTj() const { return wTj_; }
+
+  /// Transform from the joint frame to the parent's center of mass.
+  const Pose3 &jTpcom() const { return jTpcom_; }
+
+  /// Transform from the joint frame to the child's center of mass.
+  const Pose3 &jTccom() const { return jTccom_; }
+
   /// Get a gtsam::Key for this joint
   gtsam::Key getKey() const { return gtsam::Key(getID()); }
 
@@ -233,10 +235,23 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint parameters.
   const Parameters &parameters() const { return parameters_; }
 
+  bool operator==(const Joint &other) const {
+    return (this->name_ == other.name_ && this->id_ == other.id_ &&
+            this->wTj_.equals(other.wTj_) &&
+            this->jTpcom_.equals(other.jTpcom_) &&
+            this->jTccom_.equals(other.jTccom_) &&
+            this->pMccom_.equals(other.pMccom_));
+  }
+
+  bool operator!=(const Joint &other) const { return !(*this == other); }
+
   friend std::ostream &operator<<(std::ostream &stream, const Joint &j);
 
   friend std::ostream &operator<<(std::ostream &stream,
                                   const JointSharedPtr &j);
+
+  /// Helper print function
+  void print() const { std::cout << *this; }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

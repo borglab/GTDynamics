@@ -30,8 +30,8 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 TEST(Joint, params_constructor_prismatic) {
   auto simple_urdf =
       get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
-  LinkSharedPtr l1 = std::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 = std::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::EffortType::Actuated;
@@ -41,7 +41,7 @@ TEST(Joint, params_constructor_prismatic) {
 
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
-  PrismaticJointSharedPtr j1 = std::make_shared<PrismaticJoint>(
+  PrismaticJointSharedPtr j1 = boost::make_shared<PrismaticJoint>(
       "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, parameters,
       j1_axis);
 
