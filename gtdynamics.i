@@ -92,9 +92,9 @@ class Robot {
 
   void removeJoint(gtdynamics::JointSharedPtr joint);
 
-  gtdynamics::Link* getLinkByName(string name) const;
+  gtdynamics::Link* link(string name) const;
 
-  gtdynamics::Joint* getJointByName(string name) const;
+  gtdynamics::Joint* joint(string name) const;
 
 //   /// For python wrapper
 //   void removeJointByName(const std::string& name);

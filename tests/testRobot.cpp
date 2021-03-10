@@ -35,17 +35,17 @@ TEST(Robot, four_bar_sdf) {
   EXPECT(assert_equal(5, four_bar.links().size()));
   EXPECT(assert_equal(5, four_bar.joints().size()));
 
-  // Test getLinkByName(...) and getJointByName(...)
-  EXPECT(assert_equal("l0", four_bar.getLinkByName("l0")->name()));
-  EXPECT(assert_equal("l1", four_bar.getLinkByName("l1")->name()));
-  EXPECT(assert_equal("l2", four_bar.getLinkByName("l2")->name()));
-  EXPECT(assert_equal("l3", four_bar.getLinkByName("l3")->name()));
-  EXPECT(assert_equal("l4", four_bar.getLinkByName("l4")->name()));
-  EXPECT(assert_equal("j0", four_bar.getJointByName("j0")->name()));
-  EXPECT(assert_equal("j1", four_bar.getJointByName("j1")->name()));
-  EXPECT(assert_equal("j2", four_bar.getJointByName("j2")->name()));
-  EXPECT(assert_equal("j3", four_bar.getJointByName("j3")->name()));
-  EXPECT(assert_equal("j4", four_bar.getJointByName("j4")->name()));
+  // Test link(...) and joint(...)
+  EXPECT(assert_equal("l0", four_bar.link("l0")->name()));
+  EXPECT(assert_equal("l1", four_bar.link("l1")->name()));
+  EXPECT(assert_equal("l2", four_bar.link("l2")->name()));
+  EXPECT(assert_equal("l3", four_bar.link("l3")->name()));
+  EXPECT(assert_equal("l4", four_bar.link("l4")->name()));
+  EXPECT(assert_equal("j0", four_bar.joint("j0")->name()));
+  EXPECT(assert_equal("j1", four_bar.joint("j1")->name()));
+  EXPECT(assert_equal("j2", four_bar.joint("j2")->name()));
+  EXPECT(assert_equal("j3", four_bar.joint("j3")->name()));
+  EXPECT(assert_equal("j4", four_bar.joint("j4")->name()));
 }
 
 TEST(Robot, simple_rr_sdf) {
@@ -58,24 +58,24 @@ TEST(Robot, simple_rr_sdf) {
   EXPECT(assert_equal(3, simple_rr.links().size()));
   EXPECT(assert_equal(2, simple_rr.joints().size()));
 
-  // Test getLinkByName(...) and getJointByName(...)
-  EXPECT(assert_equal("link_0", simple_rr.getLinkByName("link_0")->name()));
-  EXPECT(assert_equal("link_1", simple_rr.getLinkByName("link_1")->name()));
-  EXPECT(assert_equal("link_2", simple_rr.getLinkByName("link_2")->name()));
+  // Test link(...) and joint(...)
+  EXPECT(assert_equal("link_0", simple_rr.link("link_0")->name()));
+  EXPECT(assert_equal("link_1", simple_rr.link("link_1")->name()));
+  EXPECT(assert_equal("link_2", simple_rr.link("link_2")->name()));
 
-  EXPECT(assert_equal("joint_1", simple_rr.getJointByName("joint_1")->name()));
-  EXPECT(assert_equal("joint_2", simple_rr.getJointByName("joint_2")->name()));
+  EXPECT(assert_equal("joint_1", simple_rr.joint("joint_1")->name()));
+  EXPECT(assert_equal("joint_2", simple_rr.joint("joint_2")->name()));
 }
 
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
   Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) +
                                        "/test/four_bar_linkage_pure.sdf");
-  four_bar.removeLink(four_bar.getLinkByName("l2"));
+  four_bar.removeLink(four_bar.link("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
-  EXPECT(four_bar.getLinkByName("l1")->getJoints().size() == 1);
-  EXPECT(four_bar.getLinkByName("l3")->getJoints().size() == 1);
+  EXPECT(four_bar.link("l1")->getJoints().size() == 1);
+  EXPECT(four_bar.link("l3")->getJoints().size() == 1);
 }
 
 TEST(Robot, forwardKinematics) {
@@ -90,7 +90,7 @@ TEST(Robot, forwardKinematics) {
   THROWS_EXCEPTION(simple_robot.forwardKinematics(joint_angles, joint_vels));
 
   // test fk at rest
-  simple_robot.getLinkByName("l1")->fix();
+  simple_robot.link("l1")->fix();
   FKResults fk_results =
       simple_robot.forwardKinematics(joint_angles, joint_vels);
   LinkPoses poses = fk_results.first;
@@ -126,7 +126,7 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_move, twists.at("l2")));
 
   // test fk with moving joint and moving base
-  simple_robot.getLinkByName("l1")->unfix();
+  simple_robot.link("l1")->unfix();
   gtsam::Pose3 T_wl1_float(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, 1, 1));
   gtsam::Pose3 T_wl2_float(gtsam::Rot3::Rx(0), gtsam::Point3(0, 2, 2));
   gtsam::Vector6 V_l1_float, V_l2_float;
@@ -157,7 +157,7 @@ TEST(Robot, forwardKinematics_rpr) {
   joint_vels["joint_3"] = 0;
 
   // test fk at rest
-  rpr_robot.getLinkByName("link_0")->fix();
+  rpr_robot.link("link_0")->fix();
   FKResults fk_results = rpr_robot.forwardKinematics(joint_angles, joint_vels);
   LinkPoses poses = fk_results.first;
   LinkTwists twists = fk_results.second;
@@ -213,7 +213,7 @@ TEST(Robot, forwardKinematics_rpr) {
 TEST(forwardKinematics, four_bar) {
   Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) +
                                        "/test/four_bar_linkage_pure.sdf");
-  four_bar.getLinkByName("l1")->fix();
+  four_bar.link("l1")->fix();
 
   JointValues joint_angles, joint_vels;
   for (JointSharedPtr joint : four_bar.joints()) {

@@ -26,8 +26,8 @@ class TestLink(GtsamTestCase):
         simple_rr = gtd.CreateRobotFromFile(
             "sdfs/test/simple_rr.sdf", "simple_rr_sdf")
 
-        l0 = simple_rr.getLinkByName("link_0")
-        l1 = simple_rr.getLinkByName("link_1")
+        l0 = simple_rr.link("link_0")
+        l1 = simple_rr.link("link_1")
 
         # Both link frames are defined in the world frame.
         self.gtsamAssertEquals(l0.wTl(), Pose3())

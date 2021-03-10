@@ -71,7 +71,7 @@ TEST(File, create_robot_from_file) {
   // Test for reading parameters from a robot created via simple URDF.
   auto simple_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  auto simple_j1 = simple_robot.getJointByName("j1");
+  auto simple_j1 = simple_robot.joint("j1");
 
   EXPECT(assert_equal(-1.57,
                       simple_j1->parameters().scalar_limits.value_lower_limit));
@@ -85,7 +85,7 @@ TEST(File, create_robot_from_file) {
   // torque limit) from a robot created via simple SDF.
   auto simple_rr_robot = CreateRobotFromFile(
       std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  auto simple_rr_j1 = simple_rr_robot.getJointByName("joint_1");
+  auto simple_rr_j1 = simple_rr_robot.joint("joint_1");
 
   EXPECT(assert_equal(0.5, simple_rr_j1->parameters().damping_coefficient));
   EXPECT(assert_equal(10, simple_rr_j1->parameters().velocity_limit));
@@ -95,7 +95,7 @@ TEST(File, create_robot_from_file) {
   // spider.sdf.
   auto spider_robot =
       CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
-  auto spider_knee1 = spider_robot.getJointByName("knee_1");
+  auto spider_knee1 = spider_robot.joint("knee_1");
 
   EXPECT(assert_equal(
       -0.349066, spider_knee1->parameters().scalar_limits.value_lower_limit));
@@ -497,11 +497,11 @@ TEST(Robot, simple_urdf) {
   auto simple_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  EXPECT(assert_equal(1, simple_robot.getLinkByName("l1")->getJoints().size()));
-  EXPECT(assert_equal(1, simple_robot.getLinkByName("l2")->getJoints().size()));
-  EXPECT(simple_robot.getLinkByName("l1")->getID() == 0);
-  EXPECT(simple_robot.getLinkByName("l2")->getID() == 1);
-  EXPECT(simple_robot.getJointByName("j1")->getID() == 0);
+  EXPECT(assert_equal(1, simple_robot.link("l1")->getJoints().size()));
+  EXPECT(assert_equal(1, simple_robot.link("l2")->getJoints().size()));
+  EXPECT(simple_robot.link("l1")->getID() == 0);
+  EXPECT(simple_robot.link("l2")->getID() == 1);
+  EXPECT(simple_robot.joint("j1")->getID() == 0);
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -511,9 +511,9 @@ TEST(Robot, simple_urdf) {
   EXPECT(simple_robot.numJoints() == 1);
 
   // Check link and joint names.
-  EXPECT(assert_equal("l1", simple_robot.getLinkByName("l1")->name()));
-  EXPECT(assert_equal("l2", simple_robot.getLinkByName("l2")->name()));
-  EXPECT(assert_equal("j1", simple_robot.getJointByName("j1")->name()));
+  EXPECT(assert_equal("l1", simple_robot.link("l1")->name()));
+  EXPECT(assert_equal("l2", simple_robot.link("l2")->name()));
+  EXPECT(assert_equal("j1", simple_robot.joint("j1")->name()));
 
   // Check transforms between link CoM frames.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),

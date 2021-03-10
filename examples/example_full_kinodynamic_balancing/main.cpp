@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
   double sigma_objectives = 1e-3;  // Variance of additional objectives.
 
   // Specify boundary conditions for base and joints.
-  gtsam::Pose3 base_pose_init = vision60.getLinkByName("body")->wTcom();
+  gtsam::Pose3 base_pose_init = vision60.link("body")->wTcom();
   gtsam::Vector6 base_twist_init = gtsam::Vector6::Zero(),
                  base_twist_final = gtsam::Vector6::Zero(),
                  base_accel_init = gtsam::Vector6::Zero(),
@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
       vision60, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal,
       gravity, boost::none, contact_points, mu);
 
-  auto base_link = vision60.getLinkByName("body");
+  auto base_link = vision60.link("body");
   gtsam::NonlinearFactorGraph objective_factors;
 
   // Add certain poses to be reached.
