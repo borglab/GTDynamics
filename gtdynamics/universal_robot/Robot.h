@@ -92,7 +92,7 @@ class Robot {
   /// Return number of joints.
   int numJoints() const;
 
-  // print links and joints of the robot, for debug purposes
+  /// Print links and joints of the robot, for debug purposes
   void print() const;
 
   /**

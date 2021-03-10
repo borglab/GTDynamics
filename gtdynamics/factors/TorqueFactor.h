@@ -36,7 +36,7 @@ class TorqueFactor
   using JointTorque = typename JointTyped::JointTorque;
   using This = TorqueFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque>;
-  using MyJointConstSharedPtr = std::shared_ptr<const JointTyped>;
+  using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
   MyJointConstSharedPtr joint_;
 
  public:

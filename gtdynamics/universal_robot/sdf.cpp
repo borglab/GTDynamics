@@ -75,7 +75,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link = std::make_shared<Link>(*sdf.LinkByIndex(i));
+    LinkSharedPtr link = boost::make_shared<Link>(*sdf.LinkByIndex(i));
     link->setID(i);
     name_to_link.emplace(link->name(), link);
   }
@@ -110,17 +110,17 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
     switch (sdf_joint.Type()) {
       case sdf::JointType::PRISMATIC:
-        joint = std::make_shared<PrismaticJoint>(name, wTj, parent_link,
-                                                 child_link, parameters, axis);
+        joint = boost::make_shared<PrismaticJoint>(
+            name, wTj, parent_link, child_link, parameters, axis);
         break;
       case sdf::JointType::REVOLUTE:
-        joint = std::make_shared<RevoluteJoint>(name, wTj, parent_link,
-                                                child_link, parameters, axis);
+        joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
+                                                  child_link, parameters, axis);
         break;
       case sdf::JointType::SCREW:
-        joint = std::make_shared<ScrewJoint>(name, wTj, parent_link, child_link,
-                                             parameters, axis,
-                                             sdf_joint.ThreadPitch());
+        joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link,
+                                               child_link, parameters, axis,
+                                               sdf_joint.ThreadPitch());
         break;
       default:
         throw std::runtime_error("Joint type for [" + name +
