@@ -48,6 +48,32 @@ class TwistFactor {
 // };
 
 
+/********************** link **********************/
+#include <gtdynamics/universal_robot/Link.h>
+class Link  {
+    Link();
+    gtdynamics::Link* getSharedPtr();
+    int getID() const;
+    const gtsam::Pose3 &wTl() const;
+    const gtsam::Pose3 &lTcom() const;
+    const gtsam::Pose3 wTcom() const;
+    const gtsam::Pose3 &getFixedPose() const;
+    bool isFixed() const;
+    void fix();
+    void fix(gtsam::Pose3 & fixed_pose);
+    void unfix();
+    // const std::vector<Joint*> &getJoints() const; // TODO!
+    string name() const;
+    double mass() const;
+    const gtsam::Pose3 &centerOfMass();
+    const matrix &inertia();
+};
+
+/********************** joint **********************/
+#include <gtdynamics/universal_robot/Joint.h>
+class Joint {
+
+};
 
 /********************** robot **********************/
 
@@ -66,9 +92,9 @@ class Robot {
 
   void removeJoint(gtdynamics::JointSharedPtr joint);
 
-  gtdynamics::LinkSharedPtr getLinkByName(std::string name) const;
+  gtdynamics::Link* getLinkByName(string name) const;
 
-  gtdynamics::JointSharedPtr getJointByName(std::string name) const;
+  gtdynamics::Joint* getJointByName(string name) const;
 
 //   /// For python wrapper
 //   void removeJointByName(const std::string& name);
@@ -129,58 +155,6 @@ class Robot {
 #include <gtdynamics/universal_robot/sdf.h>
 gtdynamics::Robot CreateRobotFromFile(const std::string file_path, 
                                     std::string model_name);
-
-
-/********************** link **********************/
-#include <gtdynamics/universal_robot/Link.h>
-// class Link  {
-//     Link();
-
-    // gtdynamics::LinkSharedPtr getSharedPtr();
-
-    // int getID() const;
-
-    // const gtsam::Pose3 &wTl() const;
-
-//   /// transfrom from link com frame to link frame
-//   const gtsam::Pose3 &lTcom() const;
-
-//   /// transform from link com frame to world frame
-//   inline const gtsam::Pose3 wTcom() const;
-
-//   /// the fixed pose of the link
-//   const gtsam::Pose3 &getFixedPose() const;
-
-//   /// whether the link is fixed
-//   bool isFixed() const;
-
-//   /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
-//   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose);
-
-//   /// unfix the link
-//   void unfix();
-
-//   /// return all joints of the link
-//   const std::vector<JointSharedPtr> &getJoints() const;
-
-//   /// Return link name.
-//   std::string name() const;
-
-//   /// Return link mass.
-//   double mass() const;
-
-//   /// Return center of mass (gtsam::Pose3)
-//   const gtsam::Pose3 &centerOfMass();
-
-//   /// Return inertia.
-//   const gtsam::Matrix3 &inertia();
-// };
-
-/********************** joint **********************/
-// #include <gtdynamics/universal_robot/Joint.h>
-// class Joint {
-
-// };
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
