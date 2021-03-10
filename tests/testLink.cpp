@@ -24,9 +24,7 @@
 using namespace gtdynamics;
 using gtsam::assert_equal;
 
-/**
- * Construct the same link via Params and ensure all values are as expected.
- */
+// Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
   Link::Params parameters;
   parameters.mass = 100;
@@ -67,6 +65,7 @@ TEST(Link, params_constructor) {
   EXPECT(assert_equal(0, l1->getJoints().size()));
 }
 
+// Check the links in the simple RR robot.
 TEST(Link, sdf_constructor) {
   auto model =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");

@@ -9,7 +9,7 @@
  * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
 """
 
-# pylint: disable=no-name-in-module, import-error
+# pylint: disable=no-name-in-module, import-error, no-member
 import unittest
 
 import numpy as np
@@ -21,7 +21,7 @@ import gtdynamics as gtd
 
 class TestLink(GtsamTestCase):
     def test_params_constructor(self):
-        """ Construct a Revolute joint via Parameters and ensure all values are as expected."""
+        """Check the links in the simple RR robot."""
         # load example robot
         simple_rr = gtd.CreateRobotFromFile(
             "sdfs/test/simple_rr.sdf", "simple_rr_sdf")
