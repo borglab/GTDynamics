@@ -30,7 +30,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 TEST(InitializeSolutionUtils, Interpolation) {
   using simple_urdf::my_robot;
-  auto l1 = my_robot.getLinkByName("l1");
+  auto l1 = my_robot.link("l1");
 
   Pose3 wTb_i;
   Pose3 wTb_f(Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2), Point3(1, 1, 1));
@@ -61,8 +61,8 @@ TEST(InitializeSolutionUtils, Interpolation) {
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   using simple_urdf_eq_mass::my_robot;
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   Pose3 wTb_i;
   std::vector<Pose3> wTb_t = {

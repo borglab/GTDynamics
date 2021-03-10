@@ -29,8 +29,8 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  */
 TEST(Joint, params_constructor) {
   using simple_urdf::my_robot;
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   using gtdynamics::Joint;
   gtdynamics::ScrewJointBase::Parameters parameters;
