@@ -591,7 +591,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::targetAngleFactors(
     const Robot &robot, const int t, const std::string &joint_name,
     const double target_angle) const {
   NonlinearFactorGraph graph;
-  int j = robot.getJointByName(joint_name)->getID();
+  int j = robot.joint(joint_name)->getID();
   graph.add(gtsam::PriorFactor<double>(JointAngleKey(j, t), target_angle,
                                        opt_.prior_q_cost_model));
   return graph;
@@ -601,7 +601,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::targetPoseFactors(
     const Robot &robot, const int t, const std::string &link_name,
     const gtsam::Pose3 &target_pose) const {
   NonlinearFactorGraph graph;
-  int i = robot.getLinkByName(link_name)->getID();
+  int i = robot.link(link_name)->getID();
   graph.add(gtsam::PriorFactor<gtsam::Pose3>(PoseKey(i, t), target_pose,
                                              opt_.bp_cost_model));
   return graph;

@@ -270,8 +270,7 @@ class Trajectory {
     ContactPoints wc_cps = walk_cycle_.allContactPoints();
     for (auto &&cp : wc_cps) {
       LinkSharedPtr link =
-          walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
-              cp.first);
+          walk_cycle_.phases().at(0).getRobotConfiguration().link(cp.first);
       prev_cp.insert(std::make_pair(
           cp.first,
           (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
@@ -292,8 +291,7 @@ class Trajectory {
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link =
-        walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
-            link_name);
+        walk_cycle_.phases().at(0).getRobotConfiguration().link(link_name);
     gtsam::Key pose_key = PoseKey(link->getID(), t);
     gtsam::Pose3 comTp = gtsam::Pose3(
         gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);

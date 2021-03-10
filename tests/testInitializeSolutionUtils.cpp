@@ -42,26 +42,26 @@ TEST(InitializeSolutionUtils, Interpolation) {
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-  gtsam::Pose3 T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 0));
+  gtsam::Pose3 T =
+      init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 0));
   EXPECT(assert_equal(wTb_i, T));
 
-  gtsam::Pose3 T_1 = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 5));
+  gtsam::Pose3 T_1 =
+      init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 5));
   gtsam::Pose3 T_2 =
       gtsam::Pose3(wTb_i.rotation().slerp(0.5, wTb_f.rotation()),
                    gtsam::Point3(0.136439103437, 0.863560896563, 0.5));
   EXPECT(assert_equal(T_2, T_1));
 
   T_1 = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final - 1));
+      PoseKey(my_robot.link("l1")->getID(), n_steps_final - 1));
   T_2 = gtsam::Pose3(
       wTb_i.rotation().slerp(0.9, wTb_f.rotation()),
       gtsam::Point3(0.794193007439, 1.03129011851, 0.961521708273));
   EXPECT(assert_equal(T_1, T_2));
 
   T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), n_steps_final));
+      PoseKey(my_robot.link("l1")->getID(), n_steps_final));
   EXPECT(assert_equal(wTb_f, T));
 }
 
@@ -79,29 +79,25 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   gtsam::Values init_vals = InitializeSolutionInterpolationMultiPhase(
       my_robot, "l1", wTb_i, wTb_t, ts, dt);
 
-  gtsam::Pose3 T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 0));
+  gtsam::Pose3 T =
+      init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 0));
   EXPECT(assert_equal(wTb_i, T));
 
-  T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l2")->getID(), 0));
+  T = init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l2")->getID(), 0));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, 0),
                                    gtsam::Point3(0, -1, 1)),
                       T, 1e-3));
 
-  T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 5));
+  T = init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 5));
   EXPECT(assert_equal(wTb_t[0], T));
 
-  T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 9));
+  T = init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 9));
   EXPECT(assert_equal(
       gtsam::Pose3(wTb_t[0].rotation().slerp(0.8, wTb_t[1].rotation()),
                    gtsam::Point3(1.83482681927, 1.03475261944, 1.1679796246)),
       T));
 
-  T = init_vals.at<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("l1")->getID(), 10));
+  T = init_vals.at<gtsam::Pose3>(PoseKey(my_robot.link("l1")->getID(), 10));
   EXPECT(assert_equal(wTb_t[1], T));
 }
 
@@ -109,8 +105,8 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   gtsam::Pose3 wTb_i = l2->wTcom();
   std::vector<gtsam::Pose3> wTb_t = {
@@ -165,7 +161,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   EXPECT(assert_equal(0.0, T.translation().z(), 1e-3));
 
   double joint_angle = init_vals.atDouble(
-      JointAngleKey(my_robot.getJointByName("j1")->getID(), 0));
+      JointAngleKey(my_robot.joint("j1")->getID(), 0));
   EXPECT(assert_equal(0.0, joint_angle, 1e-3));
 
   for (int t = 0; t <= std::roundl(ts[0] / dt); t++) {
@@ -185,8 +181,8 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   gtsam::Pose3 wTb_i = l2->wTcom();
 
@@ -213,8 +209,8 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   gtsam::Pose3 wTb_i = l2->wTcom();
 
@@ -243,8 +239,8 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   auto my_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = my_robot.getLinkByName("l1");
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l1 = my_robot.link("l1");
+  auto l2 = my_robot.link("l2");
 
   gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
 

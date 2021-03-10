@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
 
   // Compute coefficients for cubic spline from current robot position
   // to final position using hermite parameterization.
-  gtsam::Pose3 wTb_i = vision60.getLinkByName("body")->wTcom();
+  gtsam::Pose3 wTb_i = vision60.link("body")->wTcom();
   gtsam::Pose3 wTb_f = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0.1));
   gtsam::Vector3 x_0_p = (gtsam::Vector(3) << 1, 0, 0).finished();
   gtsam::Vector3 x_0_p_traj = (gtsam::Vector(3) << 1.0, 0, 0.4).finished();
@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
   gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0.14, 0, 0));
   for (auto &&leg : swing_sequence)
     bTfs.insert(std::make_pair(
-        leg, wTb_i.inverse() * (vision60.getLinkByName(leg)->wTcom() * comTc)));
+        leg, wTb_i.inverse() * (vision60.link(leg)->wTcom() * comTc)));
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -274,12 +274,12 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(vision60.getLinkByName("body")->getID(), ti), tposes["body"],
+        PoseKey(vision60.link("body")->getID(), ti), tposes["body"],
         gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
     for (auto &&leg : swing_sequence)
-      kfg.add(PointGoalFactor(PoseKey(vision60.getLinkByName(leg)->getID(), ti),
+      kfg.add(PointGoalFactor(PoseKey(vision60.link(leg)->getID(), ti),
                               gtsam::noiseModel::Constrained::All(3), comTc,
                               tposes[leg].translation()));
 

@@ -46,7 +46,7 @@ class Phase {
   void addContactPoint(const std::string& link, const gtsam::Point3& point,
                        double contact_height) {
     // Check if link exists in the robot
-    robot_configuration_.getLinkByName(link);
+    robot_configuration_.link(link);
 
     auto ret =
         contact_points_.emplace(link, ContactPoint{point, 0, contact_height});

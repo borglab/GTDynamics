@@ -56,7 +56,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass) {
   joint_torques["j1"] = 1;
   joint_accels["j1"] = 4;
   std::string prior_link_name = "l1";
-  auto l1 = my_robot.getLinkByName(prior_link_name);
+  auto l1 = my_robot.link(prior_link_name);
   gtsam::Vector6 V_l1 = gtsam::Vector6::Zero();
   auto fk_results = my_robot.forwardKinematics(
       joint_angles, joint_vels, prior_link_name, l1->wTcom(), V_l1);
@@ -429,12 +429,12 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   // Specify pose and twist priors for one leg.
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("link_0")->getID(), 0),
-      my_robot.getLinkByName("link_0")->wTcom(),
+      PoseKey(my_robot.link("link_0")->getID(), 0),
+      my_robot.link("link_0")->wTcom(),
       gtsam::noiseModel::Constrained::All(6)));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(my_robot.getLinkByName("link_0")->getID(), 0),
-      gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
+      TwistKey(my_robot.link("link_0")->getID(), 0), gtsam::Vector6::Zero(),
+      gtsam::noiseModel::Constrained::All(6)));
   graph.add(prior_factors);
 
   // Add min torque factor.
@@ -452,7 +452,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   Values results = optimizer.optimize();
   //   std::cout << "Error: " << graph.error(results) << std::endl;
 
-  LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
+  LinkSharedPtr l0 = my_robot.link("link_0");
 
   auto contact_wrench_key =
       ContactWrenchKey(l0->getID(), contact_points["link_0"].id, 0);
@@ -497,7 +497,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
                                           joint_accels);
 
   // Specify pose and twist priors for base.
-  auto body = biped.getLinkByName("body");
+  auto body = biped.link("body");
   prior_factors.add(
       gtsam::PriorFactor<gtsam::Pose3>(PoseKey(body->getID(), 0), body->wTcom(),
                                        graph_builder.opt().bp_cost_model));
@@ -527,7 +527,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
-    LinkSharedPtr l = biped.getLinkByName("lower0");
+    LinkSharedPtr l = biped.link("lower0");
     auto contact_wrench_key =
         ContactWrenchKey(l->getID(), contact_point.second.id, 0);
     gtsam::Vector contact_wrench_optimized =
@@ -584,12 +584,12 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Specify pose and twist priors for one leg.
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(my_robot.getLinkByName("link_0")->getID(), 0),
-      my_robot.getLinkByName("link_0")->wTcom(),
+      PoseKey(my_robot.link("link_0")->getID(), 0),
+      my_robot.link("link_0")->wTcom(),
       gtsam::noiseModel::Constrained::All(6)));
   prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(my_robot.getLinkByName("link_0")->getID(), 0),
-      gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6)));
+      TwistKey(my_robot.link("link_0")->getID(), 0), gtsam::Vector6::Zero(),
+      gtsam::noiseModel::Constrained::All(6)));
   graph.add(prior_factors);
 
   // Add min torque factor.
@@ -607,7 +607,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   Values results = optimizer.optimize();
   std::cout << "Error: " << graph.error(results) << std::endl;
 
-  LinkSharedPtr l0 = my_robot.getLinkByName("link_0");
+  LinkSharedPtr l0 = my_robot.link("link_0");
 
   auto contact_wrench_key =
       ContactWrenchKey(l0->getID(), contact_points["link_0"].id, 0);

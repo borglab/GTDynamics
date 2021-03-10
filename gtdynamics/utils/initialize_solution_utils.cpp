@@ -70,7 +70,7 @@ Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
   auto fk_results =
       robot.forwardKinematics(joint_angles, joint_velocities, link_name, wTl_i);
   for (auto&& pose_result : fk_results.first) {
-    values.insert(PoseKey(robot.getLinkByName(pose_result.first)->getID(), t),
+    values.insert(PoseKey(robot.link(pose_result.first)->getID(), t),
                   pose_result.second);
   }
   return values;
@@ -207,7 +207,7 @@ Values InitializeSolutionInverseKinematics(
     gtsam::NonlinearFactorGraph kfg =
         dgb.qFactors(robot, t, gravity, contact_points);
     kfg.add(gtsam::PriorFactor<Pose3>(
-        PoseKey(robot.getLinkByName(link_name)->getID(), t), wTl_dt[t],
+        PoseKey(robot.link(link_name)->getID(), t), wTl_dt[t],
         gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
@@ -318,8 +318,8 @@ Values MultiPhaseInverseKinematicsTrajectory(
           robots[phase], t, gravity, (*phase_contact_points)[phase]);
 
       kfg.add(gtsam::PriorFactor<Pose3>(
-          PoseKey(robots[phase].getLinkByName(link_name)->getID(), t),
-          wTl_dt[t], gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
+          PoseKey(robots[phase].link(link_name)->getID(), t), wTl_dt[t],
+          gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
 
       gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
       Values results = optimizer.optimize();

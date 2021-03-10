@@ -73,7 +73,7 @@ void Robot::removeJoint(JointSharedPtr joint) {
   name_to_joint_.erase(joint->name());
 }
 
-LinkSharedPtr Robot::getLinkByName(const std::string &name) const {
+LinkSharedPtr Robot::link(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
@@ -88,7 +88,7 @@ Robot Robot::fixLink(const std::string &name) {
   return *this;
 }
 
-JointSharedPtr Robot::getJointByName(const std::string &name) const {
+JointSharedPtr Robot::joint(const std::string &name) const {
   if (name_to_joint_.find(name) == name_to_joint_.end()) {
     throw std::runtime_error("no joint named " + name);
   }
@@ -147,7 +147,7 @@ FKResults Robot::forwardKinematics(
     }
   }
   if (prior_link_name) {
-    root_link = getLinkByName(*prior_link_name);
+    root_link = link(*prior_link_name);
     link_poses[*prior_link_name] =
         prior_link_pose ? *prior_link_pose : gtsam::Pose3();
     link_twists[*prior_link_name] =

@@ -78,13 +78,13 @@ class Robot {
   void removeJoint(JointSharedPtr joint);
 
   /// Return the link corresponding to the input string.
-  LinkSharedPtr getLinkByName(const std::string &name) const;
+  LinkSharedPtr link(const std::string &name) const;
 
   /// Fix the link corresponding to the input string.
   Robot fixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
-  JointSharedPtr getJointByName(const std::string &name) const;
+  JointSharedPtr joint(const std::string &name) const;
 
   /// Return number of *moving* links.
   int numLinks() const;

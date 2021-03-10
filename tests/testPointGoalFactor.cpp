@@ -43,13 +43,11 @@ TEST(PointGoalFactor, error) {
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
-  EXPECT(assert_equal(
-      (gtsam::Vector(3) << 0, 0, 0).finished(),
-      factor.evaluateError(my_robot.getLinkByName("l1")->wTcom())));
+  EXPECT(assert_equal((gtsam::Vector(3) << 0, 0, 0).finished(),
+                      factor.evaluateError(my_robot.link("l1")->wTcom())));
 
-  EXPECT(assert_equal(
-      (gtsam::Vector(3) << 0, 0, 2).finished(),
-      factor.evaluateError(my_robot.getLinkByName("l2")->wTcom())));
+  EXPECT(assert_equal((gtsam::Vector(3) << 0, 0, 2).finished(),
+                      factor.evaluateError(my_robot.link("l2")->wTcom())));
 
   // Make sure linearization is correct
   gtsam::Values values;
@@ -77,7 +75,7 @@ TEST(PointGoalFactor, optimization) {
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Initial link pose.
-  gtsam::Pose3 pose_init = my_robot.getLinkByName("l1")->wTcom();
+  gtsam::Pose3 pose_init = my_robot.link("l1")->wTcom();
   // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose()
   // << std::endl;
 
