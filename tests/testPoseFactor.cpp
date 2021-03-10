@@ -135,7 +135,7 @@ TEST(PoseFactor, breaking_rr) {
   double joint_angle = M_PI / 4;
 
   auto l2 = my_robot.link("l2");
-  auto j1 = std::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
+  auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
       my_robot.joint("j1"));
 
   gtsam::Vector6 screw_axis =
