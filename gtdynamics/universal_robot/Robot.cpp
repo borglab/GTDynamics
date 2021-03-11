@@ -11,11 +11,6 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/universal_robot/Robot.h"
-
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-
 #include <algorithm>
 #include <memory>
 #include <queue>
@@ -24,11 +19,11 @@
 
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 
-using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
-    gtsam::GaussianFactorGraph, gtsam::Vector3;
+using gtsam::Pose3, gtsam::Vector6, gtsam::Vector3;
 
 namespace gtdynamics {
 
@@ -198,82 +193,6 @@ FKResults Robot::forwardKinematics(
     }
   }
   return FKResults(link_poses, link_twists);
-}
-
-NonlinearFactorGraph Robot::qFactors(size_t t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->qFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->qFactors(t, opt));
-  return graph;
-}
-
-NonlinearFactorGraph Robot::vFactors(size_t t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->vFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->vFactors(t, opt));
-  return graph;
-}
-
-NonlinearFactorGraph Robot::aFactors(size_t t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->aFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));
-  return graph;
-}
-
-GaussianFactorGraph Robot::linearFDPriors(size_t t, const JointValues &torques,
-                                          const OptimizerSetting &opt) const {
-  GaussianFactorGraph graph;
-  for (auto &&joint : joints()) graph += joint->linearFDPriors(t, torques, opt);
-  return graph;
-}
-
-GaussianFactorGraph Robot::linearAFactors(
-    size_t t, const std::map<std::string, Pose3> &poses,
-    const std::map<std::string, Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  GaussianFactorGraph graph;
-  for (auto &&joint : joints())
-    graph += joint->linearAFactors(t, poses, twists, joint_angles, joint_vels,
-                                   opt, planar_axis);
-
-  return graph;
-}
-
-NonlinearFactorGraph Robot::dynamicsFactors(
-    size_t t, const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  NonlinearFactorGraph graph;
-  for (auto &&joint : joints())
-    graph.add(joint->dynamicsFactors(t, opt, planar_axis));
-  return graph;
-}
-
-GaussianFactorGraph Robot::linearDynamicsFactors(
-    size_t t, const std::map<std::string, Pose3> &poses,
-    const std::map<std::string, Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  GaussianFactorGraph graph;
-  for (auto &&joint : joints())
-    graph += joint->linearDynamicsFactors(t, poses, twists, joint_angles,
-                                          joint_vels, opt, planar_axis);
-  return graph;
-}
-
-NonlinearFactorGraph Robot::jointLimitFactors(
-    size_t t, const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&joint : joints()) graph.add(joint->jointLimitFactors(t, opt));
-  return graph;
 }
 
 }  // namespace gtdynamics.

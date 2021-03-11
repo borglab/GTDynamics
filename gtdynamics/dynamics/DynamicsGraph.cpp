@@ -94,10 +94,13 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
   }
 
   OptimizerSetting opt_ = OptimizerSetting();
-  graph += robot.linearAFactors(t, poses, twists, joint_angles, joint_vels,
-                                opt_, planar_axis);
-  graph += robot.linearDynamicsFactors(t, poses, twists, joint_angles,
-                                       joint_vels, opt_, planar_axis);
+  for (auto &&joint : robot.joints()) {
+    graph += joint->linearAFactors(t, poses, twists, joint_angles, joint_vels,
+                                   opt_, planar_axis);
+    graph += joint->linearDynamicsFactors(t, poses, twists, joint_angles,
+                                          joint_vels, opt_, planar_axis);
+  }
+
   return graph;
 }
 
@@ -105,7 +108,9 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
                                                   const int t,
                                                   const JointValues &torques) {
   OptimizerSetting opt_ = OptimizerSetting();
-  return robot.linearFDPriors(t, torques, opt_);
+  GaussianFactorGraph graph;
+  for (auto &&joint : robot.joints()) graph += joint->linearFDPriors(t, torques, opt_);
+  return graph;
 }
 
 GaussianFactorGraph DynamicsGraph::linearIDPriors(
@@ -207,7 +212,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  graph.add(robot.qFactors(t, opt_));
+  for (auto &&link : robot.links()) graph.add(link->qFactors(t, opt_));
+  for (auto &&joint : robot.joints()) graph.add(joint->qFactors(t, opt_));
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -239,7 +245,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  graph.add(robot.vFactors(t, opt_));
+  for (auto &&link : robot.links()) graph.add(link->vFactors(t, opt_));
+  for (auto &&joint : robot.joints()) graph.add(joint->vFactors(t, opt_));
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -264,7 +271,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const boost::optional<gtsam::Vector3> &gravity,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  graph.add(robot.aFactors(t, opt_));
+  for (auto &&link : robot.links()) graph.add(link->aFactors(t, opt_));
+  for (auto &&joint : robot.joints()) graph.add(joint->aFactors(t, opt_));
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -338,7 +346,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     }
   }
 
-  graph.add(robot.dynamicsFactors(t, opt_, planar_axis));
+  for (auto &&joint : robot.joints())
+    graph.add(joint->dynamicsFactors(t, opt_, planar_axis));
 
   return graph;
 }
@@ -584,7 +593,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFDPriors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::jointLimitFactors(
     const Robot &robot, const int t) const {
-  return robot.jointLimitFactors(t, opt_);
+  NonlinearFactorGraph graph;
+  for (auto &&joint : robot.joints()) graph.add(joint->jointLimitFactors(t, opt_));
+  return graph;
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::targetAngleFactors(

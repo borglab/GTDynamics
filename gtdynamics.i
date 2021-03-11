@@ -113,43 +113,6 @@ class Robot {
       const boost::optional<std::string> prior_link_name ,
       const boost::optional<gtsam::Pose3> &prior_link_pose ,
       const boost::optional<gtsam::Vector6> &prior_link_twist) const;
-
-  gtsam::NonlinearFactorGraph qFactors(size_t t,
-                                       const gtdynamics::OptimizerSetting &opt) const;
-
-
-  gtsam::NonlinearFactorGraph vFactors(size_t t,
-                                       const gtdynamics::OptimizerSetting &opt) const;
-
-  gtsam::NonlinearFactorGraph aFactors(size_t t,
-                                       const gtdynamics::OptimizerSetting &opt) const;
-
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const gtdynamics::OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const;
-
-  gtsam::NonlinearFactorGraph jointLimitFactors(
-      size_t t, const gtdynamics::OptimizerSetting &opt) const;
-
-  gtsam::GaussianFactorGraph linearFDPriors(size_t t,
-                                            const gtdynamics::JointValues &torques,
-                                            const gtdynamics::OptimizerSetting &opt) const;
-
-  gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
-      const gtdynamics::OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const;
-
-  gtsam::GaussianFactorGraph linearDynamicsFactors(
-      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
-      const gtdynamics::OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
