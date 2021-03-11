@@ -11,6 +11,8 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
+#include "gtdynamics/universal_robot/Robot.h"
+
 #include <algorithm>
 #include <memory>
 #include <queue>
@@ -19,7 +21,6 @@
 
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -162,8 +163,7 @@ FKResults Robot::forwardKinematics(
     const Vector6 V_1 = link_twists.at(link1->name());
     q.pop();
     for (JointSharedPtr joint : link1->getJoints()) {
-      ScrewJointBaseSharedPtr joint_ptr =
-          boost::dynamic_pointer_cast<ScrewJointBase>(joint);
+      auto joint_ptr = boost::dynamic_pointer_cast<ScrewJointBase>(joint);
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());

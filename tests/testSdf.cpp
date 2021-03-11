@@ -119,8 +119,8 @@ TEST(Link, urdf_constructor_link) {
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  RevoluteJointSharedPtr j1 = boost::make_shared<RevoluteJoint>(
-      "j1", wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = boost::make_shared<RevoluteJoint>("j1", wTj, l1, l2, j1_parameters,
+                                              j1_axis);
 
   // get shared ptr
   EXPECT(l1->shared() == l1);
@@ -182,8 +182,8 @@ TEST(Joint, urdf_constructor_revolute) {
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
-  auto j1 = boost::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2, j1_parameters,
-                                            j1_axis);
+  auto j1 = boost::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2,
+                                              j1_parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
@@ -262,7 +262,7 @@ TEST(Joint, sdf_constructor_revolute) {
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::EffortType::Actuated;
   auto j1 = boost::make_shared<RevoluteJoint>("joint_1", j1_wTj, l0, l1,
-                                            j1_parameters, j1_axis);
+                                              j1_parameters, j1_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j1_l0, screw_axis_j1_l1;
@@ -288,7 +288,7 @@ TEST(Joint, sdf_constructor_revolute) {
   const gtsam::Vector3 j2_axis = GetSdfAxis(*model.JointByName("joint_2"));
 
   auto j2 = boost::make_shared<RevoluteJoint>("joint_2", j2_wTj, l1, l2,
-                                            j2_parameters, j2_axis);
+                                              j2_parameters, j2_axis);
 
   // check screw axis
   gtsam::Vector6 screw_axis_j2_l1, screw_axis_j2_l2;
@@ -321,8 +321,8 @@ TEST(Joint, limit_params) {
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
 
-  auto j1 = boost::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2, j1_parameters,
-                                            j1_axis);
+  auto j1 = boost::make_shared<RevoluteJoint>("j1", j1_wTj, l1, l2,
+                                              j1_parameters, j1_axis);
 
   EXPECT(assert_equal(-1.57, j1->parameters().scalar_limits.value_lower_limit));
   EXPECT(assert_equal(1.57, j1->parameters().scalar_limits.value_upper_limit));
@@ -376,7 +376,7 @@ TEST(Joint, urdf_constructor_prismatic) {
 
   // Test constructor.
   auto j1 = boost::make_shared<PrismaticJoint>("j1", wTj, l1, l2, j1_parameters,
-                                             j1_axis);
+                                               j1_axis);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
@@ -455,7 +455,7 @@ TEST(Joint, sdf_constructor_screw) {
   j1_parameters.effort_type = Joint::EffortType::Actuated;
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
 
-  ScrewJointSharedPtr j1 = boost::make_shared<ScrewJoint>(
+  auto j1 = boost::make_shared<ScrewJoint>(
       "joint_1", wTj, l0, l1, j1_parameters, j1_axis,
       model.JointByName("joint_1")->ThreadPitch());
 
@@ -490,8 +490,8 @@ TEST(Robot, simple_urdf) {
   Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
-  RevoluteJointSharedPtr j1 = boost::make_shared<RevoluteJoint>(
-      "j1", wTj, l1, l2, j1_parameters, j1_axis);
+  auto j1 = boost::make_shared<RevoluteJoint>("j1", wTj, l1, l2, j1_parameters,
+                                              j1_axis);
 
   // Initialize Robot instance.
   auto simple_robot =
