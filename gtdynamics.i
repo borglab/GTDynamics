@@ -52,8 +52,8 @@ class TwistFactor {
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
     Link();
-    gtdynamics::Link* getSharedPtr();
-    int getID() const;
+    gtdynamics::Link* shared();
+    int id() const;
     const gtsam::Pose3 &wTl() const;
     const gtsam::Pose3 &lTcom() const;
     const gtsam::Pose3 wTcom() const;

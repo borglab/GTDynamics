@@ -33,7 +33,7 @@ using gtsam::noiseModel::Isotropic;
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
   auto ip = Robot("../inverted_pendulum.urdf");
-  auto j1_id = ip.joint("j1")->getID();
+  auto j1_id = ip.joint("j1")->id();
   ip.fixLink("l1");
   ip.print();
   gtsam::Vector3 gravity(0, 0, -9.8), planar_axis(1, 0, 0);

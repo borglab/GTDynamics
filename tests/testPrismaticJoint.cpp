@@ -46,11 +46,11 @@ TEST(Joint, params_constructor_prismatic) {
       j1_axis);
 
   // get shared ptr
-  EXPECT(j1->getSharedPtr() == j1);
+  EXPECT(j1->shared() == j1);
 
   // get, set ID
   j1->setID(1);
-  EXPECT(j1->getID() == 1);
+  EXPECT(j1->id() == 1);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -91,8 +91,8 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1->parentLink() == l1);
-  EXPECT(j1->childLink() == l2);
+  EXPECT(j1->parent() == l1);
+  EXPECT(j1->child() == l2);
 
   // joint limit
   EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit,

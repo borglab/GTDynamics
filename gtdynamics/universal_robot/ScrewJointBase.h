@@ -231,7 +231,7 @@ class ScrewJointBase : public JointTyped {
     gtsam::Vector1 rhs;
     rhs << torques.at(name());
     // TODO(alejandro): use optimizer settings
-    priors.add(TorqueKey(getID(), t), gtsam::I_1x1, rhs,
+    priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
                gtsam::noiseModel::Constrained::All(1));
     return priors;
   }
@@ -258,7 +258,7 @@ class ScrewJointBase : public JointTyped {
     gtsam::Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
     graph.add(TwistAccelKey(childID(), t), gtsam::I_6x6,
               TwistAccelKey(parentID(), t), -T_i2i1.AdjointMap(),
-              JointAccelKey(getID(), t), -S_i2_j, rhs_tw,
+              JointAccelKey(id(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
     return graph;
@@ -283,21 +283,21 @@ class ScrewJointBase : public JointTyped {
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(childID(), getID(), t), S_i2_j.transpose(),
-              TorqueKey(getID(), t), -gtsam::I_1x1, rhs_torque,
+    graph.add(WrenchKey(childID(), id(), t), S_i2_j.transpose(),
+              TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     gtsam::Vector6 rhs_weq = gtsam::Vector6::Zero();
-    graph.add(WrenchKey(parentID(), getID(), t), gtsam::I_6x6,
-              WrenchKey(childID(), getID(), t), T_i2i1.AdjointMap().transpose(),
+    graph.add(WrenchKey(parentID(), id(), t), gtsam::I_6x6,
+              WrenchKey(childID(), id(), t), T_i2i1.AdjointMap().transpose(),
               rhs_weq, gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(childID(), getID(), t), J_wrench,
+      graph.add(WrenchKey(childID(), id(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
@@ -308,7 +308,7 @@ class ScrewJointBase : public JointTyped {
   gtsam::NonlinearFactorGraph jointLimitFactors(
       size_t t, const OptimizerSetting &opt) const override {
     gtsam::NonlinearFactorGraph graph;
-    auto id = getID();
+    auto id = this->id();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
         JointAngleKey(id, t), opt.jl_cost_model,

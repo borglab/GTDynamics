@@ -138,43 +138,43 @@ int main(int argc, char** argv) {
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(base_link->getID(),
+        PoseKey(base_link->id(),
                 static_cast<int>(std::ceil(des_poses_t[i] / dt))),
         des_poses[i], des_pose_nm));
 
   // Add base boundary conditions to FG.
   objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(base_link->getID(), 0), base_pose_init,
+      PoseKey(base_link->id(), 0), base_pose_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(base_link->getID(), 0), base_twist_init,
+      TwistKey(base_link->id(), 0), base_twist_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistAccelKey(base_link->getID(), 0), base_accel_init,
+      TwistAccelKey(base_link->id(), 0), base_accel_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(base_link->getID(), t_steps), base_twist_final,
+      TwistKey(base_link->id(), t_steps), base_twist_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistAccelKey(base_link->getID(), t_steps), base_accel_final,
+      TwistAccelKey(base_link->id(), t_steps), base_accel_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAngleKey(joint->getID(), 0), 0.0,
+        JointAngleKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), 0), 0.0,
+        JointVelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->getID(), 0), 0.0,
+        JointAccelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), t_steps), 0.0,
+        JointVelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->getID(), t_steps), 0.0,
+        JointAccelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives)));
   }
 
@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_steps; t++) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(MinTorqueFactor(
-          TorqueKey(joint->getID(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
@@ -212,9 +212,9 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   gtsam::Pose3 optimized_pose_init =
-      results.at<gtsam::Pose3>(PoseKey(base_link->getID(), 0));
+      results.at<gtsam::Pose3>(PoseKey(base_link->id(), 0));
   gtsam::Pose3 optimized_pose_final =
-      results.at<gtsam::Pose3>(PoseKey(base_link->getID(), t_steps - 1));
+      results.at<gtsam::Pose3>(PoseKey(base_link->id(), t_steps - 1));
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()
@@ -256,16 +256,16 @@ int main(int argc, char** argv) {
     std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())
       vals.push_back(
-          std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
+          std::to_string(results.atDouble(JointAngleKey(joint->id(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(
-          std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
+          std::to_string(results.atDouble(JointVelKey(joint->id(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(
-          std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
+          std::to_string(results.atDouble(JointAccelKey(joint->id(), t))));
     for (auto&& joint : vision60.joints())
       vals.push_back(
-          std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
+          std::to_string(results.atDouble(TorqueKey(joint->id(), t))));
 
     for (size_t i = 0; i < des_poses.size(); i++) {
       gtsam::Pose3 dp = des_poses[i];

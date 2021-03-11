@@ -83,8 +83,8 @@ TEST(Joint, params_constructor) {
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1.parentLink() == l1);
-  EXPECT(j1.childLink() == l2);
+  EXPECT(j1.parent() == l1);
+  EXPECT(j1.child() == l2);
 
   // joint limit
   EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit,
