@@ -68,8 +68,8 @@ TEST(Link, sdf_constructor) {
   auto model =
       get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  Link l0 = Link(*model.LinkByName("link_0"));
-  Link l1 = Link(*model.LinkByName("link_1"));
+  Link l0 = Link(LinkParamsByName(model, "link_0"));
+  Link l1 = Link(LinkParamsByName(model, "link_1"));
 
   // Both link frames are defined in the world frame.
   EXPECT(assert_equal(Pose3(), l0.wTl()));

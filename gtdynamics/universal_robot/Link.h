@@ -96,26 +96,6 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   Link() {}
 
-  /**
-   * Initialize Link's inertial properties with a sdf::Link instance, as
-   * described in the sdformat8 documentation:
-   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
-   *
-   * @param sdf_link sdf::Link object containing link information.
-   */
-  explicit Link(sdf::Link sdf_link)
-      : name_(sdf_link.Name()),
-        mass_(sdf_link.Inertial().MassMatrix().Mass()),
-        inertia_(
-            (gtsam::Matrix(3, 3) << sdf_link.Inertial().Moi()(0, 0),
-             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
-             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
-             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
-             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2))
-                .finished()),
-        wTl_(parse_ignition_pose(sdf_link.Pose())),
-        lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
-        is_fixed_(false) {}
 
   /**
    * Initialize Link's inertial properties with a Link::Params instance.

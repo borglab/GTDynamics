@@ -24,6 +24,40 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
+sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
+  auto sdf = sdf::readFile(sdf_file_path);
+
+  sdf::Model model = sdf::Model();
+  model.Load(sdf->Root()->GetElement("model"));
+
+  // Check whether this is a world file, in which case we have to first
+  // access the world element then check whether one of its child models
+  // corresponds to model_name.
+  if (model.Name() != "__default__") return model;
+
+  // Load the world element.
+  sdf::World world = sdf::World();
+  world.Load(sdf->Root()->GetElement("world"));
+
+  for (uint i = 0; i < world.ModelCount(); i++) {
+    sdf::Model curr_model = *world.ModelByIndex(i);
+    if (curr_model.Name() == model_name) return curr_model;
+  }
+
+  throw std::runtime_error("Model not found in: " + sdf_file_path);
+}
+
+gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {
+  gtsam::Pose3 parsed_pose =
+      gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
+                       ignition_pose.Rot().W(), ignition_pose.Rot().X(),
+                       ignition_pose.Rot().Y(), ignition_pose.Rot().Z())),
+                   gtsam::Point3(ignition_pose.Pos()[0], ignition_pose.Pos()[1],
+                                 ignition_pose.Pos()[2]));
+
+  return parsed_pose;
+}
+
 Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   Joint::Parameters parameters;
 
@@ -34,6 +68,24 @@ Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   parameters.damping_coefficient = sdf_joint.Axis()->Damping();
 
   return parameters;
+}
+
+Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
+  Link::Params parameters;
+  parameters.name = sdf_link.Name();
+  parameters.mass = sdf_link.Inertial().MassMatrix().Mass();
+  parameters.inertia << sdf_link.Inertial().Moi()(0, 0),
+             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
+             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
+             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
+             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2);
+  parameters.wTl = parse_ignition_pose(sdf_link.Pose());
+  parameters.lTcom = parse_ignition_pose(sdf_link.Inertial().Pose());
+  return parameters;
+}
+
+Link::Params LinkParamsByName(const sdf::Model& sdf_model, const std::string& name) {
+  return ParametersFromSdfLink(*sdf_model.LinkByName(name));
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
@@ -75,7 +127,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link = boost::make_shared<Link>(*sdf.LinkByIndex(i));
+    LinkSharedPtr link = boost::make_shared<Link>(ParametersFromSdfLink(*sdf.LinkByIndex(i)));
     link->setID(i);
     name_to_link.emplace(link->name(), link);
   }
