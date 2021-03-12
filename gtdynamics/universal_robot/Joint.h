@@ -176,7 +176,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   JointSharedPtr shared() { return shared_from_this(); }
 
   /// Return a const shared ptr to this joint.
-  JointConstSharedPtr getConstSharedPtr() const { return shared_from_this(); }
+  JointConstSharedPtr shared() const { return shared_from_this(); }
 
   /// Set the joint's ID.
   void setID(unsigned char id) { id_ = id; }
