@@ -145,8 +145,8 @@ Values DynamicsGraph::linearSolveFD(
   Values values;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    int i1 = joint->parentID();
-    int i2 = joint->childID();
+    int i1 = joint->parent()->id();
+    int i2 = joint->child()->id();
     std::string name = joint->name();
     values.insert(JointAngleKey(j, t), joint_angles.at(name));
     values.insert(JointVelKey(j, t), joint_vels.at(name));
@@ -185,8 +185,8 @@ Values DynamicsGraph::linearSolveID(
   Values values;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    int i1 = joint->parentID();
-    int i2 = joint->childID();
+    int i1 = joint->parent()->id();
+    int i2 = joint->child()->id();
     std::string name = joint->name();
     values.insert(JointAngleKey(j, t), joint_angles.at(name));
     values.insert(JointVelKey(j, t), joint_vels.at(name));
@@ -780,8 +780,8 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
       locations[JointVelKey(j, t)] = corner_location(3.5, j, n);
       locations[JointAccelKey(j, t)] = corner_location(4.5, j, n);
       locations[TorqueKey(j, t)] = corner_location(6, j, n);
-      int i1 = joint->parentID();
-      int i2 = joint->childID();
+      int i1 = joint->parent()->id();
+      int i2 = joint->child()->id();
       locations[WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
       locations[WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
     }
@@ -801,8 +801,8 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
           (gtsam::Vector(3) << j + 0.5, 1.5, 0).finished();
       locations[JointAccelKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 2.5, 0).finished();
-      int i1 = joint->parentID();
-      int i2 = joint->childID();
+      int i1 = joint->parent()->id();
+      int i2 = joint->child()->id();
       locations[WrenchKey(i1, j, t)] =
           (gtsam::Vector(3) << j + 0.25, 3.5, 0).finished();
       locations[WrenchKey(i2, j, t)] =

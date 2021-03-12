@@ -22,6 +22,7 @@
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
@@ -50,8 +51,7 @@ gtsam::NonlinearFactorGraph JointTyped::aFactors(
     size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<TwistAccelFactor>(
-      TwistKey(child_link_->id(), t),
-      TwistAccelKey(parent_link_->id(), t),
+      TwistKey(child_link_->id(), t), TwistAccelKey(parent_link_->id(), t),
       TwistAccelKey(child_link_->id(), t), JointAngleKey(id(), t),
       JointVelKey(id(), t), JointAccelKey(id(), t), opt.a_cost_model,
       boost::static_pointer_cast<const This>(shared()));

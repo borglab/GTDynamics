@@ -13,27 +13,10 @@
 
 #pragma once
 
-#include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/Values.h>
 #include <boost/shared_ptr.hpp>
 
-#include <memory>
-#include <string>
-
-#define LINK_TYPEDEF_CLASS_POINTER(Class)                     \
-  class Class;                                                \
+#define LINK_TYPEDEF_CLASS_POINTER(Class)                       \
+  class Class;                                                  \
   typedef boost::shared_ptr<Class> Class##SharedPtr;            \
   typedef boost::shared_ptr<const Class> Class##ConstSharedPtr; \
   typedef boost::weak_ptr<Class> Class##WeakPtr
-
-namespace gtdynamics {
-
-LINK_TYPEDEF_CLASS_POINTER(Link);
-LINK_TYPEDEF_CLASS_POINTER(Joint);
-LINK_TYPEDEF_CLASS_POINTER(ScrewJointBase);
-LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
-LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
-LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
-
-}  // namespace gtdynamics

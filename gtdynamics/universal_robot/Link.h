@@ -13,6 +13,12 @@
 
 #pragma once
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -29,13 +35,13 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
+
+class Link; // forward declaration
+class Joint; // forward declaration
+
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
 inline DynamicsSymbol PoseKey(int i, int t) {

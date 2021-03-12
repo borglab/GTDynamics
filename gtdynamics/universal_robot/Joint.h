@@ -13,21 +13,29 @@
 
 #pragma once
 
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
 
 namespace gtdynamics {
+
+class Joint;  // forward declaration
+class Link;   // forward declaration
+
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
 
 /// Shorthand for q_j_t, for j-th joint angle at time t.
 inline DynamicsSymbol JointAngleKey(int j, int t) {
@@ -119,6 +127,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Rest transform to parent link com frame from child link com frame at rest.
   Pose3 pMccom_;
 
+  using LinkSharedPtr = boost::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
   LinkSharedPtr child_link_;
 
@@ -135,12 +144,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Check if the link is a child link, throw an error if link is not
   /// connected to this joint.
-  bool isChildLink(const LinkSharedPtr &link) const {
-    if (link != child_link_ && link != parent_link_)
-      throw std::runtime_error("link " + link->name() +
-                               " is not connected to this joint " + name_);
-    return link == child_link_;
-  }
+  bool isChildLink(const LinkSharedPtr &link) const;
 
  public:
   Joint() {}
@@ -156,16 +160,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   Joint(const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-        const Parameters &parameters)
-      : name_(name),
-        wTj_(wTj),
-        parent_link_(parent_link),
-        child_link_(child_link),
-        parameters_(parameters) {
-    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-    jTccom_ = wTj_.inverse() * child_link_->wTcom();
-    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
-  }
+        const Parameters &parameters);
 
   /**
    * @brief Default destructor.
@@ -219,18 +214,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Return a shared ptr to the child link.
   LinkSharedPtr child() const { return child_link_; }
-
-  /// Return the ID of the parent link.
-  int parentID() const { return parent_link_->id(); }
-
-  /// Return the ID of the child link.
-  int childID() const { return child_link_->id(); }
-
-  /// Return the name of the parent link.
-  std::string parentName() const { return parent_link_->name(); }
-
-  /// Return the name of the child link.
-  std::string childName() const { return child_link_->name(); }
 
   /// Return joint parameters.
   const Parameters &parameters() const { return parameters_; }
