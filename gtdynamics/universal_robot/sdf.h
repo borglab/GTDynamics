@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <ignition/math/Pose3.hh>
+#include <sdf/sdf.hh>
+
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"

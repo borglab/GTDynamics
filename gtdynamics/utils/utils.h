@@ -22,8 +22,6 @@
 #include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
-#include <ignition/math/Pose3.hh>
-#include <sdf/sdf.hh>
 #include <string>
 #include <vector>
 
