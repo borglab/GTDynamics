@@ -24,7 +24,8 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-sdf::Model GetSdf(std::string sdf_file_path, std::string model_name) {
+sdf::Model GetSdf(const std::string &sdf_file_path,
+                  const std::string &model_name) {
   auto sdf = sdf::readFile(sdf_file_path);
 
   sdf::Model model = sdf::Model();
@@ -47,15 +48,12 @@ sdf::Model GetSdf(std::string sdf_file_path, std::string model_name) {
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 Pose3FromIgnition(ignition::math::Pose3d ignition_pose) {
-  gtsam::Pose3 parsed_pose =
-      gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
+gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose) {
+  return gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
                        ignition_pose.Rot().W(), ignition_pose.Rot().X(),
                        ignition_pose.Rot().Y(), ignition_pose.Rot().Z())),
                    gtsam::Point3(ignition_pose.Pos()[0], ignition_pose.Pos()[1],
                                  ignition_pose.Pos()[2]));
-
-  return parsed_pose;
 }
 
 Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
@@ -74,11 +72,12 @@ Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
   Link::Params parameters;
   parameters.name = sdf_link.Name();
   parameters.mass = sdf_link.Inertial().MassMatrix().Mass();
-  parameters.inertia << sdf_link.Inertial().Moi()(0, 0),
-             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
-             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
-             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
-             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2);
+  const auto &inertia = sdf_link.Inertial().Moi();
+  parameters.inertia << inertia(0, 0),
+             inertia(0, 1), inertia(0, 2),
+             inertia(1, 0), inertia(1, 1),
+             inertia(1, 2), inertia(2, 0),
+             inertia(2, 1), inertia(2, 2);
   parameters.wTl = Pose3FromIgnition(sdf_link.Pose());
   parameters.lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   return parameters;
@@ -117,7 +116,9 @@ LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link) {
   return boost::make_shared<Link>(ParametersFromSdfLink(sdf_link));
 }
 
-JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPtr& child_link, const sdf::Joint& sdf_joint) {
+JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
+                            const LinkSharedPtr &child_link,
+                            const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
   // Generate a joint parameters struct with values from the SDF.
@@ -148,11 +149,12 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPt
   return joint;
 }
 
-LinkSharedPtr LinkFromSdf(std::string link_name, std::string sdf_file_path, std::string model_name) {
-    auto model = GetSdf(sdf_file_path, model_name);
-    return LinkFromSdf(*model.LinkByName(link_name));
+LinkSharedPtr LinkFromSdf(const std::string &link_name,
+                          const std::string &sdf_file_path,
+                          const std::string &model_name) {
+  auto model = GetSdf(sdf_file_path, model_name);
+  return LinkFromSdf(*model.LinkByName(link_name));
 }
-
 
 /**
  * @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
@@ -221,7 +223,8 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
   throw std::runtime_error("Invalid file extension.");
 }
 
-Robot CreateRobotFromFile(const std::string file_path, std::string model_name) {
+Robot CreateRobotFromFile(const std::string &file_path,
+                          const std::string &model_name) {
   return Robot(ExtractRobotFromFile(file_path, model_name));
 }
 

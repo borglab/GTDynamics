@@ -31,7 +31,8 @@ namespace gtdynamics {
  * sdf_file_path points to a world file.
  * @return SDF Model
  */
-sdf::Model GetSdf(std::string sdf_file_path, std::string model_name = "");
+sdf::Model GetSdf(const std::string &sdf_file_path,
+                  const std::string &model_name = "");
 
 /**
  * @fn Construct a Link class from sdf::Link
@@ -47,7 +48,9 @@ LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link);
  * @param[in] sdf_joint
  * @return LinkSharedPtr 
  */
-JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPtr& child_link, const sdf::Joint& sdf_joint);
+JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
+                            const LinkSharedPtr &child_link,
+                            const sdf::Joint &sdf_joint);
 
 /**
  * @fn Construct a Link from sdf file
@@ -56,14 +59,16 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPt
  * @param[in] model_name name of the robot
  * @return LinkSharedPtr 
  */
-LinkSharedPtr LinkFromSdf(std::string link_name, std::string sdf_file_path, std::string model_name="");
+LinkSharedPtr LinkFromSdf(const std::string &link_name,
+                          const std::string &sdf_file_path,
+                          const std::string &model_name = "");
 
 /**
  * Parse a ignition::math Pose object into a gtsam::Pose.
  *
  * @param ignition_pose An ignition::math::Pose object to be parsed.
  */
-gtsam::Pose3 Pose3FromIgnition(ignition::math::Pose3d ignition_pose);
+gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose);
 
 /**
  * @fn Construct Robot from a urdf or sdf file.
@@ -71,8 +76,8 @@ gtsam::Pose3 Pose3FromIgnition(ignition::math::Pose3d ignition_pose);
  * @param[in] model_name name of the robot we care about. Must be specified in
  *    case sdf_file_path points to a world file.
  */
-Robot CreateRobotFromFile(const std::string file_path,
-                          std::string model_name = "");
+Robot CreateRobotFromFile(const std::string &file_path,
+                          const std::string &model_name = "");
 
 /**
  * @fn Extract joint parameter values from an input sdf::Joint.
