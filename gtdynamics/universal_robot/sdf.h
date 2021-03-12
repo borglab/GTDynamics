@@ -28,14 +28,39 @@ namespace gtdynamics {
  * sdf_file_path points to a world file.
  * @return SDF Model
  */
-sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
+sdf::Model GetSdf(std::string sdf_file_path, std::string model_name = "");
+
+/**
+ * @fn Construct a Link class from sdf::Link
+ * @param[in] sdf_link 
+ * @return LinkSharedPtr 
+ */
+LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link);
+
+/**
+ * @fn Construct a Joint class from sdf::Link
+ * @param[in] parent_link  shared pointer to parent link
+ * @param[in] chlid_link shared pointer to child link
+ * @param[in] sdf_joint
+ * @return LinkSharedPtr 
+ */
+JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPtr& child_link, const sdf::Joint& sdf_joint);
+
+/**
+ * @fn Construct a Link from sdf file
+ * @param[in] link_name  name of the specified link
+ * @param[in] sdf_file_path path to sdf file
+ * @param[in] model_name name of the robot
+ * @return LinkSharedPtr 
+ */
+LinkSharedPtr LinkFromSdf(std::string link_name, std::string sdf_file_path, std::string model_name="");
 
 /**
  * Parse a ignition::math Pose object into a gtsam::Pose.
  *
  * @param ignition_pose An ignition::math::Pose object to be parsed.
  */
-gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
+gtsam::Pose3 Pose3FromIgnition(ignition::math::Pose3d ignition_pose);
 
 /**
  * @fn Construct Robot from a urdf or sdf file.
@@ -63,14 +88,6 @@ Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
  * sdf::Link functions.
  */
 Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link);
-
-/**
- * @fn Extract link parameters for specified link from sdf model
- * @param[in] sdf_model SDF Model
- * @param[in] name name of link
- * @return Link::Params of specified link
- */
-Link::Params LinkParamsByName(const sdf::Model& sdf_model, const std::string& name);
 
 /**
  * @fn Get joint pose defined in world frame from an sdf::Joint object

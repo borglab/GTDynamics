@@ -24,7 +24,7 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
+sdf::Model GetSdf(std::string sdf_file_path, std::string model_name) {
   auto sdf = sdf::readFile(sdf_file_path);
 
   sdf::Model model = sdf::Model();
@@ -47,7 +47,7 @@ sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {
+gtsam::Pose3 Pose3FromIgnition(ignition::math::Pose3d ignition_pose) {
   gtsam::Pose3 parsed_pose =
       gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
                        ignition_pose.Rot().W(), ignition_pose.Rot().X(),
@@ -79,13 +79,9 @@ Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
              sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
              sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
              sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2);
-  parameters.wTl = parse_ignition_pose(sdf_link.Pose());
-  parameters.lTcom = parse_ignition_pose(sdf_link.Inertial().Pose());
+  parameters.wTl = Pose3FromIgnition(sdf_link.Pose());
+  parameters.lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   return parameters;
-}
-
-Link::Params LinkParamsByName(const sdf::Model& sdf_model, const std::string& name) {
-  return ParametersFromSdfLink(*sdf_model.LinkByName(name));
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
@@ -96,14 +92,14 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
     if (sdf_joint.Pose() == ignition::math::Pose3d())
       return child_link->wTl();
     else
-      return child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+      return child_link->wTl() * Pose3FromIgnition(sdf_joint.Pose());
   } else if (frame == parent_link->name()) {
     if (sdf_joint.Pose() == ignition::math::Pose3d())
       return parent_link->wTl();
     else
-      return parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
+      return parent_link->wTl() * Pose3FromIgnition(sdf_joint.Pose());
   } else if (frame == "world") {
-    return parse_ignition_pose(sdf_joint.Pose());
+    return Pose3FromIgnition(sdf_joint.Pose());
   } else {
     // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
     throw std::runtime_error(
@@ -117,6 +113,47 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
+LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link) {
+  return boost::make_shared<Link>(ParametersFromSdfLink(sdf_link));
+}
+
+JointSharedPtr JointFromSdf(const LinkSharedPtr& parent_link, const LinkSharedPtr& child_link, const sdf::Joint& sdf_joint) {
+  JointSharedPtr joint;
+
+  // Generate a joint parameters struct with values from the SDF.
+  Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
+
+  std::string name(sdf_joint.Name());
+  Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
+
+  const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
+  switch (sdf_joint.Type()) {
+    case sdf::JointType::PRISMATIC:
+      joint = boost::make_shared<PrismaticJoint>(
+          name, wTj, parent_link, child_link, parameters, axis);
+      break;
+    case sdf::JointType::REVOLUTE:
+      joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
+                                                child_link, parameters, axis);
+      break;
+    case sdf::JointType::SCREW:
+      joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link,
+                                              child_link, parameters, axis,
+                                              sdf_joint.ThreadPitch());
+      break;
+    default:
+      throw std::runtime_error("Joint type for [" + name +
+                                "] not yet supported");
+  }
+  return joint;
+}
+
+LinkSharedPtr LinkFromSdf(std::string link_name, std::string sdf_file_path, std::string model_name) {
+    auto model = GetSdf(sdf_file_path, model_name);
+    return LinkFromSdf(*model.LinkByName(link_name));
+}
+
+
 /**
  * @fn Construct all Link and Joint objects from an input sdf::ElementPtr.
  * @param sdf_ptr a shared pointer to a sdf::ElementPtr containing the model.
@@ -127,7 +164,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link = boost::make_shared<Link>(ParametersFromSdfLink(*sdf.LinkByIndex(i)));
+    LinkSharedPtr link = LinkFromSdf(*sdf.LinkByIndex(i));
     link->setID(i);
     name_to_link.emplace(link->name(), link);
   }
@@ -151,35 +188,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint;
-
-    // Generate a joint parameters struct with values from the SDF.
-    Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
-
-    std::string name(sdf_joint.Name());
-    Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
-
-    const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
-    switch (sdf_joint.Type()) {
-      case sdf::JointType::PRISMATIC:
-        joint = boost::make_shared<PrismaticJoint>(
-            name, wTj, parent_link, child_link, parameters, axis);
-        break;
-      case sdf::JointType::REVOLUTE:
-        joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
-                                                  child_link, parameters, axis);
-        break;
-      case sdf::JointType::SCREW:
-        joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link,
-                                               child_link, parameters, axis,
-                                               sdf_joint.ThreadPitch());
-        break;
-      default:
-        throw std::runtime_error("Joint type for [" + name +
-                                 "] not yet supported");
-    }
-
-    name_to_joint.emplace(name, joint);
+    JointSharedPtr joint = JointFromSdf(parent_link, child_link, sdf_joint);
+    name_to_joint.emplace(joint->name(), joint);
     joint->setID(j);
 
     // Update list of parent and child links/joints for each Link.
@@ -204,9 +214,9 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
   if (file_ext == "urdf")
-    return ExtractRobotFromSdf(get_sdf(file_path));
+    return ExtractRobotFromSdf(GetSdf(file_path));
   else if (file_ext == "sdf")
-    return ExtractRobotFromSdf(get_sdf(file_path, model_name));
+    return ExtractRobotFromSdf(GetSdf(file_path, model_name));
 
   throw std::runtime_error("Invalid file extension.");
 }

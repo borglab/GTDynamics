@@ -65,11 +65,10 @@ TEST(Link, params_constructor) {
 
 // Check the links in the simple RR robot.
 TEST(Link, sdf_constructor) {
-  auto model =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-
-  Link l0 = Link(LinkParamsByName(model, "link_0"));
-  Link l1 = Link(LinkParamsByName(model, "link_1"));
+  std::string file_path = std::string(SDF_PATH) + "/test/simple_rr.sdf";
+  std::string model_name = "simple_rr_sdf";
+  Link l0 = Link(*LinkFromSdf("link_0", file_path, model_name));
+  Link l1 = Link(*LinkFromSdf("link_1", file_path, model_name));
 
   // Both link frames are defined in the world frame.
   EXPECT(assert_equal(Pose3(), l0.wTl()));
