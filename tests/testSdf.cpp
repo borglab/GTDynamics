@@ -123,11 +123,11 @@ TEST(Link, urdf_constructor_link) {
       "j1", wTj, l1, l2, j1_parameters, j1_axis);
 
   // get shared ptr
-  EXPECT(l1->getSharedPtr() == l1);
+  EXPECT(l1->shared() == l1);
 
   // // get, set ID
   l1->setID(1);
-  EXPECT(l1->getID() == 1);
+  EXPECT(l1->id() == 1);
 
   // name
   EXPECT(assert_equal("l1", l1->name()));
@@ -186,11 +186,11 @@ TEST(Joint, urdf_constructor_revolute) {
                                             j1_axis);
 
   // get shared ptr
-  EXPECT(j1->getSharedPtr() == j1);
+  EXPECT(j1->shared() == j1);
 
   // get, set ID
   j1->setID(1);
-  EXPECT(j1->getID() == 1);
+  EXPECT(j1->id() == 1);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -234,8 +234,8 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1->parentLink() == l1);
-  EXPECT(j1->childLink() == l2);
+  EXPECT(j1->parent() == l1);
+  EXPECT(j1->child() == l2);
 
   // joint limit
   EXPECT(assert_equal(-1.57, j1->parameters().scalar_limits.value_lower_limit));
@@ -379,11 +379,11 @@ TEST(Joint, urdf_constructor_prismatic) {
                                              j1_axis);
 
   // get shared ptr
-  EXPECT(j1->getSharedPtr() == j1);
+  EXPECT(j1->shared() == j1);
 
   // get, set ID
   j1->setID(1);
-  EXPECT(j1->getID() == 1);
+  EXPECT(j1->id() == 1);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
@@ -427,8 +427,8 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1->parentLink() == l1);
-  EXPECT(j1->childLink() == l2);
+  EXPECT(j1->parent() == l1);
+  EXPECT(j1->child() == l2);
 
   // joint limit
   EXPECT(assert_equal(0, j1->parameters().scalar_limits.value_lower_limit));
@@ -499,9 +499,9 @@ TEST(Robot, simple_urdf) {
 
   EXPECT(assert_equal(1, simple_robot.link("l1")->getJoints().size()));
   EXPECT(assert_equal(1, simple_robot.link("l2")->getJoints().size()));
-  EXPECT(simple_robot.link("l1")->getID() == 0);
-  EXPECT(simple_robot.link("l2")->getID() == 1);
-  EXPECT(simple_robot.joint("j1")->getID() == 0);
+  EXPECT(simple_robot.link("l1")->id() == 0);
+  EXPECT(simple_robot.link("l2")->id() == 1);
+  EXPECT(simple_robot.joint("j1")->id() == 0);
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -517,9 +517,9 @@ TEST(Robot, simple_urdf) {
 
   // Check transforms between link CoM frames.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      j1->transformTo(j1->childLink())));
+                      j1->transformTo(j1->child())));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      j1->transformFrom(j1->childLink())));
+                      j1->transformFrom(j1->child())));
 }
 
 int main() {

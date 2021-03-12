@@ -173,19 +173,19 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   virtual ~Joint() = default;
 
   /// Return a shared ptr to this joint.
-  JointSharedPtr getSharedPtr() { return shared_from_this(); }
+  JointSharedPtr shared() { return shared_from_this(); }
 
   /// Return a const shared ptr to this joint.
-  JointConstSharedPtr getConstSharedPtr() const { return shared_from_this(); }
+  JointConstSharedPtr shared() const { return shared_from_this(); }
 
   /// Set the joint's ID.
   void setID(unsigned char id) { id_ = id; }
 
   /// Get the joint's ID.
-  int getID() const {
+  int id() const {
     if (id_ == -1)
       throw std::runtime_error(
-          "Calling getID on a joint whose ID has not been set");
+          "Calling id on a joint whose ID has not been set");
     return id_;
   }
 
@@ -199,7 +199,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   const Pose3 &jTccom() const { return jTccom_; }
 
   /// Get a gtsam::Key for this joint
-  gtsam::Key getKey() const { return gtsam::Key(getID()); }
+  gtsam::Key key() const { return gtsam::Key(id()); }
 
   /// Return joint name.
   std::string name() const { return name_; }
@@ -215,16 +215,16 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   }
 
   /// Return a shared ptr to the parent link.
-  LinkSharedPtr parentLink() const { return parent_link_; }
+  LinkSharedPtr parent() const { return parent_link_; }
 
   /// Return a shared ptr to the child link.
-  LinkSharedPtr childLink() const { return child_link_; }
+  LinkSharedPtr child() const { return child_link_; }
 
   /// Return the ID of the parent link.
-  int parentID() const { return parent_link_->getID(); }
+  int parentID() const { return parent_link_->id(); }
 
   /// Return the ID of the child link.
-  int childID() const { return child_link_->getID(); }
+  int childID() const { return child_link_->id(); }
 
   /// Return the name of the parent link.
   std::string parentName() const { return parent_link_->name(); }

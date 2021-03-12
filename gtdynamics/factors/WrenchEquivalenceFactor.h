@@ -68,7 +68,7 @@ class WrenchEquivalenceFactor
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    auto link = joint_->childLink();
+    auto link = joint_->child();
     gtsam::Pose3 T_21 = joint_->transformTo(link, q);
 
     gtsam::Vector6 error = wrench_1 + T_21.AdjointMap().transpose() * wrench_2;

@@ -241,9 +241,9 @@ int main(int argc, char **argv) {
   // Initialize values.
   gtsam::Values values;
   for (auto &&link : vision60.links())
-    values.insert(PoseKey(link->getID(), 0), link->wTcom());
+    values.insert(PoseKey(link->id(), 0), link->wTcom());
   for (auto &&joint : vision60.joints())
-    values.insert(JointAngleKey(joint->getID(), 0), 0.0);
+    values.insert(JointAngleKey(joint->id(), 0), 0.0);
 
   // Write body,foot poses and joint angles to csv file.
   std::ofstream pose_file;
@@ -274,12 +274,12 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(vision60.link("body")->getID(), ti), tposes["body"],
+        PoseKey(vision60.link("body")->id(), ti), tposes["body"],
         gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
     for (auto &&leg : swing_sequence)
-      kfg.add(PointGoalFactor(PoseKey(vision60.link(leg)->getID(), ti),
+      kfg.add(PointGoalFactor(PoseKey(vision60.link(leg)->id(), ti),
                               gtsam::noiseModel::Constrained::All(3), comTc,
                               tposes[leg].translation()));
 
@@ -293,14 +293,14 @@ int main(int argc, char **argv) {
     // Update the values for next iteration.
     values.clear();
     for (auto &&link : vision60.links())
-      values.insert(PoseKey(link->getID(), ti + 1),
-                    results.at<gtsam::Pose3>(PoseKey(link->getID(), ti)));
+      values.insert(PoseKey(link->id(), ti + 1),
+                    results.at<gtsam::Pose3>(PoseKey(link->id(), ti)));
     for (auto &&joint : vision60.joints())
-      values.insert(JointAngleKey(joint->getID(), ti + 1),
-                    results.atDouble(JointAngleKey(joint->getID(), ti)));
+      values.insert(JointAngleKey(joint->id(), ti + 1),
+                    results.atDouble(JointAngleKey(joint->id(), ti)));
 
     for (auto &&joint : vision60.joints())
-      pose_file << "," << results.atDouble(JointAngleKey(joint->getID(), ti));
+      pose_file << "," << results.atDouble(JointAngleKey(joint->id(), ti));
 
     pose_file << "\n";
     curr_t = curr_t + dt;

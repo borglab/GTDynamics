@@ -70,7 +70,7 @@ class TorqueFactor
     }
     // TODO(G+S): next PR will generalize this from Vector1
     return gtsam::Vector1(
-        joint_->transformWrenchToTorque(joint_->childLink(), wrench, H_wrench) -
+        joint_->transformWrenchToTorque(joint_->child(), wrench, H_wrench) -
         torque);
   }
 

@@ -22,15 +22,15 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << "\n\tparent link: " << j.parentLink()->name()
-     << "\n\t child link: " << j.childLink()->name();
+  os << j.name() << "\n\tparent link: " << j.parent()->name()
+     << "\n\t child link: " << j.child()->name();
   return os;
 }
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
-  os << j->name() << "\n\tparent link: " << j->parentLink()->name()
-     << "\n\t child link: " << j->childLink()->name();
+  os << j->name() << "\n\tparent link: " << j->parent()->name()
+     << "\n\t child link: " << j->child()->name();
   return os;
 }
 

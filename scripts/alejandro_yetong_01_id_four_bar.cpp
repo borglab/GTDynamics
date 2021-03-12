@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : my_robot.links()) {
-    int i = link->getID();
+    int i = link->id();
     prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         PoseKey(i, 0), link->wTcom(),
         gtsam::noiseModel::Constrained::All(6)));
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
   // Add min torque factor to each joint. This factor minimizes torque squared.
   for (auto joint : my_robot.joints())
     graph.add(
-        MinTorqueFactor(TorqueKey(joint->getID(), 0),
+        MinTorqueFactor(TorqueKey(joint->id(), 0),
             gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
   std::cout << "\033[1;32;7;4mJoint Torques: \033[0m" << std::endl;
   for (auto joint : my_robot.joints())
       std::cout << "\t'" << joint->name() << "': " << results.atDouble(
-          TorqueKey(joint->getID(), 0)) << "," << std::endl;
+          TorqueKey(joint->id(), 0)) << "," << std::endl;
 
   return 0;
 }

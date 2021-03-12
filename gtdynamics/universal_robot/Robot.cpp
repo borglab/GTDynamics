@@ -112,7 +112,7 @@ void Robot::print() const {
     std::cout << joint << std::endl;
     // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
     // << joint->Mpc().translation() << "\n";
-    LinkSharedPtr child_link = joint->childLink();
+    LinkSharedPtr child_link = joint->child();
     std::cout << "\tpMc_com: "
               << joint->transformTo(child_link).rotation().rpy().transpose()
               << ", "
