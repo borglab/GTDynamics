@@ -42,7 +42,7 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1),
 
 ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi, Vector6 cScrewAxis) {
   // create links
-  Link::Params link1_params, link2_params;
+  LinkParams link1_params, link2_params;
   link1_params.mass = 100;
   link1_params.name = "l1";
   link1_params.inertia = Vector3(3, 2, 1).asDiagonal();
@@ -55,8 +55,8 @@ ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi, Vector6 cScrewAxis) {
   LinkSharedPtr l2 = boost::make_shared<Link>(Link(link2_params));
 
   // create joint
-  ScrewJointBase::Parameters joint_params;
-  joint_params.effort_type = Joint::EffortType::Actuated;
+  JointParams joint_params;
+  joint_params.effort_type = JointEffortType::Actuated;
   joint_params.scalar_limits.value_lower_limit = -1.57;
   joint_params.scalar_limits.value_upper_limit = 1.57;
   joint_params.scalar_limits.value_limit_threshold = 0;

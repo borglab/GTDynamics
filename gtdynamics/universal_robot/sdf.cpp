@@ -24,8 +24,8 @@ namespace gtdynamics {
 
 using gtsam::Pose3;
 
-Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
-  Joint::Parameters parameters;
+JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
+  JointParams parameters;
 
   parameters.scalar_limits.value_lower_limit = sdf_joint.Axis()->Lower();
   parameters.scalar_limits.value_upper_limit = sdf_joint.Axis()->Upper();
@@ -102,7 +102,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     JointSharedPtr joint;
 
     // Generate a joint parameters struct with values from the SDF.
-    Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
+    JointParams parameters = ParametersFromSdfJoint(sdf_joint);
 
     std::string name(sdf_joint.Name());
     Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
@@ -160,7 +160,8 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
 }
 
 Robot CreateRobotFromFile(const std::string file_path, std::string model_name) {
-  return Robot(ExtractRobotFromFile(file_path, model_name));
+  auto links_joints_pair = ExtractRobotFromFile(file_path, model_name);
+  return Robot(links_joints_pair.first, links_joints_pair.second);
 }
 
 }  // namespace gtdynamics

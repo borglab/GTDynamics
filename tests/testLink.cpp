@@ -26,7 +26,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
-  Link::Params parameters;
+  LinkParams parameters;
   parameters.mass = 100;
   parameters.name = "l1";
   parameters.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();

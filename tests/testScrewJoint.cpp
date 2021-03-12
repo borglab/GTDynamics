@@ -33,8 +33,8 @@ TEST(Joint, params_constructor) {
   LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
 
-  ScrewJointBase::Parameters parameters;
-  parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams parameters;
+  parameters.effort_type = JointEffortType::Actuated;
   parameters.scalar_limits.value_lower_limit = -1.57;
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
@@ -51,7 +51,7 @@ TEST(Joint, params_constructor) {
   EXPECT(123 == j1->getID());
 
   // joint effort type
-  EXPECT(j1->parameters().effort_type == Joint::EffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);

@@ -60,10 +60,11 @@ class Robot {
   /**
    * Constructor from link and joint elements.
    *
-   * @param[in] robot_links_and_joints LinkJointPair containing links and
+   * @param[in] links LinkMap containing all links
+   * @param[in] joints JointMap containing all joints
    * joints.
    */
-  explicit Robot(LinkJointPair links_and_joints);
+  explicit Robot(const LinkMap& links, const JointMap& joints);
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;

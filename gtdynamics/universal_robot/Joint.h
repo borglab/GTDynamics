@@ -53,6 +53,39 @@ inline DynamicsSymbol TorqueKey(int j, int t) {
 /// Map from joint name to joint angle/vel/accel/torque
 using JointValues = std::map<std::string, double>;
 
+
+enum JointEffortType { Actuated, Unactuated, Impedance };
+
+/**
+ * This struct contains information for scalar limits.
+ * The lower and upper limits denote physical axis limits of the joint,
+ * and the threshold is an error threshold used in calculations.
+ */
+struct JointScalarLimit {
+  double value_lower_limit = -M_PI_2;
+  double value_upper_limit = M_PI_2;
+  double value_limit_threshold = 1e-9;
+};
+
+/**
+ * This struct contains all parameters needed to construct a joint.
+ */
+struct JointParams {
+  JointParams() {}
+
+  JointEffortType effort_type = JointEffortType::Actuated;
+  JointScalarLimit scalar_limits;
+
+  double velocity_limit = 10000.0;
+  double velocity_limit_threshold = 0.0;
+  double acceleration_limit = 10000.0;
+  double acceleration_limit_threshold = 0.0;
+  double torque_limit = 10000.0;
+  double torque_limit_threshold = 0.0;
+  double damping_coefficient = 0.0;
+  double spring_coefficient = 0.0;
+};
+
 /// Joint is the base class for a joint connecting two Link objects.
 class Joint : public boost::enable_shared_from_this<Joint> {
  protected:
@@ -66,41 +99,13 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Unactuated: not powered, free to move, exert zero torque
    * Impedance: with spring resistance
    */
-  enum EffortType { Actuated, Unactuated, Impedance };
+  
 
   enum Type : char {
     Revolute = 'R',
     Prismatic = 'P',
     Screw = 'C',
     ScrewAxis = 'A'
-  };
-
-  /**
-   * This struct contains information for scalar limits.
-   * The lower and upper limits denote physical axis limits of the joint,
-   * and the threshold is an error threshold used in calculations.
-   */
-  struct ScalarLimit {
-    double value_lower_limit = -M_PI_2;
-    double value_upper_limit = M_PI_2;
-    double value_limit_threshold = 1e-9;
-  };
-
-  /**
-   * This struct contains all parameters needed to construct a joint.
-   */
-  struct Parameters {
-    EffortType effort_type = EffortType::Actuated;
-    ScalarLimit scalar_limits;
-
-    double velocity_limit = 10000.0;
-    double velocity_limit_threshold = 0.0;
-    double acceleration_limit = 10000.0;
-    double acceleration_limit_threshold = 0.0;
-    double torque_limit = 10000.0;
-    double torque_limit_threshold = 0.0;
-    double damping_coefficient = 0.0;
-    double spring_coefficient = 0.0;
   };
 
  protected:
@@ -123,7 +128,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   LinkSharedPtr child_link_;
 
   /// Joint parameters struct.
-  Parameters parameters_;
+  JointParams parameters_;
 
   /// Abstract method. Return transform of child link com frame w.r.t parent
   /// link com frame
@@ -156,7 +161,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   Joint(const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-        const Parameters &parameters)
+        const JointParams &parameters)
       : name_(name),
         wTj_(wTj),
         parent_link_(parent_link),
@@ -233,7 +238,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   std::string childName() const { return child_link_->name(); }
 
   /// Return joint parameters.
-  const Parameters &parameters() const { return parameters_; }
+  const JointParams &parameters() const { return parameters_; }
 
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
@@ -268,7 +273,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /**
    * Abstract method: Return joint type for use in reconstructing robot from
-   * Parameters.
+   * JointParams.
    */
   virtual Type type() const = 0;
 

@@ -36,7 +36,7 @@ Robot CreateRobotFromFile(const std::string file_path,
  * @return a struct of parameters whose values have been set using
  * sdf::Joint functions.
  */
-Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
+JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
 
 /**
  * @fn Get joint pose defined in world frame from an sdf::Joint object
