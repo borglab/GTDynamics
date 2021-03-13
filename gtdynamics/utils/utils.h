@@ -22,8 +22,6 @@
 #include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
-#include <ignition/math/Pose3.hh>
-#include <sdf/sdf.hh>
 #include <string>
 #include <vector>
 
@@ -130,23 +128,6 @@ std::vector<gtsam::Pose3> square(int numOfWayPoints, double goalAngle,
 std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
                                        gtsam::Point3 &origin,  // NOLINT
                                        double &cell_size);     // NOLINT
-
-/**
- * Obtain the sdf ElementPtr associated with the robot model.
- *
- * @param sdf_file_path a string containing the absolute to the sdf file.
- * @param model_name name of the robot we care about. Must be specified in case
- * sdf_file_path points to a world file.
- * @return SDF Model
- */
-sdf::Model get_sdf(std::string sdf_file_path, std::string model_name = "");
-
-/**
- * Parse a ignition::math Pose object into a gtsam::Pose.
- *
- * @param ignition_pose An ignition::math::Pose object to be parsed.
- */
-gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose);
 
 /**
  * Obtain the planar jacobian for the given planar axis.

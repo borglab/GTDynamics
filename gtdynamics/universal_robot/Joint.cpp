@@ -18,19 +18,43 @@
 
 #include <iostream>
 
+#include "gtdynamics/universal_robot/Link.h"
+
 namespace gtdynamics {
 
 /* ************************************************************************* */
+Joint::Joint(const std::string &name, const Pose3 &wTj,
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+        const JointParams &parameters)
+      : name_(name),
+        wTj_(wTj),
+        parent_link_(parent_link),
+        child_link_(child_link),
+        parameters_(parameters) {
+    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
+    jTccom_ = wTj_.inverse() * child_link_->wTcom();
+    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+  }
+  
+/* ************************************************************************* */
+bool Joint::isChildLink(const LinkSharedPtr &link) const {
+  if (link != child_link_ && link != parent_link_)
+    throw std::runtime_error("link " + link->name() +
+                             " is not connected to this joint " + name_);
+  return link == child_link_;
+}
+
+/* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << "\n\tparent link: " << j.parentLink()->name()
-     << "\n\t child link: " << j.childLink()->name();
+  os << j.name() << "\n\tparent link: " << j.parent()->name()
+     << "\n\t child link: " << j.child()->name();
   return os;
 }
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
-  os << j->name() << "\n\tparent link: " << j->parentLink()->name()
-     << "\n\t child link: " << j->childLink()->name();
+  os << j->name() << "\n\tparent link: " << j->parent()->name()
+     << "\n\t child link: " << j->child()->name();
   return os;
 }
 

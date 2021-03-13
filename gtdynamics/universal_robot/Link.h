@@ -13,6 +13,12 @@
 
 #pragma once
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -25,17 +31,16 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <memory>
-#include <sdf/sdf.hh>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
+
+class Link; // forward declaration
+class Joint; // forward declaration
+
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
 inline DynamicsSymbol PoseKey(int i, int t) {
@@ -61,6 +66,8 @@ inline DynamicsSymbol WrenchKey(int i, int j, int t) {
  * Params contains all parameters to construct a link
  */
 struct LinkParams {
+  LinkParams() {}
+
   LinkParams(const std::string& _name, const double _mass, 
              const gtsam::Matrix3& _inertia, const gtsam::Pose3& _wTl,
              const gtsam::Pose3& _lTcom):
@@ -101,26 +108,6 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   Link() {}
 
-  /**
-   * Initialize Link's inertial properties with a sdf::Link instance, as
-   * described in the sdformat8 documentation:
-   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
-   *
-   * @param sdf_link sdf::Link object containing link information.
-   */
-  explicit Link(sdf::Link sdf_link)
-      : name_(sdf_link.Name()),
-        mass_(sdf_link.Inertial().MassMatrix().Mass()),
-        inertia_(
-            (gtsam::Matrix(3, 3) << sdf_link.Inertial().Moi()(0, 0),
-             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
-             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
-             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
-             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2))
-                .finished()),
-        wTl_(parse_ignition_pose(sdf_link.Pose())),
-        lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
-        is_fixed_(false) {}
 
   /**
    * Initialize Link's inertial properties with a LinkParams instance.
@@ -151,7 +138,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   bool operator!=(const Link &other) const { return !(*this == other); }
 
   /// return a shared pointer of the link
-  LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
+  LinkSharedPtr shared(void) { return shared_from_this(); }
 
   /// remove the joint
   void removeJoint(JointSharedPtr joint) {
@@ -165,10 +152,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// return ID of the link
-  int getID() const {
+  int id() const {
     if (id_ == -1)
       throw std::runtime_error(
-          "Calling getID on a link whose ID has not been set");
+          "Calling id on a link whose ID has not been set");
     return id_;
   }
 
@@ -243,7 +230,7 @@ class Link : public boost::enable_shared_from_this<Link> {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
       graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-          PoseKey(getID(), t), getFixedPose(), opt.bp_cost_model));
+          PoseKey(id(), t), getFixedPose(), opt.bp_cost_model));
     return graph;
   }
 
@@ -259,7 +246,7 @@ class Link : public boost::enable_shared_from_this<Link> {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
       graph.add(gtsam::PriorFactor<gtsam::Vector6>(
-          TwistKey(getID(), t), gtsam::Vector6::Zero(), opt.bv_cost_model));
+          TwistKey(id(), t), gtsam::Vector6::Zero(), opt.bv_cost_model));
     return graph;
   }
 
@@ -274,7 +261,7 @@ class Link : public boost::enable_shared_from_this<Link> {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Vector6>(TwistAccelKey(getID(), t),
+      graph.add(gtsam::PriorFactor<gtsam::Vector6>(TwistAccelKey(id(), t),
                                                    gtsam::Vector6::Zero(),
                                                    opt.ba_cost_model));
     return graph;
@@ -294,26 +281,26 @@ class Link : public boost::enable_shared_from_this<Link> {
     gtsam::NonlinearFactorGraph graph;
     // Add wrench factors.
     if (wrenches.size() == 0) {
-      graph.add(WrenchFactor0(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              PoseKey(getID(), t), opt.fa_cost_model,
+      graph.add(WrenchFactor0(TwistKey(id(), t), TwistAccelKey(id(), t),
+                              PoseKey(id(), t), opt.fa_cost_model,
                               inertiaMatrix(), gravity));
     } else if (wrenches.size() == 1) {
-      graph.add(WrenchFactor1(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], PoseKey(getID(), t),
+      graph.add(WrenchFactor1(TwistKey(id(), t), TwistAccelKey(id(), t),
+                              wrenches[0], PoseKey(id(), t),
                               opt.fa_cost_model, inertiaMatrix(), gravity));
     } else if (wrenches.size() == 2) {
-      graph.add(WrenchFactor2(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], wrenches[1], PoseKey(getID(), t),
+      graph.add(WrenchFactor2(TwistKey(id(), t), TwistAccelKey(id(), t),
+                              wrenches[0], wrenches[1], PoseKey(id(), t),
                               opt.fa_cost_model, inertiaMatrix(), gravity));
     } else if (wrenches.size() == 3) {
-      graph.add(WrenchFactor3(TwistKey(getID(), t), TwistAccelKey(getID(), t),
+      graph.add(WrenchFactor3(TwistKey(id(), t), TwistAccelKey(id(), t),
                               wrenches[0], wrenches[1], wrenches[2],
-                              PoseKey(getID(), t), opt.fa_cost_model,
+                              PoseKey(id(), t), opt.fa_cost_model,
                               inertiaMatrix(), gravity));
     } else if (wrenches.size() == 4) {
-      graph.add(WrenchFactor4(TwistKey(getID(), t), TwistAccelKey(getID(), t),
+      graph.add(WrenchFactor4(TwistKey(id(), t), TwistAccelKey(id(), t),
                               wrenches[0], wrenches[1], wrenches[2],
-                              wrenches[3], PoseKey(getID(), t),
+                              wrenches[3], PoseKey(id(), t),
                               opt.fa_cost_model, inertiaMatrix(), gravity));
     } else {
       throw std::runtime_error("Wrench factor not defined");

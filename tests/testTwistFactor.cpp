@@ -38,8 +38,8 @@ gtsam::Key twist_p_key = gtsam::Symbol('V', 1),
            qVelKey = gtsam::Symbol('j', 0);
 }  // namespace example
 
-ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 cMp,
-                                        gtsam::Vector6 cScrewAxis) {
+boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
+                                                   gtsam::Vector6 cScrewAxis) {
   // create links
   LinkParams link1_params, link2_params;
   link1_params.mass = 100;

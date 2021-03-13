@@ -70,7 +70,7 @@ Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
   auto fk_results =
       robot.forwardKinematics(joint_angles, joint_velocities, link_name, wTl_i);
   for (auto&& pose_result : fk_results.first) {
-    values.insert(PoseKey(robot.getLinkByName(pose_result.first)->getID(), t),
+    values.insert(PoseKey(robot.link(pose_result.first)->id(), t),
                   pose_result.second);
   }
   return values;
@@ -100,7 +100,7 @@ Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
     joint_angles.insert(std::make_pair(joint->name(), sampler.sample()[0]));
     joint_velocities.insert(std::make_pair(joint->name(), sampler.sample()[0]));
 
-    init_vals_t.insert(JointAngleKey(joint->getID(), 0), sampler.sample()[0]);
+    init_vals_t.insert(JointAngleKey(joint->id(), 0), sampler.sample()[0]);
   }
 
   // Compute forward dynamics to obtain remaining link poses.
@@ -207,7 +207,7 @@ Values InitializeSolutionInverseKinematics(
     gtsam::NonlinearFactorGraph kfg =
         dgb.qFactors(robot, t, gravity, contact_points);
     kfg.add(gtsam::PriorFactor<Pose3>(
-        PoseKey(robot.getLinkByName(link_name)->getID(), t), wTl_dt[t],
+        PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
         gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
@@ -223,12 +223,12 @@ Values InitializeSolutionInverseKinematics(
     init_vals_t.clear();
 
     for (auto&& link : robot.links()) {
-      init_vals_t.insert(PoseKey(link->getID(), t + 1),
-                         results.at<Pose3>(PoseKey(link->getID(), t)));
+      init_vals_t.insert(PoseKey(link->id(), t + 1),
+                         results.at<Pose3>(PoseKey(link->id(), t)));
     }
     for (auto&& joint : robot.joints()) {
-      init_vals_t.insert(JointAngleKey(joint->getID(), t + 1),
-                         results.atDouble(JointAngleKey(joint->getID(), t)));
+      init_vals_t.insert(JointAngleKey(joint->id(), t + 1),
+                         results.atDouble(JointAngleKey(joint->id(), t)));
     }
   }
 
@@ -318,8 +318,8 @@ Values MultiPhaseInverseKinematicsTrajectory(
           robots[phase], t, gravity, (*phase_contact_points)[phase]);
 
       kfg.add(gtsam::PriorFactor<Pose3>(
-          PoseKey(robots[phase].getLinkByName(link_name)->getID(), t),
-          wTl_dt[t], gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
+          PoseKey(robots[phase].link(link_name)->id(), t), wTl_dt[t],
+          gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
 
       gtsam::LevenbergMarquardtOptimizer optimizer(kfg, init_vals_t);
       Values results = optimizer.optimize();
@@ -329,13 +329,13 @@ Values MultiPhaseInverseKinematicsTrajectory(
       // Update initial values for next timestep.
       init_vals_t.clear();
       for (auto&& link : robots[phase].links()) {
-        int link_id = link->getID();
+        int link_id = link->id();
         init_vals_t.insert(PoseKey(link_id, t + 1),
                            results.at<Pose3>(PoseKey(link_id, t)));
       }
 
       for (auto&& joint : robots[phase].joints()) {
-        int joint_id = joint->getID();
+        int joint_id = joint->id();
         init_vals_t.insert(JointAngleKey(joint_id, t + 1),
                            results.atDouble(JointAngleKey(joint_id, t)));
       }
@@ -364,7 +364,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
 
   // Initialize link dynamics to 0.
   for (auto&& link : robot.links()) {
-    int i = link->getID();
+    int i = link->id();
     zero_values.insert(PoseKey(i, t),
                        AddGaussianNoiseToPose(link->wTcom(), sampler));
     zero_values.insert(TwistKey(i, t), sampler.sample());
@@ -373,9 +373,9 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
 
   // Initialize joint kinematics/dynamics to 0.
   for (auto&& joint : robot.joints()) {
-    int j = joint->getID();
-    zero_values.insert(WrenchKey(joint->parentID(), j, t), sampler.sample());
-    zero_values.insert(WrenchKey(joint->childID(), j, t), sampler.sample());
+    int j = joint->id();
+    zero_values.insert(WrenchKey(joint->parent()->id(), j, t), sampler.sample());
+    zero_values.insert(WrenchKey(joint->child()->id(), j, t), sampler.sample());
     std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
                                         JointVelKey(j, t), JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)
@@ -386,7 +386,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
     for (auto&& contact_point : *contact_points) {
       int link_id = -1;
       for (auto& link : robot.links()) {
-        if (link->name() == contact_point.first) link_id = link->getID();
+        if (link->name() == contact_point.first) link_id = link->id();
       }
 
       if (link_id == -1) throw std::runtime_error("Link not found.");

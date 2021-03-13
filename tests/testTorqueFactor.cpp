@@ -40,7 +40,8 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1),
            wrench_key = gtsam::Symbol('F', 1);
 }  // namespace example
 
-ScrewJointBaseConstSharedPtr make_joint(Pose3 jMi, Vector6 cScrewAxis) {
+boost::shared_ptr<const ScrewJointBase> make_joint(Pose3 jMi,
+                                                   Vector6 cScrewAxis) {
   // create links
   LinkParams link1_params, link2_params;
   link1_params.mass = 100;

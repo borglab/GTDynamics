@@ -87,7 +87,7 @@ class TwistAccelFactor
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
     auto error =
-        joint_->transformTwistAccelTo(joint_->childLink(), q, qVel, qAccel,
+        joint_->transformTwistAccelTo(joint_->child(), q, qVel, qAccel,
                                       twist_c, twistAccel_p, H_q, H_qVel,
                                       H_qAccel, H_twist_c, H_twistAccel_p) -
         twistAccel_c;

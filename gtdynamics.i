@@ -65,9 +65,9 @@ class Link  {
     Link();
     Link(const gtdynamics::LinkParams &params);
 
-    gtdynamics::Link* getSharedPtr();
+    gtdynamics::Link* shared();
     void setID(unsigned char id);
-    int getID() const;
+    int id() const;
     void addJoint(gtdynamics::JointSharedPtr joint_ptr);
     const gtsam::Pose3 &wTl() const;
     const gtsam::Pose3 &lTcom() const;
@@ -102,20 +102,15 @@ class JointParams {
 
 virtual class Joint {
   void setID(unsigned char id);
-  int getID() const;
+  int id() const;
   const gtsam::Pose3 &wTj() const;
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;
-  gtsam::Key getKey() const;
   string name() const;
   gtdynamics::LinkSharedPtr otherLink(const gtdynamics::LinkSharedPtr &link);
   std::vector<gtdynamics::LinkSharedPtr> links() const;
-  gtdynamics::LinkSharedPtr parentLink() const;
-  gtdynamics::LinkSharedPtr childLink() const;
-  int parentID() const;
-  int childID() const;
-  string parentName();
-  string childName();
+  gtdynamics::LinkSharedPtr parent() const;
+  gtdynamics::LinkSharedPtr child() const;
 };
 
 virtual class RevoluteJoint : gtdynamics::Joint {
@@ -143,9 +138,9 @@ class Robot {
 
   void removeJoint(gtdynamics::JointSharedPtr joint);
 
-  gtdynamics::Link* getLinkByName(string name) const;
+  gtdynamics::Link* link(string name) const;
 
-  gtdynamics::Joint* getJointByName(string name) const;
+  gtdynamics::Joint* joint(string name) const;
 
 //   /// For python wrapper
 //   void removeJointByName(const string& name);

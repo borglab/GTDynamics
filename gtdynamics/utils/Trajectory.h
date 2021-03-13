@@ -16,7 +16,6 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/WalkCycle.h"
 
 namespace gtdynamics {
@@ -270,8 +269,7 @@ class Trajectory {
     ContactPoints wc_cps = walk_cycle_.allContactPoints();
     for (auto &&cp : wc_cps) {
       LinkSharedPtr link =
-          walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
-              cp.first);
+          walk_cycle_.phases().at(0).getRobotConfiguration().link(cp.first);
       prev_cp.insert(std::make_pair(
           cp.first,
           (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
@@ -292,9 +290,8 @@ class Trajectory {
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link =
-        walk_cycle_.phases().at(0).getRobotConfiguration().getLinkByName(
-            link_name);
-    gtsam::Key pose_key = PoseKey(link->getID(), t);
+        walk_cycle_.phases().at(0).getRobotConfiguration().link(link_name);
+    gtsam::Key pose_key = PoseKey(link->id(), t);
     gtsam::Pose3 comTp = gtsam::Pose3(
         gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
     return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
@@ -317,16 +314,16 @@ class Trajectory {
       std::vector<std::string> vals;
       for (auto &&joint : robot.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
+            std::to_string(results.atDouble(JointAngleKey(joint->id(), t))));
       for (auto &&joint : robot.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
+            std::to_string(results.atDouble(JointVelKey(joint->id(), t))));
       for (auto &&joint : robot.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
+            std::to_string(results.atDouble(JointAccelKey(joint->id(), t))));
       for (auto &&joint : robot.joints())
         vals.push_back(
-            std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
+            std::to_string(results.atDouble(TorqueKey(joint->id(), t))));
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
       t++;
       std::string vals_str = boost::algorithm::join(vals, ",");

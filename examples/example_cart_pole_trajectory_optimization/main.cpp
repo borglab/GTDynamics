@@ -33,8 +33,7 @@ using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
   auto cp = Robot("../cart_pole.urdf");
-  int j0_id = cp.getJointByName("j0")->getID(),
-      j1_id = cp.getJointByName("j1")->getID();
+  int j0_id = cp.joint("j0")->id(), j1_id = cp.joint("j1")->id();
   cp.fixLink("l0");
   cp.print();
   gtsam::Vector3 gravity(0, 0, -9.8);

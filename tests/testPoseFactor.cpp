@@ -38,8 +38,8 @@ gtsam::Key pose_p_key = gtsam::Symbol('p', 1),
            pose_c_key = gtsam::Symbol('p', 2), qKey = gtsam::Symbol('q', 0);
 }  // namespace example
 
-ScrewJointBaseConstSharedPtr make_joint(gtsam::Pose3 cMp,
-                                        gtsam::Vector6 cScrewAxis) {
+boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
+                                                   gtsam::Vector6 cScrewAxis) {
   // create links
   LinkParams link1_params, link2_params;
   link1_params.mass = 100;
@@ -134,9 +134,10 @@ TEST(PoseFactor, breaking_rr) {
 
   double joint_angle = M_PI / 4;
 
-  auto l2 = my_robot.getLinkByName("l2");
+  auto l2 = my_robot.link("l2");
   auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
-      my_robot.getJointByName("j1"));
+      my_robot.joint("j1"));
+
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 cMp = j1->transformTo(l2);

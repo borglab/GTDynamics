@@ -223,7 +223,7 @@ class JointTyped : public Joint {
       const LinkSharedPtr &link, boost::optional<gtsam::Values> q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     if (q)
-      return transformTo(link, q->at<JointCoordinate>(getKey()), H_q);
+      return transformTo(link, q->at<JointCoordinate>(key()), H_q);
     else
       return transformTo(
           link, static_cast<boost::optional<JointCoordinate>>(boost::none),
@@ -258,11 +258,11 @@ class JointTyped : public Joint {
           boost::none) const override {
     if (q) {
       if (q_dot) {
-        return transformTwistTo(link, q->at<JointCoordinate>(getKey()),
-                                q_dot->at<JointVelocity>(getKey()), other_twist,
+        return transformTwistTo(link, q->at<JointCoordinate>(key()),
+                                q_dot->at<JointVelocity>(key()), other_twist,
                                 H_q, H_q_dot, H_other_twist);
       } else {
-        return transformTwistTo(link, q->at<JointCoordinate>(getKey()),
+        return transformTwistTo(link, q->at<JointCoordinate>(key()),
                                 boost::none, other_twist, H_q, H_q_dot,
                                 H_other_twist);
       }
@@ -309,21 +309,21 @@ class JointTyped : public Joint {
     if (q) {
       if (q_dot) {
         if (q_ddot) {
-          return transformTwistAccelTo(link, q->at<JointCoordinate>(getKey()),
-                                       q_dot->at<JointVelocity>(getKey()),
-                                       q_ddot->at<JointAcceleration>(getKey()),
+          return transformTwistAccelTo(link, q->at<JointCoordinate>(key()),
+                                       q_dot->at<JointVelocity>(key()),
+                                       q_ddot->at<JointAcceleration>(key()),
                                        this_twist, other_twist_accel, H_q,
                                        H_q_dot, H_q_ddot, H_this_twist,
                                        H_other_twist_accel);
         } else {
           return transformTwistAccelTo(
-              link, q->at<JointCoordinate>(getKey()),
-              q_dot->at<JointVelocity>(getKey()), boost::none, this_twist,
+              link, q->at<JointCoordinate>(key()),
+              q_dot->at<JointVelocity>(key()), boost::none, this_twist,
               other_twist_accel, H_q, H_q_dot, H_q_ddot, H_this_twist,
               H_other_twist_accel);
         }
       } else {
-        return transformTwistAccelTo(link, q->at<JointCoordinate>(getKey()),
+        return transformTwistAccelTo(link, q->at<JointCoordinate>(key()),
                                      boost::none, boost::none, this_twist,
                                      other_twist_accel, H_q, H_q_dot, H_q_ddot,
                                      H_this_twist, H_other_twist_accel);

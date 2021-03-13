@@ -29,9 +29,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor) {
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
-  LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  std::string file_path = std::string(URDF_PATH) + "/test/simple_urdf.urdf";
+  LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
+  LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
 
   JointParams parameters;
   parameters.effort_type = JointEffortType::Actuated;
@@ -39,16 +39,16 @@ TEST(Joint, params_constructor) {
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  ScrewJointSharedPtr j1 =
-      boost::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
-                                   parameters, gtsam::Vector3(1, 0, 0), 0.5);
+  auto j1 = boost::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)),
+                                           l1, l2, parameters,
+                                           gtsam::Vector3(1, 0, 0), 0.5);
   j1->setID(123);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // ID
-  EXPECT(123 == j1->getID());
+  EXPECT(123 == j1->id());
 
   // joint effort type
   EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
@@ -90,8 +90,8 @@ TEST(Joint, params_constructor) {
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1->parentLink() == l1);
-  EXPECT(j1->childLink() == l2);
+  EXPECT(j1->parent() == l1);
+  EXPECT(j1->child() == l2);
 
   // joint limit
   EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit,
