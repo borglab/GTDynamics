@@ -28,10 +28,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
-  auto simple_urdf =
-      get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
-  LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  std::string file_path = std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf";
+  LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
+  LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
 
   ScrewJointBase::Parameters parameters;
   parameters.effort_type = Joint::EffortType::Actuated;

@@ -26,12 +26,71 @@
 using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
+// Load a URDF file and ensure its joints and links were parsed correctly.
+TEST(utils, load_and_parse_urdf_file) {
+  // Load the file and parse URDF structure.
+  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+
+  // Check that physical and inertial properties were properly parsed..
+  EXPECT(assert_equal(2, simple_urdf.LinkCount()));
+  EXPECT(assert_equal(1, simple_urdf.JointCount()));
+
+  EXPECT(assert_equal(
+      100, simple_urdf.LinkByName("l1")->Inertial().MassMatrix().Mass()));
+  EXPECT(assert_equal(
+      15, simple_urdf.LinkByName("l2")->Inertial().MassMatrix().Mass()));
+
+  EXPECT(assert_equal(3, simple_urdf.LinkByName("l1")->Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(2, simple_urdf.LinkByName("l1")->Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(1, simple_urdf.LinkByName("l1")->Inertial().Moi()(2, 2)));
+
+  EXPECT(assert_equal(1, simple_urdf.LinkByName("l2")->Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(2, simple_urdf.LinkByName("l2")->Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(3, simple_urdf.LinkByName("l2")->Inertial().Moi()(2, 2)));
+}
+
+TEST(utils, load_and_parse_sdf_file) {
+  auto simple_sdf = GetSdf(std::string(SDF_PATH) + "/test/simple.sdf");
+
+  EXPECT(assert_equal(1, simple_sdf.LinkCount()));
+  EXPECT(assert_equal(0, simple_sdf.JointCount()));
+}
+
+TEST(utils, load_and_parse_sdf_world_file) {
+  auto simple_sdf =
+      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+
+  EXPECT(assert_equal(3, simple_sdf.LinkCount()));
+  EXPECT(assert_equal(2, simple_sdf.JointCount()));
+
+  sdf::Link l0 = *simple_sdf.LinkByName("link_0");
+  sdf::Link l1 = *simple_sdf.LinkByName("link_1");
+
+  EXPECT(assert_equal(0.05, l0.Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(0.06, l0.Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(0.03, l0.Inertial().Moi()(2, 2)));
+
+  EXPECT(assert_equal(0.05, l1.Inertial().Moi()(0, 0)));
+  EXPECT(assert_equal(0.06, l1.Inertial().Moi()(1, 1)));
+  EXPECT(assert_equal(0.03, l1.Inertial().Moi()(2, 2)));
+}
+
+TEST(utils, Pose3FromIgnition) {
+  ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
+
+  gtsam::Pose3 parsed_pose = Pose3FromIgnition(pose_to_parse);
+
+  EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, -M_PI),
+                                   gtsam::Point3(-1, 1, -1)),
+                      parsed_pose));
+}
+
 /**
  * Test parsing of all joint parameters from URDF or SDF files.
  */
 TEST(File, parameters_from_file) {
   // Test for reading parameters from a simple URDF.
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
 
   EXPECT(assert_equal(-1.57, j1_parameters.scalar_limits.value_lower_limit));
@@ -43,7 +102,7 @@ TEST(File, parameters_from_file) {
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a simple SDF.
   auto simple_sdf =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
   auto joint_1_parameters =
       ParametersFromSdfJoint(*simple_sdf.JointByName("joint_1"));
 
@@ -53,7 +112,7 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (joint limits) from spider.sdf.
   auto spider_sdf =
-      get_sdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      GetSdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
   auto knee_1_parameters =
       ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
@@ -107,11 +166,11 @@ TEST(File, create_robot_from_file) {
  * Construct a Link via URDF and ensure all values are as expected.
  */
 TEST(Link, urdf_constructor_link) {
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
-  LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = LinkFromSdf(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
   ScrewJointBase::Parameters j1_parameters;
   j1_parameters.effort_type = Joint::EffortType::Actuated;
 
@@ -170,10 +229,10 @@ TEST(Link, urdf_constructor_link) {
  * Construct a Revolute Joint from URDF and ensure all values are as expected.
  */
 TEST(Joint, urdf_constructor_revolute) {
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  LinkSharedPtr l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = LinkFromSdf(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
 
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   j1_parameters.effort_type = Joint::EffortType::Actuated;
@@ -249,11 +308,11 @@ TEST(Joint, urdf_constructor_revolute) {
  */
 TEST(Joint, sdf_constructor_revolute) {
   auto model =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
 
-  LinkSharedPtr l0 = boost::make_shared<Link>(*model.LinkByName("link_0"));
-  LinkSharedPtr l1 = boost::make_shared<Link>(*model.LinkByName("link_1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*model.LinkByName("link_2"));
+  LinkSharedPtr l0 = LinkFromSdf(*model.LinkByName("link_0"));
+  LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("link_1"));
+  LinkSharedPtr l2 = LinkFromSdf(*model.LinkByName("link_2"));
 
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
@@ -312,9 +371,9 @@ TEST(Joint, sdf_constructor_revolute) {
  */
 TEST(Joint, limit_params) {
   // Check revolute joint limits parsed correctly for first test robot.
-  auto model = get_sdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
-  LinkSharedPtr l1 = boost::make_shared<Link>(*model.LinkByName("l1"));
-  LinkSharedPtr l2 = boost::make_shared<Link>(*model.LinkByName("l2"));
+  auto model = GetSdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("l1"));
+  LinkSharedPtr l2 = LinkFromSdf(*model.LinkByName("l2"));
   auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
   j1_parameters.effort_type = Joint::EffortType::Actuated;
 
@@ -331,9 +390,10 @@ TEST(Joint, limit_params) {
 
   // Check revolute joint limits parsed correctly for a robot with no limits.
   auto model2 =
-      get_sdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  LinkSharedPtr link_0 = boost::make_shared<Link>(*model2.LinkByName("link_0"));
-  LinkSharedPtr link_1 = boost::make_shared<Link>(*model2.LinkByName("link_1"));
+      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+
+  LinkSharedPtr link_0 = LinkFromSdf(*model2.LinkByName("link_0"));
+  LinkSharedPtr link_1 = LinkFromSdf(*model2.LinkByName("link_1"));
   auto joint_1_parameters =
       ParametersFromSdfJoint(*model2.JointByName("joint_1"));
   joint_1_parameters.effort_type = Joint::EffortType::Actuated;
@@ -360,10 +420,10 @@ TEST(Joint, limit_params) {
  */
 TEST(Joint, urdf_constructor_prismatic) {
   auto simple_urdf =
-      get_sdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
+      GetSdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
 
-  auto l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  auto l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = LinkFromSdf(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
 
   auto joint1 = *simple_urdf.JointByName("j1");
 
@@ -442,11 +502,11 @@ TEST(Joint, urdf_constructor_prismatic) {
  * are as expected.
  */
 TEST(Joint, sdf_constructor_screw) {
-  auto model = get_sdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
+  auto model = GetSdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
                        "simple_screw_joint_sdf");
 
-  LinkSharedPtr l0 = boost::make_shared<Link>(*model.LinkByName("link_0"));
-  LinkSharedPtr l1 = boost::make_shared<Link>(*model.LinkByName("link_1"));
+  LinkSharedPtr l0 = LinkFromSdf(*model.LinkByName("link_0"));
+  LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("link_1"));
 
   Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
 
@@ -481,10 +541,10 @@ TEST(Joint, sdf_constructor_screw) {
 // that all transforms, link/joint properties, etc. are correct.
 TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
-  auto simple_urdf = get_sdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = boost::make_shared<Link>(*simple_urdf.LinkByName("l1"));
-  auto l2 = boost::make_shared<Link>(*simple_urdf.LinkByName("l2"));
+  LinkSharedPtr l1 = LinkFromSdf(*simple_urdf.LinkByName("l1"));
+  LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
 
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
@@ -520,6 +580,39 @@ TEST(Robot, simple_urdf) {
                       j1->transformTo(j1->child())));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
                       j1->transformFrom(j1->child())));
+}
+
+
+// Check the links in the simple RR robot.
+TEST(Link, sdf_constructor) {
+  std::string file_path = std::string(SDF_PATH) + "/test/simple_rr.sdf";
+  std::string model_name = "simple_rr_sdf";
+  Link l0 = Link(*LinkFromSdf("link_0", file_path, model_name));
+  Link l1 = Link(*LinkFromSdf("link_1", file_path, model_name));
+
+  // Both link frames are defined in the world frame.
+  EXPECT(assert_equal(Pose3(), l0.wTl()));
+  EXPECT(assert_equal(Pose3(), l1.wTl()));
+
+  // Verify center of mass defined in the link frame is correct.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.lTcom()));
+
+  // Verify center of mass defined in the world frame is correct.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.wTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.wTcom()));
+
+  // Verify that mass is correct.
+  EXPECT(assert_equal(0.01, l0.mass()));
+  EXPECT(assert_equal(0.01, l1.mass()));
+
+  // Verify that inertia elements are correct.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+      l0.inertia()));
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+      l1.inertia()));
 }
 
 int main() {

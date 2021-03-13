@@ -16,7 +16,6 @@
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/WalkCycle.h"
 
 namespace gtdynamics {
