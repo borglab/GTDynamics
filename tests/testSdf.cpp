@@ -582,6 +582,39 @@ TEST(Robot, simple_urdf) {
                       j1->transformFrom(j1->childLink())));
 }
 
+
+// Check the links in the simple RR robot.
+TEST(Link, sdf_constructor) {
+  std::string file_path = std::string(SDF_PATH) + "/test/simple_rr.sdf";
+  std::string model_name = "simple_rr_sdf";
+  Link l0 = Link(*LinkFromSdf("link_0", file_path, model_name));
+  Link l1 = Link(*LinkFromSdf("link_1", file_path, model_name));
+
+  // Both link frames are defined in the world frame.
+  EXPECT(assert_equal(Pose3(), l0.wTl()));
+  EXPECT(assert_equal(Pose3(), l1.wTl()));
+
+  // Verify center of mass defined in the link frame is correct.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.lTcom()));
+
+  // Verify center of mass defined in the world frame is correct.
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.wTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.wTcom()));
+
+  // Verify that mass is correct.
+  EXPECT(assert_equal(0.01, l0.mass()));
+  EXPECT(assert_equal(0.01, l1.mass()));
+
+  // Verify that inertia elements are correct.
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+      l0.inertia()));
+  EXPECT(assert_equal(
+      (gtsam::Matrix(3, 3) << 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0.03).finished(),
+      l1.inertia()));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
