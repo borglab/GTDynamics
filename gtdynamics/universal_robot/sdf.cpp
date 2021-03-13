@@ -49,11 +49,11 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
 }
 
 gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose) {
-  return gtsam::Pose3(gtsam::Rot3(gtsam::Quaternion(
-                       ignition_pose.Rot().W(), ignition_pose.Rot().X(),
-                       ignition_pose.Rot().Y(), ignition_pose.Rot().Z())),
-                   gtsam::Point3(ignition_pose.Pos()[0], ignition_pose.Pos()[1],
-                                 ignition_pose.Pos()[2]));
+  const auto &rot = ignition_pose.Rot();
+  const auto &pos = ignition_pose.Pos();
+  return gtsam::Pose3(
+      gtsam::Rot3(gtsam::Quaternion(rot.W(), rot.X(), rot.Y(), rot.Z())),
+      gtsam::Point3(pos[0], pos[1], pos[2]));
 }
 
 Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
