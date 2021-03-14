@@ -36,17 +36,76 @@ class TwistAccelFactor {
              const gtsam::KeyFormatter &keyFormatter);
 };
 
-
 #include <gtdynamics/factors/TorqueFactor.h>
 class TorqueFactor {
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
-              const gtsam::noiseModel::Base* cost_model,
-              const gtdynamics::JointTyped* joint);
+               const gtsam::noiseModel::Base *cost_model,
+               const gtdynamics::JointTyped *joint);
 
-  void print(const string &s,
-             const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/factors/WrenchFactors.h>
+class WrenchFactor0 {
+  WrenchFactor0(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
+                const Matrix inertia,
+                const boost::optional<gtsam::Vector3> &gravity);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+class WrenchFactor1 {
+  WrenchFactor1(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                gtsam::Key wrench_key_1, gtsam::Key pose_key,
+                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
+                const boost::optional<gtsam::Vector3> &gravity);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+class WrenchFactor2 {
+  WrenchFactor2(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
+                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
+                const Matrix inertia,
+                const boost::optional<gtsam::Vector3> &gravity);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+class WrenchFactor3 {
+  WrenchFactor3(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
+                gtsam::Key wrench_key_3, gtsam::Key pose_key,
+                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
+                const boost::optional<gtsam::Vector3> &gravity);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+class WrenchFactor4 {
+  WrenchFactor4(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
+                gtsam::Key wrench_key_3, gtsam::Key wrench_key_4,
+                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
+                const Matrix inertia,
+                const boost::optional<gtsam::Vector3> &gravity);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
+class WrenchEquivalenceFactor {
+  WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
+                          gtsam::Key q_key,
+                          const gtsam::noiseModel::Base *cost_model,
+                          gtdynamics::JointTyped *joint);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+#include <gtdynamics/factors/WrenchPlanarFactor.h>
+class WrenchPlanarFactor {
+  WrenchPlanarFactor(gtsam::Key wrench_key,
+                     const gtsam::noiseModel::Base *cost_model,
+                     Vector planar_axis);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
 
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
