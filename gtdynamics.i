@@ -107,6 +107,33 @@ class WrenchPlanarFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/factors/CollocationFactors.h>
+class EulerPoseColloFactor{
+  EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
+                       gtsam::Key twist_key, gtsam::Key dt_key,
+                       const gtsam::noiseModel::Base *cost_model);
+};
+
+class TrapezoidalPoseColloFactor{
+  TrapezoidalPoseColloFactor(
+      gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
+      gtsam::Key twist_t1_key, gtsam::Key dt_key,
+      const gtsam::noiseModel::Base *cost_model);
+};
+
+class EulerTwistColloFactor{
+  EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
+                        gtsam::Key accel_key, gtsam::Key dt_key,
+                        const gtsam::noiseModel::Base *cost_model);
+};
+
+class TrapezoidalTwistColloFactor{
+  TrapezoidalTwistColloFactor(
+      gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
+      gtsam::Key accel_t1_key, gtsam::Key dt_key,
+      const gtsam::noiseModel::Base *cost_model);
+};
+
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class LinkParams {
@@ -453,10 +480,15 @@ class DynamicsGraph {
   const gtdynamics::OptimizerSetting &opt() const;
 };
 
+/********************** Value Initialization **********************/
 #include <gtdynamics/utils/initialize_solution_utils.h>
 gtsam::Values ZeroValues(
     const gtdynamics::Robot& robot, const int t, double gaussian_noise);
 
+gtsam::Values ZeroValuesTrajectory(
+    const gtdynamics::Robot& robot, const int num_steps, const int num_phases,
+    double gaussian_noise,
+    const boost::optional<gtdynamics::ContactPoints>& contact_points);
 
 /********************** symbols **********************/
 
