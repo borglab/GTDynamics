@@ -79,11 +79,8 @@ struct JointScalarLimit {
  * This struct contains all parameters needed to construct a joint.
  */
 struct JointParams {
-  JointParams() {}
-
   JointEffortType effort_type = JointEffortType::Actuated;
   JointScalarLimit scalar_limits;
-
   double velocity_limit = 10000.0;
   double velocity_limit_threshold = 0.0;
   double acceleration_limit = 10000.0;
@@ -92,6 +89,7 @@ struct JointParams {
   double torque_limit_threshold = 0.0;
   double damping_coefficient = 0.0;
   double spring_coefficient = 0.0;
+  JointParams() {}
 };
 
 /// Joint is the base class for a joint connecting two Link objects.

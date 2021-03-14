@@ -25,27 +25,27 @@ class TwistFactor {
              const gtsam::KeyFormatter &keyFormatter);
 };
 
-// #include <gtdynamics/factors/TwistAccelFactor.h>
-// class TwistAccelFactor {
-//   TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
-//               gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
-//               const gtsam::noiseModel::Base* cost_model,
-//               const gtdynamics::Joint* joint);
+#include <gtdynamics/factors/TwistAccelFactor.h>
+class TwistAccelFactor {
+  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
+              gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
+              const gtsam::noiseModel::Base* cost_model,
+              const gtdynamics::JointTyped* joint);
 
-//   void print(const string &s,
-//              const gtsam::KeyFormatter &keyFormatter);
-// };
+  void print(const string &s,
+             const gtsam::KeyFormatter &keyFormatter);
+};
 
 
-// #include <gtdynamics/factors/TorqueFactor.h>
-// class TorqueFactor {
-//   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
-//               const gtsam::noiseModel::Base* cost_model,
-//               const gtdynamics::JointSharedPtr joint);
+#include <gtdynamics/factors/TorqueFactor.h>
+class TorqueFactor {
+  TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
+              const gtsam::noiseModel::Base* cost_model,
+              const gtdynamics::JointTyped* joint);
 
-//   void print(const string &s,
-//              const gtsam::KeyFormatter &keyFormatter);
-// };
+  void print(const string &s,
+             const gtsam::KeyFormatter &keyFormatter);
+};
 
 
 /********************** link **********************/
@@ -86,8 +86,10 @@ class Link  {
 
 /********************** joint **********************/
 #include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/JointTyped.h>
 #include <gtdynamics/universal_robot/ScrewJointBase.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/PrismaticJoint.h>
 class JointParams {
   JointParams();
   double velocity_limit;
@@ -113,11 +115,24 @@ virtual class Joint {
   gtdynamics::LinkSharedPtr child() const;
 };
 
-virtual class RevoluteJoint : gtdynamics::Joint {
+virtual class JointTyped : gtdynamics::Joint {
+};
+
+virtual class ScrewJointBase : gtdynamics::JointTyped {
+};
+
+virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
     RevoluteJoint(const string &name, const gtsam::Pose3 &wTj,
                 const gtdynamics::LinkSharedPtr &parent_link,
                 const gtdynamics::LinkSharedPtr &child_link, const gtdynamics::JointParams &parameters,
                 const Vector &axis);
+};
+
+virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
+    PrismaticJoint(const string &name, const gtsam::Pose3 &wTj,
+                 const gtdynamics::LinkSharedPtr &parent_link,
+                 const gtdynamics::LinkSharedPtr &child_link, const gtdynamics::JointParams &parameters,
+                 const Vector &axis);
 };
 
 

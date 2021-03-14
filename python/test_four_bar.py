@@ -1,4 +1,4 @@
-""" Quick unit test for dynamics graph. """
+""" Quick unit test for inverse dynamics of a four bar linkage. """
 
 import unittest
 

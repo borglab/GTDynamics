@@ -38,7 +38,7 @@ class PrismaticJoint : public ScrewJointBase {
 
  public:
   /**
-   * @brief Create PrismaticJoint using JontParams, joint name, joint pose in
+   * @brief Create PrismaticJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
    * @param[in] name          Name of the joint
@@ -55,7 +55,7 @@ class PrismaticJoint : public ScrewJointBase {
       : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
 
-  /// Return joint type for use in reconstructing robot from JontParams.
+  /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::Prismatic; }
 };
 
