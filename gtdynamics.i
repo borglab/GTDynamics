@@ -481,8 +481,6 @@ class DynamicsSymbol {
 
   DynamicsSymbol(const gtsam::Key& key);
 
-  // operator gtsam::Key() const;
-
   string label() const;
 
   unsigned char linkIdx() const;
@@ -496,9 +494,8 @@ class DynamicsSymbol {
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 
   gtsam::Key key() const;
-
-  // operator string() const;
 };
+
 gtdynamics::DynamicsSymbol PoseKey(int i, int t);
 gtdynamics::DynamicsSymbol TwistKey(int i, int t);
 gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t);
@@ -507,5 +504,8 @@ gtdynamics::DynamicsSymbol JointAngleKey(int j, int t);
 gtdynamics::DynamicsSymbol JointVelKey(int j, int t);
 gtdynamics::DynamicsSymbol JointAccelKey(int j, int t);
 gtdynamics::DynamicsSymbol TorqueKey(int j, int t);
+gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t);
+gtdynamics::DynamicsSymbol PhaseKey(int k);
+gtdynamics::DynamicsSymbol TimeKey(int t);
 }
 
