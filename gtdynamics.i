@@ -149,6 +149,7 @@ class Link  {
 #include <gtdynamics/universal_robot/ScrewJointBase.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
+#include <gtdynamics/universal_robot/ScrewJoint.h>
 class JointParams {
   JointParams();
   double velocity_limit;
@@ -177,23 +178,29 @@ virtual class Joint {
 virtual class JointTyped : gtdynamics::Joint {
 };
 
-virtual class ScrewJointBase : gtdynamics::JointTyped {
-};
+virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
-    RevoluteJoint(const string &name, const gtsam::Pose3 &wTj,
+  RevoluteJoint(const string &name, const gtsam::Pose3 &wTj,
                 const gtdynamics::LinkSharedPtr &parent_link,
-                const gtdynamics::LinkSharedPtr &child_link, const gtdynamics::JointParams &parameters,
-                const Vector &axis);
+                const gtdynamics::LinkSharedPtr &child_link,
+                const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
-    PrismaticJoint(const string &name, const gtsam::Pose3 &wTj,
+  PrismaticJoint(const string &name, const gtsam::Pose3 &wTj,
                  const gtdynamics::LinkSharedPtr &parent_link,
-                 const gtdynamics::LinkSharedPtr &child_link, const gtdynamics::JointParams &parameters,
-                 const Vector &axis);
+                 const gtdynamics::LinkSharedPtr &child_link,
+                 const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
+virtual class ScrewJoint : gtdynamics::ScrewJointBase {
+  ScrewJoint(const string &name, const gtsam::Pose3 &wTj,
+             const gtdynamics::LinkSharedPtr &parent_link,
+             const gtdynamics::LinkSharedPtr &child_link,
+             const gtdynamics::JointParams &parameters, const Vector &axis,
+             double thread_pitch);
+};
 
 /********************** robot **********************/
 
@@ -215,12 +222,6 @@ class Robot {
   gtdynamics::Link* link(string name) const;
 
   gtdynamics::Joint* joint(string name) const;
-
-//   /// For python wrapper
-//   void removeJointByName(const string& name);
-
-//   /// For python wrapper
-//   void removeLinkByName(const string& name);
 
   int numLinks() const;
 
