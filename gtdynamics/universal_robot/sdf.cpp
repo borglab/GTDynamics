@@ -48,7 +48,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose) {
+gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose) {
   const auto &rot = ignition_pose.Rot();
   const auto &pos = ignition_pose.Pos();
   return gtsam::Pose3(
@@ -73,12 +73,24 @@ Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
   parameters.name = sdf_link.Name();
   parameters.mass = sdf_link.Inertial().MassMatrix().Mass();
   const auto &inertia = sdf_link.Inertial().Moi();
-  parameters.inertia << inertia(0, 0),
-             inertia(0, 1), inertia(0, 2),
-             inertia(1, 0), inertia(1, 1),
-             inertia(1, 2), inertia(2, 0),
-             inertia(2, 1), inertia(2, 2);
-  parameters.wTl = Pose3FromIgnition(sdf_link.Pose());
+  parameters.inertia << inertia(0, 0), inertia(0, 1), inertia(0, 2),
+      inertia(1, 0), inertia(1, 1), inertia(1, 2), inertia(2, 0), inertia(2, 1),
+      inertia(2, 2);
+
+  /// Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+  // Get non-const Pose3d
+  auto jTl = sdf_link.RawPose();
+  // Update from joint frame to base frame in-place.
+  // Base frame is denoted by "".
+  auto errors = sdf_link.SemanticPose().Resolve(jTl, "");
+  // If any errors in the resolution, throw an exception.
+  if (errors.size() > 0) {
+    throw std::runtime_error(errors[0].Message());
+  }
+  // Pose is updated from joint frame to world frame.
+  parameters.wTl = Pose3FromIgnition(jTl);
+
   parameters.lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   return parameters;
 }
@@ -87,19 +99,17 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const LinkSharedPtr &parent_link,
                     const LinkSharedPtr &child_link) {
   auto frame = sdf_joint.PoseRelativeTo();
-  Pose3 sdf_joint_pose = parse_ignition_pose(sdf_joint.RawPose());
-  if (frame == "" || frame == child_link->name()) {
-    if (sdf_joint.Pose() == ignition::math::Pose3d())
+  Pose3 sdf_joint_pose = Pose3FromIgnition(sdf_joint.RawPose());
+  if (frame.empty() || frame == child_link->name()) {
+    if (sdf_joint.RawPose() == ignition::math::Pose3d()) {
       return child_link->wTl();
-    else
-      return child_link->wTl() * Pose3FromIgnition(sdf_joint.Pose());
+    } else {
+      return child_link->wTl() * Pose3FromIgnition(sdf_joint.RawPose());
+    }
   } else if (frame == parent_link->name()) {
-    if (sdf_joint.Pose() == ignition::math::Pose3d())
-      return parent_link->wTl();
-    else
-      return parent_link->wTl() * Pose3FromIgnition(sdf_joint.Pose());
+    return parent_link->wTl() * Pose3FromIgnition(sdf_joint.RawPose());
   } else if (frame == "world") {
-    return Pose3FromIgnition(sdf_joint.Pose());
+    return Pose3FromIgnition(sdf_joint.RawPose());
   } else {
     // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
     throw std::runtime_error(
@@ -113,8 +123,15 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link) {
+LinkSharedPtr LinkFromSdf(const sdf::Link &sdf_link) {
   return boost::make_shared<Link>(ParametersFromSdfLink(sdf_link));
+}
+
+LinkSharedPtr LinkFromSdf(const std::string &link_name,
+                          const std::string &sdf_file_path,
+                          const std::string &model_name) {
+  auto model = GetSdf(sdf_file_path, model_name);
+  return LinkFromSdf(*model.LinkByName(link_name));
 }
 
 JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
@@ -131,30 +148,23 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(
-          name, wTj, parent_link, child_link, parameters, axis);
+      joint = boost::make_shared<PrismaticJoint>(name, wTj, parent_link,
+                                                 child_link, parameters, axis);
       break;
     case sdf::JointType::REVOLUTE:
       joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
                                                 child_link, parameters, axis);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link,
-                                              child_link, parameters, axis,
-                                              sdf_joint.ThreadPitch());
+      joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link, child_link,
+                                             parameters, axis,
+                                             sdf_joint.ThreadPitch());
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
-                                "] not yet supported");
+                               "] not yet supported");
   }
   return joint;
-}
-
-LinkSharedPtr LinkFromSdf(const std::string &link_name,
-                          const std::string &sdf_file_path,
-                          const std::string &model_name) {
-  auto model = GetSdf(sdf_file_path, model_name);
-  return LinkFromSdf(*model.LinkByName(link_name));
 }
 
 /**
