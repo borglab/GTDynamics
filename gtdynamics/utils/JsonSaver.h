@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include "gtdynamics/factors/LinkPoseFactor.h"
+#include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
@@ -235,7 +235,7 @@ class JsonSaver {
       return "Wrench";
     } else if (dynamic_cast<const WrenchFactor4*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const LinkPoseFactor*>(&(*factor))) {
+    } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
       return "Pose";
     } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
       return "Twist";

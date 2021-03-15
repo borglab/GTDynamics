@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  LinkPoseFactor.h
- * @brief Factor for forward kinematics of a single link-joint.
+ * @file  PoseFactor.h
+ * @brief Forward kinematics factor.
  * @author Frank Dellaert and Mandy Xie
  */
 
@@ -23,20 +23,19 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
 /**
- * LinkPoseFactor is a three-way nonlinear factor between the previous link pose and
+ * PoseFactor is a three-way nonlinear factor between the previous link pose and
  * this link pose
  */
-class LinkPoseFactor
+class PoseFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
                                       typename JointTyped::JointCoordinate> {
  private:
   using JointCoordinate = typename JointTyped::JointCoordinate;
-  using This = LinkPoseFactor;
+  using This = PoseFactor;
   using Base =
       gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>;
   enum { N = JointTyped::N };
@@ -45,13 +44,13 @@ class LinkPoseFactor
 
  public:
   /**
-   * Create single factor relating this link's CoM pose with previous one.
-   *
+   * Create single factor relating this link's pose (COM) with previous one.
+   * 
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses.
    * @param time The timestep at which this factor is defined.
    */
-  LinkPoseFactor(const gtsam::SharedNoiseModel &cost_model,
+  PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
       : Base(cost_model, PoseKey(joint->parent()->id(), time),
              PoseKey(joint->child()->id(), time),
@@ -69,13 +68,13 @@ class LinkPoseFactor
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses
    */
-  LinkPoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
+  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
       : Base(cost_model, wTp_key, wTc_key, q_key),
         joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 
-  virtual ~LinkPoseFactor() {}
+  virtual ~PoseFactor() {}
 
   /**
    * Evaluate link pose errors

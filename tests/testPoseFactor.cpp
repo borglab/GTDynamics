@@ -7,7 +7,7 @@
 
 /**
  * @file  testPoseFactor.cpp
- * @brief Test LinkPoseFactor.
+ * @brief Test forward kinematics factor.
  * @author Frank Dellaert and Mandy Xie
  */
 
@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/LinkPoseFactor.h"
+#include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
@@ -68,7 +68,7 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
 }
 
 // Test twist factor for stationary case
-TEST(LinkPoseFactor, error) {
+TEST(PoseFactor, error) {
   // create functor
   gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
@@ -77,7 +77,7 @@ TEST(LinkPoseFactor, error) {
   double jointAngle = 0;
 
   // Create factor
-  LinkPoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
 
   // call evaluateError
@@ -99,13 +99,13 @@ TEST(LinkPoseFactor, error) {
 }
 
 // Test breaking case
-TEST(LinkPoseFactor, breaking) {
+TEST(PoseFactor, breaking) {
   // create functor
   gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  LinkPoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
   double jointAngle;
   gtsam::Pose3 pose_p, pose_c;
@@ -125,7 +125,7 @@ TEST(LinkPoseFactor, breaking) {
 }
 
 // Test breaking case for rr link
-TEST(LinkPoseFactor, breaking_rr) {
+TEST(PoseFactor, breaking_rr) {
   // Evaluate PoseFunctor on an RR link.
   using simple_urdf_zero_inertia::my_robot;
 
@@ -142,7 +142,7 @@ TEST(LinkPoseFactor, breaking_rr) {
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 cMp = j1->transformTo(l2);
   auto joint = make_joint(cMp, screw_axis);
-  LinkPoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
 
   EXPECT(assert_equal(
@@ -153,13 +153,13 @@ TEST(LinkPoseFactor, breaking_rr) {
 }
 
 // Test non-zero cMp rotation case
-TEST(LinkPoseFactor, nonzero_rest) {
+TEST(PoseFactor, nonzero_rest) {
   // Create factor
   gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3::Rx(1), gtsam::Point3(-2, 0, 0));
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  LinkPoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
+  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
 
   double jointAngle;
