@@ -33,8 +33,8 @@ TEST(Joint, params_constructor) {
   auto l2 = my_robot.link("l2");
 
   using gtdynamics::Joint;
-  gtdynamics::ScrewJointBase::Parameters parameters;
-  parameters.effort_type = Joint::EffortType::Actuated;
+  gtdynamics::JointParams parameters;
+  parameters.effort_type = gtdynamics::JointEffortType::Actuated;
   parameters.scalar_limits.value_lower_limit = -1.57;
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
@@ -48,7 +48,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(j1.name(), "j1"));
 
   // joint effort type
-  EXPECT(j1.parameters().effort_type == Joint::EffortType::Actuated);
+  EXPECT(j1.parameters().effort_type == gtdynamics::JointEffortType::Actuated);
 
   // other link
   EXPECT(j1.otherLink(l2) == l1);

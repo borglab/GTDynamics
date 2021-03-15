@@ -37,9 +37,9 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-Robot::Robot(LinkJointPair links_and_joints)
-    : name_to_link_(links_and_joints.first),
-      name_to_joint_(links_and_joints.second) {}
+Robot::Robot(const LinkMap& links, const JointMap& joints)
+    : name_to_link_(links),
+      name_to_joint_(joints) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, LinkSharedPtr>(name_to_link_);

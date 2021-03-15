@@ -24,7 +24,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
 
 /**
- * Construct a Prismatic joint via Parameters and ensure all values are as
+ * Construct a Prismatic joint via JointParams and ensure all values are as
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
@@ -32,8 +32,8 @@ TEST(Joint, params_constructor_prismatic) {
   LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
   LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
 
-  ScrewJointBase::Parameters parameters;
-  parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams parameters;
+  parameters.effort_type = JointEffortType::Actuated;
   parameters.scalar_limits.value_lower_limit = 0;
   parameters.scalar_limits.value_upper_limit = 2;
   parameters.scalar_limits.value_limit_threshold = 0;
@@ -55,7 +55,7 @@ TEST(Joint, params_constructor_prismatic) {
   EXPECT(assert_equal(j1->name(), "j1"));
 
   // joint effort type
-  EXPECT(j1->parameters().effort_type == Joint::EffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);

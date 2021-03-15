@@ -41,7 +41,7 @@ gtsam::Key pose_p_key = gtsam::Symbol('p', 1),
 boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
                                                    gtsam::Vector6 cScrewAxis) {
   // create links
-  Link::Params link1_params, link2_params;
+  LinkParams link1_params, link2_params;
   link1_params.mass = 100;
   link1_params.name = "l1";
   link1_params.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
@@ -54,8 +54,8 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   LinkSharedPtr l2 = boost::make_shared<Link>(Link(link2_params));
 
   // create joint
-  ScrewJointBase::Parameters joint_params;
-  joint_params.effort_type = Joint::EffortType::Actuated;
+  JointParams joint_params;
+  joint_params.effort_type = JointEffortType::Actuated;
   joint_params.scalar_limits.value_lower_limit = -1.57;
   joint_params.scalar_limits.value_upper_limit = 1.57;
   joint_params.scalar_limits.value_limit_threshold = 0;
