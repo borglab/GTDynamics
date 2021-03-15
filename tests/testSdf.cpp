@@ -265,20 +265,20 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
-  Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2)));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2)));
+  Pose3 l1Tl2com_rest(Rot3::Rx(0), Point3(0, 0, 2));
+  Pose3 l2Tl1com_rest(Rot3::Rx(0), Point3(0, 0, -2));
+  EXPECT(assert_equal(l1Tl2com_rest, j1->transformFrom(l2)));
+  EXPECT(assert_equal(l2Tl1com_rest, j1->transformTo(l2)));
 
   // transform from (rotating -pi/2)
-  Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
-  Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
-  EXPECT(assert_equal(T_12com, j1->transformFrom(l2, -M_PI / 2)));
-  EXPECT(assert_equal(T_21com, j1->transformFrom(l1, -M_PI / 2)));
+  Pose3 l1Tl2com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
+  Pose3 l2Tl1com(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
+  EXPECT(assert_equal(l1Tl2com, j1->transformFrom(l2, -M_PI / 2)));
+  EXPECT(assert_equal(l2Tl1com, j1->transformFrom(l1, -M_PI / 2)));
 
   // transfrom to (rotating -pi/2)
-  EXPECT(assert_equal(T_12com, j1->transformTo(l1, -M_PI / 2)));
-  EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
+  EXPECT(assert_equal(l1Tl2com, j1->transformTo(l1, -M_PI / 2)));
+  EXPECT(assert_equal(l2Tl1com, j1->transformTo(l2, -M_PI / 2)));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -331,13 +331,13 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
-  Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
-  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 l0Tl1com_rest(Rot3::identity(), Point3(0, 0, 0.4));
+  Pose3 l0Tl1com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 l0Tl1com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
-  EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
+  EXPECT(assert_equal(l0Tl1com_rest, j1->transformTo(l0)));
+  EXPECT(assert_equal(l0Tl1com_neg, j1->transformTo(l0, -M_PI / 2)));
+  EXPECT(assert_equal(l0Tl1com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
   ScrewJointBase::Parameters j2_parameters;
@@ -357,13 +357,13 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j2_l2, j2->screwAxis(l2)));
 
   // Check transform from l1 com to l2 com at rest and at various angles.
-  Pose3 T_12com_rest(Rot3::identity(), Point3(0, 0, 0.6));
-  Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
-  Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
+  Pose3 l1Tl2com_rest(Rot3::identity(), Point3(0, 0, 0.6));
+  Pose3 l1Tl2com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
+  Pose3 l1Tl2com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
-  EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2)));
-  EXPECT(assert_equal(T_12com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));
-  EXPECT(assert_equal(T_12com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
+  EXPECT(assert_equal(l1Tl2com_rest, j2->transformFrom(l2)));
+  EXPECT(assert_equal(l1Tl2com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));
+  EXPECT(assert_equal(l1Tl2com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
 }
 
 /**
@@ -459,20 +459,20 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
-  Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2), 1e-5));
+  Pose3 l1Tl2com_rest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
+  Pose3 l2Tl1com_rest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
+  EXPECT(assert_equal(l1Tl2com_rest, j1->transformFrom(l2), 1e-5));
+  EXPECT(assert_equal(l2Tl1com_rest, j1->transformTo(l2), 1e-5));
 
   // transform from (translating +1)
-  Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
-  Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
-  EXPECT(assert_equal(T_12com, j1->transformFrom(l2, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->transformFrom(l1, 1), 1e-5));
+  Pose3 l1Tl2com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
+  Pose3 l2Tl1com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
+  EXPECT(assert_equal(l1Tl2com, j1->transformFrom(l2, 1), 1e-5));
+  EXPECT(assert_equal(l2Tl1com, j1->transformFrom(l1, 1), 1e-5));
 
   // transfrom to (translating +1)
-  EXPECT(assert_equal(T_12com, j1->transformTo(l1, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->transformTo(l2, 1), 1e-5));
+  EXPECT(assert_equal(l1Tl2com, j1->transformTo(l1, 1), 1e-5));
+  EXPECT(assert_equal(l2Tl1com, j1->transformTo(l2, 1), 1e-5));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -503,7 +503,7 @@ TEST(Joint, urdf_constructor_prismatic) {
  */
 TEST(Joint, sdf_constructor_screw) {
   auto model = GetSdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
-                       "simple_screw_joint_sdf");
+                      "simple_screw_joint_sdf");
 
   LinkSharedPtr l0 = LinkFromSdf(*model.LinkByName("link_0"));
   LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("link_1"));
@@ -581,7 +581,6 @@ TEST(Robot, simple_urdf) {
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
                       j1->transformFrom(j1->child())));
 }
-
 
 // Check the links in the simple RR robot.
 TEST(Link, sdf_constructor) {
