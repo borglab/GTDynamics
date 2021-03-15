@@ -16,7 +16,7 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/factors/LinkPoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
@@ -30,7 +30,7 @@ namespace gtdynamics {
 gtsam::NonlinearFactorGraph JointTyped::qFactors(
     size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<PoseFactor>(
+  graph.emplace_shared<LinkPoseFactor>(
       PoseKey(parent_link_->id(), t), PoseKey(child_link_->id(), t),
       JointAngleKey(id(), t), opt.p_cost_model, shared());
   return graph;
