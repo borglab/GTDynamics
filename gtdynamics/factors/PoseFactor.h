@@ -23,6 +23,7 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -45,7 +46,7 @@ class PoseFactor
  public:
   /**
    * Create single factor relating this link's pose (COM) with previous one.
-   * 
+   *
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses.
    * @param time The timestep at which this factor is defined.

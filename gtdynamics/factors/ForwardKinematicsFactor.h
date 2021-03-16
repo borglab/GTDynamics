@@ -17,84 +17,80 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/universal_robot/Robot.h"
 
 namespace gtdynamics {
 
 /**
- * ForwardKinematicsFactor is a two-way nonlinear factor which computes the pose
- * of the specified link with respect to the robot's base link,
- * and compares it to the estimate.
+ * ForwardKinematicsFactor is a two-way nonlinear factor which computes the
+ * relatvie CoM pose between the specified links.
+ *
+ * This factor assumes a joint noise model on the entire kinematic chain, rather
+ * than individual noise parameters for each joint. The pose of each link is
+ * taken in the robot base/model frame.
  */
-class ForwardKinematicsFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
  private:
   using This = ForwardKinematicsFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
-
-  Robot robot_;
-  std::string base_link_name_, end_link_name_;
-  JointValues joint_angles_;
+  using Base = gtsam::BetweenFactor<gtsam::Pose3>;
 
  public:
   /**
-   * Create single factor relating specified link's pose (COM) with estimate.
+   * Construct the factor by computing the end link estimate via forward
+   * kinematics.
    *
-   * Please use the joint based constructor above if possible.
-   *
-   * @param bTp_key Key for end link's CoM pose in robot base frame.
+   * @param bTl1_key Key for CoM pose of start link in the kinematic chain.
+   * @param bTl2_key Key for CoM pose of end link in the kinematic chain.
    * @param robot The Robot model to perform forward kinematics.
-   * @param base_link_name The name of the robot's base link.
+   * @param start_link_name The name of the robot's base link.
    * @param end_link_name The name of the end link whose pose we wish to
    * compute.
    * @param joint_angles Map of joint names to joint angles used in forward
    * kinematics.
    * @param cost_model The noise model for this factor.
    */
-  ForwardKinematicsFactor(gtsam::Key bTp_key, const Robot &robot,
-                          const std::string &base_link_name,
+  ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
+                          const Robot &robot,
+                          const std::string &start_link_name,
                           const std::string &end_link_name,
                           const JointValues &joint_angles,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, bTp_key),
-        robot_(robot),
-        base_link_name_(base_link_name),
-        end_link_name_(end_link_name),
-        joint_angles_(joint_angles) {}
+                          const gtsam::SharedNoiseModel &model)
+      : Base(bTl1_key, bTl2_key,
+             forwardKinematics(robot, joint_angles, start_link_name,
+                               end_link_name),
+             model) {}
 
   virtual ~ForwardKinematicsFactor() {}
 
   /**
-   * Evaluate Forward Kinematics errors
-   * @param bTp previous (parent) link CoM pose
-   * @param wTc this (child) link CoM pose
-   * @param q joint angle
+   * @brief Function to compute the relative pose between start and end link via
+   * forward kinematics using the joint angles.
+   *
+   * @param robot Robot model on which to perform forward kinematics.
+   * @param joint_angles Joint angles in radians.
+   * @param start_link_name String for the start link in the kinematic chain.
+   * @param end_link_name String for the end link in the kinematic chain.
+   * @return gtsam::Pose3
    */
-  gtsam::Vector evaluateError(
-      const gtsam::Pose3 &bTp,
-      boost::optional<gtsam::Matrix &> H_bTp = boost::none) const override {
+  gtsam::Pose3 forwardKinematics(const Robot &robot,
+                                 const JointValues &joint_angles,
+                                 const std::string &start_link_name,
+                                 const std::string &end_link_name) {
     JointValues joint_velocities;
-    for (auto &&kv : joint_angles_) {
+    for (auto &&kv : joint_angles) {
       joint_velocities[kv.first] = 0;
     }
-    FKResults result = robot_.forwardKinematics(
-        joint_angles_, joint_velocities, base_link_name_,
-        robot_.link(base_link_name_)->lTcom());
-    gtsam::Pose3 measured_ = result.first[end_link_name_];
-    return gtsam::traits<gtsam::Pose3>::Local(measured_, bTp, boost::none,
-                                              H_bTp);
-    ;
-  }
-
-  //// @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
-        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+    FKResults result =
+        robot.forwardKinematics(joint_angles, joint_velocities, start_link_name,
+                                robot.link(start_link_name)->lTcom());
+    gtsam::Pose3 bTl1 = result.first[start_link_name];
+    gtsam::Pose3 bTl2 = result.first[end_link_name];
+    return bTl1.between(bTl2);
   }
 
   /// print contents
@@ -103,15 +99,6 @@ class ForwardKinematicsFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "ForwardKinematicsFactor" << std::endl;
     Base::print("", keyFormatter);
-  }
-
- private:
-  /// Serialization function
-  friend class boost::serialization::access;
-  template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
-    ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
 
