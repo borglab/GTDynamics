@@ -60,10 +60,11 @@ class Robot {
   /**
    * Constructor from link and joint elements.
    *
-   * @param[in] robot_links_and_joints LinkJointPair containing links and
+   * @param[in] links LinkMap containing all links
+   * @param[in] joints JointMap containing all joints
    * joints.
    */
-  explicit Robot(LinkJointPair links_and_joints);
+  explicit Robot(const LinkMap& links, const JointMap& joints);
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;
@@ -110,8 +111,7 @@ class Robot {
   FKResults forwardKinematics(
       const JointValues &joint_angles, const JointValues &joint_vels,
       const boost::optional<std::string> prior_link_name = boost::none,
-      const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none,
-      const boost::optional<gtsam::Vector6> &prior_link_twist =
-          boost::none) const;
+      const gtsam::Pose3 &prior_link_pose = gtsam::Pose3(),
+      const gtsam::Vector6 &prior_link_twist = gtsam::Z_6x1) const;
 };
 }  // namespace gtdynamics

@@ -91,19 +91,19 @@ class ScrewJointBase : public JointTyped {
 
  public:
   /**
-   * Constructor using Parameters, joint name, wTj, screw axes,
+   * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
   ScrewJointBase(const std::string &name, const gtsam::Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
-                 const LinkSharedPtr &child_link, const Parameters &parameters,
+                 const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
       : JointTyped(name, wTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
-  /// Return joint type for use in reconstructing robot from Parameters.
+  /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::ScrewAxis; }
 
   /// Return screw axis expressed in the specified link frame
