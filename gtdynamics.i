@@ -259,10 +259,11 @@ class Robot {
   void print() const;
 
   FKResults forwardKinematics(
-      const gtdynamics::JointValues &joint_angles, const gtdynamics::JointValues &joint_vels,
-      const boost::optional<string> prior_link_name ,
-      const boost::optional<gtsam::Pose3> &prior_link_pose ,
-      const boost::optional<gtsam::Vector6> &prior_link_twist) const;
+      const gtdynamics::JointValues &joint_angles,
+      const boost::optional<gtdynamics::JointValues> &joint_velocities,
+      const boost::optional<string> &prior_link_name ,
+      const gtsam::Pose3 &prior_link_pose ,
+      const Vector &prior_link_twist) const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
