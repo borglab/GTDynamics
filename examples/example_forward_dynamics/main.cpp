@@ -1,5 +1,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -8,7 +9,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
   // constraints.
-  auto simple_rr = Robot("../simple_rr.sdf", "simple_rr_sdf");
+  auto simple_rr = CreateRobotFromFile("../simple_rr.sdf", "simple_rr_sdf");
   simple_rr.print();
 
   auto graph_builder = DynamicsGraph();

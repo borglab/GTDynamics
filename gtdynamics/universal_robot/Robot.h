@@ -64,7 +64,7 @@ class Robot {
    * @param[in] joints JointMap containing all joints
    * joints.
    */
-  explicit Robot(const LinkMap& links, const JointMap& joints);
+  explicit Robot(const LinkMap &links, const JointMap &joints);
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;
@@ -101,16 +101,17 @@ class Robot {
    * 
    * (Will throw an error when invalid joint angle specification detected).
    *
-   * @param[in] joint_angles joint angles for all joints in radians
-   * @param[in] joint_vels joint velocities for all joints
+   * @param[in] joint_angles joint angles for all joints (in radians)
+   * @param[in] joint_velocities joint velocities for all joints
    * @param[in] prior_link_name name of link with known pose & twist
    * @param[in] prior_link_pose pose of the known link
    * @param[in] prior_link_twist twist of the konwn link
    * @return poses and twists of all links
    */
   FKResults forwardKinematics(
-      const JointValues &joint_angles, const JointValues &joint_vels,
-      const boost::optional<std::string> prior_link_name = boost::none,
+      const JointValues &joint_angles,
+      const boost::optional<JointValues> &joint_velocities = boost::none,
+      const boost::optional<std::string> &prior_link_name = boost::none,
       const gtsam::Pose3 &prior_link_pose = gtsam::Pose3(),
       const gtsam::Vector6 &prior_link_twist = gtsam::Z_6x1) const;
 };

@@ -25,8 +25,8 @@
 #include "gtdynamics/utils/utils.h"
 
 using gtsam::Pose3;
-using gtsam::Vector6;
 using gtsam::Vector3;
+using gtsam::Vector6;
 
 namespace gtdynamics {
 
@@ -39,9 +39,8 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-Robot::Robot(const LinkMap& links, const JointMap& joints)
-    : name_to_link_(links),
-      name_to_joint_(joints) {}
+Robot::Robot(const LinkMap &links, const JointMap &joints)
+    : name_to_link_(links), name_to_joint_(joints) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, LinkSharedPtr>(name_to_link_);
@@ -125,8 +124,9 @@ void Robot::print() const {
 }
 
 FKResults Robot::forwardKinematics(
-    const JointValues &joint_angles, const JointValues &joint_vels,
-    const boost::optional<std::string> prior_link_name,
+    const JointValues &joint_angles,
+    const boost::optional<JointValues> &joint_velocities,
+    const boost::optional<std::string> &prior_link_name,
     const Pose3 &prior_link_pose, const Vector6 &prior_link_twist) const {
   LinkPoses link_poses;
   LinkTwists link_twists;
@@ -171,12 +171,16 @@ FKResults Robot::forwardKinematics(
       LinkSharedPtr link2 = joint_ptr->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
-      double joint_vel = joint_vels.at(joint_ptr->name());
-      const Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
+      const Pose3 l1Tl2 = joint_ptr->transformTo(link1, joint_angle);
       const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
-      const Pose3 T_w2 = T_w1 * T_12;
+      const Pose3 T_w2 = T_w1 * l1Tl2;
+
+      // If joint_velocities are provided, compute the twist, else default to zero.
       const Vector6 V_2 =
-          joint_ptr->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
+          joint_velocities ? joint_ptr->transformTwistFrom(
+                                 link1, joint_angle,
+                                 joint_velocities->at(joint_ptr->name()), V_1)
+                           : gtsam::Z_6x1;
 
       // Save pose and twist if link 2 has not been assigned yet.
       if (link_poses.find(link2->name()) == link_poses.end()) {
