@@ -67,7 +67,7 @@ TEST(Joint, params_constructor) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2, 0.0)));
+  EXPECT(assert_equal(T_12comRest, j1->transformFrom(0, l2, 0.0)));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0.0)));
 
   // transform from (rotating -pi/2)
@@ -81,7 +81,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
 
   // should throw error
-  CHECK_EXCEPTION(j1->transformTo(l1, gtsam::Values()),
+  CHECK_EXCEPTION(j1->transformTo(0, l1, gtsam::Values()),
                   gtsam::ValuesKeyDoesNotExist);
 
   // links

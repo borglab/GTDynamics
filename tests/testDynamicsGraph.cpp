@@ -52,19 +52,29 @@ using std::vector;
 TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   using simple_urdf_eq_mass::my_robot;
 
-  DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
-                              simple_urdf_eq_mass::planar_axis);
-                                int t = 777;
-  Values values;
-  values.insert(JointAngleKey(1, t), 0.0);
-  values.insert(JointVelKey(1, t), 0.0);
-  values.insert(TorqueKey(1, t), 1.0);
-  values.insert(JointAccelKey(1, t), 4.0);
   std::string prior_link_name = "l1";
   auto l1 = my_robot.link(prior_link_name);
+
+  // TODO(frank): joint numbering starts at 0?? Should fix.
+  Values values;
+  int t = 777;
+  auto joint_id = my_robot.joint("j1")->id();
+  values.insert(JointAngleKey(joint_id, t), 0.0);
+  values.insert(JointVelKey(joint_id, t), 0.0);
+  values.insert(TorqueKey(joint_id, t), 1.0);
+  values.insert(JointAccelKey(joint_id, t), 4.0);
   values.insert(PoseKey(l1->id(), t), l1->wTcom());
   values.insert<Vector6>(TwistKey(l1->id(), t), gtsam::Z_6x1);
-  Values fk_results = my_robot.forwardKinematics(t, values, prior_link_name);
+
+  // Do forward kinematics.
+  try {
+    Values fk_results = my_robot.forwardKinematics(t, values, prior_link_name);
+  } catch (const gtsam::ValuesKeyDoesNotExist& e) {
+    std::cerr << "key not found:" << _GTDKeyFormatter(e.key()) << '\n';
+  }
+
+  DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
+                              simple_urdf_eq_mass::planar_axis);
 
   // test forward dynamics
 //   Values result_fd = graph_builder.linearSolveFD(my_robot, t, fk_results);

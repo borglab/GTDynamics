@@ -64,7 +64,7 @@ TEST(Joint, params_constructor_prismatic) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
   Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2, 0.0), 1e-5));
+  EXPECT(assert_equal(T_12comRest, j1->transformFrom(0, l2, 0.0), 1e-5));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0.0), 1e-5));
 
   // transform from (translating +1)

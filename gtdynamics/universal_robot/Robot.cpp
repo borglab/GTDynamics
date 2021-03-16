@@ -120,12 +120,12 @@ void Robot::print() const {
     joint_angles.insertDouble(joint->key(), 0);
 
     std::cout << "\tpMc_com: "
-              << joint->transformTo(child_link, joint_angles)
+              << joint->transformTo(0, child_link, joint_angles)
                      .rotation()
                      .rpy()
                      .transpose()
               << ", "
-              << joint->transformTo(child_link, joint_angles)
+              << joint->transformTo(0, child_link, joint_angles)
                      .translation()
                      .transpose()
               << "\n";
@@ -174,12 +174,12 @@ gtsam::Values Robot::forwardKinematics(
       LinkSharedPtr link2 = joint->otherLink(link1);
       // calculate the pose and twist of link2
       double joint_angle = known_values.atDouble(JointAngleKey(joint->id(), t));
-      const Pose3 l1Tl2 = joint->transformTo(link1, known_values);
+      const Pose3 l1Tl2 = joint->transformTo(t, link1, known_values);
       const Pose3 T_w2 = T_w1 * l1Tl2;
 
       // Compute the twist. TODO(frank): pass just one value.
       const Vector6 V_2 =
-          joint->transformTwistFrom(link1, known_values, known_values, V_1);
+          joint->transformTwistFrom(t, link1, known_values, known_values, V_1);
 
       // Save pose and twist if link 2 has not been assigned yet.
       auto pose_key = PoseKey(link2->id(), t);
