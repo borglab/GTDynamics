@@ -261,8 +261,8 @@ class Robot {
   FKResults forwardKinematics(
       const gtdynamics::JointValues &joint_angles,
       const boost::optional<gtdynamics::JointValues> &joint_velocities,
-      const boost::optional<string> &prior_link_name ,
-      const gtsam::Pose3 &prior_link_pose ,
+      const boost::optional<string> &prior_link_name,
+      const gtsam::Pose3 &prior_link_pose,
       const Vector &prior_link_twist) const;
 };
 

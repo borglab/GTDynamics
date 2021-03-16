@@ -97,10 +97,11 @@ class Robot {
   void print() const;
 
   /**
-   * Calculate forward kinematics by performing bfs in the link-joint graph
-   * (will throw an error when invalid joint angle specification detected).
+   * Calculate forward kinematics by performing BFS in the link-joint graph.
+   * 
+   * (Will throw an error when invalid joint angle specification detected).
    *
-   * @param[in] joint_angles joint angles for all joints
+   * @param[in] joint_angles joint angles for all joints (in radians)
    * @param[in] joint_velocities joint velocities for all joints
    * @param[in] prior_link_name name of link with known pose & twist
    * @param[in] prior_link_pose pose of the known link
