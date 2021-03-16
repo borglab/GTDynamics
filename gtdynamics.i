@@ -4,8 +4,10 @@ namespace gtdynamics {
 
 /********************** factors **********************/
 
+virtual class gtsam::NonlinearFactor;
+
 #include <gtdynamics/factors/PoseFactor.h>
-class PoseFactor : gtsam::NonlinearFactor{
+class PoseFactor : gtsam::NonlinearFactor {
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base* cost_model,
              const gtdynamics::Joint* joint);
@@ -163,7 +165,7 @@ class Link  {
     void fix();
     void fix(gtsam::Pose3 & fixed_pose);
     void unfix();
-    // const std::vector<Joint*> &getJoints() const; // TODO!
+    const std::vector<Joint> &getJoints() const; // don't need Joint* to get this working
     string name() const;
     double mass() const;
     const gtsam::Pose3 &centerOfMass();

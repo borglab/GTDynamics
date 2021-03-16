@@ -1,8 +1,7 @@
-""" Quick unit test for dynamics graph. """
+"""Unit tests for dynamics graph."""
 
 import unittest
 
-import gtsam
 import numpy as np
 
 import gtdynamics as gtd
