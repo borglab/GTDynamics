@@ -48,6 +48,59 @@ using gtsam::Vector6;
 namespace gtdynamics {
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
+    const Robot &robot, const int t, const gtsam::Values &known_values) {
+  GaussianFactorGraph graph;
+  for (auto &&link : robot.links()) {
+    int i = link->id();
+    if (link->isFixed()) {
+      // prior on twist acceleration for fixed link
+      // A_i = 0
+      Vector6 rhs = Vector6::Zero();
+      graph.add(TwistAccelKey(i, t), I_6x6, rhs,
+                gtsam::noiseModel::Constrained::All(6));
+    } else {
+      // wrench factor
+      // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
+      // * g
+      const auto &connected_joints = link->getJoints();
+      const gtsam::Matrix6 G_i = link->inertiaMatrix();
+      const double m_i = link->mass();
+      const Vector6 V_i = known_values.at<Vector6>(TwistKey(link->id(), t));
+      const Pose3 T_wi = known_values.at<Pose3>(PoseKey(link->id(), t));
+      Vector6 rhs = Pose3::adjointMap(V_i).transpose() * G_i * V_i;
+      if (gravity_) {
+        Vector gravitational_force =
+            T_wi.rotation().transpose() * (*gravity_) * m_i;
+        for (int i = 3; i < 6; ++i) {
+          rhs[i] += gravitational_force[i - 3];
+        }
+      }
+      if (connected_joints.size() == 0) {
+        graph.add(TwistAccelKey(i, t), G_i, rhs,
+                  gtsam::noiseModel::Constrained::All(6));
+      } else if (connected_joints.size() == 1) {
+        graph.add(TwistAccelKey(i, t), G_i,
+                  WrenchKey(i, connected_joints[0]->id(), t), -I_6x6, rhs,
+                  gtsam::noiseModel::Constrained::All(6));
+      } else if (connected_joints.size() == 2) {
+        graph.add(TwistAccelKey(i, t), G_i,
+                  WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
+                  WrenchKey(i, connected_joints[1]->id(), t), -I_6x6, rhs,
+                  gtsam::noiseModel::Constrained::All(6));
+      }
+    }
+  }
+
+  OptimizerSetting opt_ = OptimizerSetting();
+  for (auto &&joint : robot.joints()) {
+    graph += joint->linearAFactors(t, known_values, opt_, planar_axis_);
+    graph += joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_);
+  }
+
+  return graph;
+}
+
+GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     const Robot &robot, const int t, const JointValues &joint_angles,
     const JointValues &joint_vels, const FKResults &fk_results) {
   GaussianFactorGraph graph;
@@ -107,10 +160,33 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
 
 GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
                                                   const int t,
+                                                  const gtsam::Values &torques) {
+  OptimizerSetting opt_ = OptimizerSetting();
+  GaussianFactorGraph graph;
+  for (auto &&joint : robot.joints()) graph += joint->linearFDPriors(t, torques, opt_);
+  return graph;
+}
+
+GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
+                                                  const int t,
                                                   const JointValues &torques) {
   OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints()) graph += joint->linearFDPriors(t, torques, opt_);
+  return graph;
+}
+
+GaussianFactorGraph DynamicsGraph::linearIDPriors(
+    const Robot &robot, const int t, const gtsam::Values &joint_accels) {
+  GaussianFactorGraph graph;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    double accel = joint_accels.atDouble(JointAccelKey(j, t));
+    gtsam::Vector1 rhs;
+    rhs << accel;
+    graph.add(JointAccelKey(j, t), I_1x1, rhs,
+              gtsam::noiseModel::Constrained::All(1));
+  }
   return graph;
 }
 
@@ -126,6 +202,35 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
               gtsam::noiseModel::Constrained::All(1));
   }
   return graph;
+}
+
+Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
+                                    const gtsam::Values &known_values) {
+  // construct and solve linear graph
+  GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
+  GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
+  for (auto &factor : priors) {
+    graph.add(factor);
+  }
+  gtsam::VectorValues results = graph.optimize();
+
+  // arrange values
+  Values values = known_values;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    int i1 = joint->parent()->id();
+    int i2 = joint->child()->id();
+    std::string name = joint->name();
+    values.insert(JointAccelKey(j, t), results.at(JointAccelKey(j, t))[0]);
+    values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
+    values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+  }
+  for (auto &&link : robot.links()) {
+    int i = link->id();
+    std::string name = link->name();
+    values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+  }
+  return values;
 }
 
 Values DynamicsGraph::linearSolveFD(

@@ -318,9 +318,35 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Abstract method. Returns forward dynamics priors on torque
   virtual gtsam::GaussianFactorGraph linearFDPriors(
+      size_t t, const gtsam::Values &torques,
+      const OptimizerSetting &opt) const {
+    throw std::runtime_error(
+        "linearFDPriors not implemented for the desired "
+        "joint type.  A linearized version may not be possible.");
+  }
+
+  /// Abstract method. Returns forward dynamics priors on torque
+  virtual gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const JointValues &torques, const OptimizerSetting &opt) const {
     throw std::runtime_error(
         "linearFDPriors not implemented for the desired "
+        "joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
+   *
+   * @param[in] t The timestep for which to generate factors.
+   * @param[in] known_values Link poses, twists, Joint angles, Joint velocities.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear accel factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearAFactors(
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
+    throw std::runtime_error(
+        "linearAFactors not implemented for the desired "
         "joint type.  A linearized version may not be possible.");
   }
 
@@ -362,6 +388,24 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
    *
    * @param[in] t             The timestep for which to generate factors.
+   * @param[in] known_values  Link poses, twists, Joint angles, Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear dynamics factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
+    throw std::runtime_error(
+        "linearDynamicsFactors not implemented for the "
+        "desired joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
+   *
+   * @param[in] t             The timestep for which to generate factors.
    * @param[in] poses         Link poses.
    * @param[in] twists        Link twists.
    * @param[in] joint_angles  Joint angles.
@@ -370,7 +414,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    *    for factors.
    * @param[in] planar_axis   Optional planar axis.
    * @return linear dynamics factors.
-   * TODO(G+S): change angle/vel type from map<string, double> to gtsam::Values
    */
   virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const std::map<std::string, gtsam::Pose3> &poses,
