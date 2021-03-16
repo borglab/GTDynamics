@@ -97,9 +97,21 @@ class Robot {
   void print() const;
 
   /**
-   * Calculate forward kinematics by performing BFS in the link-joint graph.
-   * 
-   * (Will throw an error when invalid joint angle specification detected).
+   * Calculate forward kinematics by performing BFS in the link-joint graph
+   * (will throw an error when invalid joint angle specification detected).
+   *
+   * @param[in] t integer time index
+   * @param[in] known_values Values with joint angles and velocities
+   * @param[in] root_link_id if given, get known pose and twist from values
+   * @return poses and twists of all links, as a new Values instance
+   */
+  gtsam::Values forwardKinematics(
+      size_t t, const gtsam::Values &known_values,
+      const boost::optional<size_t> root_link_id = boost::none) const;
+
+  /**
+   * Calculate forward kinematics by performing BFS in the link-joint graph
+   * (will throw an error when invalid joint angle specification detected).
    *
    * @param[in] joint_angles joint angles for all joints (in radians)
    * @param[in] joint_velocities joint velocities for all joints
