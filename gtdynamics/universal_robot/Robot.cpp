@@ -24,9 +24,7 @@
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 
-using gtsam::Pose3;
-using gtsam::Vector6;
-using gtsam::Vector3;
+using gtsam::Pose3, gtsam::Vector6, gtsam::Vector3;
 
 namespace gtdynamics {
 
@@ -127,7 +125,7 @@ void Robot::print() const {
 FKResults Robot::forwardKinematics(
     const JointValues &joint_angles, const JointValues &joint_vels,
     const boost::optional<std::string> prior_link_name,
-    const boost::optional<gtsam::Pose3> &prior_link_pose,
+    const boost::optional<Pose3> &prior_link_pose,
     const boost::optional<Vector6> &prior_link_twist) const {
   LinkPoses link_poses;
   LinkTwists link_twists;
