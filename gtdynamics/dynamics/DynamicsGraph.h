@@ -28,7 +28,7 @@
 
 namespace gtdynamics {
 
-//TODO(aescontrela3, yetongumich): can we not use inline here?
+// TODO(aescontrela3, yetongumich): can we not use inline here?
 
 /* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
 inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
@@ -58,13 +58,9 @@ struct ContactPoint {
   double height = 0.0;
 
   bool operator==(const ContactPoint &other) {
-    return (point == other.point &&
-            id == other.id &&
-            height == other.height);
+    return (point == other.point && id == other.id && height == other.height);
   }
-  bool operator!=(const ContactPoint &other) {
-    return !(*this == other);
-  }
+  bool operator!=(const ContactPoint &other) { return !(*this == other); }
 };
 
 ///< Map of link name to ContactPoint
@@ -77,14 +73,32 @@ using ContactPoints = std::map<std::string, ContactPoint>;
 class DynamicsGraph {
  private:
   OptimizerSetting opt_;
+  boost::optional<gtsam::Vector3> gravity_, planar_axis_;
 
  public:
   /**
    * Constructor
+   * @param  gravity      gravity in world frame
+   * @param  planar_axis  axis of the plane, used only for planar robot
    */
-  DynamicsGraph() : opt_(OptimizerSetting()) {}
+  DynamicsGraph(
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
+      : opt_(OptimizerSetting()),
+        gravity_(gravity),
+        planar_axis_(planar_axis) {}
 
-  explicit DynamicsGraph(const OptimizerSetting &opt) : opt_(opt) {}
+  /**
+   * Constructor
+   * @param  opt          settings for optimizer
+   * @param  gravity      gravity in world frame
+   * @param  planar_axis  axis of the plane, used only for planar robot
+   */
+  DynamicsGraph(
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
+      : opt_(opt), gravity_(gravity), planar_axis_(planar_axis) {}
 
   ~DynamicsGraph() {}
 
@@ -97,14 +111,10 @@ class DynamicsGraph {
    * @param joint_angles joint angles
    * @param joint_vels   joint velocities
    * @param fk_results   forward kinematics results
-   * @param gravity      gravity in world frame
-   * @param planar_axis  axis of the plane, used only for planar robot
    */
-  static gtsam::GaussianFactorGraph linearDynamicsGraph(
+  gtsam::GaussianFactorGraph linearDynamicsGraph(
       const Robot &robot, const int t, const JointValues &joint_angles,
-      const JointValues &joint_vels, const FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+      const JointValues &joint_vels, const FKResults &fk_results);
 
   /// Return linear factor graph with priors on torques
   static gtsam::GaussianFactorGraph linearFDPriors(
@@ -123,16 +133,13 @@ class DynamicsGraph {
    * @param joint_vels   std::map <joint name, velocity>
    * @param torques      std::map <joint name, torque>
    * @param fk_results   forward kinematics results
-   * @param gravity      gravity in world frame
-   * @param planar_axis  axis of the plane, used only for planar robot
    * @return values of all variables
    */
-  static gtsam::Values linearSolveFD(
-      const Robot &robot, const int t, const JointValues &joint_angles,
-      const JointValues &joint_vels, const JointValues &torques,
-      const FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+  gtsam::Values linearSolveFD(const Robot &robot, const int t,
+                              const JointValues &joint_angles,
+                              const JointValues &joint_vels,
+                              const JointValues &torques,
+                              const FKResults &fk_results);
 
   /**
    * Solve inverse kinodynamics using linear factor graph.
@@ -142,41 +149,33 @@ class DynamicsGraph {
    * @param  joint_vels   std::map <joint name, velocity>
    * @param  torques      std::map <joint name, torque>
    * @param  fk_results   forward kinematics results
-   * @param  gravity      gravity in world frame
-   * @param  planar_axis  axis of the plane, used only for planar robot
    *
    * @return values of all variables
    */
-  static gtsam::Values linearSolveID(
-      const Robot &robot, const int t, const JointValues &joint_angles,
-      const JointValues &joint_vels, const JointValues &torques,
-      const FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none);
+  gtsam::Values linearSolveID(const Robot &robot, const int t,
+                              const JointValues &joint_angles,
+                              const JointValues &joint_vels,
+                              const JointValues &torques,
+                              const FKResults &fk_results);
 
   /// Return q-level nonlinear factor graph (pose related factors)
   gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /// Return v-level nonlinear factor graph (twist related factors)
   gtsam::NonlinearFactorGraph vFactors(
       const Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /// Return a-level nonlinear factor graph (acceleration related factors)
   gtsam::NonlinearFactorGraph aFactors(
       const Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none) const;
 
   /// Return dynamics-level nonlinear factor graph (wrench related factors)
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -184,16 +183,12 @@ class DynamicsGraph {
    * Return nonlinear factor graph of all dynamics factors
    * @param robot          the robot
    * @param t              time step
-   * @param gravity        gravity in world frame
-   * @param planar_axis    axis of the plane, used only for planar robot contact
    * link and 0 denotes no contact.
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -252,14 +247,10 @@ class DynamicsGraph {
    * @param num_steps   total time steps
    * @param dt          duration of each time step
    * @param collocation the collocation scheme
-   * @param gravity     gravity in world frame
-   * @param planar_axis axis of the plane, used only for planar robot
    */
   gtsam::NonlinearFactorGraph trajectoryFG(
       const Robot &robot, const int num_steps, const double dt,
       const CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
       const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -269,15 +260,11 @@ class DynamicsGraph {
    * @param phase_steps       number of time steps for each phase
    * @param transition_graphs transition step graphs with guardian factors
    * @param collocation       the collocation scheme
-   * @param gravity           gravity in world frame
-   * @param planar_axis       axis of the plane, only for planar robot
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none,
       const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
