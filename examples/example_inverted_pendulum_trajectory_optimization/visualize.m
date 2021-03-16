@@ -55,7 +55,8 @@ save_video = false;
 
 if (save_video)
     video_filepath = 'ip_ddp';
-    myVideo = VideoWriter(video_filepath, 'MPEG-4'); %open video file
+    % This codec is available on all major OSes.
+    myVideo = VideoWriter(video_filepath, 'Motion JPEG AVI'); %open video file
     myVideo.FrameRate = round(1 / dt);  %can adjust this, 5 - 10 works well
     myVideo.Quality = 99;
     open(myVideo)
@@ -81,8 +82,9 @@ for i = 1:length(x_traj)
     drawnow()
     
     if (save_video)
-        frame = getframe(gcf); %get frame
-        writeVideo(myVideo, frame);
+        % Get the frame for the pendulum animation
+        frame = getframe(fh); %get frame
+        writeVideo(myVideo, frame.cdata);
     end
     
     pause(dt)

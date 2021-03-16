@@ -15,6 +15,7 @@
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -36,22 +37,22 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = Robot("../vision60.urdf");
+  auto vision60 = CreateRobotFromFile("../vision60.urdf");
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   double mu = 2.0;
 
   // Contact points at feet.
-  std::vector<ContactPoint> contact_points;
-  contact_points.push_back(
-      ContactPoint{"lower0", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(
-      ContactPoint{"lower1", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(
-      ContactPoint{"lower2", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.push_back(
-      ContactPoint{"lower3", gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  ContactPoints contact_points;
+  contact_points.emplace(
+      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+  contact_points.emplace(
+      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1, GROUND_HEIGHT});
+  contact_points.emplace(
+      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2, GROUND_HEIGHT});
+  contact_points.emplace(
+      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3, GROUND_HEIGHT});
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)
