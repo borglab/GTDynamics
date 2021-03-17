@@ -177,13 +177,13 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
 GaussianFactorGraph DynamicsGraph::linearIDPriors(
     const Robot &robot, const int t, const gtsam::Values &joint_accels) {
   GaussianFactorGraph graph;
+  auto all_constrained = gtsam::noiseModel::Constrained::All(1);
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
     double accel = joint_accels.atDouble(JointAccelKey(j, t));
     gtsam::Vector1 rhs;
     rhs << accel;
-    graph.add(JointAccelKey(j, t), I_1x1, rhs,
-              gtsam::noiseModel::Constrained::All(1));
+    graph.add(JointAccelKey(j, t), I_1x1, rhs, all_constrained);
   }
   return graph;
 }
@@ -272,6 +272,43 @@ Values DynamicsGraph::linearSolveFD(
     values.insert(PoseKey(i, t), poses.at(name));
     values.insert(TwistKey(i, t), twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+  }
+  return values;
+}
+
+Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
+                                    const gtsam::Values &known_values) {
+  // construct and solve linear graph
+  GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
+  GaussianFactorGraph priors = linearIDPriors(robot, t, known_values);
+  for (auto &factor : priors) {
+    graph.add(factor);
+  }
+  gtsam::VectorValues results = graph.optimize();
+
+  // arrange values
+  Values values = known_values;
+  try {
+    // Copy torques and wrenches to result.
+    for (auto &&joint : robot.joints()) {
+      int j = joint->id();
+      int i1 = joint->parent()->id();
+      int i2 = joint->child()->id();
+      std::string name = joint->name();
+      values.insert(TorqueKey(j, t), results.at(TorqueKey(j, t))[0]);
+      values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
+      values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+    }
+    for (auto &&link : robot.links()) {
+      int i = link->id();
+      std::string name = link->name();
+      values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+    }
+  } catch (const gtsam::ValuesKeyAlreadyExists &e) {
+    std::cerr << "key already exists:" << _GTDKeyFormatter(e.key()) << '\n';
+    throw std::invalid_argument(
+        "linearSolveID: known_values should contain no torques, "
+        "wrenches, or twist accelerations.");
   }
   return values;
 }

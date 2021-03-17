@@ -50,42 +50,37 @@ using std::vector;
 
 // Test linear dynamics graph of a two-link robot, base fixed, with gravity
 TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
-  using simple_urdf_eq_mass::my_robot;
+  using simple_urdf_eq_mass::robot;
 
   std::string prior_link_name = "l1";
-  auto l1 = my_robot.link(prior_link_name);
+  auto l1 = robot.link(prior_link_name);
 
   // TODO(frank): joint numbering starts at 0?? Should fix.
   Values values;
   int t = 777;
-  auto joint_id = my_robot.joint("j1")->id();
-  values.insert(JointAngleKey(joint_id, t), 0.0);
-  values.insert(JointVelKey(joint_id, t), 0.0);
-  values.insert(TorqueKey(joint_id, t), 1.0);
+  auto j = robot.joint("j1")->id();
+  values.insert(JointAngleKey(j, t), 0.0);
+  values.insert(JointVelKey(j, t), 0.0);
   values.insert(PoseKey(l1->id(), t), l1->wTcom());
   values.insert<Vector6>(TwistKey(l1->id(), t), gtsam::Z_6x1);
 
   // Do forward kinematics.
-  Values fk_results = my_robot.forwardKinematics(t, values, prior_link_name);
+  Values fk_results = robot.forwardKinematics(t, values, prior_link_name);
 
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
 
   // Test forward dynamics.
-  try {
-    Values result_fd = graph_builder.linearSolveFD(my_robot, t, fk_results);
-    EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(joint_id, t)),
-                        1e-3));
+  Values known_torques = fk_results;
+  known_torques.insert(TorqueKey(j, t), 1.0);
+  Values result_fd = graph_builder.linearSolveFD(robot, t, known_torques);
+  EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(j, t)), 1e-3));
 
-    //   // test inverse dynamics
-    //   Values result_id = graph_builder.linearSolveID(my_robot, t,
-    //   fk_results); EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j,
-    //   t)), 1e-3));
-  } catch (const gtsam::ValuesKeyDoesNotExist& e) {
-    std::cerr << "key not found:" << _GTDKeyFormatter(e.key()) << '\n';
-  } catch (const gtsam::ValuesKeyAlreadyExists& e) {
-    std::cerr << "key already exists:" << _GTDKeyFormatter(e.key()) << '\n';
-  }
+  // test inverse dynamics
+  Values desired_accels = fk_results;
+  desired_accels.insert(JointAccelKey(j, t), 4.0);
+  Values result_id = graph_builder.linearSolveID(robot, t, desired_accels);
+  EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
 }
 
 // ========================== OLD_STYLE BELOW ===============================
