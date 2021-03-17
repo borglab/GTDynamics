@@ -32,9 +32,9 @@ using gtsam::assert_equal;
 namespace example {
 
 // R link example
-using simple_urdf_zero_inertia::my_robot;
+using simple_urdf_zero_inertia::robot;
 
-auto inertia = my_robot.links()[0]->inertiaMatrix();
+auto inertia = robot.links()[0]->inertiaMatrix();
 
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
