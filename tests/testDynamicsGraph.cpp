@@ -62,29 +62,30 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   values.insert(JointAngleKey(joint_id, t), 0.0);
   values.insert(JointVelKey(joint_id, t), 0.0);
   values.insert(TorqueKey(joint_id, t), 1.0);
-  values.insert(JointAccelKey(joint_id, t), 4.0);
   values.insert(PoseKey(l1->id(), t), l1->wTcom());
   values.insert<Vector6>(TwistKey(l1->id(), t), gtsam::Z_6x1);
 
   // Do forward kinematics.
-  try {
-    Values fk_results = my_robot.forwardKinematics(t, values, prior_link_name);
-  } catch (const gtsam::ValuesKeyDoesNotExist& e) {
-    std::cerr << "key not found:" << _GTDKeyFormatter(e.key()) << '\n';
-  }
+  Values fk_results = my_robot.forwardKinematics(t, values, prior_link_name);
 
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
 
-  // test forward dynamics
-//   Values result_fd = graph_builder.linearSolveFD(my_robot, t, fk_results);
+  // Test forward dynamics.
+  try {
+    Values result_fd = graph_builder.linearSolveFD(my_robot, t, fk_results);
+    EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(joint_id, t)),
+                        1e-3));
 
-//   int j = my_robot.joints()[0]->id();
-//   EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(j, t)), 1e-3));
-
-//   // test inverse dynamics
-//   Values result_id = graph_builder.linearSolveID(my_robot, t, fk_results);
-//   EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
+    //   // test inverse dynamics
+    //   Values result_id = graph_builder.linearSolveID(my_robot, t,
+    //   fk_results); EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j,
+    //   t)), 1e-3));
+  } catch (const gtsam::ValuesKeyDoesNotExist& e) {
+    std::cerr << "key not found:" << _GTDKeyFormatter(e.key()) << '\n';
+  } catch (const gtsam::ValuesKeyAlreadyExists& e) {
+    std::cerr << "key already exists:" << _GTDKeyFormatter(e.key()) << '\n';
+  }
 }
 
 // ========================== OLD_STYLE BELOW ===============================

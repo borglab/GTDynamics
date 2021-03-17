@@ -37,13 +37,14 @@ namespace gtdynamics {
  */
 class ScrewJointBase : public JointTyped {
   using Pose3 = gtsam::Pose3;
+  using Vector6 = gtsam::Vector6;
 
  protected:
   gtsam::Vector3 axis_;
 
   // Screw axis in parent and child COM frames.
-  gtsam::Vector6 pScrewAxis_;
-  gtsam::Vector6 cScrewAxis_;
+  Vector6 pScrewAxis_;
+  Vector6 cScrewAxis_;
 
   /// Return transform of child link com frame w.r.t parent link com frame
   Pose3 pMcCom(double q,
@@ -55,7 +56,7 @@ class ScrewJointBase : public JointTyped {
       //         = pMc_H_exp * exp_H_Sq * Sq_pMc_H_q
       //         = pMc_H_exp * exp_H_Sq * [S]
       gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
-      gtsam::Vector6 Sq = cScrewAxis_ * q;
+      Vector6 Sq = cScrewAxis_ * q;
       Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
       Pose3 pMc = pMccom_.compose(exp, boost::none, pMc_H_exp);
       *pMc_H_q = pMc_H_exp * exp_H_Sq * cScrewAxis_;
@@ -73,7 +74,7 @@ class ScrewJointBase : public JointTyped {
       // cMp = inverse(pMc(q))
       // cMp_H_q = cMp_H_pMc * pMc_H_q
       gtsam::Matrix6 cMp_H_pMc;
-      gtsam::Vector6 pMc_H_q;
+      Vector6 pMc_H_q;
       Pose3 pMc = pMcCom(q, pMc_H_q);      // pMc(q)    ->  pMc_H_q
       Pose3 cMp = pMc.inverse(cMp_H_pMc);  // cMp(pMc)  ->  cMp_H_pMc
       *cMp_H_q = cMp_H_pMc * pMc_H_q;
@@ -94,10 +95,10 @@ class ScrewJointBase : public JointTyped {
    * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(const std::string &name, const gtsam::Pose3 &wTj,
+  ScrewJointBase(const std::string &name, const Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
-                 const gtsam::Vector3 &axis, const gtsam::Vector6 &jScrewAxis)
+                 const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
       : JointTyped(name, wTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
@@ -107,7 +108,7 @@ class ScrewJointBase : public JointTyped {
   Type type() const override { return Type::ScrewAxis; }
 
   /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6 screwAxis(const LinkSharedPtr &link) const {
+  const Vector6 screwAxis(const LinkSharedPtr &link) const {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
@@ -126,15 +127,15 @@ class ScrewJointBase : public JointTyped {
   /**
    * Return the twist of this link given the other link's twist and joint angle.
    */
-  gtsam::Vector6 transformTwistTo(
+  Vector6 transformTwistTo(
       const LinkSharedPtr &link, double q, double q_dot,
-      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<Vector6> other_twist = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
       gtsam::OptionalJacobian<6, 6> H_other_twist =
           boost::none) const override {
-    gtsam::Vector6 other_twist_ =
-        other_twist ? *other_twist : gtsam::Vector6::Zero();
+    Vector6 other_twist_ =
+        other_twist ? *other_twist : Vector6::Zero();
 
     auto this_ad_other = transformTo(link, q).AdjointMap();
 
@@ -156,29 +157,29 @@ class ScrewJointBase : public JointTyped {
    * Return the twist acceleration of this link given the other link's twist
    * acceleration, twist, and joint angle and this link's twist.
    */
-  gtsam::Vector6 transformTwistAccelTo(
+  Vector6 transformTwistAccelTo(
       const LinkSharedPtr &link, double q, double q_dot, double q_ddot,
-      boost::optional<gtsam::Vector6> this_twist = boost::none,
-      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      boost::optional<Vector6> this_twist = boost::none,
+      boost::optional<Vector6> other_twist_accel = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
       gtsam::OptionalJacobian<6, 1> H_q_ddot = boost::none,
       gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none,
       gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const override {
-    gtsam::Vector6 this_twist_ =
-        this_twist ? *this_twist : gtsam::Vector6::Zero();
-    gtsam::Vector6 other_twist_accel_ =
-        other_twist_accel ? *other_twist_accel : gtsam::Vector6::Zero();
-    gtsam::Vector6 screw_axis_ = isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
+    Vector6 this_twist_ =
+        this_twist ? *this_twist : Vector6::Zero();
+    Vector6 other_twist_accel_ =
+        other_twist_accel ? *other_twist_accel : Vector6::Zero();
+    Vector6 screw_axis_ = isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
 
     // i = other link
     // j = this link
-    gtsam::Pose3 jTi = transformTo(link, q);
+    Pose3 jTi = transformTo(link, q);
 
-    gtsam::Vector6 this_twist_accel =
+    Vector6 this_twist_accel =
         jTi.AdjointMap() * other_twist_accel_ +
-        gtsam::Pose3::adjoint(this_twist_, screw_axis_ * q_dot, H_this_twist) +
+        Pose3::adjoint(this_twist_, screw_axis_ * q_dot, H_this_twist) +
         screw_axis_ * q_ddot;
 
     if (H_other_twist_accel) {
@@ -189,7 +190,7 @@ class ScrewJointBase : public JointTyped {
              other_twist_accel_;
     }
     if (H_q_dot) {
-      *H_q_dot = gtsam::Pose3::adjointMap(this_twist_) * screw_axis_;
+      *H_q_dot = Pose3::adjointMap(this_twist_) * screw_axis_;
     }
     if (H_q_ddot) {
       *H_q_ddot = screw_axis_;
@@ -200,19 +201,32 @@ class ScrewJointBase : public JointTyped {
 
   JointTorque transformWrenchToTorque(
       const LinkSharedPtr &link,
-      boost::optional<gtsam::Vector6> wrench = boost::none,
+      boost::optional<Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override {
     auto screw_axis_ = screwAxis(link);
     if (H_wrench) {
       *H_wrench = screw_axis_.transpose();
     }
     return screw_axis_.transpose() *
-           (wrench ? *wrench : gtsam::Vector6::Zero());
+           (wrench ? *wrench : Vector6::Zero());
   }
 
   gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
                                               double q) const override {
     return AdjointMapJacobianQ(q, transformTo(link, q), screwAxis(link));
+  }
+
+  /// Return forward dynamics priors on torque.
+  gtsam::GaussianFactorGraph linearFDPriors(
+      size_t t, const gtsam::Values &known_values,
+      const OptimizerSetting &opt) const override {
+    gtsam::GaussianFactorGraph priors;
+    gtsam::Vector1 rhs;
+    rhs << known_values.atDouble(TorqueKey(id(),t));
+    // TODO(alej`andro): use optimizer settings
+    priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
+               gtsam::noiseModel::Constrained::All(1));
+    return priors;
   }
 
   /// Return forward dynamics priors on torque.
@@ -230,8 +244,33 @@ class ScrewJointBase : public JointTyped {
 
   /// Return linearized acceleration factors.
   gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const std::map<std::string, Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
+    gtsam::GaussianFactorGraph graph;
+
+    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(),t));
+    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(),t));
+    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
+    const Vector6 V_i2 = known_values.at<Vector6>(TwistKey(child()->id(),t));
+    const Vector6 S_i2_j = screwAxis(child_link_);
+    const double v_j = known_values.atDouble(JointAngleKey(id(),t));
+
+    // twist acceleration factor
+    // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
+    Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
+    graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+              TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
+              JointAccelKey(id(), t), -S_i2_j, rhs_tw,
+              gtsam::noiseModel::Constrained::All(6));
+
+    return graph;
+  }
+
+  /// Return linearized acceleration factors.
+  gtsam::GaussianFactorGraph linearAFactors(
+      size_t t,
+      const std::map<std::string, Pose3> &poses,
+      const std::map<std::string, Vector6> &twists,
       const std::map<std::string, double> &joint_angles,
       const std::map<std::string, double> &joint_vels,
       const OptimizerSetting &opt,
@@ -241,13 +280,13 @@ class ScrewJointBase : public JointTyped {
     const Pose3 T_wi1 = poses.at(parent()->name());
     const Pose3 T_wi2 = poses.at(child()->name());
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const gtsam::Vector6 V_i2 = twists.at(child()->name());
-    const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
+    const Vector6 V_i2 = twists.at(child()->name());
+    const Vector6 S_i2_j = screwAxis(child_link_);
     const double v_j = joint_vels.at(name());
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
-    gtsam::Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
+    Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
     graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
               TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
               JointAccelKey(id(), t), -S_i2_j, rhs_tw,
@@ -258,19 +297,14 @@ class ScrewJointBase : public JointTyped {
 
   /// Return linearized dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      size_t t, const std::map<std::string, Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
-      const OptimizerSetting &opt,
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = poses.at(parent()->name());
-    const Pose3 T_wi2 = poses.at(child()->name());
+    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(),t));
+    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(),t));
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    // const gtsam::Vector6 V_i2 = twists.at(child()->name());
-    const gtsam::Vector6 S_i2_j = screwAxis(child_link_);
+    const Vector6 S_i2_j = screwAxis(child_link_);
 
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
@@ -281,7 +315,47 @@ class ScrewJointBase : public JointTyped {
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
-    gtsam::Vector6 rhs_weq = gtsam::Vector6::Zero();
+    Vector6 rhs_weq = Vector6::Zero();
+    graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+              WrenchKey(child()->id(), id(), t),
+              T_i2i1.AdjointMap().transpose(), rhs_weq,
+              gtsam::noiseModel::Constrained::All(6));
+
+    // wrench planar factor
+    if (planar_axis) {
+      gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
+      graph.add(WrenchKey(child()->id(), id(), t), J_wrench,
+                gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
+    }
+
+    return graph;
+  }
+
+  /// Return linearized dynamics factors.
+  gtsam::GaussianFactorGraph linearDynamicsFactors(
+      size_t t, const std::map<std::string, Pose3> &poses,
+      const std::map<std::string, Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis) const override {
+    gtsam::GaussianFactorGraph graph;
+
+    const Pose3 T_wi1 = poses.at(parent()->name());
+    const Pose3 T_wi2 = poses.at(child()->name());
+    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
+    const Vector6 S_i2_j = screwAxis(child_link_);
+
+    // torque factor
+    // S_i_j^T * F_i_j - tau = 0
+    gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
+    graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
+              TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
+              gtsam::noiseModel::Constrained::All(1));
+
+    // wrench equivalence factor
+    // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
+    Vector6 rhs_weq = Vector6::Zero();
     graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
               WrenchKey(child()->id(), id(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
