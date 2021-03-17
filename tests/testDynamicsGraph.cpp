@@ -83,21 +83,33 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
 }
 
-// ========================== OLD_STYLE BELOW ===============================
+gtsam::Values zero_values(const Robot &robot, size_t t) {
+  gtsam::Values values;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    values.insert(JointAngleKey(j, t), 0.0);
+    values.insert(JointVelKey(j, t), 0.0);
+  }
+  return values;
+}
 
 // Test forward dynamics with gravity of a two-link robot, with base link fixed
 TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   using simple_urdf_eq_mass::robot;
-  using simple_urdf_eq_mass::joint_angles;
-  using simple_urdf_eq_mass::joint_vels;
-  gtsam::Vector torques = gtsam::Vector::Ones(robot.numJoints());
 
   // build the dynamics factor graph
+  size_t t = 777;
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
-  auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
-  graph.add(graph_builder.forwardDynamicsPriors(robot, 0, joint_angles,
-                                                joint_vels, torques));
+  auto graph = graph_builder.dynamicsFactorGraph(robot, t);
+
+  // Create values with rest kinematics and unit torques
+  Values known_values = zero_values(robot, t);
+  for (auto &&joint : robot.joints()) {
+    known_values.insert(TorqueKey(joint->id(), t), 1.0);
+  }
+
+  graph.add(graph_builder.forwardDynamicsPriors(robot, t, known_values));
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
@@ -114,6 +126,8 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 1e-3));
 }
+
+// ========================== OLD_STYLE BELOW ===============================
 
 // Test forward dynamics with gravity of a four-bar linkage
 TEST(dynamicsFactorGraph_FD, four_bar_linkage) {

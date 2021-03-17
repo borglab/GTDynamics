@@ -649,6 +649,24 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseCollocationFactors(
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    auto q_key = JointAngleKey(j, t);
+    graph.addPrior(q_key, known_values.atDouble(q_key),
+                   opt_.prior_q_cost_model);
+    auto q_dot_key = JointVelKey(j, t);
+    graph.addPrior(q_dot_key, known_values.atDouble(q_dot_key),
+                   opt_.prior_qv_cost_model);
+    auto torque_key = TorqueKey(j, t);
+    graph.addPrior(torque_key, known_values.atDouble(torque_key),
+                   opt_.prior_t_cost_model);
+  }
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
     const Robot &robot, const int t, const gtsam::Vector &joint_angles,
     const gtsam::Vector &joint_vels, const gtsam::Vector &torques) const {
   gtsam::NonlinearFactorGraph graph;

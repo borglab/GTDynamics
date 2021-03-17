@@ -108,7 +108,7 @@ class DynamicsGraph {
    * Return linear factor graph of all dynamics factors, Values version
    * @param robot        the robot
    * @param t            time step
-   * @param known_values Values with kinematics
+   * @param known_values Values with kinematics, must include poses and twists
    */
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const Robot &robot, const int t, const gtsam::Values &known_values);
@@ -242,6 +242,15 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
       const Robot &robot, const int t, const gtsam::Vector &joint_angles,
       const gtsam::Vector &joint_vels, const gtsam::Vector &torques) const;
+
+  /**
+   * Return prior factors of torque, angle, velocity
+   * @param robot        the robot
+   * @param t            time step
+   * @param known_values joint angles, joint velocities, and joint torques
+   */
+  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
+      const Robot &robot, const int t, const gtsam::Values &known_values) const;
 
   /**
    * Return prior factors of accel, angle, velocity
