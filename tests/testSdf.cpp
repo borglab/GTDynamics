@@ -171,8 +171,8 @@ TEST(Link, urdf_constructor_link) {
   // Initialize Robot instance using urdf::ModelInterfacePtr.
   LinkSharedPtr l1 = LinkFromSdf(*simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
-  ScrewJointBase::Parameters j1_parameters;
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams j1_parameters;
+  j1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
@@ -235,7 +235,7 @@ TEST(Joint, urdf_constructor_revolute) {
   LinkSharedPtr l2 = LinkFromSdf(*simple_urdf.LinkByName("l2"));
 
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  j1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 j1_wTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
@@ -258,7 +258,7 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(j1->type() == Joint::Type::Revolute);
 
   // joint effort type
-  EXPECT(j1->parameters().effort_type == Joint::EffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -318,8 +318,8 @@ TEST(Joint, sdf_constructor_revolute) {
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
 
   // constructor for j1
-  ScrewJointBase::Parameters j1_parameters;
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams j1_parameters;
+  j1_parameters.effort_type = JointEffortType::Actuated;
   auto j1 = boost::make_shared<RevoluteJoint>("joint_1", j1_wTj, l0, l1,
                                               j1_parameters, j1_axis);
 
@@ -340,8 +340,8 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(l0Tl1com_pos, j1->transformFrom(l1, M_PI / 2)));
 
   // constructor for j2
-  ScrewJointBase::Parameters j2_parameters;
-  j2_parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams j2_parameters;
+  j2_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 j2_wTj = GetJointFrame(*model.JointByName("joint_2"), l1, l2);
   const gtsam::Vector3 j2_axis = GetSdfAxis(*model.JointByName("joint_2"));
@@ -375,7 +375,7 @@ TEST(Joint, limit_params) {
   LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(*model.LinkByName("l2"));
   auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  j1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 j1_wTj = GetJointFrame(*model.JointByName("j1"), l1, l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
@@ -396,7 +396,7 @@ TEST(Joint, limit_params) {
   LinkSharedPtr link_1 = LinkFromSdf(*model2.LinkByName("link_1"));
   auto joint_1_parameters =
       ParametersFromSdfJoint(*model2.JointByName("joint_1"));
-  joint_1_parameters.effort_type = Joint::EffortType::Actuated;
+  joint_1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 joint_1_wTj =
       GetJointFrame(*model2.JointByName("joint_1"), link_0, link_1);
@@ -428,7 +428,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   auto joint1 = *simple_urdf.JointByName("j1");
 
   auto j1_parameters = ParametersFromSdfJoint(joint1);
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  j1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 wTj = GetJointFrame(joint1, l1, l2);
 
@@ -452,7 +452,7 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->type() == Joint::Type::Prismatic);
 
   // joint effort type
-  EXPECT(j1->parameters().effort_type == Joint::EffortType::Actuated);
+  EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
 
   // other link
   EXPECT(j1->otherLink(l2) == l1);
@@ -511,8 +511,8 @@ TEST(Joint, sdf_constructor_screw) {
   Pose3 wTj = GetJointFrame(*model.JointByName("joint_1"), l0, l1);
 
   // constructor for j1
-  ScrewJointBase::Parameters j1_parameters;
-  j1_parameters.effort_type = Joint::EffortType::Actuated;
+  JointParams j1_parameters;
+  j1_parameters.effort_type = JointEffortType::Actuated;
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
 
   auto j1 = boost::make_shared<ScrewJoint>(

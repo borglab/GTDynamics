@@ -63,6 +63,24 @@ inline DynamicsSymbol WrenchKey(int i, int j, int t) {
 }
 
 /**
+ * Params contains all parameters to construct a link
+ */
+struct LinkParams {
+  std::string name;        // name of the link
+  double mass;             // mass of the link
+  gtsam::Matrix3 inertia;  // inertia of the link
+  gtsam::Pose3 wTl;        // link pose expressed in world frame
+  gtsam::Pose3 lTcom;      // link com expressed in link frame
+
+  LinkParams() {}
+
+  LinkParams(const std::string& _name, const double _mass, 
+             const gtsam::Matrix3& _inertia, const gtsam::Pose3& _wTl,
+             const gtsam::Pose3& _lTcom):
+             name(_name), mass(_mass), inertia(_inertia), wTl(_wTl), lTcom(_lTcom) {}
+};
+
+/**
  * @class Base class for links taking different format of parameters.
  */
 class Link : public boost::enable_shared_from_this<Link> {
@@ -88,25 +106,15 @@ class Link : public boost::enable_shared_from_this<Link> {
   std::vector<JointSharedPtr> joints_;
 
  public:
-  /**
-   * Params contains all parameters to construct a link
-   */
-  struct Params {
-    std::string name;        // name of the link
-    double mass;             // mass of the link
-    gtsam::Matrix3 inertia;  // inertia of the link
-    gtsam::Pose3 wTl;        // link pose expressed in world frame
-    gtsam::Pose3 lTcom;      // link com expressed in link frame
-  };
 
   Link() {}
 
   /**
-   * Initialize Link's inertial properties with a Link::Params instance.
+   * Initialize Link's inertial properties with a LinkParams instance.
    *
-   * @param params Link::Params object containing link information.
+   * @param params LinkParams object containing link information.
    */
-  explicit Link(const Params &params)
+  explicit Link(const LinkParams &params)
       : name_(params.name),
         mass_(params.mass),
         inertia_(params.inertia),

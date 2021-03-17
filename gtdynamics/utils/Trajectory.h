@@ -146,21 +146,18 @@ class Trajectory {
   /**
    * @fn Builds vector of Transition Graphs.
    * @param[in]graph_builder    Dynamics Graph
-   * @param[in]gravity          Gravity
    * @param[in]mu               Coefficient of static friction
    * @return Vector of Transition Graphs
    */
   const std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      gtdynamics::DynamicsGraph &graph_builder, const gtsam::Vector3 &gravity,
-      const double &mu) const {
+      gtdynamics::DynamicsGraph &graph_builder, const double &mu) const {
     std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
     std::vector<ContactPoints> trans_cps = transitionContactPoints();
     std::vector<Robot> phase_robots = phaseRobotModels();
     std::vector<int> final_timesteps = finalTimeSteps();
     for (int p = 1; p < numPhases(); p++) {
       transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-          phase_robots[p], final_timesteps[p - 1], gravity, boost::none,
-          trans_cps[p - 1], mu));
+          phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
     }
     return transition_graphs;
   }

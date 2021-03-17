@@ -131,9 +131,9 @@ TEST(Trajectory, error) {
   double mu = 1.0;
   double sigma_dynamics = 1e-5;  // std of dynamics constraints.
   auto opt = gtdynamics::OptimizerSetting(sigma_dynamics);
-  auto graph_builder = gtdynamics::DynamicsGraph(opt);
+  auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
-      trajectory.getTransitionGraphs(graph_builder, gravity, mu);
+      trajectory.getTransitionGraphs(graph_builder, mu);
 }
 
 int main() {

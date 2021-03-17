@@ -23,6 +23,7 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -45,6 +46,27 @@ class PoseFactor
  public:
   /**
    * Create single factor relating this link's pose (COM) with previous one.
+   *
+   * @param cost_model The noise model for this factor.
+   * @param joint The joint connecting the two poses.
+   * @param time The timestep at which this factor is defined.
+   */
+  PoseFactor(const gtsam::SharedNoiseModel &cost_model,
+             const JointConstSharedPtr &joint, int time)
+      : Base(cost_model, PoseKey(joint->parent()->id(), time),
+             PoseKey(joint->child()->id(), time),
+             JointAngleKey(joint->id(), time)),
+        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+
+  /**
+   * Create single factor relating this link's pose (COM) with previous one.
+   *
+   * Please use the joint based constructor above if possible.
+   *
+   * @param wTp_key Key for parent link's CoM pose in world frame.
+   * @param wTc_key Key for child link's CoM pose in world frame.
+   * @param q_key Key for joint value.
+   * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses
    */
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
@@ -57,8 +79,8 @@ class PoseFactor
 
   /**
    * Evaluate link pose errors
-   * @param wTp previous (parent) link pose
-   * @param wTc this (child) link pose
+   * @param wTp previous (parent) link CoM pose
+   * @param wTc this (child) link CoM pose
    * @param q joint angle
    */
   gtsam::Vector evaluateError(

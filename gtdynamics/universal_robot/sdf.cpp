@@ -56,8 +56,8 @@ gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose) {
       gtsam::Point3(pos[0], pos[1], pos[2]));
 }
 
-Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
-  Joint::Parameters parameters;
+JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
+  JointParams parameters;
 
   parameters.scalar_limits.value_lower_limit = sdf_joint.Axis()->Lower();
   parameters.scalar_limits.value_upper_limit = sdf_joint.Axis()->Upper();
@@ -68,8 +68,8 @@ Joint::Parameters ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   return parameters;
 }
 
-Link::Params ParametersFromSdfLink(const sdf::Link &sdf_link) {
-  Link::Params parameters;
+LinkParams ParametersFromSdfLink(const sdf::Link &sdf_link) {
+  LinkParams parameters;
   parameters.name = sdf_link.Name();
   parameters.mass = sdf_link.Inertial().MassMatrix().Mass();
   const auto &inertia = sdf_link.Inertial().Moi();
@@ -140,7 +140,7 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
   JointSharedPtr joint;
 
   // Generate a joint parameters struct with values from the SDF.
-  Joint::Parameters parameters = ParametersFromSdfJoint(sdf_joint);
+  JointParams parameters = ParametersFromSdfJoint(sdf_joint);
 
   std::string name(sdf_joint.Name());
   Pose3 wTj = GetJointFrame(sdf_joint, parent_link, child_link);
@@ -236,7 +236,8 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
 
 Robot CreateRobotFromFile(const std::string &file_path,
                           const std::string &model_name) {
-  return Robot(ExtractRobotFromFile(file_path, model_name));
+  auto links_joints_pair = ExtractRobotFromFile(file_path, model_name);
+  return Robot(links_joints_pair.first, links_joints_pair.second);
 }
 
 }  // namespace gtdynamics

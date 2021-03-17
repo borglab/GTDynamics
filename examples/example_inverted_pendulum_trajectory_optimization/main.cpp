@@ -14,6 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -32,7 +33,7 @@ using gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto ip = Robot("../inverted_pendulum.urdf");
+  auto ip = CreateRobotFromFile("../inverted_pendulum.urdf");
   auto j1_id = ip.joint("j1")->id();
   ip.fixLink("l1");
   ip.print();

@@ -119,7 +119,7 @@ Values InitializeSolutionInterpolation(
   Values init_vals;
 
   auto sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+      gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   Sampler sampler(sampler_noise_model);
 
   // Initial and final discretized timesteps.
@@ -190,7 +190,7 @@ Values InitializeSolutionInverseKinematics(
   Vector3 gravity(0, 0, -9.8);
 
   auto sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+      gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   Sampler sampler(sampler_noise_model);
 
   // Link pose at each step
@@ -202,10 +202,9 @@ Values InitializeSolutionInverseKinematics(
       init_vals_t = InitializePosesAndJoints(
           robot, wTl_i, wTl_t, link_name, t_i, timesteps, dt, sampler, wTl_dt);
 
-  DynamicsGraph dgb;
+  DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
-    gtsam::NonlinearFactorGraph kfg =
-        dgb.qFactors(robot, t, gravity, contact_points);
+    auto kfg = dgb.qFactors(robot, t, contact_points);
     kfg.add(gtsam::PriorFactor<Pose3>(
         PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
         gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
@@ -293,7 +292,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
   Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
 
   auto sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+      gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   Sampler sampler(sampler_noise_model);
 
   std::vector<Pose3> wTl_dt;
@@ -304,7 +303,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
       init_vals_t = InitializePosesAndJoints(robots[0], wTl_i, wTl_t, link_name,
                                              t_i, ts, dt, sampler, wTl_dt);
 
-  DynamicsGraph dgb;
+  DynamicsGraph dgb(gravity);
 
   int t = 0;
   int num_phases = robots.size();
@@ -314,8 +313,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
     int curr_phase_steps =
         phase == (num_phases - 1) ? phase_steps[phase] + 1 : phase_steps[phase];
     for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
-      gtsam::NonlinearFactorGraph kfg = dgb.qFactors(
-          robots[phase], t, gravity, (*phase_contact_points)[phase]);
+      auto kfg = dgb.qFactors(robots[phase], t, (*phase_contact_points)[phase]);
 
       kfg.add(gtsam::PriorFactor<Pose3>(
           PoseKey(robots[phase].link(link_name)->id(), t), wTl_dt[t],
@@ -359,7 +357,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   Values zero_values;
 
   auto sampler_noise_model =
-      gtsam::noiseModel::Diagonal::Sigmas(Vector6::Constant(6, gaussian_noise));
+      gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   Sampler sampler(sampler_noise_model);
 
   // Initialize link dynamics to 0.
