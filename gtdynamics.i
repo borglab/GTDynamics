@@ -309,66 +309,63 @@ class OptimizerSetting {
 #include<gtdynamics/dynamics/DynamicsGraph.h>
 class DynamicsGraph {
   DynamicsGraph();
-
+  DynamicsGraph(const boost::optional<gtsam::Vector3> &gravity,
+                const boost::optional<gtsam::Vector3> &planar_axis);
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt);
+  DynamicsGraph(const gtdynamics::OptimizerSetting &opt,
+                const boost::optional<gtsam::Vector3> &gravity,
+                const boost::optional<gtsam::Vector3> &planar_axis);
 
   // enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
-  static gtsam::GaussianFactorGraph linearDynamicsGraph(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &joint_angles,
-      const gtdynamics::JointValues &joint_vels, const gtdynamics::FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis);
+  gtsam::GaussianFactorGraph linearDynamicsGraph(
+      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::JointValues &joint_angles,
+      const gtdynamics::JointValues &joint_vels,
+      const gtdynamics::FKResults &fk_results);
 
-  static gtsam::GaussianFactorGraph linearFDPriors(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &torque_values);
+  gtsam::GaussianFactorGraph linearFDPriors(
+      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::JointValues &torque_values);
 
-  static gtsam::GaussianFactorGraph linearIDPriors(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &joint_accels);
+  gtsam::GaussianFactorGraph linearIDPriors(
+      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::JointValues &joint_accels);
 
-  static gtsam::Values linearSolveFD(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &joint_angles,
-      const gtdynamics::JointValues &joint_vels, const gtdynamics::JointValues &torques,
-      const gtdynamics::FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis);
+  gtsam::Values linearSolveFD(const gtdynamics::Robot &robot, const int t,
+                              const gtdynamics::JointValues &joint_angles,
+                              const gtdynamics::JointValues &joint_vels,
+                              const gtdynamics::JointValues &torques,
+                              const gtdynamics::FKResults &fk_results);
 
-  static gtsam::Values linearSolveID(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &joint_angles,
-      const gtdynamics::JointValues &joint_vels, const gtdynamics::JointValues &torques,
-      const gtdynamics::FKResults &fk_results,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis);
+  gtsam::Values linearSolveID(const gtdynamics::Robot &robot, const int t,
+                              const gtdynamics::JointValues &joint_angles,
+                              const gtdynamics::JointValues &joint_vels,
+                              const gtdynamics::JointValues &torques,
+                              const gtdynamics::FKResults &fk_results);
 
   gtsam::NonlinearFactorGraph qFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity,
       const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity,
       const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity,
       const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
@@ -381,7 +378,8 @@ class DynamicsGraph {
       const Vector &joint_vels, const Vector &joint_accels) const;
 
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t, const gtdynamics::JointValues &joint_angles,
+      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::JointValues &joint_angles,
       const gtdynamics::JointValues &joint_vels,
       const gtdynamics::JointValues &torques) const;
 
@@ -393,17 +391,14 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::DynamicsGraph::CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<gtdynamics::Robot> &robots, const std::vector<int> &phase_steps,
+      const std::vector<gtdynamics::Robot> &robots,
+      const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation,
-      const boost::optional<gtsam::Vector3> &gravity,
-      const boost::optional<gtsam::Vector3> &planar_axis) const;
+      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph collocationFactors(
       const gtdynamics::Robot &robot, const int t, const double dt,
