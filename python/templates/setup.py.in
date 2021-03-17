@@ -29,7 +29,7 @@ setup(
     author_email="${PROJECT_AUTHOR_EMAIL}",
     license='Simplified BSD license',
     keywords="",
-    long_description=open("../README.md").read(),
+    long_description=open("${PROJECT_SOURCE_DIR}/README.md").read(),
     long_description_content_type="text/markdown",
     python_requires=">=3.6",
     # https://pypi.org/pypi?%3Aaction=list_classifiers
