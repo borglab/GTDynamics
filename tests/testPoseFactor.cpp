@@ -140,7 +140,7 @@ TEST(PoseFactor, breaking_rr) {
 
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
-  gtsam::Pose3 cMp = j1->transformTo(l2);
+  gtsam::Pose3 cMp = j1->transformTo(l2, 0.0);
   auto joint = make_joint(cMp, screw_axis);
   PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);

@@ -24,7 +24,11 @@
 #include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
-using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
+using gtsam::Values;
 
 // Load a URDF file and ensure its joints and links were parsed correctly.
 TEST(utils, load_and_parse_urdf_file) {
@@ -267,8 +271,9 @@ TEST(Joint, urdf_constructor_revolute) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2)));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2)));
+
+  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2, 0.0)));
+  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0.0)));
 
   // transform from (rotating -pi/2)
   Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
@@ -335,7 +340,7 @@ TEST(Joint, sdf_constructor_revolute) {
   Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
   Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0, 0.0)));
   EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 
@@ -361,7 +366,7 @@ TEST(Joint, sdf_constructor_revolute) {
   Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
   Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
-  EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2)));
+  EXPECT(assert_equal(T_12com_rest, j2->transformFrom(l2, 0.0)));
   EXPECT(assert_equal(T_12com_pi_2, j2->transformFrom(l2, M_PI / 2.0)));
   EXPECT(assert_equal(T_12com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
 }
@@ -461,8 +466,8 @@ TEST(Joint, urdf_constructor_prismatic) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
   Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2), 1e-5));
+  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2, 0), 1e-5));
+  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0), 1e-5));
 
   // transform from (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
@@ -503,7 +508,7 @@ TEST(Joint, urdf_constructor_prismatic) {
  */
 TEST(Joint, sdf_constructor_screw) {
   auto model = GetSdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
-                       "simple_screw_joint_sdf");
+                      "simple_screw_joint_sdf");
 
   LinkSharedPtr l0 = LinkFromSdf(*model.LinkByName("link_0"));
   LinkSharedPtr l1 = LinkFromSdf(*model.LinkByName("link_1"));
@@ -532,7 +537,7 @@ TEST(Joint, sdf_constructor_screw) {
   Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4 - 0.125));
   Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4 + 0.125));
 
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0)));
+  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0, 0)));
   EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
   EXPECT(assert_equal(T_01com_pos, j1->transformFrom(l1, M_PI / 2)));
 }
@@ -577,11 +582,10 @@ TEST(Robot, simple_urdf) {
 
   // Check transforms between link CoM frames.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      j1->transformTo(j1->child())));
+                      j1->transformTo(j1->child(), 0)));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      j1->transformFrom(j1->child())));
+                      j1->transformFrom(j1->child(), 0)));
 }
-
 
 // Check the links in the simple RR robot.
 TEST(Link, sdf_constructor) {

@@ -8,7 +8,11 @@
 /**
  * @file  Joint.h
  * @brief Absract representation of a robot joint.
- * @author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang
+ * @author: Frank Dellaert
+ * @author: Mandy Xie
+ * @author: Alejandro Escontrela
+ * @author: Yetong Zhang
+ * @author: Varun Agrawal
  */
 
 #pragma once
@@ -61,7 +65,6 @@ inline DynamicsSymbol TorqueKey(int j, int t) {
 /// Map from joint name to joint angle/vel/accel/torque
 using JointValues = std::map<std::string, double>;
 
-
 enum JointEffortType { Actuated, Unactuated, Impedance };
 
 /**
@@ -105,7 +108,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Unactuated: not powered, free to move, exert zero torque
    * Impedance: with spring resistance
    */
-  
 
   enum Type : char {
     Revolute = 'R',
@@ -139,11 +141,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Abstract method. Return transform of child link com frame w.r.t parent
   /// link com frame
-  gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none);
+  gtsam::Pose3 pMcCom(double q);
 
   /// Abstract method. Return transform of parent link com frame w.r.t child
   /// link com frame
-  gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none);
+  gtsam::Pose3 cMpCom(double q);
 
   /// Check if the link is a child link, throw an error if link is not
   /// connected to this joint.
@@ -249,7 +251,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * com frame given a Values object containing this joint's angle Value
    */
   virtual Pose3 transformTo(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
   /**
@@ -262,8 +264,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * twist and a Values object containing this joint's angle Value.
    */
   virtual gtsam::Vector6 transformTwistTo(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
@@ -275,9 +276,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * derivatives.
    */
   virtual gtsam::Vector6 transformTwistAccelTo(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Values> q_ddot = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot_and_q_ddot,
       boost::optional<gtsam::Vector6> this_twist = boost::none,
       boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
@@ -403,8 +402,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Equivalent to T_other.compose(transformFrom(link, q)).
    */
   Pose3 transformTo(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q,
-      gtsam::Pose3 T_other, boost::optional<gtsam::Matrix &> H_q = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q,
+      const gtsam::Pose3 &T_other,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
       gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
     if (!H_q) {
       return T_other.compose(transformFrom(link, q), H_T_other);
@@ -422,7 +422,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Values object containing this joint's angle value.
    */
   Pose3 transformFrom(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const {
     return transformTo(otherLink(link), q, H_q);
   }
@@ -433,8 +433,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Equivalent to T_this.compose(transformTo(link, q))
    */
   Pose3 transformFrom(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q,
-      gtsam::Pose3 T_this, boost::optional<gtsam::Matrix &> H_q = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q,
+      const gtsam::Pose3 &T_this,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_T_this = boost::none) const {
     return transformTo(otherLink(link), q, T_this, H_q, H_T_this);
   }
@@ -444,14 +445,13 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * object containing this joint's angle value.
    */
   gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot,
       boost::optional<gtsam::Vector6> this_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
       boost::optional<gtsam::Matrix &> H_this_twist = boost::none) const {
-    return transformTwistTo(otherLink(link), q, q_dot, this_twist, H_q, H_q_dot,
-                            H_this_twist);
+    return transformTwistTo(otherLink(link), q_and_q_dot, this_twist, H_q,
+                            H_q_dot, H_this_twist);
   }
 
   /**
@@ -460,9 +460,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * derivatives.
    */
   gtsam::Vector6 transformTwistAccelFrom(
-      const LinkSharedPtr &link, boost::optional<gtsam::Values> q = boost::none,
-      boost::optional<gtsam::Values> q_dot = boost::none,
-      boost::optional<gtsam::Values> q_ddot = boost::none,
+      const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot_and_q_ddot,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       boost::optional<gtsam::Vector6> this_twist_accel = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
@@ -470,9 +468,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_this_twist_accel = boost::none) const {
-    return transformTwistAccelTo(otherLink(link), q, q_dot, q_ddot, other_twist,
-                                 this_twist_accel, H_q, H_q_dot, H_q_ddot,
-                                 H_other_twist, H_this_twist_accel);
+    return transformTwistAccelTo(otherLink(link), q_and_q_dot_and_q_ddot,
+                                 other_twist, this_twist_accel, H_q, H_q_dot,
+                                 H_q_ddot, H_other_twist, H_this_twist_accel);
   }
 };
 
