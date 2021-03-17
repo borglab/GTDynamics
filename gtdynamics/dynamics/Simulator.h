@@ -55,11 +55,9 @@ class Simulator {
             const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
       : robot_(robot),
         t_(0),
-        graph_builder_(DynamicsGraph()),
+        graph_builder_(DynamicsGraph(gravity, planar_axis)),
         initial_angles_(initial_angles),
-        initial_vels_(initial_vels),
-        gravity_(gravity),
-        planar_axis_(planar_axis) {
+        initial_vels_(initial_vels) {
     reset();
   }
   ~Simulator() {}
@@ -80,8 +78,8 @@ class Simulator {
    */
   void forwardDynamics(const JointValues &torques) {
     auto fk_results = robot_.forwardKinematics(qs_, vs_);
-    gtsam::Values result = graph_builder_.linearSolveFD(
-        robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
+    gtsam::Values result =
+        graph_builder_.linearSolveFD(robot_, t_, qs_, vs_, torques, fk_results);
     results_.insert(result);
 
     // update accelerations
