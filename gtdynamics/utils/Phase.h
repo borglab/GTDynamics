@@ -61,8 +61,8 @@ class Phase {
    * @param[in] point            Point of contact on link.
    * @param[in] contact_height   Height of contact point from ground.
    */
-  void addContactPoints(const std::vector<std::string>& links, const gtsam::Point3& point,
-                        double contact_height) {
+  void addContactPoints(const std::vector<std::string>& links,
+                        const gtsam::Point3& point, double contact_height) {
     for (auto&& link : links) {
       addContactPoint(link, point, contact_height);
     }
