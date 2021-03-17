@@ -12,23 +12,23 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 * [`GTSAM4`](https://github.com/borglab/gtsam)
 
 ### macOS
-* [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
+* [`sdformat9`](https://github.com/osrf/sdformat)
 ```bash
 $ # Install homebrew.
 $ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
-$ brew install sdformat8
+$ brew install sdformat9
 ```
 
 ### Ubuntu
-* [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
+* [`sdformat9`](https://github.com/osrf/sdformat)
 ```bash
 $ # Install homebrew (for linux).
 $ sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
-$ brew install sdformat8
+$ brew install sdformat9
 ```
 
 If issues arise when installing dependencies for sdformat, reference the following [tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) to install sdformat from source.

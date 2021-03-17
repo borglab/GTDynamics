@@ -4,7 +4,7 @@ project(gtdynamics_demo C CXX)
 ## Find Dependencies
 
 # For parsing urdf/sdf files.
-find_package(sdformat8 REQUIRED)
+find_package(sdformat9 REQUIRED)
 
 # GTSAM.
 find_package(GTSAM REQUIRED)
