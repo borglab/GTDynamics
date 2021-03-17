@@ -85,37 +85,6 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
 
 // ========================== OLD_STYLE BELOW ===============================
 
-// Test linear dynamics graph of a two-link robot, base fixed, with gravity
-TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass) {
-  using simple_urdf_eq_mass::robot;
-
-  DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
-                              simple_urdf_eq_mass::planar_axis);
-  int t = 0;
-  JointValues joint_angles, joint_vels, joint_torques, joint_accels;
-  joint_angles["j1"] = 0;
-  joint_vels["j1"] = 0;
-  joint_torques["j1"] = 1;
-  joint_accels["j1"] = 4;
-  std::string prior_link_name = "l1";
-  auto l1 = robot.link(prior_link_name);
-  Vector6 V_l1 = gtsam::Z_6x1;
-  auto fk_results = robot.forwardKinematics(
-      joint_angles, joint_vels, prior_link_name, l1->wTcom(), V_l1);
-
-  // test forward dynamics
-  Values result_fd = graph_builder.linearSolveFD(
-      robot, t, joint_angles, joint_vels, joint_torques, fk_results);
-
-  int j = robot.joints()[0]->id();
-  EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(j, t)), 1e-3));
-
-  // test inverse dynamics
-  Values result_id = graph_builder.linearSolveID(
-      robot, t, joint_angles, joint_vels, joint_accels, fk_results);
-  EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
-}
-
 // Test forward dynamics with gravity of a two-link robot, with base link fixed
 TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   using simple_urdf_eq_mass::robot;
