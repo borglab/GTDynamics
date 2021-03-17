@@ -10,10 +10,13 @@ set(PYTHON_REQUIREMENTS_PATH "requirements.txt")
 set(PYTHON_TESTS "${PROJECT_NAME}.tests")
 
 set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
+
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
-               ${GTDYNAMICS_PYTHON_PATH}/setup.py)
+               ${PROJECT_BINARY_DIR}/python/setup.py)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/__init__.py.in
-               ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}/__init__.py)
+               ${PROJECT_BINARY_DIR}/python/${PROJECT_NAME}/__init__.py)
+configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
+               ${PROJECT_BINARY_DIR}/python/requirements.txt COPYONLY)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 
@@ -34,13 +37,13 @@ set_target_properties(
   ${PROJECT_NAME}_py
   PROPERTIES OUTPUT_NAME "${PROJECT_NAME}"
              LIBRARY_OUTPUT_DIRECTORY
-             "${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}"
+             "${PROJECT_BINARY_DIR}/python/${PROJECT_NAME}"
              DEBUG_POSTFIX "" # Otherwise you will have a wrong name
              RELWITHDEBINFO_POSTFIX "" # Otherwise you will have a wrong name
 )
 
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${GTDYNAMICS_PYTHON_PATH}/setup.py install
+  COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTDYNAMICS_PYTHON_PATH})
