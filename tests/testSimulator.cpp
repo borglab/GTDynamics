@@ -28,14 +28,14 @@ using namespace gtdynamics;
 
 TEST(Simulate, simple_urdf) {
   using gtsam::assert_equal;
-  using simple_urdf::my_robot, simple_urdf::gravity, simple_urdf::planar_axis;
+  using simple_urdf::robot, simple_urdf::gravity, simple_urdf::planar_axis;
   using std::vector;
   JointValues joint_angles, joint_vels, torques;
   joint_angles["j1"] = 0;
   joint_vels["j1"] = 0;
   torques["j1"] = 1;
   auto simulator =
-      Simulator(my_robot, joint_angles, joint_vels, gravity, planar_axis);
+      Simulator(robot, joint_angles, joint_vels, gravity, planar_axis);
 
   int num_steps = 1 + 1;
   double dt = 1;
@@ -43,9 +43,9 @@ TEST(Simulate, simple_urdf) {
   auto results = simulator.simulate(torques_seq, dt);
 
   int t = 1;
-  gtsam::Vector qs = DynamicsGraph::jointAngles(my_robot, results, t);
-  gtsam::Vector vs = DynamicsGraph::jointVels(my_robot, results, t);
-  gtsam::Vector as = DynamicsGraph::jointAccels(my_robot, results, t);
+  gtsam::Vector qs = DynamicsGraph::jointAngles(robot, results, t);
+  gtsam::Vector vs = DynamicsGraph::jointVels(robot, results, t);
+  gtsam::Vector as = DynamicsGraph::jointAccels(robot, results, t);
 
   double acceleration = 0.0625;
   double expected_qAccel = acceleration;

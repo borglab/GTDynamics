@@ -127,16 +127,16 @@ TEST(PoseFactor, breaking) {
 // Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
   // Evaluate PoseFunctor on an RR link.
-  using simple_urdf_zero_inertia::my_robot;
+  using simple_urdf_zero_inertia::robot;
 
   gtsam::Pose3 base_pose =
       gtsam::Pose3(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0));
 
   double joint_angle = M_PI / 4;
 
-  auto l2 = my_robot.link("l2");
+  auto l2 = robot.link("l2");
   auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
-      my_robot.joint("j1"));
+      robot.joint("j1"));
 
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
