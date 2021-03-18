@@ -81,7 +81,7 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
 
   // should throw error
-  CHECK_EXCEPTION(j1->transformTo(l1, gtsam::Values()),
+  CHECK_EXCEPTION(j1->transformTo(0, l1, gtsam::Values()),
                   gtsam::ValuesKeyDoesNotExist);
 
   // links

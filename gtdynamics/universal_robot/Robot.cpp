@@ -120,16 +120,89 @@ void Robot::print() const {
     joint_angles.insertDouble(joint->key(), 0);
 
     std::cout << "\tpMc_com: "
-              << joint->transformTo(child_link, joint_angles)
+              << joint->transformTo(0, child_link, joint_angles)
                      .rotation()
                      .rpy()
                      .transpose()
               << ", "
-              << joint->transformTo(child_link, joint_angles)
+              << joint->transformTo(0, child_link, joint_angles)
                      .translation()
                      .transpose()
               << "\n";
   }
+}
+
+gtsam::Values Robot::forwardKinematics(
+    size_t t, const gtsam::Values &known_values,
+    const boost::optional<std::string> &prior_link_name) const {
+  gtsam::Values result = known_values;
+
+  // Set root link.
+  LinkSharedPtr root_link;
+
+  // Use prior_link if given.
+  if (prior_link_name) {
+    root_link = link(*prior_link_name);
+  } else {
+    // Check for fixed links, root link will be last fixed link if any.
+    for (auto &&link : links()) {
+      if (link->isFixed()) {
+        root_link = link;
+        result.insert(PoseKey(link->id(), t), link->getFixedPose());
+        result.insert<Vector6>(TwistKey(link->id(), t), Vector6::Zero());
+      }
+    }
+    if (!root_link) {
+      throw std::runtime_error(
+          "No prior link given and cannot find a fixed link");
+    }
+  }
+
+  // BFS to update all poses downstream in the graph.
+  std::queue<LinkSharedPtr> q;
+  q.push(root_link);
+  int loop_count = 0;
+  while (!q.empty()) {
+    // Pop link from the queue and retrieve the pose and twist.
+    LinkSharedPtr link1 = q.front();
+    const Pose3 T_w1 = result.at<Pose3>(PoseKey(link1->id(), t));
+    const Vector6 V_1 = result.at<Vector6>(TwistKey(link1->id(), t));
+    q.pop();
+
+    // Loop through all joints to find the pose and twist of child links.
+    for (auto &&joint : link1->getJoints()) {
+      LinkSharedPtr link2 = joint->otherLink(link1);
+      // calculate the pose and twist of link2
+      double joint_angle = known_values.atDouble(JointAngleKey(joint->id(), t));
+      const Pose3 l1Tl2 = joint->transformTo(t, link1, known_values);
+      const Pose3 T_w2 = T_w1 * l1Tl2;
+
+      // Compute the twist. TODO(frank): pass just one value.
+      const Vector6 V_2 =
+          joint->transformTwistFrom(t, link1, known_values, V_1);
+
+      // Save pose and twist if link 2 has not been assigned yet.
+      auto pose_key = PoseKey(link2->id(), t);
+      auto twist_key = TwistKey(link2->id(), t);
+      if (!result.exists(pose_key)) {
+        result.insert(pose_key, T_w2);
+        result.insert<Vector6>(twist_key, V_2);
+        q.push(link2);
+      } else {
+        // If link 2 is already assigned, check for consistency.
+        Pose3 T_w2_prev = result.at<Pose3>(pose_key);
+        Vector6 V_2_prev = result.at<Vector6>(twist_key);
+        if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
+          throw std::runtime_error(
+              "Inconsistent joint angles detected in forward kinematics");
+        }
+      }
+    }
+    if (loop_count++ > 100000) {
+      throw std::runtime_error("infinite loop in bfs");
+    }
+  }
+  return result;
 }
 
 FKResults Robot::forwardKinematics(
@@ -181,7 +254,6 @@ FKResults Robot::forwardKinematics(
       // calculate the pose and twist of link2
       double joint_angle = joint_angles.at(joint_ptr->name());
       const Pose3 l1Tl2 = joint_ptr->transformTo(link1, joint_angle);
-      const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
       const Pose3 T_w2 = T_w1 * l1Tl2;
 
       // If joint_velocities are provided, compute the twist, else default to zero.
