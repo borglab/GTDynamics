@@ -181,8 +181,7 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
     double accel = joint_accels.atDouble(JointAccelKey(j, t));
-    gtsam::Vector1 rhs;
-    rhs << accel;
+    gtsam::Vector1 rhs(accel);
     graph.add(JointAccelKey(j, t), I_1x1, rhs, all_constrained);
   }
   return graph;
@@ -207,9 +206,7 @@ Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
-  for (auto &factor : priors) {
-    graph.add(factor);
-  }
+  graph += priors;
   gtsam::VectorValues results = graph.optimize();
 
   // arrange values
@@ -281,9 +278,8 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearIDPriors(robot, t, known_values);
-  for (auto &factor : priors) {
-    graph.add(factor);
-  }
+  graph += priors;
+
   gtsam::VectorValues results = graph.optimize();
 
   // arrange values
