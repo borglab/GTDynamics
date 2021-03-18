@@ -22,7 +22,6 @@ find_package(GTSAMCMakeTools)
 include(GtsamMakeConfigFile)
 include(GtsamBuildTypes)
 include(GtsamTesting)
-include(GtsamMatlabWrap)
 
 # For unit tests and scripts.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
