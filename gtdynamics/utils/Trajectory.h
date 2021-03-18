@@ -11,12 +11,12 @@
  * @author: Disha Das, Tarushree Gandhi
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/WalkCycle.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/WalkCycle.h"
 
 namespace gtdynamics {
 
@@ -62,7 +62,7 @@ class Trajectory {
    */
   const std::vector<ContactPoints> phaseContactPoints() const {
     std::vector<ContactPoints> phase_cps;
-    std::vector<Phase> phases = walk_cycle_.phases();
+    const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
         phase_cps.push_back(phase.getAllContactPoints());
@@ -114,7 +114,7 @@ class Trajectory {
    */
   const std::vector<int> phaseDurations() const {
     std::vector<int> phase_durations;
-    std::vector<Phase> phases = walk_cycle_.phases();
+    const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases)
         phase_durations.push_back(phase.numTimeSteps());
@@ -129,7 +129,7 @@ class Trajectory {
    */
   const std::vector<Robot> phaseRobotModels() const {
     std::vector<Robot> robots;
-    std::vector<Phase> phases = walk_cycle_.phases();
+    const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases)
         robots.push_back(phase.getRobotConfiguration());

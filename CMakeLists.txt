@@ -7,6 +7,7 @@ project(gtdynamics
         HOMEPAGE_URL "https://github.com/borglab/GTDynamics")
 
 add_compile_options(-faligned-new)
+set (CMAKE_CXX_STANDARD 11)
 
 # ##############################################################################
 # Find Dependencies #
