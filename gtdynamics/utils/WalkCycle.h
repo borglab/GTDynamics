@@ -31,7 +31,7 @@ namespace gtdynamics {
  */
 class WalkCycle {
  protected:
-  std::vector<gtdynamics::Phase> phases_;  ///< Phases in walk cycle
+  std::vector<Phase> phases_;     ///< Phases in walk cycle
   ContactPoints contact_points_;  ///< All Contact points in the walk cycle
 
  public:
@@ -58,7 +58,7 @@ class WalkCycle {
   }
 
   /// Returns vector of phases in the walk cycle
-  std::vector<Phase> phases() const { return phases_; }
+  const std::vector<Phase>& phases() const { return phases_; }
 
   /// Returns count of phases in the walk cycle
   int numPhases() const { return phases_.size(); }
