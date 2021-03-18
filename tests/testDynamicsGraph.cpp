@@ -114,15 +114,15 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   for (auto link : robot.links()) {
     int i = link->id();
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(i, 0), link->wTcom(), graph_builder.opt().bp_cost_model));
-    graph.add(gtsam::PriorFactor<Vector6>(TwistKey(i, 0), gtsam::Z_6x1,
+        PoseKey(i, t), link->wTcom(), graph_builder.opt().bp_cost_model));
+    graph.add(gtsam::PriorFactor<Vector6>(TwistKey(i, t), gtsam::Z_6x1,
                                           graph_builder.opt().bv_cost_model));
   }
 
-  gtsam::GaussNewtonOptimizer optimizer(graph, ZeroValues(robot, 0));
+  gtsam::GaussNewtonOptimizer optimizer(graph, ZeroValues(robot, t));
   Values result = optimizer.optimize();
 
-  gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
+  gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, t);
   gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 1e-3));
 }
