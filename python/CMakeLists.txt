@@ -46,4 +46,4 @@ add_custom_target(
   python-install
   COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
   DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${GTDYNAMICS_PYTHON_PATH})
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/python)
