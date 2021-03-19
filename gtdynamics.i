@@ -3,11 +3,13 @@
 namespace gtdynamics {
 
 /********************** factors **********************/
-
+//TODO Pybind11 can't find this symbol, thus we can't inherit in the class declarations below.
+// Needs more investigation.
+#include <gtsam/nonlinear/NonlinearFactor.h>
 virtual class gtsam::NonlinearFactor;
 
 #include <gtdynamics/factors/PoseFactor.h>
-class PoseFactor : gtsam::NonlinearFactor {
+class PoseFactor {
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base* cost_model,
              const gtdynamics::Joint* joint);
