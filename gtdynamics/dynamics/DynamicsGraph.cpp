@@ -80,11 +80,13 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       if (connected_joints.size() == 0) {
         graph.add(accel_key, G_i, rhs, all_constrained);
       } else if (connected_joints.size() == 1) {
-        graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), t),
-                  -I_6x6, rhs, all_constrained);
+        graph.add(accel_key, G_i,
+                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
+                  rhs, all_constrained);
       } else if (connected_joints.size() == 2) {
-        graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), t),
-                  -I_6x6, WrenchKey(i, connected_joints[1]->id(), t), -I_6x6,
+        graph.add(accel_key, G_i,
+                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
+                  internal::WrenchKey(i, connected_joints[1]->id(), t), -I_6x6,
                   rhs, all_constrained);
       }
     }
@@ -135,13 +137,13 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
                   gtsam::noiseModel::Constrained::All(6));
       } else if (connected_joints.size() == 1) {
         graph.add(internal::TwistAccelKey(i, t), G_i,
-                  WrenchKey(i, connected_joints[0]->id(), t), -I_6x6, rhs,
-                  gtsam::noiseModel::Constrained::All(6));
+                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
+                  rhs, gtsam::noiseModel::Constrained::All(6));
       } else if (connected_joints.size() == 2) {
         graph.add(internal::TwistAccelKey(i, t), G_i,
-                  WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
-                  WrenchKey(i, connected_joints[1]->id(), t), -I_6x6, rhs,
-                  gtsam::noiseModel::Constrained::All(6));
+                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
+                  internal::WrenchKey(i, connected_joints[1]->id(), t), -I_6x6,
+                  rhs, gtsam::noiseModel::Constrained::All(6));
       }
     }
   }
@@ -219,8 +221,8 @@ Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
       int i1 = joint->parent()->id();
       int i2 = joint->child()->id();
       InsertJointAccel(&values, j, t, JointAccel(results, j, t)[0]);
-      values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
-      values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+      InsertWrench(&values, i1, j, t, Wrench(results, i1, j, t));
+      InsertWrench(&values, i2, j, t, Wrench(results, i2, j, t));
     }
     for (auto &&link : robot.links()) {
       int i = link->id();
@@ -259,8 +261,8 @@ Values DynamicsGraph::linearSolveFD(
     InsertJointVel(&values, j, t, joint_vels.at(name));
     InsertJointAccel(&values, j, t, JointAccel(results, j, t)[0]);
     InsertTorque(&values, j, t, torques.at(name));
-    values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
-    values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+    InsertWrench(&values, i1, j, t, Wrench(results, i1, j, t));
+    InsertWrench(&values, i2, j, t, Wrench(results, i2, j, t));
   }
   const auto &poses = fk_results.first;
   const auto &twists = fk_results.second;
@@ -293,8 +295,8 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
       int i2 = joint->child()->id();
       std::string name = joint->name();
       InsertTorque(&values, j, t, Torque(results, j, t)[0]);
-      values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
-      values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+      InsertWrench(&values, i1, j, t, Wrench(results, i1, j, t));
+      InsertWrench(&values, i2, j, t, Wrench(results, i2, j, t));
     }
     for (auto &&link : robot.links()) {
       int i = link->id();
@@ -334,8 +336,8 @@ Values DynamicsGraph::linearSolveID(
     InsertJointVel(&values, j, t, joint_vels.at(name));
     InsertJointAccel(&values, j, t, joint_accels.at(name));
     InsertTorque(&values, j, t, Torque(results, j, t)[0]);
-    values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
-    values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
+    InsertWrench(&values, i1, j, t, Wrench(results, i1, j, t));
+    InsertWrench(&values, i2, j, t, Wrench(results, i2, j, t));
   }
   const auto &poses = fk_results.first;
   const auto &twists = fk_results.second;
@@ -460,7 +462,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
-        wrenches.push_back(WrenchKey(i, joint->id(), t));
+        wrenches.push_back(internal::WrenchKey(i, joint->id(), t));
 
       // Add wrench keys for contact points.
       if (contact_points) {
@@ -936,15 +938,15 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
       locations[internal::TorqueKey(j, t)] = corner_location(6, j, n);
       int i1 = joint->parent()->id();
       int i2 = joint->child()->id();
-      locations[WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
-      locations[WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
+      locations[internal::WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
+      locations[internal::WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
     }
   } else {
     for (auto &&link : robot.links()) {
       int i = link->id();
-      locations[internal::PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
-      locations[internal::TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
-      locations[internal::TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
+      locations[internal::PoseKey(i, t)] = gtsam::Vector3(i, 0, 0);
+      locations[internal::TwistKey(i, t)] = gtsam::Vector3(i, 1, 0);
+      locations[internal::TwistAccelKey(i, t)] = gtsam::Vector3(i, 2, 0);
     }
 
     for (auto &&joint : robot.joints()) {
@@ -957,9 +959,9 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
           (gtsam::Vector(3) << j + 0.5, 2.5, 0).finished();
       int i1 = joint->parent()->id();
       int i2 = joint->child()->id();
-      locations[WrenchKey(i1, j, t)] =
+      locations[internal::WrenchKey(i1, j, t)] =
           (gtsam::Vector(3) << j + 0.25, 3.5, 0).finished();
-      locations[WrenchKey(i2, j, t)] =
+      locations[internal::WrenchKey(i2, j, t)] =
           (gtsam::Vector(3) << j + 0.75, 3.5, 0).finished();
       locations[internal::TorqueKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 4.5, 0).finished();

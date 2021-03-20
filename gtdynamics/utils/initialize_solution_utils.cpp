@@ -372,8 +372,8 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   // Initialize joint kinematics/dynamics to 0.
   for (auto&& joint : robot.joints()) {
     int j = joint->id();
-    values.insert(WrenchKey(joint->parent()->id(), j, t), sampler.sample());
-    values.insert(WrenchKey(joint->child()->id(), j, t), sampler.sample());
+    InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
+    InsertWrench(&values, joint->child()->id(), j, t, sampler.sample());
     std::vector<DynamicsSymbol> keys = {
         internal::TorqueKey(j, t), internal::JointAngleKey(j, t),
         internal::JointVelKey(j, t), internal::JointAccelKey(j, t)};

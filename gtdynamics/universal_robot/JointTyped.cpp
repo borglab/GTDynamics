@@ -69,15 +69,17 @@ gtsam::NonlinearFactorGraph JointTyped::dynamicsFactors(
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<WrenchEquivalenceFactor>(
-      WrenchKey(parent_link_->id(), id(), t),
-      WrenchKey(child_link_->id(), id(), t), internal::JointAngleKey(id(), t),
-      opt.f_cost_model, boost::static_pointer_cast<const This>(shared()));
+      internal::WrenchKey(parent_link_->id(), id(), t),
+      internal::WrenchKey(child_link_->id(), id(), t),
+      internal::JointAngleKey(id(), t), opt.f_cost_model,
+      boost::static_pointer_cast<const This>(shared()));
   graph.emplace_shared<TorqueFactor>(
-      WrenchKey(child_link_->id(), id(), t), internal::TorqueKey(id(), t),
-      opt.t_cost_model, boost::static_pointer_cast<const This>(shared()));
+      internal::WrenchKey(child_link_->id(), id(), t),
+      internal::TorqueKey(id(), t), opt.t_cost_model,
+      boost::static_pointer_cast<const This>(shared()));
   if (planar_axis)
     graph.emplace_shared<WrenchPlanarFactor>(
-        WrenchKey(child_link_->id(), id(), t), opt.planar_cost_model,
+        internal::WrenchKey(child_link_->id(), id(), t), opt.planar_cost_model,
         *planar_axis);
   return graph;
 }

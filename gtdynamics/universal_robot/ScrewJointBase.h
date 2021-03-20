@@ -306,22 +306,22 @@ class ScrewJointBase : public JointTyped {
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
+    graph.add(internal::WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
               internal::TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     Vector6 rhs_weq = Vector6::Zero();
-    graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
-              WrenchKey(child()->id(), id(), t),
+    graph.add(internal::WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+              internal::WrenchKey(child()->id(), id(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child()->id(), id(), t), J_wrench,
+      graph.add(internal::WrenchKey(child()->id(), id(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
@@ -346,22 +346,22 @@ class ScrewJointBase : public JointTyped {
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
+    graph.add(internal::WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
               internal::TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     Vector6 rhs_weq = Vector6::Zero();
-    graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
-              WrenchKey(child()->id(), id(), t),
+    graph.add(internal::WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+              internal::WrenchKey(child()->id(), id(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child()->id(), id(), t), J_wrench,
+      graph.add(internal::WrenchKey(child()->id(), id(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
