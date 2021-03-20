@@ -50,6 +50,16 @@ gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
 gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
 }  // namespace simple_urdf
 
+namespace simple_urdf_prismatic {
+gtdynamics::Robot getSimpleUrdf() {
+  auto robot = gtdynamics::CreateRobotFromFile(
+      std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
+  robot.fixLink("l1");
+  return robot;
+}
+gtdynamics::Robot robot = getSimpleUrdf();
+} // namespace simple_urdf_prismatic
+
 namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(

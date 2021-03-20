@@ -63,31 +63,12 @@ inline DynamicsSymbol WrenchKey(int i, int j, int t) {
 }
 
 /**
- * Params contains all parameters to construct a link
- */
-struct LinkParams {
-  std::string name;        // name of the link
-  double mass;             // mass of the link
-  gtsam::Matrix3 inertia;  // inertia of the link
-  gtsam::Pose3 wTl;        // link pose expressed in world frame
-  gtsam::Pose3 lTcom;      // link com expressed in link frame
-
-  LinkParams() {}
-
-  LinkParams(const std::string& _name, const double _mass, 
-             const gtsam::Matrix3& _inertia, const gtsam::Pose3& _wTl,
-             const gtsam::Pose3& _lTcom):
-             name(_name), mass(_mass), inertia(_inertia), wTl(_wTl), lTcom(_lTcom) {}
-};
-
-/**
  * @class Base class for links taking different format of parameters.
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
+  unsigned char id_;
   std::string name_;
-
-  int id_ = -1;
 
   /// Inertial elements.
   double mass_;
@@ -115,13 +96,11 @@ class Link : public boost::enable_shared_from_this<Link> {
    *
    * @param params LinkParams object containing link information.
    */
-  explicit Link(const LinkParams &params)
-      : name_(params.name),
-        mass_(params.mass),
-        inertia_(params.inertia),
-        wTl_(params.wTl),
-        lTcom_(params.lTcom),
-        is_fixed_(false) {}
+  Link(unsigned char id, const std::string &name, const double mass,
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
+       const gtsam::Pose3 &lTcom, bool is_fixed = false)
+      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
+        lTcom_(lTcom), is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
@@ -146,19 +125,8 @@ class Link : public boost::enable_shared_from_this<Link> {
     joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
-  /// set ID for the link
-  void setID(unsigned char id) {
-    // if (id == 0) throw std::runtime_error("ID cannot be 0");
-    id_ = id;
-  }
-
   /// return ID of the link
-  int id() const {
-    if (id_ == -1)
-      throw std::runtime_error(
-          "Calling id on a link whose ID has not been set");
-    return id_;
-  }
+  unsigned char id() const { return id_; }
 
   /// add joint to the link
   void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }

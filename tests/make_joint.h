@@ -7,17 +7,14 @@ namespace gtdynamics {
 boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
                                                    gtsam::Vector6 cScrewAxis) {
   // create links
-  LinkParams link1_params, link2_params;
-  link1_params.mass = 100;
-  link1_params.name = "l1";
-  link1_params.inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
-  link1_params.wTl = gtsam::Pose3();
-  link1_params.lTcom = gtsam::Pose3();
-  link2_params = link1_params;
-  link2_params.wTl = cMp.inverse();
+  std::string name = "l1";
+  double mass = 100;
+  gtsam::Matrix3 inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
+  gtsam::Pose3 wTl, lTcom;
 
-  LinkSharedPtr l1 = boost::make_shared<Link>(Link(link1_params));
-  LinkSharedPtr l2 = boost::make_shared<Link>(Link(link2_params));
+  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, wTl, lTcom));
+  auto l2 = boost::make_shared<Link>(
+      Link(2, name, mass, inertia, cMp.inverse(), lTcom));
 
   // create joint
   JointParams joint_params;
