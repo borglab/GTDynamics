@@ -41,14 +41,13 @@ TEST(Joint, params_constructor_prismatic) {
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
   auto j1 = boost::make_shared<PrismaticJoint>(
-      "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, parameters,
-      j1_axis);
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2,
+      parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
 
   // get, set ID
-  j1->setID(1);
   EXPECT(j1->id() == 1);
 
   // name

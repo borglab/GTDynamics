@@ -194,8 +194,7 @@ class JointParams {
 };
 
 virtual class Joint {
-  void setID(unsigned char id);
-  int id() const;
+  unsigned char id() const;
   const gtsam::Pose3 &wTj() const;
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;

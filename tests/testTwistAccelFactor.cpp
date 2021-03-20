@@ -68,7 +68,7 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
   return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
+      1, "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
 }
 
 // Test twistAccel factor for stationary case

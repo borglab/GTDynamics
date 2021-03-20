@@ -23,19 +23,16 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Joint::Joint(const std::string &name, const Pose3 &wTj,
-        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-        const JointParams &parameters)
-      : name_(name),
-        wTj_(wTj),
-        parent_link_(parent_link),
-        child_link_(child_link),
-        parameters_(parameters) {
-    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-    jTccom_ = wTj_.inverse() * child_link_->wTcom();
-    pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
-  }
-  
+Joint::Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
+             const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+             const JointParams &parameters)
+    : id_(id), name_(name), wTj_(wTj), parent_link_(parent_link),
+      child_link_(child_link), parameters_(parameters) {
+  jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
+  jTccom_ = wTj_.inverse() * child_link_->wTcom();
+  pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+}
+
 /* ************************************************************************* */
 bool Joint::isChildLink(const LinkSharedPtr &link) const {
   if (link != child_link_ && link != parent_link_)

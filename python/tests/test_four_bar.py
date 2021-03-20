@@ -46,15 +46,10 @@ class TestFourBar(unittest.TestCase):
         j3_pose = Pose3(Rot3.Rz(0), (0, 2, 0))
         j4_pose = Pose3(Rot3.Rz(0), (0, 0, 0))
 
-        joint1 = gtd.RevoluteJoint("j1", j1_pose, link1, link2, params, axis)
-        joint2 = gtd.RevoluteJoint("j2", j2_pose, link2, link3, params, axis)
-        joint3 = gtd.RevoluteJoint("j3", j3_pose, link3, link4, params, axis)
-        joint4 = gtd.RevoluteJoint("j4", j4_pose, link4, link1, params, axis)
-        # TODO(frank): setID? There lies madness!!!
-        joint1.setID(1)
-        joint2.setID(2)
-        joint3.setID(3)
-        joint4.setID(4)
+        joint1 = gtd.RevoluteJoint(1, "j1", j1_pose, link1, link2, params, axis)
+        joint2 = gtd.RevoluteJoint(2, "j2", j2_pose, link2, link3, params, axis)
+        joint3 = gtd.RevoluteJoint(3, "j3", j3_pose, link3, link4, params, axis)
+        joint4 = gtd.RevoluteJoint(4, "j4", j4_pose, link4, link1, params, axis)
         joints = {"j1": joint1, "j2": joint2, "j3": joint3, "j4": joint4}
 
         # connect links to joints

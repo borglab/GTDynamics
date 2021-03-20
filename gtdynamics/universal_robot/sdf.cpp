@@ -116,7 +116,7 @@ LinkSharedPtr LinkFromSdf(const sdf::Link& sdf_link) {
   return boost::make_shared<Link>(ParametersFromSdfLink(sdf_link));
 }
 
-JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
@@ -130,17 +130,17 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(
-          name, wTj, parent_link, child_link, parameters, axis);
+      joint = boost::make_shared<PrismaticJoint>(id, name, wTj, parent_link,
+                                                 child_link, parameters, axis);
       break;
     case sdf::JointType::REVOLUTE:
-      joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
+      joint = boost::make_shared<RevoluteJoint>(id, name, wTj, parent_link,
                                                 child_link, parameters, axis);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link,
-                                              child_link, parameters, axis,
-                                              sdf_joint.ThreadPitch());
+      joint = boost::make_shared<ScrewJoint>(id, name, wTj, parent_link,
+                                             child_link, parameters, axis,
+                                             sdf_joint.ThreadPitch());
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
@@ -190,9 +190,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint = JointFromSdf(parent_link, child_link, sdf_joint);
+    JointSharedPtr joint = JointFromSdf(j, parent_link, child_link, sdf_joint);
     name_to_joint.emplace(joint->name(), joint);
-    joint->setID(j);
 
     // Update list of parent and child links/joints for each Link.
     parent_link->addJoint(joint);

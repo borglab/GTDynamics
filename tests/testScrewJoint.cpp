@@ -39,10 +39,9 @@ TEST(Joint, params_constructor) {
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  auto j1 = boost::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)),
-                                           l1, l2, parameters,
-                                           gtsam::Vector3(1, 0, 0), 0.5);
-  j1->setID(123);
+  auto j1 = boost::make_shared<ScrewJoint>(
+      123, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
+      gtsam::Vector3(1, 0, 0), 0.5);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));
