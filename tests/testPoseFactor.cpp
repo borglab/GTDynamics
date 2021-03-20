@@ -84,14 +84,14 @@ TEST(PoseFactor, breaking) {
   jointAngle = 0;
   pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
   pose_c = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
-  EXPECT(assert_equal(gtsam::Vector6::Zero(),
+  EXPECT(assert_equal(gtsam::Z_6x1,
                       factor.evaluateError(pose_p, pose_c, jointAngle), 1e-6));
 
   // check prediction at half PI
   jointAngle = M_PI / 2;
   pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
   pose_c = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
-  EXPECT(assert_equal(gtsam::Vector6::Zero(),
+  EXPECT(assert_equal(gtsam::Z_6x1,
                       factor.evaluateError(pose_p, pose_c, jointAngle), 1e-6));
 }
 
@@ -117,7 +117,7 @@ TEST(PoseFactor, breaking_rr) {
                     example::cost_model, joint);
 
   EXPECT(assert_equal(
-      gtsam::Vector6::Zero(),
+      gtsam::Z_6x1,
       factor.evaluateError(base_pose, j1->transformFrom(l2, joint_angle),
                            joint_angle),
       1e-6));

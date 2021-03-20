@@ -23,6 +23,7 @@
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;
@@ -135,7 +136,7 @@ void Robot::print() const {
 gtsam::Values Robot::forwardKinematics(
     size_t t, const gtsam::Values &known_values,
     const boost::optional<std::string> &prior_link_name) const {
-  gtsam::Values result = known_values;
+  gtsam::Values values = known_values;
 
   // Set root link.
   LinkSharedPtr root_link;
@@ -148,8 +149,8 @@ gtsam::Values Robot::forwardKinematics(
     for (auto &&link : links()) {
       if (link->isFixed()) {
         root_link = link;
-        result.insert(PoseKey(link->id(), t), link->getFixedPose());
-        result.insert<Vector6>(TwistKey(link->id(), t), Vector6::Zero());
+        InsertPose(&values, link->id(), t, link->getFixedPose());
+        InsertTwist(&values, link->id(), t, Vector6::Zero());
       }
     }
     if (!root_link) {
@@ -165,15 +166,15 @@ gtsam::Values Robot::forwardKinematics(
   while (!q.empty()) {
     // Pop link from the queue and retrieve the pose and twist.
     LinkSharedPtr link1 = q.front();
-    const Pose3 T_w1 = result.at<Pose3>(PoseKey(link1->id(), t));
-    const Vector6 V_1 = result.at<Vector6>(TwistKey(link1->id(), t));
+    const Pose3 T_w1 = Pose(values, link1->id(), t);
+    const Vector6 V_1 = Twist(values, link1->id(), t);
     q.pop();
 
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->getJoints()) {
       LinkSharedPtr link2 = joint->otherLink(link1);
       // calculate the pose and twist of link2
-      double joint_angle = known_values.atDouble(JointAngleKey(joint->id(), t));
+      double joint_angle = JointAngle(known_values, joint->id(), t);
       const Pose3 l1Tl2 = joint->transformTo(t, link1, known_values);
       const Pose3 T_w2 = T_w1 * l1Tl2;
 
@@ -182,16 +183,16 @@ gtsam::Values Robot::forwardKinematics(
           joint->transformTwistFrom(t, link1, known_values, V_1);
 
       // Save pose and twist if link 2 has not been assigned yet.
-      auto pose_key = PoseKey(link2->id(), t);
-      auto twist_key = TwistKey(link2->id(), t);
-      if (!result.exists(pose_key)) {
-        result.insert(pose_key, T_w2);
-        result.insert<Vector6>(twist_key, V_2);
+      auto pose_key = internal::PoseKey(link2->id(), t);
+      auto twist_key = internal::TwistKey(link2->id(), t);
+      if (!values.exists(pose_key)) {
+        values.insert(pose_key, T_w2);
+        values.insert<Vector6>(twist_key, V_2);
         q.push(link2);
       } else {
         // If link 2 is already assigned, check for consistency.
-        Pose3 T_w2_prev = result.at<Pose3>(pose_key);
-        Vector6 V_2_prev = result.at<Vector6>(twist_key);
+        Pose3 T_w2_prev = values.at<Pose3>(pose_key);
+        Vector6 V_2_prev = values.at<Vector6>(twist_key);
         if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
           throw std::runtime_error(
               "Inconsistent joint angles detected in forward kinematics");
@@ -202,7 +203,7 @@ gtsam::Values Robot::forwardKinematics(
       throw std::runtime_error("infinite loop in bfs");
     }
   }
-  return result;
+  return values;
 }
 
 FKResults Robot::forwardKinematics(

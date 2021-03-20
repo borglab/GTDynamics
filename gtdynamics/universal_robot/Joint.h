@@ -41,26 +41,6 @@ class Link;   // forward declaration
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
 
-/// Shorthand for q_j_t, for j-th joint angle at time t.
-inline DynamicsSymbol JointAngleKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("q", j, t);
-}
-
-/// Shorthand for v_j_t, for j-th joint velocity at time t.
-inline DynamicsSymbol JointVelKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("v", j, t);
-}
-
-/// Shorthand for a_j_t, for j-th joint acceleration at time t.
-inline DynamicsSymbol JointAccelKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("a", j, t);
-}
-
-/// Shorthand for T_j_t, for torque on the j-th joint at time t.
-inline DynamicsSymbol TorqueKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("T", j, t);
-}
-
 // TODO(G+S): change torque type from map<string, double> to gtsam::Values
 /// Map from joint name to joint angle/vel/accel/torque
 using JointValues = std::map<std::string, double>;

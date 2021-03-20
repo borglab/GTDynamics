@@ -30,6 +30,7 @@
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 /**
@@ -211,9 +212,9 @@ class ScrewJointBase : public JointTyped {
       size_t t, const gtsam::Values &known_values,
       const OptimizerSetting &opt) const override {
     gtsam::GaussianFactorGraph priors;
-    gtsam::Vector1 rhs(known_values.atDouble(TorqueKey(id(), t)));
+    gtsam::Vector1 rhs(Torque(known_values, id(), t));
     // TODO(alej`andro): use optimizer settings
-    priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
+    priors.add(internal::TorqueKey(id(), t), gtsam::I_1x1, rhs,
                gtsam::noiseModel::Constrained::All(1));
     return priors;
   }
@@ -226,7 +227,7 @@ class ScrewJointBase : public JointTyped {
     gtsam::Vector1 rhs;
     rhs << torques.at(name());
     // TODO(alej`andro): use optimizer settings
-    priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
+    priors.add(internal::TorqueKey(id(), t), gtsam::I_1x1, rhs,
                gtsam::noiseModel::Constrained::All(1));
     return priors;
   }
@@ -237,19 +238,19 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(), t));
-    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(), t));
+    const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
+    const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const Vector6 V_i2 = known_values.at<Vector6>(TwistKey(child()->id(), t));
+    const Vector6 V_i2 = Twist(known_values, child()->id(), t);
     const Vector6 S_i2_j = screwAxis(child_link_);
-    const double v_j = known_values.atDouble(JointAngleKey(id(), t));
+    const double v_j = JointAngle(known_values, id(), t);
 
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
-              TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
-              JointAccelKey(id(), t), -S_i2_j, rhs_tw,
+    graph.add(internal::TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+              internal::TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
+              internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
     return graph;
@@ -275,9 +276,9 @@ class ScrewJointBase : public JointTyped {
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
-              TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
-              JointAccelKey(id(), t), -S_i2_j, rhs_tw,
+    graph.add(internal::TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+              internal::TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
+              internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
     return graph;
@@ -289,30 +290,30 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(), t));
-    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(), t));
+    const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
+    const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     const Vector6 S_i2_j = screwAxis(child_link_);
 
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
-              TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
+    graph.add(internal::WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
+              internal::TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     Vector6 rhs_weq = Vector6::Zero();
-    graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
-              WrenchKey(child()->id(), id(), t),
+    graph.add(internal::WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+              internal::WrenchKey(child()->id(), id(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child()->id(), id(), t), J_wrench,
+      graph.add(internal::WrenchKey(child()->id(), id(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
@@ -337,22 +338,22 @@ class ScrewJointBase : public JointTyped {
     // torque factor
     // S_i_j^T * F_i_j - tau = 0
     gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
-              TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
+    graph.add(internal::WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
+              internal::TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
               gtsam::noiseModel::Constrained::All(1));
 
     // wrench equivalence factor
     // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
     Vector6 rhs_weq = Vector6::Zero();
-    graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
-              WrenchKey(child()->id(), id(), t),
+    graph.add(internal::WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+              internal::WrenchKey(child()->id(), id(), t),
               T_i2i1.AdjointMap().transpose(), rhs_weq,
               gtsam::noiseModel::Constrained::All(6));
 
     // wrench planar factor
     if (planar_axis) {
       gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(WrenchKey(child()->id(), id(), t), J_wrench,
+      graph.add(internal::WrenchKey(child()->id(), id(), t), J_wrench,
                 gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
     }
 
@@ -366,25 +367,25 @@ class ScrewJointBase : public JointTyped {
     auto id = this->id();
     // Add joint angle limit factor.
     graph.emplace_shared<JointLimitFactor>(
-        JointAngleKey(id, t), opt.jl_cost_model,
+        internal::JointAngleKey(id, t), opt.jl_cost_model,
         parameters().scalar_limits.value_lower_limit,
         parameters().scalar_limits.value_upper_limit,
         parameters().scalar_limits.value_limit_threshold);
 
     // Add joint velocity limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointVelKey(id, t), opt.jl_cost_model, -parameters().velocity_limit,
+        internal::JointVelKey(id, t), opt.jl_cost_model, -parameters().velocity_limit,
         parameters().velocity_limit, parameters().velocity_limit_threshold);
 
     // Add joint acceleration limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        JointAccelKey(id, t), opt.jl_cost_model,
+        internal::JointAccelKey(id, t), opt.jl_cost_model,
         -parameters().acceleration_limit, parameters().acceleration_limit,
         parameters().acceleration_limit_threshold);
 
     // Add joint torque limit factors.
     graph.emplace_shared<JointLimitFactor>(
-        TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
+        internal::TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
         parameters().torque_limit, parameters().torque_limit_threshold);
     return graph;
   }

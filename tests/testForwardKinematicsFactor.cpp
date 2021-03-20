@@ -30,17 +30,13 @@ using namespace gtdynamics;
 using namespace gtsam;
 using gtsam::assert_equal;
 
-Key key1 = PoseKey(0, 0), key2 = PoseKey(2, 0);
+const size_t i1 = 0, i2 = 2;
+const Key key1 = gtdynamics::internal::PoseKey(i1),
+          key2 = gtdynamics::internal::PoseKey(i2);
 
-Robot getRobot() {
-  // A three link robot with 2 revolute joints.
-  Robot simple_rr = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  return simple_rr;
-}
+using simple_rr::robot;
 
 TEST(ForwardKinematicsFactor, Constructor) {
-  Robot robot = getRobot();
   JointValues joint_angles;
 
   for (auto&& joint : robot.joints()) {
@@ -53,8 +49,6 @@ TEST(ForwardKinematicsFactor, Constructor) {
 }
 
 TEST(ForwardKinematicsFactor, Error) {
-  // simple_rr robot
-  Robot robot = getRobot();
   JointValues joint_angles;
 
   // Lay the robot arm flat
@@ -78,8 +72,6 @@ TEST(ForwardKinematicsFactor, Error) {
 }
 
 TEST(ForwardKinematicsFactor, Jacobians) {
-  // simple_rr robot
-  Robot robot = getRobot();
   JointValues joint_angles;
 
   // Lay the robot arm flat
@@ -98,17 +90,14 @@ TEST(ForwardKinematicsFactor, Jacobians) {
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1)), bTl2(Rot3(), Point3(0, 0, 1.1));
 
   Values values;
-  values.insert<Pose3>(key1, bTl1);
-  values.insert<Pose3>(key2, bTl2);
+  InsertPose(&values, i1, bTl1);
+  InsertPose(&values, i2, bTl2);
 
   // Check Jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
 TEST(ForwardKinematicsFactor, Movement) {
-  // simple_rr robot
-  Robot robot = getRobot();
-
   JointValues joint_angles;
   // Lay the robot arm flat
   for (auto&& joint : robot.joints()) {
@@ -140,8 +129,8 @@ TEST(ForwardKinematicsFactor, Movement) {
   EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));
 
   Values values;
-  values.insert<Pose3>(key1, bTl1);
-  values.insert<Pose3>(key2, bTl2);
+  InsertPose(&values, i1, bTl1);
+  InsertPose(&values, i2, bTl2);
   // Check Jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }

@@ -18,6 +18,7 @@
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -41,26 +42,6 @@ class Joint; // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
-
-/// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("p", i, t);
-}
-
-/// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("V", i, t);
-}
-
-/// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("A", i, t);
-}
-
-/// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline DynamicsSymbol WrenchKey(int i, int j, int t) {
-  return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
-}
 
 /**
  * @class Base class for links taking different format of parameters.
@@ -198,8 +179,8 @@ class Link : public boost::enable_shared_from_this<Link> {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-          PoseKey(id(), t), getFixedPose(), opt.bp_cost_model));
+      graph.addPrior(internal::PoseKey(id(), t), getFixedPose(),
+                     opt.bp_cost_model);
     return graph;
   }
 
@@ -214,8 +195,8 @@ class Link : public boost::enable_shared_from_this<Link> {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Vector6>(
-          TwistKey(id(), t), gtsam::Vector6::Zero(), opt.bv_cost_model));
+      graph.addPrior<gtsam::Vector6>(internal::TwistKey(id(), t),
+                                     gtsam::Z_6x1, opt.bv_cost_model);
     return graph;
   }
 
@@ -230,9 +211,8 @@ class Link : public boost::enable_shared_from_this<Link> {
                                        const OptimizerSetting &opt) const {
     gtsam::NonlinearFactorGraph graph;
     if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Vector6>(TwistAccelKey(id(), t),
-                                                   gtsam::Vector6::Zero(),
-                                                   opt.ba_cost_model));
+      graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(id(), t),
+                                     gtsam::Z_6x1, opt.ba_cost_model);
     return graph;
   }
 
@@ -250,27 +230,31 @@ class Link : public boost::enable_shared_from_this<Link> {
     gtsam::NonlinearFactorGraph graph;
     // Add wrench factors.
     if (wrenches.size() == 0) {
-      graph.add(WrenchFactor0(TwistKey(id(), t), TwistAccelKey(id(), t),
-                              PoseKey(id(), t), opt.fa_cost_model,
+      graph.add(WrenchFactor0(internal::TwistKey(id(), t),
+                              internal::TwistAccelKey(id(), t),
+                              internal::PoseKey(id(), t), opt.fa_cost_model,
                               inertiaMatrix(), gravity));
     } else if (wrenches.size() == 1) {
-      graph.add(WrenchFactor1(TwistKey(id(), t), TwistAccelKey(id(), t),
-                              wrenches[0], PoseKey(id(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
+      graph.add(WrenchFactor1(internal::TwistKey(id(), t),
+                              internal::TwistAccelKey(id(), t), wrenches[0],
+                              internal::PoseKey(id(), t), opt.fa_cost_model,
+                              inertiaMatrix(), gravity));
     } else if (wrenches.size() == 2) {
-      graph.add(WrenchFactor2(TwistKey(id(), t), TwistAccelKey(id(), t),
-                              wrenches[0], wrenches[1], PoseKey(id(), t),
+      graph.add(WrenchFactor2(internal::TwistKey(id(), t),
+                              internal::TwistAccelKey(id(), t), wrenches[0],
+                              wrenches[1], internal::PoseKey(id(), t),
                               opt.fa_cost_model, inertiaMatrix(), gravity));
     } else if (wrenches.size() == 3) {
-      graph.add(WrenchFactor3(TwistKey(id(), t), TwistAccelKey(id(), t),
-                              wrenches[0], wrenches[1], wrenches[2],
-                              PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
+      graph.add(WrenchFactor3(
+          internal::TwistKey(id(), t), internal::TwistAccelKey(id(), t),
+          wrenches[0], wrenches[1], wrenches[2], internal::PoseKey(id(), t),
+          opt.fa_cost_model, inertiaMatrix(), gravity));
     } else if (wrenches.size() == 4) {
-      graph.add(WrenchFactor4(TwistKey(id(), t), TwistAccelKey(id(), t),
-                              wrenches[0], wrenches[1], wrenches[2],
-                              wrenches[3], PoseKey(id(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
+      graph.add(WrenchFactor4(internal::TwistKey(id(), t),
+                              internal::TwistAccelKey(id(), t), wrenches[0],
+                              wrenches[1], wrenches[2], wrenches[3],
+                              internal::PoseKey(id(), t), opt.fa_cost_model,
+                              inertiaMatrix(), gravity));
     } else {
       throw std::runtime_error("Wrench factor not defined");
     }
