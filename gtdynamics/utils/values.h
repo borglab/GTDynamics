@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Values.h>
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
@@ -55,6 +56,11 @@ void InsertJointAngle(gtsam::Values *values, int j, T value) {
 }
 
 /// Retrieve j-th joint angle at time t.
+gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t = 0) {
+  return values.at(internal::JointAngleKey(j, t));
+}
+
+/// Retrieve j-th joint angle at time t.
 template <typename T = double>
 T JointAngle(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::JointAngleKey(j, t));
@@ -70,6 +76,11 @@ void InsertJointVel(gtsam::Values *values, int j, int t, T value) {
 template <typename T = double>
 void InsertJointVel(gtsam::Values *values, int j, T value) {
   values->insert(internal::JointVelKey(j), value);
+}
+
+/// Retrieve j-th joint velocity at time t.
+gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t = 0) {
+  return values.at(internal::JointVelKey(j, t));
 }
 
 /// Retrieve j-th joint velocity at time t.
@@ -91,6 +102,11 @@ void InsertJointAccel(gtsam::Values *values, int j, T value) {
 }
 
 /// Retrieve j-th joint acceleration at time t.
+gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t = 0) {
+  return values.at(internal::JointAccelKey(j, t));
+}
+
+/// Retrieve j-th joint acceleration at time t.
 template <typename T = double>
 T JointAccel(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::JointAccelKey(j, t));
@@ -107,6 +123,11 @@ template <typename T = double>
 void InsertTorque(gtsam::Values *values, int j, T value) {
   values->insert(internal::TorqueKey(j), value);
 }
+
+/// Retrieve torque on the j-th joint at time t.
+gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t = 0) {
+  return values.at(internal::TorqueKey(j, t));
+};
 
 /// Retrieve torque on the j-th joint at time t.
 template <typename T = double>

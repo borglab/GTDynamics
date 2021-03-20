@@ -55,7 +55,7 @@ class PoseFactor
              const JointConstSharedPtr &joint, int time)
       : Base(cost_model, PoseKey(joint->parent()->id(), time),
              PoseKey(joint->child()->id(), time),
-             JointAngleKey(joint->id(), time)),
+             internal::JointAngleKey(joint->id(), time)),
         joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 
   /**
