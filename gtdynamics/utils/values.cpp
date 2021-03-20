@@ -87,4 +87,21 @@ gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t) {
   return values.at<gtsam::Vector6>(internal::TwistAccelKey(j, t));
 }
 
+/* ************************************************************************* */
+void InsertWrench(gtsam::Values *values, int i, int j, int t, gtsam::Vector6 value) {
+  values->insert(internal::WrenchKey(i, j, t), value);
+}
+
+void InsertWrench(gtsam::Values *values, int i, int j, gtsam::Vector6 value) {
+  values->insert(internal::WrenchKey(i, j), value);
+}
+
+gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t) {
+  return values.at(internal::WrenchKey(i, j, t));
+}
+
+gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t) {
+  return values.at<gtsam::Vector6>(internal::WrenchKey(i, j, t));
+}
+
 } // namespace gtdynamics
