@@ -23,6 +23,7 @@
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;
@@ -165,7 +166,7 @@ gtsam::Values Robot::forwardKinematics(
   while (!q.empty()) {
     // Pop link from the queue and retrieve the pose and twist.
     LinkSharedPtr link1 = q.front();
-    const Pose3 T_w1 = values.at<Pose3>(PoseKey(link1->id(), t));
+    const Pose3 T_w1 = Pose(values, link1->id(), t);
     const Vector6 V_1 = values.at<Vector6>(TwistKey(link1->id(), t));
     q.pop();
 
@@ -182,7 +183,7 @@ gtsam::Values Robot::forwardKinematics(
           joint->transformTwistFrom(t, link1, known_values, V_1);
 
       // Save pose and twist if link 2 has not been assigned yet.
-      auto pose_key = PoseKey(link2->id(), t);
+      auto pose_key = internal::PoseKey(link2->id(), t);
       auto twist_key = TwistKey(link2->id(), t);
       if (!values.exists(pose_key)) {
         values.insert(pose_key, T_w2);

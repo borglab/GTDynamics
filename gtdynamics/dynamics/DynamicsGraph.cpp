@@ -33,6 +33,7 @@
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/JsonSaver.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 using gtsam::Double_;
 using gtsam::GaussianFactorGraph;
@@ -65,8 +66,8 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       const auto &connected_joints = link->getJoints();
       const gtsam::Matrix6 G_i = link->inertiaMatrix();
       const double m_i = link->mass();
+      const Pose3 T_wi = Pose(known_values, i, t);
       const Vector6 V_i = known_values.at<Vector6>(TwistKey(i, t));
-      const Pose3 T_wi = known_values.at<Pose3>(PoseKey(i, t));
       Vector6 rhs = Pose3::adjointMap(V_i).transpose() * G_i * V_i;
       if (gravity_) {
         Vector gravitational_force =
@@ -371,7 +372,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         if (contact_point.first != link->name()) continue;
 
         ContactKinematicsPoseFactor contact_pose_factor(
-            PoseKey(i, t), opt_.cp_cost_model,
+            internal::PoseKey(i, t), opt_.cp_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity,
             contact_point.second.height);
         graph.add(contact_pose_factor);
@@ -470,7 +471,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
           // Add contact dynamics constraints.
           graph.add(ContactDynamicsFrictionConeFactor(
-              PoseKey(i, t), ContactWrenchKey(i, contact_point.second.id, t),
+              internal::PoseKey(i, t),
+              ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cfriction_cost_model, mu_, gravity));
 
           graph.add(ContactDynamicsMomentFactor(
@@ -766,8 +768,7 @@ DynamicsGraph::targetPoseFactors(const Robot &robot, const int t,
                                  const gtsam::Pose3 &target_pose) const {
   NonlinearFactorGraph graph;
   int i = robot.link(link_name)->id();
-  graph.add(gtsam::PriorFactor<gtsam::Pose3>(PoseKey(i, t), target_pose,
-                                             opt_.bp_cost_model));
+  graph.addPrior(internal::PoseKey(i, t), target_pose, opt_.bp_cost_model);
   return graph;
 }
 
@@ -922,7 +923,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
     int n = robot.numLinks();
     for (auto &&link : robot.links()) {
       int i = link->id();
-      locations[PoseKey(i, t)] = radial_location(2, i, n);
+      locations[internal::PoseKey(i, t)] = radial_location(2, i, n);
       locations[TwistKey(i, t)] = radial_location(3, i, n);
       locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
     }
@@ -941,7 +942,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
   } else {
     for (auto &&link : robot.links()) {
       int i = link->id();
-      locations[PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
+      locations[internal::PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
       locations[TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
       locations[TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
     }

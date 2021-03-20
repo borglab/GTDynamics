@@ -204,9 +204,8 @@ Values InitializeSolutionInverseKinematics(
   DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
     auto kfg = dgb.qFactors(robot, t, contact_points);
-    kfg.add(gtsam::PriorFactor<Pose3>(
-        PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
-        gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
+    kfg.addPrior(internal::PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
+                 gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
     Values results = optimizer.optimize();
@@ -221,8 +220,7 @@ Values InitializeSolutionInverseKinematics(
     values.clear();
 
     for (auto&& link : robot.links()) {
-      InsertPose(&values, link->id(), t + 1,
-                 results.at<Pose3>(PoseKey(link->id(), t)));
+      InsertPose(&values, link->id(), t + 1, Pose(results, link->id(), t));
     }
     for (auto&& joint : robot.joints()) {
       InsertJointAngle(&values, joint->id(), t + 1,
@@ -314,9 +312,8 @@ Values MultiPhaseInverseKinematicsTrajectory(
     for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
       auto kfg = dgb.qFactors(robots[phase], t, (*phase_contact_points)[phase]);
 
-      kfg.add(gtsam::PriorFactor<Pose3>(
-          PoseKey(robots[phase].link(link_name)->id(), t), wTl_dt[t],
-          gtsam::noiseModel::Isotropic::Sigma(6, 0.001)));
+      kfg.addPrior(internal::PoseKey(robots[phase].link(link_name)->id(), t),
+                   wTl_dt[t], gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
       gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
       Values results = optimizer.optimize();
@@ -327,8 +324,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
       values.clear();
       for (auto&& link : robots[phase].links()) {
         int link_id = link->id();
-        InsertPose(&values, link_id, t + 1,
-                   results.at<Pose3>(PoseKey(link_id, t)));
+        InsertPose(&values, link_id, t + 1, Pose(results, link_id, t));
       }
 
       for (auto&& joint : robots[phase].joints()) {
