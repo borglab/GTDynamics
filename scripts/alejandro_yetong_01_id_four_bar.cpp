@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     prior_factors.addPrior(internal::PoseKey(i, 0), link->wTcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
-        internal::TwistKey(i, 0), gtsam::Vector6::Zero(),
+        internal::TwistKey(i, 0), gtsam::Z_6x1,
         gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);

@@ -55,7 +55,8 @@ JointTyped::aFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<TwistAccelFactor>(
       internal::TwistKey(child_link_->id(), t),
-      TwistAccelKey(parent_link_->id(), t), TwistAccelKey(child_link_->id(), t),
+      internal::TwistAccelKey(parent_link_->id(), t),
+      internal::TwistAccelKey(child_link_->id(), t),
       internal::JointAngleKey(id(), t), internal::JointVelKey(id(), t),
       internal::JointAccelKey(id(), t), opt.a_cost_model,
       boost::static_pointer_cast<const This>(shared()));

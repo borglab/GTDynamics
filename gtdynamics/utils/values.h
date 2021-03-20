@@ -55,12 +55,12 @@ inline DynamicsSymbol TwistKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("V", i, t);
 }
 
-}  // namespace internal
-
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t) {
+inline DynamicsSymbol TwistAccelKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("A", i, t);
 }
+
+}  // namespace internal
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
 inline DynamicsSymbol WrenchKey(int i, int j, int t) {
@@ -195,5 +195,21 @@ gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t = 0);
 
 /// Retrieve j-th twist at time t.
 gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t = 0);
+
+/* *************************************************************************
+  Functions for Twist Accelerations.
+ ************************************************************************* */
+/// Insert j-th twist acceleration at time t.
+void InsertTwistAccel(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+
+/// Insert j-th twist acceleration at time 0.
+void InsertTwistAccel(gtsam::Values *values, int j, gtsam::Vector6 value);
+
+/// Retrieve j-th twist acceleration at time t.
+gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t = 0);
+
+/// Retrieve j-th twist acceleration at time t.
+gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t = 0);
+
 
 }  // namespace gtdynamics
