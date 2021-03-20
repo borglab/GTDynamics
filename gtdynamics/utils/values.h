@@ -71,7 +71,7 @@ void InsertJointAngle(gtsam::Values *values, int j, int t, T value) {
   values->insert(internal::JointAngleKey(j, t), value);
 }
 
-/// Insert j-th joint angle at time t.
+/// Insert j-th joint angle at time 0.
 template <typename T = double>
 void InsertJointAngle(gtsam::Values *values, int j, T value) {
   values->insert(internal::JointAngleKey(j), value);
@@ -92,7 +92,7 @@ void InsertJointVel(gtsam::Values *values, int j, int t, T value) {
   values->insert(internal::JointVelKey(j, t), value);
 }
 
-/// Insert j-th joint velocity at time t.
+/// Insert j-th joint velocity at time 0.
 template <typename T = double>
 void InsertJointVel(gtsam::Values *values, int j, T value) {
   values->insert(internal::JointVelKey(j), value);
@@ -113,7 +113,7 @@ void InsertJointAccel(gtsam::Values *values, int j, int t, T value) {
   values->insert(internal::JointAccelKey(j, t), value);
 }
 
-/// Insert j-th joint acceleration at time t.
+/// Insert j-th joint acceleration at time 0.
 template <typename T = double>
 void InsertJointAccel(gtsam::Values *values, int j, T value) {
   values->insert(internal::JointAccelKey(j), value);
@@ -134,7 +134,7 @@ void InsertTorque(gtsam::Values *values, int j, int t, T value) {
   values->insert(internal::TorqueKey(j, t), value);
 }
 
-/// Insert torque on the j-th joint at time t.
+/// Insert torque on the j-th joint at time 0.
 template <typename T = double>
 void InsertTorque(gtsam::Values *values, int j, T value) {
   values->insert(internal::TorqueKey(j), value);
@@ -152,7 +152,7 @@ T Torque(const gtsam::Values &values, int j, int t = 0) {
 /// Insert pose for i-th link at time t.
 void InsertPose(gtsam::Values *values, int i, int t, gtsam::Pose3 value);
 
-/// Insert pose for i-th link at time t.
+/// Insert pose for i-th link at time 0.
 void InsertPose(gtsam::Values *values, int i, gtsam::Pose3 value);
 
 /// Retrieve pose for i-th link at time t.
