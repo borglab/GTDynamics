@@ -32,6 +32,7 @@
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 
@@ -59,8 +60,8 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   Values values;
   int t = 777;
   auto j = robot.joint("j1")->id();
-  values.insert(JointAngleKey(j, t), 0.0);
-  values.insert(JointVelKey(j, t), 0.0);
+  InsertJointAngle(&values, j, t, 0.0);
+  InsertJointVel(&values, j, t, 0.0);
   values.insert(PoseKey(l1->id(), t), l1->wTcom());
   values.insert<Vector6>(TwistKey(l1->id(), t), gtsam::Z_6x1);
 
@@ -72,23 +73,23 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
 
   // Test forward dynamics.
   Values known_torques = fk_results;
-  known_torques.insert(TorqueKey(j, t), 1.0);
+  InsertTorque(&known_torques, j, t, 1.0);
   Values result_fd = graph_builder.linearSolveFD(robot, t, known_torques);
-  EXPECT(assert_equal(4.0, result_fd.atDouble(JointAccelKey(j, t)), 1e-3));
+  EXPECT(assert_equal(4.0, JointAccel(result_fd, j, t), 1e-3));
 
   // test inverse dynamics
   Values desired_accels = fk_results;
-  desired_accels.insert(JointAccelKey(j, t), 4.0);
+  InsertJointAccel(&desired_accels, j, t, 4.0);
   Values result_id = graph_builder.linearSolveID(robot, t, desired_accels);
-  EXPECT(assert_equal(1.0, result_id.atDouble(TorqueKey(j, t)), 1e-3));
+  EXPECT(assert_equal(1.0, Torque(result_id, j, t), 1e-3));
 }
 
 gtsam::Values zero_values(const Robot &robot, size_t t) {
   gtsam::Values values;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    values.insert(JointAngleKey(j, t), 0.0);
-    values.insert(JointVelKey(j, t), 0.0);
+    InsertJointAngle(&values, j, t, 0.0);
+    InsertJointVel(&values, j, t, 0.0);
   }
   return values;
 }
@@ -106,7 +107,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   // Create values with rest kinematics and unit torques
   Values known_values = zero_values(robot, t);
   for (auto &&joint : robot.joints()) {
-    known_values.insert(TorqueKey(joint->id(), t), 1.0);
+    InsertTorque(&known_values, joint->id(), t, 1.0);
   }
 
   graph.add(graph_builder.forwardDynamicsPriors(robot, t, known_values));
@@ -227,21 +228,21 @@ TEST(collocationFactors, simple_urdf) {
 
   NonlinearFactorGraph prior_factors;
   prior_factors.add(PriorFactor<double>(
-      JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
+      internal::JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
+      internal::JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
+      internal::JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
   prior_factors.add(PriorFactor<double>(
-      JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
+      internal::JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
 
   Values init_values;
-  init_values.insert(JointAngleKey(j, t), 0.0);
-  init_values.insert(JointVelKey(j, t), 0.0);
-  init_values.insert(JointAccelKey(j, t), 0.0);
-  init_values.insert(JointAngleKey(j, t + 1), 0.0);
-  init_values.insert(JointVelKey(j, t + 1), 0.0);
-  init_values.insert(JointAccelKey(j, t + 1), 0.0);
+  InsertJointAngle(&init_values, j, t, 0.0);
+  InsertJointVel(&init_values, j, t, 0.0);
+  InsertJointAccel(&init_values, j, t, 0.0);
+  InsertJointAngle(&init_values, j, t + 1, 0.0);
+  InsertJointVel(&init_values, j, t + 1, 0.0);
+  InsertJointAccel(&init_values, j, t + 1, 0.0);
 
   // test trapezoidal
   NonlinearFactorGraph trapezoidal_graph;
@@ -252,9 +253,8 @@ TEST(collocationFactors, simple_urdf) {
   gtsam::GaussNewtonOptimizer optimizer_t(trapezoidal_graph, init_values);
   Values trapezoidal_result = optimizer_t.optimize();
 
-  EXPECT(
-      assert_equal(2.75, trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
-  EXPECT(assert_equal(2.5, trapezoidal_result.atDouble(JointVelKey(j, t + 1))));
+  EXPECT(assert_equal(2.75, JointAngle(trapezoidal_result, j, t + 1)));
+  EXPECT(assert_equal(2.5, JointVel(trapezoidal_result, j, t + 1)));
 
   // test Euler
   NonlinearFactorGraph euler_graph;
@@ -265,8 +265,8 @@ TEST(collocationFactors, simple_urdf) {
   gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
   Values euler_result = optimizer_e.optimize();
 
-  EXPECT(assert_equal(2.0, euler_result.atDouble(JointAngleKey(j, t + 1))));
-  EXPECT(assert_equal(2.0, euler_result.atDouble(JointVelKey(j, t + 1))));
+  EXPECT(assert_equal(2.0, JointAngle(euler_result, j, t+ 1)));
+  EXPECT(assert_equal(2.0, JointVel(euler_result, j, t+ 1)));
 
   // test the scenario with dt as a variable
   int phase = 0;
@@ -283,8 +283,8 @@ TEST(collocationFactors, simple_urdf) {
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
 
-  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAngleKey(j, t + 1))));
-  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointVelKey(j, t + 1))));
+  EXPECT(assert_equal(2.0, JointAngle(mp_euler_result, j, t+ 1)));
+  EXPECT(assert_equal(2.0, JointVel(mp_euler_result, j, t+ 1)));
 
   // multi-phase trapezoidal
   NonlinearFactorGraph mp_trapezoidal_graph;
@@ -295,10 +295,8 @@ TEST(collocationFactors, simple_urdf) {
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph, init_values);
   Values mp_trapezoidal_result = optimizer_mpt.optimize();
 
-  EXPECT(assert_equal(2.75,
-                      mp_trapezoidal_result.atDouble(JointAngleKey(j, t + 1))));
-  EXPECT(
-      assert_equal(2.5, mp_trapezoidal_result.atDouble(JointVelKey(j, t + 1))));
+  EXPECT(assert_equal(2.75, JointAngle(mp_trapezoidal_result, j, t + 1)));
+  EXPECT(assert_equal(2.5, JointVel(mp_trapezoidal_result, j, t + 1)));
 }
 
 // test forward dynamics of a trajectory
@@ -328,12 +326,12 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
   Values euler_result = optimizer_e.optimize();
 
-  EXPECT(assert_equal(0.0, euler_result.atDouble(JointAngleKey(j, 1))));
-  EXPECT(assert_equal(1.0, euler_result.atDouble(JointVelKey(j, 1))));
-  EXPECT(assert_equal(2.0, euler_result.atDouble(JointAccelKey(j, 1))));
-  EXPECT(assert_equal(1.0, euler_result.atDouble(JointAngleKey(j, 2))));
-  EXPECT(assert_equal(3.0, euler_result.atDouble(JointVelKey(j, 2))));
-  EXPECT(assert_equal(3.0, euler_result.atDouble(JointAccelKey(j, 2))));
+  EXPECT(assert_equal(0.0, JointAngle(euler_result, j, 1)));
+  EXPECT(assert_equal(1.0, JointVel(euler_result, j, 1)));
+  EXPECT(assert_equal(2.0, JointAccel(euler_result, j, 1)));
+  EXPECT(assert_equal(1.0, JointAngle(euler_result, j, 2)));
+  EXPECT(assert_equal(3.0, JointVel(euler_result, j, 2)));
+  EXPECT(assert_equal(3.0, JointAccel(euler_result, j, 2)));
 
   // test trapezoidal
   auto trapezoidal_graph = graph_builder.trajectoryFG(
@@ -344,12 +342,12 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   gtsam::GaussNewtonOptimizer optimizer_t(trapezoidal_graph, init_values);
   Values trapezoidal_result = optimizer_t.optimize();
 
-  EXPECT(assert_equal(0.75, trapezoidal_result.atDouble(JointAngleKey(j, 1))));
-  EXPECT(assert_equal(1.5, trapezoidal_result.atDouble(JointVelKey(j, 1))));
-  EXPECT(assert_equal(2.0, trapezoidal_result.atDouble(JointAccelKey(j, 1))));
-  EXPECT(assert_equal(3.5, trapezoidal_result.atDouble(JointAngleKey(j, 2))));
-  EXPECT(assert_equal(4.0, trapezoidal_result.atDouble(JointVelKey(j, 2))));
-  EXPECT(assert_equal(3.0, trapezoidal_result.atDouble(JointAccelKey(j, 2))));
+  EXPECT(assert_equal(0.75, JointAngle(trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(1.5, JointVel(trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(2.0, JointAccel(trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(3.5, JointAngle(trapezoidal_result, j, 2)));
+  EXPECT(assert_equal(4.0, JointVel(trapezoidal_result, j, 2)));
+  EXPECT(assert_equal(3.0, JointAccel(trapezoidal_result, j, 2)));
 
   // test the scenario with dt as a variable
   vector<int> phase_steps{1, 1};
@@ -380,12 +378,12 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   // q        0   0   2
   // v        0   1   5
   // a        1   2   3
-  EXPECT(assert_equal(0.0, mp_euler_result.atDouble(JointAngleKey(j, 1))));
-  EXPECT(assert_equal(1.0, mp_euler_result.atDouble(JointVelKey(j, 1))));
-  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAccelKey(j, 1))));
-  EXPECT(assert_equal(2.0, mp_euler_result.atDouble(JointAngleKey(j, 2))));
-  EXPECT(assert_equal(5.0, mp_euler_result.atDouble(JointVelKey(j, 2))));
-  EXPECT(assert_equal(3.0, mp_euler_result.atDouble(JointAccelKey(j, 2))));
+  EXPECT(assert_equal(0.0, JointAngle(mp_euler_result, j, 1)));
+  EXPECT(assert_equal(1.0, JointVel(mp_euler_result, j, 1)));
+  EXPECT(assert_equal(2.0, JointAccel(mp_euler_result, j, 1)));
+  EXPECT(assert_equal(2.0, JointAngle(mp_euler_result, j, 2)));
+  EXPECT(assert_equal(5.0, JointVel(mp_euler_result, j, 2)));
+  EXPECT(assert_equal(3.0, JointAccel(mp_euler_result, j, 2)));
 
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
@@ -402,16 +400,12 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   // q        0     0.75  8.75
   // v        0     1.5   6.5
   // a        1     2     3
-  EXPECT(
-      assert_equal(0.75, mp_trapezoidal_result.atDouble(JointAngleKey(j, 1))));
-  EXPECT(assert_equal(1.5, mp_trapezoidal_result.atDouble(JointVelKey(j, 1))));
-  EXPECT(
-      assert_equal(2.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 1))));
-  EXPECT(
-      assert_equal(8.75, mp_trapezoidal_result.atDouble(JointAngleKey(j, 2))));
-  EXPECT(assert_equal(6.5, mp_trapezoidal_result.atDouble(JointVelKey(j, 2))));
-  EXPECT(
-      assert_equal(3.0, mp_trapezoidal_result.atDouble(JointAccelKey(j, 2))));
+  EXPECT(assert_equal(0.75, JointAngle(mp_trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(1.5, JointVel(mp_trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(2.0, JointAccel(mp_trapezoidal_result, j, 1)));
+  EXPECT(assert_equal(8.75, JointAngle(mp_trapezoidal_result, j, 2)));
+  EXPECT(assert_equal(6.5, JointVel(mp_trapezoidal_result, j, 2)));
+  EXPECT(assert_equal(3.0, JointAccel(mp_trapezoidal_result, j, 2)));
 }
 
 // Test contacts in dynamics graph.
@@ -426,8 +420,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   DynamicsGraph graph_builder(gravity);
-  auto graph =
-      graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
 
   // Compute inverse dynamics prior factors.
   gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
@@ -437,8 +430,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   // Specify pose and twist priors for one leg.
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(robot.link("link_0")->id(), 0),
-      robot.link("link_0")->wTcom(),
+      PoseKey(robot.link("link_0")->id(), 0), robot.link("link_0")->wTcom(),
       gtsam::noiseModel::Constrained::All(6)));
   prior_factors.add(gtsam::PriorFactor<Vector6>(
       TwistKey(robot.link("link_0")->id(), 0), gtsam::Z_6x1,
@@ -447,7 +439,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 
   // Add min torque factor.
   for (auto joint : robot.joints())
-    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
@@ -472,7 +464,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
                       contact_wrench_optimized));
 
   for (auto joint : robot.joints())
-    EXPECT(assert_equal(0, results.atDouble(TorqueKey(joint->id(), 0))));
+    EXPECT(assert_equal(0, Torque(results, joint->id())));
 }
 
 // Test contacts in dynamics graph.
@@ -516,7 +508,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Add min torque factor.
   for (auto joint : biped.joints())
-    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
@@ -529,14 +521,13 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   //   std::cout << "Error: " << graph.error(results) << std::endl;
 
   double normal_force = 0;
-  for (auto&& contact_point : contact_points) {
+  for (auto &&contact_point : contact_points) {
     LinkSharedPtr l = biped.link("lower0");
     auto contact_wrench_key =
         ContactWrenchKey(l->id(), contact_point.second.id, 0);
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
-    gtsam::Pose3 pose_optimized =
-        results.at<gtsam::Pose3>(PoseKey(l->id(), 0));
+    gtsam::Pose3 pose_optimized = results.at<gtsam::Pose3>(PoseKey(l->id(), 0));
     gtsam::Pose3 comTc =
         gtsam::Pose3(pose_optimized.rotation(), contact_point.second.point);
     normal_force =
@@ -574,8 +565,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   DynamicsGraph graph_builder(gravity);
-  auto graph =
-      graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
 
   // Compute inverse dynamics prior factors.
   gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
@@ -587,8 +577,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Specify pose and twist priors for one leg.
   prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(robot.link("link_0")->id(), 0),
-      robot.link("link_0")->wTcom(),
+      PoseKey(robot.link("link_0")->id(), 0), robot.link("link_0")->wTcom(),
       gtsam::noiseModel::Constrained::All(6)));
   prior_factors.add(gtsam::PriorFactor<Vector6>(
       TwistKey(robot.link("link_0")->id(), 0), gtsam::Z_6x1,
@@ -597,7 +586,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Add min torque factor.
   for (auto joint : robot.joints())
-    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 0.1)));
 
   // Set initial values.
@@ -622,7 +611,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
                       contact_wrench_optimized));
 
   for (auto joint : robot.joints())
-    EXPECT(assert_equal(0, results.atDouble(TorqueKey(joint->id(), 0))));
+    EXPECT(assert_equal(0, Torque(results, joint->id())));
 }
 
 int main() {
