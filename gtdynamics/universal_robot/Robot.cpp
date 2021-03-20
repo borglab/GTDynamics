@@ -150,7 +150,7 @@ gtsam::Values Robot::forwardKinematics(
       if (link->isFixed()) {
         root_link = link;
         InsertPose(&values, link->id(), t, link->getFixedPose());
-        values.insert<Vector6>(TwistKey(link->id(), t), Vector6::Zero());
+        InsertTwist(&values, link->id(), t, Vector6::Zero());
       }
     }
     if (!root_link) {
@@ -167,7 +167,7 @@ gtsam::Values Robot::forwardKinematics(
     // Pop link from the queue and retrieve the pose and twist.
     LinkSharedPtr link1 = q.front();
     const Pose3 T_w1 = Pose(values, link1->id(), t);
-    const Vector6 V_1 = values.at<Vector6>(TwistKey(link1->id(), t));
+    const Vector6 V_1 = Twist(values, link1->id(), t);
     q.pop();
 
     // Loop through all joints to find the pose and twist of child links.
@@ -184,7 +184,7 @@ gtsam::Values Robot::forwardKinematics(
 
       // Save pose and twist if link 2 has not been assigned yet.
       auto pose_key = internal::PoseKey(link2->id(), t);
-      auto twist_key = TwistKey(link2->id(), t);
+      auto twist_key = internal::TwistKey(link2->id(), t);
       if (!values.exists(pose_key)) {
         values.insert(pose_key, T_w2);
         values.insert<Vector6>(twist_key, V_2);
