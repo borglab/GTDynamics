@@ -53,8 +53,8 @@ class PoseFactor
    */
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
-      : Base(cost_model, PoseKey(joint->parent()->id(), time),
-             PoseKey(joint->child()->id(), time),
+      : Base(cost_model, internal::PoseKey(joint->parent()->id(), time),
+             internal::PoseKey(joint->child()->id(), time),
              internal::JointAngleKey(joint->id(), time)),
         joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 

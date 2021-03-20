@@ -50,11 +50,6 @@ inline DynamicsSymbol PoseKey(int i, int t = 0) {
 
 } // namespace internal
 
-/// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t = 0) {
-  return DynamicsSymbol::LinkSymbol("p", i, t);
-}
-
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
 inline DynamicsSymbol TwistKey(int i, int t) {
   return DynamicsSymbol::LinkSymbol("V", i, t);

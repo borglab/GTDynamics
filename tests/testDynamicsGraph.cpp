@@ -114,8 +114,8 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(i, t), link->wTcom(), graph_builder.opt().bp_cost_model));
+    graph.addPrior(internal::PoseKey(i, t), link->wTcom(),
+                   graph_builder.opt().bp_cost_model);
     graph.add(gtsam::PriorFactor<Vector6>(TwistKey(i, t), gtsam::Z_6x1,
                                           graph_builder.opt().bv_cost_model));
   }
@@ -147,8 +147,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(i, 0), link->wTcom(), graph_builder.opt().bp_cost_model));
+    prior_factors.addPrior(internal::PoseKey(i, 0), link->wTcom(),
+                           graph_builder.opt().bp_cost_model);
     prior_factors.add(gtsam::PriorFactor<Vector6>(
         TwistKey(i, 0), gtsam::Z_6x1, graph_builder.opt().bv_cost_model));
   }
@@ -429,9 +429,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
                                           simple_rr::joint_vels, joint_accels);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(robot.link("link_0")->id(), 0), robot.link("link_0")->wTcom(),
-      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.addPrior(internal::PoseKey(robot.link("link_0")->id(), 0),
+                         robot.link("link_0")->wTcom(),
+                         gtsam::noiseModel::Constrained::All(6));
   prior_factors.add(gtsam::PriorFactor<Vector6>(
       TwistKey(robot.link("link_0")->id(), 0), gtsam::Z_6x1,
       gtsam::noiseModel::Constrained::All(6)));
@@ -495,9 +495,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Specify pose and twist priors for base.
   auto body = biped.link("body");
-  prior_factors.add(
-      gtsam::PriorFactor<gtsam::Pose3>(PoseKey(body->id(), 0), body->wTcom(),
-                                       graph_builder.opt().bp_cost_model));
+  prior_factors.addPrior(internal::PoseKey(body->id(), 0), body->wTcom(),
+                         graph_builder.opt().bp_cost_model);
   prior_factors.add(
       gtsam::PriorFactor<Vector6>(TwistKey(body->id(), 0), gtsam::Z_6x1,
                                   graph_builder.opt().bv_cost_model));
@@ -527,7 +526,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
         ContactWrenchKey(l->id(), contact_point.second.id, 0);
     gtsam::Vector contact_wrench_optimized =
         results.at<gtsam::Vector>(contact_wrench_key);
-    gtsam::Pose3 pose_optimized = results.at<gtsam::Pose3>(PoseKey(l->id(), 0));
+    gtsam::Pose3 pose_optimized = Pose(results, l->id());
     gtsam::Pose3 comTc =
         gtsam::Pose3(pose_optimized.rotation(), contact_point.second.point);
     normal_force =
@@ -576,9 +575,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
                                           joint_accels);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(robot.link("link_0")->id(), 0), robot.link("link_0")->wTcom(),
-      gtsam::noiseModel::Constrained::All(6)));
+  prior_factors.addPrior(internal::PoseKey(robot.link("link_0")->id(), 0),
+                         robot.link("link_0")->wTcom(),
+                         gtsam::noiseModel::Constrained::All(6));
   prior_factors.add(gtsam::PriorFactor<Vector6>(
       TwistKey(robot.link("link_0")->id(), 0), gtsam::Z_6x1,
       gtsam::noiseModel::Constrained::All(6)));

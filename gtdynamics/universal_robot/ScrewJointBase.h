@@ -246,8 +246,8 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(), t));
-    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(), t));
+    const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
+    const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     const Vector6 V_i2 = known_values.at<Vector6>(TwistKey(child()->id(), t));
     const Vector6 S_i2_j = screwAxis(child_link_);
@@ -298,8 +298,8 @@ class ScrewJointBase : public JointTyped {
       const boost::optional<gtsam::Vector3> &planar_axis) const override {
     gtsam::GaussianFactorGraph graph;
 
-    const Pose3 T_wi1 = known_values.at<Pose3>(PoseKey(parent()->id(), t));
-    const Pose3 T_wi2 = known_values.at<Pose3>(PoseKey(child()->id(), t));
+    const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
+    const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
     const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
     const Vector6 S_i2_j = screwAxis(child_link_);
 
