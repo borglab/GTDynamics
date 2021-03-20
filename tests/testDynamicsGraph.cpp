@@ -500,9 +500,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   prior_factors.addPrior<Vector6>(internal::TwistKey(body->id(), 0),
                                   gtsam::Z_6x1,
                                   graph_builder.opt().bv_cost_model);
-  prior_factors.add(
-      gtsam::PriorFactor<Vector6>(TwistAccelKey(body->id(), 0), gtsam::Z_6x1,
-                                  graph_builder.opt().ba_cost_model));
+  prior_factors.addPrior<Vector6>(internal::TwistAccelKey(body->id(), 0),
+                                  gtsam::Z_6x1,
+                                  graph_builder.opt().ba_cost_model);
   graph.add(prior_factors);
 
   // Add min torque factor.

@@ -70,4 +70,21 @@ gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t) {
   return values.at<gtsam::Vector6>(internal::TwistKey(j, t));
 }
 
+/* ************************************************************************* */
+void InsertTwistAccel(gtsam::Values *values, int j, int t, gtsam::Vector6 value) {
+  values->insert(internal::TwistAccelKey(j, t), value);
+}
+
+void InsertTwistAccel(gtsam::Values *values, int j, gtsam::Vector6 value) {
+  values->insert(internal::TwistAccelKey(j), value);
+}
+
+gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t) {
+  return values.at(internal::TwistAccelKey(j, t));
+}
+
+gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t) {
+  return values.at<gtsam::Vector6>(internal::TwistAccelKey(j, t));
+}
+
 } // namespace gtdynamics

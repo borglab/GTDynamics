@@ -58,7 +58,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     if (link->isFixed()) {
       // prior on twist acceleration for fixed link
       // A_i = 0
-      graph.add(TwistAccelKey(i, t), I_6x6, Z_6x1, all_constrained);
+      graph.add(internal::TwistAccelKey(i, t), I_6x6, Z_6x1, all_constrained);
     } else {
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
@@ -76,7 +76,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
           rhs[i] += gravitational_force[i - 3];
         }
       }
-      auto accel_key = TwistAccelKey(i, t);
+      auto accel_key = internal::TwistAccelKey(i, t);
       if (connected_joints.size() == 0) {
         graph.add(accel_key, G_i, rhs, all_constrained);
       } else if (connected_joints.size() == 1) {
@@ -111,7 +111,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       // prior on twist acceleration for fixed link
       // A_i = 0
       Vector6 rhs = Vector6::Zero();
-      graph.add(TwistAccelKey(i, t), I_6x6, rhs,
+      graph.add(internal::TwistAccelKey(i, t), I_6x6, rhs,
                 gtsam::noiseModel::Constrained::All(6));
     } else {
       // wrench factor
@@ -131,14 +131,14 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
         }
       }
       if (connected_joints.size() == 0) {
-        graph.add(TwistAccelKey(i, t), G_i, rhs,
+        graph.add(internal::TwistAccelKey(i, t), G_i, rhs,
                   gtsam::noiseModel::Constrained::All(6));
       } else if (connected_joints.size() == 1) {
-        graph.add(TwistAccelKey(i, t), G_i,
+        graph.add(internal::TwistAccelKey(i, t), G_i,
                   WrenchKey(i, connected_joints[0]->id(), t), -I_6x6, rhs,
                   gtsam::noiseModel::Constrained::All(6));
       } else if (connected_joints.size() == 2) {
-        graph.add(TwistAccelKey(i, t), G_i,
+        graph.add(internal::TwistAccelKey(i, t), G_i,
                   WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
                   WrenchKey(i, connected_joints[1]->id(), t), -I_6x6, rhs,
                   gtsam::noiseModel::Constrained::All(6));
@@ -224,7 +224,7 @@ Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
     }
     for (auto &&link : robot.links()) {
       int i = link->id();
-      values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+      InsertTwistAccel(&values, i, t, TwistAccel(results, i, t));
     }
   } catch (const gtsam::ValuesKeyAlreadyExists &e) {
     std::cerr << "key already exists:" << _GTDKeyFormatter(e.key()) << '\n';
@@ -269,7 +269,7 @@ Values DynamicsGraph::linearSolveFD(
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
     InsertTwist(&values, i, t, twists.at(name));
-    values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+    InsertTwistAccel(&values, i, t, TwistAccel(results, i, t));
   }
   return values;
 }
@@ -299,7 +299,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
     for (auto &&link : robot.links()) {
       int i = link->id();
       std::string name = link->name();
-      values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+      InsertTwistAccel(&values, i, t, TwistAccel(results, i, t));
     }
   } catch (const gtsam::ValuesKeyAlreadyExists &e) {
     std::cerr << "key already exists:" << _GTDKeyFormatter(e.key()) << '\n';
@@ -344,7 +344,7 @@ Values DynamicsGraph::linearSolveID(
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
     InsertTwist(&values, i, t, twists.at(name));
-    values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
+    InsertTwistAccel(&values, i, t, TwistAccel(results, i, t));
   }
   return values;
 }
@@ -424,7 +424,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
         if (contact_point.first != link->name()) continue;
 
         ContactKinematicsAccelFactor contact_accel_factor(
-            TwistAccelKey(i, t), opt_.ca_cost_model,
+            internal::TwistAccelKey(i, t), opt_.ca_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         graph.add(contact_accel_factor);
       }
@@ -925,7 +925,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
       int i = link->id();
       locations[internal::PoseKey(i, t)] = radial_location(2, i, n);
       locations[internal::TwistKey(i, t)] = radial_location(3, i, n);
-      locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
+      locations[internal::TwistAccelKey(i, t)] = radial_location(4, i, n);
     }
 
     for (auto &&joint : robot.joints()) {
@@ -944,7 +944,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
       int i = link->id();
       locations[internal::PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
       locations[internal::TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
-      locations[TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
+      locations[internal::TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
     }
 
     for (auto &&joint : robot.joints()) {

@@ -366,7 +366,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
     int i = link->id();
     InsertPose(&values, i, t, AddGaussianNoiseToPose(link->wTcom(), sampler));
     InsertTwist(&values, i, t, sampler.sample());
-    values.insert(TwistAccelKey(i, t), sampler.sample());
+    InsertTwistAccel(&values, i, t, sampler.sample());
   }
 
   // Initialize joint kinematics/dynamics to 0.

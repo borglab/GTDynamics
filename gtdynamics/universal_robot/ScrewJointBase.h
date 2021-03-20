@@ -256,8 +256,8 @@ class ScrewJointBase : public JointTyped {
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
-              TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
+    graph.add(internal::TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+              internal::TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
               internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
@@ -284,8 +284,8 @@ class ScrewJointBase : public JointTyped {
     // twist acceleration factor
     // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
     Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
-              TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
+    graph.add(internal::TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+              internal::TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
               internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
               gtsam::noiseModel::Constrained::All(6));
 
