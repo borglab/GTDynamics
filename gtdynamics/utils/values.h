@@ -185,21 +185,15 @@ gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t = 0);
  ************************************************************************* */
 
 /// Insert j-th twist at time t.
-void InsertTwist(gtsam::Values *values, int j, int t, gtsam::Vector6 value) {
-  values->insert(internal::TwistKey(j, t), value);
-}
+void InsertTwist(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
 
 /// Insert j-th twist at time 0.
-void InsertTwist(gtsam::Values *values, int j, gtsam::Vector6 value) {
-  values->insert(internal::TwistKey(j), value);
-}
+void InsertTwist(gtsam::Values *values, int j, gtsam::Vector6 value);
 
 /// Retrieve j-th twist at time t.
 gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t = 0);
 
 /// Retrieve j-th twist at time t.
-gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t = 0) {
-  return values.at<gtsam::Vector6>(internal::TwistKey(j, t));
-}
+gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t = 0);
 
 }  // namespace gtdynamics

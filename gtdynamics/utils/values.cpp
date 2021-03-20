@@ -16,23 +16,28 @@
 
 namespace gtdynamics {
 
+/* ************************************************************************* */
 gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t) {
   return values.at(internal::JointAngleKey(j, t));
 }
 
+/* ************************************************************************* */
 gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t) {
   return values.at(internal::JointVelKey(j, t));
 }
 
+/* ************************************************************************* */
 gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t) {
   return values.at(internal::JointAccelKey(j, t));
 }
 
+/* ************************************************************************* */
 /// Retrieve torque on the j-th joint at time t.
 gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t) {
   return values.at(internal::TorqueKey(j, t));
 };
 
+/* ************************************************************************* */
 /// Insert pose for i-th link at time t.
 void InsertPose(gtsam::Values *values, int i, int t, gtsam::Pose3 value) {
   values->insert(internal::PoseKey(i, t), value);
@@ -48,8 +53,21 @@ gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t) {
   return values.at<gtsam::Pose3>(internal::PoseKey(i, t));
 };
 
+/* ************************************************************************* */
+void InsertTwist(gtsam::Values *values, int j, int t, gtsam::Vector6 value) {
+  values->insert(internal::TwistKey(j, t), value);
+}
+
+void InsertTwist(gtsam::Values *values, int j, gtsam::Vector6 value) {
+  values->insert(internal::TwistKey(j), value);
+}
+
 gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t) {
   return values.at(internal::TwistKey(j, t));
+}
+
+gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t) {
+  return values.at<gtsam::Vector6>(internal::TwistKey(j, t));
 }
 
 } // namespace gtdynamics
