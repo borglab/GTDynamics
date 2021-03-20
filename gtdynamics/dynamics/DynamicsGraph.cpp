@@ -292,7 +292,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
       int i1 = joint->parent()->id();
       int i2 = joint->child()->id();
       std::string name = joint->name();
-      values.insert(internal::TorqueKey(j, t), Torque(results, j, t)[0]);
+      InsertTorque(&values, j, t, Torque(results, j, t)[0]);
       values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
       values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
     }
@@ -330,10 +330,10 @@ Values DynamicsGraph::linearSolveID(
     int i1 = joint->parent()->id();
     int i2 = joint->child()->id();
     std::string name = joint->name();
-    values.insert(internal::JointAngleKey(j, t), joint_angles.at(name));
-    values.insert(internal::JointVelKey(j, t), joint_vels.at(name));
+    InsertJointAngle(&values, j, t, joint_angles.at(name));
+    InsertJointVel(&values, j, t, joint_vels.at(name));
     InsertJointAccel(&values, j, t, joint_accels.at(name));
-    values.insert(internal::TorqueKey(j, t), Torque(results, j, t)[0]);
+    InsertTorque(&values, j, t, Torque(results, j, t)[0]);
     values.insert(WrenchKey(i1, j, t), results.at(WrenchKey(i1, j, t)));
     values.insert(WrenchKey(i2, j, t), results.at(WrenchKey(i2, j, t)));
   }
