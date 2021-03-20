@@ -268,7 +268,7 @@ Values DynamicsGraph::linearSolveFD(
     int i = link->id();
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
-    InsertTwist<Vector6>(&values, i, t, twists.at(name));
+    InsertTwist(&values, i, t, twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }
   return values;
@@ -343,7 +343,7 @@ Values DynamicsGraph::linearSolveID(
     int i = link->id();
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
-    InsertTwist<Vector6>(&values, i, t, twists.at(name));
+    InsertTwist(&values, i, t, twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }
   return values;

@@ -26,8 +26,14 @@
 #include <utility>
 #include <vector>
 
-using gtsam::Pose3, gtsam::Vector3, gtsam::Vector6, gtsam::Vector,
-    gtsam::Point3, gtsam::Rot3, gtsam::Sampler, gtsam::Values;
+using gtsam::Pose3;
+using gtsam::Vector3;
+using gtsam::Vector6;
+using gtsam::Vector;
+using gtsam::Point3;
+using gtsam::Rot3;
+using gtsam::Sampler;
+using gtsam::Values;
 
 namespace gtdynamics {
 
@@ -359,7 +365,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   for (auto&& link : robot.links()) {
     int i = link->id();
     InsertPose(&values, i, t, AddGaussianNoiseToPose(link->wTcom(), sampler));
-    InsertTwist<Vector6>(&values, i, t, sampler.sample());
+    InsertTwist(&values, i, t, sampler.sample());
     values.insert(TwistAccelKey(i, t), sampler.sample());
   }
 

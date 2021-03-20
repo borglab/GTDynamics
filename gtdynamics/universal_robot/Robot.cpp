@@ -150,7 +150,7 @@ gtsam::Values Robot::forwardKinematics(
       if (link->isFixed()) {
         root_link = link;
         InsertPose(&values, link->id(), t, link->getFixedPose());
-        InsertTwist<Vector6>(&values, link->id(), t, Vector6::Zero());
+        InsertTwist(&values, link->id(), t, Vector6::Zero());
       }
     }
     if (!root_link) {
