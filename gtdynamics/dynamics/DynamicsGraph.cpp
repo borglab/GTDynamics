@@ -266,7 +266,7 @@ Values DynamicsGraph::linearSolveFD(
   for (auto &&link : robot.links()) {
     int i = link->id();
     std::string name = link->name();
-    values.insert(PoseKey(i, t), poses.at(name));
+    InsertPose(&values, i, t, poses.at(name));
     values.insert(TwistKey(i, t), twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }
@@ -341,7 +341,7 @@ Values DynamicsGraph::linearSolveID(
   for (auto &&link : robot.links()) {
     int i = link->id();
     std::string name = link->name();
-    values.insert(PoseKey(i, t), poses.at(name));
+    InsertPose(&values, i, t, poses.at(name));
     values.insert(TwistKey(i, t), twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }

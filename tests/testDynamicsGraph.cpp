@@ -62,7 +62,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   auto j = robot.joint("j1")->id();
   InsertJointAngle(&values, j, t, 0.0);
   InsertJointVel(&values, j, t, 0.0);
-  values.insert(PoseKey(l1->id(), t), l1->wTcom());
+  InsertPose(&values, l1->id(), t, l1->wTcom());
   values.insert<Vector6>(TwistKey(l1->id(), t), gtsam::Z_6x1);
 
   // Do forward kinematics.

@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
   // Initialize values.
   gtsam::Values values;
   for (auto &&link : vision60.links())
-    values.insert(PoseKey(link->id(), 0), link->wTcom());
+    InsertPose(&values, link->id(), link->wTcom());
   for (auto &&joint : vision60.joints())
     values.insert(JointAngleKey(joint->id(), 0), 0.0);
 
@@ -294,8 +294,8 @@ int main(int argc, char **argv) {
     // Update the values for next iteration.
     values.clear();
     for (auto &&link : vision60.links())
-      values.insert(PoseKey(link->id(), ti + 1),
-                    results.at<gtsam::Pose3>(PoseKey(link->id(), ti)));
+      InsertPose(&values, link->id(), ti + 1,
+                 results.at<gtsam::Pose3>(PoseKey(link->id(), ti)));
     for (auto &&joint : vision60.joints())
       values.insert(JointAngleKey(joint->id(), ti + 1),
                     results.atDouble(JointAngleKey(joint->id(), ti)));

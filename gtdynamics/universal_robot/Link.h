@@ -18,6 +18,7 @@
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -41,26 +42,6 @@ class Joint; // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
-
-/// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("p", i, t);
-}
-
-/// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("V", i, t);
-}
-
-/// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("A", i, t);
-}
-
-/// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline DynamicsSymbol WrenchKey(int i, int j, int t) {
-  return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
-}
 
 /**
  * Params contains all parameters to construct a link
