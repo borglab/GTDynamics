@@ -24,36 +24,41 @@
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
-gtsam::NonlinearFactorGraph JointTyped::qFactors(
-    size_t t, const OptimizerSetting &opt) const {
+gtsam::NonlinearFactorGraph
+JointTyped::qFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<PoseFactor>(
-      PoseKey(parent_link_->id(), t), PoseKey(child_link_->id(), t),
-      JointAngleKey(id(), t), opt.p_cost_model, shared());
+  graph.emplace_shared<PoseFactor>(internal::PoseKey(parent_link_->id(), t),
+                                   internal::PoseKey(child_link_->id(), t),
+                                   internal::JointAngleKey(id(), t),
+                                   opt.p_cost_model, shared());
   return graph;
 }
 
-gtsam::NonlinearFactorGraph JointTyped::vFactors(
-    size_t t, const OptimizerSetting &opt) const {
+gtsam::NonlinearFactorGraph
+JointTyped::vFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<TwistFactor>(
-      TwistKey(parent_link_->id(), t), TwistKey(child_link_->id(), t),
-      JointAngleKey(id(), t), JointVelKey(id(), t), opt.v_cost_model,
-      shared());
+  graph.emplace_shared<TwistFactor>(internal::TwistKey(parent_link_->id(), t),
+                                    internal::TwistKey(child_link_->id(), t),
+                                    internal::JointAngleKey(id(), t),
+                                    internal::JointVelKey(id(), t),
+                                    opt.v_cost_model, shared());
 
   return graph;
 }
 
-gtsam::NonlinearFactorGraph JointTyped::aFactors(
-    size_t t, const OptimizerSetting &opt) const {
+gtsam::NonlinearFactorGraph
+JointTyped::aFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<TwistAccelFactor>(
-      TwistKey(child_link_->id(), t), TwistAccelKey(parent_link_->id(), t),
-      TwistAccelKey(child_link_->id(), t), JointAngleKey(id(), t),
-      JointVelKey(id(), t), JointAccelKey(id(), t), opt.a_cost_model,
+      internal::TwistKey(child_link_->id(), t),
+      internal::TwistAccelKey(parent_link_->id(), t),
+      internal::TwistAccelKey(child_link_->id(), t),
+      internal::JointAngleKey(id(), t), internal::JointVelKey(id(), t),
+      internal::JointAccelKey(id(), t), opt.a_cost_model,
       boost::static_pointer_cast<const This>(shared()));
 
   return graph;
@@ -64,19 +69,19 @@ gtsam::NonlinearFactorGraph JointTyped::dynamicsFactors(
     const boost::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<WrenchEquivalenceFactor>(
-      WrenchKey(parent_link_->id(), id(), t),
-      WrenchKey(child_link_->id(), id(), t), JointAngleKey(id(), t),
-      opt.f_cost_model,
+      internal::WrenchKey(parent_link_->id(), id(), t),
+      internal::WrenchKey(child_link_->id(), id(), t),
+      internal::JointAngleKey(id(), t), opt.f_cost_model,
       boost::static_pointer_cast<const This>(shared()));
   graph.emplace_shared<TorqueFactor>(
-      WrenchKey(child_link_->id(), id(), t), TorqueKey(id(), t),
-      opt.t_cost_model,
+      internal::WrenchKey(child_link_->id(), id(), t),
+      internal::TorqueKey(id(), t), opt.t_cost_model,
       boost::static_pointer_cast<const This>(shared()));
   if (planar_axis)
     graph.emplace_shared<WrenchPlanarFactor>(
-        WrenchKey(child_link_->id(), id(), t), opt.planar_cost_model,
+        internal::WrenchKey(child_link_->id(), id(), t), opt.planar_cost_model,
         *planar_axis);
   return graph;
 }
 
-}  // namespace gtdynamics
+} // namespace gtdynamics

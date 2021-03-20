@@ -18,6 +18,7 @@
 #pragma once
 
 #include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -189,33 +190,35 @@ class JointTyped : public Joint {
   Pose3 transformTo(
       size_t t, const LinkSharedPtr &link, const gtsam::Values &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    return transformTo(link, q.at<JointCoordinate>(JointAngleKey(id(), t)), H_q);
+    return transformTo(link, JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
   /**
    * Return the twist of this link given the other link's twist and a Values
    * object containing this joint's angle Value.
+   * @param values containing q, q_dot
    * @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
    */
   gtsam::Vector6 transformTwistTo(
-      size_t t, const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot,
+      size_t t, const LinkSharedPtr &link, const gtsam::Values &values,
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
-      boost::optional<gtsam::Matrix &> H_other_twist =
-          boost::none) const override {
-    return transformTwistTo(link, q_and_q_dot.at<JointCoordinate>(JointAngleKey(id(), t)),
-                            q_and_q_dot.at<JointVelocity>(JointVelKey(id(), t)), other_twist,
-                            H_q, H_q_dot, H_other_twist);
+      boost::optional<gtsam::Matrix &> H_other_twist = boost::none) //
+      const override {
+    return transformTwistTo(link, JointAngle<JointCoordinate>(values, id(), t),
+                            JointVel<JointVelocity>(values, id(), t),
+                            other_twist, H_q, H_q_dot, H_other_twist);
   }
 
   /** Return the twist acceleration of the other link given this link's twist
    * accel and a Values object containing this joint's angle value and
    * derivatives.
+   * @param values containing q, q_dot, and q_ddot
    * @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
    */
   gtsam::Vector6 transformTwistAccelTo(
-      size_t t, const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot_and_q_ddot,
+      size_t t, const LinkSharedPtr &link, const gtsam::Values &values,
       boost::optional<gtsam::Vector6> this_twist = boost::none,
       boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
@@ -224,12 +227,12 @@ class JointTyped : public Joint {
       boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const override {
-    return transformTwistAccelTo(
-        link, q_and_q_dot_and_q_ddot.at<JointCoordinate>(JointAngleKey(id(), t)),
-        q_and_q_dot_and_q_ddot.at<JointVelocity>(JointVelKey(id(), t)),
-        q_and_q_dot_and_q_ddot.at<JointAcceleration>(JointAccelKey(id(), t)), this_twist,
-        other_twist_accel, H_q, H_q_dot, H_q_ddot, H_this_twist,
-        H_other_twist_accel);
+    return transformTwistAccelTo(link,
+                                 JointAngle<JointCoordinate>(values, id(), t),
+                                 JointVel<JointVelocity>(values, id(), t),
+                                 JointAccel<JointAcceleration>(values, id(), t),
+                                 this_twist, other_twist_accel, H_q, H_q_dot,
+                                 H_q_ddot, H_this_twist, H_other_twist_accel);
   }
 
   ///@}
