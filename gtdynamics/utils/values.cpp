@@ -48,4 +48,8 @@ gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t) {
   return values.at<gtsam::Pose3>(internal::PoseKey(i, t));
 };
 
+gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t) {
+  return values.at(internal::TwistKey(j, t));
+}
+
 } // namespace gtdynamics

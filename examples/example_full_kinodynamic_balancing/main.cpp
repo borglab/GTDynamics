@@ -138,24 +138,24 @@ int main(int argc, char** argv) {
 
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
-    objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(base_link->id(),
-                static_cast<int>(std::ceil(des_poses_t[i] / dt))),
-        des_poses[i], des_pose_nm));
+    objective_factors.addPrior<gtsam::Pose3>(
+        internal::PoseKey(base_link->id(),
+                          static_cast<int>(std::ceil(des_poses_t[i] / dt))),
+        des_poses[i], des_pose_nm);
 
   // Add base boundary conditions to FG.
-  objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(base_link->id(), 0), base_pose_init,
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
-  objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(base_link->id(), 0), base_twist_init,
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
+  objective_factors.addPrior<gtsam::Pose3>(
+      internal::PoseKey(base_link->id(), 0), base_pose_init,
+      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
+  objective_factors.addPrior<gtsam::Vector6>(
+      internal::TwistKey(base_link->id(), 0), base_twist_init,
+      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistAccelKey(base_link->id(), 0), base_accel_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)));
-  objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-      TwistKey(base_link->id(), t_steps), base_twist_final,
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
+  objective_factors.addPrior<gtsam::Vector6>(
+      internal::TwistKey(base_link->id(), t_steps), base_twist_final,
+      gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives));
   objective_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
       TwistAccelKey(base_link->id(), t_steps), base_accel_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives)));
@@ -212,10 +212,9 @@ int main(int argc, char** argv) {
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   gtsam::Values results = optimizer.optimize();
 
-  gtsam::Pose3 optimized_pose_init =
-      results.at<gtsam::Pose3>(PoseKey(base_link->id(), 0));
+  gtsam::Pose3 optimized_pose_init = Pose(results, base_link->id(), 0);
   gtsam::Pose3 optimized_pose_final =
-      results.at<gtsam::Pose3>(PoseKey(base_link->id(), t_steps - 1));
+      Pose(results, base_link->id(), t_steps - 1);
 
   std::cout << "Optimized Pose init trans: "
             << optimized_pose_init.translation()
@@ -256,17 +255,13 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_steps; t++) {
     std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())
-      vals.push_back(
-          std::to_string(results.atDouble(JointAngleKey(joint->id(), t))));
+      vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
     for (auto&& joint : vision60.joints())
-      vals.push_back(
-          std::to_string(results.atDouble(JointVelKey(joint->id(), t))));
+      vals.push_back(std::to_string(JointVel(results, joint->id(), t)));
     for (auto&& joint : vision60.joints())
-      vals.push_back(
-          std::to_string(results.atDouble(JointAccelKey(joint->id(), t))));
+      vals.push_back(std::to_string(JointAccel(results, joint->id(), t)));
     for (auto&& joint : vision60.joints())
-      vals.push_back(
-          std::to_string(results.atDouble(TorqueKey(joint->id(), t))));
+      vals.push_back(std::to_string(Torque(results, joint->id(), t)));
 
     for (size_t i = 0; i < des_poses.size(); i++) {
       gtsam::Pose3 dp = des_poses[i];

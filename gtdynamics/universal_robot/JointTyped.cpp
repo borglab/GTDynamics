@@ -41,10 +41,11 @@ JointTyped::qFactors(size_t t, const OptimizerSetting &opt) const {
 gtsam::NonlinearFactorGraph
 JointTyped::vFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
-  graph.emplace_shared<TwistFactor>(
-      TwistKey(parent_link_->id(), t), TwistKey(child_link_->id(), t),
-      internal::JointAngleKey(id(), t), internal::JointVelKey(id(), t),
-      opt.v_cost_model, shared());
+  graph.emplace_shared<TwistFactor>(internal::TwistKey(parent_link_->id(), t),
+                                    internal::TwistKey(child_link_->id(), t),
+                                    internal::JointAngleKey(id(), t),
+                                    internal::JointVelKey(id(), t),
+                                    opt.v_cost_model, shared());
 
   return graph;
 }
@@ -53,10 +54,11 @@ gtsam::NonlinearFactorGraph
 JointTyped::aFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
   graph.emplace_shared<TwistAccelFactor>(
-      TwistKey(child_link_->id(), t), TwistAccelKey(parent_link_->id(), t),
-      TwistAccelKey(child_link_->id(), t), internal::JointAngleKey(id(), t),
-      internal::JointVelKey(id(), t), internal::JointAccelKey(id(), t),
-      opt.a_cost_model, boost::static_pointer_cast<const This>(shared()));
+      internal::TwistKey(child_link_->id(), t),
+      TwistAccelKey(parent_link_->id(), t), TwistAccelKey(child_link_->id(), t),
+      internal::JointAngleKey(id(), t), internal::JointVelKey(id(), t),
+      internal::JointAccelKey(id(), t), opt.a_cost_model,
+      boost::static_pointer_cast<const This>(shared()));
 
   return graph;
 }

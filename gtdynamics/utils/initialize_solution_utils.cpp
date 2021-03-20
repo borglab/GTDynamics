@@ -359,7 +359,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   for (auto&& link : robot.links()) {
     int i = link->id();
     InsertPose(&values, i, t, AddGaussianNoiseToPose(link->wTcom(), sampler));
-    values.insert(TwistKey(i, t), sampler.sample());
+    InsertTwist<Vector6>(&values, i, t, sampler.sample());
     values.insert(TwistAccelKey(i, t), sampler.sample());
   }
 

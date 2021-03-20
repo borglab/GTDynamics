@@ -50,12 +50,11 @@ int main(int argc, char** argv) {
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(i, 0), link->wTcom(),
-        gtsam::noiseModel::Constrained::All(6)));
-    prior_factors.add(gtsam::PriorFactor<gtsam::Vector6>(
-        TwistKey(i, 0), gtsam::Vector6::Zero(),
-        gtsam::noiseModel::Constrained::All(6)));
+    prior_factors.addPrior(internal::PoseKey(i, 0), link->wTcom(),
+                           gtsam::noiseModel::Constrained::All(6));
+    prior_factors.addPrior<gtsam::Vector6>(
+        internal::TwistKey(i, 0), gtsam::Vector6::Zero(),
+        gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);
 
@@ -88,8 +87,8 @@ int main(int argc, char** argv) {
 
   std::cout << "\033[1;32;7;4mJoint Torques: \033[0m" << std::endl;
   for (auto joint : robot.joints())
-      std::cout << "\t'" << joint->name() << "': " << results.atDouble(
-          TorqueKey(joint->id(), 0)) << "," << std::endl;
+    std::cout << "\t'" << joint->name()
+              << "': " << Torque(results, joint->id(), 0) << "," << std::endl;
 
   return 0;
 }

@@ -67,7 +67,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       const gtsam::Matrix6 G_i = link->inertiaMatrix();
       const double m_i = link->mass();
       const Pose3 T_wi = Pose(known_values, i, t);
-      const Vector6 V_i = known_values.at<Vector6>(TwistKey(i, t));
+      const Vector6 V_i = Twist(known_values, i, t);
       Vector6 rhs = Pose3::adjointMap(V_i).transpose() * G_i * V_i;
       if (gravity_) {
         Vector gravitational_force =
@@ -268,7 +268,7 @@ Values DynamicsGraph::linearSolveFD(
     int i = link->id();
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
-    values.insert(TwistKey(i, t), twists.at(name));
+    InsertTwist<Vector6>(&values, i, t, twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }
   return values;
@@ -343,7 +343,7 @@ Values DynamicsGraph::linearSolveID(
     int i = link->id();
     std::string name = link->name();
     InsertPose(&values, i, t, poses.at(name));
-    values.insert(TwistKey(i, t), twists.at(name));
+    InsertTwist<Vector6>(&values, i, t, twists.at(name));
     values.insert(TwistAccelKey(i, t), results.at(TwistAccelKey(i, t)));
   }
   return values;
@@ -398,7 +398,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
         if (contact_point.first != link->name()) continue;
 
         ContactKinematicsTwistFactor contact_twist_factor(
-            TwistKey(i, t), opt_.cv_cost_model,
+            internal::TwistKey(i, t), opt_.cv_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         graph.add(contact_twist_factor);
       }
@@ -924,7 +924,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
     for (auto &&link : robot.links()) {
       int i = link->id();
       locations[internal::PoseKey(i, t)] = radial_location(2, i, n);
-      locations[TwistKey(i, t)] = radial_location(3, i, n);
+      locations[internal::TwistKey(i, t)] = radial_location(3, i, n);
       locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
     }
 
@@ -943,7 +943,7 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
     for (auto &&link : robot.links()) {
       int i = link->id();
       locations[internal::PoseKey(i, t)] = (gtsam::Vector(3) << i, 0, 0).finished();
-      locations[TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
+      locations[internal::TwistKey(i, t)] = (gtsam::Vector(3) << i, 1, 0).finished();
       locations[TwistAccelKey(i, t)] = (gtsam::Vector(3) << i, 2, 0).finished();
     }
 

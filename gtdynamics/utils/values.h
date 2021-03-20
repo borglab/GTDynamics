@@ -22,6 +22,9 @@
 
 namespace gtdynamics {
 
+/* *************************************************************************
+  Key definitions.
+ ************************************************************************* */
 namespace internal {
 /// Shorthand for q_j_t, for j-th joint angle at time t.
 inline DynamicsSymbol JointAngleKey(int j, int t = 0) {
@@ -48,12 +51,12 @@ inline DynamicsSymbol PoseKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("p", i, t);
 }
 
-} // namespace internal
-
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t) {
+inline DynamicsSymbol TwistKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("V", i, t);
 }
+
+} // namespace internal
 
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
 inline DynamicsSymbol TwistAccelKey(int i, int t) {
@@ -64,6 +67,10 @@ inline DynamicsSymbol TwistAccelKey(int i, int t) {
 inline DynamicsSymbol WrenchKey(int i, int j, int t) {
   return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
 }
+
+/* *************************************************************************
+  Methods for Joint Angles.
+ ************************************************************************* */
 
 /// Insert j-th joint angle at time t.
 template <typename T = double>
@@ -86,6 +93,10 @@ T JointAngle(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::JointAngleKey(j, t));
 }
 
+/* *************************************************************************
+  Methods for Joint Velocities.
+ ************************************************************************* */
+
 /// Insert j-th joint velocity at time t.
 template <typename T = double>
 void InsertJointVel(gtsam::Values *values, int j, int t, T value) {
@@ -106,6 +117,10 @@ template <typename T = double>
 T JointVel(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::JointVelKey(j, t));
 }
+
+/* *************************************************************************
+  Methods for Joint Accelerations.
+ ************************************************************************* */
 
 /// Insert j-th joint acceleration at time t.
 template <typename T = double>
@@ -128,6 +143,10 @@ T JointAccel(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::JointAccelKey(j, t));
 }
 
+/* *************************************************************************
+  Methods for Torques.
+ ************************************************************************* */
+
 /// Insert torque on the j-th joint at time t.
 template <typename T = double>
 void InsertTorque(gtsam::Values *values, int j, int t, T value) {
@@ -149,6 +168,10 @@ T Torque(const gtsam::Values &values, int j, int t = 0) {
   return values.at<T>(internal::TorqueKey(j, t));
 };
 
+/* *************************************************************************
+  Methods for Poses.
+ ************************************************************************* */
+
 /// Insert pose for i-th link at time t.
 void InsertPose(gtsam::Values *values, int i, int t, gtsam::Pose3 value);
 
@@ -157,5 +180,30 @@ void InsertPose(gtsam::Values *values, int i, gtsam::Pose3 value);
 
 /// Retrieve pose for i-th link at time t.
 gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t = 0);
+
+/* *************************************************************************
+  Methods for Twists.
+ ************************************************************************* */
+
+/// Insert j-th twist at time t.
+template <typename T = gtsam::Vector6>
+void InsertTwist(gtsam::Values *values, int j, int t, T value) {
+  values->insert(internal::TwistKey(j, t), value);
+}
+
+/// Insert j-th twist at time 0.
+template <typename T = gtsam::Vector6>
+void InsertTwist(gtsam::Values *values, int j, T value) {
+  values->insert(internal::TwistKey(j), value);
+}
+
+/// Retrieve j-th twist at time t.
+gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t = 0);
+
+/// Retrieve j-th twist at time t.
+template <typename T = gtsam::Vector6>
+T Twist(const gtsam::Values &values, int j, int t = 0) {
+  return values.at<T>(internal::TwistKey(j, t));
+}
 
 } // namespace gtdynamics
