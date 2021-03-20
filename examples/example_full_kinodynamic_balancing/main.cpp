@@ -138,13 +138,13 @@ int main(int argc, char** argv) {
 
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
-    objective_factors.addPrior<gtsam::Pose3>(
+    objective_factors.addPrior(
         internal::PoseKey(base_link->id(),
                           static_cast<int>(std::ceil(des_poses_t[i] / dt))),
         des_poses[i], des_pose_nm);
 
   // Add base boundary conditions to FG.
-  objective_factors.addPrior<gtsam::Pose3>(
+  objective_factors.addPrior(
       internal::PoseKey(base_link->id(), 0), base_pose_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
