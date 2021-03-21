@@ -106,7 +106,7 @@ class Robot {
    * @return poses and twists of all links, as a new Values instance
    */
   gtsam::Values forwardKinematics(
-      size_t t, const gtsam::Values &known_values,
+      const gtsam::Values &known_values, size_t t = 0,
       const boost::optional<std::string> &prior_link_name = boost::none) const;
 
   /**

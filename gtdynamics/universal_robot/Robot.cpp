@@ -99,7 +99,7 @@ int Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::print() const {
   for (const auto &link : links()) {
-    std::cout << link->name() << ":\n";
+    std::cout << link->name() << ", id=" << size_t(link->id()) << ":\n";
     std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
               << ", " << link->wTl().translation().transpose() << "\n";
     std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
@@ -113,8 +113,6 @@ void Robot::print() const {
 
   for (const auto &joint : joints()) {
     std::cout << joint << std::endl;
-    // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
-    // << joint->Mpc().translation() << "\n";
     LinkSharedPtr child_link = joint->child();
 
     gtsam::Values joint_angles;
@@ -127,7 +125,7 @@ void Robot::print() const {
 }
 
 gtsam::Values Robot::forwardKinematics(
-    size_t t, const gtsam::Values &known_values,
+    const gtsam::Values &known_values, size_t t,
     const boost::optional<std::string> &prior_link_name) const {
   gtsam::Values values = known_values;
 
@@ -165,17 +163,12 @@ gtsam::Values Robot::forwardKinematics(
 
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->getJoints()) {
-      LinkSharedPtr link2 = joint->otherLink(link1);
-      // calculate the pose and twist of link2
-      double joint_angle = JointAngle(known_values, joint->id(), t);
-      const Pose3 l1Tl2 = joint->transformTo(t, link1, known_values);
-      const Pose3 T_w2 = T_w1 * l1Tl2;
-
-      // Compute the twist. TODO(frank): pass just one value.
-      const Vector6 V_2 =
-          joint->transformTwistTo(t, link2, known_values, V_1);
+      Pose3 T_w2; Vector6 V_2;
+      std::tie(T_w2, V_2) =
+          joint->otherPoseTwist(link1, T_w1, V_1, known_values, t);
 
       // Save pose and twist if link 2 has not been assigned yet.
+      LinkSharedPtr link2 = joint->otherLink(link1);
       auto pose_key = internal::PoseKey(link2->id(), t);
       auto twist_key = internal::TwistKey(link2->id(), t);
       if (!values.exists(pose_key)) {
