@@ -23,8 +23,7 @@ class TestDynamicsGraph(unittest.TestCase):
 
         # test building dynamics graph
         graph_builder = gtd.DynamicsGraph()
-        graph = graph_builder.dynamicsFactorGraph(simple_rr, 0, None, None,
-                                                  None, None)
+        graph = graph_builder.dynamicsFactorGraph(simple_rr, 0, None, None)
         self.assertEqual(graph.size(), 13)
 
 
