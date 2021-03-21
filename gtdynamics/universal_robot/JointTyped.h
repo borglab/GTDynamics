@@ -199,6 +199,21 @@ class JointTyped : public Joint {
                                  H_q_ddot, H_this_twist, H_other_twist_accel);
   }
 
+  /// Joint-induced twist in child frame
+  virtual gtsam::Vector6 childTwist(JointVelocity q_dot) const = 0;
+
+  /// Joint-induced twist in parent frame
+  virtual gtsam::Vector6 parentTwist(JointVelocity q_dot) const = 0;
+
+  /// Joint-induced twist in child frame
+  gtsam::Vector6 childTwist(const gtsam::Values &values, size_t t=0) const override {
+    return childTwist(JointVel<JointVelocity>(values, id(), t));
+  }
+
+  /// Joint-induced twist in parent frame
+  gtsam::Vector6 parentTwist(const gtsam::Values &values, size_t t=0) const override {
+    return parentTwist(JointVel<JointVelocity>(values, id(), t));
+  }
   ///@}
 
   /// Return joint pose factors.

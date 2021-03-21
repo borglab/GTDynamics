@@ -391,6 +391,16 @@ protected:
         parameters().torque_limit, parameters().torque_limit_threshold);
     return graph;
   }
+
+  /// Joint-induced twist in child frame
+  gtsam::Vector6 childTwist(double q_dot) const override {
+    return cScrewAxis_ * q_dot;
+  }
+
+  /// Joint-induced twist in parent frame
+  gtsam::Vector6 parentTwist(double q_dot) const override {
+    return pScrewAxis_ * q_dot;
+  }
 };
 
 }  // namespace gtdynamics

@@ -257,7 +257,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const = 0;
-
   /**
    * @fn Abstract method to return pose factors in the dynamics graph.
    *
@@ -430,6 +429,39 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       *H_q = H_relPose * (*H_q);
       return error;
     }
+  }
+
+  /// Joint-induced twist in child frame
+  virtual gtsam::Vector6 childTwist(const gtsam::Values &values,
+                                    size_t t = 0) const = 0;
+
+  /// Joint-induced twist in parent frame
+  virtual gtsam::Vector6 parentTwist(const gtsam::Values &values,
+                                     size_t t = 0) const = 0;
+
+  /// Calculate pose/twist of child given parent pose/twist
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  childPoseTwist(const gtsam::Pose3 &wTp, const gtsam::Vector6 &Vp,
+                 const gtsam::Values &known_values, size_t t = 0) const {
+    const gtsam::Pose3 pTc = parentTchild(known_values, t);
+    return {wTp * pTc, pTc.inverse().Adjoint(Vp) + childTwist(known_values, t)};
+  }
+
+  /// Calculate pose/twist of parent given child pose/twist
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  parentPoseTwist(const gtsam::Pose3 &wTc, const gtsam::Vector6 &Vc,
+                  const gtsam::Values &known_values, size_t t = 0) const {
+    const gtsam::Pose3 pTc = parentTchild(known_values, t);
+    return {wTc * pTc.inverse(), pTc.Adjoint(Vc) + parentTwist(known_values, t)};
+  }
+
+  /// Given link pose/twist, calculate pose/twist of other link
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  otherPoseTwist(const LinkSharedPtr &link, const gtsam::Pose3 &wTl,
+                 const gtsam::Vector6 &Vl, const gtsam::Values &known_values,
+                 size_t t = 0) const {
+    return isChildLink(link) ? parentPoseTwist(wTl, Vl, known_values, t)
+                             : childPoseTwist(wTl, Vl, known_values, t);
   }
 };
 
