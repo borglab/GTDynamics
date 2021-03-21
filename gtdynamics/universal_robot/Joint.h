@@ -119,14 +119,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Joint parameters struct.
   JointParams parameters_;
 
-  /// Abstract method. Return transform of child link com frame w.r.t parent
-  /// link com frame
-  gtsam::Pose3 pMcCom(double q);
-
-  /// Abstract method. Return transform of parent link com frame w.r.t child
-  /// link com frame
-  gtsam::Pose3 cMpCom(double q);
-
   /// Check if the link is a child link, throw an error if link is not
   /// connected to this joint.
   bool isChildLink(const LinkSharedPtr &link) const;
