@@ -24,7 +24,11 @@
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
 using gtsam::Values;
+using gtsam::Vector6;
 
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
@@ -83,7 +87,7 @@ TEST(Robot, forwardKinematics) {
   Robot simple_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  gtsam::Values values;
+  Values values;
   InsertJointAngle(&values, 0, 0.0);
   InsertJointVel(&values, 0, 0.0);
 
@@ -94,9 +98,9 @@ TEST(Robot, forwardKinematics) {
   simple_robot.link("l1")->fix();
   Values results = simple_robot.forwardKinematics(values);
 
-  gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
-  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 3));
-  gtsam::Vector6 V_l1_rest, V_l2_rest;
+  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 1));
+  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 3));
+  Vector6 V_l1_rest, V_l2_rest;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
   V_l2_rest << 0, 0, 0, 0, 0, 0;
 
@@ -106,15 +110,15 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_rest, Twist(results, 1)));
 
   // test fk with moving joint and fixed base
-  gtsam::Values values2;
+  Values values2;
   InsertJointAngle(&values2, 0, M_PI_2);
   InsertJointVel(&values2, 0, 1.0);
 
   Values results2 = simple_robot.forwardKinematics(values2);
 
-  gtsam::Pose3 T_wl1_move(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1));
-  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Rx(M_PI_2), gtsam::Point3(0, -1, 2));
-  gtsam::Vector6 V_l1_move, V_l2_move;
+  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));
+  Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
+  Vector6 V_l1_move, V_l2_move;
   V_l1_move << 0, 0, 0, 0, 0, 0;
   V_l2_move << 1, 0, 0, 0, -1, 0;
   EXPECT(assert_equal(T_wl1_move, Pose(results2, 0)));
@@ -124,16 +128,16 @@ TEST(Robot, forwardKinematics) {
 
   // test fk with moving joint and moving base
   simple_robot.link("l1")->unfix();
-  gtsam::Pose3 T_wl1_float(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, 1, 1));
-  gtsam::Pose3 T_wl2_float(gtsam::Rot3::Rx(0), gtsam::Point3(0, 2, 2));
-  gtsam::Vector6 V_l1_float, V_l2_float;
+  Pose3 T_wl1_float(Rot3::Rx(-M_PI_2), Point3(0, 1, 1));
+  Pose3 T_wl2_float(Rot3::Rx(0), Point3(0, 2, 2));
+  Vector6 V_l1_float, V_l2_float;
   V_l1_float << 1, 0, 0, 0, -1, 0;
   V_l2_float << 2, 0, 0, 0, -2, 2;
 
   JointValues joint_angles, joint_vels;
   joint_angles["j1"] = M_PI_2;
   joint_vels["j1"] = 1;
-  
+
   std::string prior_link_name = "l1";
   FKResults fk_results = simple_robot.forwardKinematics(
       joint_angles, joint_vels, prior_link_name, T_wl1_float, V_l1_float);
@@ -149,65 +153,65 @@ TEST(Robot, forwardKinematics_rpr) {
   Robot rpr_robot = CreateRobotFromFile(
       std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
-  JointValues joint_angles, joint_vels;
-  joint_angles["joint_1"] = 0;
-  joint_vels["joint_1"] = 0;
-  joint_angles["joint_2"] = 0;
-  joint_vels["joint_2"] = 0;
-  joint_angles["joint_3"] = 0;
-  joint_vels["joint_3"] = 0;
+  Values values;
+  InsertJointAngle(&values, 1, 0.0);
+  InsertJointVel(&values, 1, 0.0);
+  InsertJointAngle(&values, 2, 0.0);
+  InsertJointVel(&values, 2, 0.0);
+  InsertJointAngle(&values, 3, 0.0);
+  InsertJointVel(&values, 3, 0.0);
 
   // test fk at rest
   rpr_robot.link("link_0")->fix();
-  FKResults fk_results = rpr_robot.forwardKinematics(joint_angles, joint_vels);
-  LinkPoses poses = fk_results.first;
-  LinkTwists twists = fk_results.second;
+  Values fk_results = rpr_robot.forwardKinematics(values);
 
-  gtsam::Pose3 T_wl0_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
-  gtsam::Pose3 T_wl1_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.5));
-  gtsam::Pose3 T_wl2_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.1));
-  gtsam::Pose3 T_wl3_rest(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 1.7));
-  gtsam::Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
+  Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 0.5));
+  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 1.1));
+  Pose3 T_wl3_rest(Rot3::identity(), Point3(0, 0, 1.7));
+  Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
   V_l0_rest << 0, 0, 0, 0, 0, 0;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
   V_l2_rest << 0, 0, 0, 0, 0, 0;
   V_l3_rest << 0, 0, 0, 0, 0, 0;
 
-  EXPECT(assert_equal(T_wl0_rest, poses.at("link_0")));
-  EXPECT(assert_equal(T_wl1_rest, poses.at("link_1")));
-  EXPECT(assert_equal(T_wl2_rest, poses.at("link_2")));
-  EXPECT(assert_equal(T_wl3_rest, poses.at("link_3")));
-  EXPECT(assert_equal(V_l0_rest, twists.at("link_0")));
-  EXPECT(assert_equal(V_l1_rest, twists.at("link_1")));
-  EXPECT(assert_equal(V_l2_rest, twists.at("link_2")));
-  EXPECT(assert_equal(V_l3_rest, twists.at("link_3")));
+  EXPECT(assert_equal(T_wl0_rest, Pose(fk_results, 0)));
+  EXPECT(assert_equal(T_wl1_rest, Pose(fk_results, 1)));
+  EXPECT(assert_equal(T_wl2_rest, Pose(fk_results, 2)));
+  EXPECT(assert_equal(T_wl3_rest, Pose(fk_results, 3)));
+  EXPECT(assert_equal(V_l0_rest, Twist(fk_results, 0)));
+  EXPECT(assert_equal(V_l1_rest, Twist(fk_results, 1)));
+  EXPECT(assert_equal(V_l2_rest, Twist(fk_results, 2)));
+  EXPECT(assert_equal(V_l3_rest, Twist(fk_results, 3)));
 
   // test fk with moving prismatic joint and fixed base
-  joint_angles["joint_1"] = M_PI_2;
-  joint_angles["joint_2"] = 0.5;
-  joint_vels["joint_2"] = 1;
+  Values values2;
+  InsertJointAngle(&values2, 1, M_PI_2);
+  InsertJointVel(&values2, 1, 0.0);
+  InsertJointAngle(&values2, 2, 0.5);
+  InsertJointVel(&values2, 2, 1.0);
+  InsertJointAngle(&values2, 3, 0.0);
+  InsertJointVel(&values2, 3, 0.0);
 
-  fk_results = rpr_robot.forwardKinematics(joint_angles, joint_vels);
-  poses = fk_results.first;
-  twists = fk_results.second;
+  fk_results = rpr_robot.forwardKinematics(values2);
 
-  gtsam::Pose3 T_wl0_move(gtsam::Rot3::identity(), gtsam::Point3(0, 0, 0.1));
-  gtsam::Pose3 T_wl1_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(0.3, 0, 0.2));
-  gtsam::Pose3 T_wl2_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(1.4, 0, 0.2));
-  gtsam::Pose3 T_wl3_move(gtsam::Rot3::Ry(M_PI_2), gtsam::Point3(2.0, 0, 0.2));
-  gtsam::Vector6 V_l0_move, V_l1_move, V_l2_move, V_l3_move;
+  Pose3 T_wl0_move(Rot3::identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl1_move(Rot3::Ry(M_PI_2), Point3(0.3, 0, 0.2));
+  Pose3 T_wl2_move(Rot3::Ry(M_PI_2), Point3(1.4, 0, 0.2));
+  Pose3 T_wl3_move(Rot3::Ry(M_PI_2), Point3(2.0, 0, 0.2));
+  Vector6 V_l0_move, V_l1_move, V_l2_move, V_l3_move;
   V_l0_move << 0, 0, 0, 0, 0, 0;
   V_l1_move << 0, 0, 0, 0, 0, 0;
   V_l2_move << 0, 0, 0, 0, 0, 1;
   V_l3_move << 0, 0, 0, 0, 0, 1;
-  EXPECT(assert_equal(T_wl0_move, poses.at("link_0")));
-  EXPECT(assert_equal(T_wl1_move, poses.at("link_1")));
-  EXPECT(assert_equal(T_wl2_move, poses.at("link_2")));
-  EXPECT(assert_equal(T_wl3_move, poses.at("link_3")));
-  EXPECT(assert_equal(V_l0_move, twists.at("link_0")));
-  EXPECT(assert_equal(V_l1_move, twists.at("link_1")));
-  EXPECT(assert_equal(V_l2_move, twists.at("link_2")));
-  EXPECT(assert_equal(V_l3_move, twists.at("link_3")));
+  EXPECT(assert_equal(T_wl0_move, Pose(fk_results, 0)));
+  EXPECT(assert_equal(T_wl1_move, Pose(fk_results, 1)));
+  EXPECT(assert_equal(T_wl2_move, Pose(fk_results, 2)));
+  EXPECT(assert_equal(T_wl3_move, Pose(fk_results, 3)));
+  EXPECT(assert_equal(V_l0_move, Twist(fk_results, 0)));
+  EXPECT(assert_equal(V_l1_move, Twist(fk_results, 1)));
+  EXPECT(assert_equal(V_l2_move, Twist(fk_results, 2)));
+  EXPECT(assert_equal(V_l3_move, Twist(fk_results, 3)));
 }
 
 // test fk for a four bar linkage (loopy)
@@ -216,28 +220,29 @@ TEST(forwardKinematics, four_bar) {
                                        "/test/four_bar_linkage_pure.sdf");
   four_bar.link("l1")->fix();
 
-  JointValues joint_angles, joint_vels;
-  for (JointSharedPtr joint : four_bar.joints()) {
-    joint_angles[joint->name()] = 0;
-    joint_vels[joint->name()] = 0;
+  Values values;
+  for (auto &&joint : four_bar.joints()) {
+    InsertJointAngle(&values, joint->id(), 0.0);
+    InsertJointVel(&values, joint->id(), 0.0);
   }
-  FKResults fk_results = four_bar.forwardKinematics(joint_angles, joint_vels);
-  LinkPoses poses = fk_results.first;
-  LinkTwists twists = fk_results.second;
-  gtsam::Vector6 V_4;
-  V_4 << 0, 0, 0, 0, 0, 0;
-  gtsam::Pose3 T_4(gtsam::Rot3::Rx(-M_PI_2), gtsam::Point3(0, -1, 0));
-  EXPECT(assert_equal(V_4, twists.at("l4"), 1e-6));
-  // TODO(yetong): check why this error is large
-  EXPECT(assert_equal(T_4, poses.at("l4"), 1e-3));
+  Values fk_results = four_bar.forwardKinematics(values);
 
-  // incorrect specficiation of joint angles;
-  JointValues wrong_angles = joint_angles;
-  JointValues wrong_vels = joint_vels;
-  wrong_angles["j1"] = 1;
-  wrong_vels["j1"] = 1;
-  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles, joint_vels));
-  THROWS_EXCEPTION(four_bar.forwardKinematics(joint_angles, wrong_vels));
+  Vector6 V_4;
+  V_4 << 0, 0, 0, 0, 0, 0;
+  Pose3 T_4(Rot3::Rx(-M_PI_2), Point3(0, -1, 0));
+  EXPECT(assert_equal(V_4, Twist(fk_results, 3), 1e-6));
+  // TODO(yetong): check why this error is large
+  EXPECT(assert_equal(T_4, Pose(fk_results, 3), 1e-3));
+
+  // incorrect specficiation of joint angles.
+  Values wrong_angles = values;
+  wrong_angles.update<double>(internal::JointAngleKey(0), 1.0);
+  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles));
+
+  // incorrect specficiation of joint velocites.
+  Values wrong_vels = values;
+  wrong_vels.update<double>(internal::JointVelKey(0), 1.0);
+  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_vels));
 }
 
 int main() {
