@@ -21,6 +21,18 @@
 
 namespace gtdynamics {
 
+/// Custom exception that properly formats dynamics keys.
+class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {
+  mutable std::string gtd_message_;
+
+public:
+  using gtsam::ValuesKeyDoesNotExist::ValuesKeyDoesNotExist;
+  ~KeyDoesNotExist() noexcept override {}
+
+  /// The message to be displayed to the user
+  const char *what() const noexcept override;
+};
+
 /* *************************************************************************
   Key definitions.
  ************************************************************************* */
@@ -65,7 +77,16 @@ inline DynamicsSymbol WrenchKey(int i, int j, int t = 0) {
   return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
 }
 
-}  // namespace internal
+/// Custom retrieval that throws KeyDoesNotExist
+template <typename T> T at(const gtsam::Values &values, size_t key) {
+  try {
+    return values.at<T>(key);
+  } catch (const gtsam::ValuesKeyDoesNotExist &e) {
+    throw KeyDoesNotExist("at", e.key());
+  }
+}
+
+} // namespace internal
 
 /* *************************************************************************
   Functions for Joint Angles.
@@ -89,7 +110,7 @@ gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t = 0);
 /// Retrieve j-th joint angle at time t.
 template <typename T = double>
 T JointAngle(const gtsam::Values &values, int j, int t = 0) {
-  return values.at<T>(internal::JointAngleKey(j, t));
+  return internal::at<T>(values, internal::JointAngleKey(j, t));
 }
 
 /* *************************************************************************
@@ -114,7 +135,7 @@ gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t = 0);
 /// Retrieve j-th joint velocity at time t.
 template <typename T = double>
 T JointVel(const gtsam::Values &values, int j, int t = 0) {
-  return values.at<T>(internal::JointVelKey(j, t));
+  return internal::at<T>(values, internal::JointVelKey(j, t));
 }
 
 /* *************************************************************************
@@ -139,7 +160,7 @@ gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t = 0);
 /// Retrieve j-th joint acceleration at time t.
 template <typename T = double>
 T JointAccel(const gtsam::Values &values, int j, int t = 0) {
-  return values.at<T>(internal::JointAccelKey(j, t));
+  return internal::at<T>(values, internal::JointAccelKey(j, t));
 }
 
 /* *************************************************************************
@@ -164,7 +185,7 @@ gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t = 0);
 /// Retrieve torque on the j-th joint at time t.
 template <typename T = double>
 T Torque(const gtsam::Values &values, int j, int t = 0) {
-  return values.at<T>(internal::TorqueKey(j, t));
+  return internal::at<T>(values, internal::TorqueKey(j, t));
 };
 
 /* *************************************************************************
@@ -201,7 +222,8 @@ gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t = 0);
  ************************************************************************* */
 
 /// Insert j-th twist acceleration at time t.
-void InsertTwistAccel(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+void InsertTwistAccel(gtsam::Values *values, int j, int t,
+                      gtsam::Vector6 value);
 
 /// Insert j-th twist acceleration at time 0.
 void InsertTwistAccel(gtsam::Values *values, int j, gtsam::Vector6 value);
@@ -217,16 +239,17 @@ gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t = 0);
  ************************************************************************* */
 
 /// Insert wrench for i-th link and j-th joint at time t.
-void InsertWrench(gtsam::Values *values, int i, int j, int t, gtsam::Vector6 value);
+void InsertWrench(gtsam::Values *values, int i, int j, int t,
+                  gtsam::Vector6 value);
 
 /// Insert wrench for i-th link and j-th joint at time 0.
 void InsertWrench(gtsam::Values *values, int i, int j, gtsam::Vector6 value);
 
 /// Retrieve wrench for i-th link and j-th joint at time t.
-gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t = 0);
+gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j,
+                     int t = 0);
 
 /// Retrieve wrench for i-th link and j-th joint at time t.
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t = 0);
 
-
-}  // namespace gtdynamics
+} // namespace gtdynamics
