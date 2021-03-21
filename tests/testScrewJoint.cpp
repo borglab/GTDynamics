@@ -16,6 +16,7 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
@@ -29,9 +30,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor) {
-  std::string file_path = std::string(URDF_PATH) + "/test/simple_urdf.urdf";
-  LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
-  LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
+  using simple_urdf::robot;
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
 
   JointParams parameters;
   parameters.effort_type = JointEffortType::Actuated;
@@ -39,10 +40,9 @@ TEST(Joint, params_constructor) {
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  auto j1 = boost::make_shared<ScrewJoint>("j1", Pose3(Rot3(), Point3(0, 0, 2)),
-                                           l1, l2, parameters,
-                                           gtsam::Vector3(1, 0, 0), 0.5);
-  j1->setID(123);
+  auto j1 = boost::make_shared<ScrewJoint>(
+      123, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
+      gtsam::Vector3(1, 0, 0), 0.5);
 
   // name
   EXPECT(assert_equal(j1->name(), "j1"));

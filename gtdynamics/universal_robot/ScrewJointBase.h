@@ -54,11 +54,6 @@ class ScrewJointBase : public JointTyped {
   Pose3 pMcCom(double q,
                gtsam::OptionalJacobian<6, 1> pMc_H_q = boost::none) const {
     if (pMc_H_q) {
-      // For reference:
-      // pMc = jMi * exp([S]q)
-      // pMc_H_q = pMc_H_exp * exp_H_q
-      //         = pMc_H_exp * exp_H_Sq * Sq_pMc_H_q
-      //         = pMc_H_exp * exp_H_Sq * [S]
       gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
       Vector6 Sq = cScrewAxis_ * q;
       Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
@@ -74,13 +69,10 @@ class ScrewJointBase : public JointTyped {
   Pose3 cMpCom(double q,
                gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const {
     if (cMp_H_q) {
-      // For reference:
-      // cMp = inverse(pMc(q))
-      // cMp_H_q = cMp_H_pMc * pMc_H_q
       gtsam::Matrix6 cMp_H_pMc;
       Vector6 pMc_H_q;
-      Pose3 pMc = pMcCom(q, pMc_H_q);      // pMc(q)    ->  pMc_H_q
-      Pose3 cMp = pMc.inverse(cMp_H_pMc);  // cMp(pMc)  ->  cMp_H_pMc
+      Pose3 pMc = pMcCom(q, pMc_H_q);     // pMc(q)    ->  pMc_H_q
+      Pose3 cMp = pMc.inverse(cMp_H_pMc); // cMp(pMc)  ->  cMp_H_pMc
       *cMp_H_q = cMp_H_pMc * pMc_H_q;
       return cMp;
     } else {
@@ -99,11 +91,11 @@ class ScrewJointBase : public JointTyped {
    * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(unsigned char id, const std::string &name, const Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
-      : JointTyped(name, wTj, parent_link, child_link, parameters),
+      : JointTyped(id, name, wTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}

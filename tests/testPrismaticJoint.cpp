@@ -17,6 +17,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -28,9 +29,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
-  std::string file_path = std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf";
-  LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
-  LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
+  using simple_urdf_prismatic::robot;
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
 
   JointParams parameters;
   parameters.effort_type = JointEffortType::Actuated;
@@ -41,14 +42,13 @@ TEST(Joint, params_constructor_prismatic) {
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
   auto j1 = boost::make_shared<PrismaticJoint>(
-      "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, parameters,
-      j1_axis);
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2,
+      parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
 
   // get, set ID
-  j1->setID(1);
   EXPECT(j1->id() == 1);
 
   // name

@@ -41,7 +41,7 @@ TEST(Joint, params_constructor) {
 
   const gtsam::Vector3 axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  gtdynamics::RevoluteJoint j1("j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
+  gtdynamics::RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
                                parameters, axis);
 
   // name
@@ -55,11 +55,11 @@ TEST(Joint, params_constructor) {
   EXPECT(j1.otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_12comRest, j1.transformFrom(l2, 0.0)));
   EXPECT(assert_equal(T_21comRest, j1.transformTo(l2, 0.0)));
 
+  EXPECT(assert_equal(T_21comRest.inverse(), j1.transformFrom(l2, 0.0)));
+  
   // transform from (rotating -pi/2)
   Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
   Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
