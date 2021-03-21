@@ -1,15 +1,12 @@
 // GTDynamics Wrapper Interface File
 
+virtual class gtsam::NonlinearFactor;
+
 namespace gtdynamics {
 
 /********************** factors **********************/
-//TODO Pybind11 can't find this symbol, thus we can't inherit in the class declarations below.
-// Needs more investigation.
-#include <gtsam/nonlinear/NonlinearFactor.h>
-virtual class gtsam::NonlinearFactor;
-
 #include <gtdynamics/factors/PoseFactor.h>
-class PoseFactor {
+class PoseFactor : gtsam::NonlinearFactor {
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base* cost_model,
              const gtdynamics::Joint* joint);
@@ -141,9 +138,8 @@ class TrapezoidalTwistColloFactor{
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class LinkParams {
-    LinkParams(const string& _name, const double _mass, 
-                const Matrix _inertia, const gtsam::Pose3& _wTl,
-                const gtsam::Pose3& _lTcom);
+    LinkParams(const string &name_, const double mass_, const Matrix &inertia_,
+              const gtsam::Pose3 &wTl_, const gtsam::Pose3 &lTcom_);
     string name;
     double mass;
     Matrix inertia;
@@ -379,11 +375,12 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
       const Vector &joint_vels, const Vector &joint_accels) const;
 
-  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t,
-      const gtdynamics::JointValues &joint_angles,
-      const gtdynamics::JointValues &joint_vels,
-      const gtdynamics::JointValues &torques) const;
+  //TODO(Varun) wrapper is segfaulting because of this overload. Do we need it?
+  // gtsam::NonlinearFactorGraph forwardDynamicsPriors(
+  //     const gtdynamics::Robot &robot, const int t,
+  //     const gtdynamics::JointValues &joint_angles,
+  //     const gtdynamics::JointValues &joint_vels,
+  //     const gtdynamics::JointValues &torques) const;
 
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
       const gtdynamics::Robot &robot, const int num_steps,
@@ -528,16 +525,96 @@ class DynamicsSymbol {
   gtsam::Key key() const;
 };
 
-gtdynamics::DynamicsSymbol PoseKey(int i, int t);
-gtdynamics::DynamicsSymbol TwistKey(int i, int t);
-gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t);
-gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t);
-gtdynamics::DynamicsSymbol JointAngleKey(int j, int t);
-gtdynamics::DynamicsSymbol JointVelKey(int j, int t);
-gtdynamics::DynamicsSymbol JointAccelKey(int j, int t);
-gtdynamics::DynamicsSymbol TorqueKey(int j, int t);
+namespace internal {
+  gtdynamics::DynamicsSymbol JointAngleKey(int j, int t);
+  gtdynamics::DynamicsSymbol JointVelKey(int j, int t);
+  gtdynamics::DynamicsSymbol JointAccelKey(int j, int t);
+  gtdynamics::DynamicsSymbol TorqueKey(int j, int t);
+  gtdynamics::DynamicsSymbol TwistKey(int i, int t);
+  gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t);
+  gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t);
+  gtdynamics::DynamicsSymbol PoseKey(int i, int t);
+}
+
 gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
+
+
+///////////////////// Key Methods /////////////////////
+// template<T = {double}>
+// void InsertJointAngle(gtsam::Values* values, int j, int t, T value);
+
+// template<T = {double}>
+// void InsertJointAngle(gtsam::Values *values, int j, T value);
+
+// gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
+
+// template<T = {double}>
+// T JointAngle(const gtsam::Values &values, int j, int t);
+
+// template<T = {double}>
+// void InsertJointVel(gtsam::Values *values, int j, int t, T value);
+
+// template<T = {double}>
+// void InsertJointVel(gtsam::Values *values, int j, T value);
+
+// gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
+
+// template<T = {double}>
+// T JointVel(const gtsam::Values &values, int j, int t);
+
+// template<T = {double}>
+// void InsertJointAccel(gtsam::Values *values, int j, int t, T value);
+
+// template<T = {double}>
+// void InsertJointAccel(gtsam::Values *values, int j, T value);
+
+// gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
+
+// template<T = {double}>
+// T JointAccel(const gtsam::Values &values, int j, int t);
+
+// template<T = {double}>
+// void InsertTorque(gtsam::Values *values, int j, int t, T value);
+
+// template<T = {double}>
+// void InsertTorque(gtsam::Values *values, int j, T value);
+
+// gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
+
+// template<T = {double}>
+// T Torque(const gtsam::Values &values, int j, int t);
+
+// void InsertPose(gtsam::Values *values, int i, int t, gtsam::Pose3 value);
+
+// void InsertPose(gtsam::Values *values, int i, gtsam::Pose3 value);
+
+// gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t);
+
+// void InsertTwist(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+
+// void InsertTwist(gtsam::Values *values, int j, gtsam::Vector6 value);
+
+// gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t);
+
+// gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t);
+
+// void InsertTwistAccel(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+
+// void InsertTwistAccel(gtsam::Values *values, int j, gtsam::Vector6 value);
+
+// gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t);
+
+// gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t);
+
+// void InsertWrench(gtsam::Values *values, int i, int j, int t, gtsam::Vector6 value);
+
+// void InsertWrench(gtsam::Values *values, int i, int j, gtsam::Vector6 value);
+
+// gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
+
+// gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
+
 }
 
