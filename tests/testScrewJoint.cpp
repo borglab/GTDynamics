@@ -67,16 +67,12 @@ TEST(Joint, params_constructor) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2, 0.0)));
+  EXPECT(assert_equal(T_12comRest, j1->transformTo(l1, 0.0)));
   EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0.0)));
 
-  // transform from (rotating -pi/2)
+  // transform to (rotating -pi/2)
   Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(-0.125, 1, 1));
   Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0.125, 1, -1));
-  EXPECT(assert_equal(T_12com, j1->transformFrom(l2, -M_PI / 2)));
-  EXPECT(assert_equal(T_21com, j1->transformFrom(l1, -M_PI / 2)));
-
-  // transform to (rotating -pi/2)
   EXPECT(assert_equal(T_12com, j1->transformTo(l1, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
 

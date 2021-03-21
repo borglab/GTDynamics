@@ -75,11 +75,11 @@ TEST(Joint, params_constructor) {
   // rest transform
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
   EXPECT(assert_equal(T_21comRest, j1.transformTo(l2, 0.0)));
-  EXPECT(assert_equal(T_21comRest.inverse(), j1.transformFrom(l2, 0.0)));
+  EXPECT(assert_equal(T_21comRest.inverse(), j1.transformTo(l1, 0.0)));
 
   // transform from
-  EXPECT(assert_equal(T_12com, j1.transformFrom(l2, q)));
-  EXPECT(assert_equal(T_21com, j1.transformFrom(l1, q)));
+  EXPECT(assert_equal(T_12com, j1.transformTo(l1, q)));
+  EXPECT(assert_equal(T_21com, j1.transformTo(l2, q)));
 
   // Calculate enumerical derivatives of transformTo.
   auto f1 = [&](double q) { return j1.transformTo(l1, q); };
