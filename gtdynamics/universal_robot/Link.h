@@ -13,13 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -28,12 +21,19 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -55,10 +55,10 @@ struct LinkParams {
 
   LinkParams() {}
 
-  LinkParams(const std::string& _name, const double _mass, 
-             const gtsam::Matrix3& _inertia, const gtsam::Pose3& _wTl,
-             const gtsam::Pose3& _lTcom):
-             name(_name), mass(_mass), inertia(_inertia), wTl(_wTl), lTcom(_lTcom) {}
+  LinkParams(const std::string &name_, const double mass_,
+             const gtsam::Matrix3 &inertia_, const gtsam::Pose3 &wTl_,
+             const gtsam::Pose3 &lTcom_)
+      : name(name_), mass(mass_), inertia(inertia_), wTl(wTl_), lTcom(lTcom_) {}
 };
 
 /**
