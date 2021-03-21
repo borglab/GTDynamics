@@ -30,7 +30,7 @@ namespace gtdynamics {
 
 // TODO(Gerry) JointTyped was an intermediate step towards adding ball and
 // sphere joints but we never finished it because for other joint types,
-// transformFrom and transformTo can't just use a double as the joint angle
+// transformTo can't just use a double as the joint angle
 // argument, they need Unit3 or Rot3
 
 class JointTyped : public Joint {
@@ -51,11 +51,6 @@ class JointTyped : public Joint {
  public:
   /// Inherit constructors
   using Joint::Joint;
-
-  /// Inherit overloaded functions
-  using Joint::transformFrom;
-  using Joint::transformTwistAccelFrom;
-  using Joint::transformTwistFrom;
 
   /**
    * @name Abstract
@@ -124,62 +119,13 @@ class JointTyped : public Joint {
       gtsam::OptionalJacobian<6, N> H_q = boost::none,
       gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
     gtsam::Matrix66 H_relPose;
-    Pose3 error = T_other.compose(transformFrom(link, q, H_q), H_T_other,
+    LinkSharedPtr other = otherLink(link);
+    Pose3 error = T_other.compose(transformTo(other, q, H_q), H_T_other,
                                   H_q ? &H_relPose : 0);
     if (H_q) {
       *H_q = H_relPose * (*H_q);
     }
     return error;
-  }
-
-  /**
-   * Convenience method to return the transform from this link com to the other
-   * link com frame.
-   */
-  Pose3 transformFrom(const LinkSharedPtr &link, JointCoordinate q,
-                      gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
-    return transformTo(otherLink(link), q, H_q);
-  }
-
-  /// Convenience method to return the pose of other link com.
-  Pose3 transformFrom(
-      const LinkSharedPtr &link, JointCoordinate q, const gtsam::Pose3 &T_this,
-      gtsam::OptionalJacobian<6, N> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_T_this = boost::none) const {
-    return transformTo(otherLink(link), q, T_this, H_q, H_T_this);
-  }
-
-  /**
-   * Convenience method to return the twist of the other link given this link's
-   * twist and joint angle.
-   */
-  gtsam::Vector6 transformTwistFrom(
-      const LinkSharedPtr &link, JointCoordinate q, JointVelocity q_dot,
-      boost::optional<gtsam::Vector6> this_twist = boost::none,
-      gtsam::OptionalJacobian<6, N> H_q = boost::none,
-      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none) const {
-    return transformTwistTo(otherLink(link), q, q_dot, this_twist, H_q, H_q_dot,
-                            H_this_twist);
-  }
-
-  /** Convenience method. Return the twist acceleration of the other link given
-   * this link's twist accel and a Values object containing this joint's angle
-   * value and derivatives.
-   */
-  gtsam::Vector6 transformTwistAccelFrom(
-      const LinkSharedPtr &link, JointCoordinate q, JointVelocity q_dot,
-      JointAcceleration q_ddot,
-      boost::optional<gtsam::Vector6> other_twist = boost::none,
-      boost::optional<gtsam::Vector6> this_twist_accel = boost::none,
-      gtsam::OptionalJacobian<6, N> H_q = boost::none,
-      gtsam::OptionalJacobian<6, N> H_q_dot = boost::none,
-      gtsam::OptionalJacobian<6, N> H_q_ddot = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_this_twist_accel = boost::none) const {
-    return transformTwistAccelTo(otherLink(link), q, q_dot, q_ddot, other_twist,
-                                 this_twist_accel, H_q, H_q_dot, H_q_ddot,
-                                 H_other_twist, H_this_twist_accel);
   }
 
   /**
