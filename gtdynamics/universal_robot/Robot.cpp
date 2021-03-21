@@ -180,7 +180,7 @@ gtsam::Values Robot::forwardKinematics(
 
       // Compute the twist. TODO(frank): pass just one value.
       const Vector6 V_2 =
-          joint->transformTwistFrom(t, link1, known_values, V_1);
+          joint->transformTwistTo(t, link2, known_values, V_1);
 
       // Save pose and twist if link 2 has not been assigned yet.
       auto pose_key = internal::PoseKey(link2->id(), t);
@@ -259,8 +259,8 @@ FKResults Robot::forwardKinematics(
 
       // If joint_velocities are provided, compute the twist, else default to zero.
       const Vector6 V_2 =
-          joint_velocities ? joint_ptr->transformTwistFrom(
-                                 link1, joint_angle,
+          joint_velocities ? joint_ptr->transformTwistTo(
+                                 link2, joint_angle,
                                  joint_velocities->at(joint_ptr->name()), V_1)
                            : gtsam::Z_6x1;
 

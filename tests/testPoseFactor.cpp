@@ -105,6 +105,7 @@ TEST(PoseFactor, breaking_rr) {
 
   double joint_angle = M_PI / 4;
 
+  auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
   auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
       robot.joint("j1"));
@@ -116,11 +117,11 @@ TEST(PoseFactor, breaking_rr) {
   PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
 
-  EXPECT(assert_equal(
-      gtsam::Z_6x1,
-      factor.evaluateError(base_pose, j1->transformFrom(l2, joint_angle),
-                           joint_angle),
-      1e-6));
+  EXPECT(assert_equal(gtsam::Z_6x1,
+                      factor.evaluateError(base_pose,
+                                           j1->transformTo(l1, joint_angle),
+                                           joint_angle),
+                      1e-6));
 }
 
 // Test non-zero cMp rotation case
