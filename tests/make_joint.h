@@ -1,9 +1,23 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  make_joint.h
+ * @brief Function often used in tests
+ * @author: Frank Dellaert
+ */
+
 #pragma once
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
+/// Create a joint with given rest transform cMp and screw-axis in child frame.
 boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
                                                    gtsam::Vector6 cScrewAxis) {
   // create links
