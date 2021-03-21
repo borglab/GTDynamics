@@ -50,9 +50,10 @@ class ScrewJointBase : public JointTyped {
   Vector6 pScrewAxis_;
   Vector6 cScrewAxis_;
 
+ public:
   /// Return transform of child link com frame w.r.t parent link com frame
-  Pose3 pMcCom(double q,
-               gtsam::OptionalJacobian<6, 1> pMc_H_q = boost::none) const {
+  Pose3 parentTchild(double q, gtsam::OptionalJacobian<6, 1> pMc_H_q =
+                                   boost::none) const override {
     if (pMc_H_q) {
       gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
       Vector6 Sq = cScrewAxis_ * q;
@@ -65,18 +66,19 @@ class ScrewJointBase : public JointTyped {
     }
   }
 
+protected:
   /// Return transform of parent link com frame w.r.t child link com frame
   Pose3 cMpCom(double q,
                gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const {
     if (cMp_H_q) {
       gtsam::Matrix6 cMp_H_pMc;
       Vector6 pMc_H_q;
-      Pose3 pMc = pMcCom(q, pMc_H_q);     // pMc(q)    ->  pMc_H_q
-      Pose3 cMp = pMc.inverse(cMp_H_pMc); // cMp(pMc)  ->  cMp_H_pMc
+      Pose3 pMc = parentTchild(q, pMc_H_q); // pMc(q)    ->  pMc_H_q
+      Pose3 cMp = pMc.inverse(cMp_H_pMc);   // cMp(pMc)  ->  cMp_H_pMc
       *cMp_H_q = cMp_H_pMc * pMc_H_q;
       return cMp;
     } else {
-      return pMcCom(q).inverse();
+      return parentTchild(q).inverse();
     }
   }
 
@@ -117,7 +119,7 @@ class ScrewJointBase : public JointTyped {
   Pose3 transformTo(
       const LinkSharedPtr &link, double q,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
-    return isChildLink(link) ? cMpCom(q, H_q) : pMcCom(q, H_q);
+    return isChildLink(link) ? cMpCom(q, H_q) : parentTchild(q, H_q);
   }
 
   /**

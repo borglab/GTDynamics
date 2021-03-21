@@ -73,9 +73,9 @@ TEST(Joint, params_constructor) {
   Pose3 T_21com(Rot3::Rx(-q), Point3(0, 1, -1));
 
   // rest transform
-  Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
-  EXPECT(assert_equal(T_21comRest, j1.transformTo(l2, 0.0)));
-  EXPECT(assert_equal(T_21comRest.inverse(), j1.transformTo(l1, 0.0)));
+  Pose3 M21(Rot3::Rx(0), Point3(0, 0, -2)), M12 = M21.inverse();
+  EXPECT(assert_equal(M21, j1.transformTo(l2, 0.0)));
+  EXPECT(assert_equal(M12, j1.transformTo(l1, 0.0)));
 
   // transform from
   EXPECT(assert_equal(T_12com, j1.transformTo(l1, q)));

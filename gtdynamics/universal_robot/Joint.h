@@ -225,6 +225,14 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   virtual Type type() const = 0;
 
   /**
+   * Abstract method. Return the pose of the child link in the parent link
+   * frame, given a Values object containing the joint coordinate.
+   */
+  virtual Pose3
+  parentTchild(const gtsam::Values &q, size_t t = 0,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+
+  /**
    * Abstract method. Return the transform from the other link com to this link
    * com frame given a Values object containing this joint's angle Value
    */

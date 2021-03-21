@@ -118,18 +118,11 @@ void Robot::print() const {
     LinkSharedPtr child_link = joint->child();
 
     gtsam::Values joint_angles;
-    joint_angles.insertDouble(joint->key(), 0);
+    InsertJointAngle(&joint_angles, joint->id(), 0.0);
 
-    std::cout << "\tpMc_com: "
-              << joint->transformTo(0, child_link, joint_angles)
-                     .rotation()
-                     .rpy()
-                     .transpose()
-              << ", "
-              << joint->transformTo(0, child_link, joint_angles)
-                     .translation()
-                     .transpose()
-              << "\n";
+    auto pTc = joint->parentTchild(joint_angles);
+    std::cout << "\tpMc_com: " << pTc.rotation().rpy().transpose() << ", "
+              << pTc.translation().transpose() << "\n";
   }
 }
 

@@ -59,6 +59,14 @@ class JointTyped : public Joint {
   ///@{
 
   /**
+   * Abstract method. Return the pose of the child link in the parent link
+   * frame, given the joint coordinate.
+   */
+  virtual Pose3
+  parentTchild(JointCoordinate q,
+               gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+
+  /**
    * Abstract method. Return the transform from the other link com to this link
    * com frame.
    */
@@ -126,6 +134,16 @@ class JointTyped : public Joint {
       *H_q = H_relPose * (*H_q);
     }
     return error;
+  }
+
+  /**
+   * Return the pose of the child link in the parent link frame, given a Values
+   * object containing the joint coordinate.
+   */
+  Pose3 parentTchild(
+      const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    return parentTchild(JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
   /**
