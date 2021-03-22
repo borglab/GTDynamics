@@ -18,9 +18,9 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
   using simple_rr::robot;
 
@@ -29,21 +29,19 @@ int main(int argc, char** argv) {
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  auto graph_builder = DynamicsGraph();
-  auto graph =
-      graph_builder.dynamicsFactorGraph(robot, 0, gravity, planar_axis);
+  DynamicsGraph graph_builder(gravity, planar_axis);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Add forward dynamics priors to factor graph.
-  JointValues joint_angles, joint_vels, joint_torques;
-  joint_angles["joint_1"] = 0;
-  joint_vels["joint_1"] = 0;
-  joint_torques["joint_1"] = 0;
-  joint_angles["joint_2"] = 0;
-  joint_vels["joint_2"] = 0;
-  joint_torques["joint_2"] = 0;
+  gtsam::Values values;
+  InsertJointAngle(&values, 1, 0.0);
+  InsertJointVel(&values, 1, 0.0);
+  InsertTorque(&values, 1, 0.0);
+  InsertJointAngle(&values, 2, 0.0);
+  InsertJointVel(&values, 2, 0.0);
+  InsertTorque(&values, 2, 0.0);
 
-  auto priorFactors = graph_builder.forwardDynamicsPriors(
-      robot, 0, joint_angles, joint_vels, joint_torques);
+  auto priorFactors = graph_builder.forwardDynamicsPriors(robot, 0, values);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
