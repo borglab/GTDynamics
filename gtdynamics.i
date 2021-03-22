@@ -137,22 +137,16 @@ class TrapezoidalTwistColloFactor{
 
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
-class LinkParams {
-    LinkParams(const string &name_, const double mass_, const Matrix &inertia_,
-              const gtsam::Pose3 &wTl_, const gtsam::Pose3 &lTcom_);
-    string name;
-    double mass;
-    Matrix inertia;
-    gtsam::Pose3 wTl;
-    gtsam::Pose3 lTcom; 
-};
-
 class Link  {
     Link();
-    Link(const gtdynamics::LinkParams &params);
+    Link(int id, const string &name_, const double mass_,
+         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
+         const gtsam::Pose3 &lTcom_);
+    Link(int id, const string &name_, const double mass_,
+         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
+         const gtsam::Pose3 &lTcom_, bool is_fixed);
 
     gtdynamics::Link* shared();
-    void setID(unsigned char id);
     int id() const;
     void addJoint(gtdynamics::JointSharedPtr joint_ptr);
     const gtsam::Pose3 &wTl() const;
@@ -207,21 +201,21 @@ virtual class JointTyped : gtdynamics::Joint {
 virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
-  RevoluteJoint(const string &name, const gtsam::Pose3 &wTj,
+  RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
                 const gtdynamics::LinkSharedPtr &parent_link,
                 const gtdynamics::LinkSharedPtr &child_link,
                 const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
-  PrismaticJoint(const string &name, const gtsam::Pose3 &wTj,
+  PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
                  const gtdynamics::LinkSharedPtr &parent_link,
                  const gtdynamics::LinkSharedPtr &child_link,
                  const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
-  ScrewJoint(const string &name, const gtsam::Pose3 &wTj,
+  ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
              const gtdynamics::LinkSharedPtr &parent_link,
              const gtdynamics::LinkSharedPtr &child_link,
              const gtdynamics::JointParams &parameters, const Vector &axis,
@@ -255,12 +249,15 @@ class Robot {
 
   void print() const;
 
-  FKResults forwardKinematics(
-      const gtdynamics::JointValues &joint_angles,
-      const boost::optional<gtdynamics::JointValues> &joint_velocities,
-      const boost::optional<string> &prior_link_name,
-      const gtsam::Pose3 &prior_link_pose,
-      const Vector &prior_link_twist) const;
+  gtsam::Values forwardKinematics(
+      const gtsam::Values &known_values) const;
+
+  gtsam::Values forwardKinematics(
+      const gtsam::Values &known_values, size_t t) const;
+
+  gtsam::Values forwardKinematics(
+      const gtsam::Values &known_values, size_t t,
+      const boost::optional<std::string> &prior_link_name) const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
@@ -317,29 +314,21 @@ class DynamicsGraph {
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const gtdynamics::Robot &robot, const int t,
-      const gtdynamics::JointValues &joint_angles,
-      const gtdynamics::JointValues &joint_vels,
-      const gtdynamics::FKResults &fk_results);
+      const gtsam::Values &known_values);
 
   gtsam::GaussianFactorGraph linearFDPriors(
       const gtdynamics::Robot &robot, const int t,
-      const gtdynamics::JointValues &torque_values);
+      const gtsam::Values &known_values);
 
   gtsam::GaussianFactorGraph linearIDPriors(
       const gtdynamics::Robot &robot, const int t,
-      const gtdynamics::JointValues &joint_accels);
+      const gtsam::Values &known_values);
 
   gtsam::Values linearSolveFD(const gtdynamics::Robot &robot, const int t,
-                              const gtdynamics::JointValues &joint_angles,
-                              const gtdynamics::JointValues &joint_vels,
-                              const gtdynamics::JointValues &torques,
-                              const gtdynamics::FKResults &fk_results);
+                              const gtsam::Values &known_values);
 
   gtsam::Values linearSolveID(const gtdynamics::Robot &robot, const int t,
-                              const gtdynamics::JointValues &joint_angles,
-                              const gtdynamics::JointValues &joint_vels,
-                              const gtdynamics::JointValues &torques,
-                              const gtdynamics::FKResults &fk_results);
+                              const gtsam::Values &known_values);
 
   gtsam::NonlinearFactorGraph qFactors(
       const gtdynamics::Robot &robot, const int t,
@@ -374,12 +363,9 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
       const Vector &joint_vels, const Vector &joint_accels) const;
 
-  //TODO(Varun) wrapper is segfaulting because of this overload. Do we need it?
-  // gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-  //     const gtdynamics::Robot &robot, const int t,
-  //     const gtdynamics::JointValues &joint_angles,
-  //     const gtdynamics::JointValues &joint_vels,
-  //     const gtdynamics::JointValues &torques) const;
+  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
+      const gtdynamics::Robot &robot, const int t,
+      const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
       const gtdynamics::Robot &robot, const int num_steps,
@@ -432,22 +418,22 @@ class DynamicsGraph {
   static Vector jointTorques(const gtdynamics::Robot &robot,
                                     const gtsam::Values &result, const int t);
 
-  static gtdynamics::JointValues jointAccelsMap(const gtdynamics::Robot &robot,
+  static gtdynamics::JointValueMap jointAccelsMap(const gtdynamics::Robot &robot,
                                            const gtsam::Values &result,
                                            const int t);
 
   /* return joint velocities as std::map<name, velocity>. */
-  static gtdynamics::JointValues jointVelsMap(const gtdynamics::Robot &robot,
+  static gtdynamics::JointValueMap jointVelsMap(const gtdynamics::Robot &robot,
                                          const gtsam::Values &result,
                                          const int t);
 
   /* return joint angles as std::map<name, angle>. */
-  static gtdynamics::JointValues jointAnglesMap(const gtdynamics::Robot &robot,
+  static gtdynamics::JointValueMap jointAnglesMap(const gtdynamics::Robot &robot,
                                            const gtsam::Values &result,
                                            const int t);
 
   /* return joint torques as std::map<name, torque>. */
-  static gtdynamics::JointValues jointTorquesMap(const gtdynamics::Robot &robot,
+  static gtdynamics::JointValueMap jointTorquesMap(const gtdynamics::Robot &robot,
                                             const gtsam::Values &result,
                                             const int t);
 

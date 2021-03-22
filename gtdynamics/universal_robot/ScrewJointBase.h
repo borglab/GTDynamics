@@ -221,19 +221,6 @@ protected:
     return priors;
   }
 
-  /// Return forward dynamics priors on torque.
-  gtsam::GaussianFactorGraph linearFDPriors(
-      size_t t, const JointValues &torques,
-      const OptimizerSetting &opt) const override {
-    gtsam::GaussianFactorGraph priors;
-    gtsam::Vector1 rhs;
-    rhs << torques.at(name());
-    // TODO(alej`andro): use optimizer settings
-    priors.add(internal::TorqueKey(id(), t), gtsam::I_1x1, rhs,
-               gtsam::noiseModel::Constrained::All(1));
-    return priors;
-  }
-
   /// Return linearized acceleration factors.
   gtsam::GaussianFactorGraph linearAFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
@@ -258,34 +245,6 @@ protected:
     return graph;
   }
 
-  /// Return linearized acceleration factors.
-  gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const std::map<std::string, Pose3> &poses,
-      const std::map<std::string, Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
-      const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const override {
-    gtsam::GaussianFactorGraph graph;
-
-    const Pose3 T_wi1 = poses.at(parent()->name());
-    const Pose3 T_wi2 = poses.at(child()->name());
-    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const Vector6 V_i2 = twists.at(child()->name());
-    const Vector6 S_i2_j = screwAxis(child_link_);
-    const double v_j = joint_vels.at(name());
-
-    // twist acceleration factor
-    // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
-    Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-    graph.add(internal::TwistAccelKey(child()->id(), t), gtsam::I_6x6,
-              internal::TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
-              internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
-              gtsam::noiseModel::Constrained::All(6));
-
-    return graph;
-  }
-
   /// Return linearized dynamics factors.
   gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
@@ -322,45 +281,6 @@ protected:
     return graph;
   }
 
-  /// Return linearized dynamics factors.
-  gtsam::GaussianFactorGraph linearDynamicsFactors(
-      size_t t, const std::map<std::string, Pose3> &poses,
-      const std::map<std::string, Vector6> &twists,
-      const std::map<std::string, double> &joint_angles,
-      const std::map<std::string, double> &joint_vels,
-      const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const override {
-    gtsam::GaussianFactorGraph graph;
-
-    const Pose3 T_wi1 = poses.at(parent()->name());
-    const Pose3 T_wi2 = poses.at(child()->name());
-    const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-    const Vector6 S_i2_j = screwAxis(child_link_);
-
-    // torque factor
-    // S_i_j^T * F_i_j - tau = 0
-    gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
-    graph.add(internal::WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
-              internal::TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
-              gtsam::noiseModel::Constrained::All(1));
-
-    // wrench equivalence factor
-    // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
-    Vector6 rhs_weq = Vector6::Zero();
-    graph.add(internal::WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
-              internal::WrenchKey(child()->id(), id(), t),
-              T_i2i1.AdjointMap().transpose(), rhs_weq,
-              gtsam::noiseModel::Constrained::All(6));
-
-    // wrench planar factor
-    if (planar_axis) {
-      gtsam::Matrix36 J_wrench = getPlanarJacobian(*planar_axis);
-      graph.add(internal::WrenchKey(child()->id(), id(), t), J_wrench,
-                gtsam::Vector3::Zero(), gtsam::noiseModel::Constrained::All(3));
-    }
-
-    return graph;
-  }
 
   /// Return joint limit factors.
   gtsam::NonlinearFactorGraph jointLimitFactors(

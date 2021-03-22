@@ -21,6 +21,8 @@
 
 namespace gtdynamics {
 
+#define GTD_PRINT(x) ((x).print(#x, _GTDKeyFormatter))
+
 /// Custom exception that properly formats dynamics keys.
 class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {
   mutable std::string gtd_message_;

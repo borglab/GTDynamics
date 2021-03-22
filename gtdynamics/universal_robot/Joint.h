@@ -41,10 +41,6 @@ class Link;   // forward declaration
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
 
-// TODO(G+S): change torque type from map<string, double> to gtsam::Values
-/// Map from joint name to joint angle/vel/accel/torque
-using JointValues = std::map<std::string, double>;
-
 enum JointEffortType { Actuated, Unactuated, Impedance };
 
 /**
@@ -296,14 +292,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
         "joint type.  A linearized version may not be possible.");
   }
 
-  /// Abstract method. Returns forward dynamics priors on torque
-  virtual gtsam::GaussianFactorGraph linearFDPriors(
-      size_t t, const JointValues &torques, const OptimizerSetting &opt) const {
-    throw std::runtime_error(
-        "linearFDPriors not implemented for the desired "
-        "joint type.  A linearized version may not be possible.");
-  }
-
   /**
    * @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
    *
@@ -315,29 +303,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   virtual gtsam::GaussianFactorGraph linearAFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
-    throw std::runtime_error(
-        "linearAFactors not implemented for the desired "
-        "joint type.  A linearized version may not be possible.");
-  }
-
-  /**
-   * @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
-   *
-   * @param[in] t The timestep for which to generate factors.
-   * @param[in] poses Link poses.
-   * @param[in] twists Link twists.
-   * @param[in] joint_angles Joint angles.
-   * @param[in] joint_vels Joint velocities.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @param[in] planar_axis   Optional planar axis.
-   * @return linear accel factors.
-   */
-  virtual gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
-      const std::map<std::string, gtsam::Vector6> &twists,
-      const JointValues &joint_angles, const JointValues &joint_vels,
-      const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
     throw std::runtime_error(
         "linearAFactors not implemented for the desired "
