@@ -93,77 +93,77 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   EXPECT(assert_equal(wTb_t[1], pose));
 }
 
-TEST(InitializeSolutionUtils, InverseKinematics) {
-  auto robot =
-      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+// TEST(InitializeSolutionUtils, InverseKinematics) {
+//   auto robot =
+//       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = robot.link("l1");
-  auto l2 = robot.link("l2");
+//   auto l1 = robot.link("l1");
+//   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->wTcom();
-  std::vector<Pose3> wTb_t = {Pose3(Rot3::RzRyRx(0, 0, 0), Point3(1, 0, 2.5))};
+//   Pose3 wTb_i = l2->wTcom();
+//   std::vector<Pose3> wTb_t = {Pose3(Rot3::RzRyRx(0, 0, 0), Point3(1, 0, 2.5))};
 
-  std::vector<double> ts = {10};
-  double dt = 1;
+//   std::vector<double> ts = {10};
+//   double dt = 1;
 
-  Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+//   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
+//   ContactPoints contact_points = {
+//       {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
 
-  /**
-   * The aim of this test is to initialize a trajectory for the simple two-link
-   * that translates link l2 1 meter in the x direction and down 0.5 meters in
-   * the y direction all the while ensuring that the end of link l1 remains in
-   * contact with the ground. When initialized in it's upright position, the
-   * two link robot is in a singular state. This is because the gradients of
-   * the ContactKinematicsPoseFactor with respect to the x and y are equally 0.
-   * This prevents link 1 from rotating about the revolute joint as to remain
-   * in contact with the ground. This problem is addressed by adding a small
-   * amount of gaussian noise to the initial solution, which prevents it from
-   * being a singular configuration.
-   *
-   *  1. Desired trajectory obtained by adding noise to the initial solution:
-   *  z                   |                 ı
-   *  |                   | l2              |  l2
-   *   ¯¯ x               |                 |
-   *                      |       =>         \
-   *                      | l1                \  l1
-   *                      |                    \
-   * ¯                  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-   *
-   *  2. Optimized trajectory without noise in the solution initialization:
-   *                      |
-   *                      | l2              |
-   *                      |                 | l2
-   *                      |       =>        |
-   *                      | l1              |
-   *                      |                 | l1 :(
-   *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
-   */
-  double gaussian_noise = 1e-8;
-  gtsam::Values init_vals = InitializeSolutionInverseKinematics(
-      robot, l2->name(), wTb_i, wTb_t, ts, dt, gaussian_noise,
-      contact_points);
+//   /**
+//    * The aim of this test is to initialize a trajectory for the simple two-link
+//    * that translates link l2 1 meter in the x direction and down 0.5 meters in
+//    * the y direction all the while ensuring that the end of link l1 remains in
+//    * contact with the ground. When initialized in it's upright position, the
+//    * two link robot is in a singular state. This is because the gradients of
+//    * the ContactKinematicsPoseFactor with respect to the x and y are equally 0.
+//    * This prevents link 1 from rotating about the revolute joint as to remain
+//    * in contact with the ground. This problem is addressed by adding a small
+//    * amount of gaussian noise to the initial solution, which prevents it from
+//    * being a singular configuration.
+//    *
+//    *  1. Desired trajectory obtained by adding noise to the initial solution:
+//    *  z                   |                 ı
+//    *  |                   | l2              |  l2
+//    *   ¯¯ x               |                 |
+//    *                      |       =>         \
+//    *                      | l1                \  l1
+//    *                      |                    \
+//    * ¯                  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+//    *
+//    *  2. Optimized trajectory without noise in the solution initialization:
+//    *                      |
+//    *                      | l2              |
+//    *                      |                 | l2
+//    *                      |       =>        |
+//    *                      | l1              |
+//    *                      |                 | l1 :(
+//    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
+//    */
+//   double gaussian_noise = 1e-8;
+//   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
+//       robot, l2->name(), wTb_i, wTb_t, ts, dt, gaussian_noise,
+//       contact_points);
 
-  EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
+//   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 
-  Pose3 pose = Pose(init_vals, l1->id()) * oTc_l1;
-  EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
+//   Pose3 pose = Pose(init_vals, l1->id()) * oTc_l1;
+//   EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
 
-  double joint_angle = JointAngle(init_vals, robot.joint("j1")->id());
-  EXPECT(assert_equal(0.0, joint_angle, 1e-3));
+//   double joint_angle = JointAngle(init_vals, robot.joint("j1")->id());
+//   EXPECT(assert_equal(0.0, joint_angle, 1e-3));
 
-  size_t T = std::roundl(ts[0] / dt);
-  for (size_t t = 0; t <= T; t++) {
-    pose = Pose(init_vals, l1->id(), t) * oTc_l1;
-    EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
-  }
+//   size_t T = std::roundl(ts[0] / dt);
+//   for (size_t t = 0; t <= T; t++) {
+//     pose = Pose(init_vals, l1->id(), t) * oTc_l1;
+//     EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
+//   }
 
-  pose = Pose(init_vals, l2->id(), T);
-  EXPECT(assert_equal(wTb_t[0], pose, 1e-3));
-  pose = Pose(init_vals, l1->id(), T) * oTc_l1;
-  EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
-}
+//   pose = Pose(init_vals, l2->id(), T);
+//   EXPECT(assert_equal(wTb_t[0], pose, 1e-3));
+//   pose = Pose(init_vals, l1->id(), T) * oTc_l1;
+//   EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
+// }
 
 TEST(InitializeSolutionUtils, ZeroValues) {
   auto robot =
@@ -221,70 +221,70 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   }
 }
 
-TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
-  auto robot =
-      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+// TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
+//   auto robot =
+//       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  auto l1 = robot.link("l1");
-  auto l2 = robot.link("l2");
+//   auto l1 = robot.link("l1");
+//   auto l2 = robot.link("l2");
 
-  Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
+//   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
 
-  ContactPoint c = ContactPoint{oTc_l1.translation(), 1, 0.0};
-  ContactPoints p0{{l1->name(), c}};
-  ContactPoints p1{};
-  ContactPoints p2{{l1->name(), c}};
+//   ContactPoint c = ContactPoint{oTc_l1.translation(), 1, 0.0};
+//   ContactPoints p0{{l1->name(), c}};
+//   ContactPoints p1{};
+//   ContactPoints p2{{l1->name(), c}};
 
-  std::vector<gtdynamics::ContactPoints> phase_contact_points = {p0, p1, p2};
-  std::vector<gtdynamics::Robot> robots(3, robot);
+//   std::vector<gtdynamics::ContactPoints> phase_contact_points = {p0, p1, p2};
+//   std::vector<gtdynamics::Robot> robots(3, robot);
 
-  // Number of descretized timesteps for each phase.
-  int steps_per_phase = 100;
-  std::vector<int> phase_steps(3, steps_per_phase);
-  double gaussian_noise = 1e-8;
+//   // Number of descretized timesteps for each phase.
+//   int steps_per_phase = 100;
+//   std::vector<int> phase_steps(3, steps_per_phase);
+//   double gaussian_noise = 1e-8;
 
-  Pose3 wTb_i = l2->wTcom();
+//   Pose3 wTb_i = l2->wTcom();
 
-  std::vector<Pose3> wTb_t;
-  std::vector<double> ts;
+//   std::vector<Pose3> wTb_t;
+//   std::vector<double> ts;
 
-  wTb_t.push_back(Pose3(Rot3(), Point3(1, 0, 0.2)));
-  ts.push_back(3 * steps_per_phase);
+//   wTb_t.push_back(Pose3(Rot3(), Point3(1, 0, 0.2)));
+//   ts.push_back(3 * steps_per_phase);
 
-  // Initial values for transition graphs.
-  std::vector<gtsam::Values> transition_graph_init;
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
-      robots[0], 1 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
-      robots[1], 2 * steps_per_phase, gaussian_noise, p0));
+//   // Initial values for transition graphs.
+//   std::vector<gtsam::Values> transition_graph_init;
+//   transition_graph_init.push_back(gtdynamics::ZeroValues(
+//       robots[0], 1 * steps_per_phase, gaussian_noise, p0));
+//   transition_graph_init.push_back(gtdynamics::ZeroValues(
+//       robots[1], 2 * steps_per_phase, gaussian_noise, p0));
 
-  double dt = 1.0;
+//   double dt = 1.0;
 
-  gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
-      robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
-      dt, gaussian_noise, phase_contact_points);
+//   gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
+//       robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
+//       dt, gaussian_noise, phase_contact_points);
 
-  Pose3 pose = Pose(init_vals, l2->id());
-  EXPECT(assert_equal(wTb_i, pose, 1e-3));
+//   Pose3 pose = Pose(init_vals, l2->id());
+//   EXPECT(assert_equal(wTb_i, pose, 1e-3));
 
-  for (size_t t = 0; t < wTb_t.size(); t++) {
-    pose = Pose(init_vals, l2->id(), ts[t]);
-    EXPECT(assert_equal(wTb_t[t], pose, 1e-3));
-  }
+//   for (size_t t = 0; t < wTb_t.size(); t++) {
+//     pose = Pose(init_vals, l2->id(), ts[t]);
+//     EXPECT(assert_equal(wTb_t[t], pose, 1e-3));
+//   }
 
-  // Make sure contacts respected during portions of the trajectory with contact
-  // points.
-  for (size_t t = 0; t < 100; t++) { // Phase 0.
-    Pose3 wTol1 = Pose(init_vals, l1->id(), t);
-    Pose3 wTc = wTol1 * oTc_l1;
-    EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
-  }
-  for (size_t t = 200; t < 299; t++) { // Phase 2.
-    Pose3 wTol1 = Pose(init_vals, l1->id(), t);
-    Pose3 wTc = wTol1 * oTc_l1;
-    EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
-  }
-}
+//   // Make sure contacts respected during portions of the trajectory with contact
+//   // points.
+//   for (size_t t = 0; t < 100; t++) { // Phase 0.
+//     Pose3 wTol1 = Pose(init_vals, l1->id(), t);
+//     Pose3 wTc = wTol1 * oTc_l1;
+//     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
+//   }
+//   for (size_t t = 200; t < 299; t++) { // Phase 2.
+//     Pose3 wTol1 = Pose(init_vals, l1->id(), t);
+//     Pose3 wTc = wTol1 * oTc_l1;
+//     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
+//   }
+// }
 
 int main() {
   TestResult tr;

@@ -96,6 +96,7 @@ Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
   // Compute forward dynamics to obtain remaining link poses.
   Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
   InsertPose(&values, robot.link(link_name)->id(), wTl_i_processed);
+  InsertTwist(&values, robot.link(link_name)->id(), gtsam::Z_6x1);
   return robot.forwardKinematics(values, 0, link_name);
 }
 
@@ -133,6 +134,7 @@ Values InitializeSolutionInterpolation(
     }
 
     InsertPose(&init_vals, robot.link(link_name)->id(), t, wTl_t);
+    InsertTwist(&init_vals, robot.link(link_name)->id(), t, gtsam::Z_6x1);
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
     for (auto &&kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
