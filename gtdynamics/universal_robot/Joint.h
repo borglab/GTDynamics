@@ -221,25 +221,16 @@ class Joint : public boost::enable_shared_from_this<Joint> {
                boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
   /**
-   * Abstract method. Return the transform from the other link com to this link
-   * com frame given a Values object containing this joint's angle Value
-   */
-  virtual Pose3 transformTo(
-      size_t t, const LinkSharedPtr &link, const gtsam::Values &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
-
-  /**
    * Abstract method. Return the relative pose of the specified link [link2] in
    * the other link's [link1] reference frame.
    */
-  Pose3 relativePoseOf(
-      const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
-    return transformTo(t, otherLink(link2), q, H_q);
-  }
+  virtual Pose3
+  relativePoseOf(const LinkSharedPtr &link2, const gtsam::Values &q,
+                 size_t t = 0,
+                 boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
   /**
-   * Abstract method. Return the world pose of the specified link [link2], given
+   * Return the world pose of the specified link [link2], given
    * the world pose of the other link [link1].
    */
   Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1,
@@ -247,7 +238,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
                boost::optional<gtsam::Matrix &> H_wT1 = boost::none,
                boost::optional<gtsam::Matrix &> H_q = boost::none) const {
     auto T12 = relativePoseOf(link2, q, t, H_q);
-    return wT1.compose(T12, H_wT1);  // H_wT2_T12 is identity
+    return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
   }
 
   /** Abstract method. Return the twist of the other link given this link's
@@ -398,27 +389,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       size_t t, const OptimizerSetting &opt) const = 0;
 
   /**@}*/
-
-  /**
-   * Return the pose of this link com given a Values object containing this
-   * joint's angle Value, and also given the other link's pose.
-   */
-  Pose3 transformTo(
-      size_t t, const LinkSharedPtr &link, const gtsam::Values &q,
-      const gtsam::Pose3 &T_other,
-      boost::optional<gtsam::Matrix &> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
-    LinkSharedPtr other = otherLink(link);
-    if (!H_q) {
-      return T_other.compose(transformTo(t, other, q), H_T_other);
-    } else {
-      gtsam::Matrix66 H_relPose;
-      Pose3 error =
-          T_other.compose(transformTo(t, other, q, H_q), H_T_other, H_relPose);
-      *H_q = H_relPose * (*H_q);
-      return error;
-    }
-  }
 
   /// Joint-induced twist in child frame
   virtual gtsam::Vector6 childTwist(const gtsam::Values &values,

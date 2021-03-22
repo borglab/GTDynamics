@@ -30,7 +30,7 @@ namespace gtdynamics {
 
 // TODO(Gerry) JointTyped was an intermediate step towards adding ball and
 // sphere joints but we never finished it because for other joint types,
-// transformTo can't just use a double as the joint angle
+// relativePoseOf can't just use a double as the joint angle
 // argument, they need Unit3 or Rot3
 
 class JointTyped : public Joint {
@@ -67,12 +67,23 @@ class JointTyped : public Joint {
                gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /**
-   * Abstract method. Return the transform from the other link com to this link
-   * com frame.
+   * Abstract method. Return the relative pose of the specified link [link2] in
+   * the other link's [link1] reference frame.
    */
-  virtual Pose3 transformTo(
-      const LinkSharedPtr &link, JointCoordinate q,
-      gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+  virtual Pose3
+  relativePoseOf(const LinkSharedPtr &link2, JointCoordinate q,
+                 gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+
+  /**
+   * Return the relative pose of the specified link [link2] in
+   * the other link's [link1] reference frame.
+   * @throw KeyDoesNotExist if the appropriate key is missing from values
+   */
+  Pose3 relativePoseOf(
+      const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    return relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t), H_q);
+  }
 
   /**
    * Abstract method. Return the twist of this link given the other link's twist
@@ -121,19 +132,15 @@ class JointTyped : public Joint {
    */
   ///@{
 
-  /// Convenience method. Return the pose of this link com
-  Pose3 transformTo(
-      const LinkSharedPtr &link, JointCoordinate q, const gtsam::Pose3 &T_other,
-      gtsam::OptionalJacobian<6, N> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_T_other = boost::none) const {
-    gtsam::Matrix66 H_relPose;
-    LinkSharedPtr other = otherLink(link);
-    Pose3 error = T_other.compose(transformTo(other, q, H_q), H_T_other,
-                                  H_q ? &H_relPose : 0);
-    if (H_q) {
-      *H_q = H_relPose * (*H_q);
-    }
-    return error;
+  /**
+   * Return the world pose of the specified link [link2], given
+   * the world pose of the other link [link1].
+   */
+  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, JointCoordinate q,
+               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
+               gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
+    auto T12 = relativePoseOf(link2, q, H_q);
+    return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
   }
 
   /**
@@ -144,17 +151,6 @@ class JointTyped : public Joint {
       const gtsam::Values &q, size_t t = 0,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     return parentTchild(JointAngle<JointCoordinate>(q, id(), t), H_q);
-  }
-
-  /**
-   * Return the transform from the other link com to this link com frame given a
-   * Values object containing this joint's angle value.
-   * @throw ValuesKeyDoesNotExist if the appropriate key is missing from values
-   */
-  Pose3 transformTo(
-      size_t t, const LinkSharedPtr &link, const gtsam::Values &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    return transformTo(link, JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
   /**

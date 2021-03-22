@@ -92,8 +92,9 @@ class PoseFactor
     Eigen::Matrix<double, 6, 6> wTc_hat_H_wTp, H_wTc_hat;
     Eigen::Matrix<double, 6, N> wTc_hat_H_q;
     auto wTc_hat =
-        joint_->transformTo(joint_->child(), q, wTp, H_q ? &wTc_hat_H_q : 0,
-                            H_wTp ? &wTc_hat_H_wTp : 0);
+        joint_->poseOf(joint_->child(), wTp, q, H_wTp ? &wTc_hat_H_wTp : 0,
+                       H_q ? &wTc_hat_H_q : 0);
+    // TODO(frank): logmap derivative is close to identity when error is small
     gtsam::Vector6 error =
         wTc.logmap(wTc_hat, H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
     if (H_wTp) *H_wTp = H_wTc_hat * wTc_hat_H_wTp;
