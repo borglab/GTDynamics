@@ -87,7 +87,7 @@ gtsam::Values InitializePosesAndJoints(const Robot& robot,
                                        const std::string& link_name, double t_i,
                                        const std::vector<double>& timesteps,
                                        double dt, const gtsam::Sampler& sampler,
-                                       std::vector<gtsam::Pose3>& wTl_dt);
+                                       std::vector<gtsam::Pose3>* wTl_dt);
 
 /**
  * @fn Initialize solution via linear interpolation of initial and final pose.
