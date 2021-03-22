@@ -84,7 +84,7 @@ TEST(Robot, removeLink) {
 }
 
 TEST(Robot, forwardKinematics) {
-  Robot simple_robot =
+  Robot robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   Values values;
@@ -92,11 +92,11 @@ TEST(Robot, forwardKinematics) {
   InsertJointVel(&values, 0, 0.0);
 
   // not fixing a link would cause an exception
-  THROWS_EXCEPTION(simple_robot.forwardKinematics(values));
+  THROWS_EXCEPTION(robot.forwardKinematics(values));
 
   // test fk at rest
-  simple_robot.link("l1")->fix();
-  Values results = simple_robot.forwardKinematics(values);
+  robot.link("l1")->fix();
+  Values results = robot.forwardKinematics(values);
 
   Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 1));
   Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 3));
@@ -114,7 +114,7 @@ TEST(Robot, forwardKinematics) {
   InsertJointAngle(&values2, 0, M_PI_2);
   InsertJointVel(&values2, 0, 1.0);
 
-  Values results2 = simple_robot.forwardKinematics(values2);
+  Values results2 = robot.forwardKinematics(values2);
 
   Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));
   Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
@@ -127,30 +127,27 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_move, Twist(results2, 1)));
 
   // test fk with moving joint and moving base
-  simple_robot.link("l1")->unfix();
+  robot.link("l1")->unfix();
   Pose3 T_wl1_float(Rot3::Rx(-M_PI_2), Point3(0, 1, 1));
   Pose3 T_wl2_float(Rot3::Rx(0), Point3(0, 2, 2));
   Vector6 V_l1_float, V_l2_float;
   V_l1_float << 1, 0, 0, 0, -1, 0;
   V_l2_float << 2, 0, 0, 0, -2, 2;
 
-  JointValues joint_angles, joint_vels;
-  joint_angles["j1"] = M_PI_2;
-  joint_vels["j1"] = 1;
+  Values values3 = values2;
+  InsertPose(&values3, 0, T_wl1_float);
+  InsertTwist(&values3, 0, V_l1_float);
 
   std::string prior_link_name = "l1";
-  FKResults fk_results = simple_robot.forwardKinematics(
-      joint_angles, joint_vels, prior_link_name, T_wl1_float, V_l1_float);
-  LinkPoses poses = fk_results.first;
-  LinkTwists twists = fk_results.second;
-  EXPECT(assert_equal(T_wl1_float, poses.at("l1")));
-  EXPECT(assert_equal(T_wl2_float, poses.at("l2")));
-  EXPECT(assert_equal(V_l1_float, twists.at("l1")));
-  EXPECT(assert_equal(V_l2_float, twists.at("l2")));
+  Values results3 = robot.forwardKinematics(values3, 0, prior_link_name);
+  EXPECT(assert_equal(T_wl1_float, Pose(results3, 0)));
+  EXPECT(assert_equal(T_wl2_float, Pose(results3, 1)));
+  EXPECT(assert_equal(V_l1_float, Twist(results3, 0)));
+  EXPECT(assert_equal(V_l2_float, Twist(results3, 1)));
 }
 
 TEST(Robot, forwardKinematics_rpr) {
-  Robot rpr_robot = CreateRobotFromFile(
+  Robot robot = CreateRobotFromFile(
       std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Values values;
@@ -162,8 +159,8 @@ TEST(Robot, forwardKinematics_rpr) {
   InsertJointVel(&values, 3, 0.0);
 
   // test fk at rest
-  rpr_robot.link("link_0")->fix();
-  Values fk_results = rpr_robot.forwardKinematics(values);
+  robot.link("link_0")->fix();
+  Values fk_results = robot.forwardKinematics(values);
 
   Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
   Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 0.5));
@@ -193,7 +190,7 @@ TEST(Robot, forwardKinematics_rpr) {
   InsertJointAngle(&values2, 3, 0.0);
   InsertJointVel(&values2, 3, 0.0);
 
-  fk_results = rpr_robot.forwardKinematics(values2);
+  fk_results = robot.forwardKinematics(values2);
 
   Pose3 T_wl0_move(Rot3::identity(), Point3(0, 0, 0.1));
   Pose3 T_wl1_move(Rot3::Ry(M_PI_2), Point3(0.3, 0, 0.2));
