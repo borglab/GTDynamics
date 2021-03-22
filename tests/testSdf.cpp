@@ -271,14 +271,14 @@ TEST(Joint, urdf_constructor_revolute) {
   Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
   Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
 
-  EXPECT(assert_equal(T_12comRest, j1->transformTo(l1, 0.0)));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0.0)));
+  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0.0)));
+  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0.0)));
 
   // transform to (rotating -pi/2)
   Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
   Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
-  EXPECT(assert_equal(T_12com, j1->transformTo(l1, -M_PI / 2)));
-  EXPECT(assert_equal(T_21com, j1->transformTo(l2, -M_PI / 2)));
+  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, -M_PI / 2)));
+  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, -M_PI / 2)));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -335,9 +335,9 @@ TEST(Joint, sdf_constructor_revolute) {
   Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
   Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0, 0.0)));
-  EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->transformTo(l0, M_PI / 2)));
+  EXPECT(assert_equal(T_01comRest, j1->relativePoseOf(l1, 0.0)));
+  EXPECT(assert_equal(T_01com_neg, j1->relativePoseOf(l1, -M_PI / 2)));
+  EXPECT(assert_equal(T_01com_pos, j1->relativePoseOf(l1, M_PI / 2)));
 
   // constructor for j2
   JointParams j2_parameters;
@@ -361,9 +361,9 @@ TEST(Joint, sdf_constructor_revolute) {
   Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
   Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
-  EXPECT(assert_equal(T_12com_rest, j2->transformTo(l1, 0.0)));
-  EXPECT(assert_equal(T_12com_pi_2, j2->transformTo(l1, M_PI / 2.0)));
-  EXPECT(assert_equal(T_12com_pi_4, j2->transformTo(l1, M_PI / 4.0), 1e-3));
+  EXPECT(assert_equal(T_12com_rest, j2->relativePoseOf(l2, 0.0)));
+  EXPECT(assert_equal(T_12com_pi_2, j2->relativePoseOf(l2, M_PI / 2.0)));
+  EXPECT(assert_equal(T_12com_pi_4, j2->relativePoseOf(l2, M_PI / 4.0), 1e-3));
 }
 
 /**
@@ -461,14 +461,14 @@ TEST(Joint, urdf_constructor_prismatic) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
   Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->transformTo(l1, 0), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2, 0), 1e-5));
+  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0), 1e-5));
+  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0), 1e-5));
 
   // transform to (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
   Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
-  EXPECT(assert_equal(T_12com, j1->transformTo(l1, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->transformTo(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, 1), 1e-5));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -528,9 +528,9 @@ TEST(Joint, sdf_constructor_screw) {
   Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4 - 0.125));
   Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4 + 0.125));
 
-  EXPECT(assert_equal(T_01comRest, j1->transformTo(l0, 0)));
-  EXPECT(assert_equal(T_01com_neg, j1->transformTo(l0, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->transformTo(l0, M_PI / 2)));
+  EXPECT(assert_equal(T_01comRest, j1->relativePoseOf(l1, 0)));
+  EXPECT(assert_equal(T_01com_neg, j1->relativePoseOf(l1, -M_PI / 2)));
+  EXPECT(assert_equal(T_01com_pos, j1->relativePoseOf(l1, M_PI / 2)));
 }
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
@@ -573,9 +573,9 @@ TEST(Robot, simple_urdf) {
 
   // Check transforms between link CoM frames.
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -2)),
-                      j1->transformTo(j1->child(), 0)));
+                      j1->relativePoseOf(j1->parent(), 0)));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
-                      j1->transformTo(j1->parent(), 0)));
+                      j1->relativePoseOf(j1->child(), 0)));
 }
 
 // Check the links in the simple RR robot.

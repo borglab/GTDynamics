@@ -55,11 +55,11 @@ class ScrewJointBase : public JointTyped {
   Pose3 parentTchild(double q, gtsam::OptionalJacobian<6, 1> pMc_H_q =
                                    boost::none) const override {
     if (pMc_H_q) {
-      gtsam::Matrix6 pMc_H_exp, exp_H_Sq;
+      gtsam::Matrix6 exp_H_Sq;
       Vector6 Sq = cScrewAxis_ * q;
       Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
-      Pose3 pMc = pMccom_.compose(exp, boost::none, pMc_H_exp);
-      *pMc_H_q = pMc_H_exp * exp_H_Sq * cScrewAxis_;
+      Pose3 pMc = pMccom_.compose(exp); // derivative in exp is identity!
+      *pMc_H_q = exp_H_Sq * cScrewAxis_;
       return pMc;
     } else {
       return pMccom_ * Pose3::Expmap(cScrewAxis_ * q);
@@ -68,8 +68,9 @@ class ScrewJointBase : public JointTyped {
 
 protected:
   /// Return transform of parent link com frame w.r.t child link com frame
-  Pose3 cMpCom(double q,
+  Pose3 childTparent(double q,
                gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const {
+    // TODO(frank): don't go via inverse, specialize in base class
     if (cMp_H_q) {
       gtsam::Matrix6 cMp_H_pMc;
       Vector6 pMc_H_q;
@@ -111,15 +112,30 @@ protected:
   }
 
   // inherit overloads
-  using JointTyped::transformTo;
+  using JointTyped::poseOf;
+  using JointTyped::relativePoseOf;
   using JointTyped::transformTwistAccelTo;
   using JointTyped::transformTwistTo;
 
-  /// Return the transform from the other link com to this link com frame
-  Pose3 transformTo(
-      const LinkSharedPtr &link, double q,
+  /**
+   * Return the relative pose of the specified link [link2] in the other link's
+   * [link1] reference frame.
+   */
+  Pose3 relativePoseOf(
+      const LinkSharedPtr &link2, double q,
       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
-    return isChildLink(link) ? cMpCom(q, H_q) : parentTchild(q, H_q);
+    return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
+  }
+
+  /**
+   * Return the world pose of the specified link [link2], given the world pose
+   * of the other link [link1].
+   */
+  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, double q,
+               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
+               gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+    auto T12 = relativePoseOf(link2, q, H_q);
+    return wT1.compose(T12, H_wT1);  // H_wT2_T12 is identity
   }
 
   /**
@@ -133,11 +149,14 @@ protected:
                                boost::none) const override {
     Vector6 other_twist_ = other_twist ? *other_twist : Vector6::Zero();
 
-    auto this_ad_other = transformTo(link, q).AdjointMap();
+    auto other = otherLink(link);
+    auto this_ad_other = relativePoseOf(other, q).AdjointMap();
 
     if (H_q) {
-      *H_q = AdjointMapJacobianQ(q, transformTo(link, 0.0), screwAxis(link)) *
-             other_twist_;
+      // TODO(frank): really, zero below? Check derivatives
+      *H_q =
+          AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screwAxis(link)) *
+          other_twist_;
     }
     if (H_q_dot) {
       *H_q_dot = screwAxis(link);
@@ -170,7 +189,8 @@ protected:
 
     // i = other link
     // j = this link
-    Pose3 jTi = transformTo(link, q);
+    auto other = otherLink(link);
+    Pose3 jTi = relativePoseOf(other, q);
 
     Vector6 this_twist_accel =
         jTi.AdjointMap() * other_twist_accel_ +
@@ -181,7 +201,8 @@ protected:
       *H_other_twist_accel = jTi.AdjointMap();
     }
     if (H_q) {
-      *H_q = AdjointMapJacobianQ(q, transformTo(link, 0.0), screw_axis_) *
+      // TODO(frank): really, zero below? Check derivatives. Also, copy/pasta from above?
+      *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screw_axis_) *
              other_twist_accel_;
     }
     if (H_q_dot) {
@@ -204,9 +225,11 @@ protected:
     return screw_axis_.transpose() * (wrench ? *wrench : Vector6::Zero());
   }
 
+  // TODO(frank): document and possibly eliminate
   gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
                                               double q) const override {
-    return AdjointMapJacobianQ(q, transformTo(link, q), screwAxis(link));
+    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), q),
+                               screwAxis(link));
   }
 
   /// Return forward dynamics priors on torque.
