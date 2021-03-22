@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testDynamicsGraph.cpp
- * @brief test forward and inverse dynamics factor graph
+ * @file  testSimulator.cpp
+ * @brief test Simulator class
  * @author: Yetong Zhang
  */
 
