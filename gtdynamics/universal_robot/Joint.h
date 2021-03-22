@@ -228,6 +228,28 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       size_t t, const LinkSharedPtr &link, const gtsam::Values &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
+  /**
+   * Abstract method. Return the relative pose of the specified link [link2] in
+   * the other link's [link1] reference frame.
+   */
+  Pose3 relativePoseOf(
+      const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+    return transformTo(t, otherLink(link2), q, H_q);
+  }
+
+  /**
+   * Abstract method. Return the world pose of the specified link [link2], given
+   * the world pose of the other link [link1].
+   */
+  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1,
+               const gtsam::Values &q, size_t t = 0,
+               boost::optional<gtsam::Matrix &> H_wT1 = boost::none,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+    auto T12 = relativePoseOf(link2, q, t, H_q);
+    return wT1.compose(T12, H_wT1);  // H_wT2_T12 is identity
+  }
+
   /** Abstract method. Return the twist of the other link given this link's
    * twist and a Values object containing this joint's angle Value.
    */
@@ -253,6 +275,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const = 0;
+
+
   /**
    * @fn Abstract method to return pose factors in the dynamics graph.
    *
