@@ -135,6 +135,11 @@ gtsam::Values Robot::forwardKinematics(
   // Use prior_link if given.
   if (prior_link_name) {
     root_link = link(*prior_link_name);
+    if (!values.exists(internal::PoseKey(root_link->id(), t)) ||
+        !values.exists(internal::TwistKey(root_link->id(), t))) {
+      throw std::invalid_argument(
+          "forwardKinematics: known_values does not contain pose/twist.");
+    }
   } else {
     // Check for fixed links, root link will be last fixed link if any.
     for (auto &&link : links()) {
@@ -145,8 +150,8 @@ gtsam::Values Robot::forwardKinematics(
       }
     }
     if (!root_link) {
-      throw std::runtime_error(
-          "No prior link given and cannot find a fixed link");
+      throw std::runtime_error("forwardKinematics: no prior link given and "
+                               "cannot find a fixed link.");
     }
   }
 
@@ -163,7 +168,8 @@ gtsam::Values Robot::forwardKinematics(
 
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->getJoints()) {
-      Pose3 T_w2; Vector6 V_2;
+      Pose3 T_w2;
+      Vector6 V_2;
       std::tie(T_w2, V_2) =
           joint->otherPoseTwist(link1, T_w1, V_1, known_values, t);
 
