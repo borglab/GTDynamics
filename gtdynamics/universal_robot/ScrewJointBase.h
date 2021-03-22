@@ -112,6 +112,8 @@ protected:
 
   // inherit overloads
   using JointTyped::transformTo;
+  using JointTyped::poseOf;
+  using JointTyped::relativePoseOf;
   using JointTyped::transformTwistAccelTo;
   using JointTyped::transformTwistTo;
 

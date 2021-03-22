@@ -97,11 +97,17 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(numericalH1, H1));
   EXPECT(assert_equal(numericalH2, H2));
 
-  // Calculate numerical derivatives of poseOf.
+  // Calculate numerical derivatives of poseOf with respect to q.
   auto g1 = [&](double q) { return j1.poseOf(l1, wT2, q); };
   numericalH1 = numericalDerivative11<Pose3, double>(g1, q);
   auto g2 = [&](double q) { return j1.poseOf(l2, wT1, q); };
   numericalH2 = numericalDerivative11<Pose3, double>(g2, q);
+
+  // Calculate numerical derivatives of poseOf with respect to other link pose.
+  // auto h1 = [&](double q) { return j1.poseOf(l1, wT2, q); };
+  // numericalH1 = numericalDerivative11<Pose3, double>(h1, q);
+  // auto h2 = [&](double q) { return j1.poseOf(l2, wT1, q); };
+  // numericalH2 = numericalDerivative11<Pose3, double>(h2, q);
 
   // Check poseOf with derivatives.
   Matrix66 dummy1, dummy2;
@@ -110,13 +116,13 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(numericalH1, H1));
   EXPECT(assert_equal(numericalH2, H2));
 
-  // Check values-based TransformTo, with derivatives.
+  // Check values-based relativePoseOf, with derivatives.
   Values values;
-  const size_t t = 0;
-  InsertJointAngle(&values, 1, q);
+  const size_t t = 777;
+  InsertJointAngle(&values, 1, t, q);
   Matrix H1v, H2v;
-  EXPECT(assert_equal(T12, j1.transformTo(t, l1, values, H1v)));
-  EXPECT(assert_equal(T21, j1.transformTo(t, l2, values, H2v)));
+  EXPECT(assert_equal(T21, j1.relativePoseOf(l1, values, t, H1v)));
+  EXPECT(assert_equal(T12, j1.relativePoseOf(l2, values, t, H2v)));
   EXPECT(assert_equal(numericalH1, H1v));
   EXPECT(assert_equal(numericalH2, H2v));
 
