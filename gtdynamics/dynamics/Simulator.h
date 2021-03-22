@@ -111,11 +111,8 @@ public:
    * @param dt duration for the time step
    */
   void step(const gtsam::Values &torques, const double dt) {
-    std::cout << "in" << std::endl;
     forwardDynamics(torques);
-    std::cout << "FD" << std::endl;
     integration(dt);
-    std::cout << "INT" << std::endl;
     t_++;
   }
 

@@ -48,12 +48,12 @@ using FKResults = std::pair<LinkPoses, LinkTwists>;
  * be fed into an optimization pipeline.
  */
 class Robot {
-private:
+ private:
   // For quicker/easier access to links and joints.
   LinkMap name_to_link_;
   JointMap name_to_joint_;
 
-public:
+ public:
   /** Default Constructor */
   Robot() {}
 

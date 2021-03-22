@@ -93,6 +93,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   EXPECT(assert_equal(wTb_t[1], pose));
 }
 
+// TODO(frank): resolve with Alejandro, tracked in issue #76
 // TEST(InitializeSolutionUtils, InverseKinematics) {
 //   auto robot =
 //       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -221,6 +222,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   }
 }
 
+// TODO(frank): resolve with Alejandro, tracked in issue #76
 // TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 //   auto robot =
 //       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");

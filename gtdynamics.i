@@ -142,6 +142,9 @@ class Link  {
     Link(int id, const string &name_, const double mass_,
          const Matrix &inertia_, const gtsam::Pose3 &wTl_,
          const gtsam::Pose3 &lTcom_);
+    Link(int id, const string &name_, const double mass_,
+         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
+         const gtsam::Pose3 &lTcom_, bool is_fixed);
 
     gtdynamics::Link* shared();
     int id() const;
@@ -360,7 +363,6 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
       const Vector &joint_vels, const Vector &joint_accels) const;
 
-  // TODO(Varun) wrapper is segfaulting because of this overload. Do we need it?
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
       const gtdynamics::Robot &robot, const int t,
       const gtsam::Values &known_values) const;

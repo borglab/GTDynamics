@@ -28,8 +28,7 @@ class TestFourBar(unittest.TestCase):
         link1 = gtd.Link(1, "l1", 1, inertia, l1_pose, com)
         link2 = gtd.Link(2, "l2", 1, inertia, l2_pose, com)
         link3 = gtd.Link(3, "l3", 1, inertia, l3_pose, com)
-        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose, com)
-        link4.fix() # TODO(frank): thorn in my side!
+        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose, com, True)
 
         links = {"l1": link1, "l2": link2, "l3": link3, "l4": link4}
 
