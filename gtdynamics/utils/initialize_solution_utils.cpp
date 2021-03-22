@@ -75,29 +75,35 @@ Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
                                 const std::string& link_name, double t_i,
                                 const std::vector<double>& timesteps, double dt,
                                 const Sampler& sampler,
-                                std::vector<Pose3> *wTl_dt) {
+                                std::vector<Pose3>* wTl_dt) {
   // Linearly interpolated pose for link at each discretized timestep.
   *wTl_dt = InterpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
 
-  for (auto &pose : *wTl_dt) {
+  for (auto& pose : *wTl_dt) {
     pose = AddGaussianNoiseToPose(pose, sampler);
   }
 
-  // Iteratively solve the inverse kinematics problem while statisfying
-  // the contact pose constraint.
-  Values values;
+  // TODO(frank): I'm not really understanding all this. Refactor in future?
+  Values values, fk_input;
 
   // Initial pose and joint angles are known a priori.
-  for (auto &&joint : robot.joints()) {
-    InsertJointAngle(&values, joint->id(), sampler.sample()[0]);
-    InsertJointVel(&values, joint->id(), sampler.sample()[0]);
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&fk_input, joint->id(), sampler.sample()[0]);
+    InsertJointVel(&fk_input, joint->id(), sampler.sample()[0]);
+    InsertJointAngle(&values, joint->id(), 0, sampler.sample()[0]);
   }
 
   // Compute forward dynamics to obtain remaining link poses.
   Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
-  InsertPose(&values, robot.link(link_name)->id(), wTl_i_processed);
-  InsertTwist(&values, robot.link(link_name)->id(), gtsam::Z_6x1);
-  return robot.forwardKinematics(values, 0, link_name);
+  InsertPose(&fk_input, robot.link(link_name)->id(), wTl_i_processed);
+  InsertTwist(&fk_input, robot.link(link_name)->id(), gtsam::Z_6x1);
+  auto fk_results = robot.forwardKinematics(fk_input, 0, link_name);
+
+  for (auto&& link : robot.links()) {
+    size_t i = link->id();
+    InsertPose(&values, i, Pose(fk_results, i));
+  }
+  return values;
 }
 
 Values InitializeSolutionInterpolation(
