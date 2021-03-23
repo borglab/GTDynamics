@@ -221,6 +221,14 @@ class Joint : public boost::enable_shared_from_this<Joint> {
                boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
 
   /**
+   * Abstract method. Return the pose of the parent link in the child link
+   * frame, given a Values object containing the joint coordinate.
+   */
+  virtual Pose3
+  childTparent(const gtsam::Values &q, size_t t = 0,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+
+  /**
    * Abstract method. Return the relative pose of the specified link [link2] in
    * the other link's [link1] reference frame.
    */

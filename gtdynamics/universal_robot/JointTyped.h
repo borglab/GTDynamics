@@ -34,11 +34,11 @@ namespace gtdynamics {
 // argument, they need Unit3 or Rot3
 
 class JointTyped : public Joint {
- public:
+public:
   using This = JointTyped;
 
-  using JointCoordinateType = double;         // standin for template
-  using JointCoordinateTangentType = double;  // standin for template
+  using JointCoordinateType = double;        // standin for template
+  using JointCoordinateTangentType = double; // standin for template
   using JointCoordinate = JointCoordinateType;
   using JointVelocity = JointCoordinateTangentType;
   using JointAcceleration = JointCoordinateTangentType;
@@ -48,7 +48,7 @@ class JointTyped : public Joint {
   using VectorN = Eigen::Matrix<double, N, 1>;
   using MatrixN = Eigen::Matrix<double, N, N>;
 
- public:
+public:
   /// Inherit constructors
   using Joint::Joint;
 
@@ -67,23 +67,18 @@ class JointTyped : public Joint {
                gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /**
-   * Abstract method. Return the relative pose of the specified link [link2] in
-   * the other link's [link1] reference frame.
+   * Abstract method. Return the pose of the parent link in the child link
+   * frame, given the joint coordinate.
    */
   virtual Pose3
-  relativePoseOf(const LinkSharedPtr &link2, JointCoordinate q,
-                 gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+  childTparent(JointCoordinate q,
+               gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
-  /**
-   * Return the relative pose of the specified link [link2] in
-   * the other link's [link1] reference frame.
-   * @throw KeyDoesNotExist if the appropriate key is missing from values
-   */
-  Pose3 relativePoseOf(
-      const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    return relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t), H_q);
-  }
+  /// Joint-induced twist in child frame
+  virtual gtsam::Vector6 childTwist(JointVelocity q_dot) const = 0;
+
+  /// Joint-induced twist in parent frame
+  virtual gtsam::Vector6 parentTwist(JointVelocity q_dot) const = 0;
 
   /**
    * Abstract method. Return the twist of this link given the other link's twist
@@ -120,8 +115,9 @@ class JointTyped : public Joint {
   /// Calculate AdjointMap jacobian w.r.t. joint coordinate q.
   /// TODO(gerry + stephanie): change to calculate the jacobian of Ad_T(v) wrt T
   /// rather than jacobian of Ad_T wrt q (and put in utils or PR to GTSAM)
-  virtual gtsam::Matrix6 AdjointMapJacobianJointAngle(
-      const LinkSharedPtr &link, JointCoordinate q) const = 0;
+  virtual gtsam::Matrix6
+  AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
+                               JointCoordinate q) const = 0;
 
   ///@}
 
@@ -133,6 +129,58 @@ class JointTyped : public Joint {
   ///@{
 
   /**
+   * Return the pose of the child link in the parent link frame, given a Values
+   * object containing the joint coordinate.
+   */
+  Pose3 parentTchild(
+      const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    return parentTchild(JointAngle<JointCoordinate>(q, id(), t), H_q);
+  }
+
+  /**
+   * Return the pose of the parent link in the child link frame, given a Values
+   * object containing the joint coordinate.
+   */
+  Pose3 childTparent(
+      const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    return childTparent(JointAngle<JointCoordinate>(q, id(), t), H_q);
+  }
+
+  /// Joint-induced twist in child frame
+  gtsam::Vector6 childTwist(const gtsam::Values &values,
+                            size_t t = 0) const override {
+    return childTwist(JointVel<JointVelocity>(values, id(), t));
+  }
+
+  /// Joint-induced twist in parent frame
+  gtsam::Vector6 parentTwist(const gtsam::Values &values,
+                             size_t t = 0) const override {
+    return parentTwist(JointVel<JointVelocity>(values, id(), t));
+  }
+
+  /**
+   * Return the relative pose of the specified link [link2] in the other link's
+   * [link1] reference frame.
+   */
+  Pose3 relativePoseOf(const LinkSharedPtr &link2, JointCoordinate q,
+                       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+    return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
+  }
+
+  /**
+   * Return the relative pose of the specified link [link2] in
+   * the other link's [link1] reference frame.
+   * @throw KeyDoesNotExist if the appropriate key is missing from values
+   */
+  Pose3 relativePoseOf(
+      const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
+      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+    return relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t), H_q);
+  }
+
+  /**
    * Return the world pose of the specified link [link2], given
    * the world pose of the other link [link1].
    */
@@ -141,16 +189,6 @@ class JointTyped : public Joint {
                gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
     auto T12 = relativePoseOf(link2, q, H_q);
     return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
-  }
-
-  /**
-   * Return the pose of the child link in the parent link frame, given a Values
-   * object containing the joint coordinate.
-   */
-  Pose3 parentTchild(
-      const gtsam::Values &q, size_t t = 0,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    return parentTchild(JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
   /**
@@ -195,34 +233,19 @@ class JointTyped : public Joint {
                                  H_q_ddot, H_this_twist, H_other_twist_accel);
   }
 
-  /// Joint-induced twist in child frame
-  virtual gtsam::Vector6 childTwist(JointVelocity q_dot) const = 0;
-
-  /// Joint-induced twist in parent frame
-  virtual gtsam::Vector6 parentTwist(JointVelocity q_dot) const = 0;
-
-  /// Joint-induced twist in child frame
-  gtsam::Vector6 childTwist(const gtsam::Values &values, size_t t=0) const override {
-    return childTwist(JointVel<JointVelocity>(values, id(), t));
-  }
-
-  /// Joint-induced twist in parent frame
-  gtsam::Vector6 parentTwist(const gtsam::Values &values, size_t t=0) const override {
-    return parentTwist(JointVel<JointVelocity>(values, id(), t));
-  }
   ///@}
 
   /// Return joint pose factors.
-  gtsam::NonlinearFactorGraph qFactors(
-      size_t t, const OptimizerSetting &opt) const override;
+  gtsam::NonlinearFactorGraph
+  qFactors(size_t t, const OptimizerSetting &opt) const override;
 
   /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph vFactors(
-      size_t t, const OptimizerSetting &opt) const override;
+  gtsam::NonlinearFactorGraph
+  vFactors(size_t t, const OptimizerSetting &opt) const override;
 
   /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph aFactors(
-      size_t t, const OptimizerSetting &opt) const override;
+  gtsam::NonlinearFactorGraph
+  aFactors(size_t t, const OptimizerSetting &opt) const override;
 
   /// Return joint dynamics factors.
   gtsam::NonlinearFactorGraph dynamicsFactors(
@@ -230,4 +253,4 @@ class JointTyped : public Joint {
       const boost::optional<gtsam::Vector3> &planar_axis) const override;
 };
 
-}  // namespace gtdynamics
+} // namespace gtdynamics

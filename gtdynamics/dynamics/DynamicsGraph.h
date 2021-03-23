@@ -126,8 +126,10 @@ class DynamicsGraph {
    *
    * @param robot           the robot
    * @param t               time step
-   * @param known_values    Values with kinematics + torques
-   * @return values of all variables
+   * @param known_values Values with kinematics + torques which includes joint
+   * angles, joint velocities, and torques
+   * @return values of joint angles, joint velocities, joint accelerations,
+   * joint torques, and link twist accelerations
    */
   gtsam::Values linearSolveFD(const Robot &robot, const int t,
                               const gtsam::Values &known_values);

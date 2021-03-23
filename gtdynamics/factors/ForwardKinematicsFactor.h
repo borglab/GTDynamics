@@ -74,7 +74,7 @@ public:
    * @param joint_angles Values with joint angles in radians.
    * @param start_link_name String for the start link in the kinematic chain.
    * @param end_link_name String for the end link in the kinematic chain.
-   * @return gtsam::Pose3
+   * @return relative pose of the end link in the start link's frame.
    */
   gtsam::Pose3 forwardKinematics(const Robot &robot,
                                  const gtsam::Values &known_values,

@@ -68,8 +68,8 @@ class ScrewJointBase : public JointTyped {
 
 protected:
   /// Return transform of parent link com frame w.r.t child link com frame
-  Pose3 childTparent(double q,
-               gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const {
+  Pose3 childTparent(double q, gtsam::OptionalJacobian<6, 1> cMp_H_q =
+                                   boost::none) const override {
     // TODO(frank): don't go via inverse, specialize in base class
     if (cMp_H_q) {
       gtsam::Matrix6 cMp_H_pMc;
@@ -116,27 +116,6 @@ protected:
   using JointTyped::relativePoseOf;
   using JointTyped::transformTwistAccelTo;
   using JointTyped::transformTwistTo;
-
-  /**
-   * Return the relative pose of the specified link [link2] in the other link's
-   * [link1] reference frame.
-   */
-  Pose3 relativePoseOf(
-      const LinkSharedPtr &link2, double q,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none) const override {
-    return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
-  }
-
-  /**
-   * Return the world pose of the specified link [link2], given the world pose
-   * of the other link [link1].
-   */
-  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, double q,
-               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
-               gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-    auto T12 = relativePoseOf(link2, q, H_q);
-    return wT1.compose(T12, H_wT1);  // H_wT2_T12 is identity
-  }
 
   /**
    * Return the twist of this link given the other link's twist and joint angle.
