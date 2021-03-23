@@ -97,8 +97,17 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::print() const {
+  // build a map from id to link
+  std::map<size_t, LinkSharedPtr> sorted_links;
   for (const auto &link : links()) {
-    std::cout << link->name() << ", id=" << size_t(link->id()) << ":\n";
+    sorted_links.emplace(link->id(), link);
+  }
+
+  // Print links in sorted id order
+  std::cout << "LINKS:" << std::endl;
+  for (const auto& kv : sorted_links) {
+    const LinkSharedPtr& link = kv.second;
+    std::cout << link->name() << ", id=" << kv.first << ":\n";
     std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
               << ", " << link->wTl().translation().transpose() << "\n";
     std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
@@ -110,15 +119,22 @@ void Robot::print() const {
     std::cout << "\n";
   }
 
+  // build a map from id to joint
+  std::map<size_t, JointSharedPtr> sorted_joints;
   for (const auto &joint : joints()) {
-    std::cout << joint << std::endl;
-    LinkSharedPtr child_link = joint->child();
+    sorted_joints.emplace(joint->id(), joint);
+  }
+
+  // Print joints in sorted id order
+  std::cout << "JOINTS:" << std::endl;
+  for (const auto& kv : sorted_joints) {
+    std::cout << kv.second << std::endl;
 
     gtsam::Values joint_angles;
-    InsertJointAngle(&joint_angles, joint->id(), 0.0);
+    InsertJointAngle(&joint_angles, kv.first, 0.0);
 
-    auto pTc = joint->parentTchild(joint_angles);
-    std::cout << "\tpMc_com: " << pTc.rotation().rpy().transpose() << ", "
+    auto pTc = kv.second->parentTchild(joint_angles);
+    std::cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
               << pTc.translation().transpose() << "\n";
   }
 }
