@@ -112,14 +112,14 @@ TEST(PoseFactor, breaking_rr) {
 
   gtsam::Vector6 screw_axis =
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
-  gtsam::Pose3 cMp = j1->transformTo(l2, 0.0);
+  gtsam::Pose3 cMp = j1->relativePoseOf(l1, 0.0);
   auto joint = make_joint(cMp, screw_axis);
   PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
                     example::cost_model, joint);
 
   EXPECT(assert_equal(gtsam::Z_6x1,
                       factor.evaluateError(base_pose,
-                                           j1->transformTo(l1, joint_angle),
+                                           j1->relativePoseOf(l2, joint_angle),
                                            joint_angle),
                       1e-6));
 }

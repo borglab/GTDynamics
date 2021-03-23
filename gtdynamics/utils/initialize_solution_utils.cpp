@@ -16,6 +16,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/values.h>
+
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -68,51 +70,39 @@ std::vector<Pose3> InterpolatePoses(const Pose3& wTl_i,
   return wTl_dt;
 }
 
-Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
-                                 const std::string& link_name,
-                                 const JointValues& joint_angles,
-                                 const JointValues& joint_velocities,
-                                 const Pose3& wTl_i, Values values) {
-  auto fk_results =
-      robot.forwardKinematics(joint_angles, joint_velocities, link_name, wTl_i);
-  for (auto&& pose_result : fk_results.first) {
-    InsertPose(&values, robot.link(pose_result.first)->id(), t,
-               pose_result.second);
-  }
-  return values;
-}
-
 Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
                                 const std::vector<Pose3>& wTl_t,
                                 const std::string& link_name, double t_i,
                                 const std::vector<double>& timesteps, double dt,
                                 const Sampler& sampler,
-                                std::vector<Pose3>& wTl_dt) {
+                                std::vector<Pose3>* wTl_dt) {
   // Linearly interpolated pose for link at each discretized timestep.
-  wTl_dt = InterpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
+  *wTl_dt = InterpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
 
-  Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
-  for (size_t i = 0; i < wTl_dt.size(); i++) {
-    wTl_dt[i] = AddGaussianNoiseToPose(wTl_dt[i], sampler);
+  for (auto& pose : *wTl_dt) {
+    pose = AddGaussianNoiseToPose(pose, sampler);
   }
 
-  // Iteratively solve the inverse kinematics problem while statisfying
-  // the contact pose constraint.
-  Values values;
+  // TODO(frank): I'm not really understanding all this. Refactor in future?
+  Values values, fk_input;
 
   // Initial pose and joint angles are known a priori.
-  JointValues joint_angles, joint_velocities;
-  for (auto &&joint : robot.joints()) {
-    joint_angles.emplace(joint->name(), sampler.sample()[0]);
-    joint_velocities.emplace(joint->name(), sampler.sample()[0]);
-
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&fk_input, joint->id(), sampler.sample()[0]);
+    InsertJointVel(&fk_input, joint->id(), sampler.sample()[0]);
     InsertJointAngle(&values, joint->id(), 0, sampler.sample()[0]);
   }
 
   // Compute forward dynamics to obtain remaining link poses.
-  values = AddForwardKinematicsPoses(robot, 0, link_name, joint_angles,
-                                     joint_velocities, wTl_i_processed, values);
+  Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
+  InsertPose(&fk_input, robot.link(link_name)->id(), wTl_i_processed);
+  InsertTwist(&fk_input, robot.link(link_name)->id(), gtsam::Z_6x1);
+  auto fk_results = robot.forwardKinematics(fk_input, 0, link_name);
 
+  for (auto&& link : robot.links()) {
+    size_t i = link->id();
+    InsertPose(&values, i, Pose(fk_results, i));
+  }
   return values;
 }
 
@@ -121,7 +111,6 @@ Values InitializeSolutionInterpolation(
     const Pose3& wTl_f, double T_s, double T_f, double dt,
     double gaussian_noise,
     const boost::optional<ContactPoints>& contact_points) {
-  Values init_vals;
 
   auto sampler_noise_model =
       gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
@@ -133,13 +122,9 @@ Values InitializeSolutionInterpolation(
 
   double t_elapsed = T_s;
 
-  // Initialize joint angles and velocities to 0.
-  JointValues jangles, jvels;
-  for (auto&& joint : robot.joints()) {
-    jangles.emplace(joint->name(), sampler.sample()[0]);
-    jvels.emplace(joint->name(), sampler.sample()[0]);
-  }
+  Values init_vals;
 
+  // Initialize joint angles and velocities to 0.
   for (int t = n_steps_init; t <= n_steps_final; t++) {
     double s = (t_elapsed - T_s) / (T_f - T_s);
 
@@ -148,12 +133,17 @@ Values InitializeSolutionInterpolation(
         gtsam::interpolate<Pose3>(wTl_i, wTl_f, s), sampler);
 
     // Compute forward dynamics to obtain remaining link poses.
-    // TODO(Alejandro): forwardKinematics needs to get passed the prev link
-    // twist
-    init_vals = AddForwardKinematicsPoses(robot, t, link_name, jangles, jvels,
-                                          wTl_t, init_vals);
+    // TODO(Alejandro): forwardKinematics needs to get passed prev link twist
+    for (auto &&joint : robot.joints()) {
+      InsertJointAngle(&init_vals, joint->id(), t, sampler.sample()[0]);
+      InsertJointVel(&init_vals, joint->id(), t, sampler.sample()[0]);
+    }
 
-    for (auto&& kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
+    InsertPose(&init_vals, robot.link(link_name)->id(), t, wTl_t);
+    InsertTwist(&init_vals, robot.link(link_name)->id(), t, gtsam::Z_6x1);
+    init_vals = robot.forwardKinematics(init_vals, t, link_name);
+
+    for (auto &&kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
       init_vals.tryInsert(kvp.key, kvp.value);
     }
 
@@ -205,7 +195,7 @@ Values InitializeSolutionInverseKinematics(
   // the contact pose constraint.
   Values init_vals,
       values = InitializePosesAndJoints(
-          robot, wTl_i, wTl_t, link_name, t_i, timesteps, dt, sampler, wTl_dt);
+          robot, wTl_i, wTl_t, link_name, t_i, timesteps, dt, sampler, &wTl_dt);
 
   DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
@@ -304,7 +294,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
   // the contact pose constraint.
   Values init_vals,
       values = InitializePosesAndJoints(robots[0], wTl_i, wTl_t, link_name,
-                                             t_i, ts, dt, sampler, wTl_dt);
+                                             t_i, ts, dt, sampler, &wTl_dt);
 
   DynamicsGraph dgb(gravity);
 

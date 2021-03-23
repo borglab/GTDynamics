@@ -26,7 +26,12 @@
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
 using namespace gtdynamics;
-using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
+
+double kNoiseSigma = 1e-8;
 
 TEST(InitializeSolutionUtils, Interpolation) {
   using simple_urdf::robot;
@@ -37,8 +42,8 @@ TEST(InitializeSolutionUtils, Interpolation) {
 
   double T_i = 0, T_f = 10, dt = 1;
 
-  gtsam::Values init_vals = InitializeSolutionInterpolation(
-      robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
+  gtsam::Values init_vals =
+      InitializeSolutionInterpolation(robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
@@ -93,6 +98,33 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   EXPECT(assert_equal(wTb_t[1], pose));
 }
 
+TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
+  auto robot =
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
+
+  Pose3 wTb_i = l2->wTcom();
+  std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5)),
+                              Pose3(Rot3(), Point3(2, 0, 2.5))};
+  double t_i = 0.0;
+  const std::vector<double> timesteps = {5, 10};
+  const double dt = 1.0;
+  auto sampler_noise_model =
+      gtsam::noiseModel::Isotropic::Sigma(6, kNoiseSigma);
+  gtsam::Sampler sampler(sampler_noise_model);
+  std::vector<Pose3> wTl_dt;
+
+  auto actual = InitializePosesAndJoints(robot, wTb_i, wTb_t, l2->name(), t_i,
+                                         timesteps, dt, sampler, &wTl_dt);
+  gtsam::Values expected;
+  InsertPose(&expected, 0, Pose3(Rot3(), Point3(0, 0, 1)));
+  InsertPose(&expected, 1, Pose3(Rot3(), Point3(0, 0, 3)));
+  InsertJointAngle(&expected, 0, 0.0);
+  EXPECT(assert_equal(expected, actual, 1e-6));
+  EXPECT_LONGS_EQUAL(18, wTl_dt.size());
+}
+
 TEST(InitializeSolutionUtils, InverseKinematics) {
   auto robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
@@ -101,7 +133,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   auto l2 = robot.link("l2");
 
   Pose3 wTb_i = l2->wTcom();
-  std::vector<Pose3> wTb_t = {Pose3(Rot3::RzRyRx(0, 0, 0), Point3(1, 0, 2.5))};
+  std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5))};
 
   std::vector<double> ts = {10};
   double dt = 1;
@@ -140,10 +172,8 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    *                      |                 | l1 :(
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
-  double gaussian_noise = 1e-8;
   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
-      robot, l2->name(), wTb_i, wTb_t, ts, dt, gaussian_noise,
-      contact_points);
+      robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
 
   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 
@@ -241,7 +271,6 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;
   std::vector<int> phase_steps(3, steps_per_phase);
-  double gaussian_noise = 1e-8;
 
   Pose3 wTb_i = l2->wTcom();
 
@@ -253,16 +282,16 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   // Initial values for transition graphs.
   std::vector<gtsam::Values> transition_graph_init;
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
-      robots[0], 1 * steps_per_phase, gaussian_noise, p0));
-  transition_graph_init.push_back(gtdynamics::ZeroValues(
-      robots[1], 2 * steps_per_phase, gaussian_noise, p0));
+  transition_graph_init.push_back(
+      gtdynamics::ZeroValues(robots[0], 1 * steps_per_phase, kNoiseSigma, p0));
+  transition_graph_init.push_back(
+      gtdynamics::ZeroValues(robots[1], 2 * steps_per_phase, kNoiseSigma, p0));
 
   double dt = 1.0;
 
   gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
       robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
-      dt, gaussian_noise, phase_contact_points);
+      dt, kNoiseSigma, phase_contact_points);
 
   Pose3 pose = Pose(init_vals, l2->id());
   EXPECT(assert_equal(wTb_i, pose, 1e-3));
@@ -274,12 +303,12 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   // Make sure contacts respected during portions of the trajectory with contact
   // points.
-  for (size_t t = 0; t < 100; t++) { // Phase 0.
+  for (size_t t = 0; t < 100; t++) {  // Phase 0.
     Pose3 wTol1 = Pose(init_vals, l1->id(), t);
     Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
   }
-  for (size_t t = 200; t < 299; t++) { // Phase 2.
+  for (size_t t = 200; t < 299; t++) {  // Phase 2.
     Pose3 wTol1 = Pose(init_vals, l1->id(), t);
     Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));

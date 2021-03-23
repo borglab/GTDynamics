@@ -66,7 +66,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   InsertTwist(&values, l1->id(), t, gtsam::Z_6x1);
 
   // Do forward kinematics.
-  Values fk_results = robot.forwardKinematics(t, values, prior_link_name);
+  Values fk_results = robot.forwardKinematics(values, t, prior_link_name);
 
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
