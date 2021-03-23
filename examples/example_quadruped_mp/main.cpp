@@ -15,6 +15,7 @@
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -92,13 +93,14 @@ gtsam::Pose3 compute_hermite_pose(const CoeffVector &coeffs,
 }
 
 /** Compute the target footholds for each support phase. */
-TargetFootholds compute_target_footholds(
-    const CoeffVector &coeffs, const gtsam::Vector3 &x_0_p,
-    const gtsam::Pose3 &wTb_i, const double &th, const double &t_support,
-    const std::map<std::string, gtsam::Pose3> &bTfs) {
+TargetFootholds
+compute_target_footholds(const CoeffVector &coeffs, const gtsam::Vector3 &x_0_p,
+                         const gtsam::Pose3 &wTb_i, const double &th,
+                         const double &t_support,
+                         const std::map<std::string, gtsam::Pose3> &bTfs) {
   TargetFootholds target_footholds;
 
-  double t_swing = t_support / 4.0;  // Time for each swing foot trajectory.
+  double t_swing = t_support / 4.0; // Time for each swing foot trajectory.
   int n_support_phases = th / t_support;
 
   for (int i = 0; i <= n_support_phases; i++) {
@@ -137,7 +139,7 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
 
   // Time spent in current support phase.
   double t_in_support = std::fmod(t, t_support);
-  double t_swing = t_support / 4.0;  // Duration of swing phase.
+  double t_swing = t_support / 4.0; // Duration of swing phase.
 
   int swing_leg_idx;
   if (t_in_support <= t_swing)
@@ -221,14 +223,14 @@ int main(int argc, char **argv) {
   //             t = 0   normalized time (t)  t = 1
   std::vector<std::string> swing_sequence{"lower0", "lower1", "lower2",
                                           "lower3"};
-  double t_support = 8;  // Duration of a support phase.
+  double t_support = 8; // Duration of a support phase.
 
   // Offsets from base to foot.
   std::map<std::string, gtsam::Pose3> bTfs;
   gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0.14, 0, 0));
   for (auto &&leg : swing_sequence)
-    bTfs.insert(std::make_pair(
-        leg, wTb_i.inverse() * (vision60.link(leg)->wTcom() * comTc)));
+    bTfs.insert(std::make_pair(leg, wTb_i.inverse() *
+                                        (vision60.link(leg)->wTcom() * comTc)));
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -236,7 +238,7 @@ int main(int argc, char **argv) {
 
   // Iteratively solve the inverse kinematics problem to obtain joint angles.
   double dt = 1. / 240., curr_t = 0.0;
-  int ti = 0;  // The time index.
+  int ti = 0; // The time index.
   auto dgb = DynamicsGraph();
 
   // Initialize values.
@@ -244,7 +246,7 @@ int main(int argc, char **argv) {
   for (auto &&link : vision60.links())
     InsertPose(&values, link->id(), link->wTcom());
   for (auto &&joint : vision60.joints())
-    values.insert(JointAngleKey(joint->id(), 0), 0.0);
+    InsertJointAngle(&values, joint->id(), 0.0);
 
   // Write body,foot poses and joint angles to csv file.
   std::ofstream pose_file;
@@ -254,7 +256,8 @@ int main(int argc, char **argv) {
     pose_file << "," << leg << "x"
               << "," << leg << "y"
               << "," << leg << "z";
-  for (auto &&joint : vision60.joints()) pose_file << "," << joint->name();
+  for (auto &&joint : vision60.joints())
+    pose_file << "," << joint->name();
   pose_file << "\n";
 
   while (curr_t < th) {
@@ -275,7 +278,7 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(vision60.link("body")->id(), ti), tposes["body"],
+        internal::PoseKey(vision60.link("body")->id(), ti), tposes["body"],
         gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
@@ -296,7 +299,8 @@ int main(int argc, char **argv) {
     for (auto &&link : vision60.links())
       InsertPose(&values, link->id(), ti + 1, Pose(results, link->id(), ti));
     for (auto &&joint : vision60.joints())
-      InsertJointAngle(&values, joint->id(), ti + 1, JointAngle(results, joint->id(), ti));
+      InsertJointAngle(&values, joint->id(), ti + 1,
+                       JointAngle(results, joint->id(), ti));
 
     for (auto &&joint : vision60.joints())
       pose_file << "," << JointAngle(results, joint->id(), ti);
