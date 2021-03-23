@@ -120,11 +120,37 @@ public:
                                JointCoordinate q) const = 0;
 
   ///@}
+  /**
+   * @name generic
+   * These are methods that can be implemented here in terms of abstract methods.
+   */
+  ///@{
 
   /**
-   * @name transformConvenience
-   * These are convenience functions to provide more argument options for the
-   * transform functions.
+   * Return the relative pose of the specified link [link2] in the other link's
+   * [link1] reference frame.
+   */
+  Pose3 relativePoseOf(const LinkSharedPtr &link2, JointCoordinate q,
+                       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+    return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
+  }
+
+  /**
+   * Return the world pose of the specified link [link2], given
+   * the world pose of the other link [link1].
+   */
+  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, JointCoordinate q,
+               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
+               gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
+    auto T12 = relativePoseOf(link2, q, H_q);
+    return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
+  }
+
+  ///@}
+  /**
+   * @name valueBased
+   * Methods that extract coordinates/velocities from Values and pass on to
+   * abstract methods above.
    */
   ///@{
 
@@ -148,27 +174,6 @@ public:
     return childTparent(JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
-  /// Joint-induced twist in child frame
-  gtsam::Vector6 childTwist(const gtsam::Values &values,
-                            size_t t = 0) const override {
-    return childTwist(JointVel<JointVelocity>(values, id(), t));
-  }
-
-  /// Joint-induced twist in parent frame
-  gtsam::Vector6 parentTwist(const gtsam::Values &values,
-                             size_t t = 0) const override {
-    return parentTwist(JointVel<JointVelocity>(values, id(), t));
-  }
-
-  /**
-   * Return the relative pose of the specified link [link2] in the other link's
-   * [link1] reference frame.
-   */
-  Pose3 relativePoseOf(const LinkSharedPtr &link2, JointCoordinate q,
-                       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
-    return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
-  }
-
   /**
    * Return the relative pose of the specified link [link2] in
    * the other link's [link1] reference frame.
@@ -180,15 +185,16 @@ public:
     return relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t), H_q);
   }
 
-  /**
-   * Return the world pose of the specified link [link2], given
-   * the world pose of the other link [link1].
-   */
-  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, JointCoordinate q,
-               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
-               gtsam::OptionalJacobian<6, N> H_q = boost::none) const {
-    auto T12 = relativePoseOf(link2, q, H_q);
-    return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
+  /// Joint-induced twist in child frame
+  gtsam::Vector6 childTwist(const gtsam::Values &values,
+                            size_t t = 0) const override {
+    return childTwist(JointVel<JointVelocity>(values, id(), t));
+  }
+
+  /// Joint-induced twist in parent frame
+  gtsam::Vector6 parentTwist(const gtsam::Values &values,
+                             size_t t = 0) const override {
+    return parentTwist(JointVel<JointVelocity>(values, id(), t));
   }
 
   /**
@@ -234,6 +240,11 @@ public:
   }
 
   ///@}
+  /**
+   * @name factors
+   * Methods that create factors based on joint relationships.
+   */
+  ///@{
 
   /// Return joint pose factors.
   gtsam::NonlinearFactorGraph
@@ -251,6 +262,8 @@ public:
   gtsam::NonlinearFactorGraph dynamicsFactors(
       size_t t, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const override;
+
+  ///@}
 };
 
 } // namespace gtdynamics

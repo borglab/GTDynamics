@@ -275,7 +275,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       boost::optional<gtsam::Matrix &> H_other_twist_accel =
           boost::none) const = 0;
 
-
   /**
    * @fn Abstract method to return pose factors in the dynamics graph.
    *
