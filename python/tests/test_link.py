@@ -6,10 +6,11 @@
  *
  * @file  test_link.py
  * @brief Test Link class.
- * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+ * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
 """
 
 # pylint: disable=no-name-in-module, import-error, no-member
+import os.path as osp
 import unittest
 
 import numpy as np
@@ -20,11 +21,14 @@ import gtdynamics as gtd
 
 
 class TestLink(GtsamTestCase):
+    """Tests for the Link class."""
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        self.simple_rr = gtd.CreateRobotFromFile("../../sdfs/test/simple_rr.sdf",
-                                                 "simple_rr_sdf")
+        SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
+                            "sdfs")
+        self.simple_rr = gtd.CreateRobotFromFile(
+            osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
 
     def test_params_constructor(self):
         """Check the links in the simple RR robot."""
@@ -64,6 +68,7 @@ class TestLink(GtsamTestCase):
 
         self.assertEqual(len(l0.getJoints()), 1)
         self.assertEqual(len(l1.getJoints()), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

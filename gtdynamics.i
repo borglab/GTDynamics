@@ -243,6 +243,8 @@ class Robot {
 
   gtdynamics::Joint* joint(string name) const;
 
+  gtdynamics::Robot fixLink(const string& name);
+
   int numLinks() const;
 
   int numJoints() const;
@@ -527,79 +529,99 @@ gtdynamics::DynamicsSymbol TimeKey(int t);
 
 
 ///////////////////// Key Methods /////////////////////
-// template<T = {double}>
-// void InsertJointAngle(gtsam::Values* values, int j, int t, T value);
+template<T = {double}>
+void InsertJointAngle(gtsam::Values@ values, int j, int t, T value);
 
-// template<T = {double}>
-// void InsertJointAngle(gtsam::Values *values, int j, T value);
+template<T = {double}>
+void InsertJointAngle(gtsam::Values @values, int j, T value);
 
-// gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
 
-// template<T = {double}>
-// T JointAngle(const gtsam::Values &values, int j, int t);
+template<T = {double}>
+T JointAngle(const gtsam::Values &values, int j, int t);
 
-// template<T = {double}>
-// void InsertJointVel(gtsam::Values *values, int j, int t, T value);
+template<T = {double}>
+void InsertJointVel(gtsam::Values @values, int j, int t, T value);
 
-// template<T = {double}>
-// void InsertJointVel(gtsam::Values *values, int j, T value);
+template<T = {double}>
+void InsertJointVel(gtsam::Values @values, int j, T value);
 
-// gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
 
-// template<T = {double}>
-// T JointVel(const gtsam::Values &values, int j, int t);
+template<T = {double}>
+T JointVel(const gtsam::Values &values, int j, int t);
 
-// template<T = {double}>
-// void InsertJointAccel(gtsam::Values *values, int j, int t, T value);
+template<T = {double}>
+void InsertJointAccel(gtsam::Values @values, int j, int t, T value);
 
-// template<T = {double}>
-// void InsertJointAccel(gtsam::Values *values, int j, T value);
+template<T = {double}>
+void InsertJointAccel(gtsam::Values @values, int j, T value);
 
-// gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
 
-// template<T = {double}>
-// T JointAccel(const gtsam::Values &values, int j, int t);
+template<T = {double}>
+T JointAccel(const gtsam::Values &values, int j, int t);
 
-// template<T = {double}>
-// void InsertTorque(gtsam::Values *values, int j, int t, T value);
+template<T = {double}>
+void InsertTorque(gtsam::Values @values, int j, int t, T value);
 
-// template<T = {double}>
-// void InsertTorque(gtsam::Values *values, int j, T value);
+template<T = {double}>
+void InsertTorque(gtsam::Values @values, int j, T value);
 
-// gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
 
-// template<T = {double}>
-// T Torque(const gtsam::Values &values, int j, int t);
+template<T = {double}>
+T Torque(const gtsam::Values &values, int j, int t);
 
-// void InsertPose(gtsam::Values *values, int i, int t, gtsam::Pose3 value);
+void InsertPose(gtsam::Values @values, int i, int t, gtsam::Pose3 value);
 
-// void InsertPose(gtsam::Values *values, int i, gtsam::Pose3 value);
+void InsertPose(gtsam::Values @values, int i, gtsam::Pose3 value);
 
-// gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t);
+gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t);
 
-// void InsertTwist(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+void InsertTwist(gtsam::Values @values, int j, int t, gtsam::Vector6 value);
 
-// void InsertTwist(gtsam::Values *values, int j, gtsam::Vector6 value);
+void InsertTwist(gtsam::Values @values, int j, gtsam::Vector6 value);
 
-// gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t);
 
-// gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t);
+gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t);
 
-// void InsertTwistAccel(gtsam::Values *values, int j, int t, gtsam::Vector6 value);
+void InsertTwistAccel(gtsam::Values @values, int j, int t, gtsam::Vector6 value);
 
-// void InsertTwistAccel(gtsam::Values *values, int j, gtsam::Vector6 value);
+void InsertTwistAccel(gtsam::Values @values, int j, gtsam::Vector6 value);
 
-// gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t);
 
-// gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t);
+gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t);
 
-// void InsertWrench(gtsam::Values *values, int i, int j, int t, gtsam::Vector6 value);
+void InsertWrench(gtsam::Values @values, int i, int j, int t, gtsam::Vector6 value);
 
-// void InsertWrench(gtsam::Values *values, int i, int j, gtsam::Vector6 value);
+void InsertWrench(gtsam::Values @values, int i, int j, gtsam::Vector6 value);
 
-// gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
+gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
 
-// gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
+gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
+
+
+#include <gtdynamics/dynamics/Simulator.h>
+
+class Simulator {
+  Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values);
+  Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values,
+            const boost::optional<gtsam::Vector3> &gravity);
+  Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values,
+            const gtsam::Vector3 &gravity,
+            const gtsam::Vector3 &planar_axis);
+
+  void reset(const double t);
+  void forwardDynamics(const gtsam::Values &torques);
+  void integration(const double dt);
+  void step(const gtsam::Values &torques, const double dt);
+  gtsam::Values simulate(const std::vector<gtsam::Values> &torques_seq,
+                         const double dt);
+  const gtsam::Values &getValues() const;
+};
 
 }
 
