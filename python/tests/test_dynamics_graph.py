@@ -1,5 +1,15 @@
-"""Unit tests for dynamics graph."""
+"""
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ *
+ * @file  test_dynamics_graph.py
+ * @brief Unit tests for dynamics graph.
+ * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+"""
 
+import os.path as osp
 import unittest
 
 import gtdynamics as gtd
@@ -11,9 +21,10 @@ class TestDynamicsGraph(unittest.TestCase):
         """Test construction of DynamicsGraph."""
 
         # load example robot
-        SDF_PATH = "../../sdfs/"
-        simple_rr = gtd.CreateRobotFromFile(SDF_PATH + "/test/simple_rr.sdf",
-                                            "simple_rr_sdf")
+        SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
+                            "sdfs")
+        simple_rr = gtd.CreateRobotFromFile(
+            osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
 
         # check links and joints
         self.assertEqual(simple_rr.numLinks(), 3)

@@ -92,7 +92,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     }
   }
 
-  OptimizerSetting opt_ = OptimizerSetting();
+  OptimizerSetting opt_;
   for (auto &&joint : robot.joints()) {
     graph += joint->linearAFactors(t, known_values, opt_, planar_axis_);
     graph += joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_);
@@ -101,9 +101,8 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
   return graph;
 }
 
-GaussianFactorGraph DynamicsGraph::linearFDPriors(const Robot &robot,
-                                                  const int t,
-                                                  const gtsam::Values &torques) {
+GaussianFactorGraph DynamicsGraph::linearFDPriors(
+    const Robot &robot, const int t, const gtsam::Values &torques) {
   OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints()) graph += joint->linearFDPriors(t, torques, opt_);

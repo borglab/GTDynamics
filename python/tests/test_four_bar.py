@@ -1,4 +1,13 @@
-"""Unit tests for inverse dynamics of a four bar linkage."""
+"""
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ *
+ * @file  test_four_bar.py
+ * @brief Unit tests for inverse dynamics of a four bar linkage.
+ * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+"""
 
 # pylint: disable=no-member, no-name-in-module
 
