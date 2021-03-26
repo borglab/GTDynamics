@@ -188,6 +188,7 @@ class ScrewJointBase : public Joint {
   /**
    * @name factors
    * Methods that create factors based on joint relationships.
+   * TODO(gerry): maybe use traits for the implementaitons of these functions?
    */
   ///@{
 

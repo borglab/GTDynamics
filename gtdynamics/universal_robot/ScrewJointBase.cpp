@@ -26,6 +26,13 @@
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
 
+#include "gtdynamics/factors/PoseFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/factors/TwistAccelFactor.h"
+#include "gtdynamics/factors/TwistFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
+#include "gtdynamics/factors/WrenchPlanarFactor.h"
+
 #include <gtsam/geometry/Pose3.h>
 
 #include <cmath>
@@ -254,19 +261,7 @@ gtsam::NonlinearFactorGraph ScrewJointBase::jointLimitFactors(
   return graph;
 }
 
-
-
-
-// temporarily placed here
-}
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
-namespace gtdynamics {
-
+/* ************************************************************************* */
 gtsam::NonlinearFactorGraph
 ScrewJointBase::qFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
@@ -278,6 +273,7 @@ ScrewJointBase::qFactors(size_t t, const OptimizerSetting &opt) const {
   return graph;
 }
 
+/* ************************************************************************* */
 gtsam::NonlinearFactorGraph
 ScrewJointBase::vFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
@@ -290,6 +286,7 @@ ScrewJointBase::vFactors(size_t t, const OptimizerSetting &opt) const {
   return graph;
 }
 
+/* ************************************************************************* */
 gtsam::NonlinearFactorGraph
 ScrewJointBase::aFactors(size_t t, const OptimizerSetting &opt) const {
   gtsam::NonlinearFactorGraph graph;
@@ -304,6 +301,7 @@ ScrewJointBase::aFactors(size_t t, const OptimizerSetting &opt) const {
   return graph;
 }
 
+/* ************************************************************************* */
 gtsam::NonlinearFactorGraph ScrewJointBase::dynamicsFactors(
     size_t t, const OptimizerSetting &opt,
     const boost::optional<gtsam::Vector3> &planar_axis) const {
