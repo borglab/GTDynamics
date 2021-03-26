@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
@@ -31,17 +31,19 @@ namespace gtdynamics {
  * PoseFactor is a three-way nonlinear factor between the previous link pose and
  * this link pose
  */
+template <typename JointType>
 class PoseFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
-                                      typename JointTyped::JointCoordinate> {
+                                      typename JointType::JointCoordinate> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using JointTypeConstSharedPtr = typename JointType::ConstSharedPtr;
+  using JointCoordinate = typename JointType::JointCoordinate;
   using This = PoseFactor;
   using Base =
       gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>;
-  enum { N = JointTyped::N };
+  enum { N = JointType::N };
 
-  boost::shared_ptr<const JointTyped> joint_;
+  JointTypeConstSharedPtr joint_;
 
  public:
   /**
@@ -52,11 +54,11 @@ class PoseFactor
    * @param time The timestep at which this factor is defined.
    */
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
-             const JointConstSharedPtr &joint, int time)
+             const JointTypeConstSharedPtr &joint, int time)
       : Base(cost_model, internal::PoseKey(joint->parent()->id(), time),
              internal::PoseKey(joint->child()->id(), time),
              internal::JointAngleKey(joint->id(), time)),
-        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+        joint_(joint) {}
 
   /**
    * Create single factor relating this link's pose (COM) with previous one.
@@ -71,9 +73,9 @@ class PoseFactor
    */
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             JointConstSharedPtr joint)
+             JointTypeConstSharedPtr joint)
       : Base(cost_model, wTp_key, wTc_key, q_key),
-        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+        joint_(joint) {}
 
   virtual ~PoseFactor() {}
 

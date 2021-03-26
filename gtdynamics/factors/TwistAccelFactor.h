@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -29,21 +29,23 @@ namespace gtdynamics {
  * TwistAccelFactor is a six-way nonlinear factor which enforces relation
  * between acceleration on previous link and this link.
  */
+template <typename JointType>
 class TwistAccelFactor
-    : public gtsam::NoiseModelFactor6<
-          gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-          JointTyped::JointCoordinate, JointTyped::JointVelocity,
-          JointTyped::JointAcceleration> {
+    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
+                                      gtsam::Vector6,
+                                      typename JointType::JointCoordinate,
+                                      typename JointType::JointVelocity,
+                                      typename JointType::JointAcceleration> {
  private:
-  using JointCoordinate = JointTyped::JointCoordinate;
-  using JointVelocity = JointTyped::JointVelocity;
-  using JointAcceleration = JointTyped::JointVelocity;
+  using JointCoordinate = typename JointType::JointCoordinate;
+  using JointVelocity = typename JointType::JointVelocity;
+  using JointAcceleration = typename JointType::JointVelocity;
   using This = TwistAccelFactor;
   using Base = gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, JointCoordinate,
                                         JointVelocity, JointAcceleration>;
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+  using JointTypeConstSharedPtr = boost::shared_ptr<const JointType>;
+  JointTypeConstSharedPtr joint_;
 
  public:
   /**
@@ -59,7 +61,7 @@ class TwistAccelFactor
                    gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointTypedConstSharedPtr joint)
+                   JointTypeConstSharedPtr joint)
       : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
         joint_(joint) {}

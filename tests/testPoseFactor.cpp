@@ -26,6 +26,7 @@
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -48,8 +49,8 @@ TEST(PoseFactor, error) {
   double jointAngle = 0;
 
   // Create factor
-  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
-                    example::cost_model, joint);
+  PoseFactor<ScrewJointBase> factor(example::pose_p_key, example::pose_c_key,
+                                    example::qKey, example::cost_model, joint);
 
   // call evaluateError
   gtsam::Pose3 pose_p(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
@@ -76,8 +77,8 @@ TEST(PoseFactor, breaking) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
-                    example::cost_model, joint);
+  PoseFactor<ScrewJointBase> factor(example::pose_p_key, example::pose_c_key,
+                                    example::qKey, example::cost_model, joint);
   double jointAngle;
   gtsam::Pose3 pose_p, pose_c;
   // check prediction at zero joint angle
@@ -114,8 +115,8 @@ TEST(PoseFactor, breaking_rr) {
       (gtsam::Vector(6) << 1, 0, 0, 0, -1, 0).finished();
   gtsam::Pose3 cMp = j1->relativePoseOf(l1, 0.0);
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
-                    example::cost_model, joint);
+  PoseFactor<ScrewJointBase> factor(example::pose_p_key, example::pose_c_key,
+                                    example::qKey, example::cost_model, joint);
 
   EXPECT(assert_equal(gtsam::Z_6x1,
                       factor.evaluateError(base_pose,
@@ -131,8 +132,8 @@ TEST(PoseFactor, nonzero_rest) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::pose_p_key, example::pose_c_key, example::qKey,
-                    example::cost_model, joint);
+  PoseFactor<ScrewJointBase> factor(example::pose_p_key, example::pose_c_key,
+                                    example::qKey, example::cost_model, joint);
 
   double jointAngle;
   gtsam::Pose3 pose_p, pose_c;

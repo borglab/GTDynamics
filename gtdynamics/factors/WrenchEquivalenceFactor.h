@@ -24,23 +24,24 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
+template <typename JointType>
 class WrenchEquivalenceFactor
     : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate> {
+                                      typename JointType::JointCoordinate> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using JointCoordinate = typename JointType::JointCoordinate;
   using This = WrenchEquivalenceFactor;
   using Base =
       gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, JointCoordinate>;
 
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+  using JointTypeConstSharedPtr = boost::shared_ptr<const JointType>;
+  JointTypeConstSharedPtr joint_;
 
  public:
   /**
@@ -50,7 +51,7 @@ class WrenchEquivalenceFactor
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          JointTypedConstSharedPtr joint)
+                          JointTypeConstSharedPtr joint)
       : Base(cost_model, wrench_key_1, wrench_key_2, q_key), joint_(joint) {}
   virtual ~WrenchEquivalenceFactor() {}
 

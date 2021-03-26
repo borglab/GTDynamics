@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -29,15 +29,17 @@ namespace gtdynamics {
  * TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link
  */
+template <typename JointType>
 class TorqueFactor
     : public gtsam::NoiseModelFactor2<gtsam::Vector6,
-                                      typename JointTyped::JointTorque> {
+                                      typename JointType::JointTorque> {
  private:
-  using JointTorque = typename JointTyped::JointTorque;
+  using JointTorque = typename JointType::JointTorque;
+  using MatrixN = Eigen::Matrix<double, JointType::N, JointType::N>;
   using This = TorqueFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque>;
-  using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  MyJointConstSharedPtr joint_;
+  using JointTypeConstSharedPtr = typename JointType::ConstSharedPtr;
+  JointTypeConstSharedPtr joint_;
 
  public:
   /**
@@ -51,7 +53,7 @@ class TorqueFactor
    */
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               MyJointConstSharedPtr joint)
+               JointTypeConstSharedPtr joint)
       : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
   virtual ~TorqueFactor() {}
 
@@ -66,7 +68,7 @@ class TorqueFactor
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
-      *H_torque = -JointTyped::MatrixN::Identity();
+      *H_torque = -MatrixN::Identity();
     }
     // TODO(G+S): next PR will generalize this from Vector1
     return gtsam::Vector1(
@@ -75,7 +77,7 @@ class TorqueFactor
   }
 
   /// Returns the joint
-  MyJointConstSharedPtr getJoint() const { return joint_; }
+  JointTypeConstSharedPtr getJoint() const { return joint_; }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

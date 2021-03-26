@@ -21,7 +21,7 @@
 #include <boost/optional.hpp>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -29,13 +29,15 @@ namespace gtdynamics {
  * TwistFactor is a four-way nonlinear factor which enforces relation
  * between twist on previous link and this link
  */
+template <typename JointType>
 class TwistFactor
     : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate,
-                                      typename JointTyped::JointVelocity> {
+                                      typename JointType::JointCoordinate,
+                                      typename JointType::JointVelocity> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
-  using JointVelocity = typename JointTyped::JointVelocity;
+  using JointConstSharedPtr = boost::shared_ptr<const JointType>;
+  using JointCoordinate = typename JointType::JointCoordinate;
+  using JointVelocity = typename JointType::JointVelocity;
   using This = TwistFactor;
   using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                         JointCoordinate, JointVelocity>;
@@ -75,10 +77,9 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
-    auto error =
-        boost::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
-            joint_->child(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
-        twist_c;
+    auto error = joint_->transformTwistTo(joint_->child(), q, qVel, twist_p,
+                                          H_q, H_qVel, H_twist_p) -
+                 twist_c;
 
     if (H_twist_c) {
       *H_twist_c = -gtsam::I_6x6;

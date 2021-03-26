@@ -26,6 +26,7 @@
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -49,8 +50,8 @@ TEST(TorqueFactor, error) {
 
   auto joint = make_joint(kMj, screw_axis);
 
-  TorqueFactor factor(example::wrench_key, example::torque_key,
-                      example::cost_model, joint);
+  TorqueFactor<ScrewJointBase> factor(example::wrench_key, example::torque_key,
+                                      example::cost_model, joint);
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   gtsam::Vector1 actual_errors, expected_errors;
