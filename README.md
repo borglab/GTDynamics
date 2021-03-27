@@ -65,7 +65,7 @@ mkdir build; cd build
 If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
 
 ```bash
-cmake ../ -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install
+cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
 make
 ```
 
