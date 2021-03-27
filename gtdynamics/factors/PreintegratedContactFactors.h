@@ -17,6 +17,7 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/navigation/ImuFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <memory>
@@ -33,12 +34,57 @@ namespace gtdynamics {
 class PreintegratedPointContactMeasurements {
   gtsam::Matrix3 preintMeasCov_;
 
+  ///< The covariance of the discrete contact noise, aka Σvd in the paper
+  gtsam::Matrix3 vdCov_;
+
  public:
-  PreintegratedPointContactMeasurements();
+  PreintegratedPointContactMeasurements() {}
+
+  /**
+   * @brief Construct a new Preintegrated Point Contact Measurements object.
+   *
+   * @param discreteVelocityCovariance The covariance matrix for the discrete
+   * velocity of the contact frame.
+   */
+  PreintegratedPointContactMeasurements(
+      const gtsam::Matrix3 &discreteVelocityCovariance) {
+    preintMeasCov_.setZero();
+    vdCov_ = discreteVelocityCovariance;
+  }
+
+  /// Virtual destructor for serialization
+  ~PreintegratedPointContactMeasurements() {}
+
+  /**
+   * @brief Propagate measurement for the first step, i.e. when k = i.
+   *
+   * @param base_k The pose of the current base frame.
+   * @param contact_k The pose of the current contact frame. Taken from the
+   * forward kinematics.
+   * @param dt The time between the previous and current step.
+   */
+  void initialize(const gtsam::Pose3 &base_k, const gtsam::Pose3 &contact_k,
+                  double dt) {
+    gtsam::Matrix3 B =
+        base_k.rotation().transpose() * contact_k.rotation().matrix() * dt;
+    preintMeasCov_ = preintMeasCov_ + (B * vdCov_ * B.transpose());
+  }
+
+  /**
+   * @brief Add a single slip/noise measurement to the preintegration.
+   *
+   * @param contact_k The pose of the current contact frame obtained via forward
+   * kinematics.
+   * @param deltaRik The rotation delta obtained from the IMU preintegration.
+   * @param dt Time interval between this and the last IMU measurement.
+   */
+  void integrateMeasurement(const gtsam::Pose3 &contact_k,
+                            const gtsam::Rot3 &deltaRik, const double dt) {
+    gtsam::Matrix3 B = (deltaRik * contact_k.rotation()).matrix() * dt;
+    preintMeasCov_ = preintMeasCov_ + (B * vdCov_ * B.transpose());
+  }
 
   gtsam::Matrix3 preintMeasCov() const { return preintMeasCov_; }
-
-  //TODO(Varun) Add covariance updates
 };
 
 /**
@@ -46,13 +92,40 @@ class PreintegratedPointContactMeasurements {
  */
 class PreintegratedRigidContactMeasurements {
   gtsam::Matrix6 preintMeasCov_;
+  gtsam::Matrix3 wCov_, vCov_;
+  double deltaT_;
 
  public:
-  PreintegratedRigidContactMeasurements();
+  PreintegratedRigidContactMeasurements() {}
 
-  gtsam::Matrix3 preintMeasCov() const { return preintMeasCov_; }
+  /**
+   * @brief Construct a new Preintegrated Point Contact Measurements object.
+   *
+   * @param discreteVelocityCovariance The covariance matrix for the discrete
+   * velocity of the contact frame.
+   */
+  PreintegratedRigidContactMeasurements(const gtsam::Matrix3 &angularVelocityCovariance,
+      const gtsam::Matrix3 &linearVelocityCovariance) {
+    preintMeasCov_.setZero();
+    wCov_ = angularVelocityCovariance;
+    vCov_ = linearVelocityCovariance;
+  }
 
-  //TODO(Varun) Add covariance updates
+  /// Virtual destructor for serialization
+  ~PreintegratedRigidContactMeasurements() {}
+
+  /**
+   * @brief Integrate a new measurement.
+   * 
+   * @param dt Time interval between this and the last IMU measurement.
+   */
+  void integrateMeasurement(double dt) {
+    preintMeasCov_ << wCov_, gtsam::Z_3x3, gtsam::Z_3x3, vCov_;
+    deltaT_ += dt;
+    preintMeasCov_ *= deltaT_;
+  }
+
+  gtsam::Matrix6 preintMeasCov() const { return preintMeasCov_; }
 };
 
 /**
@@ -75,14 +148,14 @@ class PreintegratedPointContactFactor
    * @param wTci_key Key for contact pose in world frame at previous step.
    * @param wTbi_key Key for base link pose in world frame at current step.
    * @param wTci_key Key for contact pose in world frame at current step.
-   * @param pim Preintegrated contact measurements which captures the
+   * @param pcm Preintegrated contact measurements which captures the
    measurement covariance for the point foot model.
    *
    */
   PreintegratedPointContactFactor(
       gtsam::Key wTbi_key, gtsam::Key wTci_key, gtsam::Key wTbj_key,
-      gtsam::Key wTcj_key, const PreintegratedPointContactMeasurements &pim)
-      : Base(gtsam::noiseModel::Gaussian::Covariance(pim.preintMeasCov()),
+      gtsam::Key wTcj_key, const PreintegratedPointContactMeasurements &pcm)
+      : Base(gtsam::noiseModel::Gaussian::Covariance(pcm.preintMeasCov()),
              wTbi_key, wTci_key, wTbj_key, wTcj_key) {}
 
   /**
@@ -92,18 +165,18 @@ class PreintegratedPointContactFactor
    * @param contact_link_i Link in contact at previous step.
    * @param base_link_j Base link at current step.
    * @param contact_link_j Link in contact at current step.
-   * @param pim Preintegrated contact measurements which captures the
+   * @param pcm Preintegrated contact measurements which captures the
    measurement covariance for the point foot model.
    */
   PreintegratedPointContactFactor(
       const LinkSharedPtr &base_link_i, const LinkSharedPtr &contact_link_i,
       const LinkSharedPtr &base_link_j, const LinkSharedPtr &contact_link_j,
-      const PreintegratedPointContactMeasurements &pim, size_t time)
+      const PreintegratedPointContactMeasurements &pcm, size_t time)
       : PreintegratedPointContactFactor(
             internal::PoseKey(base_link_i->id(), time),
             internal::PoseKey(contact_link_i->id(), time),
             internal::PoseKey(base_link_j->id(), time),
-            internal::PoseKey(contact_link_j->id(), time), pim) {}
+            internal::PoseKey(contact_link_j->id(), time), pcm) {}
 
   virtual ~PreintegratedPointContactFactor() {}
 
@@ -173,6 +246,6 @@ class PreintegratedPointContactFactor
   }
 };
 
-//TODO(Varun) PreintegratedRigidContactFactor
+// TODO(Varun) PreintegratedRigidContactFactor
 
 }  // namespace gtdynamics
