@@ -49,12 +49,16 @@ using namespace gtdynamics;
 /**
  * Compute cubic polynomial coefficients via Hermite parameterization.
  *
- * @param wTb_i initial pose
- * @param wTb_f final pose
- * @param x_0_p TODO(frank): no idea
- * @param x_1_p TODO(frank): no idea
+ * @param wTb_i initial pose corresponding to the knot at the start
+ * @param wTb_f final pose corresponding to the knot at the end
+ * @param x_0_p tangent at the starting knot
+ * @param x_1_p tangent at the ending knot
+ * @param horizon timestep between the knot at the start and the knot at the end
  *
  * @return 3*4 matrix of coefficients
+ * 
+ * Since uE[0,1] in the parametrization of the hermite spline equation, for
+ * tE[0,horizon], u is set equal to t/horizon
  *
  * Refer to this lecture for more info on the hermite parameterization
  * for cubic polynomials:
@@ -64,11 +68,19 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
                                         const Vector3 &x_0_p,
                                         const Vector3 &x_1_p,
                                         const double horizon) {
+  
+  // Extract position at the starting and ending knot.
   Vector3 x_0 = wTb_i.translation();
   Vector3 x_1 = wTb_f.translation();
 
-  // Hermite parameterization.
+  // Hermite parameterization: p(u)=U(u)*B*C where vector U(u) includes the 
+  // polynomial terms, and B and C are the basis matrix and control matrices
+  // respectively.
+  // Vectors a_0 to a_3 constitute the matrix product A of the basis, B, and control,
+  // C, matrices leading to p(u)=U(u)*A where A=B*C.
   Vector3 a_0 = x_0, a_1 = x_0_p;
+  // Since u=t/horizon, rearrange to integrate the horizon in the matrix product
+  // of B and C.
   Vector3 a_2 = -std::pow(horizon, -2) *
                 (3 * (x_0 - x_1) + horizon * (2 * x_0_p + x_1_p));
   Vector3 a_3 =
@@ -89,19 +101,22 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
  */
 Pose3 compute_hermite_pose(const CoeffVector &coeffs, const Vector3 &x_0_p,
                            const double t, const Pose3 &wTb_i) {
-  // The position.
+  // The position computed from the spline equation as a function of time,
+  // p(t)=U(t)*A where U(t)=[1,t,t^2,t^3].
   Point3 p(coeffs[0] + coeffs[1] * t + coeffs[2] * std::pow(t, 2) +
            coeffs[3] * std::pow(t, 3));
 
-  // The rotation.
+  // Differentiate position with respect to t for velocity.
   Point3 dpdt_v3 =
       Point3(coeffs[1] + 2 * coeffs[2] * t + 3 * coeffs[3] * std::pow(t, 2));
+  // Unit vector for velocity.
   dpdt_v3 = dpdt_v3 / dpdt_v3.norm();
   Point3 x_0_p_point(x_0_p);
   x_0_p_point = x_0_p_point / x_0_p_point.norm();
 
   Point3 axis = x_0_p_point.cross(dpdt_v3);
   double angle = std::acos(x_0_p_point.dot(dpdt_v3));
+  // The rotation.
   Rot3 R = wTb_i.rotation() * Rot3::AxisAngle(axis, angle);
 
   return Pose3(R, p);
