@@ -40,7 +40,6 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   using This = PoseFactor;
   using Base = gtsam::NoiseModelFactor;
 
-  gtsam::Key wTp_key_, wTc_key_, q_key_;
   int t_;
   JointConstSharedPtr joint_;
 
@@ -59,9 +58,6 @@ class PoseFactor : public gtsam::NoiseModelFactor {
                  internal::PoseKey(joint->parent()->id(), time).key())(
                  internal::PoseKey(joint->child()->id(), time).key())(
                  internal::JointAngleKey(joint->id(), time).key())),
-        wTp_key_(internal::PoseKey(joint->parent()->id(), time)),
-        wTc_key_(internal::PoseKey(joint->child()->id(), time)),
-        q_key_(internal::JointAngleKey(joint->id(), time)),
         t_(time),
         joint_(joint) {}
 
@@ -76,14 +72,13 @@ class PoseFactor : public gtsam::NoiseModelFactor {
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses
    */
-  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
+  PoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
+             DynamicsSymbol q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
-      : Base(cost_model, cref_list_of<3>(wTp_key)(wTc_key)(q_key)),
-        wTp_key_(wTp_key),
-        wTc_key_(wTc_key),
-        q_key_(q_key),
-        t_(wTp_key & 0xFFFFFFFF),  // hack
+      : Base(cost_model,
+             cref_list_of<3>(wTp_key.key())(wTc_key.key())(q_key.key())),
+        t_(wTp_key.time()),
         joint_(joint) {}
 
   virtual ~PoseFactor() {}
@@ -98,8 +93,8 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
                                     H = boost::none) const override {
-    const gtsam::Pose3 &wTp = x.at<gtsam::Pose3>(wTp_key_),
-                       &wTc = x.at<gtsam::Pose3>(wTc_key_);
+    const gtsam::Pose3 &wTp = x.at<gtsam::Pose3>(keys_[0]),
+                       &wTc = x.at<gtsam::Pose3>(keys_[1]);
     // TODO(frank): logmap derivative is close to identity when error is small
     if (!H) return wTc.logmap(joint_->poseOf(joint_->child(), wTp, x, t_));
 
