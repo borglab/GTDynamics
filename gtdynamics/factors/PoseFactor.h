@@ -13,17 +13,19 @@
 
 #pragma once
 
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/assign/list_of.hpp>
+
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/JointTyped.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -31,17 +33,15 @@ namespace gtdynamics {
  * PoseFactor is a three-way nonlinear factor between the previous link pose and
  * this link pose
  */
-class PoseFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
-                                      typename JointTyped::JointCoordinate> {
+class PoseFactor : public gtsam::NoiseModelFactor {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
   using This = PoseFactor;
-  using Base =
-      gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3, JointCoordinate>;
-  enum { N = JointTyped::N };
+  using Base = gtsam::NoiseModelFactor;
+  // using boost::assign::cref_list_of;
 
-  boost::shared_ptr<const JointTyped> joint_;
+  gtsam::Key wTp_key_, wTc_key_, q_key_;
+  int t_;
+  JointConstSharedPtr joint_;
 
  public:
   /**
@@ -53,10 +53,16 @@ class PoseFactor
    */
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
-      : Base(cost_model, internal::PoseKey(joint->parent()->id(), time),
-             internal::PoseKey(joint->child()->id(), time),
-             internal::JointAngleKey(joint->id(), time)),
-        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+      : Base(cost_model,
+             boost::assign::cref_list_of<3>(
+                 internal::PoseKey(joint->parent()->id(), time).key())(
+                 internal::PoseKey(joint->child()->id(), time).key())(
+                 internal::JointAngleKey(joint->id(), time).key())),
+        wTp_key_(internal::PoseKey(joint->parent()->id(), time)),
+        wTc_key_(internal::PoseKey(joint->child()->id(), time)),
+        q_key_(internal::JointAngleKey(joint->id(), time)),
+        t_(time),
+        joint_(joint) {}
 
   /**
    * Create single factor relating this link's pose (COM) with previous one.
@@ -72,10 +78,15 @@ class PoseFactor
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
-      : Base(cost_model, wTp_key, wTc_key, q_key),
-        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+      : Base(cost_model, boost::assign::cref_list_of<3>(wTp_key)(wTc_key)(q_key)),
+        wTp_key_(wTp_key),
+        wTc_key_(wTc_key),
+        q_key_(q_key),
+        t_(wTp_key & 0xFFFFFFFF),  // hack
+        joint_(joint) {}
 
   virtual ~PoseFactor() {}
+
 
   /**
    * Evaluate link pose errors
@@ -83,22 +94,20 @@ class PoseFactor
    * @param wTc this (child) link CoM pose
    * @param q joint angle
    */
-  gtsam::Vector evaluateError(
-      const gtsam::Pose3 &wTp, const gtsam::Pose3 &wTc,
-      const JointCoordinate &q,
-      boost::optional<gtsam::Matrix &> H_wTp = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTc = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    Eigen::Matrix<double, 6, 6> wTc_hat_H_wTp, H_wTc_hat;
-    Eigen::Matrix<double, 6, N> wTc_hat_H_q;
-    auto wTc_hat =
-        joint_->poseOf(joint_->child(), wTp, q, H_wTp ? &wTc_hat_H_wTp : 0,
-                       H_q ? &wTc_hat_H_q : 0);
+  gtsam::Vector unwhitenedError(const gtsam::Values &x,
+                                boost::optional<std::vector<gtsam::Matrix> &>
+                                    H = boost::none) const override {
+    const gtsam::Pose3 &wTp = x.at<gtsam::Pose3>(wTp_key_),
+                       &wTc = x.at<gtsam::Pose3>(wTc_key_);
     // TODO(frank): logmap derivative is close to identity when error is small
-    gtsam::Vector6 error =
-        wTc.logmap(wTc_hat, H_wTc, (H_q || H_wTp) ? &H_wTc_hat : 0);
-    if (H_wTp) *H_wTp = H_wTc_hat * wTc_hat_H_wTp;
-    if (H_q) *H_q = H_wTc_hat * wTc_hat_H_q;
+    if (!H) return wTc.logmap(joint_->poseOf(joint_->child(), wTp, x, t_));
+
+    gtsam::Matrix wTc_hat_H_wTp, H_wTc_hat, wTc_hat_H_q;
+    auto wTc_hat = joint_->poseOf(joint_->child(), wTp, x, t_,
+                                  wTc_hat_H_wTp, wTc_hat_H_q);
+    gtsam::Vector6 error = wTc.logmap(wTc_hat, (*H)[1], H_wTc_hat);
+    (*H)[0] = H_wTc_hat * wTc_hat_H_wTp;
+    (*H)[2] = H_wTc_hat * wTc_hat_H_q;
     return error;
   }
 
@@ -122,7 +131,7 @@ class PoseFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
 };
 
