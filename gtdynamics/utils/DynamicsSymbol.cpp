@@ -136,8 +136,7 @@ DynamicsSymbol::operator std::string() const {
 }
 
 std::string _GTDKeyFormatter(Key key) {
-  const DynamicsSymbol asDynamicsSymbol(key);
-  return std::string(asDynamicsSymbol);
+  return std::string(DynamicsSymbol(key));
 }
 
 /* ************************************************************************* */
