@@ -18,8 +18,6 @@
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 
-#define kMax_uchar_ std::numeric_limits<unsigned char>::max()
-
 using gtsam::Key;
 namespace gtdynamics {
 
@@ -80,19 +78,7 @@ DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s,
 }
 
 /* ************************************************************************* */
-DynamicsSymbol::DynamicsSymbol(const Key& key) {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
-  const Key ch1_mask = Key(kMax_uchar_) << (key_bits - ch1_bits);
-  const Key ch2_mask = Key(kMax_uchar_) << (key_bits - ch1_bits - ch2_bits);
-  const Key link_mask = Key(kMax_uchar_) << (time_bits + joint_bits);
-  const Key joint_mask = Key(kMax_uchar_) << time_bits;
-  const Key time_mask = ~(ch1_mask | ch2_mask | link_mask | joint_mask);
+DynamicsSymbol::DynamicsSymbol(const Key& key) {  
   c1_ = (unsigned char)((key & ch1_mask) >> (key_bits - ch1_bits));
   c2_ = (unsigned char)((key & ch2_mask) >> (key_bits - ch1_bits - ch2_bits));
   link_idx_ = (unsigned char)((key & link_mask) >> (time_bits + joint_bits));
@@ -102,13 +88,6 @@ DynamicsSymbol::DynamicsSymbol(const Key& key) {
 
 /* ************************************************************************* */
 DynamicsSymbol::operator Key() const {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
   Key ch1_comp = Key(c1_) << (key_bits - ch1_bits);
   Key ch2_comp = Key(c2_) << (key_bits - ch1_bits - ch2_bits);
   Key link_comp = Key(link_idx_) << (time_bits + joint_bits);
