@@ -78,13 +78,13 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
   // respectively.
   // Vectors a_0 to a_3 constitute the matrix product A of the basis, B, and control,
   // C, matrices leading to p(u)=U(u)*A where A=B*C.
-  Vector3 a_0 = x_0, a_1 = x_0_p;
+  Vector3 a_0 = x_0, a_1 = x_0_p/horizon;
   // Since u=t/horizon, rearrange to integrate the horizon in the matrix product
   // of B and C.
   Vector3 a_2 = -std::pow(horizon, -2) *
-                (3 * (x_0 - x_1) + horizon * (2 * x_0_p + x_1_p));
+                (3 * (x_0 - x_1) + (2 * x_0_p + x_1_p));
   Vector3 a_3 =
-      std::pow(horizon, -3) * (2 * (x_0 - x_1) + horizon * (x_0_p + x_1_p));
+      std::pow(horizon, -3) * (2 * (x_0 - x_1) + (x_0_p + x_1_p));
 
   std::vector<gtsam::Vector> coeffs;
   coeffs.push_back(a_0);
