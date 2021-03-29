@@ -596,102 +596,46 @@ DynamicsGraph::targetPoseFactors(const Robot &robot, const int t,
   return graph;
 }
 
-gtsam::Vector DynamicsGraph::jointAccels(const Robot &robot,
+gtsam::Values DynamicsGraph::jointAccels(const Robot &robot,
                                          const gtsam::Values &result,
                                          const int t) {
-  gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints[idx];
+  gtsam::Values joint_accels;
+  for(auto&& joint: robot.joints()) {
     int j = joint->id();
-    joint_accels[idx] = JointAccel(result, j, t);
+    InsertJointAccel(&joint_accels, j, t, JointAccel(result, j, t));
   }
   return joint_accels;
 }
 
-gtsam::Vector DynamicsGraph::jointVels(const Robot &robot,
+gtsam::Values DynamicsGraph::jointVels(const Robot &robot,
                                        const gtsam::Values &result,
                                        const int t) {
-  gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints[idx];
+  gtsam::Values joint_vels;
+  for(auto&& joint: robot.joints()) {
     int j = joint->id();
-    joint_vels[idx] = JointVel(result, j, t);
+    InsertJointVel(&joint_vels, j, t, JointVel(result, j, t));
   }
   return joint_vels;
 }
 
-gtsam::Vector DynamicsGraph::jointAngles(const Robot &robot,
+gtsam::Values DynamicsGraph::jointAngles(const Robot &robot,
                                          const gtsam::Values &result,
                                          const int t) {
-  gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints[idx];
+  gtsam::Values joint_angles;
+  for(auto&& joint: robot.joints()) {
     int j = joint->id();
-    joint_angles[idx] = JointAngle(result, j, t);
+    InsertJointAngle(&joint_angles, j, t, JointAngle(result, j, t));
   }
   return joint_angles;
 }
 
-gtsam::Vector DynamicsGraph::jointTorques(const Robot &robot,
+gtsam::Values DynamicsGraph::jointTorques(const Robot &robot,
                                           const gtsam::Values &result,
                                           const int t) {
-  gtsam::Vector joint_torques = gtsam::Vector::Zero(robot.numJoints());
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints[idx];
+  gtsam::Values joint_torques;
+  for(auto&& joint: robot.joints()) {
     int j = joint->id();
-    joint_torques[idx] = Torque(result, j, t);
-  }
-  return joint_torques;
-}
-
-JointValueMap DynamicsGraph::jointAccelsMap(const Robot &robot,
-                                          const gtsam::Values &result,
-                                          const int t) {
-  JointValueMap joint_accels;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->id();
-    std::string name = joint->name();
-    joint_accels[name] = JointAccel(result, j, t);
-  }
-  return joint_accels;
-}
-
-JointValueMap DynamicsGraph::jointVelsMap(const Robot &robot,
-                                        const gtsam::Values &result,
-                                        const int t) {
-  JointValueMap joint_vels;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->id();
-    std::string name = joint->name();
-    joint_vels[name] = JointVel(result, j, t);
-  }
-  return joint_vels;
-}
-
-JointValueMap DynamicsGraph::jointAnglesMap(const Robot &robot,
-                                          const gtsam::Values &result,
-                                          const int t) {
-  JointValueMap joint_angles;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->id();
-    std::string name = joint->name();
-    joint_angles[name] = JointAngle(result, j, t);
-  }
-  return joint_angles;
-}
-
-JointValueMap DynamicsGraph::jointTorquesMap(const Robot &robot,
-                                           const gtsam::Values &result,
-                                           const int t) {
-  JointValueMap joint_torques;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->id();
-    std::string name = joint->name();
-    joint_torques[name] = Torque(result, j, t);
+    InsertTorque(&joint_torques, j, t, Torque(result, j, t));
   }
   return joint_torques;
 }

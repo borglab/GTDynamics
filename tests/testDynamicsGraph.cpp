@@ -123,8 +123,11 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   gtsam::GaussNewtonOptimizer optimizer(graph, ZeroValues(robot, t));
   Values result = optimizer.optimize();
 
-  gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, t);
-  gtsam::Vector expected_qAccel = (gtsam::Vector(1) << 4).finished();
+  gtsam::Values actual_qAccel = DynamicsGraph::jointAccels(robot, result, t);
+  gtsam::Values expected_qAccel;
+  for(auto&& joint: robot.joints()) {
+    InsertJointAccel(&expected_qAccel, joint->id(), t, 4.0);
+  }
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 1e-3));
 }
 
@@ -161,8 +164,12 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   // test the four bar linkage FD in the free-floating scenario
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values result = optimizer.optimize();
-  gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
-  gtsam::Vector expected_qAccel = (gtsam::Vector(4) << 1, -1, 1, -1).finished();
+  gtsam::Values actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
+  std::vector<double> expected_accel = {1, -1, 1, -1};
+  gtsam::Values expected_qAccel;
+  for(auto&& joint: robot.joints()) {
+    InsertJointAccel(&expected_qAccel, joint->id(), 0, expected_accel[joint->id()]);
+  }
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 1e-4));
 
   // test the condition when we fix link "l1"
@@ -174,14 +181,20 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   result = optimizer2.optimize();
 
   actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
-  expected_qAccel = (gtsam::Vector(4) << 0.25, -0.25, 0.25, -0.25).finished();
+  expected_accel = {0.25, -0.25, 0.25, -0.25};
+  expected_qAccel.clear();
+  for(auto&& joint: robot.joints()) {
+    InsertJointAccel(&expected_qAccel, joint->id(), 0, expected_accel[joint->id()]);
+  }
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 }
 
 // test jumping robot
 TEST(dynamicsFactorGraph_FD, jumping_robot) {
-  using jumping_robot::joint_angles, jumping_robot::joint_vels,
-      jumping_robot::robot;
+  using jumping_robot::joint_angles;
+  using jumping_robot::joint_vels;
+  using jumping_robot::robot;
+
   double torque3 = 0;
   double torque2 = 0.5;
   Vector torques =
@@ -199,7 +212,6 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
   Values result = optimizer.optimize();
 
   // check acceleration
-  auto expected_qAccel = Vector(6);
   double m1 = 0.31;
   double m2 = 0.28;
   double m3 = 0.54;
@@ -214,8 +226,12 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
             2 * std::pow(std::sin(theta), 2) * m3) +
        (std::pow(l, 2) + 3 * std::pow(link_radius, 2)) *
            (1.0 / 12 * m1 + 1.0 / 12 * m2));
-  expected_qAccel << acc, -2 * acc, acc, acc, -2 * acc, acc;
-  Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
+  std::vector<double> expected_accel = {acc, -2 * acc, acc, acc, -2 * acc, acc};
+  gtsam::Values expected_qAccel;
+  for(auto&& joint: robot.joints()) {
+    InsertJointAccel(&expected_qAccel, joint->id(), 0, expected_accel[joint->id()]);
+  }
+  gtsam::Values actual_qAccel = DynamicsGraph::jointAccels(robot, result, 0);
   EXPECT(assert_equal(expected_qAccel, actual_qAccel));
 }
 

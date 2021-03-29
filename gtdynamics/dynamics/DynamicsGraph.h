@@ -311,40 +311,20 @@ class DynamicsGraph {
    * @param robot the robot
    * @param t     time step
    */
-  static gtsam::Vector jointAccels(const Robot &robot,
+  static gtsam::Values jointAccels(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /// Return joint velocities.
-  static gtsam::Vector jointVels(const Robot &robot,
+  static gtsam::Values jointVels(const Robot &robot,
                                  const gtsam::Values &result, const int t);
 
   /// Return joint angles.
-  static gtsam::Vector jointAngles(const Robot &robot,
+  static gtsam::Values jointAngles(const Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /// Return joint torques.
-  static gtsam::Vector jointTorques(const Robot &robot,
+  static gtsam::Values jointTorques(const Robot &robot,
                                     const gtsam::Values &result, const int t);
-
-  /**
-   * Return the joint accelerations as std::map<name, acceleration>
-   * @param robot the robot
-   * @param t     time step
-   */
-  static JointValueMap jointAccelsMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
-
-  /// Return joint velocities as std::map<name, velocity>.
-  static JointValueMap jointVelsMap(const Robot &robot,
-                                  const gtsam::Values &result, const int t);
-
-  /// Return joint angles as std::map<name, angle>.
-  static JointValueMap jointAnglesMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
-
-  /// Return joint torques as std::map<name, torque>.
-  static JointValueMap jointTorquesMap(const Robot &robot,
-                                     const gtsam::Values &result, const int t);
 
   /// Rrint the factors of the factor graph
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);

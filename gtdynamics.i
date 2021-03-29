@@ -417,27 +417,8 @@ class DynamicsGraph {
                                    const gtsam::Values &result, const int t);
 
   /* return joint torques. */
-  static Vector jointTorques(const gtdynamics::Robot &robot,
+  static gtsam::Values jointTorques(const gtdynamics::Robot &robot,
                                     const gtsam::Values &result, const int t);
-
-  static gtdynamics::JointValueMap jointAccelsMap(const gtdynamics::Robot &robot,
-                                           const gtsam::Values &result,
-                                           const int t);
-
-  /* return joint velocities as std::map<name, velocity>. */
-  static gtdynamics::JointValueMap jointVelsMap(const gtdynamics::Robot &robot,
-                                         const gtsam::Values &result,
-                                         const int t);
-
-  /* return joint angles as std::map<name, angle>. */
-  static gtdynamics::JointValueMap jointAnglesMap(const gtdynamics::Robot &robot,
-                                           const gtsam::Values &result,
-                                           const int t);
-
-  /* return joint torques as std::map<name, torque>. */
-  static gtdynamics::JointValueMap jointTorquesMap(const gtdynamics::Robot &robot,
-                                            const gtsam::Values &result,
-                                            const int t);
 
   /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
