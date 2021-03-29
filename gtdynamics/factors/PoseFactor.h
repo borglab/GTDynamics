@@ -29,6 +29,8 @@
 
 namespace gtdynamics {
 
+using boost::assign::cref_list_of;
+
 /**
  * PoseFactor is a three-way nonlinear factor between the previous link pose and
  * this link pose
@@ -37,7 +39,6 @@ class PoseFactor : public gtsam::NoiseModelFactor {
  private:
   using This = PoseFactor;
   using Base = gtsam::NoiseModelFactor;
-  // using boost::assign::cref_list_of;
 
   gtsam::Key wTp_key_, wTc_key_, q_key_;
   int t_;
@@ -54,7 +55,7 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
       : Base(cost_model,
-             boost::assign::cref_list_of<3>(
+             cref_list_of<3>(
                  internal::PoseKey(joint->parent()->id(), time).key())(
                  internal::PoseKey(joint->child()->id(), time).key())(
                  internal::JointAngleKey(joint->id(), time).key())),
@@ -78,7 +79,7 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
-      : Base(cost_model, boost::assign::cref_list_of<3>(wTp_key)(wTc_key)(q_key)),
+      : Base(cost_model, cref_list_of<3>(wTp_key)(wTc_key)(q_key)),
         wTp_key_(wTp_key),
         wTc_key_(wTc_key),
         q_key_(q_key),
