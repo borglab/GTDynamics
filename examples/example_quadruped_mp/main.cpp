@@ -96,8 +96,11 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
 }
 
 /**
- * Compute the robot base pose as defined by the hermite spline.
- * TODO(frank): document better
+ * Compute the robot base pose as defined by the calculated trajectory.
+ * The calculated trajectory is a piecewise polynomial consisting of
+ * cubic hermite splines; the base pose will move along this trajectory.
+ * The cubic hermite splines have C1 continuity i.e. continuous in position
+ * and tangent vector.
  */
 Pose3 compute_hermite_pose(const CoeffVector &coeffs, const Vector3 &x_0_p,
                            const double t, const Pose3 &wTb_i) {
