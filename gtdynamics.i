@@ -357,13 +357,9 @@ class DynamicsGraph {
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
-  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
-      const Vector &joint_vels, const Vector &torques) const;
-
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
-      const Vector &joint_vels, const Vector &joint_accels) const;
+      const gtdynamics::Robot &robot, const int t,
+      const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
       const gtdynamics::Robot &robot, const int t,
@@ -371,8 +367,7 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
       const gtdynamics::Robot &robot, const int num_steps,
-      const Vector &joint_angles, const Vector &joint_vels,
-      const std::vector<Vector> &torques_seq) const;
+      const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,

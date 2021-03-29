@@ -183,18 +183,6 @@ class DynamicsGraph {
    * Return prior factors of torque, angle, velocity
    * @param robot        the robot
    * @param t            time step
-   * @param joint_angles joint angles specified in order of joints
-   * @param joint_vels   joint velocities specified in order of joints
-   * @param torques      joint torques specified in order of joints
-   */
-  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const Robot &robot, const int t, const gtsam::Vector &joint_angles,
-      const gtsam::Vector &joint_vels, const gtsam::Vector &torques) const;
-
-  /**
-   * Return prior factors of torque, angle, velocity
-   * @param robot        the robot
-   * @param t            time step
    * @param known_values joint angles, joint velocities, and joint torques
    */
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
@@ -204,26 +192,20 @@ class DynamicsGraph {
    * Return prior factors of accel, angle, velocity
    * @param robot        the robot
    * @param t            time step
-   * @param joint_angles joint angles specified in order of joints
-   * @param joint_vels   joint velocities specified in order of joints
-   * @param joint_accels joint accels specified in order of joints
+   * @param known_values joint angles, joint velocities, and joint torques
    */
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
-      const Robot &robot, const int t, const gtsam::Vector &joint_angles,
-      const gtsam::Vector &joint_vels, const gtsam::Vector &joint_accels) const;
+      const Robot &robot, const int t, const gtsam::Values &known_values) const;
 
   /**
    * Return prior factors of initial state, torques along trajectory
    * @param robot        the robot
    * @param num_steps    total time steps
-   * @param joint_angles joint angles specified in order of joints
-   * @param joint_vels   joint velocities specified in order of joints
-   * @param torques_seq  joint torques along the trajectory
+   * @param known_values joint angles, joint velocities, and joint torques
    */
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
       const Robot &robot, const int num_steps,
-      const gtsam::Vector &joint_angles, const gtsam::Vector &joint_vels,
-      const std::vector<gtsam::Vector> &torques_seq) const;
+      const gtsam::Values &known_values) const;
 
   /**
    * Return nonlinear factor graph of the entire trajectory

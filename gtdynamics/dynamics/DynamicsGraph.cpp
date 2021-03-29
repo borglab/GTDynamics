@@ -507,63 +507,36 @@ DynamicsGraph::forwardDynamicsPriors(const Robot &robot, const int t,
   return graph;
 }
 
-gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
-    const Robot &robot, const int t, const gtsam::Vector &joint_angles,
-    const gtsam::Vector &joint_vels, const gtsam::Vector &torques) const {
-  gtsam::NonlinearFactorGraph graph;
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints.at(idx);
-    int j = joint->id();
-    graph.addPrior(internal::JointAngleKey(j, t), joint_angles(idx),
-                   opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, t), joint_vels(idx),
-                   opt_.prior_qv_cost_model);
-    graph.addPrior(internal::TorqueKey(j, t), torques(idx),
-                   opt_.prior_t_cost_model);
-  }
-  return graph;
-}
-
 gtsam::NonlinearFactorGraph DynamicsGraph::inverseDynamicsPriors(
-    const Robot &robot, const int t, const gtsam::Vector &joint_angles,
-    const gtsam::Vector &joint_vels, const gtsam::Vector &joint_accels) const {
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
   gtsam::NonlinearFactorGraph graph;
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    auto joint = joints[idx];
+  for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    graph.addPrior(internal::JointAngleKey(j, t), joint_angles[idx],
-                   opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, t), joint_vels[idx],
+    graph.addPrior(internal::JointAngleKey(j, t),
+                   JointAngle(known_values, j, t), opt_.prior_q_cost_model);
+    graph.addPrior(internal::JointVelKey(j, t), JointVel(known_values, j, t),
                    opt_.prior_qv_cost_model);
-    graph.addPrior(internal::JointAccelKey(j, t), joint_accels[idx],
-                   opt_.prior_qa_cost_model);
+    graph.addPrior(internal::JointAccelKey(j, t),
+                   JointAccel(known_values, j, t), opt_.prior_qa_cost_model);
   }
   return graph;
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFDPriors(
-    const Robot &robot, const int num_steps, const gtsam::Vector &joint_angles,
-    const gtsam::Vector &joint_vels,
-    const std::vector<gtsam::Vector> &torques_seq) const {
+    const Robot &robot, const int num_steps,
+    const gtsam::Values &known_values) const {
   gtsam::NonlinearFactorGraph graph;
-  auto joints = robot.joints();
-  for (int idx = 0; idx < robot.numJoints(); idx++) {
-    int j = joints[idx]->id();
-    graph.addPrior(internal::JointAngleKey(j, 0), joint_angles[idx],
-                   opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, 0), joint_vels[idx],
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    graph.addPrior(internal::JointAngleKey(j, 0),
+                   JointAngle(known_values, j, 0), opt_.prior_q_cost_model);
+    graph.addPrior(internal::JointVelKey(j, 0), JointVel(known_values, j, 0),
                    opt_.prior_qv_cost_model);
-  }
-  for (int t = 0; t <= num_steps; t++) {
-    for (int idx = 0; idx < robot.numJoints(); idx++) {
-      int j = joints[idx]->id();
-      graph.addPrior(internal::TorqueKey(j, t), torques_seq[t][idx],
+    for (int t = 0; t <= num_steps; t++) {
+      graph.addPrior(internal::TorqueKey(j, t), Torque(known_values, j, t),
                      opt_.prior_t_cost_model);
     }
   }
-
   return graph;
 }
 
