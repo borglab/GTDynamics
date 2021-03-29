@@ -145,6 +145,32 @@ static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
   }
 }
 
+// Insert a pose/twist into values, but if they already are present, just check
+// if they are consistent. Throw exception otherwise.
+// Returns true if values were inserted.
+static bool InsertWithCheck(size_t i, size_t t,
+                            const std::pair<Pose3, Vector6> &poseTwist,
+                            gtsam::Values *values) {
+  Pose3 pose;
+  Vector6 twist;
+  std::tie(pose, twist) = poseTwist;
+  auto pose_key = internal::PoseKey(i, t);
+  auto twist_key = internal::TwistKey(i, t);
+  const bool exists = values->exists(pose_key);
+  if (!exists) {
+    values->insert(pose_key, pose);
+    values->insert<Vector6>(twist_key, twist);
+  } else {
+    // If already insert, check for consistency.
+    if (!(pose.equals(values->at<Pose3>(pose_key), 1e-4) &&
+          (twist - values->at<Vector6>(twist_key)).norm() < 1e-4)) {
+      throw std::runtime_error(
+          "Inconsistent joint angles detected in forward kinematics");
+    }
+  }
+  return !exists;
+}
+
 gtsam::Values Robot::forwardKinematics(
     const gtsam::Values &known_values, size_t t,
     const boost::optional<std::string> &prior_link_name) const {
@@ -190,26 +216,10 @@ gtsam::Values Robot::forwardKinematics(
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->getJoints()) {
       InsertZeroDefaults(joint->id(), t, &values);
-      Pose3 T_w2;
-      Vector6 V_2;
-      std::tie(T_w2, V_2) = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
-
-      // Save pose and twist if link 2 has not been assigned yet.
+      const auto poseTwist = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
       LinkSharedPtr link2 = joint->otherLink(link1);
-      auto pose_key = internal::PoseKey(link2->id(), t);
-      auto twist_key = internal::TwistKey(link2->id(), t);
-      if (!values.exists(pose_key)) {
-        values.insert(pose_key, T_w2);
-        values.insert<Vector6>(twist_key, V_2);
+      if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
         q.push(link2);
-      } else {
-        // If link 2 is already assigned, check for consistency.
-        Pose3 T_w2_prev = values.at<Pose3>(pose_key);
-        Vector6 V_2_prev = values.at<Vector6>(twist_key);
-        if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
-          throw std::runtime_error(
-              "Inconsistent joint angles detected in forward kinematics");
-        }
       }
     }
     if (loop_count++ > 100000) {
