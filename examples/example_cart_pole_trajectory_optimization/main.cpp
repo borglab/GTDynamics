@@ -56,9 +56,9 @@ int main(int argc, char** argv) {
   std::cout << "Goal State: " << X_T.transpose() << std::endl << std::endl;
 
   // Create trajectory factor graph.
-  auto graph_builder = DynamicsGraph();
+  auto graph_builder = DynamicsGraph(gravity);
   auto graph = graph_builder.trajectoryFG(
-      cp, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal, gravity);
+      cp, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
 
   // Set the pendulum joint to be unactuated.
   for (int t = 0; t <= t_steps; t++)
