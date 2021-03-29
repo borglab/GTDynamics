@@ -134,6 +134,17 @@ void Robot::print() const {
   }
 }
 
+// Add zero default values for joint angles and joint velocities.
+// if they do not yet exist
+static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
+  using namespace internal;
+  for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
+    if (!values->exists(key)) {
+      values->insertDouble(key, 0.0);
+    }
+  }
+}
+
 gtsam::Values Robot::forwardKinematics(
     const gtsam::Values &known_values, size_t t,
     const boost::optional<std::string> &prior_link_name) const {
@@ -178,10 +189,10 @@ gtsam::Values Robot::forwardKinematics(
 
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->getJoints()) {
+      InsertZeroDefaults(joint->id(), t, &values);
       Pose3 T_w2;
       Vector6 V_2;
-      std::tie(T_w2, V_2) =
-          joint->otherPoseTwist(link1, T_w1, V_1, known_values, t);
+      std::tie(T_w2, V_2) = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
 
       // Save pose and twist if link 2 has not been assigned yet.
       LinkSharedPtr link2 = joint->otherLink(link1);

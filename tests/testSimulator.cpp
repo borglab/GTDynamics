@@ -32,7 +32,6 @@ TEST(Simulate, simple_urdf) {
   using std::vector;
   gtsam::Values initial_values, torques;
   robot.print();
-  InsertJointAngle(&initial_values, 0, 0.0);
   InsertTorque(&torques, 0, 1.0);
 
   Simulator simulator(robot, initial_values, gravity, planar_axis);

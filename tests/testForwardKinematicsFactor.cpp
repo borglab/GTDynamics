@@ -93,7 +93,6 @@ TEST(ForwardKinematicsFactor, Movement) {
   Values values;
 
   // Lay the robot arm flat
-  InsertJointAngle(&values, 0, 0.0);
   InsertJointAngle(&values, 1, M_PI_2);
   Values values_for_jacobians;
 
