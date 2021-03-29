@@ -48,12 +48,12 @@ using FKResults = std::pair<LinkPoses, LinkTwists>;
  * be fed into an optimization pipeline.
  */
 class Robot {
- private:
+private:
   // For quicker/easier access to links and joints.
   LinkMap name_to_link_;
   JointMap name_to_joint_;
 
- public:
+public:
   /** Default Constructor */
   Robot() {}
 
@@ -76,7 +76,7 @@ class Robot {
   void removeLink(const LinkSharedPtr &link);
 
   /// remove specified joint from the robot
-  void removeJoint(JointSharedPtr joint);
+  void removeJoint(const JointSharedPtr &joint);
 
   /// Return the link corresponding to the input string.
   LinkSharedPtr link(const std::string &name) const;
@@ -108,5 +108,11 @@ class Robot {
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
       const boost::optional<std::string> &prior_link_name = boost::none) const;
+
+private:
+  /// Find root link for forward kinematics
+  LinkSharedPtr
+  findRootLink(const boost::optional<std::string> &prior_link_name, size_t t,
+               gtsam::Values *values) const;
 };
 } // namespace gtdynamics
