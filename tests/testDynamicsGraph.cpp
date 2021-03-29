@@ -61,7 +61,6 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   int t = 777;
   auto j = robot.joint("j1")->id();
   InsertJointAngle(&values, j, t, 0.0);
-  InsertJointVel(&values, j, t, 0.0);
   InsertPose(&values, l1->id(), t, l1->wTcom());
   InsertTwist(&values, l1->id(), t, gtsam::Z_6x1);
 
@@ -89,7 +88,6 @@ gtsam::Values zero_values(const Robot &robot, size_t t) {
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
     InsertJointAngle(&values, j, t, 0.0);
-    InsertJointVel(&values, j, t, 0.0);
   }
   return values;
 }
@@ -238,10 +236,8 @@ TEST(collocationFactors, simple_urdf) {
 
   Values init_values;
   InsertJointAngle(&init_values, j, t, 0.0);
-  InsertJointVel(&init_values, j, t, 0.0);
   InsertJointAccel(&init_values, j, t, 0.0);
   InsertJointAngle(&init_values, j, t + 1, 0.0);
-  InsertJointVel(&init_values, j, t + 1, 0.0);
   InsertJointAccel(&init_values, j, t + 1, 0.0);
 
   // test trapezoidal

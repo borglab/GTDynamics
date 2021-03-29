@@ -89,7 +89,6 @@ TEST(Robot, forwardKinematics) {
 
   Values values;
   InsertJointAngle(&values, 0, 0.0);
-  InsertJointVel(&values, 0, 0.0);
 
   // not fixing a link would cause an exception
   THROWS_EXCEPTION(robot.forwardKinematics(values));
@@ -152,11 +151,8 @@ TEST(Robot, forwardKinematics_rpr) {
 
   Values values;
   InsertJointAngle(&values, 1, 0.0);
-  InsertJointVel(&values, 1, 0.0);
   InsertJointAngle(&values, 2, 0.0);
-  InsertJointVel(&values, 2, 0.0);
   InsertJointAngle(&values, 3, 0.0);
-  InsertJointVel(&values, 3, 0.0);
 
   // test fk at rest
   robot.link("link_0")->fix();
@@ -184,11 +180,9 @@ TEST(Robot, forwardKinematics_rpr) {
   // test fk with moving prismatic joint and fixed base
   Values values2;
   InsertJointAngle(&values2, 1, M_PI_2);
-  InsertJointVel(&values2, 1, 0.0);
   InsertJointAngle(&values2, 2, 0.5);
   InsertJointVel(&values2, 2, 1.0);
   InsertJointAngle(&values2, 3, 0.0);
-  InsertJointVel(&values2, 3, 0.0);
 
   fk_results = robot.forwardKinematics(values2);
 
@@ -220,7 +214,6 @@ TEST(forwardKinematics, four_bar) {
   Values values;
   for (auto &&joint : four_bar.joints()) {
     InsertJointAngle(&values, joint->id(), 0.0);
-    InsertJointVel(&values, joint->id(), 0.0);
   }
   Values fk_results = four_bar.forwardKinematics(values);
 
