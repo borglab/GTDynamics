@@ -83,16 +83,16 @@ class ContactDynamicsFrictionConeFactor
       boost::optional<gtsam::Matrix &> H_contact_wrench =
           boost::none) const override {
     // Linear component of the contact wrench.
-    gtsam::Matrix f_c = H_wrench_ * contact_wrench;
+    gtsam::Vector3 f_c = H_wrench_ * contact_wrench;
 
     // Rotate linear contact wrench force into the spatial frame.
     gtsam::Matrix36 H_p;
-    gtsam::Matrix f_c_prime = pose.rotation(H_p) * f_c;
+    gtsam::Vector3 f_s = pose.rotation(H_p) * f_c;
 
     // Compute the squared force values.
-    gtsam::Matrix A = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_x_;
-    gtsam::Matrix B = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_y_;
-    gtsam::Matrix C = gtsam::trans(gtsam::Matrix(f_c_prime)) * H_z_;
+    gtsam::Matrix A = f_s.transpose() * H_x_;
+    gtsam::Matrix B = f_s.transpose() * H_y_;
+    gtsam::Matrix C = f_s.transpose() * H_z_;
 
     if (up_axis_ == 0)
       A *= -mu_prime_;
@@ -102,9 +102,9 @@ class ContactDynamicsFrictionConeFactor
       C *= -mu_prime_;
 
     // a = f_x^2, b = f_z^2, c = f_z^2.
-    gtsam::Matrix a = A * gtsam::Matrix(f_c_prime);
-    gtsam::Matrix b = B * gtsam::Matrix(f_c_prime);
-    gtsam::Matrix c = C * gtsam::Matrix(f_c_prime);
+    gtsam::Matrix a = A * f_s;
+    gtsam::Matrix b = B * f_s;
+    gtsam::Matrix c = C * f_s;
 
     gtsam::Matrix resultant = a + b + c;
     gtsam::Vector error;
@@ -117,10 +117,10 @@ class ContactDynamicsFrictionConeFactor
 
     // Compute the gradients based on whether or not the inequality constraint
     // is active.
-    gtsam::Matrix H_f_c_prime = (2 * A + 2 * B + 2 * C);
+    gtsam::Matrix H_f_s = (2 * A + 2 * B + 2 * C);
     if (H_contact_wrench) {
       if (resultant(0, 0) > 0) {  // Active.
-        gtsam::Matrix H_f_c = H_f_c_prime * pose.rotation().matrix();
+        gtsam::Matrix H_f_c = H_f_s * pose.rotation().matrix();
         *H_contact_wrench = H_f_c * H_wrench_;
       } else {  // Inactive.
         *H_contact_wrench =
@@ -132,7 +132,7 @@ class ContactDynamicsFrictionConeFactor
       if (resultant(0, 0) > 0) {  // Active.
         gtsam::Matrix33 H_r = pose.rotation().matrix() *
                               gtsam::skewSymmetric(-f_c(0), -f_c(1), -f_c(2));
-        gtsam::Matrix H_rot = gtsam::Matrix(H_f_c_prime * H_r);
+        gtsam::Matrix H_rot = gtsam::Matrix(H_f_s * H_r);
         *H_pose = H_rot * H_p;
       } else {  // Inactive.
         *H_pose = (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
