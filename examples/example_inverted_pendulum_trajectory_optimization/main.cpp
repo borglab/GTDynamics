@@ -52,10 +52,9 @@ int main(int argc, char** argv) {
   double theta_T = M_PI, dtheta_T = 0, ddtheta_T = 0;
 
   // Create trajectory factor graph.
-  auto graph_builder = DynamicsGraph();
+  auto graph_builder = DynamicsGraph(gravity, planar_axis);
   auto graph = graph_builder.trajectoryFG(
-      ip, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal, gravity,
-      planar_axis);
+      ip, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
 
   // Add initial conditions to trajectory factor graph.
   graph.addPrior(JointAngleKey(j1_id, 0), theta_i, dynamics_model);
