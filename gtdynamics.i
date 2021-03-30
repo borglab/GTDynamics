@@ -148,7 +148,7 @@ class Link  {
 
     gtdynamics::Link* shared();
     int id() const;
-    void addJoint(gtdynamics::JointSharedPtr joint_ptr);
+    void addJoint(gtdynamics::Joint* joint_ptr);
     const gtsam::Pose3 &wTl() const;
     const gtsam::Pose3 &lTcom() const;
     const gtsam::Pose3 wTcom() const;
@@ -189,10 +189,10 @@ virtual class Joint {
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;
   string name() const;
-  gtdynamics::LinkSharedPtr otherLink(const gtdynamics::LinkSharedPtr &link);
-  std::vector<gtdynamics::LinkSharedPtr> links() const;
-  gtdynamics::LinkSharedPtr parent() const;
-  gtdynamics::LinkSharedPtr child() const;
+  gtdynamics::Link* otherLink(const gtdynamics::Link* link);
+  std::vector<gtdynamics::Link*> links() const;
+  gtdynamics::Link* parent() const;
+  gtdynamics::Link* child() const;
 };
 
 virtual class JointTyped : gtdynamics::Joint {
@@ -202,22 +202,22 @@ virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
   RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                const gtdynamics::LinkSharedPtr &parent_link,
-                const gtdynamics::LinkSharedPtr &child_link,
+                const gtdynamics::Link* parent_link,
+                const gtdynamics::Link* child_link,
                 const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                 const gtdynamics::LinkSharedPtr &parent_link,
-                 const gtdynamics::LinkSharedPtr &child_link,
+                 const gtdynamics::Link* parent_link,
+                 const gtdynamics::Link* child_link,
                  const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
   ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::LinkSharedPtr &parent_link,
-             const gtdynamics::LinkSharedPtr &child_link,
+             const gtdynamics::Link* parent_link,
+             const gtdynamics::Link* child_link,
              const gtdynamics::JointParams &parameters, const Vector &axis,
              double thread_pitch);
 };
@@ -229,15 +229,15 @@ virtual class ScrewJoint : gtdynamics::ScrewJointBase {
 class Robot {
   Robot();
 
-  Robot(std::map<string, gtdynamics::LinkSharedPtr> links, std::map<string, gtdynamics::JointSharedPtr> joints);
+  Robot(std::map<string, gtdynamics::Link*> links, std::map<string, gtdynamics::Joint*> joints);
 
-  std::vector<gtdynamics::LinkSharedPtr> links() const;
+  std::vector<gtdynamics::Link*> links() const;
 
-  std::vector<gtdynamics::JointSharedPtr> joints() const;
+  std::vector<gtdynamics::Joint*> joints() const;
 
-  void removeLink(gtdynamics::LinkSharedPtr link);
+  void removeLink(gtdynamics::Link* link);
 
-  void removeJoint(gtdynamics::JointSharedPtr joint);
+  void removeJoint(gtdynamics::Joint* joint);
 
   gtdynamics::Link* link(string name) const;
 
