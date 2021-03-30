@@ -331,11 +331,11 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
-  Pose3 l0Tl1com_rest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 l0Tl1com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
-  Pose3 l0Tl1com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 T_01com_rest(Rot3::identity(), Point3(0, 0, 0.4));
+  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
-  EXPECT(assert_equal(T_01comRest, j1->relativePoseOf(l1, 0.0)));
+  EXPECT(assert_equal(T_01com_rest, j1->relativePoseOf(l1, 0.0)));
   EXPECT(assert_equal(T_01com_neg, j1->relativePoseOf(l1, -M_PI / 2)));
   EXPECT(assert_equal(T_01com_pos, j1->relativePoseOf(l1, M_PI / 2)));
 
@@ -357,9 +357,9 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j2_l2, j2->screwAxis(l2)));
 
   // Check transform from l1 com to l2 com at rest and at various angles.
-  Pose3 l1Tl2com_rest(Rot3::identity(), Point3(0, 0, 0.6));
-  Pose3 l1Tl2com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
-  Pose3 l1Tl2com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
+  Pose3 T_12com_rest(Rot3::identity(), Point3(0, 0, 0.6));
+  Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
+  Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
   EXPECT(assert_equal(T_12com_rest, j2->relativePoseOf(l2, 0.0)));
   EXPECT(assert_equal(T_12com_pi_2, j2->relativePoseOf(l2, M_PI / 2.0)));
