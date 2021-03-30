@@ -38,7 +38,7 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Vector3;
 
-typedef std::vector<gtsam::Vector> CoeffVector;
+typedef gtsam::Matrix43 CoeffMatrix;
 typedef std::map<int, std::map<std::string, Pose3>> TargetFootholds;
 typedef std::map<std::string, Pose3> TargetPoses;
 
@@ -55,44 +55,43 @@ using namespace gtdynamics;
  * @param x_1_p tangent at the ending knot
  * @param horizon timestep between the knot at the start and the knot at the end
  *
- * @return 3*4 matrix of coefficients constituting of a_0 to a_3 column vectors
- * 
- * Since uE[0,1] in the parametrization of the hermite spline equation, for
- * tE[0,horizon], u is set equal to t/horizon
+ * @return 4*3 matrix of coefficients.
+ *
+ * Since u ∈ [0,1] in the parametrization of the hermite spline equation, for
+ * t ∈ [0,horizon], u is set equal to `t/horizon`.
  *
  * Refer to this lecture for more info on the hermite parameterization
  * for cubic polynomials:
  * http://www.cs.cmu.edu/afs/cs/academic/class/15462-s10/www/lec-slides/lec06.pdf
  */
-CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
+CoeffMatrix compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
                                         const Vector3 &x_0_p,
                                         const Vector3 &x_1_p,
                                         const double horizon) {
-  
   // Extract position at the starting and ending knot.
   Vector3 x_0 = wTb_i.translation();
   Vector3 x_1 = wTb_f.translation();
 
-  // Hermite parameterization: p(u)=U(u)*B*C where vector U(u) includes the 
+  // Hermite parameterization: p(u)=U(u)*B*C where vector U(u) includes the
   // polynomial terms, and B and C are the basis matrix and control matrices
   // respectively.
-  // Vectors a_0 to a_3 constitute the matrix product A of the basis, B, and control,
-  // C, matrices leading to p(u)=U(u)*A where A=B*C.
-  Vector3 a_3 = x_0, a_2 = x_0_p/horizon;
-  // Since u=t/horizon, rearrange to integrate the horizon in the matrix product
-  // of B and C.
-  Vector3 a_1 = -std::pow(horizon, -2) *
-                (3 * (x_0 - x_1) + (2 * x_0_p + x_1_p));
-  Vector3 a_0 =
-      std::pow(horizon, -3) * (2 * (x_0 - x_1) + (x_0_p + x_1_p));
+  gtsam::Matrix43 C;
+  C.row(0) = x_0;
+  C.row(1) = x_1;
+  C.row(2) = x_0_p;
+  C.row(3) = x_1_p;
 
-  std::vector<gtsam::Vector> coeffs;
-  coeffs.push_back(a_3);
-  coeffs.push_back(a_2);
-  coeffs.push_back(a_1);
-  coeffs.push_back(a_0);
+  gtsam::Matrix4 B =
+      (gtsam::Matrix4() << 2, -2, 1, 1, -3, 3, -2, -1, 0, 0, 1, 0, 1, 0, 0, 0)
+          .finished();
+  gtsam::Matrix43 A = B * C;
 
-  return coeffs;
+  // Scale U by the horizon `t = u/horizon` so that we can directly use t.
+  A.row(0) /= (horizon * horizon * horizon);
+  A.row(1) /= (horizon * horizon);
+  A.row(2) /= horizon;
+
+  return A;
 }
 
 /**
@@ -100,23 +99,24 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
  * The calculated trajectory is a piecewise polynomial consisting of
  * cubic hermite splines; the base pose will move along this trajectory.
  *
- * @param coeffs 3*4 matrix of cubic polynomial coefficients
+ * @param coeffs 4*3 matrix of cubic polynomial coefficients
  * @param x_0_p tangent at the starting knot
  * @param t time at which pose will be evaluated
  * @param wTb_i initial pose corresponding to the knot at the start
  *
  * @return rotation and position
  */
-Pose3 compute_hermite_pose(const CoeffVector &coeffs, const Vector3 &x_0_p,
+Pose3 compute_hermite_pose(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
                            const double t, const Pose3 &wTb_i) {
   // The position computed from the spline equation as a function of time,
-  // p(t)=U(t)*A where U(t)=[1,t,t^2,t^3].
-  Point3 p(coeffs[0] + coeffs[1] * t + coeffs[2] * std::pow(t, 2) +
-           coeffs[3] * std::pow(t, 3));
+  // p(t)=U(t)*A where U(t)=[t^3,t^2,t,1].
+  gtsam::Matrix14 t_vec(std::pow(t, 3), std::pow(t, 2), t, 1);
+  Point3 p(t_vec * coeffs);
 
   // Differentiate position with respect to t for velocity.
-  Point3 dpdt_v3 =
-      Point3(coeffs[1] + 2 * coeffs[2] * t + 3 * coeffs[3] * std::pow(t, 2));
+  gtsam::Matrix14 du(3 * t * t, 2 * t, 1, 0);
+  Point3 dpdt_v3 = Point3(du * coeffs);
+
   // Unit vector for velocity.
   dpdt_v3 = dpdt_v3 / dpdt_v3.norm();
   Point3 x_0_p_point(x_0_p);
@@ -131,11 +131,10 @@ Pose3 compute_hermite_pose(const CoeffVector &coeffs, const Vector3 &x_0_p,
 }
 
 /** Compute the target footholds for each support phase. */
-TargetFootholds
-compute_target_footholds(const CoeffVector &coeffs, const Vector3 &x_0_p,
-                         const Pose3 &wTb_i, const double horizon,
-                         const double t_support,
-                         const std::map<std::string, Pose3> &bTfs) {
+TargetFootholds compute_target_footholds(
+    const CoeffMatrix &coeffs, const Vector3 &x_0_p, const Pose3 &wTb_i,
+    const double horizon, const double t_support,
+    const std::map<std::string, Pose3> &bTfs) {
   TargetFootholds target_footholds;
 
   double t_swing = t_support / 4.0; // Time for each swing foot trajectory.
@@ -161,7 +160,7 @@ TargetPoses compute_target_poses(const TargetFootholds &targ_footholds,
                                  const double horizon, const double t_support,
                                  const double t,
                                  const std::vector<std::string> &swing_sequence,
-                                 const CoeffVector &coeffs,
+                                 const CoeffMatrix &coeffs,
                                  const Vector3 &x_0_p, const Pose3 &wTb_i) {
   TargetPoses t_poses;
   // Compute the body pose.
@@ -229,7 +228,6 @@ struct CsvWriter {
   ~CsvWriter() { pose_file.close(); }
 
   void writeheader() {
-    pose_file.open("../traj.csv");
     pose_file << "bodyx,bodyy,bodyz";
     for (auto &&leg : swing_sequence)
       pose_file << "," << leg << "x"
