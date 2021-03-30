@@ -137,7 +137,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
-  const std::vector<JointSharedPtr> &getJoints() const { return joints_; }
+  const std::vector<JointSharedPtr> &joints() const { return joints_; }
+
+  /// return the number of connected joints
+  size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
   std::string name() const { return name_; }
