@@ -25,50 +25,43 @@
 
 #include "gtdynamics/factors/ForwardKinematicsFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
+#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
 using gtsam::assert_equal;
 
-Key key1 = PoseKey(0, 0), key2 = PoseKey(2, 0);
+const size_t i1 = 0, i2 = 2;
+const Key key1 = gtdynamics::internal::PoseKey(i1),
+          key2 = gtdynamics::internal::PoseKey(i2);
 
-Robot getRobot() {
-  // A three link robot with 2 revolute joints.
-  Robot simple_rr = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
-  return simple_rr;
+auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
+
+using simple_rr::robot;
+
+gtsam::Values zeroValues() {
+  gtsam::Values joint_angles;
+  for (auto &&joint : robot.joints()) {
+    InsertJointAngle(&joint_angles, joint->id(), 0.0);
+  }
+  return joint_angles;
 }
 
 TEST(ForwardKinematicsFactor, Constructor) {
-  Robot robot = getRobot();
-  JointValues joint_angles;
+  gtsam::Values joint_angles = zeroValues();
 
-  for (auto&& joint : robot.joints()) {
-    joint_angles[joint->name()] = 0.0;
-  }
-
-  auto model = noiseModel::Isotropic::Sigma(6, 0.1);
   ForwardKinematicsFactor(key1, key2, robot, "link_0", "link_2", joint_angles,
-                          model);
+                          kModel);
 }
 
 TEST(ForwardKinematicsFactor, Error) {
-  // simple_rr robot
-  Robot robot = getRobot();
-  JointValues joint_angles;
-
-  // Lay the robot arm flat
-  for (auto&& joint : robot.joints()) {
-    joint_angles[joint->name()] = 0.0;
-  }
+  gtsam::Values joint_angles = zeroValues();
 
   auto base_link = robot.links()[0]->name();
-  // auto link1 = robot.links()[1]->name();
   auto end_link = robot.links()[2]->name();
 
-  auto model = noiseModel::Isotropic::Sigma(6, 0.1);
   ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
-                                 joint_angles, model);
+                                 joint_angles, kModel);
 
   // Hand computed value from SDF file
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1)), bTl2(Rot3(), Point3(0, 0, 1.1));
@@ -78,72 +71,53 @@ TEST(ForwardKinematicsFactor, Error) {
 }
 
 TEST(ForwardKinematicsFactor, Jacobians) {
-  // simple_rr robot
-  Robot robot = getRobot();
-  JointValues joint_angles;
-
-  // Lay the robot arm flat
-  for (auto&& joint : robot.joints()) {
-    joint_angles[joint->name()] = 0.0;
-  }
+  gtsam::Values joint_angles = zeroValues();
 
   auto base_link = robot.links()[0]->name();
-  // auto link1 = robot.links()[1]->name();
   auto end_link = robot.links()[2]->name();
 
-  auto model = noiseModel::Isotropic::Sigma(6, 0.1);
   ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
-                                 joint_angles, model);
+                                 joint_angles, kModel);
 
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1)), bTl2(Rot3(), Point3(0, 0, 1.1));
 
   Values values;
-  values.insert<Pose3>(key1, bTl1);
-  values.insert<Pose3>(key2, bTl2);
+  InsertPose(&values, i1, bTl1);
+  InsertPose(&values, i2, bTl2);
 
   // Check Jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
 TEST(ForwardKinematicsFactor, Movement) {
-  // simple_rr robot
-  Robot robot = getRobot();
+  Values values;
 
-  JointValues joint_angles;
   // Lay the robot arm flat
-  for (auto&& joint : robot.joints()) {
-    joint_angles[joint->name()] = 0.0;
-  }
-  joint_angles["joint_2"] = M_PI_2;
+  InsertJointAngle(&values, 0, 0.0);
+  InsertJointAngle(&values, 1, M_PI_2);
+  Values values_for_jacobians;
 
   auto base_link = robot.links()[0]->name();
   auto end_link = robot.links()[2]->name();
-
-  auto fk_results = robot.forwardKinematics(
-      joint_angles, joint_angles, base_link, robot.link(base_link)->lTcom());
-  auto links = fk_results.first;
-
-  auto model = noiseModel::Isotropic::Sigma(6, 0.1);
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
-                                 joint_angles, model);
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link, values,
+                                 kModel);
 
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1));
   // We rotated the last link by 90 degrees
   // Since the joint is originally at 0.8, the CoM of link_2 will have z=0.8,
   // and the extra 0.3 moves to the x-axis.
-  Pose3 bTl2(Rot3(0, 0, 1,  //
-                  0, 1, 0,  //
+  Pose3 bTl2(Rot3(0, 0, 1, //
+                  0, 1, 0, //
                   -1, 0, 0),
              Point3(0.3, 0, 0.8));
   Vector error = factor.evaluateError(bTl1, bTl2);
   // Check end pose error
   EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));
 
-  Values values;
-  values.insert<Pose3>(key1, bTl1);
-  values.insert<Pose3>(key2, bTl2);
   // Check Jacobians
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+  InsertPose(&values_for_jacobians, i1, bTl1);
+  InsertPose(&values_for_jacobians, i2, bTl2);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values_for_jacobians, 1e-7, 1e-5);
 }
 
 int main() {

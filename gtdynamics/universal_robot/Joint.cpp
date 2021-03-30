@@ -23,14 +23,11 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Joint::Joint(const std::string &name, const Pose3 &wTj,
+Joint::Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const JointParams &parameters)
-    : name_(name),
-      wTj_(wTj),
-      parent_link_(parent_link),
-      child_link_(child_link),
-      parameters_(parameters) {
+    : id_(id), name_(name), wTj_(wTj), parent_link_(parent_link),
+      child_link_(child_link), parameters_(parameters) {
   jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
   jTccom_ = wTj_.inverse() * child_link_->wTcom();
   pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
@@ -46,15 +43,15 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << "\n\tparent link: " << j.parent()->name()
+  os << j.name() << " id=" << size_t(j.id())
+     << "\n\tparent link: " << j.parent()->name()
      << "\n\t child link: " << j.child()->name();
   return os;
 }
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
-  os << j->name() << "\n\tparent link: " << j->parent()->name()
-     << "\n\t child link: " << j->child()->name();
+  os << *j;
   return os;
 }
 

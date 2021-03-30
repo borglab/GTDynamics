@@ -52,24 +52,6 @@ std::vector<gtsam::Pose3> InterpolatePoses(
     double t_i, const std::vector<double>& timesteps, double dt);
 
 /**
- * Perform forward kinematics (FK) and add the resulting poses to `values`.
- *
- * @param robot The robot model.
- * @param t The time step at which FK is performed.
- * @param link_name The link on which to perform forward kinematics.
- * @param joint_angles The current joint angles of the robot.
- * @param joint_velocities The current joint velocities of the robot.
- * @param wTl_i The initial pose of the link.
- * @param[out] values Values dict with the poses after FK is performed.
- */
-gtsam::Values AddForwardKinematicsPoses(const Robot& robot, size_t t,
-                                        const std::string& link_name,
-                                        const JointValues& joint_angles,
-                                        const JointValues& joint_velocities,
-                                        const gtsam::Pose3& wTl_i,
-                                        gtsam::Values values);
-
-/**
  * Initialize the poses and joints needed to perform trajectory optimization.
  *
  * @param robot The robot model.
@@ -87,7 +69,7 @@ gtsam::Values InitializePosesAndJoints(const Robot& robot,
                                        const std::string& link_name, double t_i,
                                        const std::vector<double>& timesteps,
                                        double dt, const gtsam::Sampler& sampler,
-                                       std::vector<gtsam::Pose3>& wTl_dt);
+                                       std::vector<gtsam::Pose3>* wTl_dt);
 
 /**
  * @fn Initialize solution via linear interpolation of initial and final pose.

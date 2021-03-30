@@ -17,6 +17,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -28,9 +29,9 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
-  std::string file_path = std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf";
-  LinkSharedPtr l1 = LinkFromSdf("l1", file_path);
-  LinkSharedPtr l2 = LinkFromSdf("l2", file_path);
+  using simple_urdf_prismatic::robot;
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
 
   JointParams parameters;
   parameters.effort_type = JointEffortType::Actuated;
@@ -41,14 +42,13 @@ TEST(Joint, params_constructor_prismatic) {
   const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
 
   auto j1 = boost::make_shared<PrismaticJoint>(
-      "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, parameters,
-      j1_axis);
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2,
+      parameters, j1_axis);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
 
   // get, set ID
-  j1->setID(1);
   EXPECT(j1->id() == 1);
 
   // name
@@ -64,18 +64,14 @@ TEST(Joint, params_constructor_prismatic) {
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
   Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->transformFrom(l2), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->transformTo(l2), 1e-5));
+  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0.0), 1e-5));
+  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0.0), 1e-5));
 
-  // transform from (translating +1)
+  // transform to (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
   Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
-  EXPECT(assert_equal(T_12com, j1->transformFrom(l2, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->transformFrom(l1, 1), 1e-5));
-
-  // transfrom to (translating +1)
-  EXPECT(assert_equal(T_12com, j1->transformTo(l1, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->transformTo(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, 1), 1e-5));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;

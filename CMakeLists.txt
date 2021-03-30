@@ -7,6 +7,7 @@ project(gtdynamics
         HOMEPAGE_URL "https://github.com/borglab/GTDynamics")
 
 add_compile_options(-faligned-new)
+set (CMAKE_CXX_STANDARD 11)
 
 # ##############################################################################
 # Find Dependencies #
@@ -21,7 +22,6 @@ find_package(GTSAMCMakeTools)
 include(GtsamMakeConfigFile)
 include(GtsamBuildTypes)
 include(GtsamTesting)
-include(GtsamMatlabWrap)
 
 # For unit tests and scripts.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")

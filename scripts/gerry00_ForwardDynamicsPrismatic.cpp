@@ -73,16 +73,16 @@ int main(int argc, char** argv) {
             << std::endl;
   for (int t = 0; t <= T; t++) {
     std::cout
-        << results.at<gtsam::Pose3>(PoseKey(0, t)).translation().transpose()
+        << Pose(results, 0, t).translation().transpose()
         << std::endl;
     std::cout
-        << results.at<gtsam::Pose3>(PoseKey(1, t)).translation().transpose()
+        << Pose(results, 1, t).translation().transpose()
         << std::endl;
     std::cout
-        << results.at<gtsam::Pose3>(PoseKey(2, t)).translation().transpose()
+        << Pose(results, 2, t).translation().transpose()
         << std::endl;
     std::cout
-        << results.at<gtsam::Pose3>(PoseKey(3, t)).translation().transpose()
+        << Pose(results, 3, t).translation().transpose()
         << std::endl;
     std::cout << std::endl;
   }

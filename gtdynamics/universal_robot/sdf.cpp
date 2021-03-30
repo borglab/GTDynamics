@@ -14,11 +14,14 @@
 #include "gtdynamics/universal_robot/sdf.h"
 
 #include <sdf/parser_urdf.hh>
+#include <sdf/sdf.hh>
 
+#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
 
@@ -68,33 +71,6 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   return parameters;
 }
 
-LinkParams ParametersFromSdfLink(const sdf::Link &sdf_link) {
-  LinkParams parameters;
-  parameters.name = sdf_link.Name();
-  parameters.mass = sdf_link.Inertial().MassMatrix().Mass();
-  const auto &inertia = sdf_link.Inertial().Moi();
-  parameters.inertia << inertia(0, 0), inertia(0, 1), inertia(0, 2),
-      inertia(1, 0), inertia(1, 1), inertia(1, 2), inertia(2, 0), inertia(2, 1),
-      inertia(2, 2);
-
-  /// Call SemanticPose::Resolve so the pose is resolved to the correct frame
-  /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
-  // Get non-const Pose3d
-  auto jTl = sdf_link.RawPose();
-  // Update from joint frame to base frame in-place.
-  // Base frame is denoted by "".
-  auto errors = sdf_link.SemanticPose().Resolve(jTl, "");
-  // If any errors in the resolution, throw an exception.
-  if (errors.size() > 0) {
-    throw std::runtime_error(errors[0].Message());
-  }
-  // Pose is updated from joint frame to world frame.
-  parameters.wTl = Pose3FromIgnition(jTl);
-
-  parameters.lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
-  return parameters;
-}
-
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const LinkSharedPtr &parent_link,
                     const LinkSharedPtr &child_link) {
@@ -123,18 +99,40 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkSharedPtr LinkFromSdf(const sdf::Link &sdf_link) {
-  return boost::make_shared<Link>(ParametersFromSdfLink(sdf_link));
+LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
+  gtsam::Matrix3 inertia;
+  const auto &I = sdf_link.Inertial().Moi();
+  inertia << I(0, 0), I(0, 1), I(0, 2), I(1, 0), I(1, 1), I(1, 2), I(2, 0),
+      I(2, 1), I(2, 2);
+
+  /// Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+  // Get non-const Pose3d
+  auto jTl = sdf_link.RawPose();
+  // Update from joint frame to base frame in-place.
+  // Base frame is denoted by "".
+  auto errors = sdf_link.SemanticPose().Resolve(jTl, "");
+  // If any errors in the resolution, throw an exception.
+  if (errors.size() > 0) {
+    throw std::runtime_error(errors[0].Message());
+  }
+  // Pose is updated from joint frame to world frame.
+  const auto wTl = Pose3FromIgnition(jTl);
+  const auto lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
+
+  return boost::make_shared<Link>(id, sdf_link.Name(),
+                                  sdf_link.Inertial().MassMatrix().Mass(),
+                                  inertia, wTl, lTcom);
 }
 
-LinkSharedPtr LinkFromSdf(const std::string &link_name,
+LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &link_name,
                           const std::string &sdf_file_path,
                           const std::string &model_name) {
   auto model = GetSdf(sdf_file_path, model_name);
-  return LinkFromSdf(*model.LinkByName(link_name));
+  return LinkFromSdf(id, *model.LinkByName(link_name));
 }
 
-JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
@@ -148,16 +146,16 @@ JointSharedPtr JointFromSdf(const LinkSharedPtr &parent_link,
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(name, wTj, parent_link,
+      joint = boost::make_shared<PrismaticJoint>(id, name, wTj, parent_link,
                                                  child_link, parameters, axis);
       break;
     case sdf::JointType::REVOLUTE:
-      joint = boost::make_shared<RevoluteJoint>(name, wTj, parent_link,
+      joint = boost::make_shared<RevoluteJoint>(id, name, wTj, parent_link,
                                                 child_link, parameters, axis);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<ScrewJoint>(name, wTj, parent_link, child_link,
-                                             parameters, axis,
+      joint = boost::make_shared<ScrewJoint>(id, name, wTj, parent_link,
+                                             child_link, parameters, axis,
                                              sdf_joint.ThreadPitch());
       break;
     default:
@@ -177,8 +175,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
   // objects without parents or children.
   LinkMap name_to_link;
   for (uint i = 0; i < sdf.LinkCount(); i++) {
-    LinkSharedPtr link = LinkFromSdf(*sdf.LinkByIndex(i));
-    link->setID(i);
+    LinkSharedPtr link = LinkFromSdf(i, *sdf.LinkByIndex(i));
     name_to_link.emplace(link->name(), link);
   }
 
@@ -201,9 +198,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     LinkSharedPtr child_link = name_to_link[child_link_name];
 
     // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint = JointFromSdf(parent_link, child_link, sdf_joint);
+    JointSharedPtr joint = JointFromSdf(j, parent_link, child_link, sdf_joint);
     name_to_joint.emplace(joint->name(), joint);
-    joint->setID(j);
 
     // Update list of parent and child links/joints for each Link.
     parent_link->addJoint(joint);

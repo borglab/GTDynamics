@@ -34,7 +34,7 @@ using gtsam::assert_equal;
  * Test the evaluateError method with various link twists.
  **/
 TEST(ContactKinematicsAccelFactor, error) {
-  using simple_urdf::my_robot;
+  using simple_urdf::robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
@@ -89,7 +89,7 @@ TEST(ContactKinematicsAccelFactor, error) {
  * velocity at the contact point.
  **/
 TEST(ContactKinematicsAccelFactor, optimization) {
-  using simple_urdf::my_robot;
+  using simple_urdf::robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Constrained::All(3);

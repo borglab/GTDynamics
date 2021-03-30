@@ -41,6 +41,7 @@ class RevoluteJoint : public ScrewJointBase {
    * @brief Create RevoluteJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
+   * @param[in] id            id for keys
    * @param[in] name          Name of the joint
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
@@ -48,11 +49,11 @@ class RevoluteJoint : public ScrewJointBase {
    * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    */
-  RevoluteJoint(const std::string &name, const gtsam::Pose3 &wTj,
+  RevoluteJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
                 const LinkSharedPtr &parent_link,
                 const LinkSharedPtr &child_link, const JointParams &parameters,
                 const gtsam::Vector3 &axis)
-      : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
+      : ScrewJointBase(id, name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
