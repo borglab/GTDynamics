@@ -55,7 +55,7 @@ using namespace gtdynamics;
  * @param x_1_p tangent at the ending knot
  * @param horizon timestep between the knot at the start and the knot at the end
  *
- * @return 3*4 matrix of coefficients
+ * @return 3*4 matrix of coefficients constituting of a_0 to a_3 column vectors
  * 
  * Since uE[0,1] in the parametrization of the hermite spline equation, for
  * tE[0,horizon], u is set equal to t/horizon
@@ -78,19 +78,19 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
   // respectively.
   // Vectors a_0 to a_3 constitute the matrix product A of the basis, B, and control,
   // C, matrices leading to p(u)=U(u)*A where A=B*C.
-  Vector3 a_0 = x_0, a_1 = x_0_p/horizon;
+  Vector3 a_3 = x_0, a_2 = x_0_p/horizon;
   // Since u=t/horizon, rearrange to integrate the horizon in the matrix product
   // of B and C.
-  Vector3 a_2 = -std::pow(horizon, -2) *
+  Vector3 a_1 = -std::pow(horizon, -2) *
                 (3 * (x_0 - x_1) + (2 * x_0_p + x_1_p));
-  Vector3 a_3 =
+  Vector3 a_0 =
       std::pow(horizon, -3) * (2 * (x_0 - x_1) + (x_0_p + x_1_p));
 
   std::vector<gtsam::Vector> coeffs;
-  coeffs.push_back(a_0);
-  coeffs.push_back(a_1);
-  coeffs.push_back(a_2);
   coeffs.push_back(a_3);
+  coeffs.push_back(a_2);
+  coeffs.push_back(a_1);
+  coeffs.push_back(a_0);
 
   return coeffs;
 }
@@ -99,8 +99,13 @@ CoeffVector compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
  * Compute the robot base pose as defined by the calculated trajectory.
  * The calculated trajectory is a piecewise polynomial consisting of
  * cubic hermite splines; the base pose will move along this trajectory.
- * The cubic hermite splines have C1 continuity i.e. continuous in position
- * and tangent vector.
+ *
+ * @param coeffs 3*4 matrix of cubic polynomial coefficients
+ * @param x_0_p tangent at the starting knot
+ * @param t time at which pose will be evaluated
+ * @param wTb_i initial pose corresponding to the knot at the start
+ *
+ * @return rotation and position
  */
 Pose3 compute_hermite_pose(const CoeffVector &coeffs, const Vector3 &x_0_p,
                            const double t, const Pose3 &wTb_i) {
