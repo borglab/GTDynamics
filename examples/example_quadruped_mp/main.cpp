@@ -38,9 +38,9 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Vector3;
 
-typedef gtsam::Matrix43 CoeffMatrix;
-typedef std::map<int, std::map<std::string, Pose3>> TargetFootholds;
-typedef std::map<std::string, Pose3> TargetPoses;
+using CoeffMatrix = gtsam::Matrix43;
+using TargetFootholds = std::map<int, std::map<std::string, Pose3>>;
+using TargetPoses = std::map<std::string, Pose3>;
 
 using namespace gtdynamics;
 
