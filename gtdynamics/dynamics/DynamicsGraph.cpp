@@ -63,7 +63,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
       // * g
-      const auto &connected_joints = link->getJoints();
+      const auto &connected_joints = link->joints();
       const gtsam::Matrix6 G_i = link->inertiaMatrix();
       const double m_i = link->mass();
       const Pose3 T_wi = Pose(known_values, i, t);
@@ -297,7 +297,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   for (auto &&link : robot.links()) {
     int i = link->id();
     if (!link->isFixed()) {
-      const auto &connected_joints = link->getJoints();
+      const auto &connected_joints = link->joints();
       std::vector<DynamicsSymbol> wrenches;
 
       // Add wrench keys for joints.

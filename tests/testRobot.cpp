@@ -79,8 +79,8 @@ TEST(Robot, removeLink) {
   four_bar.removeLink(four_bar.link("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
-  EXPECT(four_bar.link("l1")->getJoints().size() == 1);
-  EXPECT(four_bar.link("l3")->getJoints().size() == 1);
+  EXPECT(four_bar.link("l1")->joints().size() == 1);
+  EXPECT(four_bar.link("l3")->joints().size() == 1);
 }
 
 TEST(Robot, forwardKinematics) {

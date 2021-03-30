@@ -157,7 +157,8 @@ class Link  {
     void fix();
     void fix(gtsam::Pose3 & fixed_pose);
     void unfix();
-    const std::vector<Joint> &getJoints() const; // don't need Joint* to get this working
+    const std::vector<Joint*> &joints() const;
+    size_t numJoints() const;
     string name() const;
     double mass() const;
     const gtsam::Pose3 &centerOfMass();
