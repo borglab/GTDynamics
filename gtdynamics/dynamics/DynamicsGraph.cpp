@@ -195,8 +195,15 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->qFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->qFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior(internal::PoseKey(link->id(), t), link->getFixedPose(),
+                     opt_.bp_cost_model);
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<PoseFactor>(internal::PoseKey(joint->parent()->id(), t),
+                                   internal::PoseKey(joint->child()->id(), t),
+                                   internal::JointAngleKey(joint->id(), t),
+                                   opt_.p_cost_model, joint);
 
   // TODO(frank): clearly document this behavior
   gtsam::Vector3 gravity;
@@ -228,8 +235,17 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->vFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->vFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior<gtsam::Vector6>(internal::TwistKey(link->id(), t),
+                                     gtsam::Z_6x1, opt_.bv_cost_model);
+
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<TwistFactor>(internal::TwistKey(joint->parent()->id(), t),
+                                    internal::TwistKey(joint->child()->id(), t),
+                                    internal::JointAngleKey(joint->id(), t),
+                                    internal::JointVelKey(joint->id(), t),
+                                    opt_.v_cost_model, joint);
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -253,8 +269,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->aFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->aFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(link->id(), t),
+                                     gtsam::Z_6x1, opt_.ba_cost_model);
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<TwistAccelFactor>(
+      internal::TwistKey(joint->child()->id(), t),
+      internal::TwistAccelKey(joint->parent()->id(), t),
+      internal::TwistAccelKey(joint->child()->id(), t),
+      internal::JointAngleKey(joint->id(), t), internal::JointVelKey(joint->id(), t),
+      internal::JointAccelKey(joint->id(), t), opt_.a_cost_model,
+      boost::static_pointer_cast<const JointTyped>(joint));
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -324,13 +350,58 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
         }
       }
 
-      graph.add(link->dynamicsFactors(t, opt_, wrenches, gravity));
+      // add wrench factor for link
+      if (wrenches.size() == 0) {
+        graph.add(WrenchFactor0(internal::TwistKey(link->id(), t),
+                                internal::TwistAccelKey(link->id(), t),
+                                internal::PoseKey(link->id(), t),
+                                opt_.fa_cost_model, link->inertiaMatrix(),
+                                gravity));
+      } else if (wrenches.size() == 1) {
+        graph.add(WrenchFactor1(internal::TwistKey(link->id(), t),
+                                internal::TwistAccelKey(link->id(), t),
+                                wrenches[0], internal::PoseKey(link->id(), t),
+                                opt_.fa_cost_model, link->inertiaMatrix(),
+                                gravity));
+      } else if (wrenches.size() == 2) {
+        graph.add(
+            WrenchFactor2(internal::TwistKey(link->id(), t),
+                          internal::TwistAccelKey(link->id(), t), wrenches[0],
+                          wrenches[1], internal::PoseKey(link->id(), t),
+                          opt_.fa_cost_model, link->inertiaMatrix(), gravity));
+      } else if (wrenches.size() == 3) {
+        graph.add(WrenchFactor3(
+            internal::TwistKey(link->id(), t),
+            internal::TwistAccelKey(link->id(), t), wrenches[0], wrenches[1],
+            wrenches[2], internal::PoseKey(link->id(), t), opt_.fa_cost_model,
+            link->inertiaMatrix(), gravity));
+      } else if (wrenches.size() == 4) {
+        graph.add(WrenchFactor4(
+            internal::TwistKey(link->id(), t),
+            internal::TwistAccelKey(link->id(), t), wrenches[0], wrenches[1],
+            wrenches[2], wrenches[3], internal::PoseKey(link->id(), t),
+            opt_.fa_cost_model, link->inertiaMatrix(), gravity));
+      } else {
+        throw std::runtime_error("Wrench factor not defined");
+      }
     }
   }
 
-  for (auto &&joint : robot.joints())
-    graph.add(joint->dynamicsFactors(t, opt_, planar_axis_));
-
+  for (auto &&joint : robot.joints()) {
+    graph.emplace_shared<WrenchEquivalenceFactor>(
+        internal::WrenchKey(joint->parent()->id(), joint->id(), t),
+        internal::WrenchKey(joint->child()->id(), joint->id(), t),
+        internal::JointAngleKey(joint->id(), t), opt_.f_cost_model,
+        boost::static_pointer_cast<const JointTyped>(joint));
+    graph.emplace_shared<TorqueFactor>(
+        internal::WrenchKey(joint->child()->id(), joint->id(), t),
+        internal::TorqueKey(joint->id(), t), opt_.t_cost_model,
+        boost::static_pointer_cast<const JointTyped>(joint));
+    if (planar_axis_)
+      graph.emplace_shared<WrenchPlanarFactor>(
+          internal::WrenchKey(joint->child()->id(), joint->id(), t),
+          opt_.planar_cost_model, *planar_axis_);
+  }
   return graph;
 }
 

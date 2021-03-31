@@ -238,32 +238,6 @@ public:
                                  this_twist, other_twist_accel, H_q, H_q_dot,
                                  H_q_ddot, H_this_twist, H_other_twist_accel);
   }
-
-  ///@}
-  /**
-   * @name factors
-   * Methods that create factors based on joint relationships.
-   */
-  ///@{
-
-  /// Return joint pose factors.
-  gtsam::NonlinearFactorGraph
-  qFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph
-  vFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph
-  aFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint dynamics factors.
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const override;
-
-  ///@}
 };
 
 } // namespace gtdynamics
