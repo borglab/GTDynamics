@@ -86,9 +86,10 @@ class PoseFactor : public gtsam::NoiseModelFactor {
 
   /**
    * Evaluate link pose errors
-   * @param wTp previous (parent) link CoM pose
-   * @param wTc this (child) link CoM pose
-   * @param q joint angle
+   * @param x Values containing:
+   *  wTp - previous (parent) link CoM pose
+   *  wTc - this (child) link CoM pose
+   *  q - joint angle
    */
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
@@ -96,14 +97,21 @@ class PoseFactor : public gtsam::NoiseModelFactor {
     const gtsam::Pose3 &wTp = x.at<gtsam::Pose3>(keys_[0]),
                        &wTc = x.at<gtsam::Pose3>(keys_[1]);
     // TODO(frank): logmap derivative is close to identity when error is small
-    if (!H) return wTc.logmap(joint_->poseOf(joint_->child(), wTp, x, t_));
+    gtsam::Matrix6 wTc_hat_H_wTp, H_wTc_hat, H_wTc;
+    // TODO(gerry): figure out how to make this work better for dynamic matrices
+    gtsam::Matrix wTc_hat_H_q;
+    boost::optional<gtsam::Matrix &> wTc_hat_H_q_ref;
+    if (H) wTc_hat_H_q_ref = wTc_hat_H_q;
 
-    gtsam::Matrix wTc_hat_H_wTp, H_wTc_hat, wTc_hat_H_q;
     auto wTc_hat = joint_->poseOf(joint_->child(), wTp, x, t_,
-                                  wTc_hat_H_wTp, wTc_hat_H_q);
-    gtsam::Vector6 error = wTc.logmap(wTc_hat, (*H)[1], H_wTc_hat);
-    (*H)[0] = H_wTc_hat * wTc_hat_H_wTp;
-    (*H)[2] = H_wTc_hat * wTc_hat_H_q;
+                                  H ? &wTc_hat_H_wTp : 0, wTc_hat_H_q_ref);
+    gtsam::Vector6 error =
+        wTc.logmap(wTc_hat, H ? &H_wTc : 0, H ? &H_wTc_hat : 0);
+    if (H) {
+      (*H)[0] = H_wTc_hat * wTc_hat_H_wTp;
+      (*H)[1] = H_wTc;
+      (*H)[2] = H_wTc_hat * wTc_hat_H_q;
+    }
     return error;
   }
 
