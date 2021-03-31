@@ -52,11 +52,9 @@ TEST(PoseFactor, error) {
 
   // call unwhitenedError
   gtsam::Values values;
-  values.insert(example::wTp_key,
-                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0)));
-  values.insert(example::wTc_key,
-                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0)));
-  values.insert(example::q_key, 0.0);
+  InsertPose(&values, 1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0)));
+  InsertPose(&values, 2, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0)));
+  InsertJointAngle(&values, 1, 0.0);
   auto actual_errors = factor.unwhitenedError(values);
 
   // check value
@@ -79,21 +77,23 @@ TEST(PoseFactor, breaking) {
                     example::cost_model, joint);
 
   // check prediction at zero joint angle
-  gtsam::Values values;
-  values.insert(example::wTp_key,
-                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0)));
-  values.insert(example::wTc_key,
-                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0)));
-  values.insert(example::q_key, 0.0);
-  EXPECT(assert_equal(gtsam::Z_6x1, factor.unwhitenedError(values), 1e-6));
+  {
+    gtsam::Values values;
+    InsertPose(&values, 1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0)));
+    InsertPose(&values, 2, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0)));
+    InsertJointAngle(&values, 1, 0.0);
+    EXPECT(assert_equal(gtsam::Z_6x1, factor.unwhitenedError(values), 1e-6));
+  }
 
   // check prediction at half PI
-  values.update(example::wTp_key, gtsam::Pose3(gtsam::Rot3(),  //
-                                               gtsam::Point3(1, 0, 0)));
-  values.update(example::wTc_key, gtsam::Pose3(gtsam::Rot3::Rz(M_PI / 2),
-                                               gtsam::Point3(2, 1, 0)));
-  values.update(example::q_key, M_PI / 2);
-  EXPECT(assert_equal(gtsam::Z_6x1, factor.unwhitenedError(values), 1e-6));
+  {
+    gtsam::Values values;
+    InsertPose(&values, 1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0)));
+    InsertPose(&values, 2,
+               gtsam::Pose3(gtsam::Rot3::Rz(M_PI / 2), gtsam::Point3(2, 1, 0)));
+    InsertJointAngle(&values, 1, M_PI / 2);
+    EXPECT(assert_equal(gtsam::Z_6x1, factor.unwhitenedError(values), 1e-6));
+  }
 }
 
 // Test breaking case for rr link
@@ -115,9 +115,9 @@ TEST(PoseFactor, breaking_rr) {
 
   // unwhitenedError
   gtsam::Values values;
-  values.insert(example::wTp_key, gtsam::Pose3());
-  values.insert(example::wTc_key, j1->relativePoseOf(l2, M_PI / 4));
-  values.insert(example::q_key, M_PI / 4);
+  InsertPose(&values, 1, gtsam::Pose3());
+  InsertPose(&values, 2, j1->relativePoseOf(l2, M_PI / 4));
+  InsertJointAngle(&values, 1, M_PI / 4);
   EXPECT(assert_equal(gtsam::Z_6x1, factor.unwhitenedError(values), 1e-6));
 }
 
@@ -138,21 +138,27 @@ TEST(PoseFactor, nonzero_rest) {
   pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
   pose_c = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0));
   // Make sure linearization is correct
-  gtsam::Values values;
-  values.insert(example::wTp_key, pose_p);
-  values.insert(example::wTc_key, pose_c);
-  values.insert(example::q_key, jointAngle);
-  double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  {
+    gtsam::Values values;
+    InsertPose(&values, 1, pose_p);
+    InsertPose(&values, 2, pose_c);
+    InsertJointAngle(&values, 1, jointAngle);
+    double diffDelta = 1e-7;
+    EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  }
 
   // half PI
-  jointAngle = M_PI / 2;
-  pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
-  pose_c = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
-  values.update(example::wTp_key, pose_p);
-  values.update(example::wTc_key, pose_c);
-  values.update(example::q_key, jointAngle);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  {
+    gtsam::Values values;
+    jointAngle = M_PI / 2;
+    pose_p = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0, 0));
+    pose_c = gtsam::Pose3(gtsam::Rot3::Rz(jointAngle), gtsam::Point3(2, 1, 0));
+    InsertPose(&values, 1, pose_p);
+    InsertPose(&values, 2, pose_c);
+    InsertJointAngle(&values, 1, jointAngle);
+    double diffDelta = 1e-7;
+    EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  }
 }
 
 int main() {
