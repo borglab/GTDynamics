@@ -81,9 +81,8 @@ CoeffMatrix compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
   C.row(2) = x_0_p;
   C.row(3) = x_1_p;
 
-  gtsam::Matrix4 B =
-      (gtsam::Matrix4() << 2, -2, 1, 1, -3, 3, -2, -1, 0, 0, 1, 0, 1, 0, 0, 0)
-          .finished();
+  gtsam::Matrix4 B;
+  B << 2, -2, 1, 1, -3, 3, -2, -1, 0, 0, 1, 0, 1, 0, 0, 0;
   gtsam::Matrix43 A = B * C;
 
   // Scale U by the horizon `t = u/horizon` so that we can directly use t.
