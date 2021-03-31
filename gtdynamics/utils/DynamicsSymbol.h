@@ -126,6 +126,10 @@ class DynamicsSymbol {
     ar& BOOST_SERIALIZATION_NVP(t_);
   }
 
+  /**
+   * \defgroup Bitfield bit field constants
+   * @{
+   */
   static constexpr size_t kMax_uchar_ =
       std::numeric_limits<unsigned char>::max();
   // bit counts
@@ -146,6 +150,7 @@ class DynamicsSymbol {
   static constexpr gtsam::Key joint_mask = gtsam::Key(kMax_uchar_) << time_bits;
   static constexpr gtsam::Key time_mask =
       ~(ch1_mask | ch2_mask | link_mask | joint_mask);
+  /**@}*/
 };
 
 /// key formatter function
