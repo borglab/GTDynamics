@@ -232,36 +232,10 @@ class Link : public boost::enable_shared_from_this<Link> {
       const boost::optional<gtsam::Vector3> &gravity) const {
     gtsam::NonlinearFactorGraph graph;
     // Add wrench factors.
-    if (wrenches.size() == 0) {
-      graph.add(WrenchFactor0(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t),
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 1) {
-      graph.add(WrenchFactor1(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 2) {
-      graph.add(WrenchFactor2(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              wrenches[1], internal::PoseKey(id(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 3) {
-      graph.add(WrenchFactor3(
-          internal::TwistKey(id(), t), internal::TwistAccelKey(id(), t),
-          wrenches[0], wrenches[1], wrenches[2], internal::PoseKey(id(), t),
-          opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 4) {
-      graph.add(WrenchFactor4(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              wrenches[1], wrenches[2], wrenches[3],
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else {
-      throw std::runtime_error("Wrench factor not defined");
-    }
-
+    graph.add(WrenchFactor(internal::TwistKey(id(), t),
+                           internal::TwistAccelKey(id(), t), wrenches,
+                           internal::PoseKey(id(), t), opt.fa_cost_model,
+                           inertiaMatrix(), gravity));
     return graph;
   }
 };
