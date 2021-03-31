@@ -14,7 +14,7 @@
 #pragma once
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/utils.h"

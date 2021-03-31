@@ -46,7 +46,7 @@ class TorqueFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
-#include <gtdynamics/factors/WrenchFactors.h>
+#include <gtdynamics/factors/WrenchFactor.h>
 class WrenchFactor {
   WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 

@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testWrenchFactors.cpp
+ * @file  testWrenchFactor.cpp
  * @brief Test wrench factors.
  * @author Yetong Zhang
  */
@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/values.h"
 
