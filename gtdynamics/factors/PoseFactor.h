@@ -94,6 +94,8 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
                                     H = boost::none) const override {
+    if (!this->active(x)) return gtsam::Vector6::Zero();
+
     const gtsam::Pose3 wTp = x.at<gtsam::Pose3>(keys_[0]),
                        wTc = x.at<gtsam::Pose3>(keys_[1]);
     // TODO(frank): logmap derivative is close to identity when error is small
