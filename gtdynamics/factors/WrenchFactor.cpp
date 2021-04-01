@@ -11,24 +11,15 @@
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
-#include <gtdynamics/factors/WrenchFactor.h>
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 
 #include <gtsam/base/Matrix.h>
-#include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/inference/Factor.h>
-#include <gtsam/linear/JacobianFactor.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <string>
 #include <vector>
 
 using gtsam::Values;
