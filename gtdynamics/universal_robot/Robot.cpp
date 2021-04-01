@@ -52,7 +52,7 @@ std::vector<JointSharedPtr> Robot::joints() const {
 
 void Robot::removeLink(const LinkSharedPtr &link) {
   // remove all joints associated to the link
-  auto joints = link->getJoints();
+  auto joints = link->joints();
   for (JointSharedPtr joint : joints) {
     removeJoint(joint);
   }
@@ -109,7 +109,7 @@ void Robot::print() const {
     std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
               << ", " << link->wTcom().translation().transpose() << "\n";
     std::cout << "\tjoints: ";
-    for (const auto &joint : link->getJoints()) {
+    for (const auto &joint : link->joints()) {
       std::cout << joint->name() << " ";
     }
     std::cout << "\n";
@@ -177,7 +177,7 @@ gtsam::Values Robot::forwardKinematics(
     q.pop();
 
     // Loop through all joints to find the pose and twist of child links.
-    for (auto &&joint : link1->getJoints()) {
+    for (auto &&joint : link1->joints()) {
       Pose3 T_w2;
       Vector6 V_2;
       std::tie(T_w2, V_2) =

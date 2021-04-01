@@ -19,11 +19,15 @@ int main(int argc, char** argv) {
                                                 gravity);
 
   // Specify the forward dynamics priors and add them to the factor graph.
-  gtsam::Vector theta = (gtsam::Vector(2) << 0, 0).finished();
-  gtsam::Vector theta_dot = (gtsam::Vector(2) << 0, 0).finished();
-  gtsam::Vector tau = (gtsam::Vector(2) << 0, 0).finished();
+  gtsam::Values known_values;
+  for (auto&& joint : simple_rr.joints()) {
+    int j = joint->id();
+    InsertJointAngle(&known_values, j, 0, 0.0);
+    InsertJointVel(&known_values, j, 0, 0.0);
+    InsertTorque(&known_values, j, 0, 0.0);
+  }
   auto fd_priors =
-      graph_builder.forwardDynamicsPriors(simple_rr, 0, theta, theta_dot, tau);
+      graph_builder.forwardDynamicsPriors(simple_rr, 0, known_values);
   kdfg.add(fd_priors);
 
   // Initialize solution.

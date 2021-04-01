@@ -275,36 +275,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const = 0;
 
-  /**
-   * @fn Abstract method to return pose factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate q factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return pose factors.
-   */
-  virtual gtsam::NonlinearFactorGraph qFactors(
-      size_t t, const OptimizerSetting &opt) const = 0;
-
-  /**
-   * @fn (ABSTRACT) Return velocity factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate v factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return velocity factors.
-   */
-  virtual gtsam::NonlinearFactorGraph vFactors(
-      size_t t, const OptimizerSetting &opt) const = 0;
-
-  /**
-   * @fn (ABSTRACT) Return accel factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate a factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return accel factors.
-   */
-  virtual gtsam::NonlinearFactorGraph aFactors(
-      size_t t, const OptimizerSetting &opt) const = 0;
-
   /// Abstract method. Returns forward dynamics priors on torque
   virtual gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const gtsam::Values &torques,
@@ -330,17 +300,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
         "linearAFactors not implemented for the desired "
         "joint type.  A linearized version may not be possible.");
   }
-
-  /**
-   * @fn (ABSTRACT) Return dynamics factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate dynamics factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return dynamics factors.
-   */
-  virtual gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const = 0;
 
   /**
    * @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
