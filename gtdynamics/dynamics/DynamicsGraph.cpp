@@ -338,52 +338,24 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
 
           // Add contact dynamics constraints.
-          graph.add(ContactDynamicsFrictionConeFactor(
+          graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
               internal::PoseKey(i, t),
               ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cfriction_cost_model, mu_, gravity));
+              opt_.cfriction_cost_model, mu_, gravity);
 
-          graph.add(ContactDynamicsMomentFactor(
+          graph.emplace_shared<ContactDynamicsMomentFactor>(
               ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point)));
+              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         }
       }
 
       // add wrench factor for link
-      if (wrenches.size() == 0) {
-        graph.add(WrenchFactor0(internal::TwistKey(link->id(), t),
-                                internal::TwistAccelKey(link->id(), t),
-                                internal::PoseKey(link->id(), t),
-                                opt_.fa_cost_model, link->inertiaMatrix(),
-                                gravity));
-      } else if (wrenches.size() == 1) {
-        graph.add(WrenchFactor1(internal::TwistKey(link->id(), t),
-                                internal::TwistAccelKey(link->id(), t),
-                                wrenches[0], internal::PoseKey(link->id(), t),
-                                opt_.fa_cost_model, link->inertiaMatrix(),
-                                gravity));
-      } else if (wrenches.size() == 2) {
-        graph.add(
-            WrenchFactor2(internal::TwistKey(link->id(), t),
-                          internal::TwistAccelKey(link->id(), t), wrenches[0],
-                          wrenches[1], internal::PoseKey(link->id(), t),
-                          opt_.fa_cost_model, link->inertiaMatrix(), gravity));
-      } else if (wrenches.size() == 3) {
-        graph.add(WrenchFactor3(
-            internal::TwistKey(link->id(), t),
-            internal::TwistAccelKey(link->id(), t), wrenches[0], wrenches[1],
-            wrenches[2], internal::PoseKey(link->id(), t), opt_.fa_cost_model,
-            link->inertiaMatrix(), gravity));
-      } else if (wrenches.size() == 4) {
-        graph.add(WrenchFactor4(
-            internal::TwistKey(link->id(), t),
-            internal::TwistAccelKey(link->id(), t), wrenches[0], wrenches[1],
-            wrenches[2], wrenches[3], internal::PoseKey(link->id(), t),
-            opt_.fa_cost_model, link->inertiaMatrix(), gravity));
-      } else {
-        throw std::runtime_error("Wrench factor not defined");
-      }
+      graph.emplace_shared<WrenchFactor>(
+          internal::TwistKey(link->id(), t),
+          internal::TwistAccelKey(link->id(), t), wrenches,
+          internal::PoseKey(link->id(), t), opt_.fa_cost_model,
+          link->inertiaMatrix(), gravity);
     }
   }
 

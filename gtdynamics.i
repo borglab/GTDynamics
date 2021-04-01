@@ -46,47 +46,12 @@ class TorqueFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
-#include <gtdynamics/factors/WrenchFactors.h>
-class WrenchFactor0 {
-  WrenchFactor0(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor1 {
-  WrenchFactor1(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key pose_key,
+#include <gtdynamics/factors/WrenchFactor.h>
+class WrenchFactor {
+  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
+                gtsam::Key pose_key,
                 const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor2 {
-  WrenchFactor2(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor3 {
-  WrenchFactor3(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key pose_key,
-                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor4 {
-  WrenchFactor4(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key wrench_key_4,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
                 const boost::optional<gtsam::Vector3> &gravity);
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
@@ -599,7 +564,7 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
 
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
 
-
+/********************** Simulator **********************/
 #include <gtdynamics/dynamics/Simulator.h>
 
 class Simulator {
