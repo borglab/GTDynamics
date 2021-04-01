@@ -82,7 +82,7 @@ Vector WrenchFactor::unwhitenedError(
     if (H) (*H)[2] = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
   } else {
     gravity_wrench = gtsam::Z_6x1;
-    if (H) (*H)[2] = gtsam::Z_6x1;
+    if (H) (*H)[2] = gtsam::Z_6x6;
   }
 
   // Equation 8.48 (F = ma)
