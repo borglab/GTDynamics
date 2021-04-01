@@ -338,24 +338,24 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
 
           // Add contact dynamics constraints.
-          graph.add(ContactDynamicsFrictionConeFactor(
+          graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
               internal::PoseKey(i, t),
               ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cfriction_cost_model, mu_, gravity));
+              opt_.cfriction_cost_model, mu_, gravity);
 
-          graph.add(ContactDynamicsMomentFactor(
+          graph.emplace_shared<ContactDynamicsMomentFactor>(
               ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point)));
+              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         }
       }
 
       // add wrench factor for link
-      graph.add(WrenchFactor(internal::TwistKey(link->id(), t),
-                             internal::TwistAccelKey(link->id(), t), wrenches,
-                             internal::PoseKey(link->id(), t),
-                             opt_.fa_cost_model, link->inertiaMatrix(),
-                             gravity));
+      graph.emplace_shared<WrenchFactor>(
+          internal::TwistKey(link->id(), t),
+          internal::TwistAccelKey(link->id(), t), wrenches,
+          internal::PoseKey(link->id(), t), opt_.fa_cost_model,
+          link->inertiaMatrix(), gravity);
     }
   }
 
