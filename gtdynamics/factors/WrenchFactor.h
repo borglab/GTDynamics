@@ -43,6 +43,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
   using Base = gtsam::NoiseModelFactor;
   gtsam::Matrix6 inertia_;
   gtsam::Vector3 gravity_;
+
  public:
   /**
    * Wrench balance factor, common between forward and inverse dynamics.
@@ -69,20 +70,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
 
  private:
   /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
-  gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const {
-    auto g1 = inertia_(0, 0), g2 = inertia_(1, 1), g3 = inertia_(2, 2),
-         m = inertia_(3, 3);
-    auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
-         v2 = twist(4), v3 = twist(5);
-    gtsam::Matrix6 H_twist;
-    H_twist << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
-        (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,         //
-        (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,         //
-        0, -m * v3, m * v2, 0, m * w3, -m * w2,             //
-        m * v3, 0, -m * v1, -m * w3, 0, m * w1,             //
-        -m * v2, m * v1, 0, m * w2, -m * w1, 0;
-    return H_twist;
-  }
+  gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const;
 
  public:
   /**
@@ -94,44 +82,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
    */
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
-                                    H = boost::none) const override {
-    if (!this->active(x)) {
-      return gtsam::Vector::Zero(this->dim());
-    }
-
-    // `keys_` order: twist, twistAccel, pose, *wrenches
-    const gtsam::Vector6 twist = x.at<gtsam::Vector6>(keys_.at(0));
-    const gtsam::Vector6 twistAccel = x.at<gtsam::Vector6>(keys_.at(1));
-    const gtsam::Pose3 pose = x.at<gtsam::Pose3>(keys_.at(2));
-    gtsam::Vector6 wrenchSum = gtsam::Z_6x1;
-    for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
-      wrenchSum += x.at<gtsam::Vector6>(key);
-    }
-
-    // transform gravity from base frame to link COM frame,
-    // to use unrotate function, have to convert gravity vector to a point
-    gtsam::Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
-    gtsam::Matrix H_rotation, H_unrotate;
-    auto gravity =
-        pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
-    gtsam::Matrix63 intermediateMatrix;
-    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-    auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
-
-    // Equation 8.48 (F = ma)
-    gtsam::Vector6 error =
-        (inertia_ * twistAccel) - wrenchSum - gravity_wrench -
-        (gtsam::Pose3::adjointMap(twist).transpose() * inertia_ * twist);
-
-    if (H) {
-      (*H)[0] = -twistJacobian_(twist);
-      (*H)[1] = inertia_;
-      (*H)[2] = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
-      std::fill(H->begin()+3, H->end(), -gtsam::I_6x6);
-    }
-
-    return error;
-  }
+                                    H = boost::none) const override;
 
   /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
