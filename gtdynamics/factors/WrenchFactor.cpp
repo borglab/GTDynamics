@@ -75,13 +75,17 @@ Vector WrenchFactor::unwhitenedError(
 
   // transform gravity from base frame to link COM frame,
   // to use unrotate function, have to convert gravity vector to a point
-  Point3 gravity_point(gravity_[0], gravity_[1], gravity_[2]);
-  Matrix H_rotation, H_unrotate;
-  auto gravity =
-      pose.rotation(H_rotation).unrotate(gravity_point, H_unrotate);
-  Matrix63 intermediateMatrix;
-  intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-  auto gravity_wrench = inertia_ * intermediateMatrix * gravity;
+  Vector6 gravity_wrench;
+  if (gravity_) {
+    Matrix H_rotation, H_unrotate;
+    auto gravity =
+        pose.rotation(H_rotation).unrotate(*gravity_, H_unrotate);
+    Matrix63 intermediateMatrix;
+    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
+    gravity_wrench = inertia_ * intermediateMatrix * gravity;
+  } else {
+    gravity_wrench = gtsam::Z_6x1;
+  }
 
   // Equation 8.48 (F = ma)
   Vector6 error =
@@ -91,7 +95,9 @@ Vector WrenchFactor::unwhitenedError(
   if (H) {
     (*H)[0] = -twistJacobian_(twist);
     (*H)[1] = inertia_;
-    (*H)[2] = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
+    (*H)[2] = (gravity_)
+                  ? (-inertia_ * intermediateMatrix * H_unrotate * H_rotation)
+                  : (gtsam::Z_6x1);
     std::fill(H->begin()+3, H->end(), -gtsam::I_6x6);
   }
 

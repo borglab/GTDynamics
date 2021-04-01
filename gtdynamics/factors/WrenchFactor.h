@@ -42,7 +42,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
   using This = WrenchFactor;
   using Base = gtsam::NoiseModelFactor;
   gtsam::Matrix6 inertia_;
-  gtsam::Vector3 gravity_;
+  boost::optional<gtsam::Vector3> gravity_;
 
  public:
   /**
@@ -58,9 +58,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const gtsam::Matrix6 &inertia,
                const boost::optional<gtsam::Vector3> &gravity = boost::none)
-      : Base(cost_model),
-        inertia_(inertia),
-        gravity_(gravity ? *gravity : gtsam::Vector3::Zero()) {
+      : Base(cost_model), inertia_(inertia), gravity_(gravity) {
     keys_.reserve(wrench_keys.size() + 3);
     keys_.push_back(twist_key);
     keys_.push_back(twistAccel_key);
