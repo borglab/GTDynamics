@@ -8,7 +8,7 @@
 /**
  * @file  WrenchFactor.h
  * @brief Wrench balance factor, common between forward and inverse dynamics.
- * @author Frank Dellaert, Mandy Xie and Yetong Zhang
+ * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
 #pragma once
