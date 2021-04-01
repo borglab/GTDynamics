@@ -51,7 +51,7 @@ tar -xvjf sdformat-8.6.1.tar.bz2
 cd sdformat-8.6.1
 mkdir build && cd build
 
-cmake ..
+cmake -DCMAKE_INSTALL_PREFIX ../install ..
 make -j4
 sudo make install
 ```
@@ -61,8 +61,8 @@ sudo make install
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
-# Optionally specify install path with -DCMAKE_INSTALL_PREFIX
-$ cmake ../
+# We can specify the install path with -DCMAKE_INSTALL_PREFIX
+$ cmake -DCMAKE_INSTALL_PREFIX ../install ..
 $ make
 $ sudo make install
 ```
