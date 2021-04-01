@@ -1,15 +1,15 @@
 """
- * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
- * Atlanta, Georgia 30332-0415
- * All Rights Reserved
- * See LICENSE for the license information
- *
- * @file  test_dynamics_graph.py
- * @brief Unit tests for dynamics graph.
- * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
+GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+Atlanta, Georgia 30332-0415
+All Rights Reserved
+See LICENSE for the license information
+
+@file  test_cdpr_planar.py
+@brief Unit tests for CDPR.
+@author Frank Dellaert
+@author Gerry Chen
 """
 
-import os.path as osp
 import unittest
 
 import gtdynamics as gtd
@@ -25,13 +25,50 @@ class TestCdprPlanar(unittest.TestCase):
     def testConstructor(self):
         cdpr = Cdpr()
     
+    def testSim(self):
+        class DummyController:
+            def update(values, t):
+                tau = gtsam.Values()
+                gtd.InsertTorqueDouble(tau, 0, t, 0)
+                gtd.InsertTorqueDouble(tau, 1, t, 1)
+                gtd.InsertTorqueDouble(tau, 2, t, 1)
+                gtd.InsertTorqueDouble(tau, 3, t, 0)
+                return tau
+        dt = 0.1
+        cdpr = Cdpr()
+        controller = DummyController()
+        
+        xInit = gtsam.Values()
+        for ji in range(4):
+            gtd.InsertJointAngleDouble(xInit, ji, 0, 0.0)
+            gtd.InsertJointVelDouble(xInit, ji, 0, 0.0)
+        result = cdpr_sim(cdpr, xInit, controller, dt=dt)
+        pAct = [gtd.Pose(result, cdpr.eelink().id(), k) for k in range(10)]
+
+        pExp = [Pose3(Rot3(), (1.5, 0, 1.5))]
+        x = 1.5
+        xdot = 0
+        for k in range(10):
+            pExp.append(Pose3(Rot3(), (x, 0, 1.5)))
+            x += xdot * dt + 0.5 * xddot * dt * dt
+            xdot += xddot * dt
+            xddot = 2 * (3 - x) / np.sqrt(x*x + 1.5*1.5)
+        self.assertEqual(pExp, pAct, "Simulation didn't match expected")
+
     def testTrajFollow(self):
         cdpr = Cdpr()
-        xDes = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(10)]
-        controller = CdprController(cdpr, xdes=xDes, dt=0.1)
-        result = cdpr_sim(cdpr, controller)
-        xAct = [gtd.Pose(result, cdpr.eelink().id(), k) for k in range(10)]
-        self.assertEqual(xDes, xAct, "didn't achieve desired trajectory")
+
+        pDes = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(10)]
+        controller = CdprController(cdpr, pdes=pDes, dt=0.1)
+
+        xInit = gtsam.Values()
+        for ji in range(4):
+            gtd.InsertJointAngleDouble(xInit, ji, 0, 1.5 * np.sqrt(2))
+            gtd.InsertJointVelDouble(xInit, ji, 0, 0.0)
+        result = cdpr_sim(cdpr, xInit, controller, dt=0.1)
+
+        pAct = [gtd.Pose(result, cdpr.eelink().id(), k) for k in range(10)]
+        self.assertEqual(pDes, pAct, "didn't achieve desired trajectory")
 
 if __name__ == "__main__":
     unittest.main()
