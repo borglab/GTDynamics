@@ -25,13 +25,39 @@ class TestCdprPlanar(unittest.TestCase):
     def testConstructor(self):
         cdpr = Cdpr()
     
+    def testKinematics(self):
+        cdpr = Cdpr()
+        kfg = cdpr.kinematics_factors(k=[0])
+        values = gtsam.Values()
+        # things needed to define FK
+        for j, th, thdot in zip(range(4), [1.5 * np.sqrt(2),]*4, [0, 1, 1, 0]):
+            gtd.InsertJointAngleDouble(values, j, 0, th)
+            gtd.InsertJointVelDouble(values, j, 0, thdot)
+        # things needed to define IK
+        gtd.InsertPose(values, cdpr.eelink().id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(values, cdpr.eelink().id(), 0, (0, 0, 0, 0, 0, np.sqrt(2)))
+        self.assertEqual(0.0, dfg.error(values))
+
+    def testDynamics(self):
+        cdpr = Cdpr()
+        dfg = cdpr.dynamics_factors(k=[0])
+        values = gtsam.Values()
+        # things needed to define FD
+        for j, tau in zip(range(4), [1, 0, 0, 1]):
+            gtd.InsertTorqueDouble(values, j, 0, tau)
+        gtd.InsertPose(values, cdpr.eelink().id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(values, cdpr.eelink().id(), 0, np.zeros(6))
+        # things needed to define ID
+        gtd.InsertTwistAccel(values, cdpr.eelink().id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
+        self.assertEqual(0.0, dfg.error(values))
+
     def testSim(self):
         class DummyController:
             def update(values, t):
                 tau = gtsam.Values()
-                gtd.InsertTorqueDouble(tau, 0, t, 0)
+                gtd.InsertTorqueDouble(tau, 0, t, 1)
                 gtd.InsertTorqueDouble(tau, 1, t, 1)
-                gtd.InsertTorqueDouble(tau, 2, t, 1)
+                gtd.InsertTorqueDouble(tau, 2, t, 0)
                 gtd.InsertTorqueDouble(tau, 3, t, 0)
                 return tau
         dt = 0.1
