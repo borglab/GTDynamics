@@ -65,6 +65,12 @@ add_definitions(-DSDF_PATH="${PROJECT_SOURCE_DIR}/sdfs")
 # All subdirectories that contain source code relevant to this library.
 set(SOURCE_SUBDIRS dynamics universal_robot factors utils)
 
+# Option to include cable robot stuff
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  list(APPEND SOURCE_SUBDIRS cablerobot)
+endif()
+
 # Add this directory as include.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
