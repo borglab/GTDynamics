@@ -66,10 +66,6 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
     keys_.insert(keys_.end(), wrench_keys.cbegin(), wrench_keys.cend());
   }
 
- private:
-  /// calculate jacobian of coriolis term w.r.t. joint coordinate twist
-  gtsam::Matrix6 twistJacobian_(const gtsam::Vector6 &twist) const;
-
  public:
   /**
    * Evaluate wrench balance errors
