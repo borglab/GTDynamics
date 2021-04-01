@@ -208,7 +208,7 @@ public:
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
-      boost::optional<gtsam::Matrix &> H_other_twist = boost::none) //
+      gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none)  //
       const override {
     return transformTwistTo(link, JointAngle<JointCoordinate>(values, id(), t),
                             JointVel<JointVelocity>(values, id(), t),
@@ -228,8 +228,8 @@ public:
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
       boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
-      boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
-      boost::optional<gtsam::Matrix &> H_other_twist_accel =
+      gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const override {
     return transformTwistAccelTo(link,
                                  JointAngle<JointCoordinate>(values, id(), t),
