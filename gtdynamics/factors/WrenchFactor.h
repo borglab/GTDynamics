@@ -103,12 +103,10 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
     const gtsam::Vector6 twist = x.at<gtsam::Vector6>(keys_.at(0));
     const gtsam::Vector6 twistAccel = x.at<gtsam::Vector6>(keys_.at(1));
     const gtsam::Pose3 pose = x.at<gtsam::Pose3>(keys_.at(2));
-    gtsam::Vector6 wrenchSum = std::accumulate(  // C++17: reduce
-        keys_.cbegin() + 3, keys_.cend(),
-        static_cast<gtsam::Vector6>(gtsam::Z_6x1),
-        [&x](gtsam::Vector6 v1, gtsam::Key key) -> gtsam::Vector6 {
-          return v1 + x.at<gtsam::Vector6>(key);
-        });
+    gtsam::Vector6 wrenchSum = gtsam::Z_6x1;
+    for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
+      wrenchSum += x.at<gtsam::Vector6>(key);
+    }
 
     // transform gravity from base frame to link COM frame,
     // to use unrotate function, have to convert gravity vector to a point
