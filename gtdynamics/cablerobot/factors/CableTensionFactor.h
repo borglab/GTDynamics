@@ -89,7 +89,7 @@ class CableTensionFactor
     Vector3 eef = wTee.rotation().rotate(wf,  //
                                          H_wTee ? &eef_H_wRee : 0,
                                          (H_t || H_wTee) ? &eef_H_wf : 0);
-    Vector3 eem = gtsam::cross(wPb_, eef,    //
+    Vector3 eem = gtsam::cross(eePem_, eef,    //
                                boost::none,  //
                                (H_t || H_wTee) ? &eem_H_eef : 0);
     Wrench F_expected = (Wrench() << eem, eef).finished();
@@ -118,7 +118,7 @@ class CableTensionFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "cable factor" << std::endl;
+    std::cout << s << "cable tension factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
