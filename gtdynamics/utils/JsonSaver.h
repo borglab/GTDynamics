@@ -32,7 +32,7 @@
 #include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
@@ -227,13 +227,7 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (dynamic_cast<const WrenchFactor1*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor2*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor3*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor4*>(&(*factor))) {
+    if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
       return "Wrench";
     } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
       return "Pose";
