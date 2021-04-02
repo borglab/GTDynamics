@@ -139,8 +139,13 @@ Values InitializeSolutionInterpolation(
       InsertJointVel(&init_vals, joint->id(), t, sampler.sample()[0]);
     }
 
-    InsertPose(&init_vals, robot.link(link_name)->id(), t, wTl_t);
-    InsertTwist(&init_vals, robot.link(link_name)->id(), t, gtsam::Z_6x1);
+    auto link = robot.link(link_name);
+    if (link->isFixed()) {
+      throw std::invalid_argument("InitializeSolutionInterpolation: Link " +
+                                  link_name + " is fixed.");
+    }
+    InsertPose(&init_vals, link->id(), t, wTl_t);
+    InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
     for (auto &&kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {

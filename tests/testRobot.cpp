@@ -88,8 +88,6 @@ TEST(Robot, forwardKinematics) {
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
   Values values;
-  InsertJointAngle(&values, 0, 0.0);
-  InsertJointVel(&values, 0, 0.0);
 
   // not fixing a link would cause an exception
   THROWS_EXCEPTION(robot.forwardKinematics(values));
@@ -151,12 +149,6 @@ TEST(Robot, forwardKinematics_rpr) {
       std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Values values;
-  InsertJointAngle(&values, 1, 0.0);
-  InsertJointVel(&values, 1, 0.0);
-  InsertJointAngle(&values, 2, 0.0);
-  InsertJointVel(&values, 2, 0.0);
-  InsertJointAngle(&values, 3, 0.0);
-  InsertJointVel(&values, 3, 0.0);
 
   // test fk at rest
   robot.link("link_0")->fix();
@@ -184,11 +176,8 @@ TEST(Robot, forwardKinematics_rpr) {
   // test fk with moving prismatic joint and fixed base
   Values values2;
   InsertJointAngle(&values2, 1, M_PI_2);
-  InsertJointVel(&values2, 1, 0.0);
   InsertJointAngle(&values2, 2, 0.5);
   InsertJointVel(&values2, 2, 1.0);
-  InsertJointAngle(&values2, 3, 0.0);
-  InsertJointVel(&values2, 3, 0.0);
 
   fk_results = robot.forwardKinematics(values2);
 
@@ -218,10 +207,6 @@ TEST(forwardKinematics, four_bar) {
   four_bar.link("l1")->fix();
 
   Values values;
-  for (auto &&joint : four_bar.joints()) {
-    InsertJointAngle(&values, joint->id(), 0.0);
-    InsertJointVel(&values, joint->id(), 0.0);
-  }
   Values fk_results = four_bar.forwardKinematics(values);
 
   Vector6 V_4;
@@ -233,12 +218,12 @@ TEST(forwardKinematics, four_bar) {
 
   // incorrect specficiation of joint angles.
   Values wrong_angles = values;
-  wrong_angles.update<double>(internal::JointAngleKey(0), 1.0);
+  InsertJointAngle(&wrong_angles, 0, 1.0);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles));
 
   // incorrect specficiation of joint velocites.
   Values wrong_vels = values;
-  wrong_vels.update<double>(internal::JointVelKey(0), 1.0);
+  InsertJointVel(&wrong_vels, 0, 1.0);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_vels));
 }
 

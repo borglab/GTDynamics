@@ -61,7 +61,7 @@ void Robot::removeLink(const LinkSharedPtr &link) {
   name_to_link_.erase(link->name());
 }
 
-void Robot::removeJoint(JointSharedPtr joint) {
+void Robot::removeJoint(const JointSharedPtr &joint) {
   // in all links connected to the joint, remove the joint
   for (auto link : joint->links()) {
     link->removeJoint(joint);
@@ -97,49 +97,53 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::print() const {
+  using std::cout;
+  using std::endl;
+
+  // Sort joints by id.
   auto sorted_links = links();
   std::sort(sorted_links.begin(), sorted_links.end(),
             [](LinkSharedPtr i, LinkSharedPtr j) { return i->id() < j->id(); });
 
-  std::cout << "LINKS:" << std::endl;
+  // Print links in sorted id order.
+  cout << "LINKS:" << endl;
   for (const auto &link : sorted_links) {
-    std::cout << link->name() << ", id=" << size_t(link->id()) << ":\n";
-    std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
-              << ", " << link->wTl().translation().transpose() << "\n";
-    std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
-              << ", " << link->wTcom().translation().transpose() << "\n";
-    std::cout << "\tjoints: ";
+    std::string fixed = link->isFixed() ? " (fixed)" : "";
+    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
+    cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose() << ", "
+         << link->wTl().translation().transpose() << "\n";
+    cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose() << ", "
+         << link->wTcom().translation().transpose() << "\n";
+    cout << "\tjoints: ";
     for (const auto &joint : link->joints()) {
-      std::cout << joint->name() << " ";
+      cout << joint->name() << " ";
     }
-    std::cout << "\n";
+    cout << "\n";
   }
 
-  // Print joints in sorted id order
+  // Sort joints by id.
   auto sorted_joints = joints();
   std::sort(
       sorted_joints.begin(), sorted_joints.end(),
       [](JointSharedPtr i, JointSharedPtr j) { return i->id() < j->id(); });
 
-  std::cout << "JOINTS:" << std::endl;
+  // Print joints in sorted id order.
+  cout << "JOINTS:" << endl;
   for (const auto &joint : sorted_joints) {
-    std::cout << joint << std::endl;
+    cout << joint << endl;
 
     gtsam::Values joint_angles;
     InsertJointAngle(&joint_angles, joint->id(), 0.0);
 
     auto pTc = joint->parentTchild(joint_angles);
-    std::cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
-              << pTc.translation().transpose() << "\n";
+    cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
+         << pTc.translation().transpose() << "\n";
   }
 }
 
-gtsam::Values Robot::forwardKinematics(
-    const gtsam::Values &known_values, size_t t,
-    const boost::optional<std::string> &prior_link_name) const {
-  gtsam::Values values = known_values;
-
-  // Set root link.
+LinkSharedPtr Robot::findRootLink(
+    const gtsam::Values &values,
+    const boost::optional<std::string> &prior_link_name, size_t t) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
@@ -148,22 +152,80 @@ gtsam::Values Robot::forwardKinematics(
     if (!values.exists(internal::PoseKey(root_link->id(), t)) ||
         !values.exists(internal::TwistKey(root_link->id(), t))) {
       throw std::invalid_argument(
-          "forwardKinematics: known_values does not contain pose/twist.");
+          "forwardKinematics: values does not contain pose/twist.");
     }
   } else {
-    // Check for fixed links, root link will be last fixed link if any.
-    for (auto &&link : links()) {
-      if (link->isFixed()) {
-        root_link = link;
-        InsertPose(&values, link->id(), t, link->getFixedPose());
-        InsertTwist(&values, link->id(), t, Vector6::Zero());
-      }
-    }
-    if (!root_link) {
-      throw std::runtime_error("forwardKinematics: no prior link given and "
-                               "cannot find a fixed link.");
+    auto links = this->links();
+    root_link = *std::find_if(
+        links.rbegin(), links.rend(),
+        [](const LinkSharedPtr &link) { return link->isFixed(); });
+  }
+  if (!root_link) {
+    throw std::runtime_error(
+        "forwardKinematics: no prior link given and "
+        "cannot find a fixed link.");
+  }
+
+  return root_link;
+}
+
+// Insert fixed link poses into values
+static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
+                             gtsam::Values *values) {
+  for (auto &&link : links) {
+    if (link->isFixed()) {
+      InsertPose(values, link->id(), t, link->getFixedPose());
+      InsertTwist(values, link->id(), t, Vector6::Zero());
     }
   }
+}
+
+// Add zero default values for joint angles and joint velocities.
+// if they do not yet exist
+static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
+  using namespace internal;
+  for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
+    if (!values->exists(key)) {
+      values->insertDouble(key, 0.0);
+    }
+  }
+}
+
+// Insert a pose/twist into values, but if they already are present, just check
+// if they are consistent. Throw exception otherwise.
+// Returns true if values were inserted.
+static bool InsertWithCheck(size_t i, size_t t,
+                            const std::pair<Pose3, Vector6> &poseTwist,
+                            gtsam::Values *values) {
+  Pose3 pose;
+  Vector6 twist;
+  std::tie(pose, twist) = poseTwist;
+  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
+  auto pose_key = internal::PoseKey(i, t);
+  auto twist_key = internal::TwistKey(i, t);
+  const bool exists = values->exists(pose_key);
+  if (!exists) {
+    values->insert(pose_key, pose);
+    values->insert<Vector6>(twist_key, twist);
+  } else {
+    // If already insert, check for consistency.
+    if (!(pose.equals(values->at<Pose3>(pose_key), 1e-4) &&
+          (twist - values->at<Vector6>(twist_key)).norm() < 1e-4)) {
+      throw std::runtime_error(
+          "Inconsistent joint angles detected in forward kinematics");
+    }
+  }
+  return !exists;
+}
+
+gtsam::Values Robot::forwardKinematics(
+    const gtsam::Values &known_values, size_t t,
+    const boost::optional<std::string> &prior_link_name) const {
+  gtsam::Values values = known_values;
+
+  // Set root link.
+  const auto root_link = findRootLink(values, prior_link_name, t);
+  InsertFixedLinks(links(), t, &values);
 
   // BFS to update all poses downstream in the graph.
   std::queue<LinkSharedPtr> q;
@@ -171,34 +233,18 @@ gtsam::Values Robot::forwardKinematics(
   int loop_count = 0;
   while (!q.empty()) {
     // Pop link from the queue and retrieve the pose and twist.
-    LinkSharedPtr link1 = q.front();
+    const auto link1 = q.front();
     const Pose3 T_w1 = Pose(values, link1->id(), t);
     const Vector6 V_1 = Twist(values, link1->id(), t);
     q.pop();
 
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->joints()) {
-      Pose3 T_w2;
-      Vector6 V_2;
-      std::tie(T_w2, V_2) =
-          joint->otherPoseTwist(link1, T_w1, V_1, known_values, t);
-
-      // Save pose and twist if link 2 has not been assigned yet.
-      LinkSharedPtr link2 = joint->otherLink(link1);
-      auto pose_key = internal::PoseKey(link2->id(), t);
-      auto twist_key = internal::TwistKey(link2->id(), t);
-      if (!values.exists(pose_key)) {
-        values.insert(pose_key, T_w2);
-        values.insert<Vector6>(twist_key, V_2);
+      InsertZeroDefaults(joint->id(), t, &values);
+      const auto poseTwist = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
+      const auto link2 = joint->otherLink(link1);
+      if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
         q.push(link2);
-      } else {
-        // If link 2 is already assigned, check for consistency.
-        Pose3 T_w2_prev = values.at<Pose3>(pose_key);
-        Vector6 V_2_prev = values.at<Vector6>(twist_key);
-        if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
-          throw std::runtime_error(
-              "Inconsistent joint angles detected in forward kinematics");
-        }
       }
     }
     if (loop_count++ > 100000) {

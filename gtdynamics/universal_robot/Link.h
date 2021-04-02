@@ -102,7 +102,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   LinkSharedPtr shared(void) { return shared_from_this(); }
 
   /// remove the joint
-  void removeJoint(JointSharedPtr joint) {
+  void removeJoint(const JointSharedPtr& joint) {
     joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
@@ -110,7 +110,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   unsigned char id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
+  void addJoint(const JointSharedPtr& joint) { joints_.push_back(joint); }
 
   /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
