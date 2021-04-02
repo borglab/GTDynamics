@@ -8,9 +8,10 @@
 
 #pragma once
 
+#include <gtdynamics/cablerobot/utils/cableUtils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Unit3.h>
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
@@ -19,73 +20,90 @@
 #include <string>
 
 namespace gtdynamics {
-namespace cablerobot {
 
-/** CableTensionFactor is a 5-way nonlinear factor which enforces relation amongst
- * cable tension, mounting points, and forces felt by the mounting points
+/** CableTensionFactor is a 3-way nonlinear factor which enforces relation
+ * amongst cable tension, end effector pose, and wrench felt by the end effector
  */
 class CableTensionFactor
-    : public gtsam::NoiseModelFactor5<double, gtsam::Point3, gtsam::Point3,
-                                      gtsam::Vector, gtsam::Vector> {
+    : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
  private:
+  using Pose = gtsam::Pose3;
+  using Point = gtsam::Point3;
+  using Wrench = gtsam::Vector6;
+  using Vector3 = gtsam::Vector3;
   typedef CableTensionFactor This;
-  typedef gtsam::NoiseModelFactor5<double, gtsam::Point3, gtsam::Point3,
-                                   gtsam::Vector, gtsam::Vector>
-      Base;
+  typedef gtsam::NoiseModelFactor3<double, Pose, Wrench> Base;
+
+  Point wPb_, eePem_;
+
  public:
-  /** Cable factor
-      Arguments:
-          tension_key -- key for cable tension
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
-          force1_key -- key for force on attachment point 1
-          force2_key -- key for force on attachment point 2
-          cost_model -- noise model (6 dimensional: 3 force directions for 2
-     attachment points)
+  /** Cable tension factor
+   * @param tension_key -- key for cable tension (scalar)
+   * @param eePose_key -- key for end effector pose
+   * @param wrench_key -- key for the wrench acting on the end-effector (in the
+   end effector's reference frame)
+   * @param cost_model -- noise model (6 dimensional)
+   * @param wPb -- cable mounting location on the fixed frame, in world coords
+   * @param eePem -- cable mounting location on the end effector, in the
+   * end-effector frame (wPem = wTee * eePem)
    */
-  CableTensionFactor(gtsam::Key tension_key, gtsam::Key point1_key,
-              gtsam::Key point2_key, gtsam::Key force1_key,
-              gtsam::Key force2_key,
-              const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, tension_key, point1_key, point2_key, force1_key,
-             force2_key) {}
+  CableTensionFactor(gtsam::Key tension_key, gtsam::Key eePose_key,
+                     gtsam::Key wrench_key,
+                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                     const Point &wPb, const Point &eePem)
+      : Base(cost_model, tension_key, eePose_key, wrench_key),
+        wPb_(wPb),
+        eePem_(eePem) {}
   virtual ~CableTensionFactor() {}
 
  public:
-  /** Cable factor
-      Arguments:
-          tension_key -- key for cable tension
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
-          force1_key -- key for force on attachment point 1
-          force2_key -- key for force on attachment point 2
+  /** Cable wrench factor
+   * @param t cable tension
+   * @param wTee end effector pose (in the world frame)
+   * @param Fee wrench acting on the end effector (in the end effector frame)
+   * @return Vector(6): calculated wrench minus Fee
    */
   gtsam::Vector evaluateError(
-      const double &tension, const gtsam::Point3 &point1,
-      const gtsam::Point3 &point2, const gtsam::Vector &force1,
-      const gtsam::Vector &force2,
-      boost::optional<gtsam::Matrix &> H_tension = boost::none,
-      boost::optional<gtsam::Matrix &> H_point1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_point2 = boost::none,
-      boost::optional<gtsam::Matrix &> H_force1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_force2 = boost::none) const override {
-    gtsam::Matrix33 H_dir_Dir;
-    gtsam::Matrix63 H_err_Dir;
+      const double &t, const Pose &wTee, const Wrench &Fee,
+      boost::optional<gtsam::Matrix &> H_t = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
+      boost::optional<gtsam::Matrix &> H_Fee = boost::none) const override {
+    // Jacobians: cable direction
+    gtsam::Matrix33 dir_H_wPem;
+    gtsam::Matrix36 wPem_H_wTee;
+    // Jacobians: force to wrench conversion
+    gtsam::Matrix31 wf_H_t;
+    gtsam::Matrix33 wf_H_dir;
+    gtsam::Matrix33 eef_H_wf;
+    gtsam::Matrix33 eef_H_wRee;
+    gtsam::Matrix63 H_eef;
+    gtsam::Matrix33 eem_H_eef;  // = H_eef.topRows<3>(); TODO(gerry): pointer?
 
-    gtsam::Point3 dir = gtsam::normalize(
-        point2 - point1, (H_point1 || H_point2) ? &H_dir_Dir : 0);
-    gtsam::Vector6 error;
-    error << tension * dir - force1, -tension * dir - force2;
+    // cable direction
+    Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
+    Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
+    // force->wrench
+    Vector3 wf = t * dir;
+    if (H_t) wf_H_t = dir;
+    if (H_wTee) wf_H_dir = t * gtsam::I_3x3;
+    Vector3 eef = wTee.rotation().rotate(wf,  //
+                                         H_wTee ? &eef_H_wRee : 0,
+                                         (H_t || H_wTee) ? &eef_H_wf : 0);
+    Vector3 eem = gtsam::cross(wPb_, eef,    //
+                               boost::none,  //
+                               (H_t || H_wTee) ? &eem_H_eef : 0);
+    Wrench F_expected = (Wrench() << eem, eef).finished();
+    if (H_t || H_wTee) H_eef << eem_H_eef, gtsam::I_3x3;
 
-    if (H_tension) *H_tension = (gtsam::Matrix61() << dir, -dir).finished();
-    if (H_point1 || H_point2)
-      H_err_Dir << tension * H_dir_Dir, -tension * H_dir_Dir;
-    if (H_point1) *H_point1 = -H_err_Dir;
-    if (H_point2) *H_point2 = H_err_Dir;
-    if (H_force1)
-      *H_force1 = (gtsam::Matrix63() << -gtsam::I_3x3, gtsam::Z_3x3).finished();
-    if (H_force2)
-      *H_force2 = (gtsam::Matrix63() << gtsam::Z_3x3, -gtsam::I_3x3).finished();
+    // error
+    Wrench error = (Wrench() << F_expected - Fee).finished();
+
+    if (H_t) *H_t = H_eef * eef_H_wf * wf_H_t;
+    if (H_wTee) {
+      *(H_wTee) = H_eef * eef_H_wf * wf_H_dir * dir_H_wPem * wPem_H_wTee;
+      H_wTee->leftCols<3>() += H_eef * eef_H_wRee;
+    }
+    if (H_Fee) *H_Fee = -gtsam::I_6x6;
 
     return error;
   }
@@ -110,9 +128,8 @@ class CableTensionFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
 
-}  // namespace cablerobot
 }  // namespace gtdynamics
