@@ -1,11 +1,13 @@
 /**
  * @file  testCableTensionFactor.cpp
- * @brief test cable factor
+ * @brief test cable tension factor
  * @author Frank Dellaert
  * @author Gerry Chen
  */
 
 #include "factors/CableTensionFactor.h"
+
+#include <gtdynamics/utils/values.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Symbol.h>
@@ -19,7 +21,8 @@
 
 using namespace std;
 using namespace gtsam;
-using namespace gtdynamics::cablerobot;
+using namespace gtdynamics;
+using namespace gtdynamics::internal;
 
 /**
  * Test cable factor
@@ -29,32 +32,32 @@ TEST(CableTensionFactor, error) {
   noiseModel::Gaussian::shared_ptr cost_model =
       noiseModel::Isotropic::Sigma(6, 1.0);
 
-  Symbol points[2] = {symbol('p', 0), symbol('p', 1)};
-  Symbol forces[2] = {symbol('f', 0), symbol('f', 1)};
-  Symbol tension = symbol('t', 0);
-  CableTensionFactor factor(tension, points[0], points[1], forces[0], forces[1], cost_model);
-
-  double conf_tension = 2;
-  Point3 conf_points[2] = {Point3(0, 0, 0), Point3(1, 0, 0)};
-  Vector conf_forces[2] = {Vector3(1, 0, 0), Vector3(-1, 0, 0)};
-  Vector6 expected_errors;
-  expected_errors << 1, 0, 0, -1, 0, 0;  // expect forces of 2i and -2i
-
-  Vector6 actual_errors = factor.evaluateError(
-    conf_tension, conf_points[0], conf_points[1], conf_forces[0], conf_forces[1]);
-
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-4));
+  int jid = 0;
+  int lid = 0;
+  Point3 frameLoc = Point3(0.1, 0.2, 0.3);
+  Point3 eeLoc = Point3(-0.15, 0, -0.15);
+  CableTensionFactor factor(TorqueKey(jid), PoseKey(lid), WrenchKey(lid, jid),
+                            cost_model, frameLoc, eeLoc);
 
   Values values;
-  values.insertDouble(tension, conf_tension);
-  values.insert(points[0], conf_points[0]);
-  values.insert(points[1], conf_points[1]);
-  values.insert(forces[0], conf_forces[0]);
-  values.insert(forces[1], conf_forces[1]);
+  InsertTorque(&values, jid, 1.0);
+  InsertPose(&values, lid, Pose3(Rot3(), Point3(1.5, 0, 1.5)));
+  InsertWrench(&values, lid, jid,
+               (Vector6() << 0, 1, 0, 1.1, 0, 1.2).finished());
+
+  Vector6 expected_errors =
+      (Vector6() << 0, 0, 0, -1 / sqrt(2), 0, -1 / sqrt(2)).finished();
+
+  Vector6 actual_errors = factor.evaluateError(
+      Torque(values, jid), Pose(values, lid), Wrench(values, lid, jid));
+
+  // jacobians
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-4));
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 
-  values.update(points[1], Point3(3, 5, 7));
-  values.update(forces[1], static_cast<gtsam::Vector>(Vector3(-13, 17, 19)));
+  values.update(PoseKey(lid), Pose3(Rot3::Rz(0.4), Point3(0.2, 0.3, 0.4)));
+  values.update(WrenchKey(lid, jid),
+                (Vector6() << 0.12, 0.13, 0.14, 0.18, 0.19, 0.21).finished());
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 }
 
