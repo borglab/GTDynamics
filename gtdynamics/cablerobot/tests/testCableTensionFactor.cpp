@@ -34,7 +34,7 @@ TEST(CableTensionFactor, error) {
 
   int jid = 0;
   int lid = 0;
-  Point3 frameLoc = Point3(0.1, 0.2, 0.3);
+  Point3 frameLoc = Point3(0, 0, 0);
   Point3 eeLoc = Point3(-0.15, 0, -0.15);
   CableTensionFactor factor(TorqueKey(jid), PoseKey(lid), WrenchKey(lid, jid),
                             cost_model, frameLoc, eeLoc);
@@ -46,7 +46,8 @@ TEST(CableTensionFactor, error) {
                (Vector6() << 0, 1, 0, 1.1, 0, 1.2).finished());
 
   Vector6 expected_errors =
-      (Vector6() << 0, 0, 0, -1 / sqrt(2), 0, -1 / sqrt(2)).finished();
+      (Vector6() << 0, -1, 0, -1 / sqrt(2) - 1.1, 0, -1 / sqrt(2) - 1.2)
+          .finished();
 
   Vector6 actual_errors = factor.evaluateError(
       Torque(values, jid), Pose(values, lid), Wrench(values, lid, jid));

@@ -83,9 +83,9 @@ class CableTensionFactor
     Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
     Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
     // force->wrench
-    Vector3 wf = t * dir;
-    if (H_t) wf_H_t = dir;
-    if (H_wTee) wf_H_dir = t * gtsam::I_3x3;
+    Vector3 wf = -t * dir;
+    if (H_t) wf_H_t = -dir;
+    if (H_wTee) wf_H_dir = -t * gtsam::I_3x3;
     Vector3 eef = wTee.rotation().rotate(wf,  //
                                          H_wTee ? &eef_H_wRee : 0,
                                          (H_t || H_wTee) ? &eef_H_wf : 0);
