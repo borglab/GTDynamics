@@ -156,9 +156,13 @@ LinkSharedPtr Robot::findRootLink(
     }
   } else {
     auto links = this->links();
-    root_link = *std::find_if(
-        links.rbegin(), links.rend(),
-        [](const LinkSharedPtr &link) { return link->isFixed(); });
+    auto links_iter =
+        std::find_if(links.rbegin(), links.rend(),
+                     [](const LinkSharedPtr &link) { return link->isFixed(); });
+    // If valid link is found by find_if, assign root_link to the iterator.
+    if (links_iter != links.rend()) {
+      root_link = *links_iter;
+    }
   }
   if (!root_link) {
     throw std::runtime_error(
