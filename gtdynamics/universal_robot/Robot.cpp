@@ -97,40 +97,47 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
 void Robot::print() const {
+  using std::cout;
+  using std::endl;
+
+  // Sort joints by id.
   auto sorted_links = links();
   std::sort(sorted_links.begin(), sorted_links.end(),
             [](LinkSharedPtr i, LinkSharedPtr j) { return i->id() < j->id(); });
 
-  std::cout << "LINKS:" << std::endl;
+  // Print links in sorted id order.
+  cout << "LINKS:" << endl;
   for (const auto &link : sorted_links) {
-    std::cout << link->name() << ", id=" << size_t(link->id()) << ":\n";
-    std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
-              << ", " << link->wTl().translation().transpose() << "\n";
-    std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
-              << ", " << link->wTcom().translation().transpose() << "\n";
-    std::cout << "\tjoints: ";
+    std::string fixed = link->isFixed() ? " (fixed)" : "";
+    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
+    cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose() << ", "
+         << link->wTl().translation().transpose() << "\n";
+    cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose() << ", "
+         << link->wTcom().translation().transpose() << "\n";
+    cout << "\tjoints: ";
     for (const auto &joint : link->joints()) {
-      std::cout << joint->name() << " ";
+      cout << joint->name() << " ";
     }
-    std::cout << "\n";
+    cout << "\n";
   }
 
-  // Print joints in sorted id order
+  // Sort joints by id.
   auto sorted_joints = joints();
   std::sort(
       sorted_joints.begin(), sorted_joints.end(),
       [](JointSharedPtr i, JointSharedPtr j) { return i->id() < j->id(); });
 
-  std::cout << "JOINTS:" << std::endl;
+  // Print joints in sorted id order.
+  cout << "JOINTS:" << endl;
   for (const auto &joint : sorted_joints) {
-    std::cout << joint << std::endl;
+    cout << joint << endl;
 
     gtsam::Values joint_angles;
     InsertJointAngle(&joint_angles, joint->id(), 0.0);
 
     auto pTc = joint->parentTchild(joint_angles);
-    std::cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
-              << pTc.translation().transpose() << "\n";
+    cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
+         << pTc.translation().transpose() << "\n";
   }
 }
 
