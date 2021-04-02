@@ -128,6 +128,7 @@ class Link  {
     double mass() const;
     const gtsam::Pose3 &centerOfMass();
     const Matrix &inertia();
+    gtsam::Matrix6 inertiaMatrix();
 };
 
 /********************** joint **********************/
