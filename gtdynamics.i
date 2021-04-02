@@ -46,47 +46,12 @@ class TorqueFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
-#include <gtdynamics/factors/WrenchFactors.h>
-class WrenchFactor0 {
-  WrenchFactor0(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor1 {
-  WrenchFactor1(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key pose_key,
+#include <gtdynamics/factors/WrenchFactor.h>
+class WrenchFactor {
+  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
+                gtsam::Key pose_key,
                 const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor2 {
-  WrenchFactor2(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor3 {
-  WrenchFactor3(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key pose_key,
-                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor4 {
-  WrenchFactor4(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key wrench_key_4,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
                 const boost::optional<gtsam::Vector3> &gravity);
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
@@ -148,7 +113,7 @@ class Link  {
 
     gtdynamics::Link* shared();
     int id() const;
-    void addJoint(gtdynamics::JointSharedPtr joint_ptr);
+    void addJoint(gtdynamics::Joint* joint_ptr);
     const gtsam::Pose3 &wTl() const;
     const gtsam::Pose3 &lTcom() const;
     const gtsam::Pose3 wTcom() const;
@@ -157,7 +122,8 @@ class Link  {
     void fix();
     void fix(gtsam::Pose3 & fixed_pose);
     void unfix();
-    const std::vector<Joint> &getJoints() const; // don't need Joint* to get this working
+    const std::vector<Joint*> &joints() const;
+    size_t numJoints() const;
     string name() const;
     double mass() const;
     const gtsam::Pose3 &centerOfMass();
@@ -189,10 +155,10 @@ virtual class Joint {
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;
   string name() const;
-  gtdynamics::LinkSharedPtr otherLink(const gtdynamics::LinkSharedPtr &link);
-  std::vector<gtdynamics::LinkSharedPtr> links() const;
-  gtdynamics::LinkSharedPtr parent() const;
-  gtdynamics::LinkSharedPtr child() const;
+  gtdynamics::Link* otherLink(const gtdynamics::Link* link);
+  std::vector<gtdynamics::Link*> links() const;
+  gtdynamics::Link* parent() const;
+  gtdynamics::Link* child() const;
 };
 
 virtual class JointTyped : gtdynamics::Joint {
@@ -202,22 +168,22 @@ virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
   RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                const gtdynamics::LinkSharedPtr &parent_link,
-                const gtdynamics::LinkSharedPtr &child_link,
+                const gtdynamics::Link* parent_link,
+                const gtdynamics::Link* child_link,
                 const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                 const gtdynamics::LinkSharedPtr &parent_link,
-                 const gtdynamics::LinkSharedPtr &child_link,
+                 const gtdynamics::Link* parent_link,
+                 const gtdynamics::Link* child_link,
                  const gtdynamics::JointParams &parameters, const Vector &axis);
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
   ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::LinkSharedPtr &parent_link,
-             const gtdynamics::LinkSharedPtr &child_link,
+             const gtdynamics::Link* parent_link,
+             const gtdynamics::Link* child_link,
              const gtdynamics::JointParams &parameters, const Vector &axis,
              double thread_pitch);
 };
@@ -229,15 +195,15 @@ virtual class ScrewJoint : gtdynamics::ScrewJointBase {
 class Robot {
   Robot();
 
-  Robot(std::map<string, gtdynamics::LinkSharedPtr> links, std::map<string, gtdynamics::JointSharedPtr> joints);
+  Robot(std::map<string, gtdynamics::Link*> links, std::map<string, gtdynamics::Joint*> joints);
 
-  std::vector<gtdynamics::LinkSharedPtr> links() const;
+  std::vector<gtdynamics::Link*> links() const;
 
-  std::vector<gtdynamics::JointSharedPtr> joints() const;
+  std::vector<gtdynamics::Joint*> joints() const;
 
-  void removeLink(gtdynamics::LinkSharedPtr link);
+  void removeLink(gtdynamics::Link* link);
 
-  void removeJoint(gtdynamics::JointSharedPtr joint);
+  void removeJoint(gtdynamics::Joint* joint);
 
   gtdynamics::Link* link(string name) const;
 
@@ -357,13 +323,9 @@ class DynamicsGraph {
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
-  gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
-      const Vector &joint_vels, const Vector &torques) const;
-
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t, const Vector &joint_angles,
-      const Vector &joint_vels, const Vector &joint_accels) const;
+      const gtdynamics::Robot &robot, const int t,
+      const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
       const gtdynamics::Robot &robot, const int t,
@@ -371,8 +333,7 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
       const gtdynamics::Robot &robot, const int num_steps,
-      const Vector &joint_angles, const Vector &joint_vels,
-      const std::vector<Vector> &torques_seq) const;
+      const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
@@ -603,7 +564,7 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
 
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
 
-
+/********************** Simulator **********************/
 #include <gtdynamics/dynamics/Simulator.h>
 
 class Simulator {

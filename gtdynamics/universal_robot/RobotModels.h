@@ -32,8 +32,7 @@ gtdynamics::Robot getFourBar() {
 gtdynamics::Robot robot = getFourBar();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace four_bar_linkage
 
 namespace simple_urdf {
@@ -46,8 +45,7 @@ gtdynamics::Robot getSimpleUrdf() {
 gtdynamics::Robot robot = getSimpleUrdf();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace simple_urdf
 
 namespace simple_urdf_prismatic {
@@ -58,7 +56,7 @@ gtdynamics::Robot getSimpleUrdf() {
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdf();
-} // namespace simple_urdf_prismatic
+}  // namespace simple_urdf_prismatic
 
 namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getSimpleUrdf() {
@@ -70,8 +68,7 @@ gtdynamics::Robot getSimpleUrdf() {
 gtdynamics::Robot robot = getSimpleUrdf();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace simple_urdf_zero_inertia
 
 namespace simple_urdf_eq_mass {
@@ -83,8 +80,7 @@ gtdynamics::Robot getSimpleUrdfEqMass() {
 gtdynamics::Robot robot = getSimpleUrdfEqMass();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace simple_urdf_eq_mass
 
 namespace simple_rr {
@@ -96,8 +92,7 @@ gtdynamics::Robot getSimpleRR() {
 gtdynamics::Robot robot = getSimpleRR();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace simple_rr
 
 namespace jumping_robot {
@@ -111,6 +106,5 @@ gtdynamics::Robot getJumpingRobot() {
 gtdynamics::Robot robot = getJumpingRobot();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
-gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
-gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
+
 }  // namespace jumping_robot
