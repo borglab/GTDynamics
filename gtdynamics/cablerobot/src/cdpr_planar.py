@@ -76,32 +76,42 @@ class Cdpr:
                         self.costmodel_planar_twist)))
         return kfg
 
-    def dynamics_factors(self, ks=[]):
+    def dynamics_factors(self, ks=[], dt=0.01):
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            dfg += gtd.WrenchFactor4(gtd.internal.TwistKey(self.ee_id(), k),
-                                     gtd.internal.TwistAccelKey(self.ee_id(), k),
-                                     gtd.internal.WrenchKey(self.ee_id(), 0, k),
-                                     gtd.internal.WrenchKey(self.ee_id(), 1, k),
-                                     gtd.internal.WrenchKey(self.ee_id(), 2, k),
-                                     gtd.internal.WrenchKey(self.ee_id(), 3, k),
-                                     gtd.internal.PoseKey(self.ee_id(), k),
-                                     self.costmodel_wrench, self.params.inertia)
+            wf = gtd.WrenchFactor(
+                    gtd.internal.TwistKey(self.ee_id(), k).key(),
+                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
+                    [
+                        gtd.internal.WrenchKey(self.ee_id(), 0, k),
+                        gtd.internal.WrenchKey(self.ee_id(), 1, k),
+                        gtd.internal.WrenchKey(self.ee_id(), 2, k),
+                        gtd.internal.WrenchKey(self.ee_id(), 3, k)
+                    ],
+                    gtd.internal.PoseKey(self.ee_id(), k).key(),
+                    self.costmodel_wrench, self.eelink().inertiaMatrix(), self.params.gravity)
+            dfg.push_back(wf)
             for ji in range(4):
-                dfg += gtd.CableTensionFactor(gtd.internal.TorqueKey(ji, k),
-                                              gtd.internal.WrenchKey(self.ee_id(), ji, k),
-                                              gtd.internal.PoseKey(self.ee_id(), k),
-                                              self.costmodel_torque, self.params.frameLocs[ji])
+                dfg.push_back(
+                    gtd.CableTensionFactor(
+                        gtd.internal.TorqueKey(ji, k),
+                        gtd.internal.WrenchKey(self.ee_id(), ji, k),
+                        gtd.internal.PoseKey(self.ee_id(), k),
+                        self.costmodel_torque, self.params.frameLocs[ji]))
         for k in ks[:-1]:
-            dfg += gtd.EulerPoseColloFactor(gtd.internal.PoseKey(self.ee_id(), k),
-                                            gtd.internal.PoseKey(self.ee_id(), k+1),
-                                            gtd.internal.TwistKey(self.ee_id(), k),
-                                            0, self.costmodel_posecollo)
-            dfg += gtd.EulerTwistColloFactor(gtd.internal.TwistKey(self.ee_id(), k),
-                                             gtd.internal.TwistKey(self.ee_id(), k+1),
-                                             gtd.internal.TwistAccelKey(self.ee_id(), k),
-                                             0, self.costmodel_twistcollo)
-        dfg += gtsam.PriorFactorVector(0, [0], self.costmodel_dt)
+            dfg.push_back(
+                gtd.EulerPoseColloFactor(
+                    gtd.internal.PoseKey(self.ee_id(), k),
+                    gtd.internal.PoseKey(self.ee_id(), k + 1),
+                    gtd.internal.TwistKey(self.ee_id(), k), 0,
+                    self.costmodel_posecollo))
+            dfg.push_back(
+                gtd.EulerTwistColloFactor(
+                    gtd.internal.TwistKey(self.ee_id(), k),
+                    gtd.internal.TwistKey(self.ee_id(), k + 1),
+                    gtd.internal.TwistAccelKey(self.ee_id(), k), 0,
+                    self.costmodel_twistcollo))
+        dfg.push_back(gtsam.PriorFactorDouble(0, dt, self.costmodel_dt))
         return dfg
 
     def priors_fk(self, ks=[], ls=[[]], ldots=[[]]):
