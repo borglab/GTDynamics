@@ -67,7 +67,7 @@ class TestCdprPlanar(GtsamTestCase):
         cdpr = Cdpr()
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
-        values.insert(0, [0.01])  # dt
+        values.insertDouble(0, 0.01)  # dt
         # things needed to define kinematic
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
@@ -104,6 +104,45 @@ class TestCdprPlanar(GtsamTestCase):
             gtd.InsertTorqueDouble(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
+
+    def testDynamicsTraj(self):
+        cdpr = Cdpr()
+        # kinematics
+        fg = cdpr.kinematics_factors(ks=[0, 1, 2])
+        # dynamics
+        fg.push_back(cdpr.dynamics_factors(ks=[0, 1, 2]))
+        # initial state
+        fg.push_back(
+            cdpr.priors_ik(ks=[0], Ts=[Pose3(Rot3(), (1.5, 0, 1.5))], Vs=[np.zeros(6)]))
+        # torque inputs (ID priors)
+        fg.push_back(cdpr.priors_id(ks=[0, 1, 2], torquess=[[1,1,0,0],]*3))
+        # construct initial guess
+        init = gtsam.Values()
+        init.insertDouble(0, 0.01)
+        for t in range(3):
+            for j in range(4):
+                gtd.InsertJointAngleDouble(init, j, t, 1)
+                gtd.InsertJointVelDouble(init, j, t, 1)
+                gtd.InsertTorqueDouble(init, j, t, 1)
+                gtd.InsertWrench(init, cdpr.ee_id(), j, t, np.ones(6))
+            gtd.InsertPose(init, cdpr.ee_id(), t, Pose3(Rot3(), (1.5, 1, 1.5)))
+            gtd.InsertTwist(init, cdpr.ee_id(), t, np.ones(6))
+            gtd.InsertTwistAccel(init, cdpr.ee_id(), t, np.ones(6))
+        # optimize
+        optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init)
+        result = optimizer.optimize()
+        # correctness checks:
+        # timestep 0
+        self.gtsamAssertEquals(gtd.Pose(result, cdpr.ee_id(), 0), Pose3(Rot3(), (1.5, 0, 1.5)))
+        # timestep 1 (euler collocation)
+        self.gtsamAssertEquals(gtd.Pose(result, cdpr.ee_id(), 1),
+                               Pose3(Rot3(), (1.5, 0, 1.5)), tol=1e-3)
+        self.gtsamAssertEquals(gtd.Twist(result, cdpr.ee_id(), 1),
+                               np.array([0, 0, 0, np.sqrt(2) * 0.01, 0, 0]), tol=1e-3)
+        # timestep 2
+        self.gtsamAssertEquals(
+            gtd.Pose(result, cdpr.ee_id(), 2),
+            Pose3(Rot3(), (1.5 + np.sqrt(2) * 0.0001, 0, 1.5)))
 
     @unittest.SkipTest
     def testSim(self):

@@ -64,20 +64,22 @@ class Cdpr:
                                                  self.costmodel_ldot,
                                                  self.params.frameLocs[ji], self.params.eeLocs[ji]))
             # constrain out-of-plane movements
-            kfg.push_back(
-                gtsam.LinearContainerFactor(
-                    gtsam.JacobianFactor(
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
-                                  [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
-                        self.costmodel_planar_pose)))
-            kfg.push_back(
-                gtsam.LinearContainerFactor(
-                    gtsam.JacobianFactor(
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),
-                        np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
-                                  [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
-                        self.costmodel_planar_twist)))
+            zeroT = gtsam.Values(); gtd.InsertPose(zeroT, self.ee_id(), k, Pose3())
+            kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
+                gtd.internal.PoseKey(self.ee_id(), k).key(),
+                np.array([[1, 0, 0, 0, 0, 0],
+                          [0, 0, 1, 0, 0, 0],
+                          [0, 0, 0, 0, 1, 0.]]),
+                np.zeros(3),
+                self.costmodel_planar_pose), zeroT))
+            zeroV = gtsam.Values(); gtd.InsertTwist(zeroV, self.ee_id(), k, np.zeros(6))
+            kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
+                gtd.internal.TwistKey(self.ee_id(), k).key(),
+                np.array([[1, 0, 0, 0, 0, 0],
+                          [0, 0, 1, 0, 0, 0],
+                          [0, 0, 0, 0, 1, 0.]]),
+                np.zeros(3),
+                self.costmodel_planar_twist), zeroV))
         return kfg
 
     def dynamics_factors(self, ks=[], dt=0.01):
@@ -105,17 +107,17 @@ class Cdpr:
         for k in ks[:-1]:
             dfg.push_back(
                 gtd.EulerPoseColloFactor(
-                    gtd.internal.PoseKey(self.ee_id(), k),
-                    gtd.internal.PoseKey(self.ee_id(), k + 1),
-                    gtd.internal.TwistKey(self.ee_id(), k), 0,
+                    gtd.internal.PoseKey(self.ee_id(), k).key(),
+                    gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
+                    gtd.internal.TwistKey(self.ee_id(), k).key(), 0,
                     self.costmodel_posecollo))
             dfg.push_back(
                 gtd.EulerTwistColloFactor(
-                    gtd.internal.TwistKey(self.ee_id(), k),
-                    gtd.internal.TwistKey(self.ee_id(), k + 1),
-                    gtd.internal.TwistAccelKey(self.ee_id(), k), 0,
+                    gtd.internal.TwistKey(self.ee_id(), k).key(),
+                    gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
+                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(), 0,
                     self.costmodel_twistcollo))
-        dfg.push_back(gtsam.PriorFactorVector(0, [dt], self.costmodel_dt))
+        dfg.push_back(gtd.PriorFactorDouble(0, dt, self.costmodel_dt))
         return dfg
 
     def priors_fk(self, ks=[], ls=[[]], ldots=[[]]):
