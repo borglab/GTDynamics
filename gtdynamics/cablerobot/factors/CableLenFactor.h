@@ -20,7 +20,6 @@
 #include <string>
 
 namespace gtdynamics {
-namespace cablerobot {
 
 /** CableLenFactor is a 3-way nonlinear factor which enforces relation for
  * mounting points and cable length
@@ -64,7 +63,7 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
     gtsam::Matrix36 wPem_H_wTee;
     gtsam::Matrix13 H_wPem;
     auto wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    double expected_l = distance(wPem, wPb_, H_wTee ? &H_wPem : 0);
+    double expected_l = cablerobot::distance(wPem, wPb_, H_wTee ? &H_wPem : 0);
     if (H_l) *H_l = gtsam::Vector1(-1);
     if (H_wTee) *H_wTee = H_wPem * wPem_H_wTee;
     return gtsam::Vector1(expected_l - l);
@@ -94,5 +93,4 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
   }
 };
 
-}  // namespace cablerobot
 }  // namespace gtdynamics
