@@ -16,7 +16,7 @@ class PoseFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/TwistFactor.h>
-class TwistFactor {
+class TwistFactor : gtsam::NonlinearFactor {
   TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
               const gtsam::noiseModel::Base* cost_model,
@@ -27,7 +27,7 @@ class TwistFactor {
 };
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
-class TwistAccelFactor {
+class TwistAccelFactor : gtsam::NonlinearFactor {
   TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
               gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
               const gtsam::noiseModel::Base* cost_model,
@@ -38,7 +38,7 @@ class TwistAccelFactor {
 };
 
 #include <gtdynamics/factors/TorqueFactor.h>
-class TorqueFactor {
+class TorqueFactor : gtsam::NonlinearFactor {
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base *cost_model,
                const gtdynamics::JointTyped *joint);
@@ -47,7 +47,7 @@ class TorqueFactor {
 };
 
 #include <gtdynamics/factors/WrenchFactor.h>
-class WrenchFactor {
+class WrenchFactor : gtsam::NonlinearFactor {
   WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
                 const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
                 gtsam::Key pose_key,
@@ -57,7 +57,7 @@ class WrenchFactor {
 };
 
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-class WrenchEquivalenceFactor {
+class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base *cost_model,
@@ -66,7 +66,7 @@ class WrenchEquivalenceFactor {
 };
 
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
-class WrenchPlanarFactor {
+class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base *cost_model,
                      Vector planar_axis);
@@ -74,26 +74,26 @@ class WrenchPlanarFactor {
 };
 
 #include <gtdynamics/factors/CollocationFactors.h>
-class EulerPoseColloFactor{
+class EulerPoseColloFactor : gtsam::NonlinearFactor {
   EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                        gtsam::Key twist_key, gtsam::Key dt_key,
                        const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalPoseColloFactor{
+class TrapezoidalPoseColloFactor : gtsam::NonlinearFactor {
   TrapezoidalPoseColloFactor(
       gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
       gtsam::Key twist_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base *cost_model);
 };
 
-class EulerTwistColloFactor{
+class EulerTwistColloFactor : gtsam::NonlinearFactor {
   EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                         gtsam::Key accel_key, gtsam::Key dt_key,
                         const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalTwistColloFactor{
+class TrapezoidalTwistColloFactor : gtsam::NonlinearFactor {
   TrapezoidalTwistColloFactor(
       gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
       gtsam::Key accel_t1_key, gtsam::Key dt_key,
