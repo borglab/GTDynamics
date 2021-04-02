@@ -176,7 +176,6 @@ class TestCdprPlanar(GtsamTestCase):
             x += xdot * dt
             xdot += xddot * dt
 
-    @unittest.SkipTest
     def testTrajFollow(self):
         cdpr = Cdpr()
 
@@ -184,10 +183,9 @@ class TestCdprPlanar(GtsamTestCase):
         controller = CdprController(cdpr, pdes=pDes, dt=0.1)
 
         xInit = gtsam.Values()
-        for ji in range(4):
-            gtd.InsertJointAngleDouble(xInit, ji, 0, 1.5 * np.sqrt(2))
-            gtd.InsertJointVelDouble(xInit, ji, 0, 0.0)
-        result = cdpr_sim(cdpr, xInit, controller, dt=0.1)
+        gtd.InsertPose(xInit, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(xInit, cdpr.ee_id(), 0, np.zeros(6))
+        result = cdpr_sim(cdpr, xInit, controller, dt=0.1, N=10)
 
         pAct = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(10)]
         self.assertEqual(pDes, pAct, "didn't achieve desired trajectory")
