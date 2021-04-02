@@ -67,7 +67,6 @@ class TestCdprPlanar(GtsamTestCase):
         cdpr = Cdpr()
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
-        values.insertDouble(0, 0.01)  # dt
         # things needed to define kinematic
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
@@ -105,12 +104,14 @@ class TestCdprPlanar(GtsamTestCase):
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
 
-    def testDynamicsTraj(self):
+    def testDynamicsCollocation(self):
         cdpr = Cdpr()
         # kinematics
         fg = cdpr.kinematics_factors(ks=[0, 1, 2])
         # dynamics
         fg.push_back(cdpr.dynamics_factors(ks=[0, 1, 2]))
+        # collocation
+        fg.push_back(cdpr.collocation_factors(ks=[0, 1], dt=0.01))
         # initial state
         fg.push_back(
             cdpr.priors_ik(ks=[0], Ts=[Pose3(Rot3(), (1.5, 0, 1.5))], Vs=[np.zeros(6)]))

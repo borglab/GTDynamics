@@ -82,7 +82,7 @@ class Cdpr:
                 self.costmodel_planar_twist), zeroV))
         return kfg
 
-    def dynamics_factors(self, ks=[], dt=0.01):
+    def dynamics_factors(self, ks=[]):
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             wf = gtd.WrenchFactor(
@@ -104,7 +104,11 @@ class Cdpr:
                         gtd.internal.PoseKey(self.ee_id(), k).key(),
                         gtd.internal.WrenchKey(self.ee_id(), ji, k).key(),
                         self.costmodel_torque, self.params.frameLocs[ji], self.params.eeLocs[ji]))
-        for k in ks[:-1]:
+        return dfg
+
+    def collocation_factors(self, ks=[], dt=0.01):
+        dfg = gtsam.NonlinearFactorGraph()
+        for k in ks:
             dfg.push_back(
                 gtd.EulerPoseColloFactor(
                     gtd.internal.PoseKey(self.ee_id(), k).key(),
