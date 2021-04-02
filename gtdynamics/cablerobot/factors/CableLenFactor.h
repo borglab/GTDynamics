@@ -11,7 +11,7 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Unit3.h>
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
@@ -25,28 +25,29 @@ namespace cablerobot {
 /** CableLenFactor is a 3-way nonlinear factor which enforces relation for
  * mounting points and cable length
  */
-template <class PointSpace>
-class CableLenFactor : public gtsam::NoiseModelFactor3<
-                           double, PointSpace, PointSpace> {
+class CableLenFactor : public gtsam::NoiseModelFactor2<
+                           double, gtsam::Pose3> {
  private:
-  typedef typename gtsam::traits<PointSpace>::TangentVector VelVector;
-  enum { N = gtsam::traits<PointSpace>::dimension };
   typedef CableLenFactor This;
-  typedef gtsam::NoiseModelFactor3<double, PointSpace, PointSpace>
-      Base;
+  typedef gtsam::NoiseModelFactor2<double, gtsam::Pose3> Base;
+  using Pose = gtsam::Pose3;
+  using Point = gtsam::Point3;
+
+  Point wPb_, eePem_;
 
  public:
   /** Cable factor
-      Arguments:
-          l_key -- key for cable length
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
-          cost_model -- noise model (1 dimensional)
+   * @param l_key -- key for cable length
+   * @param wTee -- key for end effector pose
+   * @param cost_model -- noise model (1 dimensional)
+   * @param wPb -- cable mounting location on the fixed frame, in world coords
+   * @param eePem -- cable mounting location on the end effector, in the
+   * end-effector frame (wPem = wTee * eePem)
    */
-  CableLenFactor(gtsam::Key l_key, gtsam::Key point1_key,
-              gtsam::Key point2_key,
-              const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, l_key, point1_key, point2_key) {}
+  CableLenFactor(gtsam::Key l_key, gtsam::Key wTee_key,
+                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                 const Point &wPb, const Point &eePem)
+      : Base(cost_model, l_key, wTee_key), wPb_(wPb), eePem_(eePem) {}
   virtual ~CableLenFactor() {}
 
  public:
@@ -57,13 +58,15 @@ class CableLenFactor : public gtsam::NoiseModelFactor3<
           point2_key -- key for attachment point 2
    */
   gtsam::Vector evaluateError(
-      const double &l, const PointSpace &point1,
-      const PointSpace &point2,
+      const double &l, const gtsam::Pose3 &wTee,
       boost::optional<gtsam::Matrix &> H_l = boost::none,
-      boost::optional<gtsam::Matrix &> H_point1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_point2 = boost::none) const override {
-    double expected_l = distance(point2, point1, H_point2, H_point1);
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const override {
+    gtsam::Matrix36 wPem_H_wTee;
+    gtsam::Matrix13 H_wPem;
+    auto wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
+    double expected_l = distance(wPem, wPb_, H_wTee ? &H_wPem : 0);
     if (H_l) *H_l = gtsam::Vector1(-1);
+    if (H_wTee) *H_wTee = H_wPem * wPem_H_wTee;
     return gtsam::Vector1(expected_l - l);
   }
 
