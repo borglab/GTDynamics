@@ -22,6 +22,7 @@ class CdprParams:
         self.eeLocs = np.array([[s, 0., -s], [s, 0., s], [-s, 0., s], [-s, 0, -s]])
         self.mass = 1.0
         self.inertia = np.eye(3)
+        self.gravity = np.zeros((3, 1))
 
 class Cdpr:
     def __init__(self, params=CdprParams()):
@@ -31,15 +32,18 @@ class Cdpr:
         self.costmodel_l = gtsam.noiseModel.Constrained.All(1)
         self.costmodel_ldot = gtsam.noiseModel.Constrained.All(1)
         self.costmodel_wrench = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_torque = gtsam.noiseModel.Constrained.All(1)
+        self.costmodel_torque = gtsam.noiseModel.Constrained.All(6)
         self.costmodel_twistcollo = gtsam.noiseModel.Constrained.All(6)
         self.costmodel_posecollo = gtsam.noiseModel.Constrained.All(6)
         self.costmodel_prior_l = gtsam.noiseModel.Constrained.All(1)
         self.costmodel_prior_ldot = gtsam.noiseModel.Constrained.All(1)
+        self.costmodel_prior_tau = gtsam.noiseModel.Constrained.All(1)
         self.costmodel_prior_pose = gtsam.noiseModel.Constrained.All(6)
         self.costmodel_prior_twist = gtsam.noiseModel.Constrained.All(6)
+        self.costmodel_prior_twistaccel = gtsam.noiseModel.Constrained.All(6)
         self.costmodel_planar_pose = gtsam.noiseModel.Constrained.All(3)
         self.costmodel_planar_twist = gtsam.noiseModel.Constrained.All(3)
+        self.costmodel_dt = gtsam.noiseModel.Constrained.All(1)
 
     def eelink(self):
         return self.robot.link('ee')
@@ -94,10 +98,10 @@ class Cdpr:
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(
-                        gtd.internal.TorqueKey(ji, k),
-                        gtd.internal.WrenchKey(self.ee_id(), ji, k),
-                        gtd.internal.PoseKey(self.ee_id(), k),
-                        self.costmodel_torque, self.params.frameLocs[ji]))
+                        gtd.internal.TorqueKey(ji, k).key(),
+                        gtd.internal.PoseKey(self.ee_id(), k).key(),
+                        gtd.internal.WrenchKey(self.ee_id(), ji, k).key(),
+                        self.costmodel_torque, self.params.frameLocs[ji], self.params.eeLocs[ji]))
         for k in ks[:-1]:
             dfg.push_back(
                 gtd.EulerPoseColloFactor(
@@ -111,7 +115,7 @@ class Cdpr:
                     gtd.internal.TwistKey(self.ee_id(), k + 1),
                     gtd.internal.TwistAccelKey(self.ee_id(), k), 0,
                     self.costmodel_twistcollo))
-        dfg.push_back(gtsam.PriorFactorDouble(0, dt, self.costmodel_dt))
+        dfg.push_back(gtsam.PriorFactorVector(0, [dt], self.costmodel_dt))
         return dfg
 
     def priors_fk(self, ks=[], ls=[[]], ldots=[[]]):
@@ -119,9 +123,9 @@ class Cdpr:
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
                 graph.push_back(gtd.PriorFactorDouble(gtd.internal.JointAngleKey(ji, k).key(),
-                                                        lval, self.costmodel_prior_l))
+                                                      lval, self.costmodel_prior_l))
                 graph.push_back(gtd.PriorFactorDouble(gtd.internal.JointVelKey(ji, k).key(),
-                                                        ldotval, self.costmodel_prior_ldot))
+                                                      ldotval, self.costmodel_prior_ldot))
         return graph
 
     def priors_ik(self, ks=[], Ts=[], Vs=[]):
@@ -130,5 +134,24 @@ class Cdpr:
             graph.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(self.ee_id(), k).key(),
                                                    T, self.costmodel_prior_pose))
             graph.push_back(gtd.PriorFactorVector6(gtd.internal.TwistKey(self.ee_id(), k).key(),
-                                                    V, self.costmodel_prior_twist))
+                                                   V, self.costmodel_prior_twist))
+        return graph
+
+    # note: I am not using the strict definitions for forward/inverse dynamics.
+    # priors_fd solves for torques given twistaccel (no joint accel)
+    # priors_id solves for twistaccel (no joint accel) given torques
+    def priors_id(self, ks=[], torquess=[[]]):
+        graph = gtsam.NonlinearFactorGraph()
+        for k, torques in zip(ks, torquess):
+            for ji, torque in enumerate(torques):
+                graph.push_back(gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(),
+                                                      torque, self.costmodel_prior_tau))
+        return graph
+
+    def priors_fd(self, ks=[], VAs=[]):
+        graph = gtsam.NonlinearFactorGraph()
+        for k, VA in zip(ks, VAs):
+            graph.push_back(gtsam.PriorFactorVector6(
+                gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
+                VA, self.costmodel_prior_twistaccel))
         return graph

@@ -63,19 +63,49 @@ class TestCdprPlanar(GtsamTestCase):
         fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), params).optimize()
         self.gtsamAssertEquals(fkres, values, tol=1e-5)  # should match with full sol
 
-    def testDynamics(self):
+    def testDynamicsInstantaneous(self):
         cdpr = Cdpr()
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
-        # things needed to define FD
-        for j, tau in zip(range(4), [1, 0, 0, 1]):
-            gtd.InsertTorqueDouble(values, j, 0, tau)
+        values.insert(0, [0.01])  # dt
+        # things needed to define kinematic
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
         # things needed to define ID
+        for j, tau in zip(range(4), [1, 0, 0, 1]):
+            gtd.InsertTorqueDouble(values, j, 0, tau)
+        # things needed to define FD
         gtd.InsertTwistAccel(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
-        self.assertEqual(0.0, dfg.error(values))
+        # things needed intermediaries
+        gtd.InsertWrench(values, cdpr.ee_id(), 0, [0,0,0,1/np.sqrt(2),0,-1/np.sqrt(2)])
+        gtd.InsertWrench(values, cdpr.ee_id(), 1, [0,0,0,0,0,0])
+        gtd.InsertWrench(values, cdpr.ee_id(), 2, [0,0,0,0,0,0])
+        gtd.InsertWrench(values, cdpr.ee_id(), 3, [0,0,0,-1/np.sqrt(2),0,-1/np.sqrt(2)])
+        # check FD/ID is valid
+        self.assertAlmostEqual(0.0, dfg.error(values), 10)
+        # build FD graph
+        dfg.push_back(
+            cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
+                           [gtd.Twist(values, cdpr.ee_id(), 0)]))
+        dfg.push_back(cdpr.priors_fd([0], [gtd.TwistAccel(values, cdpr.ee_id(), 0)]))
+        # redundancy resolution
+        dfg.push_back(
+            gtd.PriorFactorDouble(
+                gtd.internal.TorqueKey(1, 0).key(), 0.0,
+                gtsam.noiseModel.Unit.Create(1)))
+        dfg.push_back(
+            gtd.PriorFactorDouble(
+                gtd.internal.TorqueKey(2, 0).key(), 0.0,
+                gtsam.noiseModel.Unit.Create(1)))
+        # initialize and solve
+        init = gtsam.Values(values)
+        for ji in range(4):
+            init.erase(gtd.internal.TorqueKey(ji, 0).key())
+            gtd.InsertTorqueDouble(init, ji, 0, -1)
+        results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
+        self.gtsamAssertEquals(results, values)
 
+    @unittest.SkipTest
     def testSim(self):
         class DummyController:
             def update(values, t):
@@ -106,6 +136,7 @@ class TestCdprPlanar(GtsamTestCase):
             xddot = 2 * (3 - x) / np.sqrt(x*x + 1.5*1.5)
         self.assertEqual(pExp, pAct, "Simulation didn't match expected")
 
+    @unittest.SkipTest
     def testTrajFollow(self):
         cdpr = Cdpr()
 
