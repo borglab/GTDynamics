@@ -21,16 +21,16 @@
 
 namespace gtdynamics {
 
-/** CableLenFactor is a 3-way nonlinear factor which enforces relation for
- * mounting points and cable length
+/** CableLenFactor is a 2-way nonlinear factor which enforces relation for
+ * end effector pose and cable length
  */
 class CableLenFactor : public gtsam::NoiseModelFactor2<
                            double, gtsam::Pose3> {
  private:
-  typedef CableLenFactor This;
-  typedef gtsam::NoiseModelFactor2<double, gtsam::Pose3> Base;
   using Pose = gtsam::Pose3;
   using Point = gtsam::Point3;
+  typedef CableLenFactor This;
+  typedef gtsam::NoiseModelFactor2<double, Pose> Base;
 
   Point wPb_, eePem_;
 
@@ -51,10 +51,9 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
 
  public:
   /** Cable factor
-      Arguments:
-          l_key -- key for cable velocity
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
+   * @param l -- cable length
+   * @param wTee -- end effector pose
+   * @return length predicted minus cable length given
    */
   gtsam::Vector evaluateError(
       const double &l, const gtsam::Pose3 &wTee,
@@ -89,7 +88,7 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
 };
 

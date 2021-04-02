@@ -12,7 +12,7 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Unit3.h>
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/optional.hpp>
@@ -21,80 +21,85 @@
 #include <string>
 
 namespace gtdynamics {
-namespace cablerobot {
 
-/** CableVelFactor is a 5-way nonlinear factor which enforces relation amongst
- * cable velocity, mounting points, and the velocity of the EE mounting point
+/** CableVelFactor is a 3-way nonlinear factor which enforces relation amongst
+ * cable velocity, end-effector pose, and end-effector twist
  */
-template <class PointSpace>
-class CableVelFactor : public gtsam::NoiseModelFactor5<
-                           double, PointSpace, PointSpace,
-                           typename gtsam::traits<PointSpace>::TangentVector,
-                           typename gtsam::traits<PointSpace>::TangentVector> {
+class CableVelFactor : public gtsam::NoiseModelFactor3<
+                           double, gtsam::Pose3, gtsam::Vector6> {
  private:
-  typedef typename gtsam::traits<PointSpace>::TangentVector VelVector;
-  enum { N = gtsam::traits<PointSpace>::dimension };
+  using Point = gtsam::Point3;
+  using Vector3 = gtsam::Vector3;
+  using Pose = gtsam::Pose3;
+  using Twist = gtsam::Vector6;
   typedef CableVelFactor This;
-  typedef gtsam::NoiseModelFactor5<double, PointSpace, PointSpace, VelVector,
-                                   VelVector>
-      Base;
+  typedef gtsam::NoiseModelFactor3<double, Pose, Twist> Base;
+
+  Point wPb_, eePem_;
 
  public:
   /** Cable factor
-      Arguments:
-          v_key -- key for cable velocity
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
-          vel1_key -- key for velocity attachment point 1
-          vel2_key -- key for velocity attachment point 2
-          cost_model -- noise model (6 dimensional: 3 force directions for 2
-     attachment points)
+   * @param ldot_key -- key for cable speed
+   * @param wTee -- key for end effector pose
+   * @param Vee -- key for end effector twist
+   * @param cost_model -- noise model (1 dimensional)
+   * @param wPb -- cable mounting location on the fixed frame, in world coords
+   * @param eePem -- cable mounting location on the end effector, in the
+   * end-effector frame (wPem = wTee * eePem)
    */
-  CableVelFactor(gtsam::Key v_key, gtsam::Key point1_key,
-              gtsam::Key point2_key, gtsam::Key vel1_key, gtsam::Key vel2_key,
-              const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, v_key, point1_key, point2_key, vel1_key, vel2_key) {}
+  CableVelFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
+                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                 const Point &wPb, const Point &eePem)
+      : Base(cost_model, ldot_key, wTee_key, Vee_key), wPb_(wPb), eePem_(eePem) {}
   virtual ~CableVelFactor() {}
 
  public:
   /** Cable factor
-      Arguments:
-          v_key -- key for cable velocity
-          point1_key -- key for attachment point 1
-          point2_key -- key for attachment point 2
-          vel1_key -- key for force on attachment point 1
-          force2_key -- key for force on attachment point 2
+   * @param ldot -- cable speed (ldot)
+   * @param wTee -- end effector pose
+   * @param Vee -- end effector twist
+   * @return expected/calculated cable speed minus given ldot
    */
   gtsam::Vector evaluateError(
-      const double &v, const PointSpace &point1,
-      const PointSpace &point2, const VelVector &vel1, const VelVector &vel2,
-      boost::optional<gtsam::Matrix &> H_v = boost::none,
-      boost::optional<gtsam::Matrix &> H_point1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_point2 = boost::none,
-      boost::optional<gtsam::Matrix &> H_vel1 = boost::none,
-      boost::optional<gtsam::Matrix &> H_vel2 = boost::none) const override {
-    Eigen::Matrix<double, N, N> dir_H_Dir;  // || vel2 - vel1 ||
-    Eigen::Matrix<double, 1, N> err_H_Dir;  // v x (vel2 - vel1)
-    Eigen::Matrix<double, 1, N> err_H_dir;
-    Eigen::Matrix<double, 1, N> err_H_Vel;
+      const double &ldot, const Pose &wTee, const Twist &Vee,
+      boost::optional<gtsam::Matrix &> H_ldot = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
+      boost::optional<gtsam::Matrix &> H_Vee = boost::none) const override {
+    // Jacobians: cable direction
+    gtsam::Matrix13 H_dir;
+    gtsam::Matrix33 dir_H_wPem;
+    gtsam::Matrix36 wPem_H_wTee;
+    // Jacobians: _E_nd-effector _M_ounting point velocity (in world coords)
+    gtsam::Matrix13 H_wPDOTem;
+    gtsam::Matrix33 wPDOTem_H_wRee;
+    gtsam::Matrix33 wPDOTem_H_eePDOTem;
+    gtsam::Matrix36 eePDOTem_H_Vee;
+    gtsam::Matrix33 cross_H_omega;
 
-    PointSpace dir =
-        normalize(point2 - point1, (H_point1 || H_point2) ? &dir_H_Dir : 0);
-    double expected_v =
-        dot(dir, vel2 - vel1, (H_point1 || H_point2) ? &err_H_dir : 0,
-            (H_vel1 || H_vel2) ? &err_H_Vel : 0);
+    // cable direction
+    Point wPem = wTee.transformFrom(eePem_, wPem_H_wTee);
+    Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
 
-    if (H_v) *H_v = gtsam::Vector1(-1);
-    if (H_point1 || H_point2)
-      err_H_Dir << err_H_dir * dir_H_Dir;
-    if (H_point1) *H_point1 = -err_H_Dir;
-    if (H_point2) *H_point2 = err_H_Dir;
-    if (H_vel1)
-      *H_vel1 = -err_H_Vel;
-    if (H_vel2)
-      *H_vel2 = err_H_Vel;
+    // velocity aka pdot
+    Vector3 eePDOTem = Vee.tail<3>() + gtsam::cross(Vee.head<3>(), eePem_,
+                                                    H_Vee ? &cross_H_omega : 0);
+    if (H_Vee) eePDOTem_H_Vee << cross_H_omega, gtsam::I_3x3;
+    Vector3 wPDOTem =
+        wTee.rotation().rotate(eePDOTem, wPDOTem_H_wRee, wPDOTem_H_eePDOTem);
 
-    return gtsam::Vector1( expected_v - v );
+    // ldot = (cable direction) dot (velocity aka pdot)
+    double expected_ldot = cablerobot::dot(dir, wPDOTem, H_wTee ? &H_dir : 0,
+                                           H_Vee ? &H_wPDOTem : 0);
+
+    // jacobians
+    if (H_ldot) *H_ldot = gtsam::Vector1(-1);
+    if (H_wTee) {
+      *H_wTee = H_dir * dir_H_wPem * wPem_H_wTee;  //
+      H_wTee->leftCols<3>() += H_wPDOTem * wPDOTem_H_wRee;
+    }
+    if (H_Vee) *H_Vee = H_wPDOTem * wPDOTem_H_eePDOTem * eePDOTem_H_Vee;
+
+    return gtsam::Vector1(expected_ldot - ldot);
   }
 
   // @return a deep copy of this factor
@@ -117,9 +122,8 @@ class CableVelFactor : public gtsam::NoiseModelFactor5<
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
 };
 
-}  // namespace cablerobot
 }  // namespace gtdynamics

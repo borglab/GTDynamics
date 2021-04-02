@@ -46,10 +46,10 @@ TEST(CableVelFactor, error) {
   InsertTwist(&values, lid, (Vector6() << 0, 1, 0, 1.1, 0, 1.2).finished());
 
   // "expected" calculation
-  Point3 dir = normalize(Point3(1, -0.2, 0.9));
+  Point3 dir = normalize(Point3(1.25, -0.2, 1.05));
   Vector3 expected_v = Point3(1.1 - 0.15, 0, 1.2 + 0.15);
-  double expected_l = dot(dir, expected_v);
-  Vector1 expected_errors{expected_l - JointVel(values, jid)};
+  double expected_ldot = dot(dir, expected_v);
+  Vector1 expected_errors{expected_ldot - JointVel(values, jid)};
 
   // evaluateError
   Vector1 actual_errors = factor.evaluateError(
