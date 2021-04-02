@@ -77,18 +77,20 @@ class CableVelFactor : public gtsam::NoiseModelFactor3<
     gtsam::Matrix33 cross_H_omega;
 
     // cable direction
-    Point wPem = wTee.transformFrom(eePem_, wPem_H_wTee);
+    Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
     Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
 
     // velocity aka pdot
     Vector3 eePDOTem = Vee.tail<3>() + gtsam::cross(Vee.head<3>(), eePem_,
                                                     H_Vee ? &cross_H_omega : 0);
     if (H_Vee) eePDOTem_H_Vee << cross_H_omega, gtsam::I_3x3;
-    Vector3 wPDOTem =
-        wTee.rotation().rotate(eePDOTem, wPDOTem_H_wRee, wPDOTem_H_eePDOTem);
+    Vector3 wPDOTem = wTee.rotation().rotate(eePDOTem,  //
+                                             H_wTee ? &wPDOTem_H_wRee : 0,
+                                             H_Vee ? &wPDOTem_H_eePDOTem : 0);
 
     // ldot = (cable direction) dot (velocity aka pdot)
-    double expected_ldot = cablerobot::dot(dir, wPDOTem, H_wTee ? &H_dir : 0,
+    double expected_ldot = cablerobot::dot(dir, wPDOTem,         //
+                                           H_wTee ? &H_dir : 0,  //
                                            H_Vee ? &H_wPDOTem : 0);
 
     // jacobians
