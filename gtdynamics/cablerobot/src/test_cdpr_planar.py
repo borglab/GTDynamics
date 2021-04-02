@@ -30,13 +30,14 @@ class TestCdprPlanar(unittest.TestCase):
         kfg = cdpr.kinematics_factors(ks=[0])
         values = gtsam.Values()
         # things needed to define FK
-        for j, th, thdot in zip(range(4), [1.5 * np.sqrt(2),]*4, [0, 1, 1, 0]):
-            gtd.InsertJointAngleDouble(values, j, 0, th)
-            gtd.InsertJointVelDouble(values, j, 0, thdot)
+        for j, l, ldot in zip(range(4), [1.35 * np.sqrt(2),]*4, [-1, 1, 1, -1.]):
+            gtd.InsertJointAngleDouble(values, j, 0, l)
+            gtd.InsertJointVelDouble(values, j, 0, ldot)
         # things needed to define IK
         gtd.InsertPose(values, cdpr.eelink().id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
-        gtd.InsertTwist(values, cdpr.eelink().id(), 0, (0, 0, 0, 0, 0, np.sqrt(2)))
-        self.assertEqual(0.0, dfg.error(values))
+        gtd.InsertTwist(values, cdpr.eelink().id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
+        # error
+        self.assertEqual(0.0, kfg.error(values))
 
     def testDynamics(self):
         cdpr = Cdpr()

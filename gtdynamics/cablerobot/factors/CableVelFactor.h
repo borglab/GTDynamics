@@ -112,7 +112,7 @@ class CableVelFactor : public gtsam::NoiseModelFactor3<
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "cable factor" << std::endl;
+    std::cout << s << "cable vel factor" << std::endl;
     Base::print("", keyFormatter);
   }
 

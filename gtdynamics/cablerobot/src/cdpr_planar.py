@@ -48,10 +48,11 @@ class Cdpr:
                                                  gtd.internal.PoseKey(self.ee_id(), k).key(),
                                                  self.costmodel_l,
                                                  self.params.frameLocs[ji], self.params.eeLocs[ji]))
-                kfg += gtd.CableVelFactor(gtd.internal.JointVelKey(ji, k),
-                                          gtd.internal.PoseKey(self.ee_id(), k),
-                                          gtd.internal.TwistKey(self.ee_id(), k),
-                                          self.costmodel_ldot, self.params.frameLocs[ji])
+                kfg.push_back(gtd.CableVelFactor(gtd.internal.JointVelKey(ji, k).key(),
+                                                 gtd.internal.PoseKey(self.ee_id(), k).key(),
+                                                 gtd.internal.TwistKey(self.ee_id(), k).key(),
+                                                 self.costmodel_ldot,
+                                                 self.params.frameLocs[ji], self.params.eeLocs[ji]))
         return kfg
 
     def dynamics_factors(self, ks=[]):
