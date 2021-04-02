@@ -602,4 +602,15 @@ class CableVelFactor : gtsam::NonlinearFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+// need to borrow this from GTSAM since GTSAM doesn't have fixed-size vector versions
+#include <gtdynamics/cablerobot/factors/PriorFactor.h>
+template<T = {double, gtsam::Vector2, gtsam::Vector3, gtsam::Vector4, gtsam::Vector5, gtsam::Vector6}>
+class PriorFactor : gtsam::NonlinearFactor {
+  PriorFactor(size_t key, const T& prior, const gtsam::noiseModel::Base* noiseModel);
+  T prior() const;
+
+  void print(const string &s,
+             const gtsam::KeyFormatter &keyFormatter);
+};
+
 }  // namespace gtdynamics
