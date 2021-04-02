@@ -1,7 +1,8 @@
 /**
  * @file  testCableLenFactor.cpp
  * @brief test cable vel factor
- * @Author: Frank Dellaert and Gerry Chen
+ * @author Frank Dellaert
+ * @author Gerry Chen
  */
 
 #include "factors/CableLenFactor.h"

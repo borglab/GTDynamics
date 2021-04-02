@@ -2,7 +2,8 @@
  * @file  CableTensionFactor.h
  * @brief Cable tension factor: relates cable tension, two mounting points, and
  * resultant forces
- * @Author: Frank Dellaert and Gerry Chen
+ * @author Frank Dellaert
+ * @author Gerry Chen
  */
 
 #pragma once

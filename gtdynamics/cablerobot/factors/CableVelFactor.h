@@ -2,7 +2,8 @@
  * @file  CableVelFactor.h
  * @brief Cable velocity factor: relates cable velocity (or acceleration), two
  * mounting points, and resultant mounting point velocities
- * @Author: Frank Dellaert and Gerry Chen
+ * @author Frank Dellaert
+ * @author Gerry Chen
  */
 
 #pragma once

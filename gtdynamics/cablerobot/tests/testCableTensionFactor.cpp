@@ -1,7 +1,8 @@
 /**
  * @file  testCableTensionFactor.cpp
  * @brief test cable factor
- * @Author: Frank Dellaert and Gerry Chen
+ * @author Frank Dellaert
+ * @author Gerry Chen
  */
 
 #include "factors/CableTensionFactor.h"
