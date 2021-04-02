@@ -27,7 +27,7 @@ class TestCdprPlanar(unittest.TestCase):
     
     def testKinematics(self):
         cdpr = Cdpr()
-        kfg = cdpr.kinematics_factors(k=[0])
+        kfg = cdpr.kinematics_factors(ks=[0])
         values = gtsam.Values()
         # things needed to define FK
         for j, th, thdot in zip(range(4), [1.5 * np.sqrt(2),]*4, [0, 1, 1, 0]):
@@ -40,7 +40,7 @@ class TestCdprPlanar(unittest.TestCase):
 
     def testDynamics(self):
         cdpr = Cdpr()
-        dfg = cdpr.dynamics_factors(k=[0])
+        dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
         # things needed to define FD
         for j, tau in zip(range(4), [1, 0, 0, 1]):
