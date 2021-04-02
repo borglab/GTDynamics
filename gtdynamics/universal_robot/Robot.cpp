@@ -141,35 +141,43 @@ void Robot::print() const {
   }
 }
 
-// Extract root link.
-LinkSharedPtr
-Robot::findRootLink(const boost::optional<std::string> &prior_link_name,
-                    size_t t, gtsam::Values *values) const {
+LinkSharedPtr Robot::findRootLink(
+    const gtsam::Values &values,
+    const boost::optional<std::string> &prior_link_name, size_t t) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
   if (prior_link_name) {
     root_link = link(*prior_link_name);
-    if (!values->exists(internal::PoseKey(root_link->id(), t)) ||
-        !values->exists(internal::TwistKey(root_link->id(), t))) {
+    if (!values.exists(internal::PoseKey(root_link->id(), t)) ||
+        !values.exists(internal::TwistKey(root_link->id(), t))) {
       throw std::invalid_argument(
           "forwardKinematics: values does not contain pose/twist.");
     }
   } else {
-    // Check for fixed links, root link will be last fixed link if any.
-    for (auto &&link : links()) {
-      if (link->isFixed()) {
-        root_link = link;
-        InsertPose(values, link->id(), t, link->getFixedPose());
-        InsertTwist(values, link->id(), t, Vector6::Zero());
-      }
-    }
-    if (!root_link) {
-      throw std::runtime_error("forwardKinematics: no prior link given and "
-                               "cannot find a fixed link.");
+    auto links = this->links();
+    root_link = *std::find_if(
+        links.rbegin(), links.rend(),
+        [](const LinkSharedPtr &link) { return link->isFixed(); });
+  }
+  if (!root_link) {
+    throw std::runtime_error(
+        "forwardKinematics: no prior link given and "
+        "cannot find a fixed link.");
+  }
+
+  return root_link;
+}
+
+// Insert fixed link poses into values
+static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
+                             gtsam::Values *values) {
+  for (auto &&link : links) {
+    if (link->isFixed()) {
+      InsertPose(values, link->id(), t, link->getFixedPose());
+      InsertTwist(values, link->id(), t, Vector6::Zero());
     }
   }
-  return root_link;
 }
 
 // Add zero default values for joint angles and joint velocities.
@@ -192,6 +200,7 @@ static bool InsertWithCheck(size_t i, size_t t,
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
+  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
   auto pose_key = internal::PoseKey(i, t);
   auto twist_key = internal::TwistKey(i, t);
   const bool exists = values->exists(pose_key);
@@ -215,7 +224,8 @@ gtsam::Values Robot::forwardKinematics(
   gtsam::Values values = known_values;
 
   // Set root link.
-  const auto root_link = findRootLink(prior_link_name, t, &values);
+  const auto root_link = findRootLink(values, prior_link_name, t);
+  InsertFixedLinks(links(), t, &values);
 
   // BFS to update all poses downstream in the graph.
   std::queue<LinkSharedPtr> q;
