@@ -145,36 +145,36 @@ class TestCdprPlanar(GtsamTestCase):
             gtd.Pose(result, cdpr.ee_id(), 2),
             Pose3(Rot3(), (1.5 + np.sqrt(2) * 0.0001, 0, 1.5)))
 
-    @unittest.SkipTest
     def testSim(self):
         class DummyController:
-            def update(values, t):
+            def update(self, values, t):
                 tau = gtsam.Values()
-                gtd.InsertTorqueDouble(tau, 0, t, 1)
-                gtd.InsertTorqueDouble(tau, 1, t, 1)
-                gtd.InsertTorqueDouble(tau, 2, t, 0)
-                gtd.InsertTorqueDouble(tau, 3, t, 0)
+                gtd.InsertTorqueDouble(tau, 0, t, 1.)
+                gtd.InsertTorqueDouble(tau, 1, t, 1.)
+                gtd.InsertTorqueDouble(tau, 2, t, 0.)
+                gtd.InsertTorqueDouble(tau, 3, t, 0.)
                 return tau
+        Tf = 1
         dt = 0.1
         cdpr = Cdpr()
         controller = DummyController()
-
+        # initial state
         xInit = gtsam.Values()
-        for ji in range(4):
-            gtd.InsertJointAngleDouble(xInit, ji, 0, 0.0)
-            gtd.InsertJointVelDouble(xInit, ji, 0, 0.0)
-        result = cdpr_sim(cdpr, xInit, controller, dt=dt)
+        gtd.InsertPose(xInit, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(xInit, cdpr.ee_id(), 0, np.zeros(6))
+        # run simulation
+        result = cdpr_sim(cdpr, xInit, controller, dt=dt, N=int(Tf/dt))
+        # check correctness
         pAct = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(10)]
-
-        pExp = [Pose3(Rot3(), (1.5, 0, 1.5))]
         x = 1.5
         xdot = 0
         for k in range(10):
-            pExp.append(Pose3(Rot3(), (x, 0, 1.5)))
-            x += xdot * dt + 0.5 * xddot * dt * dt
+            pExp = Pose3(Rot3(), (x, 0, 1.5))
+            self.gtsamAssertEquals(pExp, pAct[k], tol=0)
+            dx, dy = 3 - x - 0.15, 1.35  # (dx, dy) represents the cable vector
+            xddot = 2 * dx / np.sqrt(dx**2 + dy**2)
+            x += xdot * dt
             xdot += xddot * dt
-            xddot = 2 * (3 - x) / np.sqrt(x*x + 1.5*1.5)
-        self.assertEqual(pExp, pAct, "Simulation didn't match expected")
 
     @unittest.SkipTest
     def testTrajFollow(self):
