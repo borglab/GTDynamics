@@ -1,5 +1,3 @@
-message("THIS IS A DEBUG MESSAGE")
-
 # All subdirectories that contain source code relevant to this library.
 # set(CABLE_SOURCE_SUBDIRS factors robot)
 set(CABLE_SOURCE_SUBDIRS factors)
