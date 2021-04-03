@@ -43,7 +43,7 @@ TEST(CableLengthFactor, error) {
   Values values;
   InsertJointAngle(&values, jid, 1.0);
   InsertPose(&values, lid, Pose3(Rot3(), Point3(1.5, 0, 1.5)));
-  Vector1 expected_errors { sqrt(1.25*1.25 + 0.2*0.2 + 1.05*1.05) - 1.0 };
+  Vector1 expected_errors { 1.0 - sqrt(1.25*1.25 + 0.2*0.2 + 1.05*1.05) };
 
   Vector1 actual_errors =
       factor.evaluateError(JointAngle(values, jid), Pose(values, lid));

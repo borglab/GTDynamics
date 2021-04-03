@@ -95,14 +95,14 @@ class CableTensionFactor
     if (H_t || H_wTee) H_eef << eem_H_eef, gtsam::I_3x3;
 
     // error
-    Vector6 error = (Vector6() << F_expected - Fee).finished();
+    Vector6 error = (Vector6() << Fee - F_expected).finished();
 
-    if (H_t) *H_t = H_eef * eef_H_wf * wf_H_t;
+    if (H_t) *H_t = -H_eef * eef_H_wf * wf_H_t;
     if (H_wTee) {
-      *(H_wTee) = H_eef * eef_H_wf * wf_H_dir * dir_H_wPem * wPem_H_wTee;
-      H_wTee->leftCols<3>() += H_eef * eef_H_wRee;
+      *(H_wTee) = -H_eef * eef_H_wf * wf_H_dir * dir_H_wPem * wPem_H_wTee;
+      H_wTee->leftCols<3>() -= H_eef * eef_H_wRee;
     }
-    if (H_Fee) *H_Fee = -gtsam::I_6x6;
+    if (H_Fee) *H_Fee = gtsam::I_6x6;
 
     return error;
   }

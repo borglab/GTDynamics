@@ -95,14 +95,14 @@ class CableVelocityFactor
                                       H_Vee ? &H_wPDOTem : 0);
 
     // jacobians
-    if (H_ldot) *H_ldot = gtsam::Vector1(-1);
+    if (H_ldot) *H_ldot = gtsam::I_1x1;
     if (H_wTee) {
-      *H_wTee = H_dir * dir_H_wPem * wPem_H_wTee;  //
-      H_wTee->leftCols<3>() += H_wPDOTem * wPDOTem_H_wRee;
+      *H_wTee = -H_dir * dir_H_wPem * wPem_H_wTee;  //
+      H_wTee->leftCols<3>() -= H_wPDOTem * wPDOTem_H_wRee;
     }
-    if (H_Vee) *H_Vee = H_wPDOTem * wPDOTem_H_eePDOTem * eePDOTem_H_Vee;
+    if (H_Vee) *H_Vee = -H_wPDOTem * wPDOTem_H_eePDOTem * eePDOTem_H_Vee;
 
-    return gtsam::Vector1(expected_ldot - ldot);
+    return gtsam::Vector1(ldot - expected_ldot);
   }
 
   // @return a deep copy of this factor

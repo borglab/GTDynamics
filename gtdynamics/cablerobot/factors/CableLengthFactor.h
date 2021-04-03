@@ -61,9 +61,9 @@ class CableLengthFactor
     gtsam::Matrix13 H_wPem;
     auto wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
     double expected_l = gtsam::distance3(wPem, wPb_, H_wTee ? &H_wPem : 0);
-    if (H_l) *H_l = gtsam::Vector1(-1);
-    if (H_wTee) *H_wTee = H_wPem * wPem_H_wTee;
-    return gtsam::Vector1(expected_l - l);
+    if (H_l) *H_l = gtsam::I_1x1;
+    if (H_wTee) *H_wTee = -H_wPem * wPem_H_wTee;
+    return gtsam::Vector1(l - expected_l);
   }
 
   // @return a deep copy of this factor

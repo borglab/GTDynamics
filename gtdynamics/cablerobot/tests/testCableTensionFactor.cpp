@@ -46,7 +46,7 @@ TEST(CableTensionFactor, error) {
                (Vector6() << 0, 1, 0, 1.1, 0, 1.2).finished());
 
   Vector6 expected_errors =
-      (Vector6() << 0, -1, 0, -1 / sqrt(2) - 1.1, 0, -1 / sqrt(2) - 1.2)
+      (Vector6() << 0, 1, 0, 1.1 + 1 / sqrt(2), 0, 1.2 + 1 / sqrt(2))
           .finished();
 
   Vector6 actual_errors = factor.evaluateError(

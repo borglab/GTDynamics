@@ -49,7 +49,7 @@ TEST(CableVelocityFactor, error) {
   Point3 dir = normalize(Point3(1.25, -0.2, 1.05));
   Vector3 expected_v = Point3(1.1 - 0.15, 0, 1.2 + 0.15);
   double expected_ldot = dot(dir, expected_v);
-  Vector1 expected_errors{expected_ldot - JointVel(values, jid)};
+  Vector1 expected_errors{JointVel(values, jid) - expected_ldot};
 
   // evaluateError
   Vector1 actual_errors = factor.evaluateError(
