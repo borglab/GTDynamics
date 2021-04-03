@@ -73,10 +73,10 @@ class Cdpr:
         kfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             for ji in range(4):
-                kfg.push_back(gtd.CableLenFactor(gtd.internal.JointAngleKey(ji, k).key(),
-                                                 gtd.internal.PoseKey(self.ee_id(), k).key(),
-                                                 self.costmodel_l,
-                                                 self.params.frameLocs[ji], self.params.eeLocs[ji]))
+                kfg.push_back(gtd.CableLengthFactor(gtd.internal.JointAngleKey(ji, k).key(),
+                                                    gtd.internal.PoseKey(self.ee_id(), k).key(),
+                                                    self.costmodel_l,
+                                                    self.params.frameLocs[ji], self.params.eeLocs[ji]))
                 kfg.push_back(gtd.CableVelFactor(gtd.internal.JointVelKey(ji, k).key(),
                                                  gtd.internal.PoseKey(self.ee_id(), k).key(),
                                                  gtd.internal.TwistKey(self.ee_id(), k).key(),

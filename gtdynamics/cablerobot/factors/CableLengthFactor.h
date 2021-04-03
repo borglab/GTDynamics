@@ -1,5 +1,5 @@
 /**
- * @file  CableLenFactor.h
+ * @file  CableLengthFactor.h
  * @brief Cable length factor: relates cable length and two mounting points
  * @author Frank Dellaert
  * @author Gerry Chen
@@ -19,15 +19,15 @@
 
 namespace gtdynamics {
 
-/** CableLenFactor is a 2-way nonlinear factor which enforces relation for
+/** CableLengthFactor is a 2-way nonlinear factor which enforces relation for
  * end effector pose and cable length
  */
-class CableLenFactor : public gtsam::NoiseModelFactor2<
-                           double, gtsam::Pose3> {
+class CableLengthFactor
+    : public gtsam::NoiseModelFactor2<double, gtsam::Pose3> {
  private:
   using Pose = gtsam::Pose3;
   using Point = gtsam::Point3;
-  typedef CableLenFactor This;
+  typedef CableLengthFactor This;
   typedef gtsam::NoiseModelFactor2<double, Pose> Base;
 
   Point wPb_, eePem_;
@@ -41,11 +41,11 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
    * @param eePem -- cable mounting location on the end effector, in the
    * end-effector frame (wPem = wTee * eePem)
    */
-  CableLenFactor(gtsam::Key l_key, gtsam::Key wTee_key,
-                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                 const Point &wPb, const Point &eePem)
+  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
+                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                    const Point &wPb, const Point &eePem)
       : Base(cost_model, l_key, wTee_key), wPb_(wPb), eePem_(eePem) {}
-  virtual ~CableLenFactor() {}
+  virtual ~CableLengthFactor() {}
 
  public:
   /** Cable factor

@@ -1,11 +1,11 @@
 /**
- * @file  testCableLenFactor.cpp
+ * @file  testCableLengthFactor.cpp
  * @brief test cable vel factor
  * @author Frank Dellaert
  * @author Gerry Chen
  */
 
-#include "factors/CableLenFactor.h"
+#include "factors/CableLengthFactor.h"
 #include <gtdynamics/utils/values.h>
 
 #include <gtsam/base/Vector.h>
@@ -26,7 +26,7 @@ using namespace gtdynamics::internal;
 /**
  * Test cable factor
  */
-TEST(CableLenFactor, error) {
+TEST(CableLengthFactor, error) {
   // noise model
   noiseModel::Gaussian::shared_ptr cost_model =
       noiseModel::Isotropic::Sigma(1, 1.0);
@@ -38,7 +38,7 @@ TEST(CableLenFactor, error) {
   auto eeKey = PoseKey(lid);
   auto lKey = JointAngleKey(jid);
 
-  CableLenFactor factor(lKey, eeKey, cost_model, frameLoc, eeLoc);
+  CableLengthFactor factor(lKey, eeKey, cost_model, frameLoc, eeLoc);
 
   Values values;
   InsertJointAngle(&values, jid, 1.0);

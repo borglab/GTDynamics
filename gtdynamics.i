@@ -587,11 +587,11 @@ class Simulator {
 
 /****************************************** Cable Robot ******************************************/
 
-#include <gtdynamics/cablerobot/factors/CableLenFactor.h>
-class CableLenFactor : gtsam::NonlinearFactor {
-  CableLenFactor(gtsam::Key l_key, gtsam::Key wTee_key,
-                 const gtsam::noiseModel::Base* cost_model,
-                 const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+#include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
+class CableLengthFactor : gtsam::NonlinearFactor {
+  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
+                    const gtsam::noiseModel::Base *cost_model,
+                    const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
