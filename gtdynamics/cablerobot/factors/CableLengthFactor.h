@@ -27,8 +27,8 @@ class CableLengthFactor
  private:
   using Pose = gtsam::Pose3;
   using Point = gtsam::Point3;
-  typedef CableLengthFactor This;
-  typedef gtsam::NoiseModelFactor2<double, Pose> Base;
+  using This = CableLengthFactor;
+  using Base = gtsam::NoiseModelFactor2<double, Pose>;
 
   Point wPb_, eePem_;
 

@@ -30,8 +30,8 @@ class CableVelocityFactor
   using Vector3 = gtsam::Vector3;
   using Pose = gtsam::Pose3;
   using Twist = gtsam::Vector6;
-  typedef CableVelocityFactor This;
-  typedef gtsam::NoiseModelFactor3<double, Pose, Twist> Base;
+  using This = CableVelocityFactor;
+  using This = gtsam::NoiseModelFactor3<double, Pose, Twist>;
 
   Point wPb_, eePem_;
 

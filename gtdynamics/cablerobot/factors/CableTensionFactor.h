@@ -30,8 +30,8 @@ class CableTensionFactor
   using Point = gtsam::Point3;
   using Wrench = gtsam::Vector6;
   using Vector3 = gtsam::Vector3;
-  typedef CableTensionFactor This;
-  typedef gtsam::NoiseModelFactor3<double, Pose, Wrench> Base;
+  using This = CableTensionFactor;
+  using Base = gtsam::NoiseModelFactor3<double, Pose, Wrench>;
 
   Point wPb_, eePem_;
 
