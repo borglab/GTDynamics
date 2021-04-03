@@ -26,4 +26,3 @@ list(APPEND headers ${cable_headers})
 list(APPEND sources ${cable_sources})
 
 add_subdirectory(tests)
-add_subdirectory(scripts)
