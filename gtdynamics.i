@@ -229,8 +229,10 @@ class Robot {
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
-gtdynamics::Robot CreateRobotFromFile(const string file_path, 
-                                    string model_name);
+// This version is only for URDF files.
+gtdynamics::Robot CreateRobotFromFile(const string& urdf_file_path);
+gtdynamics::Robot CreateRobotFromFile(const string& file_path, 
+                                    const string& model_name);
 
 
 /********************** dynamics graph **********************/
