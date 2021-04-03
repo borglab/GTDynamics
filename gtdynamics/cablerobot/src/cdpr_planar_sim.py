@@ -1,11 +1,35 @@
+"""
+GTDynamics Copyright 2021, Georgia Tech Research Corporation,
+Atlanta, Georgia 30332-0415
+All Rights Reserved
+See LICENSE for the license information
+
+@file  cdpr_planar_sim.py
+@brief Simulation for a planar cable robot.  Runs dynamics forward in time to simulate a cable robot
+@author Frank Dellaert
+@author Gerry Chen
+"""
+
 import gtsam
 import gtdynamics as gtd
 import numpy as np
 
 def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
-    """
+    """Simulates a cable robot forward in time, given a robot, initial state, and controller.
+
     Pose/Twist  ->  l/ldot  ->  torques  ->  Wrenches/TwistAccel  -->  next Pose/Twist
                 IK     Controller        ID                   Collocation
+    Args:
+        cdpr (Cdpr): cable robot object
+        xInit (gtsam.Values): initial state
+        controller (Controller): controller object
+        dt (float, optional): time step duration
+        N (int, optional): number of time steps to simulate
+        verbose (bool, optional): whether or not to print out debug info
+    
+    Returns:
+        gtsam.Values: The set of fully-resolved variables for the robot over tehe specified time
+        steps
     """
     fg = gtsam.NonlinearFactorGraph()
     x = gtsam.Values(xInit)

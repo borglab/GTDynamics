@@ -1,8 +1,30 @@
+"""
+GTDynamics Copyright 2021, Georgia Tech Research Corporation,
+Atlanta, Georgia 30332-0415
+All Rights Reserved
+See LICENSE for the license information
+
+@file  utils.py
+@brief Useful python functions specific to cable robots
+@author Frank Dellaert
+@author Gerry Chen
+"""
+
 import gtsam
 import gtdynamics as gtd
 import numpy as np
 
 def zerovalues(lid, ts=[], dt=0.01):
+    """Creates a values object for initialization, populated with zeros.
+
+    Args:
+        lid (int): The id of the (end-effector) link
+        ts (list, optional): Time step indices. Defaults to [].
+        dt (float, optional): Time step duration. Defaults to 0.01.
+
+    Returns:
+        gtsam.Values: initialized values with zeros
+    """
     zero = gtsam.Values()
     zero.insertDouble(0, dt)
     for t in ts:

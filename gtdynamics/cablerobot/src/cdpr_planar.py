@@ -1,5 +1,5 @@
 """
-GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+GTDynamics Copyright 2021, Georgia Tech Research Corporation,
 Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
@@ -16,6 +16,8 @@ from gtsam import Pose3, Rot3
 import numpy as np
 
 class CdprParams:
+    """Parameters relevant to cable robot geometry and properties
+    """
     def __init__(self):
         self.frameLocs = np.array([[3., 0., 0.], [3., 0., 3.], [0., 0., 3.], [0., 0., 0.]])
         s = 0.15
@@ -25,6 +27,9 @@ class CdprParams:
         self.gravity = np.zeros((3, 1))
 
 class Cdpr:
+    """Utility functions for a planar cable robot; mostly assembles together factors.
+    This class is coded functionally.
+    """
     def __init__(self, params=CdprParams()):
         self.params = params
         ee = gtd.Link(1, "ee", params.mass, params.inertia, Pose3(), Pose3())
@@ -45,12 +50,26 @@ class Cdpr:
         self.costmodel_planar_twist = gtsam.noiseModel.Constrained.All(3)
         self.costmodel_dt = gtsam.noiseModel.Constrained.All(1)
 
+    """end-effector link and id"""
     def eelink(self):
         return self.robot.link('ee')
     def ee_id(self):
         return self.eelink().id()
 
     def kinematics_factors(self, ks=[]):
+        """Creates the factors necessary for kinematics, which includes the CableLengthFactors and
+        CableVelFactors.  Since this is a planar CDPR, it also adds factors which constrain motion
+        to the xz plane.
+        Primary variables:          length/lengthdot <--> Pose/Twist
+        Intermediate variables:     None
+        Prerequisite variables:     None
+
+        Args:
+            ks (list, optional): list of time step indices.
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The factors for kinematics
+        """
         kfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             for ji in range(4):
@@ -83,6 +102,19 @@ class Cdpr:
         return kfg
 
     def dynamics_factors(self, ks=[]):
+        """Creates factors necessary for dynamics calculations.  Specifically, consists of the
+        generalized version of F=ma and calculates wrenches from cable tensions.
+        Primary variables:          Torque <--> TwistAccel
+        Intermediate variables:     Wrenches
+        Prerequisite variables:     Pose, Twist
+
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The dynamics factors
+        """        
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             wf = gtd.WrenchFactor(
@@ -107,6 +139,18 @@ class Cdpr:
         return dfg
 
     def collocation_factors(self, ks=[], dt=0.01):
+        """Create collocation factors to relate dynamics across time.  xdot = v, and vdot = a
+        Primary variables:      TwistAccel(now)/Twist(now) <--> Twist(next)/Pose(next)
+        Intermediate variables: dt (key 0) TODO(gerry): make a factor where this is a constant
+        Prerequisite variables: None
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+            dt (float, optional): time between each time step. Defaults to 0.01.
+
+        Returns:
+            gtsam.NonlinearFactorGraph: the collocation factors
+        """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             dfg.push_back(
@@ -125,6 +169,19 @@ class Cdpr:
         return dfg
 
     def priors_fk(self, ks=[], ls=[[]], ldots=[[]]):
+        """Creates prior factors which correspond to solving the forward kinematics problem by
+        specifying the joint angles and velocities.  To be used with kinematics_factors to optimize
+        for the Pose and Twist.
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+            ls (list, optional): List of list joint angles for each time step. Defaults to [[]].
+            ldots (list, optional): List of list of joint velocities for each time step. Defaults to
+            [[]].
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The forward kinematics prior factors
+        """
         graph = gtsam.NonlinearFactorGraph()
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
@@ -135,6 +192,18 @@ class Cdpr:
         return graph
 
     def priors_ik(self, ks=[], Ts=[], Vs=[]):
+        """Creates prior factors which correspond to solving the inverse kinematics problem by
+        specifying the Pose/Twist of the end effector.  To be used with kinematics_factors to
+        optimize for the joint angles and velocities.
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+            Ts (list, optional): List of Poses for each time step. Defaults to [[]].
+            Vs (list, optional): List of Twists for each time step. Defaults to [[]].
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The inverve kinematics prior factors
+        """
         graph = gtsam.NonlinearFactorGraph()
         for k, T, V in zip(ks, Ts, Vs):
             graph.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(self.ee_id(), k).key(),
@@ -147,6 +216,19 @@ class Cdpr:
     # priors_fd solves for torques given twistaccel (no joint accel)
     # priors_id solves for twistaccel (no joint accel) given torques
     def priors_id(self, ks=[], torquess=[[]]):
+        """Creates factors roughly corresponding to the inverse dynamics problem.  While strictly
+        inverse dynamics in Lynch & Park refers to the problem of calculating joint accelerations
+        given joint torques, temproarily this function is more convenient which directly relates
+        constrains joint torques (to obtain twist accelerations when used with dynamics_factors).
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+            torquess (list, optional): List of list of joint torques for each time step. Defaults to
+            [[]].
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The inverse dynamics prior factors
+        """
         graph = gtsam.NonlinearFactorGraph()
         for k, torques in zip(ks, torquess):
             for ji, torque in enumerate(torques):
@@ -155,6 +237,18 @@ class Cdpr:
         return graph
 
     def priors_fd(self, ks=[], VAs=[]):
+        """Creates factors roughly corresponding to the forward dynamics problem.  While strictly
+        forward dynamics in Lynch & Park refers to the problem of calculating joint torques given
+        joint accelerations, temproarily this function is more convenient which directly relates
+        constraints TwistAccelerations (to obtain joint torques when used with dynamics_factors).
+
+        Args:
+            ks (list, optional): Time step indices. Defaults to [].
+            VAs (list, optional): List of twist accelerations for each time step. Defaults to [[]].
+
+        Returns:
+            gtsam.NonlinearFactorGraph: The forward dynamics prior factors
+        """
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
             graph.push_back(gtsam.PriorFactorVector6(

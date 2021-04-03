@@ -1,5 +1,5 @@
 """
-GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+GTDynamics Copyright 2021, Georgia Tech Research Corporation,
 Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
@@ -27,6 +27,8 @@ class TestCdprPlanar(GtsamTestCase):
         cdpr = Cdpr()
 
     def testKinematics(self):
+        """Unit test kinematics factors and priors corresponding to forward and inverse kinematics
+        """
         cdpr = Cdpr()
         kfg = cdpr.kinematics_factors(ks=[0])
         def zeroValues():
@@ -64,6 +66,8 @@ class TestCdprPlanar(GtsamTestCase):
         self.gtsamAssertEquals(fkres, values, tol=1e-5)  # should match with full sol
 
     def testDynamicsInstantaneous(self):
+        """Test dynamics factors: relates torque to wrench+twistaccel.  Also tests ID solving
+        """
         cdpr = Cdpr()
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
@@ -105,6 +109,8 @@ class TestCdprPlanar(GtsamTestCase):
         self.gtsamAssertEquals(results, values)
 
     def testDynamicsCollocation(self):
+        """Test dynamics factors across multiple timesteps by using collocation.
+        """
         cdpr = Cdpr()
         # kinematics
         fg = cdpr.kinematics_factors(ks=[0, 1, 2])
@@ -146,6 +152,9 @@ class TestCdprPlanar(GtsamTestCase):
             Pose3(Rot3(), (1.5 + np.sqrt(2) * 0.0001, 0, 1.5)))
 
     def testSim(self):
+        """Tests the simulation: given a controller and initial state, it will run through and
+        simulate the system over multiple timesteps
+        """
         class DummyController:
             def update(self, values, t):
                 tau = gtsam.Values()
@@ -177,6 +186,8 @@ class TestCdprPlanar(GtsamTestCase):
             xdot += xddot * dt
 
     def testTrajFollow(self):
+        """Tests trajectory tracking controller
+        """
         cdpr = Cdpr()
 
         x0 = gtsam.Values()
@@ -188,20 +199,17 @@ class TestCdprPlanar(GtsamTestCase):
         controller = CdprController(cdpr, x0=x0, pdes=pDes, dt=0.1)
 
         result = cdpr_sim(cdpr, x0, controller, dt=0.1, N=10)
-
         pAct = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(10)]
 
-        print()
-        for k, (des, act) in enumerate(zip(pDes, pAct)):
-            print(
-                'k: {:d}  --  des: {:.3f}, {:.3f}, {:.3f}  --  act: {:.3f}, {:.3f}, {:.3f}'.format(
-                    k, *des.translation(), *act.translation()))
-        for k, (des, act) in enumerate(zip(pDes, pAct)):
-            print('k: {:d}  --  u: {:.3e},    {:.3e},    {:.3e},    {:.3e}'.format(
-                k, *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
+        if False:
+            print()
+            for k, (des, act) in enumerate(zip(pDes, pAct)):
+                print(('k: {:d}  --  des: {:.3f}, {:.3f}, {:.3f}  --  act: {:.3f}, {:.3f}, {:.3f}' +
+                       '  --  u: {:.3e},   {:.3e},   {:.3e},   {:.3e}').format(
+                           k, *des.translation(), *act.translation(),
+                           *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
 
         for k, (des, act) in enumerate(zip(pDes, pAct)):
-            print(k)
             self.gtsamAssertEquals(des, act)
 
 if __name__ == "__main__":
