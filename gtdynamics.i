@@ -595,11 +595,11 @@ class CableLengthFactor : gtsam::NonlinearFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
-#include <gtdynamics/cablerobot/factors/CableVelFactor.h>
-class CableVelFactor : gtsam::NonlinearFactor {
-  CableVelFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
-                 const gtsam::noiseModel::Base* cost_model,
-                 const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
+class CableVelocityFactor : gtsam::NonlinearFactor {
+  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
+                      const gtsam::noiseModel::Base* cost_model,
+                      const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 

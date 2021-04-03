@@ -1,11 +1,11 @@
 /**
- * @file  testCableVelFactor.cpp
+ * @file  testCableVelocityFactor.cpp
  * @brief test cable vel factor
  * @author Frank Dellaert
  * @author Gerry Chen
  */
 
-#include "factors/CableVelFactor.h"
+#include "factors/CableVelocityFactor.h"
 
 #include <gtdynamics/utils/values.h>
 
@@ -27,7 +27,7 @@ using namespace gtdynamics::internal;
 /**
  * Test cable factor
  */
-TEST(CableVelFactor, error) {
+TEST(CableVelocityFactor, error) {
   // noise model
   noiseModel::Gaussian::shared_ptr cost_model =
       noiseModel::Isotropic::Sigma(1, 1.0);
@@ -37,8 +37,8 @@ TEST(CableVelFactor, error) {
   Point3 frameLoc = Point3(0.1, 0.2, 0.3);
   Point3 eeLoc = Point3(-0.15, 0, -0.15);
 
-  CableVelFactor factor(JointVelKey(jid), PoseKey(lid), TwistKey(lid),
-                        cost_model, frameLoc, eeLoc);
+  CableVelocityFactor factor(JointVelKey(jid), PoseKey(lid), TwistKey(lid),
+                             cost_model, frameLoc, eeLoc);
 
   Values values;
   InsertJointVel(&values, jid, 1.0);

@@ -58,8 +58,8 @@ class Cdpr:
 
     def kinematics_factors(self, ks=[]):
         """Creates the factors necessary for kinematics, which includes the CableLengthFactors and
-        CableVelFactors.  Since this is a planar CDPR, it also adds factors which constrain motion
-        to the xz plane.
+        CableVelocityFactors.  Since this is a planar CDPR, it also adds factors which constrain
+        motion to the xz plane.
         Primary variables:          length/lengthdot <--> Pose/Twist
         Intermediate variables:     None
         Prerequisite variables:     None
@@ -73,15 +73,21 @@ class Cdpr:
         kfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             for ji in range(4):
-                kfg.push_back(gtd.CableLengthFactor(gtd.internal.JointAngleKey(ji, k).key(),
-                                                    gtd.internal.PoseKey(self.ee_id(), k).key(),
-                                                    self.costmodel_l,
-                                                    self.params.frameLocs[ji], self.params.eeLocs[ji]))
-                kfg.push_back(gtd.CableVelFactor(gtd.internal.JointVelKey(ji, k).key(),
-                                                 gtd.internal.PoseKey(self.ee_id(), k).key(),
-                                                 gtd.internal.TwistKey(self.ee_id(), k).key(),
-                                                 self.costmodel_ldot,
-                                                 self.params.frameLocs[ji], self.params.eeLocs[ji]))
+                kfg.push_back(
+                    gtd.CableLengthFactor(
+                        gtd.internal.JointAngleKey(ji, k).key(),
+                        gtd.internal.PoseKey(self.ee_id(), k).key(),  #
+                        self.costmodel_l,
+                        self.params.frameLocs[ji],
+                        self.params.eeLocs[ji]))
+                kfg.push_back(
+                    gtd.CableVelocityFactor(
+                        gtd.internal.JointVelKey(ji, k).key(),
+                        gtd.internal.PoseKey(self.ee_id(), k).key(),
+                        gtd.internal.TwistKey(self.ee_id(), k).key(),  #
+                        self.costmodel_ldot,
+                        self.params.frameLocs[ji],
+                        self.params.eeLocs[ji]))
             # constrain out-of-plane movements
             zeroT = gtsam.Values(); gtd.InsertPose(zeroT, self.ee_id(), k, Pose3())
             kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
@@ -114,7 +120,7 @@ class Cdpr:
 
         Returns:
             gtsam.NonlinearFactorGraph: The dynamics factors
-        """        
+        """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             wf = gtd.WrenchFactor(

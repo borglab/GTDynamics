@@ -1,5 +1,5 @@
 /**
- * @file  CableVelFactor.h
+ * @file  CableVelocityFactor.h
  * @brief Cable velocity factor: relates cable velocity (or acceleration), two
  * mounting points, and resultant mounting point velocities
  * @author Frank Dellaert
@@ -20,17 +20,17 @@
 
 namespace gtdynamics {
 
-/** CableVelFactor is a 3-way nonlinear factor which enforces relation amongst
+/** CableVelocityFactor is a 3-way nonlinear factor which enforces relation amongst
  * cable velocity, end-effector pose, and end-effector twist
  */
-class CableVelFactor : public gtsam::NoiseModelFactor3<
-                           double, gtsam::Pose3, gtsam::Vector6> {
+class CableVelocityFactor
+    : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
  private:
   using Point = gtsam::Point3;
   using Vector3 = gtsam::Vector3;
   using Pose = gtsam::Pose3;
   using Twist = gtsam::Vector6;
-  typedef CableVelFactor This;
+  typedef CableVelocityFactor This;
   typedef gtsam::NoiseModelFactor3<double, Pose, Twist> Base;
 
   Point wPb_, eePem_;
@@ -45,11 +45,14 @@ class CableVelFactor : public gtsam::NoiseModelFactor3<
    * @param eePem -- cable mounting location on the end effector, in the
    * end-effector frame (wPem = wTee * eePem)
    */
-  CableVelFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
-                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                 const Point &wPb, const Point &eePem)
-      : Base(cost_model, ldot_key, wTee_key, Vee_key), wPb_(wPb), eePem_(eePem) {}
-  virtual ~CableVelFactor() {}
+  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key,
+                      gtsam::Key Vee_key,
+                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                      const Point &wPb, const Point &eePem)
+      : Base(cost_model, ldot_key, wTee_key, Vee_key),
+        wPb_(wPb),
+        eePem_(eePem) {}
+  virtual ~CableVelocityFactor() {}
 
  public:
   /** Cable factor
