@@ -40,7 +40,7 @@ class TrajectoryTest : public gtdynamics::Trajectory {
 
 TEST(Trajectory, Intersection) {
   Robot robot_configuration = gtdynamics::CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      SDF_PATH + "/test/spider.sdf", "spider");
 
   double contact_height = 5;
   size_t num_time_steps = 1;
@@ -72,7 +72,7 @@ TEST(Trajectory, Intersection) {
 
 TEST(Trajectory, error) {
   Robot robot_configuration = gtdynamics::CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      SDF_PATH + "/test/spider.sdf", "spider");
 
   // Initialize first phase
   size_t num_time_steps = 20;

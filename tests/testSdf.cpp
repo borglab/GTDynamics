@@ -16,6 +16,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
+#include <gtdynamics/config.h>
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
@@ -34,7 +35,7 @@ using gtsam::Values;
 // Load a URDF file and ensure its joints and links were parsed correctly.
 TEST(utils, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
-  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(URDF_PATH + "/test/simple_urdf.urdf");
 
   // Check that physical and inertial properties were properly parsed..
   EXPECT(assert_equal(2, simple_urdf.LinkCount()));
@@ -55,7 +56,7 @@ TEST(utils, load_and_parse_urdf_file) {
 }
 
 TEST(utils, load_and_parse_sdf_file) {
-  auto simple_sdf = GetSdf(std::string(SDF_PATH) + "/test/simple.sdf");
+  auto simple_sdf = GetSdf(SDF_PATH + "/test/simple.sdf");
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));
@@ -63,7 +64,7 @@ TEST(utils, load_and_parse_sdf_file) {
 
 TEST(utils, load_and_parse_sdf_world_file) {
   auto simple_sdf =
-      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   EXPECT(assert_equal(3, simple_sdf.LinkCount()));
   EXPECT(assert_equal(2, simple_sdf.JointCount()));
@@ -95,7 +96,7 @@ TEST(utils, Pose3FromIgnition) {
  */
 TEST(File, parameters_from_file) {
   // Test for reading parameters from a simple URDF.
-  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(URDF_PATH + "/test/simple_urdf.urdf");
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
 
   EXPECT(assert_equal(-1.57, j1_parameters.scalar_limits.value_lower_limit));
@@ -107,7 +108,7 @@ TEST(File, parameters_from_file) {
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a simple SDF.
   auto simple_sdf =
-      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
   auto joint_1_parameters =
       ParametersFromSdfJoint(*simple_sdf.JointByName("joint_1"));
 
@@ -117,7 +118,7 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (joint limits) from spider.sdf.
   auto spider_sdf =
-      GetSdf(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      GetSdf(SDF_PATH + "/test/spider.sdf", "spider");
   auto knee_1_parameters =
       ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
@@ -134,7 +135,7 @@ TEST(File, parameters_from_file) {
 TEST(File, create_robot_from_file) {
   // Test for reading parameters from a robot created via simple URDF.
   auto simple_robot =
-      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
   auto simple_j1 = simple_robot.joint("j1");
 
   EXPECT(assert_equal(-1.57,
@@ -148,7 +149,7 @@ TEST(File, create_robot_from_file) {
   // Test for reading parameters (damping coefficient, velocity limit, and
   // torque limit) from a robot created via simple SDF.
   auto simple_rr_robot = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
   auto simple_rr_j1 = simple_rr_robot.joint("joint_1");
 
   EXPECT(assert_equal(0.5, simple_rr_j1->parameters().damping_coefficient));
@@ -158,7 +159,7 @@ TEST(File, create_robot_from_file) {
   // Test for reading parameters (joint limits) from a robot created via
   // spider.sdf.
   auto spider_robot =
-      CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+      CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
   auto spider_knee1 = spider_robot.joint("knee_1");
 
   EXPECT(assert_equal(
@@ -171,7 +172,7 @@ TEST(File, create_robot_from_file) {
  * Construct a Link via URDF and ensure all values are as expected.
  */
 TEST(Link, urdf_constructor_link) {
-  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(URDF_PATH + "/test/simple_urdf.urdf");
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
   LinkSharedPtr l1 = LinkFromSdf(1, *simple_urdf.LinkByName("l1"));
@@ -233,7 +234,7 @@ TEST(Link, urdf_constructor_link) {
  * Construct a Revolute Joint from URDF and ensure all values are as expected.
  */
 TEST(Joint, urdf_constructor_revolute) {
-  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(URDF_PATH + "/test/simple_urdf.urdf");
 
   LinkSharedPtr l1 = LinkFromSdf(1, *simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *simple_urdf.LinkByName("l2"));
@@ -308,7 +309,7 @@ TEST(Joint, urdf_constructor_revolute) {
  */
 TEST(Joint, sdf_constructor_revolute) {
   auto model =
-      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   LinkSharedPtr l0 = LinkFromSdf(0, *model.LinkByName("link_0"));
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("link_1"));
@@ -371,7 +372,7 @@ TEST(Joint, sdf_constructor_revolute) {
  */
 TEST(Joint, limit_params) {
   // Check revolute joint limits parsed correctly for first test robot.
-  auto model = GetSdf(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+  auto model = GetSdf(SDF_PATH + "/test/four_bar_linkage.sdf");
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *model.LinkByName("l2"));
   auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
@@ -390,7 +391,7 @@ TEST(Joint, limit_params) {
 
   // Check revolute joint limits parsed correctly for a robot with no limits.
   auto model2 =
-      GetSdf(std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      GetSdf(SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   LinkSharedPtr link_0 = LinkFromSdf(0, *model2.LinkByName("link_0"));
   LinkSharedPtr link_1 = LinkFromSdf(1, *model2.LinkByName("link_1"));
@@ -421,7 +422,7 @@ TEST(Joint, limit_params) {
  */
 TEST(Joint, urdf_constructor_prismatic) {
   auto simple_urdf =
-      GetSdf(std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
+      GetSdf(URDF_PATH + "/test/simple_urdf_prismatic.urdf");
 
   LinkSharedPtr l1 = LinkFromSdf(1, *simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *simple_urdf.LinkByName("l2"));
@@ -498,7 +499,7 @@ TEST(Joint, urdf_constructor_prismatic) {
  * are as expected.
  */
 TEST(Joint, sdf_constructor_screw) {
-  auto model = GetSdf(std::string(SDF_PATH) + "/test/simple_screw_joint.sdf",
+  auto model = GetSdf(SDF_PATH + "/test/simple_screw_joint.sdf",
                       "simple_screw_joint_sdf");
 
   LinkSharedPtr l0 = LinkFromSdf(0, *model.LinkByName("link_0"));
@@ -537,7 +538,7 @@ TEST(Joint, sdf_constructor_screw) {
 // that all transforms, link/joint properties, etc. are correct.
 TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
-  auto simple_urdf = GetSdf(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+  auto simple_urdf = GetSdf(URDF_PATH + "/test/simple_urdf.urdf");
 
   LinkSharedPtr l1 = LinkFromSdf(1, *simple_urdf.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *simple_urdf.LinkByName("l2"));
@@ -551,7 +552,7 @@ TEST(Robot, simple_urdf) {
 
   // Initialize Robot instance.
   auto simple_robot =
-      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
 
   EXPECT(assert_equal(1, simple_robot.link("l1")->numJoints()));
   EXPECT(assert_equal(1, simple_robot.link("l2")->numJoints()));
@@ -580,7 +581,7 @@ TEST(Robot, simple_urdf) {
 
 // Check the links in the simple RR robot.
 TEST(Link, sdf_constructor) {
-  std::string file_path = std::string(SDF_PATH) + "/test/simple_rr.sdf";
+  std::string file_path = SDF_PATH + "/test/simple_rr.sdf";
   std::string model_name = "simple_rr_sdf";
   Link l0 = Link(*LinkFromSdf(0, "link_0", file_path, model_name));
   Link l1 = Link(*LinkFromSdf(1, "link_1", file_path, model_name));

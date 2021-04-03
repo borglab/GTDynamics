@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "gtdynamics/config.h"
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
@@ -115,4 +116,4 @@ class Robot {
       const gtsam::Values &values,
       const boost::optional<std::string> &prior_link_name, size_t t = 0) const;
 };
-} // namespace gtdynamics
+}  // namespace gtdynamics
