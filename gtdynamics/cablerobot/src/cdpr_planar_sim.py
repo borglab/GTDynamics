@@ -2,19 +2,11 @@ import gtsam
 import gtdynamics as gtd
 import numpy as np
 
-def zerovalues(lid, t, dt):
-    init = gtsam.Values()
-    init.insertDouble(0, dt)
-    for j in range(4):
-        gtd.InsertJointAngleDouble(init, j, t, 0)
-        gtd.InsertJointVelDouble(init, j, t, 0)
-        gtd.InsertTorqueDouble(init, j, t, 0)
-        gtd.InsertWrench(init, lid, j, t, np.zeros(6))
-    gtd.InsertPose(init, lid, t, Pose3(Rot3(), (1.5, 0, 1.5)))
-    gtd.InsertTwist(init, lid, t, np.zeros(6))
-    gtd.InsertTwistAccel(init, lid, t, np.zeros(6))
-
 def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
+    """
+    Pose/Twist  ->  l/ldot  ->  torques  ->  Wrenches/TwistAccel  -->  next Pose/Twist
+                IK     Controller        ID                   Collocation
+    """
     fg = gtsam.NonlinearFactorGraph()
     x = gtsam.Values(xInit)
     for k in range(N):

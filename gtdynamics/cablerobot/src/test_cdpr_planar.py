@@ -179,16 +179,30 @@ class TestCdprPlanar(GtsamTestCase):
     def testTrajFollow(self):
         cdpr = Cdpr()
 
-        pDes = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(10)]
-        controller = CdprController(cdpr, pdes=pDes, dt=0.1)
+        x0 = gtsam.Values()
+        gtd.InsertPose(x0, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
 
-        xInit = gtsam.Values()
-        gtd.InsertPose(xInit, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
-        gtd.InsertTwist(xInit, cdpr.ee_id(), 0, np.zeros(6))
-        result = cdpr_sim(cdpr, xInit, controller, dt=0.1, N=10)
+        pDes = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(9)]
+        pDes = pDes[0:1] + pDes
+        controller = CdprController(cdpr, x0=x0, pdes=pDes, dt=0.1)
+
+        result = cdpr_sim(cdpr, x0, controller, dt=0.1, N=10)
 
         pAct = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(10)]
-        self.assertEqual(pDes, pAct, "didn't achieve desired trajectory")
+
+        print()
+        for k, (des, act) in enumerate(zip(pDes, pAct)):
+            print(
+                'k: {:d}  --  des: {:.3f}, {:.3f}, {:.3f}  --  act: {:.3f}, {:.3f}, {:.3f}'.format(
+                    k, *des.translation(), *act.translation()))
+        for k, (des, act) in enumerate(zip(pDes, pAct)):
+            print('k: {:d}  --  u: {:.3e},    {:.3e},    {:.3e},    {:.3e}'.format(
+                k, *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
+
+        for k, (des, act) in enumerate(zip(pDes, pAct)):
+            print(k)
+            self.gtsamAssertEquals(des, act)
 
 if __name__ == "__main__":
     unittest.main()
