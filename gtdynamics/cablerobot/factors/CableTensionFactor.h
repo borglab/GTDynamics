@@ -26,14 +26,14 @@ namespace gtdynamics {
 class CableTensionFactor
     : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
  private:
-  using Pose = gtsam::Pose3;
-  using Point = gtsam::Point3;
-  using Wrench = gtsam::Vector6;
+  using Pose3 = gtsam::Pose3;
+  using Point3 = gtsam::Point3;
+  using Vector6 = gtsam::Vector6;
   using Vector3 = gtsam::Vector3;
   using This = CableTensionFactor;
-  using Base = gtsam::NoiseModelFactor3<double, Pose, Wrench>;
+  using Base = gtsam::NoiseModelFactor3<double, Pose3, Vector6>;
 
-  Point wPb_, eePem_;
+  Point3 wPb_, eePem_;
 
  public:
   /** Cable tension factor
@@ -49,7 +49,7 @@ class CableTensionFactor
   CableTensionFactor(gtsam::Key tension_key, gtsam::Key eePose_key,
                      gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     const Point &wPb, const Point &eePem)
+                     const Point3 &wPb, const Point3 &eePem)
       : Base(cost_model, tension_key, eePose_key, wrench_key),
         wPb_(wPb),
         eePem_(eePem) {}
@@ -63,7 +63,7 @@ class CableTensionFactor
    * @return Vector(6): calculated wrench minus Fee
    */
   gtsam::Vector evaluateError(
-      const double &t, const Pose &wTee, const Wrench &Fee,
+      const double &t, const Pose3 &wTee, const Vector6 &Fee,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
       boost::optional<gtsam::Matrix &> H_wTee = boost::none,
       boost::optional<gtsam::Matrix &> H_Fee = boost::none) const override {
@@ -79,7 +79,7 @@ class CableTensionFactor
     gtsam::Matrix33 eem_H_eef;  // = H_eef.topRows<3>(); TODO(gerry): pointer?
 
     // cable direction
-    Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
+    Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
     Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
     // force->wrench
     Vector3 wf = -t * dir;
@@ -91,11 +91,11 @@ class CableTensionFactor
     Vector3 eem = gtsam::cross(eePem_, eef,    //
                                boost::none,  //
                                (H_t || H_wTee) ? &eem_H_eef : 0);
-    Wrench F_expected = (Wrench() << eem, eef).finished();
+    Vector6 F_expected = (Vector6() << eem, eef).finished();
     if (H_t || H_wTee) H_eef << eem_H_eef, gtsam::I_3x3;
 
     // error
-    Wrench error = (Wrench() << F_expected - Fee).finished();
+    Vector6 error = (Vector6() << F_expected - Fee).finished();
 
     if (H_t) *H_t = H_eef * eef_H_wf * wf_H_t;
     if (H_wTee) {

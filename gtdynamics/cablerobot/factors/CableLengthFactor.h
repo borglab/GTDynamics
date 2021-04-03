@@ -25,12 +25,12 @@ namespace gtdynamics {
 class CableLengthFactor
     : public gtsam::NoiseModelFactor2<double, gtsam::Pose3> {
  private:
-  using Pose = gtsam::Pose3;
-  using Point = gtsam::Point3;
+  using Pose3 = gtsam::Pose3;
+  using Point3 = gtsam::Point3;
   using This = CableLengthFactor;
-  using Base = gtsam::NoiseModelFactor2<double, Pose>;
+  using Base = gtsam::NoiseModelFactor2<double, Pose3>;
 
-  Point wPb_, eePem_;
+  Point3 wPb_, eePem_;
 
  public:
   /** Cable factor
@@ -43,7 +43,7 @@ class CableLengthFactor
    */
   CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                    const Point &wPb, const Point &eePem)
+                    const Point3 &wPb, const Point3 &eePem)
       : Base(cost_model, l_key, wTee_key), wPb_(wPb), eePem_(eePem) {}
   virtual ~CableLengthFactor() {}
 

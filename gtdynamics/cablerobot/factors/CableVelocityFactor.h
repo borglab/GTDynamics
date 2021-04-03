@@ -26,14 +26,14 @@ namespace gtdynamics {
 class CableVelocityFactor
     : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
  private:
-  using Point = gtsam::Point3;
+  using Point3 = gtsam::Point3;
   using Vector3 = gtsam::Vector3;
-  using Pose = gtsam::Pose3;
-  using Twist = gtsam::Vector6;
+  using Pose3 = gtsam::Pose3;
+  using Vector6 = gtsam::Vector6;
   using This = CableVelocityFactor;
-  using This = gtsam::NoiseModelFactor3<double, Pose, Twist>;
+  using Base = gtsam::NoiseModelFactor3<double, Pose3, Vector6>;
 
-  Point wPb_, eePem_;
+  Point3 wPb_, eePem_;
 
  public:
   /** Cable factor
@@ -48,7 +48,7 @@ class CableVelocityFactor
   CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key,
                       gtsam::Key Vee_key,
                       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                      const Point &wPb, const Point &eePem)
+                      const Point3 &wPb, const Point3 &eePem)
       : Base(cost_model, ldot_key, wTee_key, Vee_key),
         wPb_(wPb),
         eePem_(eePem) {}
@@ -62,7 +62,7 @@ class CableVelocityFactor
    * @return expected/calculated cable speed minus given ldot
    */
   gtsam::Vector evaluateError(
-      const double &ldot, const Pose &wTee, const Twist &Vee,
+      const double &ldot, const Pose3 &wTee, const Vector6 &Vee,
       boost::optional<gtsam::Matrix &> H_ldot = boost::none,
       boost::optional<gtsam::Matrix &> H_wTee = boost::none,
       boost::optional<gtsam::Matrix &> H_Vee = boost::none) const override {
@@ -78,7 +78,7 @@ class CableVelocityFactor
     gtsam::Matrix33 cross_H_omega;
 
     // cable direction
-    Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
+    Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
     Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
 
     // velocity aka pdot
