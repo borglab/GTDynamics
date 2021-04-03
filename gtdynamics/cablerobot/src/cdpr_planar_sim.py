@@ -37,7 +37,7 @@ def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
         if verbose:
             print('time step: {:4d}   --   EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
                 k,
-                *gtd.Pose(x, cdpr.ee_id(), k).translation()))
+                *gtd.Pose(x, cdpr.ee_id(), k).translation()), end='  --  ')
         # IK for this time step, graph
         fg.push_back(cdpr.kinematics_factors(ks=[k]))
         fg.push_back(
@@ -56,6 +56,9 @@ def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
             x.insertDouble(0, dt)
         # controller
         u = controller.update(x, k)
+        if verbose:
+            print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
+                *[gtd.TorqueDouble(u, ji, k) for ji in range(4)]))
         # ID for this timestep + collocation to next time step
         fg.push_back(cdpr.dynamics_factors(ks=[k]))
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))

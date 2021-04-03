@@ -4,8 +4,8 @@ Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
 
-@file  test_cdpr_planar.py
-@brief Unit tests for CDPR.
+@file  gerry00_planar_sim.py
+@brief Quick visualization of a planar cdpr simulation.
 @author Frank Dellaert
 @author Gerry Chen
 """
@@ -17,7 +17,7 @@ import numpy as np
 from gtsam import Pose3, Rot3
 
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprController, CdprControllerBase
+from cdpr_planar_controller import CdprControllerBase
 from cdpr_planar_sim import cdpr_sim
 
 

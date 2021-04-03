@@ -40,7 +40,17 @@ class CdprController(CdprControllerBase):
     """Precomputes the open-loop trajectory
     then just calls on that for each update.
     """
-    def __init__(self, cdpr, x0, pdes=[], dt=0.01):
+    def __init__(self, cdpr, x0, pdes=[], dt=0.01, Q=None, R=np.array([1.])):
+        """constructor
+
+        Args:
+            cdpr (Cdpr): cable robot object
+            x0 (gtsam.Values): initial state
+            pdes (list, optional): list of desired poses. Defaults to [].
+            dt (float, optional): time step duration. Defaults to 0.01.
+            Q (np.ndarray, optional): State objective cost (as a vector). Defaults to None.
+            R (np.ndarray, optional): Control cost (as a 1-vector). Defaults to np.array([1.]).
+        """        
         self.cdpr = cdpr
         self.pdes = pdes
         self.dt = dt
@@ -59,10 +69,13 @@ class CdprController(CdprControllerBase):
             for ji in range(4):
                 fg.push_back(
                     gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
-                                          gtsam.noiseModel.Diagonal.Precisions(np.array([1]))))
+                                          gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
-        # cost_x = gtsam.noiseModel.Diagonal.Precisions(np.array([0, 1, 0, 100, 0, 100.]))
-        cost_x = gtsam.noiseModel.Constrained.All(6)
+        if Q is None:
+            cost_x = gtsam.noiseModel.Constrained.All(6)
+        else:
+            cost_x = gtsam.noiseModel.Diagonal.Precisions(Q)
+            # cost_x = gtsam.noiseModel.Diagonal.Precisions(np.array([0, 1, 0, 100, 0, 100.]))
         for k in range(N):
             fg.push_back(
                 gtsam.PriorFactorPose3(
