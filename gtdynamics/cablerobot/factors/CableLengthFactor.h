@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -75,7 +77,7 @@ class CableLengthFactor
   /** print contents */
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
+                 GTDKeyFormatter) const override {
     std::cout << s << "cable length factor" << std::endl;
     Base::print("", keyFormatter);
   }

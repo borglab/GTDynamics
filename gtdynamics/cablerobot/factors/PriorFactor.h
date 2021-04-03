@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
+
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <gtsam/base/Testable.h>
 
@@ -25,7 +27,7 @@ class PriorFactor : public gtsam::PriorFactor<T> {
 
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const {
+                 GTDKeyFormatter) const override {
     gtsam::PriorFactor<T>::print(s, keyFormatter);
   }
 };
