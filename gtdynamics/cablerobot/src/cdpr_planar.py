@@ -50,10 +50,19 @@ class Cdpr:
         self.costmodel_planar_twist = gtsam.noiseModel.Constrained.All(3)
         self.costmodel_dt = gtsam.noiseModel.Constrained.All(1)
 
-    """end-effector link and id"""
     def eelink(self):
+        """Link object for the end-effector
+
+        Returns:
+            gtd.Link: End effector
+        """
         return self.robot.link('ee')
     def ee_id(self):
+        """id for the end-effector
+
+        Returns:
+            int: The end effector's link id
+        """        
         return self.eelink().id()
 
     def kinematics_factors(self, ks=[]):
