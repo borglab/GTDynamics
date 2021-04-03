@@ -52,8 +52,8 @@ endif()
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
-find_package(sdformat11 REQUIRED)
-message(STATUS "SDFormat version: ${sdformat11_VERSION}")
+set(SDFormat_VERSION 10)
+find_package(sdformat${SDFormat_VERSION} REQUIRED)
 
 # ##############################################################################
 # Dynamics library
@@ -128,7 +128,7 @@ message(STATUS "CMAKE_CXX_COMPILER_ID type                  : ${CMAKE_CXX_COMPIL
 message(STATUS "CMAKE_CXX_COMPILER_VERSION                  : ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "GTSAM Version                               : ${GTSAM_VERSION}")
 message(STATUS "Boost Version                               : ${Boost_VERSION}")
-message(STATUS "Sdformat Version                            : ${sdformat8_VERSION}")
+message(STATUS "SDFormat Version                            : ${sdformat${SDFormat_VERSION}_VERSION}")
 message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD_PYTHON}")
 if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
