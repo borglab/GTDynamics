@@ -37,8 +37,8 @@ PAUSE_BUTTON = {
 }
 
 
-def create_interactive_viewer(df):
-    """Display an interactive viewer with dash."""
+def create_animation(df):
+    """Display animation from data frame."""
 
     # Create animation for cart pole.
     # Generate curve data
@@ -48,7 +48,7 @@ def create_interactive_viewer(df):
     u, v = df.x + 0.3 * np.sin(df.theta), -0.3 * np.cos(df.theta)  # pole
 
     # Create figure.
-    animation = go.Figure(
+    fig = go.Figure(
         data=[go.Scatter(x=u, y=v),
               go.Scatter(x=u, y=v, mode="markers",
                          line=dict(width=1, color="blue"))
@@ -65,11 +65,14 @@ def create_interactive_viewer(df):
                 for k in range(N)]
     )
 
-    animation.update_layout(showlegend=False)
-    animation.update_yaxes(
-        scaleanchor="x",
-        scaleratio=1,
-    )
+    fig.update_layout(showlegend=False)
+    fig.update_yaxes(scaleanchor="x", scaleratio=1)
+
+    return fig
+
+
+def create_joint_trajectories(df):
+    """Create plotly figure with joint trajectories."""
 
     # Create time series with subplots.
     fig = make_subplots(rows=4, cols=2, shared_xaxes="all",
@@ -84,14 +87,22 @@ def create_interactive_viewer(df):
 
     fig.update_layout(title_text="Joint trajectories:", showlegend=False)
 
+    return fig
+
+
+def create_interactive_viewer(df):
+    """Display an interactive viewer with dash."""
+    animation = create_animation(df)
+    joint_figure = create_joint_trajectories(df)
+
     # Create dash application.
     mathjax = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML'
     app = dash.Dash(__name__, external_scripts=[mathjax])
 
     # Create app layout.
     app.layout = html.Div([
-        dcc.Graph(id='time', figure=animation),
-        dcc.Graph(id='x', figure=fig),
+        dcc.Graph(id='animation', figure=animation),
+        dcc.Graph(id='joints', figure=joint_figure),
     ])
 
     # Return entire app.
