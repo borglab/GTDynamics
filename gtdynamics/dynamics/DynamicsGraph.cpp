@@ -63,7 +63,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
       // * g
-      const auto &connected_joints = link->getJoints();
+      const auto &connected_joints = link->joints();
       const gtsam::Matrix6 G_i = link->inertiaMatrix();
       const double m_i = link->mass();
       const Pose3 T_wi = Pose(known_values, i, t);
@@ -195,8 +195,15 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->qFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->qFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior(internal::PoseKey(link->id(), t), link->getFixedPose(),
+                     opt_.bp_cost_model);
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<PoseFactor>(internal::PoseKey(joint->parent()->id(), t),
+                                   internal::PoseKey(joint->child()->id(), t),
+                                   internal::JointAngleKey(joint->id(), t),
+                                   opt_.p_cost_model, joint);
 
   // TODO(frank): clearly document this behavior
   gtsam::Vector3 gravity;
@@ -228,8 +235,17 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->vFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->vFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior<gtsam::Vector6>(internal::TwistKey(link->id(), t),
+                                     gtsam::Z_6x1, opt_.bv_cost_model);
+
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<TwistFactor>(internal::TwistKey(joint->parent()->id(), t),
+                                    internal::TwistKey(joint->child()->id(), t),
+                                    internal::JointAngleKey(joint->id(), t),
+                                    internal::JointVelKey(joint->id(), t),
+                                    opt_.v_cost_model, joint);
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -253,8 +269,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links()) graph.add(link->aFactors(t, opt_));
-  for (auto &&joint : robot.joints()) graph.add(joint->aFactors(t, opt_));
+  for (auto &&link : robot.links())
+    if (link->isFixed())
+      graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(link->id(), t),
+                                     gtsam::Z_6x1, opt_.ba_cost_model);
+  for (auto &&joint : robot.joints())
+    graph.emplace_shared<TwistAccelFactor>(
+      internal::TwistKey(joint->child()->id(), t),
+      internal::TwistAccelKey(joint->parent()->id(), t),
+      internal::TwistAccelKey(joint->child()->id(), t),
+      internal::JointAngleKey(joint->id(), t), internal::JointVelKey(joint->id(), t),
+      internal::JointAccelKey(joint->id(), t), opt_.a_cost_model,
+      boost::static_pointer_cast<const JointTyped>(joint));
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -297,7 +323,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   for (auto &&link : robot.links()) {
     int i = link->id();
     if (!link->isFixed()) {
-      const auto &connected_joints = link->getJoints();
+      const auto &connected_joints = link->joints();
       std::vector<DynamicsSymbol> wrenches;
 
       // Add wrench keys for joints.
@@ -312,25 +338,42 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
 
           // Add contact dynamics constraints.
-          graph.add(ContactDynamicsFrictionConeFactor(
+          graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
               internal::PoseKey(i, t),
               ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cfriction_cost_model, mu_, gravity));
+              opt_.cfriction_cost_model, mu_, gravity);
 
-          graph.add(ContactDynamicsMomentFactor(
+          graph.emplace_shared<ContactDynamicsMomentFactor>(
               ContactWrenchKey(i, contact_point.second.id, t),
               opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point)));
+              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         }
       }
 
-      graph.add(link->dynamicsFactors(t, opt_, wrenches, gravity));
+      // add wrench factor for link
+      graph.emplace_shared<WrenchFactor>(
+          internal::TwistKey(link->id(), t),
+          internal::TwistAccelKey(link->id(), t), wrenches,
+          internal::PoseKey(link->id(), t), opt_.fa_cost_model,
+          link->inertiaMatrix(), gravity);
     }
   }
 
-  for (auto &&joint : robot.joints())
-    graph.add(joint->dynamicsFactors(t, opt_, planar_axis_));
-
+  for (auto &&joint : robot.joints()) {
+    graph.emplace_shared<WrenchEquivalenceFactor>(
+        internal::WrenchKey(joint->parent()->id(), joint->id(), t),
+        internal::WrenchKey(joint->child()->id(), joint->id(), t),
+        internal::JointAngleKey(joint->id(), t), opt_.f_cost_model,
+        boost::static_pointer_cast<const JointTyped>(joint));
+    graph.emplace_shared<TorqueFactor>(
+        internal::WrenchKey(joint->child()->id(), joint->id(), t),
+        internal::TorqueKey(joint->id(), t), opt_.t_cost_model,
+        boost::static_pointer_cast<const JointTyped>(joint));
+    if (planar_axis_)
+      graph.emplace_shared<WrenchPlanarFactor>(
+          internal::WrenchKey(joint->child()->id(), joint->id(), t),
+          opt_.planar_cost_model, *planar_axis_);
+  }
   return graph;
 }
 

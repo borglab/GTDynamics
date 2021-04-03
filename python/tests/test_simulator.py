@@ -37,8 +37,6 @@ class TestLink(GtsamTestCase):
         planar_axis = np.asarray([1, 0, 0])
 
         initial_values = Values()
-        gtd.InsertJointAngleDouble(initial_values, 0, 0.0)
-        gtd.InsertJointVelDouble(initial_values, 0, 0.0)
 
         torques = Values()
         gtd.InsertTorqueDouble(torques, 0, 1.0)

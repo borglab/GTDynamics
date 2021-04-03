@@ -217,16 +217,16 @@ TEST(Link, urdf_constructor_link) {
   EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->lTcom()));
 
   // Check that no child links/joints have yet been added.
-  EXPECT(assert_equal(0, l1->getJoints().size()));
+  EXPECT(assert_equal(0, l1->numJoints()));
 
   // add joint
   l1->addJoint(j1);
-  EXPECT(assert_equal(1, l1->getJoints().size()));
-  EXPECT(l1->getJoints()[0] == j1);
+  EXPECT(assert_equal(1, l1->numJoints()));
+  EXPECT(l1->joints()[0] == j1);
 
   // remove joint
   l1->removeJoint(j1);
-  EXPECT(assert_equal(0, l1->getJoints().size()));
+  EXPECT(assert_equal(0, l1->numJoints()));
 }
 
 /**
@@ -553,8 +553,8 @@ TEST(Robot, simple_urdf) {
   auto simple_robot =
       CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
 
-  EXPECT(assert_equal(1, simple_robot.link("l1")->getJoints().size()));
-  EXPECT(assert_equal(1, simple_robot.link("l2")->getJoints().size()));
+  EXPECT(assert_equal(1, simple_robot.link("l1")->numJoints()));
+  EXPECT(assert_equal(1, simple_robot.link("l2")->numJoints()));
   EXPECT(simple_robot.link("l1")->id() == 0);
   EXPECT(simple_robot.link("l2")->id() == 1);
   EXPECT(simple_robot.joint("j1")->id() == 0);
