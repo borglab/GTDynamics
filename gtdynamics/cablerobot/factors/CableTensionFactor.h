@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <gtdynamics/cablerobot/utils/cableUtils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -81,7 +80,7 @@ class CableTensionFactor
 
     // cable direction
     Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
+    Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
     // force->wrench
     Vector3 wf = -t * dir;
     if (H_t) wf_H_t = -dir;

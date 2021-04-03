@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <gtdynamics/cablerobot/utils/cableUtils.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -62,7 +60,7 @@ class CableLenFactor : public gtsam::NoiseModelFactor2<
     gtsam::Matrix36 wPem_H_wTee;
     gtsam::Matrix13 H_wPem;
     auto wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    double expected_l = cablerobot::distance(wPem, wPb_, H_wTee ? &H_wPem : 0);
+    double expected_l = gtsam::distance3(wPem, wPb_, H_wTee ? &H_wPem : 0);
     if (H_l) *H_l = gtsam::Vector1(-1);
     if (H_wTee) *H_wTee = H_wPem * wPem_H_wTee;
     return gtsam::Vector1(expected_l - l);

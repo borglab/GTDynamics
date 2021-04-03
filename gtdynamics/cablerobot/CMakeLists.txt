@@ -2,7 +2,7 @@ message("THIS IS A DEBUG MESSAGE")
 
 # All subdirectories that contain source code relevant to this library.
 # set(CABLE_SOURCE_SUBDIRS factors robot)
-set(CABLE_SOURCE_SUBDIRS factors utils)
+set(CABLE_SOURCE_SUBDIRS factors)
 
 # Add this directory as include.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

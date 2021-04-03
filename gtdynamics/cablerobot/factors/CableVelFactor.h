@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include <gtdynamics/cablerobot/utils/cableUtils.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -78,7 +76,7 @@ class CableVelFactor : public gtsam::NoiseModelFactor3<
 
     // cable direction
     Point wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    Vector3 dir = cablerobot::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
+    Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
 
     // velocity aka pdot
     Vector3 eePDOTem = Vee.tail<3>() + gtsam::cross(Vee.head<3>(), eePem_,
@@ -89,9 +87,9 @@ class CableVelFactor : public gtsam::NoiseModelFactor3<
                                              H_Vee ? &wPDOTem_H_eePDOTem : 0);
 
     // ldot = (cable direction) dot (velocity aka pdot)
-    double expected_ldot = cablerobot::dot(dir, wPDOTem,         //
-                                           H_wTee ? &H_dir : 0,  //
-                                           H_Vee ? &H_wPDOTem : 0);
+    double expected_ldot = gtsam::dot(dir, wPDOTem,         //
+                                      H_wTee ? &H_dir : 0,  //
+                                      H_Vee ? &H_wPDOTem : 0);
 
     // jacobians
     if (H_ldot) *H_ldot = gtsam::Vector1(-1);
