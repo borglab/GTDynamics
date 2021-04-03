@@ -47,3 +47,10 @@ add_custom_target(
   COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/python)
+
+# Custom make command to run all Python tests
+add_custom_target(
+  python-test
+  COMMAND ${PYTHON_EXECUTABLE} -m unittest discover
+  DEPENDS ${PROJECT_NAME}_py
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/python/tests)
