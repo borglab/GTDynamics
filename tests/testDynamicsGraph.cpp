@@ -482,7 +482,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Load the robot from urdf file
-  Robot biped = CreateRobotFromFile(std::string(URDF_PATH) + "/biped.urdf");
+  Robot biped = CreateRobotFromFile(URDF_PATH + "/biped.urdf");
 
   // Add some contact points.
   ContactPoints contact_points;
@@ -563,7 +563,7 @@ TEST(jointlimitFactors, simple_urdf) {
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
   Robot robot = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
+      SDF_PATH + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.
   ContactPoints contact_points;
