@@ -36,6 +36,7 @@
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
 
 using namespace std;
@@ -51,7 +52,7 @@ using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
 // Load the A1 robot
-string robot_path = string(URDF_PATH) + "/a1.urdf";
+string robot_path = URDF_PATH + "/a1.urdf";
 Robot robot = CreateRobotFromFile(robot_path);
 
 const string base_link_name = "trunk";  //"pelvis";
@@ -61,8 +62,7 @@ const string base_link_name = "trunk";  //"pelvis";
 // lower_joint -> lower_link
 vector<string> lower_links = {"FR_lower", "FL_lower", "RR_lower", "RL_lower"};
 
-vector<std::function<gtsam::Key(uint64_t)>> foot_key_functions = {FR, FL, RR,
-                                                                  RL};
+vector<function<gtsam::Key(uint64_t)>> foot_key_functions = {FR, FL, RR, RL};
 
 Values initializeRobotJoints(const Robot& robot) {
   map<string, double> joint_angles_map = {
@@ -191,7 +191,7 @@ TEST(ContactStateEstimator, Invoke) {
   // estimate_1.contactSequence()));
 }
 
-// Test zero joint angles state
+// Test forward kinematics
 TEST(ContactStateEstimator, JointGraph) {
   ContactStateEstimator estimator(robot, lower_links, base_link_name, 2,
                                   foot_key_functions);
