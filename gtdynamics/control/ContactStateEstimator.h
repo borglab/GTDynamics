@@ -47,11 +47,6 @@ using gtsam::symbol_shorthand::X;
 
 namespace gtdynamics {
 
-inline DynamicsSymbol FR(uint64_t j) { return internal::PoseKey(6, j); }
-inline DynamicsSymbol FL(uint64_t j) { return internal::PoseKey(3, j); }
-inline DynamicsSymbol RR(uint64_t j) { return internal::PoseKey(12, j); }
-inline DynamicsSymbol RL(uint64_t j) { return internal::PoseKey(9, j); }
-
 /**
  * @brief Encapsulate the hybrid state of a robot. The continuous states are the
  * 9-dimensional NavStates, and the discrete states are the contact states of

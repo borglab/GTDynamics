@@ -108,3 +108,23 @@ gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
 }  // namespace jumping_robot
+
+/* *************************
+ *  Walking Robots         *
+ ************************* */
+namespace Atlas {
+/// Bipedal leg keys
+inline DynamicsSymbol Right(uint64_t j) { return internal::PoseKey(0, j); }
+inline DynamicsSymbol Left(uint64_t j) { return internal::PoseKey(1, j); }
+}  // namespace Atlas
+
+namespace A1 {
+/**
+ * Quadruped leg keys
+ * The IDs are the link IDs for the robot.
+ */
+inline DynamicsSymbol FR(uint64_t j) { return internal::PoseKey(6, j); }
+inline DynamicsSymbol FL(uint64_t j) { return internal::PoseKey(3, j); }
+inline DynamicsSymbol RR(uint64_t j) { return internal::PoseKey(12, j); }
+inline DynamicsSymbol RL(uint64_t j) { return internal::PoseKey(9, j); }
+}  // namespace A1
