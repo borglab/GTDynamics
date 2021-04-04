@@ -46,6 +46,14 @@ class TorqueFactor : gtsam::NonlinearFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/factors/MinTorqueFactor.h>
+class MinTorqueFactor : gtsam::NonlinearFactor {
+  MinTorqueFactor(gtsam::Key torque_key,
+               const gtsam::noiseModel::Base *cost_model);
+
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
 #include <gtdynamics/factors/WrenchFactor.h>
 class WrenchFactor : gtsam::NonlinearFactor {
   WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
