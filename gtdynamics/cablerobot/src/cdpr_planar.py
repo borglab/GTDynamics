@@ -65,6 +65,25 @@ class Cdpr:
         """        
         return self.eelink().id()
 
+    def all_factors(self, N, dt):
+        """All the factors needed to specify the CDPR evolution, except for the priors.  i.e.:
+        1. Initial state priors (e.g. Pose/Twist at the initial time step for IK, or l/ldot for FK)
+        2. "control"/"dynamics" priors (e.g. Torques at every time step for ID, or twistAccels for
+        FD)
+
+        Args:
+            N (int): number of time steps
+            dt (float): the time step duration
+
+        Returns:
+            gtsam.NonlinearFactorGraph: the factor graph
+        """        
+        fg = gtsam.NonlinearFactorGraph()
+        fg.push_back(self.kinematics_factors(ks=range(N)))
+        fg.push_back(self.dynamics_factors(ks=range(N)))
+        fg.push_back(self.collocation_factors(ks=range(N-1), dt=dt))
+        return fg
+
     def kinematics_factors(self, ks=[]):
         """Creates the factors necessary for kinematics, which includes the CableLengthFactors and
         CableVelocityFactors.  Since this is a planar CDPR, it also adds factors which constrain

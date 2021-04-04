@@ -87,16 +87,14 @@ class CdprController(CdprControllerBase):
 
         Returns:
             gtsam.NonlinearFactorGraph: The factor graph corresponding to the iLQR problem.
-        """        
-        # iLQR factor graph
-        # dynamics
+        """
         N = len(pdes)
+        # initial conditions
         fg = cdpr.priors_ik(ks=[0],
                             Ts=[gtd.Pose(x0, cdpr.ee_id(), 0)],
                             Vs=[gtd.Twist(x0, cdpr.ee_id(), 0)])
-        fg.push_back(cdpr.kinematics_factors(ks=range(N)))
-        fg.push_back(cdpr.dynamics_factors(ks=range(N)))
-        fg.push_back(cdpr.collocation_factors(ks=range(N-1), dt=dt))
+        # dynamics
+        fg.push_back(cdpr.all_factors(N, dt))
         # control costs
         for k in range(N):
             for ji in range(4):
