@@ -18,7 +18,7 @@ from gtsam import Pose3, Rot3
 import numpy as np
 from cdpr_planar import Cdpr
 from cdpr_planar_controller import CdprControllerBase
-from cdpr_planar_sim import cdpr_sim
+from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
 class TestCdprPlanar(GtsamTestCase):
@@ -43,7 +43,8 @@ class TestCdprPlanar(GtsamTestCase):
         gtd.InsertPose(xInit, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(xInit, cdpr.ee_id(), 0, np.zeros(6))
         # run simulation
-        result = cdpr_sim(cdpr, xInit, controller, dt=dt, N=int(Tf/dt))
+        sim = CdprSimulator(cdpr, xInit, controller, dt=dt)
+        result = sim.run(N=int(Tf/dt))
         # check correctness
         pAct = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(10)]
         x = 1.5

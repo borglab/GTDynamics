@@ -17,8 +17,6 @@ import gtsam
 from gtsam import Pose3, Rot3
 import numpy as np
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprController
-from cdpr_planar_sim import cdpr_sim
 from gtsam.utils.test_case import GtsamTestCase
 
 class TestCdprPlanar(GtsamTestCase):

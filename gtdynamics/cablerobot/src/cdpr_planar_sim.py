@@ -14,11 +14,20 @@ import gtsam
 import gtdynamics as gtd
 import numpy as np
 
-def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
+class CdprSimulator:
     """Simulates a cable robot forward in time, given a robot, initial state, and controller.
 
     Pose/Twist  ->  l/ldot  ->  torques  ->  Wrenches/TwistAccel  -->  next Pose/Twist
                 IK     Controller        ID                   Collocation
+
+    Example usage:
+        sim = CdprSimulation(robot, x0, controller)
+        for i in range(10):
+            results = sim.step()
+            print(gtd.Pose(results, robot.ee_id(), i))
+        sim.reset()
+        results = sim.run()
+
     Args:
         cdpr (Cdpr): cable robot object
         xInit (gtsam.Values): initial state
@@ -31,13 +40,34 @@ def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
         gtsam.Values: The set of fully-resolved variables for the robot over tehe specified time
         steps
     """
-    fg = gtsam.NonlinearFactorGraph()
-    x = gtsam.Values(xInit)
-    for k in range(N):
-        if verbose:
-            print('time step: {:4d}   --   EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
-                k,
-                *gtd.Pose(x, cdpr.ee_id(), k).translation()), end='  --  ')
+    def __init__(self, cdpr, x0, controller, dt=0.01):
+        """Constructs a simulator object
+
+        Args:
+            cdpr (Cdpr): cable robot object
+            x0 (gtsam.Values): initial state (must contain Pose and Twist at t=0)
+            controller (CdprControllerBase): controller object
+            dt (float, optional): time step duration. Defaults to 0.01.
+        """
+        self.cdpr = cdpr
+        self.x0 = x0
+        self.controller = controller
+        self.dt = dt
+        self.reset()
+
+    @staticmethod
+    def update_kinematics(cdpr, fg, x, k):
+        """Runs IK to solve for the cable lengths and velocities at time step k
+
+        Args:
+            fg (gtsam.NonlineaFactorGraph): any previous factors, if applicable
+            x (gtsam.Values): Values object containing the current Pose and current Twist, plus any
+            other values that may be needed (as initial guesses) for the `fg` argument.
+            k (int): current time step
+
+        Returns:
+            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the updated factor graph and values
+        """
         # IK for this time step, graph
         fg.push_back(cdpr.kinematics_factors(ks=[k]))
         fg.push_back(
@@ -52,13 +82,27 @@ def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
         result = gtsam.LevenbergMarquardtOptimizer(fg, x).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
         x.update(result)
-        if k == 0:
-            x.insertDouble(0, dt)
-        # controller
-        u = controller.update(x, k)
-        if verbose:
-            print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
-                *[gtd.TorqueDouble(u, ji, k) for ji in range(4)]))
+        return fg, x
+
+    @staticmethod
+    def update_dynamics(cdpr, fg, x, u, k, dt):
+        """Runs ID to solve for the twistAccel, and also runs collocation to get the next timestep
+        Pose/Twist
+
+        Args:
+            cdpr (Cdpr): the cable robot
+            fg (gtsam.NonlinearFactorGraph): a factor graph containing any previous factors
+            x (gtsam.Values): Values object containing at least the current Pose and Twist, and any
+            other values that may be needed (as initial guesses) for the `fg` argument
+            u (gtsam.Values): The current joint torques
+            k (int): The current time index
+            dt (float): the time slice duration
+
+        Returns:
+            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the factor graph with added factors,
+            and the solution Values which adds the TwistAccel, next Pose, and next Twist to the `x`
+            argument.
+        """
         # ID for this timestep + collocation to next time step
         fg.push_back(cdpr.dynamics_factors(ks=[k]))
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
@@ -76,6 +120,50 @@ def cdpr_sim(cdpr, xInit, controller, dt=0.01, N=100, verbose=False):
         result = gtsam.LevenbergMarquardtOptimizer(fg, x).optimize()
         assert abs(fg.error(result)) < 1e-20, "dynamics simulation didn't converge"
         x.update(result)
-        # print(result)
+        return fg, x
 
-    return x
+    def step(self, verbose=False):
+        """Performs one time step of the simulation, which consists of:
+        1. Using IK to calculate the current cable lengths and velocities
+        2. Calling the controller to get the torque inputs
+        3. Updating the dynamics to get the current TwistAccel and next Pose+Twist.
+
+        Args:
+            verbose (bool, optional): True to print debug information. Defaults to False.
+
+        Returns:
+            gtsam.Values: The new values object containing the current state and next Pose+Twist.
+        """        
+        if verbose:
+            print('time step: {:4d}   --   EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
+                self.k,
+                *gtd.Pose(x, cdpr.ee_id(), self.k).translation()), end='  --  ')
+        self.update_kinematics(self.cdpr, self.fg, self.x, self.k)
+        if self.k == 0:
+            self.x.insertDouble(0, self.dt)
+        u = self.controller.update(self.x, self.k)
+        if verbose:
+            print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
+                *[gtd.TorqueDouble(u, ji, self.k) for ji in range(4)]))
+        self.update_dynamics(self.cdpr, self.fg, self.x, u, self.k, self.dt)
+        self.k += 1
+        return self.x
+
+    def run(self, N=100, verbose=False):
+        """Runs the simulation
+
+        Args:
+            N (int, optional): Number of iterations to run. Defaults to 100.
+            verbose (bool, optional): True to print debug information. Defaults to False.
+
+        Returns:
+            gtsam.Values: The values object containing all the data from the simulation.
+        """        
+        for k in range(N):
+            self.step(verbose=verbose)
+        return self.x
+
+    def reset(self):
+        self.fg = gtsam.NonlinearFactorGraph()
+        self.x = gtsam.Values(self.x0)
+        self.k = 0
