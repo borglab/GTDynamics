@@ -216,7 +216,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph trajectoryFG(
       const Robot &robot, const int num_steps, const double dt,
-      const CollocationScheme collocation,
+      const CollocationScheme collocation = Trapezoidal,
       const boost::optional<ContactPoints> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
@@ -230,7 +230,7 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
-      const CollocationScheme collocation,
+      const CollocationScheme collocation = Trapezoidal,
       const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;

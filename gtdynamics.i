@@ -346,10 +346,18 @@ class DynamicsGraph {
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
+      const gtdynamics::Robot &robot, const int num_steps, const double dt) const;
+
+  gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::DynamicsGraph::CollocationScheme collocation,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
+
+  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
+      const std::vector<gtdynamics::Robot> &robots,
+      const std::vector<int> &phase_steps,
+      const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<gtdynamics::Robot> &robots,
