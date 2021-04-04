@@ -25,63 +25,63 @@ namespace gtdynamics {
 
 /******************************************************************************/
 Vector6 CableTensionFactor::computeWrench(
-    double t, const Pose3 &wTee, boost::optional<Matrix &> H_t,
-    boost::optional<Matrix &> H_wTee) const {
+    double t, const Pose3 &wTx, boost::optional<Matrix &> H_t,
+    boost::optional<Matrix &> H_wTx) const {
   // Jacobians: cable direction
-  Matrix33 dir_H_wPem;
-  Matrix36 wPem_H_wTee;
+  Matrix33 dir_H_wPb;
+  Matrix36 wPb_H_wTx;
   // Jacobians: force to wrench conversion
   Matrix31 wf_H_t;
   Matrix33 wf_H_dir;
-  Matrix33 eef_H_wf;
-  Matrix33 eef_H_wRee;
-  Matrix63 H_eef;
-  Matrix33 eem_H_eef;  // = H_eef.topRows<3>(); TODO(gerry): pointer?
+  Matrix33 xf_H_wf;
+  Matrix33 xf_H_wRx;
+  Matrix63 H_xf;
+  Matrix33 xm_H_xf;  // = H_xf.topRows<3>(); TODO(gerry): pointer?
 
   // cable direction
-  Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-  Vector3 dir = normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
+  Point3 wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
+  Vector3 dir = normalize(wPb - wPa_, H_wTx ? &dir_H_wPb : 0);
   // force->wrench
   Vector3 wf = -t * dir;
   if (H_t) wf_H_t = -dir;
-  if (H_wTee) wf_H_dir = -t * I_3x3;
-  Vector3 eef = wTee.rotation().unrotate(wf,  //
-                                         H_wTee ? &eef_H_wRee : 0,
-                                         (H_t || H_wTee) ? &eef_H_wf : 0);
-  Vector3 eem = cross(eePem_, eef,  //
-                      boost::none,  //
-                      (H_t || H_wTee) ? &eem_H_eef : 0);
+  if (H_wTx) wf_H_dir = -t * I_3x3;
+  Vector3 xf = wTx.rotation().unrotate(wf,  // force in the EE frame
+                                       H_wTx ? &xf_H_wRx : 0,
+                                       (H_t || H_wTx) ? &xf_H_wf : 0);
+  Vector3 xm = cross(xPb_, xf,     // moment in the EE frame
+                     boost::none,  //
+                     (H_t || H_wTx) ? &xm_H_xf : 0);
 
-  Vector6 F = (Vector6() << eem, eef).finished();
-  if (H_t || H_wTee) H_eef << eem_H_eef, I_3x3;
-  if (H_t) *H_t = H_eef * eef_H_wf * wf_H_t;
-  if (H_wTee) {
-    *(H_wTee) = H_eef * eef_H_wf * wf_H_dir * dir_H_wPem * wPem_H_wTee;
-    H_wTee->leftCols<3>() += H_eef * eef_H_wRee;
+  Vector6 F = (Vector6() << xm, xf).finished();
+  if (H_t || H_wTx) H_xf << xm_H_xf, I_3x3;
+  if (H_t) *H_t = H_xf * xf_H_wf * wf_H_t;
+  if (H_wTx) {
+    *(H_wTx) = H_xf * xf_H_wf * wf_H_dir * dir_H_wPb * wPb_H_wTx;
+    H_wTx->leftCols<3>() += H_xf * xf_H_wRx;
   }
   return F;
 }
 
 /******************************************************************************/
 Vector6 CableTensionFactor::computeWrench2(
-    double t, const Pose3 &wTee, boost::optional<Matrix &> H_t,
-    boost::optional<Matrix &> H_wTee) const {
+    double t, const Pose3 &wTx, boost::optional<Matrix &> H_t,
+    boost::optional<Matrix &> H_wTx) const {
   // Jacobians: cable direction
-  Matrix33 dir_H_wPem;
-  Matrix36 wPem_H_wTee;
+  Matrix33 dir_H_wPb;
+  Matrix36 wPb_H_wTx;
   // Jacobians: force to wrench conversion
   Matrix61 wF_H_t;
   Matrix63 wF_H_dir;
 
   // cable direction
-  Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-  Vector3 dir = normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
+  Point3 wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
+  Vector3 dir = normalize(wPb - wPa_, H_wTx ? &dir_H_wPb : 0);
   // force->wrench
-  Pose3 emTee = Pose3(wTee.rotation().inverse(), eePem_).inverse();
+  Pose3 bTx = Pose3(wTx.rotation().inverse(), xPb_).inverse();
   Vector6 wF = (Vector6() << 0, 0, 0, -t * dir).finished();
   if (H_t) wF_H_t = (Matrix61() << 0, 0, 0, -dir).finished();
-  if (H_wTee) wF_H_dir = (Matrix63() << Z_3x3, -t * I_3x3).finished();
-  Vector6 F = emTee.AdjointMap().transpose() * wF;
+  if (H_wTx) wF_H_dir = (Matrix63() << Z_3x3, -t * I_3x3).finished();
+  Vector6 F = bTx.AdjointMap().transpose() * wF;
   // TODO(gerry): find jacobian of adjoint map
   return F;
 }

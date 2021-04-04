@@ -26,18 +26,18 @@ def main():
     N = int(Tf / dt)
     cdpr = Cdpr()
     # set up controller
-    pdes = [
+    x_des = [
         gtsam.Pose3(gtsam.Rot3(),
                     (1.5 + np.cos(2 * np.pi * i / N), 0, 1.5 + np.sin(2 * np.pi * i / N)))
         for i in range(N)
     ]
-    pdes[0] = pdes[1]
+    x_des[0] = x_des[1]
     x0 = gtsam.Values()
-    gtd.InsertPose(x0, cdpr.ee_id(), 0, pdes[0])
+    gtd.InsertPose(x0, cdpr.ee_id(), 0, x_des[0])
     gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
     controller = CdprController(cdpr,
                                 x0,
-                                pdes,
+                                x_des,
                                 dt=dt,
                                 Q=np.array([0, 1, 0, 1e3, 0, 1e3]),
                                 R=np.array([1e-3]))
@@ -48,10 +48,10 @@ def main():
     # print(poses)
 
     plt.figure(1)
-    plt.plot([pose.x() for pose in pdes], [pose.z() for pose in pdes], 'r-')
+    plt.plot([pose.x() for pose in x_des], [pose.z() for pose in x_des], 'r-')
     plt.plot([pose.x() for pose in poses], [pose.z() for pose in poses], 'k--')
-    plt.plot([*cdpr.params.frameLocs[:, 0], cdpr.params.frameLocs[0, 0]],
-             [*cdpr.params.frameLocs[:, 2], cdpr.params.frameLocs[0, 2]], 'k-')
+    plt.plot([*cdpr.params.a_locs[:, 0], cdpr.params.a_locs[0, 0]],
+             [*cdpr.params.a_locs[:, 2], cdpr.params.a_locs[0, 2]], 'k-')
     plt.axis('equal')
     plt.show()
 

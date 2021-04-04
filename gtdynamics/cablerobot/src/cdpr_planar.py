@@ -19,9 +19,9 @@ class CdprParams:
     """Parameters relevant to cable robot geometry and properties
     """
     def __init__(self):
-        self.frameLocs = np.array([[3., 0., 0.], [3., 0., 3.], [0., 0., 3.], [0., 0., 0.]])
+        self.a_locs = np.array([[3., 0., 0.], [3., 0., 3.], [0., 0., 3.], [0., 0., 0.]])
         s = 0.15
-        self.eeLocs = np.array([[s, 0., -s], [s, 0., s], [-s, 0., s], [-s, 0, -s]])
+        self.b_locs = np.array([[s, 0., -s], [s, 0., s], [-s, 0., s], [-s, 0, -s]])
         self.mass = 1.0
         self.inertia = np.eye(3)
         self.gravity = np.zeros((3, 1))
@@ -106,16 +106,16 @@ class Cdpr:
                         gtd.internal.JointAngleKey(ji, k).key(),
                         gtd.internal.PoseKey(self.ee_id(), k).key(),  #
                         self.costmodel_l,
-                        self.params.frameLocs[ji],
-                        self.params.eeLocs[ji]))
+                        self.params.a_locs[ji],
+                        self.params.b_locs[ji]))
                 kfg.push_back(
                     gtd.CableVelocityFactor(
                         gtd.internal.JointVelKey(ji, k).key(),
                         gtd.internal.PoseKey(self.ee_id(), k).key(),
                         gtd.internal.TwistKey(self.ee_id(), k).key(),  #
                         self.costmodel_ldot,
-                        self.params.frameLocs[ji],
-                        self.params.eeLocs[ji]))
+                        self.params.a_locs[ji],
+                        self.params.b_locs[ji]))
             # constrain out-of-plane movements
             zeroT = gtsam.Values(); gtd.InsertPose(zeroT, self.ee_id(), k, Pose3())
             kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
@@ -169,7 +169,7 @@ class Cdpr:
                         gtd.internal.TorqueKey(ji, k).key(),
                         gtd.internal.PoseKey(self.ee_id(), k).key(),
                         gtd.internal.WrenchKey(self.ee_id(), ji, k).key(),
-                        self.costmodel_torque, self.params.frameLocs[ji], self.params.eeLocs[ji]))
+                        self.costmodel_torque, self.params.a_locs[ji], self.params.b_locs[ji]))
         return dfg
 
     def collocation_factors(self, ks=[], dt=0.01):

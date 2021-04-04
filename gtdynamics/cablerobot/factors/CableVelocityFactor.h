@@ -22,8 +22,8 @@
 
 namespace gtdynamics {
 
-/** CableVelocityFactor is a 3-way nonlinear factor which enforces relation amongst
- * cable velocity, end-effector pose, and end-effector twist
+/** CableVelocityFactor is a 3-way nonlinear factor which enforces relation
+ * amongst cable velocity, end-effector pose, and end-effector twist
  */
 class CableVelocityFactor
     : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
@@ -35,54 +35,51 @@ class CableVelocityFactor
   using This = CableVelocityFactor;
   using Base = gtsam::NoiseModelFactor3<double, Pose3, Vector6>;
 
-  Point3 wPb_, eePem_;
+  Point3 wPa_, xPb_;
 
  public:
   /** Cable factor
    * @param ldot_key -- key for cable speed
-   * @param wTee -- key for end effector pose
-   * @param Vee -- key for end effector twist
+   * @param wTx -- key for end effector pose
+   * @param Vx -- key for end effector twist
    * @param cost_model -- noise model (1 dimensional)
-   * @param wPb -- cable mounting location on the fixed frame, in world coords
-   * @param eePem -- cable mounting location on the end effector, in the
-   * end-effector frame (wPem = wTee * eePem)
+   * @param wPa -- cable mounting location on the fixed frame, in world coords
+   * @param xPb -- cable mounting location on the end effector, in the
+   * end-effector frame (wPb = wTx * xPb)
    */
-  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key,
-                      gtsam::Key Vee_key,
+  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTx_key,
+                      gtsam::Key Vx_key,
                       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                      const Point3 &wPb, const Point3 &eePem)
-      : Base(cost_model, ldot_key, wTee_key, Vee_key),
-        wPb_(wPb),
-        eePem_(eePem) {}
+                      const Point3 &wPa, const Point3 &xPb)
+      : Base(cost_model, ldot_key, wTx_key, Vx_key), wPa_(wPa), xPb_(xPb) {}
   virtual ~CableVelocityFactor() {}
 
  private:
   /** Computes the cable speed that will result from some twist
-   * @param wTee the pose of the end effector
-   * @param Vee the twist of the end effector in the end effector's frame
+   * @param wTx the pose of the end effector
+   * @param Vx the twist of the end effector in the end effector's frame
    * @return Vector6: calculated wrench
    */
-  double computeLdot(
-      const Pose3 &wTee, const Vector6 &Vee,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
-      boost::optional<gtsam::Matrix &> H_Vee = boost::none) const;
+  double computeLdot(const Pose3 &wTx, const Vector6 &Vx,
+                     boost::optional<gtsam::Matrix &> H_wTx = boost::none,
+                     boost::optional<gtsam::Matrix &> H_Vx = boost::none) const;
 
  public:
   /** Cable factor
    * @param ldot -- cable speed (ldot)
-   * @param wTee -- end effector pose
-   * @param Vee -- end effector twist
+   * @param wTx -- end effector pose
+   * @param Vx -- end effector twist
    * @return given ldot minus expected/calculated cable speed
    */
   gtsam::Vector evaluateError(
-      const double &ldot, const Pose3 &wTee, const Vector6 &Vee,
+      const double &ldot, const Pose3 &wTx, const Vector6 &Vx,
       boost::optional<gtsam::Matrix &> H_ldot = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
-      boost::optional<gtsam::Matrix &> H_Vee = boost::none) const override {
-    double expected_ldot = computeLdot(wTee, Vee, H_wTee, H_Vee);
+      boost::optional<gtsam::Matrix &> H_wTx = boost::none,
+      boost::optional<gtsam::Matrix &> H_Vx = boost::none) const override {
+    double expected_ldot = computeLdot(wTx, Vx, H_wTx, H_Vx);
     if (H_ldot) *H_ldot = gtsam::I_1x1;
-    if (H_wTee) *H_wTee = -(*H_wTee);
-    if (H_Vee) *H_Vee = -(*H_Vee);
+    if (H_wTx) *H_wTx = -(*H_wTx);
+    if (H_Vx) *H_Vx = -(*H_Vx);
     return gtsam::Vector1(ldot - expected_ldot);
   }
 

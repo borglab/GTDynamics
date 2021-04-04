@@ -35,64 +35,65 @@ class CableTensionFactor
   using This = CableTensionFactor;
   using Base = gtsam::NoiseModelFactor3<double, Pose3, Vector6>;
 
-  Point3 wPb_, eePem_;
+  Point3 wPa_, xPb_;
 
  public:
   /** Cable tension factor
    * @param tension_key -- key for cable tension (scalar)
-   * @param eePose_key -- key for end effector pose
+   * @param xPose_key -- key for end effector pose
    * @param wrench_key -- key for the wrench acting on the end-effector (in the
    end effector's reference frame)
    * @param cost_model -- noise model (6 dimensional)
-   * @param wPb -- cable mounting location on the fixed frame, in world coords
-   * @param eePem -- cable mounting location on the end effector, in the
-   * end-effector frame (wPem = wTee * eePem)
+   * @param wPa -- cable mounting location on the fixed frame, in world coords
+   * @param xPb -- cable mounting location on the end effector, in the
+   * end-effector frame (wPb = wTx * xPb)
    */
-  CableTensionFactor(gtsam::Key tension_key, gtsam::Key eePose_key,
+  CableTensionFactor(gtsam::Key tension_key, gtsam::Key xPose_key,
                      gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     const Point3 &wPb, const Point3 &eePem)
-      : Base(cost_model, tension_key, eePose_key, wrench_key),
-        wPb_(wPb),
-        eePem_(eePem) {}
+                     const Point3 &wPa, const Point3 &xPb)
+      : Base(cost_model, tension_key, xPose_key, wrench_key),
+        wPa_(wPa),
+        xPb_(xPb) {}
   virtual ~CableTensionFactor() {}
 
  private:
-  /** Computes the wrench acting on the end-effector due to some cable tension and at some pose.
+  /** Computes the wrench acting on the end-effector due to some cable tension
+   * and at some pose.
    * @param tension the tension on the cable
-   * @param wTee the pose of the end effector
+   * @param wTx the pose of the end effector
    * @return Vector6: calculated wrench
    */
   Vector6 computeWrench(
-      double tension, const Pose3 &wTee,
+      double tension, const Pose3 &wTx,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const;
+      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const;
 
   // an alternate version of the above function that uses adjoint; will upgrade
   // to this version once I figure out how to get the jacobian from an Adjoint
   // operation
   Vector6 computeWrench2(
-      double tension, const Pose3 &wTee,
+      double tension, const Pose3 &wTx,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const;
+      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const;
 
  public:
   /** Cable wrench factor
    * @param t cable tension
-   * @param wTee end effector pose (in the world frame)
-   * @param Fee wrench acting on the end effector (in the end effector frame)
-   * @return Vector(6): Fee minus calculated wrench
+   * @param wTx end effector pose (in the world frame)
+   * @param Fx wrench acting on the end effector (in the end effector frame)
+   * @return Vector(6): Fx minus calculated wrench
    */
   gtsam::Vector evaluateError(
-      const double &t, const Pose3 &wTee, const Vector6 &Fee,
+      const double &t, const Pose3 &wTx, const Vector6 &Fx,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
-      boost::optional<gtsam::Matrix &> H_Fee = boost::none) const override {
+      boost::optional<gtsam::Matrix &> H_wTx = boost::none,
+      boost::optional<gtsam::Matrix &> H_Fx = boost::none) const override {
     Vector6 error =
-        (Vector6() << Fee - computeWrench(t, wTee, H_t, H_wTee)).finished();
+        (Vector6() << Fx - computeWrench(t, wTx, H_t, H_wTx)).finished();
     if (H_t) *H_t = -(*H_t);
-    if (H_wTee) *H_wTee = -(*H_wTee);
-    if (H_Fee) *H_Fee = gtsam::I_6x6;
+    if (H_wTx) *H_wTx = -(*H_wTx);
+    if (H_Fx) *H_Fx = gtsam::I_6x6;
     return error;
   }
 

@@ -32,39 +32,39 @@ class CableLengthFactor
   using This = CableLengthFactor;
   using Base = gtsam::NoiseModelFactor2<double, Pose3>;
 
-  Point3 wPb_, eePem_;
+  Point3 wPa_, xPb_;
 
  public:
   /** Cable factor
    * @param l_key -- key for cable length
-   * @param wTee -- key for end effector pose
+   * @param wTx -- key for end effector pose
    * @param cost_model -- noise model (1 dimensional)
-   * @param wPb -- cable mounting location on the fixed frame, in world coords
-   * @param eePem -- cable mounting location on the end effector, in the
-   * end-effector frame (wPem = wTee * eePem)
+   * @param wPa -- cable mounting location on the fixed frame, in world coords
+   * @param xPb -- cable mounting location on the end effector, in the
+   * end-effector frame (wPb = wTx * xPb)
    */
-  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
+  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTx_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                    const Point3 &wPb, const Point3 &eePem)
-      : Base(cost_model, l_key, wTee_key), wPb_(wPb), eePem_(eePem) {}
+                    const Point3 &wPa, const Point3 &xPb)
+      : Base(cost_model, l_key, wTx_key), wPa_(wPa), xPb_(xPb) {}
   virtual ~CableLengthFactor() {}
 
  public:
   /** Cable factor
    * @param l -- cable length
-   * @param wTee -- end effector pose
+   * @param wTx -- end effector pose
    * @return cable length given minus length predicted
    */
   gtsam::Vector evaluateError(
-      const double &l, const gtsam::Pose3 &wTee,
+      const double &l, const gtsam::Pose3 &wTx,
       boost::optional<gtsam::Matrix &> H_l = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const override {
-    gtsam::Matrix36 wPem_H_wTee;
-    gtsam::Matrix13 H_wPem;
-    auto wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    double expected_l = gtsam::distance3(wPem, wPb_, H_wTee ? &H_wPem : 0);
+      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const override {
+    gtsam::Matrix36 wPb_H_wTx;
+    gtsam::Matrix13 H_wPb;
+    auto wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
+    double expected_l = gtsam::distance3(wPb, wPa_, H_wTx ? &H_wPb : 0);
     if (H_l) *H_l = gtsam::I_1x1;
-    if (H_wTee) *H_wTee = -H_wPem * wPem_H_wTee;
+    if (H_wTx) *H_wTx = -H_wPb * wPb_H_wTx;
     return gtsam::Vector1(l - expected_l);
   }
 

@@ -31,9 +31,9 @@ class TestCdprPlanar(GtsamTestCase):
         gtd.InsertPose(x0, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
 
-        pDes = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(9)]
-        pDes = pDes[0:1] + pDes
-        controller = CdprController(cdpr, x0=x0, pdes=pDes, dt=0.1)
+        x_des = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(9)]
+        x_des = x_des[0:1] + x_des
+        controller = CdprController(cdpr, x0=x0, pdes=x_des, dt=0.1)
 
         sim = CdprSimulator(cdpr, x0, controller, dt=0.1)
         result = sim.run(N=10)
@@ -41,13 +41,13 @@ class TestCdprPlanar(GtsamTestCase):
 
         if False:
             print()
-            for k, (des, act) in enumerate(zip(pDes, pAct)):
+            for k, (des, act) in enumerate(zip(x_des, pAct)):
                 print(('k: {:d}  --  des: {:.3f}, {:.3f}, {:.3f}  --  act: {:.3f}, {:.3f}, {:.3f}' +
                        '  --  u: {:.3e},   {:.3e},   {:.3e},   {:.3e}').format(
                            k, *des.translation(), *act.translation(),
                            *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
 
-        for k, (des, act) in enumerate(zip(pDes, pAct)):
+        for k, (des, act) in enumerate(zip(x_des, pAct)):
             self.gtsamAssertEquals(des, act)
 
 if __name__ == "__main__":

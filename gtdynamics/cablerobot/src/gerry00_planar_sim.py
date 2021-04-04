@@ -39,17 +39,17 @@ def main():
     cdpr = Cdpr()
     controller = DummyController(N)
     # initial state
-    xInit = gtsam.Values()
-    gtd.InsertPose(xInit, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
-    gtd.InsertTwist(xInit, cdpr.ee_id(), 0, np.zeros(6))
+    x0 = gtsam.Values()
+    gtd.InsertPose(x0, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+    gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
     # run simulation
-    result = cdpr_sim(cdpr, xInit, controller, dt=dt, N=N)
+    result = cdpr_sim(cdpr, x0, controller, dt=dt, N=N)
     poses = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(N)]
 
     plt.figure(1)
     plt.plot([pose.x() for pose in poses], [pose.z() for pose in poses], 'k--')
-    plt.plot([*cdpr.params.frameLocs[:, 0], cdpr.params.frameLocs[0, 0]],
-             [*cdpr.params.frameLocs[:, 2], cdpr.params.frameLocs[0, 2]], 'k-')
+    plt.plot([*cdpr.params.a_locs[:, 0], cdpr.params.a_locs[0, 0]],
+             [*cdpr.params.a_locs[:, 2], cdpr.params.a_locs[0, 2]], 'k-')
     plt.axis('equal')
     plt.show()
 
