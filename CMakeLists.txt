@@ -69,6 +69,7 @@ set(SOURCE_SUBDIRS dynamics universal_robot factors utils)
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   list(APPEND SOURCE_SUBDIRS cablerobot)
+  list(APPEND SOURCE_SUBDIRS cablerobot/factors)
 endif()
 
 # Add this directory as include.
