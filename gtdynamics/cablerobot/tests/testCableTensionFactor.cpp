@@ -39,6 +39,7 @@ TEST(CableTensionFactor, error) {
   CableTensionFactor factor(TorqueKey(jid), PoseKey(lid), WrenchKey(lid, jid),
                             cost_model, frameLoc, eeLoc);
 
+  // simple configuration
   Values values;
   InsertTorque(&values, jid, 1.0);
   InsertPose(&values, lid, Pose3(Rot3(), Point3(1.5, 0, 1.5)));
@@ -48,14 +49,22 @@ TEST(CableTensionFactor, error) {
   Vector6 expected_errors =
       (Vector6() << 0, 1, 0, 1.1 + 1 / sqrt(2), 0, 1.2 + 1 / sqrt(2))
           .finished();
-
   Vector6 actual_errors = factor.evaluateError(
       Torque(values, jid), Pose(values, lid), Wrench(values, lid, jid));
-
-  // jacobians
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-4));
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 
+  // nonzero rotation
+  values.update(PoseKey(lid), Pose3(Rot3::Ry(M_PI_2), Point3(1.5, 0, 1.2)));
+  expected_errors = (Vector6() << 0, 1 + 0.15 * sqrt(2), 0,  //
+                     1.1 - 1 / sqrt(2), 0, 1.2 + 1 / sqrt(2))
+                        .finished();
+  actual_errors = factor.evaluateError(
+      Torque(values, jid), Pose(values, lid), Wrench(values, lid, jid));
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-4));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
+
+  // another jacobian test for good measure
   values.update(PoseKey(lid), Pose3(Rot3::Rz(0.4), Point3(0.2, 0.3, 0.4)));
   values.update(WrenchKey(lid, jid),
                 (Vector6() << 0.12, 0.13, 0.14, 0.18, 0.19, 0.21).finished());

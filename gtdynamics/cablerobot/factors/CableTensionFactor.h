@@ -87,9 +87,9 @@ class CableTensionFactor
     Vector3 wf = -t * dir;
     if (H_t) wf_H_t = -dir;
     if (H_wTee) wf_H_dir = -t * gtsam::I_3x3;
-    Vector3 eef = wTee.rotation().rotate(wf,  //
-                                         H_wTee ? &eef_H_wRee : 0,
-                                         (H_t || H_wTee) ? &eef_H_wf : 0);
+    Vector3 eef = wTee.rotation().unrotate(wf,  //
+                                           H_wTee ? &eef_H_wRee : 0,
+                                           (H_t || H_wTee) ? &eef_H_wf : 0);
     Vector3 eem = gtsam::cross(eePem_, eef,    //
                                boost::none,  //
                                (H_t || H_wTee) ? &eem_H_eef : 0);
