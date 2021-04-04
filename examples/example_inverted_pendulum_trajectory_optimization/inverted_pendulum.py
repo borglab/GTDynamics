@@ -51,14 +51,6 @@ def run(args):
     objectives_model = Isotropic.Sigma(1, 1e-2)  # Objectives.
     control_model = Isotropic.Sigma(1, 1e-1)     # Controls.
 
-    # Specify initial conditions and goal state.
-    theta_i = 0
-    dtheta_i = 0
-    ddtheta_i = 0
-    theta_T = math.pi
-    dtheta_T = 0
-    ddtheta_T = 0
-
     # Create trajectory factor graph.
     gravity = (0, 0, -9.8)
     planar_axis = (1, 0, 0)
@@ -66,43 +58,59 @@ def run(args):
     graph = graph_builder.trajectoryFG(ip, t_steps, dt)
 
     # Add initial conditions to trajectory factor graph.
+    theta_i = 0
+    dtheta_i = 0
     graph.addPriorDouble(jointAngleKey(j1_id, 0), theta_i, dynamics_model)
     graph.addPriorDouble(jointVelKey(j1_id, 0), dtheta_i, dynamics_model)
 
     # Add state and min torque objectives to trajectory factor graph.
+    theta_T = math.pi
+    dtheta_T = 0
+    ddtheta_T = 0
+    graph.addPriorDouble(jointAngleKey(j1_id, t_steps),
+                         theta_T, objectives_model)
     graph.addPriorDouble(jointVelKey(j1_id, t_steps),
                          dtheta_T, objectives_model)
     graph.addPriorDouble(jointAccelKey(j1_id, t_steps),
-                         dtheta_T, objectives_model)
-    apply_theta_objective_all_dt = False
-    graph.addPriorDouble(jointAngleKey(j1_id, t_steps),
-                         theta_T, objectives_model)
-    if apply_theta_objective_all_dt:
+                         ddtheta_T, objectives_model)
+
+    # Apply state costs along the way if asked.
+    if args.state_costs:
         for t in range(t_steps+1):
             graph.addPriorDouble(jointAngleKey(j1_id, t),
                                  theta_T, objectives_model)
 
+    # Do apply control costs at all steps.
     for t in range(t_steps+1):
         graph.add(gtd.MinTorqueFactor(torqueKey(j1_id, t), control_model))
 
     # Initialize solution.
     init_vals = gtd.ZeroValuesTrajectory(ip, t_steps, 0, 0.0, None)
+
+    # Optimize.
     params = gtsam.LevenbergMarquardtParams()
     params.setVerbosityLM("SUMMARY")
     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_vals, params)
     results = optimizer.optimize()
 
-    # TODO(frank): Log the joint angles, velocities, accels, torques, and current goal pose.
+    # Create DataFrame with joint angles, velocities, accels, and torques.
     def time(values, id, t):
         return t*dt
     data = {key: [fn(results, j1_id, t) for t in range(t_steps+1)]
             for (key, fn) in [("t", time), ("theta", gtd.JointAngleDouble), ("dtheta", gtd.JointVelDouble),
                               ("ddtheta", gtd.JointAccelDouble), ("tau", gtd.TorqueDouble)]}
     df = pd.DataFrame(data)
-    df.to_csv("traj.csv", index=False, float_format="%.6f")
+
+    # Save DataFrame to CSV file
+    df.to_csv(args.output, index=False, float_format="%.6f")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run inverted pendulum.')
+    parser.add_argument('-o', '--output', type=str,
+                        default="traj.csv",
+                        help='Output CSV file')
+    parser.add_argument('--state_costs', action='store_true',
+                        help="apply theta objective at all dt")
     args = parser.parse_args()
     run(args)
