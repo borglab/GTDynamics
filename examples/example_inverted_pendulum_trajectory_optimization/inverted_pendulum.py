@@ -38,9 +38,7 @@ def torqueKey(id, t=0):
 
 def run(args):
     # Load the inverted pendulum.
-    PATH = "examples/example_inverted_pendulum_trajectory_optimization"
-    ip = gtd.CreateRobotFromFile(
-        PATH + "/inverted_pendulum.urdf", "inverted_pendulum")
+    ip = gtd.CreateRobotFromFile("inverted_pendulum.urdf", "inverted_pendulum")
     j1_id = ip.joint("j1").id()
     ip.fixLink("l1")
 
