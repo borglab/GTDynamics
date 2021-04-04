@@ -56,6 +56,17 @@ class CableVelocityFactor
         eePem_(eePem) {}
   virtual ~CableVelocityFactor() {}
 
+ private:
+  /** Computes the cable speed that will result from some twist
+   * @param wTee the pose of the end effector
+   * @param Vee the twist of the end effector in the end effector's frame
+   * @return Vector6: calculated wrench
+   */
+  double computeLdot(
+      const Pose3 &wTee, const Vector6 &Vee,
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none,
+      boost::optional<gtsam::Matrix &> H_Vee = boost::none) const;
+
  public:
   /** Cable factor
    * @param ldot -- cable speed (ldot)
@@ -68,42 +79,10 @@ class CableVelocityFactor
       boost::optional<gtsam::Matrix &> H_ldot = boost::none,
       boost::optional<gtsam::Matrix &> H_wTee = boost::none,
       boost::optional<gtsam::Matrix &> H_Vee = boost::none) const override {
-    // Jacobians: cable direction
-    gtsam::Matrix13 H_dir;
-    gtsam::Matrix33 dir_H_wPem;
-    gtsam::Matrix36 wPem_H_wTee;
-    // Jacobians: _E_nd-effector _M_ounting point velocity (in world coords)
-    gtsam::Matrix13 H_wPDOTem;
-    gtsam::Matrix33 wPDOTem_H_wRee;
-    gtsam::Matrix33 wPDOTem_H_eePDOTem;
-    gtsam::Matrix36 eePDOTem_H_Vee;
-    gtsam::Matrix33 cross_H_omega;
-
-    // cable direction
-    Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
-
-    // velocity aka pdot
-    Vector3 eePDOTem = Vee.tail<3>() + gtsam::cross(Vee.head<3>(), eePem_,
-                                                    H_Vee ? &cross_H_omega : 0);
-    if (H_Vee) eePDOTem_H_Vee << cross_H_omega, gtsam::I_3x3;
-    Vector3 wPDOTem = wTee.rotation().rotate(eePDOTem,  //
-                                             H_wTee ? &wPDOTem_H_wRee : 0,
-                                             H_Vee ? &wPDOTem_H_eePDOTem : 0);
-
-    // ldot = (cable direction) dot (velocity aka pdot)
-    double expected_ldot = gtsam::dot(dir, wPDOTem,         //
-                                      H_wTee ? &H_dir : 0,  //
-                                      H_Vee ? &H_wPDOTem : 0);
-
-    // jacobians
+    double expected_ldot = computeLdot(wTee, Vee, H_wTee, H_Vee);
     if (H_ldot) *H_ldot = gtsam::I_1x1;
-    if (H_wTee) {
-      *H_wTee = -H_dir * dir_H_wPem * wPem_H_wTee;  //
-      H_wTee->leftCols<3>() -= H_wPDOTem * wPDOTem_H_wRee;
-    }
-    if (H_Vee) *H_Vee = -H_wPDOTem * wPDOTem_H_eePDOTem * eePDOTem_H_Vee;
-
+    if (H_wTee) *H_wTee = -(*H_wTee);
+    if (H_Vee) *H_Vee = -(*H_Vee);
     return gtsam::Vector1(ldot - expected_ldot);
   }
 
