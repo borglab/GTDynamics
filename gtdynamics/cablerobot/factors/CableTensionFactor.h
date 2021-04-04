@@ -58,11 +58,19 @@ class CableTensionFactor
   virtual ~CableTensionFactor() {}
 
  private:
+  /** Computes the wrench acting on the end-effector due to some cable tension and at some pose.
+   * @param tension the tension on the cable
+   * @param wTee the pose of the end effector
+   * @return Vector6: calculated wrench
+   */
   Vector6 computeWrench(
       double tension, const Pose3 &wTee,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
       boost::optional<gtsam::Matrix &> H_wTee = boost::none) const;
 
+  // an alternate version of the above function that uses adjoint; will upgrade
+  // to this version once I figure out how to get the jacobian from an Adjoint
+  // operation
   Vector6 computeWrench2(
       double tension, const Pose3 &wTee,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
@@ -73,7 +81,7 @@ class CableTensionFactor
    * @param t cable tension
    * @param wTee end effector pose (in the world frame)
    * @param Fee wrench acting on the end effector (in the end effector frame)
-   * @return Vector(6): calculated wrench minus Fee
+   * @return Vector(6): Fee minus calculated wrench
    */
   gtsam::Vector evaluateError(
       const double &t, const Pose3 &wTee, const Vector6 &Fee,

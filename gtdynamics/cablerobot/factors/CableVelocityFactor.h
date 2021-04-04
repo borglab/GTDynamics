@@ -61,7 +61,7 @@ class CableVelocityFactor
    * @param ldot -- cable speed (ldot)
    * @param wTee -- end effector pose
    * @param Vee -- end effector twist
-   * @return expected/calculated cable speed minus given ldot
+   * @return given ldot minus expected/calculated cable speed
    */
   gtsam::Vector evaluateError(
       const double &ldot, const Pose3 &wTee, const Vector6 &Vee,

@@ -53,7 +53,7 @@ class CableLengthFactor
   /** Cable factor
    * @param l -- cable length
    * @param wTee -- end effector pose
-   * @return length predicted minus cable length given
+   * @return cable length given minus length predicted
    */
   gtsam::Vector evaluateError(
       const double &l, const gtsam::Pose3 &wTee,
