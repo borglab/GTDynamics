@@ -60,8 +60,6 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   Values values;
   int t = 777;
   auto j = robot.joint("j1")->id();
-  InsertJointAngle(&values, j, t, 0.0);
-  InsertJointVel(&values, j, t, 0.0);
   InsertPose(&values, l1->id(), t, l1->wTcom());
   InsertTwist(&values, l1->id(), t, gtsam::Z_6x1);
 
@@ -484,7 +482,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Load the robot from urdf file
-  Robot biped = CreateRobotFromFile(std::string(URDF_PATH) + "/biped.urdf");
+  Robot biped = CreateRobotFromFile(URDF_PATH + "/biped.urdf");
 
   // Add some contact points.
   ContactPoints contact_points;
@@ -565,7 +563,7 @@ TEST(jointlimitFactors, simple_urdf) {
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
   Robot robot = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rrr.sdf", "simple_rrr_sdf");
+      SDF_PATH + "/test/simple_rrr.sdf", "simple_rrr_sdf");
 
   // Add some contact points.
   ContactPoints contact_points;

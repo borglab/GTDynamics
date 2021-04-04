@@ -94,6 +94,12 @@ To compile and install the GTDynamics python library:
     make && make python-install
     ```
 
+3. To run the Python tests, you can simply run:
+
+    ```sh
+    make python-test
+    ```
+
 ## Citing This Work
 
 Please cite the following paper if you use this code as part of any published research:

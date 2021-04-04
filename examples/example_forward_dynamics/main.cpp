@@ -12,11 +12,11 @@ int main(int argc, char** argv) {
   auto simple_rr = CreateRobotFromFile("../simple_rr.sdf", "simple_rr_sdf");
   simple_rr.print();
 
-  auto graph_builder = DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  auto graph_builder = DynamicsGraph(gravity);
   auto kdfg = graph_builder.dynamicsFactorGraph(simple_rr,
-                                                0,  // timestep
-                                                gravity);
+                                                0  // timestep
+                                                );
 
   // Specify the forward dynamics priors and add them to the factor graph.
   gtsam::Values known_values;
