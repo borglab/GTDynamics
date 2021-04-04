@@ -57,6 +57,17 @@ class CableTensionFactor
         eePem_(eePem) {}
   virtual ~CableTensionFactor() {}
 
+ private:
+  Vector6 computeWrench(
+      double tension, const Pose3 &wTee,
+      boost::optional<gtsam::Matrix &> H_t = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const;
+
+  Vector6 computeWrench2(
+      double tension, const Pose3 &wTee,
+      boost::optional<gtsam::Matrix &> H_t = boost::none,
+      boost::optional<gtsam::Matrix &> H_wTee = boost::none) const;
+
  public:
   /** Cable wrench factor
    * @param t cable tension
@@ -69,43 +80,11 @@ class CableTensionFactor
       boost::optional<gtsam::Matrix &> H_t = boost::none,
       boost::optional<gtsam::Matrix &> H_wTee = boost::none,
       boost::optional<gtsam::Matrix &> H_Fee = boost::none) const override {
-    // Jacobians: cable direction
-    gtsam::Matrix33 dir_H_wPem;
-    gtsam::Matrix36 wPem_H_wTee;
-    // Jacobians: force to wrench conversion
-    gtsam::Matrix31 wf_H_t;
-    gtsam::Matrix33 wf_H_dir;
-    gtsam::Matrix33 eef_H_wf;
-    gtsam::Matrix33 eef_H_wRee;
-    gtsam::Matrix63 H_eef;
-    gtsam::Matrix33 eem_H_eef;  // = H_eef.topRows<3>(); TODO(gerry): pointer?
-
-    // cable direction
-    Point3 wPem = wTee.transformFrom(eePem_, H_wTee ? &wPem_H_wTee : 0);
-    Vector3 dir = gtsam::normalize(wPem - wPb_, H_wTee ? &dir_H_wPem : 0);
-    // force->wrench
-    Vector3 wf = -t * dir;
-    if (H_t) wf_H_t = -dir;
-    if (H_wTee) wf_H_dir = -t * gtsam::I_3x3;
-    Vector3 eef = wTee.rotation().unrotate(wf,  //
-                                           H_wTee ? &eef_H_wRee : 0,
-                                           (H_t || H_wTee) ? &eef_H_wf : 0);
-    Vector3 eem = gtsam::cross(eePem_, eef,    //
-                               boost::none,  //
-                               (H_t || H_wTee) ? &eem_H_eef : 0);
-    Vector6 F_expected = (Vector6() << eem, eef).finished();
-    if (H_t || H_wTee) H_eef << eem_H_eef, gtsam::I_3x3;
-
-    // error
-    Vector6 error = (Vector6() << Fee - F_expected).finished();
-
-    if (H_t) *H_t = -H_eef * eef_H_wf * wf_H_t;
-    if (H_wTee) {
-      *(H_wTee) = -H_eef * eef_H_wf * wf_H_dir * dir_H_wPem * wPem_H_wTee;
-      H_wTee->leftCols<3>() -= H_eef * eef_H_wRee;
-    }
+    Vector6 error =
+        (Vector6() << Fee - computeWrench(t, wTee, H_t, H_wTee)).finished();
+    if (H_t) *H_t = -(*H_t);
+    if (H_wTee) *H_wTee = -(*H_wTee);
     if (H_Fee) *H_Fee = gtsam::I_6x6;
-
     return error;
   }
 
