@@ -16,7 +16,7 @@ class PoseFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/TwistFactor.h>
-class TwistFactor {
+class TwistFactor : gtsam::NonlinearFactor {
   TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
               gtsam::Key qVel_key,
               const gtsam::noiseModel::Base* cost_model,
@@ -27,7 +27,7 @@ class TwistFactor {
 };
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
-class TwistAccelFactor {
+class TwistAccelFactor : gtsam::NonlinearFactor {
   TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
               gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
               const gtsam::noiseModel::Base* cost_model,
@@ -38,7 +38,7 @@ class TwistAccelFactor {
 };
 
 #include <gtdynamics/factors/TorqueFactor.h>
-class TorqueFactor {
+class TorqueFactor : gtsam::NonlinearFactor {
   TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
                const gtsam::noiseModel::Base *cost_model,
                const gtdynamics::JointTyped *joint);
@@ -46,53 +46,18 @@ class TorqueFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
-#include <gtdynamics/factors/WrenchFactors.h>
-class WrenchFactor0 {
-  WrenchFactor0(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor1 {
-  WrenchFactor1(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key pose_key,
+#include <gtdynamics/factors/WrenchFactor.h>
+class WrenchFactor : gtsam::NonlinearFactor {
+  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
+                const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
+                gtsam::Key pose_key,
                 const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor2 {
-  WrenchFactor2(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor3 {
-  WrenchFactor3(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key pose_key,
-                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-class WrenchFactor4 {
-  WrenchFactor4(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                gtsam::Key wrench_key_3, gtsam::Key wrench_key_4,
-                gtsam::Key pose_key, const gtsam::noiseModel::Base *cost_model,
-                const Matrix inertia,
                 const boost::optional<gtsam::Vector3> &gravity);
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-class WrenchEquivalenceFactor {
+class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base *cost_model,
@@ -101,7 +66,7 @@ class WrenchEquivalenceFactor {
 };
 
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
-class WrenchPlanarFactor {
+class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base *cost_model,
                      Vector planar_axis);
@@ -109,26 +74,26 @@ class WrenchPlanarFactor {
 };
 
 #include <gtdynamics/factors/CollocationFactors.h>
-class EulerPoseColloFactor{
+class EulerPoseColloFactor : gtsam::NonlinearFactor {
   EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                        gtsam::Key twist_key, gtsam::Key dt_key,
                        const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalPoseColloFactor{
+class TrapezoidalPoseColloFactor : gtsam::NonlinearFactor {
   TrapezoidalPoseColloFactor(
       gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
       gtsam::Key twist_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base *cost_model);
 };
 
-class EulerTwistColloFactor{
+class EulerTwistColloFactor : gtsam::NonlinearFactor {
   EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                         gtsam::Key accel_key, gtsam::Key dt_key,
                         const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalTwistColloFactor{
+class TrapezoidalTwistColloFactor : gtsam::NonlinearFactor {
   TrapezoidalTwistColloFactor(
       gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
       gtsam::Key accel_t1_key, gtsam::Key dt_key,
@@ -213,6 +178,7 @@ class Link  {
     double mass() const;
     const gtsam::Pose3 &centerOfMass();
     const Matrix &inertia();
+    gtsam::Matrix6 inertiaMatrix();
 };
 
 /********************** joint **********************/
@@ -314,8 +280,10 @@ class Robot {
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
-gtdynamics::Robot CreateRobotFromFile(const string file_path, 
-                                    string model_name);
+// This version is only for URDF files.
+gtdynamics::Robot CreateRobotFromFile(const string& urdf_file_path);
+gtdynamics::Robot CreateRobotFromFile(const string& file_path, 
+                                    const string& model_name);
 
 
 /********************** dynamics graph **********************/
@@ -649,7 +617,7 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
 
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
 
-
+/********************** Simulator **********************/
 #include <gtdynamics/dynamics/Simulator.h>
 
 class Simulator {
@@ -669,5 +637,41 @@ class Simulator {
   const gtsam::Values &getValues() const;
 };
 
-}
+/****************************************** Cable Robot ******************************************/
 
+#include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
+class CableLengthFactor : gtsam::NonlinearFactor {
+  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
+                    const gtsam::noiseModel::Base *cost_model,
+                    const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
+class CableVelocityFactor : gtsam::NonlinearFactor {
+  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
+                      const gtsam::noiseModel::Base* cost_model,
+                      const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+#include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
+class CableTensionFactor : gtsam::NonlinearFactor {
+  CableTensionFactor(gtsam::Key tension_key, gtsam::Key eePose_key, gtsam::Key wrench_key,
+                 const gtsam::noiseModel::Base* cost_model,
+                 const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+// need to borrow this from GTSAM since GTSAM doesn't have fixed-size vector versions
+#include <gtdynamics/cablerobot/factors/PriorFactor.h>
+template<T = {double, gtsam::Vector2, gtsam::Vector3, gtsam::Vector4, gtsam::Vector5, gtsam::Vector6}>
+class PriorFactor : gtsam::NonlinearFactor {
+  PriorFactor(size_t key, const T& prior, const gtsam::noiseModel::Base* noiseModel);
+  T prior() const;
+
+  void print(const string &s,
+             const gtsam::KeyFormatter &keyFormatter);
+};
+
+}  // namespace gtdynamics

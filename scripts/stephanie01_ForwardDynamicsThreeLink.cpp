@@ -34,12 +34,6 @@ int main(int argc, char **argv) {
 
   // Add forward dynamics priors to factor graph.
   gtsam::Values values;
-  InsertJointAngle(&values, 1, 0.0);
-  InsertJointVel(&values, 1, 0.0);
-  InsertTorque(&values, 1, 0.0);
-  InsertJointAngle(&values, 2, 0.0);
-  InsertJointVel(&values, 2, 0.0);
-  InsertTorque(&values, 2, 0.0);
 
   auto priorFactors = graph_builder.forwardDynamicsPriors(robot, 0, values);
   graph.add(priorFactors);

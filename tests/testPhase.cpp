@@ -22,7 +22,7 @@ using namespace gtdynamics;
 TEST(Phase, error) 
 {
     Robot robot_configuration =
-        CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+        CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
     size_t num_time_steps = 20;
     auto phase = gtdynamics::Phase(robot_configuration, num_time_steps);
     double contact_height = 5;

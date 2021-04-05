@@ -48,7 +48,7 @@ if(NOT (${Boost_VERSION} LESS 105600))
                   -DBOOST_OPTIONAL_CONFIG_ALLOW_BINDING_TO_RVALUES)
 endif()
 
-# For cython wrapper.
+# For Python wrapper.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
@@ -57,53 +57,9 @@ find_package(sdformat8 REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
 
-# Paths to SDF & URDF files.
-add_definitions(-DURDF_PATH="${PROJECT_SOURCE_DIR}/urdfs")
-add_definitions(-DSDF_PATH="${PROJECT_SOURCE_DIR}/sdfs")
-
-# All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS dynamics universal_robot factors utils)
-
-# Add this directory as include.
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-# Include sdformat directories.
-include_directories(${SDFormat_INCLUDE_DIRS})
-link_directories(${SDFormat_LIBRARY_DIRS})
-
-# Glob all source/header files in SOURCE_SUBDIRS.
-file(GLOB sources "*.cpp")
-file(GLOB headers "*.h")
-
-foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
-  file(GLOB GLOB_RESULT
-       ${CMAKE_CURRENT_SOURCE_DIR}/gtdynamics/${SOURCE_SUBDIR}/*.cpp)
-  list(APPEND sources ${GLOB_RESULT})
-  file(GLOB GLOB_RESULT
-       ${CMAKE_CURRENT_SOURCE_DIR}/gtdynamics/${SOURCE_SUBDIR}/*.h)
-  list(APPEND headers ${GLOB_RESULT})
-  install(FILES ${GLOB_RESULT} DESTINATION include/gtdynamics/${SOURCE_SUBDIR})
-  add_subdirectory(gtdynamics/${SOURCE_SUBDIR}) # Process subdirectory.
-endforeach()
-
-add_library(gtdynamics SHARED ${sources} ${headers})
-
-target_link_libraries(gtdynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
-target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
-
-foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
-  target_include_directories(
-    gtdynamics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR})
-endforeach()
-
-# Install library and headers.
-install(
-  TARGETS gtdynamics
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin)
-set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
+add_subdirectory(gtdynamics)
 
 option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")
@@ -119,3 +75,18 @@ option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" OFF)
 if(GTDYNAMICS_BUILD_SCRIPTS)
   add_subdirectory(scripts)
 endif()
+
+message(STATUS "===============================================================")
+message(STATUS "================  Configuration Options  ======================")
+message(STATUS "Project                                     : ${PROJECT_NAME}")
+message(STATUS "CMAKE_CXX_COMPILER_ID type                  : ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "CMAKE_CXX_COMPILER_VERSION                  : ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "GTSAM Version                               : ${GTSAM_VERSION}")
+message(STATUS "Boost Version                               : ${Boost_VERSION}")
+message(STATUS "Sdformat Version                            : ${sdformat8_VERSION}")
+message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD_PYTHON}")
+if(GTDYNAMICS_BUILD_PYTHON)
+  message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
+endif()
+message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
+message(STATUS "===============================================================")

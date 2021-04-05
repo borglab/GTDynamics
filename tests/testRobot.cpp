@@ -33,7 +33,7 @@ using gtsam::Vector6;
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
   Robot four_bar =
-      CreateRobotFromFile(std::string(SDF_PATH) + "/test/four_bar_linkage.sdf");
+      CreateRobotFromFile(SDF_PATH + "/test/four_bar_linkage.sdf");
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -56,7 +56,7 @@ TEST(Robot, four_bar_sdf) {
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
   Robot simple_rr = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -74,7 +74,7 @@ TEST(Robot, simple_rr_sdf) {
 
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
-  Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) +
+  Robot four_bar = CreateRobotFromFile(SDF_PATH +
                                        "/test/four_bar_linkage_pure.sdf");
   four_bar.removeLink(four_bar.link("l2"));
   EXPECT(four_bar.numLinks() == 3);
@@ -85,11 +85,9 @@ TEST(Robot, removeLink) {
 
 TEST(Robot, forwardKinematics) {
   Robot robot =
-      CreateRobotFromFile(std::string(URDF_PATH) + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
 
   Values values;
-  InsertJointAngle(&values, 0, 0.0);
-  InsertJointVel(&values, 0, 0.0);
 
   // not fixing a link would cause an exception
   THROWS_EXCEPTION(robot.forwardKinematics(values));
@@ -148,15 +146,9 @@ TEST(Robot, forwardKinematics) {
 
 TEST(Robot, forwardKinematics_rpr) {
   Robot robot = CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      SDF_PATH + "/test/simple_rpr.sdf", "simple_rpr_sdf");
 
   Values values;
-  InsertJointAngle(&values, 1, 0.0);
-  InsertJointVel(&values, 1, 0.0);
-  InsertJointAngle(&values, 2, 0.0);
-  InsertJointVel(&values, 2, 0.0);
-  InsertJointAngle(&values, 3, 0.0);
-  InsertJointVel(&values, 3, 0.0);
 
   // test fk at rest
   robot.link("link_0")->fix();
@@ -184,11 +176,8 @@ TEST(Robot, forwardKinematics_rpr) {
   // test fk with moving prismatic joint and fixed base
   Values values2;
   InsertJointAngle(&values2, 1, M_PI_2);
-  InsertJointVel(&values2, 1, 0.0);
   InsertJointAngle(&values2, 2, 0.5);
   InsertJointVel(&values2, 2, 1.0);
-  InsertJointAngle(&values2, 3, 0.0);
-  InsertJointVel(&values2, 3, 0.0);
 
   fk_results = robot.forwardKinematics(values2);
 
@@ -213,15 +202,11 @@ TEST(Robot, forwardKinematics_rpr) {
 
 // test fk for a four bar linkage (loopy)
 TEST(forwardKinematics, four_bar) {
-  Robot four_bar = CreateRobotFromFile(std::string(SDF_PATH) +
+  Robot four_bar = CreateRobotFromFile(SDF_PATH +
                                        "/test/four_bar_linkage_pure.sdf");
   four_bar.link("l1")->fix();
 
   Values values;
-  for (auto &&joint : four_bar.joints()) {
-    InsertJointAngle(&values, joint->id(), 0.0);
-    InsertJointVel(&values, joint->id(), 0.0);
-  }
   Values fk_results = four_bar.forwardKinematics(values);
 
   Vector6 V_4;
@@ -233,12 +218,12 @@ TEST(forwardKinematics, four_bar) {
 
   // incorrect specficiation of joint angles.
   Values wrong_angles = values;
-  wrong_angles.update<double>(internal::JointAngleKey(0), 1.0);
+  InsertJointAngle(&wrong_angles, 0, 1.0);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles));
 
   // incorrect specficiation of joint velocites.
   Values wrong_vels = values;
-  wrong_vels.update<double>(internal::JointVelKey(0), 1.0);
+  InsertJointVel(&wrong_vels, 0, 1.0);
   THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_vels));
 }
 
