@@ -212,4 +212,19 @@ gtsam::Values ZeroValuesTrajectory(
     double gaussian_noise = 0.0,
     const boost::optional<ContactPoints>& contact_points = boost::none);
 
+/**
+ * @fn Add initial or terminal conditions or objectives as priors in graph
+ *      for multiple keys and state terms at the same time.
+ * @param[in] graph          A gtsam::NonlinearFactorGraph object.
+ * @param[in] pose_keys      A joint angle, velocity or acceleration
+ *      gtsam::key.
+ * @param[in] state_indices  Indices for desired term(s) of state vector.
+ * @param[in] model Dynamics or objectives model.
+ * @return a gtsam::NonlinearFactorGraph object with added conditions as priors.
+ */
+gtsam::NonlinearFactorGraph FactorGraphConditions(
+    gtsam::NonlinearFactorGraph graph, const std::vector<gtsam::Key>& pose_keys,
+    const std::vector<double>& state_indices,
+    const boost::shared_ptr<gtsam::noiseModel::Base>& model);
+
 }  // namespace gtdynamics

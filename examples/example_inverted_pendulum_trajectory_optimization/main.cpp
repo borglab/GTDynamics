@@ -57,14 +57,15 @@ int main(int argc, char** argv) {
       ip, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
 
   // Add initial conditions to trajectory factor graph.
-  graph.addPrior(internal::JointAngleKey(j1_id, 0), theta_i, dynamics_model);
-  graph.addPrior(internal::JointVelKey(j1_id, 0), dtheta_i, dynamics_model);
+  graph = FactorGraphConditions(
+        graph, std::vector<gtsam::Key> {internal::JointAngleKey(j1_id, 0), internal::JointVelKey(j1_id, 0)},
+        std::vector<double> {theta_i, dtheta_i}, dynamics_model);
 
   // Add state and min torque objectives to trajectory factor graph.
-  graph.addPrior(internal::JointVelKey(j1_id, t_steps), dtheta_T, objectives_model);
-  graph.addPrior(internal::JointAccelKey(j1_id, t_steps), dtheta_T, objectives_model);
+  graph = FactorGraphConditions(
+        graph, std::vector<gtsam::Key> {internal::JointVelKey(j1_id, t_steps), internal::JointAccelKey(j1_id, t_steps), internal::JointAngleKey(j1_id, t_steps)},
+        std::vector<double> {dtheta_T, dtheta_T, theta_T}, objectives_model);
   bool apply_theta_objective_all_dt = false;
-  graph.addPrior(internal::JointAngleKey(j1_id, t_steps), theta_T, objectives_model);
   if (apply_theta_objective_all_dt) {
     for (int t = 0; t < t_steps; t++)
       graph.addPrior(internal::JointAngleKey(j1_id, t), theta_T, objectives_model);

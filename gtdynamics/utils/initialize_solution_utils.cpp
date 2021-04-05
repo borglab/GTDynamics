@@ -36,6 +36,7 @@ using gtsam::Point3;
 using gtsam::Rot3;
 using gtsam::Sampler;
 using gtsam::Values;
+using gtsam::Key;
 
 namespace gtdynamics {
 
@@ -405,6 +406,18 @@ Values ZeroValuesTrajectory(
       z_values.insert(PhaseKey(phase), 0.0);
   }
   return z_values;
+}
+
+gtsam::NonlinearFactorGraph FactorGraphConditions(
+    gtsam::NonlinearFactorGraph graph, const std::vector<gtsam::Key>& pose_keys,
+    const std::vector<double>& state_indices, const boost::shared_ptr<gtsam::noiseModel::Base>& model) {
+  // Iterat through state terms.
+  for (int i = 0; i < state_indices.size(); i++) {
+    double stateNdx = state_indices[i];
+    // Add prior for the corresponding key and state term.
+    graph.addPrior(pose_keys[i], stateNdx, model);
+  }
+  return graph;
 }
 
 }  // namespace gtdynamics

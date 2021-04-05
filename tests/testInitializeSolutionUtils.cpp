@@ -30,6 +30,7 @@ using gtsam::assert_equal;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
+using gtsam::Vector3;
 
 double kNoiseSigma = 1e-8;
 
@@ -320,6 +321,46 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
     Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
   }
+}
+
+TEST(InitializeSolutionUtils, FactorGraphConditions) {
+
+// Create trajectory factor graph.
+  auto robot =
+      CreateRobotFromFile(std::string(URDF_PATH) + "/test/cart_pole.urdf");
+  Vector3 gravity(0, 0, -9.8);
+  int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
+  robot.fixLink("l0");
+  double T = 2, dt = 1. / 10;
+  int t_steps = static_cast<int>(std::ceil(T / dt)); 
+
+  auto graph_builder = DynamicsGraph(gravity);
+  auto graph = graph_builder.trajectoryFG(
+      robot, t_steps, dt , DynamicsGraph::CollocationScheme::Trapezoidal);
+  
+  auto dynamics_model = gtsam::noiseModel::Isotropic::Sigma(1, 1e-7);
+  auto pos_objectives_model = gtsam::noiseModel::Isotropic::Sigma(1, 1e-5);  
+
+  gtsam::Vector6 X_i = gtsam::Vector6::Constant(6, 0),
+                 X_T = (gtsam::Vector(6) << 1, 0, 0, M_PI, 0, 0).finished();
+
+
+  auto graph_actual = gtdynamics::FactorGraphConditions(
+      graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id,0), internal::JointAngleKey(j1_id,0), internal::JointVelKey(j0_id, 0), internal::JointVelKey(j1_id, 0)},
+      std::vector<double> {X_i[0], X_i[3], X_i[1], X_i[4]}, dynamics_model);
+
+  graph.addPrior(internal::JointAngleKey(j0_id,0), X_i[0], dynamics_model);
+  graph.addPrior(internal::JointAngleKey(j1_id,0), X_i[3], dynamics_model);
+  graph.addPrior(internal::JointVelKey(j0_id,0), X_i[1], dynamics_model);
+  graph.addPrior(internal::JointVelKey(j1_id,0), X_i[4], dynamics_model);
+  EXPECT(assert_equal(graph, graph_actual));
+
+  for (int t = 0; t <= t_steps; t++) {
+    graph_actual = FactorGraphConditions(graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t), internal::JointAngleKey(j1_id, t)}, std::vector<double> {X_T[0], X_T[3]}, pos_objectives_model);
+    graph.addPrior(internal::JointAngleKey(j0_id, t), X_T[0], pos_objectives_model);
+    graph.addPrior(internal::JointAngleKey(j1_id, t), X_T[3], pos_objectives_model);
+  }
+  EXPECT(assert_equal(graph, graph_actual));
 }
 
 int main() {
