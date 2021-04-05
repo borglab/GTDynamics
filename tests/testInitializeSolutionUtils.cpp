@@ -346,7 +346,9 @@ TEST(InitializeSolutionUtils, FactorGraphConditions) {
 
 
   auto graph_actual = gtdynamics::FactorGraphConditions(
-      graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id,0), internal::JointAngleKey(j1_id,0), internal::JointVelKey(j0_id, 0), internal::JointVelKey(j1_id, 0)},
+      graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id,0),
+      internal::JointAngleKey(j1_id,0), internal::JointVelKey(j0_id, 0),
+      internal::JointVelKey(j1_id, 0)},
       std::vector<double> {X_i[0], X_i[3], X_i[1], X_i[4]}, dynamics_model);
 
   graph.addPrior(internal::JointAngleKey(j0_id,0), X_i[0], dynamics_model);
@@ -356,7 +358,10 @@ TEST(InitializeSolutionUtils, FactorGraphConditions) {
   EXPECT(assert_equal(graph, graph_actual));
 
   for (int t = 0; t <= t_steps; t++) {
-    graph_actual = FactorGraphConditions(graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t), internal::JointAngleKey(j1_id, t)}, std::vector<double> {X_T[0], X_T[3]}, pos_objectives_model);
+    graph_actual = FactorGraphConditions(
+        graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t),
+        internal::JointAngleKey(j1_id, t)}, std::vector<double> {X_T[0], X_T[3]},
+        pos_objectives_model);
     graph.addPrior(internal::JointAngleKey(j0_id, t), X_T[0], pos_objectives_model);
     graph.addPrior(internal::JointAngleKey(j1_id, t), X_T[3], pos_objectives_model);
   }

@@ -163,12 +163,14 @@ int main(int argc, char** argv) {
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors = FactorGraphConditions(
-      objective_factors, std::vector<gtsam::Key> {internal::JointAngleKey(joint->id(), 0), internal::JointVelKey(joint->id(), 0), internal::JointAccelKey(joint->id(), 0)},
+      objective_factors, std::vector<gtsam::Key> {internal::JointAngleKey(joint->id(), 0),
+      internal::JointVelKey(joint->id(), 0), internal::JointAccelKey(joint->id(), 0)},
       std::vector<double> {0.0, 0.0, 0.0}, gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
 
    objective_factors = FactorGraphConditions(
-      objective_factors, std::vector<gtsam::Key> {internal::JointVelKey(joint->id(), t_steps), internal::JointAccelKey(joint->id(), t_steps)},
-      std::vector<double> {0.0, 0.0}, gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
+      objective_factors, std::vector<gtsam::Key> {internal::JointVelKey(joint->id(), t_steps),
+      internal::JointAccelKey(joint->id(), t_steps)}, std::vector<double> {0.0, 0.0},
+      gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
   }
 
   // Add min torque objectives.

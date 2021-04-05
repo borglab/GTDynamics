@@ -66,15 +66,17 @@ int main(int argc, char** argv) {
 
   // Add initial conditions to trajectory factor graph.
   graph = FactorGraphConditions(
-      graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id,0), internal::JointAngleKey(j1_id,0),
-      internal::JointVelKey(j0_id, 0), internal::JointVelKey(j1_id, 0)},
-      std::vector<double> {X_i[0], X_i[3], X_i[1], X_i[4]}, dynamics_model);
+      graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id,0),
+      internal::JointAngleKey(j1_id,0), internal::JointVelKey(j0_id, 0),
+      internal::JointVelKey(j1_id, 0)}, std::vector<double> {X_i[0], X_i[3], X_i[1],
+      X_i[4]}, dynamics_model);
 
   // Add terminal conditions to the factor graph.
   graph = FactorGraphConditions(
       graph, std::vector<gtsam::Key> {internal::JointVelKey(j0_id, t_steps),
-      internal::JointVelKey(j1_id, t_steps), internal::JointAccelKey(j0_id, t_steps), internal::JointAccelKey(j1_id, t_steps)},
-      std::vector<double> {X_T[1], X_T[4], X_T[2], X_T[5]}, objectives_model);
+      internal::JointVelKey(j1_id, t_steps), internal::JointAccelKey(j0_id, t_steps),
+      internal::JointAccelKey(j1_id, t_steps)}, std::vector<double> {X_T[1], X_T[4],
+      X_T[2], X_T[5]}, objectives_model);
 
   // Insert position objective (x, theta) factor at every timestep or only at
   // the terminal state. Adding the position objective at every timestep will
@@ -83,11 +85,15 @@ int main(int argc, char** argv) {
   bool apply_pos_objective_all_dt = false;
   if (apply_pos_objective_all_dt) {
     for (int t = 0; t <= t_steps; t++) 
-      graph = FactorGraphConditions(graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t),
-          internal::JointAngleKey(j1_id, t)}, std::vector<double> {X_T[0], X_T[3]}, pos_objectives_model);
+      graph = FactorGraphConditions(
+          graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t),
+          internal::JointAngleKey(j1_id, t)}, std::vector<double> {X_T[0], X_T[3]},
+          pos_objectives_model);
   } else {
       graph = FactorGraphConditions(
-          graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t_steps), internal::JointAngleKey(j1_id, t_steps)}, std::vector<double> {X_T[0], X_T[3]}, pos_objectives_model);
+          graph, std::vector<gtsam::Key> {internal::JointAngleKey(j0_id, t_steps),
+          internal::JointAngleKey(j1_id, t_steps)}, std::vector<double> {X_T[0], X_T[3]},
+          pos_objectives_model);
   }
   for (int t = 0; t <= t_steps; t++)
     graph.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j0_id, t), control_model);

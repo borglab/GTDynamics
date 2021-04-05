@@ -58,12 +58,14 @@ int main(int argc, char** argv) {
 
   // Add initial conditions to trajectory factor graph.
   graph = FactorGraphConditions(
-        graph, std::vector<gtsam::Key> {internal::JointAngleKey(j1_id, 0), internal::JointVelKey(j1_id, 0)},
+        graph, std::vector<gtsam::Key> {internal::JointAngleKey(j1_id, 0),
+        internal::JointVelKey(j1_id, 0)},
         std::vector<double> {theta_i, dtheta_i}, dynamics_model);
 
   // Add state and min torque objectives to trajectory factor graph.
   graph = FactorGraphConditions(
-        graph, std::vector<gtsam::Key> {internal::JointVelKey(j1_id, t_steps), internal::JointAccelKey(j1_id, t_steps), internal::JointAngleKey(j1_id, t_steps)},
+        graph, std::vector<gtsam::Key> {internal::JointVelKey(j1_id, t_steps),
+        internal::JointAccelKey(j1_id, t_steps), internal::JointAngleKey(j1_id, t_steps)},
         std::vector<double> {dtheta_T, dtheta_T, theta_T}, objectives_model);
   bool apply_theta_objective_all_dt = false;
   if (apply_theta_objective_all_dt) {
