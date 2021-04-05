@@ -4,8 +4,9 @@ import numpy as np
 import yaml
 
 class Actuator:
-    def __init__(self, j, actuator_config, positive):
-        self.j = j
+    def __init__(self, name, robot, actuator_config, positive):
+        self.name = name
+        self.j = robot.joint(name).id()
         self.config = actuator_config
         self.positive = positive
 
@@ -71,10 +72,14 @@ class JumpingRobot:
     def __init__(self, yaml_file_path):
         self.params = self.load_file(yaml_file_path)
         self.robot = self.create_jumping_robot(self.params)
-        self.actuators = [Actuator(self.robot.joint("knee_r").id(), self.params["knee"], False),
-                          Actuator(self.robot.joint("hip_r").id(), self.params["hip"], True),
-                          Actuator(self.robot.joint("hip_l").id(), self.params["hip"], True),
-                          Actuator(self.robot.joint("knee_l").id(), self.params["knee"], False)]
+        self.actuators = [Actuator("knee_r", self.robot, self.params["knee"], False),
+                          Actuator("hip_r", self.robot, self.params["hip"], True),
+                          Actuator("hip_l", self.robot, self.params["hip"], True),
+                          Actuator("knee_l", self.robot, self.params["knee"], False)]
+
+        Rs = self.params["pneumatic"]["Rs"]
+        temperature = self.params["pneumatic"]["T"]
+        self.gas_constant = Rs * temperature
 
     @staticmethod
     def load_file(yaml_file_path):
@@ -232,63 +237,68 @@ class JRGraphBuilder:
         planar_axis = np.array([1, 0, 0])
         return gtd.DynamicsGraph(opt, gravity, planar_axis)
 
-    def step_robot_dynamics_graph(self, jumping_robot, k):
-        return self.graph_builder.dynamicsFactorGraph(jumping_robot, k)
+    def step_robot_dynamics_graph(self, jr, k):
+        return self.graph_builder.dynamicsFactorGraph(jr, k)
 
-    def step_actuator_dynamics_graph(self, jumping_robot, k):
-        
+    def step_source_dynamics_graph(self, jr, k):
         m_s_key = Actuator.SourceMassKey(k)
         P_s_key = Actuator.SourcePressureKey(k)
         V_s_key = Actuator.SourceVolumeKey()
+        graph = gtsam.NonlinearFactorGraph()
+        graph.add(gtd.GassLawFactor(P_s_key, V_s_key, m_s_key, jr.gas_constant))
+        return graph
+    
+    def step_actuator_dynamics_graph(self, jr, actuator, k):
+        j = actuator.j
 
-        Rs = jumping_robot.params["pneumatic"]["Rs"]
-        temperature = jumping_robot.params["pneumatic"]["T"]
-        gas_constant = Rs * temperature
-        d_tube = jumping_robot.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
-        l_tube = jumping_robot.params["pneumatic"]["l_tube_valve_musc"] * 0.0254
-        mu = jumping_robot.params["pneumatic"]["mu_tube"]
-        epsilon = jumping_robot.params["pneumatic"]["eps_tube"]
-        ct = jumping_robot.params["pneumatic"]["time_constant_valve"]
+        d_tube = jr.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
+        l_tube = jr.params["pneumatic"]["l_tube_valve_musc"] * 0.0254
+        mu = jr.params["pneumatic"]["mu_tube"]
+        epsilon = jr.params["pneumatic"]["eps_tube"]
+        ct = jr.params["pneumatic"]["time_constant_valve"]
         x0_coeffs = np.array([3.05583930e+00, 7.58361626e-02, -4.91579771e-04, 1.42792618e-06, -1.54817477e-09])
         f0_coeffs = np.array([0, 1.966409])
         k_coeffs = np.array([0, 0.35541599])
 
+        ka = actuator.config["k_anta"]
+        kt = actuator.config["k_tendon"]
+        q_anta_limit = actuator.config["q_anta_limit"]
+        b = actuator.config["b"]
+        radius = actuator.config["rad0"]
+
+        j = actuator.j
+        m_a_key = Actuator.MassKey(j, k)
+        P_a_key = Actuator.PressureKey(j, k)
+        V_a_key = Actuator.VolumeKey(j, k)
+        P_s_key = Actuator.SourcePressureKey(k)
+
+        mdot_key = Actuator.MassRateOpenKey(j, k)
+        mdot_sigma_key = Actuator.MassRateActualKey(j, k)
+
+        delta_x_key = Actuator.ContractionKey(j, k)
+        f_a_key = Actuator.ForceKey(j, k)
+        torque_key = gtd.internal.TorqueKey(j, k).key()
+        q_key = gtd.internal.JointAngleKey(j, k).key()
+        v_key = gtd.internal.JointVelKey(j, k).key()
+        
+        To_a_key = Actuator.ValveOpenTimeKey(j)
+        Tc_a_key = Actuator.ValveCloseTimeKey(j)
+        t_key = gtd.TimeKey(k).key()
+
         graph = gtsam.NonlinearFactorGraph()
-        graph.add(gtd.GassLawFactor(P_s_key, V_s_key, m_s_key, gas_constant))
+        graph.push_back(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k))
+        graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
+        graph.add(gtd.GassLawFactor(P_a_key, V_a_key, m_a_key, self.gass_law_model, jr.gas_constant))
+        graph.add(gtd.ActuatorVolumeFactor(V_a_key, delta_x_key, self.volume_model, d_tube, l_tube))
+        graph.add(gtd.SmoothActuatorFactor(delta_x_key, P_a_key, f_a_key, self.force_cost_model, x0_coeffs, k_coeffs, f0_coeffs))
+        graph.add(gtd.ForceBalanceFactor(delta_x_key, q_key, f_a_key, self.balance_cost_model, kt, radius, q_rest, actuator.positive))
+        graph.add(gtd.JointTorqueFactor(q_key, v_key, f_a_key, torque_key, self.torque_cost_model, q_anta_limit, ka, radius, b, actuator.positive))
+        return graph
 
-        for actuator in jumping_robot.actuators:
-            ka = actuator.config["k_anta"]
-            kt = actuator.config["k_tendon"]
-            q_anta_limit = actuator.config["q_anta_limit"]
-            b = actuator.config["b"]
-            radius = actuator.config["rad0"]
-
-            j = actuator.j
-            m_a_key = Actuator.MassKey(j, k)
-            P_a_key = Actuator.PressureKey(j, k)
-            V_a_key = Actuator.VolumeKey(j, k)
-
-            mdot_key = Actuator.MassRateOpenKey(j, k)
-            mdot_sigma_key = Actuator.MassRateActualKey(j, k)
-
-            delta_x_key = Actuator.ContractionKey(j, k)
-            f_a_key = Actuator.ForceKey(j, k)
-            torque_key = gtd.internal.TorqueKey(j, k)
-            q_key = gtd.internal.JointAngleKey(j, k)
-            v_key = gtd.internal.JointVelKey(j, k)
-            
-            To_a_key = Actuator.ValveOpenTimeKey(j)
-            Tc_a_key = Actuator.ValveCloseTimeKey(j)
-            t_key = gtd.TimeKey(k)
-
-            graph.add(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k))
-            graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
-            graph.add(gtd.GassLawFactor(P_a_key, V_a_key, m_a_key, self.gass_law_model, gas_constant))
-            graph.add(gtd.ActuatorVolumeFactor(V_a_key, delta_x_key, self.volume_model, d_tube, l_tube))
-            graph.add(gtd.SmoothActuatorFactor(delta_x_key, P_a_key, f_a_key, self.force_cost_model, x0_coeffs, k_coeffs, f0_coeffs))
-            graph.add(gtd.ForceBalanceFactor(delta_x_key, q_key, f_a_key, self.balance_cost_model, kt, radius, q_rest, actuator.positive))
-            graph.add(gtd.JointTorqueFactor(q_key, v_key, f_a_key, torque_key, self.torque_cost_model, q_anta_limit, ka, radius, b, actuator.positive))
-
+    def step_actuation_dynamics_graph(self, jr, k):
+        graph = self.step_source_dynamics_graph(jr, k)
+        for actuator in jr.actuators:
+            graph.add(self.step_actuator_dynamics_graph(jr, actuator, k))
         return graph
 
     def collocation_graph(self):
@@ -297,17 +307,41 @@ class JRGraphBuilder:
 
 
 class JRSimulator:
-    def __init__(self, yaml_file_path):
+    def __init__(self, yaml_file_path, initial_config, controls):
         self.yaml_file_path = yaml_file_path
         self.jr_graph_builder = JRGraphBuilder()
-        self.reset()
+        self.reset(initial_config, controls)
     
-    def reset(self):
+    def reset(self, initial_config, controls):
         self.jr = JumpingRobot(self.yaml_file_path)
         self.phase = 0  # 0 ground, 1 left, 2 right, 3 air
         self.step_phases = [self.phase]
+        self.time = 0
         self.values = gtsam.Values()
+
         # add values for initial configuration
+        V_s = self.jr.params["pneumatic"]["v_source"]
+        P_s_0 = controls["P_s_0"]
+        m_s_0 = V_s * P_s_0 / self.jr.gas_constant
+        m_a_0 = self.jr.params["pneumatic"]["init_mass"]
+        self.values.insertDouble(Actuator.SourceVolumeKey(), V_s)
+        self.values.insertDouble(Actuator.SourceMassKey(0), m_s_0)
+        for joint in self.jr.robot.joints():
+            j = joint.id()
+            name = joint.name()
+            q_key = gtd.internal.JointAngleKey(j, 0).key()
+            v_key = gtd.internal.JointVelKey(j, 0).key()
+            q = float(initial_config["qs"][name])
+            v = float(initial_config["vs"][name])
+            self.values.insertDouble(q_key, q)
+            self.values.insertDouble(v_key, v)
+        for actuator in self.jr.actuators:
+            j = actuator.j
+            self.values.insertDouble(Actuator.MassKey(j, 0), m_a_0)
+            To_key = Actuator.ValveOpenTimeKey(j)
+            Tc_key = Actuator.ValveCloseTimeKey(j)
+            self.values.insertDouble(To_key, float(controls["Tos"][name]))
+            self.values.insertDouble(Tc_key, float(controls["Tcs"][name]))
 
     def step_collocation(self, k, dt):
         for joint in self.jr.robot.joints():
@@ -317,8 +351,8 @@ class JRSimulator:
             a_prev = self.values.atDouble(gtd.internal.JointAccelKey(j, k-1))
             v_curr = v_prev + a_prev * dt
             q_curr = q_prev + v_prev * dt + 0.5 * a_prev * dt * dt
-            self.values.insert(gtd.internal.JointAngleKey(j, k), q_curr)
-            self.values.insert(gtd.internal.JointVelKey(j, k), q_curr)
+            self.values.insertDouble(gtd.internal.JointAngleKey(j, k), q_curr)
+            self.values.insertDouble(gtd.internal.JointVelKey(j, k), q_curr)
         if self.phase == 3:
             i = self.jr.robot.link("torso").id()
             pose_torso_prev = self.values.atPose3(gtd.internal.PoseKey(i, k-1))
@@ -342,7 +376,66 @@ class JRSimulator:
         self.values.insert(Actuator.SourceMassKey(k), m_s_curr)
 
     def step_actuator_dynamics(self, k):
-        return
+        m_s = self.values.atDouble(Actuator.SourceMassKey(k))
+        V_s = self.values.atDouble(Actuator.SourceVolumeKey())
+        P_s = m_s * self.jr.gas_constant / V_s
+        P_s_key = Actuator.SourcePressureKey(k)
+        t_key = gtd.TimeKey(k)
+        for actuator in self.jr.actuators:
+            j = actuator.j
+            
+            graph = self.jr_graph_builder.step_actuator_dynamics_graph(self.jr, actuator, k)
+            m_a_key = Actuator.MassKey(j, k)
+            q_key = gtd.internal.JointAngleKey(j, k)
+            v_key = gtd.internal.JointVelKey(j, k)
+            To_key = Actuator.ValveOpenTimeKey(j)
+            Tc_key = Actuator.ValveCloseTimeKey(j)
+            P_a_key = Actuator.PressureKey(j, k)
+            V_a_key = Actuator.VolumeKey(j, k)
+            delta_x_key = Actuator.ContractionKey(j, k)
+            f_a_key = Actuator.ForceKey(j, k)
+            mdot_key = Actuator.MassRateOpenKey(j, k)
+            mdot_sigma_key = Actuator.MassRateActualKey(j, k)
+            m_a = self.values.atDouble(m_a_key)
+            q = self.values.atDouble(q_key)
+            v = self.values.atDouble(v_key)
+            To = self.values.atDouble(To_key)
+            Tc = self.values.atDouble(Tc_key)
+            graph.add(gtd.PriorFactorDouble(m_a_key, m_a, self.jr_graph_builder.prior_m_cost_model))
+            graph.add(gtd.PriorFactorDouble(P_s_key, P_s, self.jr_graph_builder.prior_pressure_cost_model))
+            graph.add(gtd.PriorFactorDouble(q_key, q, self.jr_graph_builder.prior_q_cost_model))
+            graph.add(gtd.PriorFactorDouble(v_key, v, self.jr_graph_builder.prior_v_cost_model))
+            graph.add(gtd.PriorFactorDouble(t_key, self.time, self.jr_graph_builder.prior_time_cost_model))
+            graph.add(gtd.PriorFactorDouble(To_key, To, self.jr_graph_builder.prior_time_cost_model))
+            graph.add(gtd.PriorFactorDouble(Tc_key, Tc, self.jr_graph_builder.prior_time_cost_model))
+
+            init_values = gtsam.Values()
+            init_values.insert(P_s_key, P_s)
+            init_values.insert(q_key, q)
+            init_values.insert(v_key, v)
+            init_values.insert(m_a_key, m_a)
+            init_values.insert(t_key, t)
+            init_values.insert(To_key, To)
+            init_values.insert(Tc_key, Tc)
+            if k == 0:
+                init_values.insert(P_a_key, double(10))
+                init_values.insert(delta_x_key, double(2))
+                init_values.insert(f_a_key, double(0))
+                init_values.insert(torque_key, double(0))
+                init_values.insert(mdot_key, double(1e-2))
+                init_values.insert(mdot_sigma_key, double(1e-2))
+                init_values.insert(V_a_key, 1e-5)
+            else:
+                init_values.insert(P_a_key, self.values.at(Actuator.PressureKey(j, k-1)))
+                init_values.insert(x_key, self.values.at(Actuator.ContractionKey(j, k-1)))
+                init_values.insert(f_key, self.values.at(Actuator.ForceKey(j, k-1)))
+                init_values.insert(torque_key, self.values.at(gtd.internal.TorqueKey(j, k-1)))
+                init_values.insert(mdot_key, self.values.at(Actuator.MassRateOpenKey(j, k-1)))
+                init_values.insert(mdot_sigma_key, self.values.at(Actuator.MassRateActualKey(j, k-1)))
+                init_values.insert(V_a_key, self.values.at(Actuator.VolumeKey(j, k-1)))
+            result = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
+            self.values.insert(result)
+        
 
     def step_robot_dynamics(self, k):
         fk_results = self.jr.robot.forwardKinematics()
@@ -350,20 +443,73 @@ class JRSimulator:
         self.values.insert(fk_results)
         self.values.insert(dynamics_values)
 
-    def step_phase_change(self, k):
-        return
+    def get_ground_force_z(self, side, k):
+        i = self.jr.robot.links("thigh_" + side).id()
+        j = self.jr.robot.joints("knee_" + side).id()
+        wrench_b = self.values.atVector(gtd.internal.WrenchKey(i, j, k))
+        T_wb = self.values.atPose3(gtd.internal.PoseKey(i, t))
+        wrench_w = T_wb.inverse().AdjointMap().transpose() * wrench_b
+        print("right wrench: ", wrench_w.transpose())
+        return wrench_w[5]
 
-    def simulate(num_steps, dt, P_s_init, T_o, T_c):
+    def step_phase_change(self, k):
+        threshold = 0
+        if self.phase == 0:
+            f_left = self.get_ground_force_z("l", k)
+            f_right = self.get_ground_force_z("r", k)
+            if f_left < threshold and f_right < threshold:
+                self.phase = 3
+            elif f_left < threshold:
+                self.phase = 2
+            elif f_right < threshold:
+                self.phase = 1
+        elif self.phase == 1:
+            f_left = self.get_ground_force_z("l", k)
+            if f_left < threshold:
+                self.phase = 3
+        elif self.pahse == 2:
+            f_right = self.get_ground_force_z("r", k)
+            if f_right < threshold:
+                self.phase = 3
+
+    def simulate(self, num_steps, dt):
         for k in range(num_steps):
             if k!=0:
-                self.step_collocation()
-            self.step_actuator_dynamics()
-            self.step_robot_dynamics()
-            self.step_phase_change()
+                self.step_collocation(k, dt)
+            self.step_actuator_dynamics(k)
+            self.step_robot_dynamics(k)
+            self.step_phase_change(k)
+            self.step_phases.append(self.phase)
+            self.time += dt
         return self.values    
 
 if __name__=="__main__":
     yaml_file_path = "python/jumping_robot/robot_config.yaml"
     jr = JumpingRobot(yaml_file_path)
-
     jr_graph_builder = JRGraphBuilder()
+
+    joint_names = ["foot_r", "knee_r", "hip_r", "hip_l", "knee_l", "foot_l"]
+    joint_angles = [0, 0, 0, 0, 0, 0]
+    joint_vels = [0, 0, 0, 0, 0, 0]
+    init_config = {}
+    init_config["qs"] = {}
+    init_config["vs"] = {}
+    for joint_name, joint_angle in zip(joint_names, joint_angles):
+        init_config["qs"][joint_name] = joint_angle
+    for joint_name, joint_vel in zip(joint_names, joint_vels):
+        init_config["vs"][joint_name] = joint_vel
+
+    actuator_names = ["knee_r", "hip_r", "hip_l", "knee_l"]
+    Tos = [0, 0, 0, 0]
+    Tcs = [0, 0, 0, 0]
+    controls = {}
+    controls["Tos"] = {}
+    controls["Tcs"] = {}
+    controls["P_s_0"] = 65 * 6894.76
+    for actuator_name, To in zip(actuator_names, Tos):
+        controls["Tos"][actuator_name] = To
+    for actuator_name, Tc in zip(actuator_names, Tcs):
+        controls["Tcs"][actuator_name] = Tc
+    
+    jr_simulator = JRSimulator(yaml_file_path, init_config, controls)
+    jr_simulator.simulate(1, 0.1)

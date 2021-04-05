@@ -51,8 +51,9 @@ pneumatic: # pneumatic system parameters
   T: 296.15
   l_tube_valve_musc: 74 # (in)  ~2.0" valve fittings + 68.75" valve to muscle + ~3.2" muscle inlet tube
   d_tube_valve_musc: 0.1575 # (in) 3/16" ID #NOTE: reduced from nominal 0.1875" dimension
-  eps_tube: 1e-5 # (m) TODO: how to determine? can vary from 1.5e-6 to 1e-5
+  eps_tube: 1.0e-5 # (m) TODO: how to determine? can vary from 1.5e-6 to 1e-5
   mu_tube: 1.8377e-5
-  v_source: 1.475 # (L) Ninja SL 90 carbon fiber paintball tank (90 cubic in)
+  v_source: 1.475e-3 # (m^3) Ninja SL 90 carbon fiber paintball tank (90 cubic in)
   p_source0: 65 # (gauge psi) source pressure TODO: adjust based on test setup
-  time_constant_valve: 1e-3
+  time_constant_valve: 1.0e-3
+  init_mass: 7.873172488131229e-05
