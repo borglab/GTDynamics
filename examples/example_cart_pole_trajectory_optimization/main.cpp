@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
   graph = FactorGraphConditions(
       graph, std::vector<gtsam::Key> {internal::JointVelKey(j0_id, t_steps),
       internal::JointVelKey(j1_id, t_steps), internal::JointAccelKey(j0_id, t_steps), internal::JointAccelKey(j1_id, t_steps)},
-      std::vector<double> {X_T[1], X_T[4], X_T[2], X_T[5]}, objectives_model)
+      std::vector<double> {X_T[1], X_T[4], X_T[2], X_T[5]}, objectives_model);
 
   // Insert position objective (x, theta) factor at every timestep or only at
   // the terminal state. Adding the position objective at every timestep will
