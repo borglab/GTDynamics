@@ -72,7 +72,7 @@ class CableTensionFactor
   // an alternate version of the above function that uses adjoint; will upgrade
   // to this version once I figure out how to get the jacobian from an Adjoint
   // operation
-  Vector6 computeWrench2(
+  Vector6 computeWrenchUsingAdjoint(
       double tension, const Pose3 &wTx,
       boost::optional<gtsam::Matrix &> H_t = boost::none,
       boost::optional<gtsam::Matrix &> H_wTx = boost::none) const;

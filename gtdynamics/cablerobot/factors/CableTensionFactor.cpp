@@ -63,7 +63,7 @@ Vector6 CableTensionFactor::computeWrench(
 }
 
 /******************************************************************************/
-Vector6 CableTensionFactor::computeWrench2(
+Vector6 CableTensionFactor::computeWrenchUsingAdjoint(
     double t, const Pose3 &wTx, boost::optional<Matrix &> H_t,
     boost::optional<Matrix &> H_wTx) const {
   // Jacobians: cable direction
