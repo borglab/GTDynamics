@@ -137,7 +137,7 @@ class CdprSimulator:
         if verbose:
             print('time step: {:4d}   --   EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
                 self.k,
-                *gtd.Pose(x, cdpr.ee_id(), self.k).translation()), end='  --  ')
+                *gtd.Pose(self.x, self.cdpr.ee_id(), self.k).translation()), end='  --  ')
         self.update_kinematics(self.cdpr, self.fg, self.x, self.k)
         if self.k == 0:
             self.x.insertDouble(0, self.dt)
