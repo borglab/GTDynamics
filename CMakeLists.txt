@@ -57,7 +57,7 @@ find_package(sdformat8 REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)  # TODO(gerry): fix python wrap when OFF
 
 add_subdirectory(gtdynamics)
 
