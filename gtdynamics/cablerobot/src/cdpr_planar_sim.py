@@ -133,21 +133,40 @@ class CdprSimulator:
 
         Returns:
             gtsam.Values: The new values object containing the current state and next Pose+Twist.
-        """        
+        """
+        # setup
+        x, lid, k, dt = self.x, self.cdpr.ee_id(), self.k, self.dt
+        xk = gtsam.Values()
+        gtd.InsertPose(xk, lid, k, gtd.Pose(x, lid, k))
+        gtd.InsertTwist(xk, lid, k, gtd.Twist(x, lid, k))
+
+        # kinematics
+        fg, xk = self.update_kinematics(self.cdpr, gtsam.NonlinearFactorGraph(), xk, k)
+        # controller
+        u = self.controller.update(x, k)
+        # dynamics
+        xk.insertDouble(0, dt)
+        self.update_dynamics(self.cdpr, fg, xk, u, k, dt)
+
+        # update full self.x solution
+        for ji in range(4):
+            gtd.InsertJointAngleDouble(x, ji, k, gtd.JointAngleDouble(xk, ji, k))
+            gtd.InsertJointVelDouble(x, ji, k, gtd.JointVelDouble(xk, ji, k))
+            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(xk, ji, k))
+        gtd.InsertTwistAccel(x, lid, k, gtd.TwistAccel(xk, lid, k))
+        gtd.InsertPose(x, lid, k + 1, gtd.Pose(xk, lid, k + 1))
+        gtd.InsertTwist(x, lid, k + 1, gtd.Twist(xk, lid, k + 1))
+
+        # debug
         if verbose:
-            print('time step: {:4d}   --   EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
-                self.k,
-                *gtd.Pose(self.x, self.cdpr.ee_id(), self.k).translation()), end='  --  ')
-        self.update_kinematics(self.cdpr, self.fg, self.x, self.k)
-        if self.k == 0:
-            self.x.insertDouble(0, self.dt)
-        u = self.controller.update(self.x, self.k)
-        if verbose:
+            print('time step: {:4d}'.format(k), end='  --  ')
+            print('EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
+                *gtd.Pose(x, lid, k).translation()), end='  --  ')
             print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
-                *[gtd.TorqueDouble(u, ji, self.k) for ji in range(4)]))
-        self.update_dynamics(self.cdpr, self.fg, self.x, u, self.k, self.dt)
+                *[gtd.TorqueDouble(u, ji, k) for ji in range(4)]))
+
         self.k += 1
-        return self.x
+        return x
 
     def run(self, N=100, verbose=False):
         """Runs the simulation
@@ -158,7 +177,7 @@ class CdprSimulator:
 
         Returns:
             gtsam.Values: The values object containing all the data from the simulation.
-        """        
+        """
         for k in range(N):
             self.step(verbose=verbose)
         return self.x

@@ -49,6 +49,9 @@ def main():
     sim = CdprSimulator(cdpr, x0, controller, dt=dt)
     result = sim.run(N=N, verbose=False)
 
+    return Tf, dt, N, cdpr, x_des, result
+
+def plot(Tf, dt, N, cdpr, x_des, result):
     # extract useful variables as lists
     poses = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(N+1)]
     posesxy = np.array([[pose.x() for pose in poses], [pose.z() for pose in poses]])
@@ -81,4 +84,5 @@ def main():
 
 
 if __name__ == '__main__':
-    cProfile.run('main()')
+    cProfile.run('vals = main()')
+    plot(*vals)
