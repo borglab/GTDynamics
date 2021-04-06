@@ -301,7 +301,7 @@ class Cdpr:
             gtsam.NonlinearFactorGraph: The forward dynamics prior factors
         """
         if values is not None:
-            torquess = [gtd.TwistAccel(values, self.ee_id(), k) for k in ks]
+            VAs = [gtd.TwistAccel(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
             graph.push_back(gtsam.PriorFactorVector6(

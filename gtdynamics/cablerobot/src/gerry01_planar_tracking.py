@@ -17,7 +17,7 @@ import numpy as np
 from gtsam import Pose3, Rot3
 
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprController
+from cdpr_controller_ilqr import CdprControllerIlqr
 from cdpr_planar_sim import CdprSimulator
 
 import cProfile
@@ -39,7 +39,7 @@ def main():
     gtd.InsertPose(x0, cdpr.ee_id(), 0, x_des[0])
     gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
     # controller
-    controller = CdprController(cdpr,
+    controller = CdprControllerIlqr(cdpr,
                                 x0,
                                 x_des,
                                 dt=dt,
@@ -80,7 +80,7 @@ def plot(Tf, dt, N, cdpr, x_des, result):
     # controls
     plt.subplot(1,2,2)
     lsctrl = plt.plot(np.arange(0,Tf,dt), torques)
-    plt.xlabel('time (s)');plt.ylabel('Cable tension (N)');plt.title('Control Inputs');
+    plt.xlabel('time (s)');plt.ylabel('Cable tension (N)');plt.title('Control Inputs')
 
 
 if __name__ == '__main__':

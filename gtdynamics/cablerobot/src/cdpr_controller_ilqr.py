@@ -4,7 +4,7 @@ Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
 
-@file  cdpr_planar_controller.py
+@file  cdpr_controller_ilqr.py
 @brief Optimal controller for a cable robot.  Solved by creating a factor graph and adding state
 objectives and control costs, then optimizing
 @author Frank Dellaert
@@ -15,7 +15,7 @@ import gtsam
 import gtdynamics as gtd
 import numpy as np
 import utils
-from cdpr_planar_controller import CdprControllerBase
+from cdpr_controller import CdprControllerBase
 
 class CdprControllerIlqr(CdprControllerBase):
     """Precomputes the open-loop trajectory
@@ -38,13 +38,12 @@ class CdprControllerIlqr(CdprControllerBase):
         self.dt = dt
 
         # initial guess
-        x0 = utils.zerovalues(cdpr.ee_id(), ts=range(len(pdes)), dt=dt)
+        x_guess = utils.zerovalues(cdpr.ee_id(), ts=range(len(pdes)), dt=dt)
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
         # optimize
         self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess)
-        # self.result = self.optimizer.optimize()
-        self.result = x_guess
+        self.result = self.optimizer.optimize()
         self.fg = fg
 
     def update(self, values, t):

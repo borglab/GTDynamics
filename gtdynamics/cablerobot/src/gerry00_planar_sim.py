@@ -17,8 +17,8 @@ import numpy as np
 from gtsam import Pose3, Rot3
 
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprControllerBase
-from cdpr_planar_sim import cdpr_sim
+from cdpr_controller import CdprControllerBase
+from cdpr_planar_sim import CdprSimulator
 
 
 class DummyController(CdprControllerBase):
@@ -43,7 +43,8 @@ def main():
     gtd.InsertPose(x0, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
     gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
     # run simulation
-    result = cdpr_sim(cdpr, x0, controller, dt=dt, N=N)
+    sim = CdprSimulator(cdpr, x0, controller, dt=dt)
+    result = sim.run(N=N)
     poses = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(N)]
 
     plt.figure(1)

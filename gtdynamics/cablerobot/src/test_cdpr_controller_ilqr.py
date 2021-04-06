@@ -4,7 +4,7 @@ Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
 
-@file  test_cdpr_planar_controller.py
+@file  test_cdpr_controller.py
 @brief Unit tests for CDPR.
 @author Frank Dellaert
 @author Gerry Chen
@@ -21,7 +21,7 @@ from cdpr_controller_ilqr import CdprControllerIlqr
 from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
-class TestCdprPlanar(GtsamTestCase):
+class TestCdprControllerIlqr(GtsamTestCase):
     def testTrajFollow(self):
         """Tests trajectory tracking controller
         """
