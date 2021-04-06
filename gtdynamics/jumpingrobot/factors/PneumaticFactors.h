@@ -1,6 +1,6 @@
 /**
  * @file  PneumaticActuatorFactor.h
- * @brief pneumatic actuator factor.
+ * @brief pneumatic factors.
  * @Author: Yetong Zhang
  */
 
@@ -232,74 +232,6 @@ class ValveControlFactor
   }
 };
 
-
-/** ActuatorVolumeFactor: compute actuator volume given contraction length */
-class ActuatorVolumeFactor
-    : public gtsam::NoiseModelFactor2<double, double> {
- private:
-  typedef ActuatorVolumeFactor This;
-  typedef gtsam::NoiseModelFactor2<double, double> Base;
-  std::vector<double> c_ {4.243e-5, 3.141e-5, -3.251e-6, 1.28e-7};
-  double D_, L_;
-
- public:
-  ActuatorVolumeFactor(gtsam::Key v_key, gtsam::Key l_key,
-                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                 const double D, const double L)
-      : Base(cost_model, v_key, l_key), D_(D), L_(L) {}
-  virtual ~ActuatorVolumeFactor() {}
-
- public:
-
-  double computeVolume(const double &l, boost::optional<gtsam::Matrix &> H_l = boost::none) const {
-    double expected_v = L_ * M_PI * pow(D_/2, 2);
-    for (size_t i=0; i<c_.size(); i++) {
-      expected_v += c_[i] * pow(l, i);
-    }
-    if (H_l) {
-      double derivative = 0;
-      for (size_t i=1; i<c_.size(); i++) {
-        derivative += i * c_[i] * pow(l, i-1);
-      }
-      *H_l = gtsam::I_1x1 * derivative;
-    }
-    return expected_v;
-  }
-
-  gtsam::Vector evaluateError(
-      const double &v, const double &l,
-      boost::optional<gtsam::Matrix &> H_v = boost::none,
-      boost::optional<gtsam::Matrix &> H_l = boost::none) const override {
-    double expected_v = computeVolume(l, H_l);
-    if (H_v) {
-      *H_v = -gtsam::I_1x1;
-    }
-    return gtsam::Vector1(expected_v - v);
-  }
-
-  // @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
-        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
-  }
-
-  /** print contents */
-  void print(const std::string &s = "",
-             const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "actuator volume factor" << std::endl;
-    Base::print("", keyFormatter);
-  }
-
- private:
-  /** Serialization function */
-  friend class boost::serialization::access;
-  template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {
-    ar &boost::serialization::make_nvp(
-        "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
-  }
-};
 
 
 }  // namespace gtdynamics
