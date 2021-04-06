@@ -739,6 +739,20 @@ void DynamicsGraph::printGraph(const gtsam::NonlinearFactorGraph &graph) {
   }
 }
 
+void DynamicsGraph::printGraph(const gtsam::GaussianFactorGraph &graph) {
+  std::cout << "graph:\n";
+  for (auto &factor : graph) {
+    for (auto &key : factor->keys()) {
+      printKey(key);
+    }
+    std::cout << "\n";
+  }
+}
+
+void DynamicsGraph::printGraphFull(const gtsam::GaussianFactorGraph &graph) {
+  graph.print("", GTDKeyFormatter);
+}
+
 // using radial location to locate the variables
 gtsam::Vector3 radial_location(double r, double i, int n) {
   double theta = M_PI * 2 / n * i;

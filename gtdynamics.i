@@ -150,6 +150,14 @@ class ForceBalanceFactor: gtsam::NonlinearFactor{
                      const bool contract);
 };
 
+class JointTorqueFactor: gtsam::NonlinearFactor{
+  JointTorqueFactor(gtsam::Key q_key, gtsam::Key v_key, gtsam::Key f_key,
+                    gtsam::Key torque_key,
+                    const gtsam::noiseModel::Base *cost_model,
+                    const double q_limit, const double ka, const double r,
+                    const double b, const bool positive);
+};
+
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
@@ -455,6 +463,11 @@ class DynamicsGraph {
 
   /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
+
+  /* print the factors of the factor graph */
+  static void printGraph(const gtsam::GaussianFactorGraph &graph);
+
+  static void printGraphFull(const gtsam::GaussianFactorGraph &graph);
 
   /* print the values */
   static void printValues(const gtsam::Values &values);
