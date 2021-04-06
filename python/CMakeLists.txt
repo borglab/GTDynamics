@@ -20,9 +20,31 @@ configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 
+# concatenate the different wrapper interface files
+# check if any interface files changed
+foreach(INTERFACE_FILE ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i ${ADDITIONAL_INTERFACE_FILES})
+  if(NOT EXISTS ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i OR
+     ${INTERFACE_FILE} IS_NEWER_THAN ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i)
+    set(UPDATE_INTERFACE TRUE)
+  endif()
+endforeach()
+# if so, then update the overall interface file
+if (UPDATE_INTERFACE)
+  configure_file(${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i
+                 ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i COPYONLY)
+  # append additional interface files to end of gtdynamics.i
+  foreach(INTERFACE_FILE ${ADDITIONAL_INTERFACE_FILES})
+    set_property(DIRECTORY
+                 APPEND
+                 PROPERTY CMAKE_CONFIGURE_DEPENDS ${INTERFACE_FILE}) # trigger cmake on file change
+    file(READ ${INTERFACE_FILE} interface_contents)
+    file(APPEND ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i "${interface_contents}")
+  endforeach()
+endif()
+
 pybind_wrap(
   ${PROJECT_NAME}_py # target
-  ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i # interface header file
+  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i # interface header file
   "${PROJECT_NAME}.cpp" # the generated cpp
   "${PROJECT_NAME}" # module_name
   "${PROJECT_NAME}" # top namespace in the cpp file
