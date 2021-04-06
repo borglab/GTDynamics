@@ -136,6 +136,7 @@ class Link  {
     double mass() const;
     const gtsam::Pose3 &centerOfMass();
     const Matrix &inertia();
+    gtsam::Matrix6 inertiaMatrix();
 };
 
 /********************** joint **********************/
@@ -602,5 +603,4 @@ class Simulator {
   const gtsam::Values &getValues() const;
 };
 
-}
-
+}  // namespace gtdynamics

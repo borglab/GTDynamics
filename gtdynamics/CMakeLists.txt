@@ -1,6 +1,12 @@
 # All subdirectories that contain source code relevant to this library.
 set(SOURCE_SUBDIRS dynamics factors universal_robot utils)
 
+# Include cable robot stuff
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  add_subdirectory(cablerobot)
+  set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
+endif()
+
 # Add this directory as include.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
