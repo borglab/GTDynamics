@@ -56,71 +56,87 @@ class CdprSimulator:
         self.reset()
 
     @staticmethod
-    def update_kinematics(cdpr, fg, x, k):
-        """Runs IK to solve for the cable lengths and velocities at time step k
+    def update_kinematics(cdpr, x, k):
+        """Runs IK to solve for the cable lengths and velocities at time step k.  Modifies x
+        inplace!!!
 
         Args:
-            fg (gtsam.NonlineaFactorGraph): any previous factors, if applicable
-            x (gtsam.Values): Values object containing the current Pose and current Twist, plus any
-            other values that may be needed (as initial guesses) for the `fg` argument.
+            x (gtsam.Values): Values object containing at least the current Pose and current Twist
             k (int): current time step
 
         Returns:
-            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the updated factor graph and values
+            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the factor graph used to perform IK
+            and the solution values which includes the current Pose, Twist, JointAngles, and
+            JointVels.
         """
+        fg = gtsam.NonlinearFactorGraph()
+        lid = cdpr.ee_id()
+        # local copy of values
+        xk = gtsam.Values()
+        gtd.InsertPose(xk, lid, k, gtd.Pose(x, lid, k))
+        gtd.InsertTwist(xk, lid, k, gtd.Twist(x, lid, k))
         # IK for this time step, graph
         fg.push_back(cdpr.kinematics_factors(ks=[k]))
         fg.push_back(
             cdpr.priors_ik(ks=[k],
-                           Ts=[gtd.Pose(x, cdpr.ee_id(), k)],
-                           Vs=[gtd.Twist(x, cdpr.ee_id(), k)]))
+                           Ts=[gtd.Pose(xk, cdpr.ee_id(), k)],
+                           Vs=[gtd.Twist(xk, cdpr.ee_id(), k)]))
         # IK initial estimate
         for j in range(4):
-            gtd.InsertJointAngleDouble(x, j, k, 0)
-            gtd.InsertJointVelDouble(x, j, k, 0)
+            gtd.InsertJointAngleDouble(xk, j, k, 0)
+            gtd.InsertJointVelDouble(xk, j, k, 0)
         # IK solve
-        result = gtsam.LevenbergMarquardtOptimizer(fg, x).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xk).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
-        x.update(result)
-        return fg, x
+        xk.update(result)
+        return fg, xk
 
     @staticmethod
-    def update_dynamics(cdpr, fg, x, u, k, dt):
+    def update_dynamics(cdpr, x, u, k, dt):
         """Runs ID to solve for the twistAccel, and also runs collocation to get the next timestep
-        Pose/Twist
+        Pose/Twist.  Modifies x inplace!!!
 
         Args:
             cdpr (Cdpr): the cable robot
-            fg (gtsam.NonlinearFactorGraph): a factor graph containing any previous factors
-            x (gtsam.Values): Values object containing at least the current Pose and Twist, and any
-            other values that may be needed (as initial guesses) for the `fg` argument
+            x (gtsam.Values): Values object containing at least the current Pose and Twist
             u (gtsam.Values): The current joint torques
             k (int): The current time index
             dt (float): the time slice duration
 
         Returns:
-            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the factor graph with added factors,
-            and the solution Values which adds the TwistAccel, next Pose, and next Twist to the `x`
-            argument.
+            tuple(gtsam.NonlinearFactorGraph, gtsam.Values): the factor graph used to update the
+            dynamics, and the solution Values which consists of the Pose, Twist, torque, TwistAccel,
+            next Pose, and next Twist.
         """
+        fg = gtsam.NonlinearFactorGraph()
+        lid = cdpr.ee_id()
+        # local copy of values
+        xd = gtsam.Values()
+        xd.insertDouble(0, dt)
+        gtd.InsertPose(xd, lid, k, gtd.Pose(x, lid, k))
+        gtd.InsertTwist(xd, lid, k, gtd.Twist(x, lid, k))
         # ID for this timestep + collocation to next time step
         fg.push_back(cdpr.dynamics_factors(ks=[k]))
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
-        # ID priors (torque inputs)
+        # priors (pose/twist and torque inputs)
+        fg.push_back(
+            cdpr.priors_ik(ks=[k],
+                           Ts=[gtd.Pose(xd, cdpr.ee_id(), k)],
+                           Vs=[gtd.Twist(xd, cdpr.ee_id(), k)]))
         fg.push_back(
             cdpr.priors_id(ks=[k], torquess=[[gtd.TorqueDouble(u, ji, k) for ji in range(4)]]))
         # ID initial guess
         for ji in range(4):
-            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(u, ji, k))
-            gtd.InsertWrench(x, cdpr.ee_id(), ji, k, np.zeros(6))
-        gtd.InsertPose(x, cdpr.ee_id(), k+1, gtsam.Pose3(gtsam.Rot3(), (1.5, 0, 1.5)))
-        gtd.InsertTwist(x, cdpr.ee_id(), k+1, np.zeros(6))
-        gtd.InsertTwistAccel(x, cdpr.ee_id(), k, np.zeros(6))
+            gtd.InsertTorqueDouble(xd, ji, k, gtd.TorqueDouble(u, ji, k))
+            gtd.InsertWrench(xd, cdpr.ee_id(), ji, k, np.zeros(6))
+        gtd.InsertPose(xd, cdpr.ee_id(), k+1, gtsam.Pose3(gtsam.Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(xd, cdpr.ee_id(), k+1, np.zeros(6))
+        gtd.InsertTwistAccel(xd, cdpr.ee_id(), k, np.zeros(6))
         # optimize
-        result = gtsam.LevenbergMarquardtOptimizer(fg, x).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xd).optimize()
         assert abs(fg.error(result)) < 1e-20, "dynamics simulation didn't converge"
-        x.update(result)
-        return fg, x
+        xd.update(result)
+        return fg, xd
 
     def step(self, verbose=False):
         """Performs one time step of the simulation, which consists of:
@@ -136,26 +152,22 @@ class CdprSimulator:
         """
         # setup
         x, lid, k, dt = self.x, self.cdpr.ee_id(), self.k, self.dt
-        xk = gtsam.Values()
-        gtd.InsertPose(xk, lid, k, gtd.Pose(x, lid, k))
-        gtd.InsertTwist(xk, lid, k, gtd.Twist(x, lid, k))
 
         # kinematics
-        fg, xk = self.update_kinematics(self.cdpr, gtsam.NonlinearFactorGraph(), xk, k)
+        _, xk = self.update_kinematics(self.cdpr, x, k)
         # controller
-        u = self.controller.update(x, k)
+        u = self.controller.update(xk, k)
         # dynamics
-        xk.insertDouble(0, dt)
-        self.update_dynamics(self.cdpr, fg, xk, u, k, dt)
+        _, xd = self.update_dynamics(self.cdpr, x, u, k, dt)
 
-        # update full self.x solution
+        # update x
         for ji in range(4):
             gtd.InsertJointAngleDouble(x, ji, k, gtd.JointAngleDouble(xk, ji, k))
             gtd.InsertJointVelDouble(x, ji, k, gtd.JointVelDouble(xk, ji, k))
-            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(xk, ji, k))
-        gtd.InsertTwistAccel(x, lid, k, gtd.TwistAccel(xk, lid, k))
-        gtd.InsertPose(x, lid, k + 1, gtd.Pose(xk, lid, k + 1))
-        gtd.InsertTwist(x, lid, k + 1, gtd.Twist(xk, lid, k + 1))
+            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(u, ji, k))
+        gtd.InsertTwistAccel(x, lid, k, gtd.TwistAccel(xd, lid, k))
+        gtd.InsertPose(x, lid, k + 1, gtd.Pose(xd, lid, k + 1))
+        gtd.InsertTwist(x, lid, k + 1, gtd.Twist(xd, lid, k + 1))
 
         # debug
         if verbose:
