@@ -27,6 +27,10 @@ foreach(INTERFACE_FILE ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i ${ADDITIONAL_INTE
      ${INTERFACE_FILE} IS_NEWER_THAN ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i)
     set(UPDATE_INTERFACE TRUE)
   endif()
+  # trigger cmake on file change
+  set_property(DIRECTORY
+               APPEND
+               PROPERTY CMAKE_CONFIGURE_DEPENDS ${INTERFACE_FILE})
 endforeach()
 # if so, then update the overall interface file
 if (UPDATE_INTERFACE)
@@ -34,9 +38,6 @@ if (UPDATE_INTERFACE)
                  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i COPYONLY)
   # append additional interface files to end of gtdynamics.i
   foreach(INTERFACE_FILE ${ADDITIONAL_INTERFACE_FILES})
-    set_property(DIRECTORY
-                 APPEND
-                 PROPERTY CMAKE_CONFIGURE_DEPENDS ${INTERFACE_FILE}) # trigger cmake on file change
     file(READ ${INTERFACE_FILE} interface_contents)
     file(APPEND ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i "${interface_contents}")
   endforeach()
