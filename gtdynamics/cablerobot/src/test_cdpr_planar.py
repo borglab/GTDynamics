@@ -95,7 +95,7 @@ class TestCdprPlanar(GtsamTestCase):
         dfg.push_back(
             cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
                            [gtd.Twist(values, cdpr.ee_id(), 0)]))
-        fd1 = cdpr.priors_fd(ks=[0], Vas=[gtd.TwistAccel(values, cdpr.ee_id(), 0)])
+        fd1 = cdpr.priors_fd(ks=[0], VAs=[gtd.TwistAccel(values, cdpr.ee_id(), 0)])
         fd2 = cdpr.priors_fd(ks=[0], values=values)
         self.gtsamAssertEquals(fd1, fd2)
         dfg.push_back(fd1)
@@ -116,7 +116,7 @@ class TestCdprPlanar(GtsamTestCase):
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
         # check ID priors functions
-        id1 = cdpr.priors_id(ks=[0], torquess=[gtd.Torque(results, ji, 0) for ji in range(4)])
+        id1 = cdpr.priors_id(ks=[0], torquess=[[gtd.TorqueDouble(results, ji, 0) for ji in range(4)]])
         id2 = cdpr.priors_id(ks=[0], values=results)
         self.gtsamAssertEquals(id1, id2)
 
