@@ -50,41 +50,41 @@ class JRSimulator:
             self.values.insertDouble(To_key, float(controls["Tos"][name]))
             self.values.insertDouble(Tc_key, float(controls["Tcs"][name]))
 
-    def step_collocation(self, k, dt):
+    def step_collocation(self, k, dt, values, phase):
         for joint in self.jr.robot.joints():
             j = joint.id()
-            q_prev = self.values.atDouble(gtd.internal.JointAngleKey(j, k-1))
-            v_prev = self.values.atDouble(gtd.internal.JointVelKey(j, k-1))
-            a_prev = self.values.atDouble(gtd.internal.JointAccelKey(j, k-1))
+            q_prev = values.atDouble(gtd.internal.JointAngleKey(j, k-1))
+            v_prev = values.atDouble(gtd.internal.JointVelKey(j, k-1))
+            a_prev = values.atDouble(gtd.internal.JointAccelKey(j, k-1))
             v_curr = v_prev + a_prev * dt
             q_curr = q_prev + v_prev * dt + 0.5 * a_prev * dt * dt
-            self.values.insertDouble(gtd.internal.JointAngleKey(j, k), q_curr)
-            self.values.insertDouble(gtd.internal.JointVelKey(j, k), q_curr)
-        if self.phase == 3:
+            values.insertDouble(gtd.internal.JointAngleKey(j, k), q_curr)
+            values.insertDouble(gtd.internal.JointVelKey(j, k), q_curr)
+        if phase == 3:
             i = self.jr.robot.link("torso").id()
-            pose_torso_prev = self.values.atPose3(gtd.internal.PoseKey(i, k-1))
-            twist_torso_prev = self.values.atVector(gtd.internal.TwistKey(i, k-1))
-            twistaccel_torso_prev = self.values.atVector(gtd.internal.TwistAccelKey(i, k-1))
+            pose_torso_prev = values.atPose3(gtd.internal.PoseKey(i, k-1))
+            twist_torso_prev = values.atVector(gtd.internal.TwistKey(i, k-1))
+            twistaccel_torso_prev = values.atVector(gtd.internal.TwistAccelKey(i, k-1))
             twist_torso_curr = twist_torso_prev + twistaccel_torso_prev * dt
             pose_torso_curr = pose_torso_prev * gtsam.Pose3.Expmap(dt * twist_torso_prev + 0.5*twistaccel_torso_prev * dt * dt)
-            self.values.insert(gtd.internal.PoseKey(i, k), pose_torso_curr)
-            self.values.insert(gtd.internal.TwistKey(i, k), twist_torso_curr)
+            values.insert(gtd.internal.PoseKey(i, k), pose_torso_curr)
+            values.insert(gtd.internal.TwistKey(i, k), twist_torso_curr)
         
         total_m_out = 0
         for actuator in self.jr.actuators:
             j = actuator.j
-            m_a_prev = self.values.atDouble(Actuator.MassKey(j, k-1))
-            mdot_a_prev = self.values.atDouble(Actuator.MassRateActualKey(j, k-1))
+            m_a_prev = values.atDouble(Actuator.MassKey(j, k-1))
+            mdot_a_prev = values.atDouble(Actuator.MassRateActualKey(j, k-1))
             m_a_curr = m_a_prev + mdot_a_prev * dt
-            self.values.insert(Actuator.MassKey(j, k), m_a_curr)
+            values.insert(Actuator.MassKey(j, k), m_a_curr)
             total_m_out += mdot_a_prev * dt
-        m_s_prev = self.values.atDouble(Actuator.SourceMassKey(k-1))
+        m_s_prev = values.atDouble(Actuator.SourceMassKey(k-1))
         m_s_curr = m_s_prev - total_m_out
-        self.values.insert(Actuator.SourceMassKey(k), m_s_curr)
+        values.insert(Actuator.SourceMassKey(k), m_s_curr)
 
-    def step_actuator_dynamics(self, k):
-        m_s = self.values.atDouble(Actuator.SourceMassKey(k))
-        V_s = self.values.atDouble(Actuator.SourceVolumeKey())
+    def step_actuator_dynamics(self, k, values, curr_time):
+        m_s = values.atDouble(Actuator.SourceMassKey(k))
+        V_s = values.atDouble(Actuator.SourceVolumeKey())
         P_s = m_s * self.jr.gas_constant / V_s
         P_s_key = Actuator.SourcePressureKey(k)
         t_key = gtd.TimeKey(k).key()
@@ -104,11 +104,11 @@ class JRSimulator:
             torque_key = gtd.internal.TorqueKey(j, k).key()
             mdot_key = Actuator.MassRateOpenKey(j, k)
             mdot_sigma_key = Actuator.MassRateActualKey(j, k)
-            m_a = self.values.atDouble(m_a_key)
-            q = self.values.atDouble(q_key)
-            v = self.values.atDouble(v_key)
-            To = self.values.atDouble(To_key)
-            Tc = self.values.atDouble(Tc_key)
+            m_a = values.atDouble(m_a_key)
+            q = values.atDouble(q_key)
+            v = values.atDouble(v_key)
+            To = values.atDouble(To_key)
+            Tc = values.atDouble(Tc_key)
             graph.add(gtd.PriorFactorDouble(m_a_key, m_a, self.jr_graph_builder.prior_m_cost_model))
             graph.add(gtd.PriorFactorDouble(P_s_key, P_s, self.jr_graph_builder.prior_pressure_cost_model))
             graph.add(gtd.PriorFactorDouble(q_key, q, self.jr_graph_builder.prior_q_cost_model))
@@ -134,29 +134,29 @@ class JRSimulator:
                 init_values.insertDouble(mdot_sigma_key, 1e-2)
                 init_values.insertDouble(V_a_key, 1e-5)
             else:
-                init_values.insertDouble(P_a_key, self.values.atDouble(Actuator.PressureKey(j, k-1)))
-                init_values.insertDouble(x_key, self.values.atDouble(Actuator.ContractionKey(j, k-1)))
-                init_values.insertDouble(f_key, self.values.atDouble(Actuator.ForceKey(j, k-1)))
-                init_values.insertDouble(torque_key, self.values.atDouble(gtd.internal.TorqueKey(j, k-1)))
-                init_values.insertDouble(mdot_key, self.values.atDouble(Actuator.MassRateOpenKey(j, k-1)))
-                init_values.insertDouble(mdot_sigma_key, self.values.atDouble(Actuator.MassRateActualKey(j, k-1)))
-                init_values.insertDouble(V_a_key, self.values.atDouble(Actuator.VolumeKey(j, k-1)))
+                init_values.insertDouble(P_a_key, values.atDouble(Actuator.PressureKey(j, k-1)))
+                init_values.insertDouble(x_key, values.atDouble(Actuator.ContractionKey(j, k-1)))
+                init_values.insertDouble(f_key, values.atDouble(Actuator.ForceKey(j, k-1)))
+                init_values.insertDouble(torque_key, values.atDouble(gtd.internal.TorqueKey(j, k-1)))
+                init_values.insertDouble(mdot_key, values.atDouble(Actuator.MassRateOpenKey(j, k-1)))
+                init_values.insertDouble(mdot_sigma_key, values.atDouble(Actuator.MassRateActualKey(j, k-1)))
+                init_values.insertDouble(V_a_key, values.atDouble(Actuator.VolumeKey(j, k-1)))
             result = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
-            mergeValues(self.values, result)
+            mergeValues(values, result)
 
-    def step_robot_dynamics(self, k):
+    def step_robot_dynamics(self, k, values, phase):
         # perform forward kinematics
-        if self.phase == 3:
-            fk_results = self.jr.robot.forwardKinematics(self.values, k, "torso")
+        if phase == 3:
+            fk_results = self.jr.robot.forwardKinematics(values, k, "torso")
         else:
-            fk_results = self.jr.robot.forwardKinematics(self.values, k)
-        mergeValues(self.values, fk_results)
+            fk_results = self.jr.robot.forwardKinematics(values, k)
+        mergeValues(values, fk_results)
 
-        if self.phase == 0:
+        if phase == 0:
             for name in ["foot_l", "foot_r"]:
                 j = self.jr.robot.joint(name).id()
                 torque_key = gtd.internal.TorqueKey(j, k).key()
-                self.values.insertDouble(torque_key, 0.0)
+                values.insertDouble(torque_key, 0.0)
 
         # construct dynamcis graph for the time step
         opt = self.jr_graph_builder.graph_builder.opt()
@@ -164,7 +164,7 @@ class JRSimulator:
         for acutator in self.jr.actuators:
             j = acutator.j
             torque_key = gtd.internal.TorqueKey(j, k).key()
-            torque = self.values.atDouble(torque_key)
+            torque = values.atDouble(torque_key)
             graph.add(gtd.PriorFactorDouble(torque_key, torque, opt.prior_q_cost_model))
         
         # construct initial values
@@ -173,7 +173,7 @@ class JRSimulator:
             j = joint.id()
             gtd.InsertJointAngleDouble(init_values, j, k, gtd.JointAngleDouble(fk_results, j, k))
             gtd.InsertJointVelDouble(init_values, j, k, gtd.JointVelDouble(fk_results, j, k))
-            gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(self.values, j, k))
+            gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(values, j, k))
         for link in self.jr.robot.links():
             i = link.id()
             gtd.InsertPose(init_values, i, k, gtd.Pose(fk_results, i, k))
@@ -195,20 +195,20 @@ class JRSimulator:
             # initialize from previous step
             for joint in self.jr.robot.joints():
                 j = joint.id()
-                gtd.InsertJointAccelDouble(init_values, j, k, gtd.JointAccelDouble(self.values, j, k-1))
+                gtd.InsertJointAccelDouble(init_values, j, k, gtd.JointAccelDouble(values, j, k-1))
                 i1 = joint.parent.id()
                 i2 = joint.child.id()
-                gtd.InsertWrench(init_values, i1, j, k, gtd.Wrench(self.values, i1, j, k-1))
-                gtd.InsertWrench(init_values, i2, j, k, gtd.Wrench(self.values, i2, j, k-1))
+                gtd.InsertWrench(init_values, i1, j, k, gtd.Wrench(values, i1, j, k-1))
+                gtd.InsertWrench(init_values, i2, j, k, gtd.Wrench(values, i2, j, k-1))
             for link in self.jr.robot.links():
                 i = link.id()
-                gtd.InsertTwistAccel(init_values, i, k, gtd.TwistAccel(self.values, i, k-1))
+                gtd.InsertTwistAccel(init_values, i, k, gtd.TwistAccel(values, i, k-1))
 
         # solve
         results = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
-        print("error: ", graph.error(results))
+        # print("error: ", graph.error(results))
 
-        mergeValues(self.values, results)
+        mergeValues(values, results)
 
         # graph = self.jr_graph_builder.graph_builder.linearDynamicsGraph(self.jr.robot, k, self.values)
         # priors = self.jr_graph_builder.graph_builder.linearFDPriors(self.jr.robot, k, self.values)
@@ -228,7 +228,7 @@ class JRSimulator:
         wrench_b = gtd.Wrench(self.values, i, j, k) 
         T_wb = gtd.Pose(self.values, i, k)
         wrench_w = T_wb.inverse().AdjointMap().transpose().dot(wrench_b)
-        print(side + " wrench: ", wrench_w.transpose())
+        # print(side + " wrench: ", wrench_w.transpose())
         return wrench_w[5]
 
     def step_phase_change(self, k):
@@ -255,9 +255,9 @@ class JRSimulator:
     def simulate(self, num_steps, dt):
         for k in range(num_steps):
             if k!=0:
-                self.step_collocation(k, dt)
-            self.step_actuator_dynamics(k)
-            self.step_robot_dynamics(k)
+                self.step_collocation(k, dt, self.values, self.phase)
+            self.step_actuator_dynamics(k, self.values, self.time)
+            self.step_robot_dynamics(k, self.values, self.phase)
             self.step_phase_change(k)
             self.step_phases.append(self.phase)
             self.time += dt
