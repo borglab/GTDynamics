@@ -25,6 +25,9 @@ configure_file(${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i COPYONLY)
 # append additional interface files to end of gtdynamics.i
 foreach(INTERFACE_FILE ${ADDITIONAL_INTERFACE_FILES})
+  set_property(DIRECTORY
+               APPEND
+               PROPERTY CMAKE_CONFIGURE_DEPENDS ${INTERFACE_FILE}) # trigger cmake on file change
   file(READ ${INTERFACE_FILE} interface_contents)
   file(APPEND ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i "${interface_contents}")
 endforeach()
