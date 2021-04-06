@@ -65,15 +65,19 @@ set_target_properties(
              RELWITHDEBINFO_POSTFIX "" # Otherwise you will have a wrong name
 )
 
+add_custom_command(
+  OUTPUT ${PROJECT_BINARY_DIR}/python/installed.txt
+  DEPENDS ${PROJECT_NAME}_py
+  COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
+  COMMAND touch ${PROJECT_BINARY_DIR}/python/installed.txt
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/python)
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
-  DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/python)
+  DEPENDS ${PROJECT_BINARY_DIR}/python/installed.txt)
 
 # Custom make command to run all Python tests
 add_custom_target(
   python-test
   COMMAND ${PYTHON_EXECUTABLE} -m unittest discover
-  DEPENDS ${PROJECT_NAME}_py
+  DEPENDS python-install
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/python/tests)
