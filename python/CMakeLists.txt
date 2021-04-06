@@ -20,9 +20,18 @@ configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 
+# concatenate the different wrapper interface files
+configure_file(${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i
+               ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i COPYONLY)
+# append additional interface files to end of gtdynamics.i
+foreach(INTERFACE_FILE ${ADDITIONAL_INTERFACE_FILES})
+  file(READ ${INTERFACE_FILE} interface_contents)
+  file(APPEND ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i "${interface_contents}")
+endforeach()
+
 pybind_wrap(
   ${PROJECT_NAME}_py # target
-  ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i # interface header file
+  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i # interface header file
   "${PROJECT_NAME}.cpp" # the generated cpp
   "${PROJECT_NAME}" # module_name
   "${PROJECT_NAME}" # top namespace in the cpp file

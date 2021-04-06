@@ -3,8 +3,8 @@ set(SOURCE_SUBDIRS dynamics factors universal_robot utils)
 
 # Include cable robot stuff
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
-  list(APPEND SOURCE_SUBDIRS cablerobot)
-  list(APPEND SOURCE_SUBDIRS cablerobot/factors)
+  add_subdirectory(cablerobot)
+  set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
 endif()
 
 # Add this directory as include.
