@@ -15,28 +15,9 @@ import gtsam
 import gtdynamics as gtd
 import numpy as np
 import utils
+from cdpr_planar_controller import CdprControllerBase
 
-class CdprControllerBase:
-    """Interface for cable robot controllers
-    """
-    @property
-    def update(self, values, t):
-        """gives the new control input given current measurements
-
-        Args:
-            values (gtsam.Values): values object will contain at least the current Pose and Twist,
-            but should often also include the current joint angles and velocities
-            t (int): The current time index (discrete time index)
-
-        Returns:
-            gtsam.Values: A values object which contains the joint torques for this time step.
-
-        Raises:
-            NotImplementedError: Derived classes must override this function
-        """
-        raise NotImplementedError("CdprControllers need to implement the `update` function")
-
-class CdprController(CdprControllerBase):
+class CdprControllerIlqr(CdprControllerBase):
     """Precomputes the open-loop trajectory
     then just calls on that for each update.
     """
@@ -56,13 +37,14 @@ class CdprController(CdprControllerBase):
         self.pdes = pdes
         self.dt = dt
 
+        # initial guess
+        x0 = utils.zerovalues(cdpr.ee_id(), ts=range(len(pdes)), dt=dt)
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
-        # initial guess
-        init = utils.zerovalues(cdpr.ee_id(), range(len(pdes)), dt=dt)
         # optimize
-        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init)
-        self.result = self.optimizer.optimize()
+        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess)
+        # self.result = self.optimizer.optimize()
+        self.result = x_guess
         self.fg = fg
 
     def update(self, values, t):

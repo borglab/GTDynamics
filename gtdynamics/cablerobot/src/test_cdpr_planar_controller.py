@@ -17,7 +17,7 @@ import gtsam
 from gtsam import Pose3, Rot3
 import numpy as np
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprController
+from cdpr_controller_ilqr import CdprControllerIlqr
 from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
@@ -33,7 +33,7 @@ class TestCdprPlanar(GtsamTestCase):
 
         x_des = [Pose3(Rot3(), (1.5+k/20.0, 0, 1.5)) for k in range(9)]
         x_des = x_des[0:1] + x_des
-        controller = CdprController(cdpr, x0=x0, pdes=x_des, dt=0.1)
+        controller = CdprControllerIlqr(cdpr, x0=x0, pdes=x_des, dt=0.1)
 
         sim = CdprSimulator(cdpr, x0, controller, dt=0.1)
         result = sim.run(N=10)
