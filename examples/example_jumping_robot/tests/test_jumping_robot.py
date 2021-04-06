@@ -13,21 +13,23 @@ import gtdynamics as gtd
 import numpy as np
 
 class TestJumpingRobot(unittest.TestCase):
-    """Create a jumping robot and test it."""
+    """ Tests for jumping robot. """
     def __init__(self, *args, **kwargs):
+        """ Create a jumping robot
+        """
         super(TestJumpingRobot, self).__init__(*args, **kwargs)
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
-        self.jr = JumpingRobot(self.yaml_file_path, JumpingRobot.create_init_config())
+        self.init_config = JumpingRobot.create_init_config()
+        self.jr_simulator = JRSimulator(self.yaml_file_path, init_config)
 
     def test_jumping_robot(self):
-        self.assertEqual(self.jr.robot.numLinks(), 6)
-        self.assertEqual(self.jr.robot.numJoints(), 6)
+        """ Test creating jumping robot """
+        jr = JumpingRobot(self.yaml_file_path, self.init_config)
+        self.assertEqual(jr.robot.numLinks(), 6)
+        self.assertEqual(jr.robot.numJoints(), 6)
 
-    def test_forward_kinematics(self):
-        init_config = JumpingRobot.create_init_config()
-        controls = JumpingRobot.create_controls()
-        jr_simulator = JRSimulator(self.yaml_file_path, init_config, controls)
-
+    def test_robot_dynamics(self):
+        """ test forward dynamics of robot frame """
         # specify joint angles, joint vels, torques
         k = 0
         phase = 0
@@ -37,43 +39,25 @@ class TestJumpingRobot(unittest.TestCase):
             gtd.InsertTorqueDouble(values, j, k, 0.0)
             gtd.InsertJointAngleDouble(values, j, k, 0.0)
             gtd.InsertJointVelDouble(values, j, k ,0.0)
-        jr_simulator.step_robot_dynamics(k, values, phase)
+        self.jr_simulator.step_robot_dynamics(k, values, phase)
         joint_accels = gtd.DynamicsGraph.jointAccels(jr_simulator.jr.robot, values, k)
         np.testing.assert_array_almost_equal(joint_accels, np.zeros(6), decimal=5)
 
     def test_actuator_dynamics(self):
-        init_config = JumpingRobot.create_init_config()
+        """ test forward dynamics of actuator """
         controls = JumpingRobot.create_controls()
-        jr_simulator = JRSimulator(self.yaml_file_path, init_config, controls)
-        
-        values = gtsam.Values()
-        V_s_key = Actuator.SourceVolumeKey()
-        values.insertDouble(V_s_key, jr_simulator.values.atDouble(V_s_key))
-        k = 0
+        values = jr_simulator.init_config_values(controls)
+        k=0
         curr_time = 1.0
-        m_s_key = Actuator.SourceMassKey(k)
-        values.insertDouble(m_s_key, 1e-6)
-        for acutator in jr_simulator.jr.actuators:
-            j = acutator.j
-            gtd.InsertJointAngleDouble(values, j, k, 0.0)
-            gtd.InsertJointVelDouble(values, j, k, 0.0)
-            m_a_key = Actuator.MassKey(j, k)
-            values.insertDouble(m_a_key, 1e-5)
-            To_key = Actuator.ValveOpenTimeKey(j)
-            Tc_key = Actuator.ValveCloseTimeKey(j)
-            values.insertDouble(To_key, jr_simulator.values.atDouble(To_key))
-            values.insertDouble(Tc_key, jr_simulator.values.atDouble(Tc_key))
         jr_simulator.step_actuator_dynamics(k, values, curr_time)
-
-        P_s_key = Actuator.SourcePressureKey(k)
-        P_s = values.atDouble(P_s_key)
 
         torques = []
         for actuator in jr_simulator.jr.actuators:
             j = actuator.j
             torque = gtd.TorqueDouble(values, j, k)
             torques.append(torque)
-        self.assertAlmostEqual(torques, [0, 0, 0, 0], 5)
+        print(torques)
+        # TODO(yetong): check torques, pressures, etc
 
 
     def test_simulation(self):
