@@ -46,6 +46,14 @@ class TorqueFactor : gtsam::NonlinearFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/factors/MinTorqueFactor.h>
+class MinTorqueFactor : gtsam::NonlinearFactor {
+  MinTorqueFactor(gtsam::Key torque_key,
+               const gtsam::noiseModel::Base *cost_model);
+
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
 #include <gtdynamics/factors/WrenchFactor.h>
 class WrenchFactor : gtsam::NonlinearFactor {
   WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
@@ -397,10 +405,18 @@ class DynamicsGraph {
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
+      const gtdynamics::Robot &robot, const int num_steps, const double dt) const;
+
+  gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::DynamicsGraph::CollocationScheme collocation,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
+
+  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
+      const std::vector<gtdynamics::Robot> &robots,
+      const std::vector<int> &phase_steps,
+      const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<gtdynamics::Robot> &robots,
@@ -648,43 +664,6 @@ class Simulator {
   gtsam::Values simulate(const std::vector<gtsam::Values> &torques_seq,
                          const double dt);
   const gtsam::Values &getValues() const;
-};
-
-/****************************************** Cable Robot ******************************************/
-
-#include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
-class CableLengthFactor : gtsam::NonlinearFactor {
-  CableLengthFactor(gtsam::Key l_key, gtsam::Key wTee_key,
-                    const gtsam::noiseModel::Base *cost_model,
-                    const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
-class CableVelocityFactor : gtsam::NonlinearFactor {
-  CableVelocityFactor(gtsam::Key ldot_key, gtsam::Key wTee_key, gtsam::Key Vee_key,
-                      const gtsam::noiseModel::Base* cost_model,
-                      const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-#include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
-class CableTensionFactor : gtsam::NonlinearFactor {
-  CableTensionFactor(gtsam::Key tension_key, gtsam::Key eePose_key, gtsam::Key wrench_key,
-                 const gtsam::noiseModel::Base* cost_model,
-                 const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
-};
-
-// need to borrow this from GTSAM since GTSAM doesn't have fixed-size vector versions
-#include <gtdynamics/cablerobot/factors/PriorFactor.h>
-template<T = {double, gtsam::Vector2, gtsam::Vector3, gtsam::Vector4, gtsam::Vector5, gtsam::Vector6}>
-class PriorFactor : gtsam::NonlinearFactor {
-  PriorFactor(size_t key, const T& prior, const gtsam::noiseModel::Base* noiseModel);
-  T prior() const;
-
-  void print(const string &s,
-             const gtsam::KeyFormatter &keyFormatter);
 };
 
 }  // namespace gtdynamics
