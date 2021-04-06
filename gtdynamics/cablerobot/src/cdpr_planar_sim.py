@@ -77,10 +77,7 @@ class CdprSimulator:
         gtd.InsertTwist(xk, lid, k, gtd.Twist(x, lid, k))
         # IK for this time step, graph
         fg.push_back(cdpr.kinematics_factors(ks=[k]))
-        fg.push_back(
-            cdpr.priors_ik(ks=[k],
-                           Ts=[gtd.Pose(xk, cdpr.ee_id(), k)],
-                           Vs=[gtd.Twist(xk, cdpr.ee_id(), k)]))
+        fg.push_back(cdpr.priors_ik(ks=[k], values=xk))
         # IK initial estimate
         for j in range(4):
             gtd.InsertJointAngleDouble(xk, j, k, 0)
@@ -119,12 +116,9 @@ class CdprSimulator:
         fg.push_back(cdpr.dynamics_factors(ks=[k]))
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
         # priors (pose/twist and torque inputs)
+        fg.push_back(cdpr.priors_ik(ks=[k], values=xd))
         fg.push_back(
-            cdpr.priors_ik(ks=[k],
-                           Ts=[gtd.Pose(xd, cdpr.ee_id(), k)],
-                           Vs=[gtd.Twist(xd, cdpr.ee_id(), k)]))
-        fg.push_back(
-            cdpr.priors_id(ks=[k], torquess=[[gtd.TorqueDouble(u, ji, k) for ji in range(4)]]))
+            cdpr.priors_id(ks=[k], values=u))
         # ID initial guess
         for ji in range(4):
             gtd.InsertTorqueDouble(xd, ji, k, gtd.TorqueDouble(u, ji, k))

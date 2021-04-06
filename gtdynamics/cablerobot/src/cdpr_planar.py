@@ -202,20 +202,25 @@ class Cdpr:
         dfg.push_back(gtd.PriorFactorDouble(0, dt, self.costmodel_dt))
         return dfg
 
-    def priors_fk(self, ks=[], ls=[[]], ldots=[[]]):
+    def priors_fk(self, ks=[], ls=[[]], ldots=[[]], values=None):
         """Creates prior factors which correspond to solving the forward kinematics problem by
         specifying the joint angles and velocities.  To be used with kinematics_factors to optimize
-        for the Pose and Twist.
+        for the Pose and Twist.  Either supply ks/ls/ldots, or ks/values.  If values is supplied, ls
+        and ldots will be ignored.
 
         Args:
             ks (list, optional): Time step indices. Defaults to [].
             ls (list, optional): List of list joint angles for each time step. Defaults to [[]].
             ldots (list, optional): List of list of joint velocities for each time step. Defaults to
             [[]].
+            values (gtsam.Values, optional): Values object containing all the needed key/values.
 
         Returns:
             gtsam.NonlinearFactorGraph: The forward kinematics prior factors
         """
+        if values is not None:
+            ls = [[gtd.JointAngleDouble(values, ji, k) for ji in range(4)] for k in ks]
+            ldots = [[gtd.JointVelDouble(values, ji, k) for ji in range(4)] for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
@@ -225,19 +230,24 @@ class Cdpr:
                                                       ldotval, self.costmodel_prior_ldot))
         return graph
 
-    def priors_ik(self, ks=[], Ts=[], Vs=[]):
+    def priors_ik(self, ks=[], Ts=[], Vs=[], values=None):
         """Creates prior factors which correspond to solving the inverse kinematics problem by
         specifying the Pose/Twist of the end effector.  To be used with kinematics_factors to
-        optimize for the joint angles and velocities.
+        optimize for the joint angles and velocities.  Either supply ks/Ts/Vs, or ks/values.  If
+        values is supplied, Ts and Vs will be ignored.
 
         Args:
             ks (list, optional): Time step indices. Defaults to [].
             Ts (list, optional): List of Poses for each time step. Defaults to [[]].
             Vs (list, optional): List of Twists for each time step. Defaults to [[]].
+            values (gtsam.Values, optional): Values object containing all the needed key/values.
 
         Returns:
             gtsam.NonlinearFactorGraph: The inverve kinematics prior factors
         """
+        if values is not None:
+            Ts = [gtd.Pose(values, self.ee_id(), k) for k in ks]
+            Vs = [gtd.Twist(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, T, V in zip(ks, Ts, Vs):
             graph.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(self.ee_id(), k).key(),
@@ -249,20 +259,24 @@ class Cdpr:
     # note: I am not using the strict definitions for forward/inverse dynamics.
     # priors_fd solves for torques given twistaccel (no joint accel)
     # priors_id solves for twistaccel (no joint accel) given torques
-    def priors_id(self, ks=[], torquess=[[]]):
+    def priors_id(self, ks=[], torquess=[[]], values=None):
         """Creates factors roughly corresponding to the inverse dynamics problem.  While strictly
         inverse dynamics in Lynch & Park refers to the problem of calculating joint accelerations
         given joint torques, temproarily this function is more convenient which directly relates
         constrains joint torques (to obtain twist accelerations when used with dynamics_factors).
+        Either supply ks/torquess, or ks/values.  If values is supplied, torquess will be ignored.
 
         Args:
             ks (list, optional): Time step indices. Defaults to [].
             torquess (list, optional): List of list of joint torques for each time step. Defaults to
             [[]].
+            values (gtsam.Values, optional): Values object containing all the needed key/values.
 
         Returns:
             gtsam.NonlinearFactorGraph: The inverse dynamics prior factors
         """
+        if values is not None:
+            torquess = [[gtd.TorqueDouble(values, ji, k) for ji in range(4)] for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, torques in zip(ks, torquess):
             for ji, torque in enumerate(torques):
@@ -270,19 +284,24 @@ class Cdpr:
                                                       torque, self.costmodel_prior_tau))
         return graph
 
-    def priors_fd(self, ks=[], VAs=[]):
+    def priors_fd(self, ks=[], VAs=[], values=None):
         """Creates factors roughly corresponding to the forward dynamics problem.  While strictly
         forward dynamics in Lynch & Park refers to the problem of calculating joint torques given
         joint accelerations, temproarily this function is more convenient which directly relates
         constraints TwistAccelerations (to obtain joint torques when used with dynamics_factors).
+        Either supply ks/twistaccels, or ks/values.  If values is supplied, twistaccels will be
+        ignored.
 
         Args:
             ks (list, optional): Time step indices. Defaults to [].
             VAs (list, optional): List of twist accelerations for each time step. Defaults to [[]].
+            values (gtsam.Values, optional): Values object containing all the needed key/values.
 
         Returns:
             gtsam.NonlinearFactorGraph: The forward dynamics prior factors
         """
+        if values is not None:
+            torquess = [gtd.TwistAccel(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
             graph.push_back(gtsam.PriorFactorVector6(
