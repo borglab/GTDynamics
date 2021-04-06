@@ -49,15 +49,22 @@ class TestCdprPlanar(GtsamTestCase):
         self.assertEqual(0.0, kfg.error(values))
         # try optimizing IK
         ikgraph = gtsam.NonlinearFactorGraph(kfg)
-        ikgraph.push_back(cdpr.priors_ik(
-            [0], [gtd.Pose(values, cdpr.ee_id(), 0)], [gtd.Twist(values, cdpr.ee_id(), 0)]))
+        ik1 = cdpr.priors_ik(ks=[0],
+                             Ts=[gtd.Pose(values, cdpr.ee_id(), 0)],
+                             Vs=[gtd.Twist(values, cdpr.ee_id(), 0)])
+        ik2 = cdpr.priors_ik(ks=[0], values=values)
+        self.gtsamAssertEquals(ik1, ik2)
+        ikgraph.push_back(ik1)
         ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph, zeroValues()).optimize()
         self.gtsamAssertEquals(ikres, values)  # should match with full sol
         # try optimizing FK
         fkgraph = gtsam.NonlinearFactorGraph(kfg)
-        fkgraph.push_back(cdpr.priors_fk([0],
-                                         [[gtd.JointAngleDouble(values, ji, 0) for ji in range(4)]],
-                                         [[gtd.JointVelDouble(values, ji, 0) for ji in range(4)]]))
+        fk1 = cdpr.priors_fk(ks=[0],
+                             ls=[[gtd.JointAngleDouble(values, ji, 0) for ji in range(4)]],
+                             ldots=[[gtd.JointVelDouble(values, ji, 0) for ji in range(4)]])
+        fk2 = cdpr.priors_fk(ks=[0], values=values)
+        self.gtsamAssertEquals(fk1, fk2)
+        fkgraph.push_back(fk1)
         params = gtsam.LevenbergMarquardtParams()
         params.setAbsoluteErrorTol(1e-20)  # FK less sensitive so we need to decrease the tolerance
         fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), params).optimize()
@@ -88,7 +95,10 @@ class TestCdprPlanar(GtsamTestCase):
         dfg.push_back(
             cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
                            [gtd.Twist(values, cdpr.ee_id(), 0)]))
-        dfg.push_back(cdpr.priors_fd([0], [gtd.TwistAccel(values, cdpr.ee_id(), 0)]))
+        fd1 = cdpr.priors_fd(ks=[0], Vas=[gtd.TwistAccel(values, cdpr.ee_id(), 0)])
+        fd2 = cdpr.priors_fd(ks=[0], values=values)
+        self.gtsamAssertEquals(fd1, fd2)
+        dfg.push_back(fd1)
         # redundancy resolution
         dfg.push_back(
             gtd.PriorFactorDouble(
@@ -105,6 +115,10 @@ class TestCdprPlanar(GtsamTestCase):
             gtd.InsertTorqueDouble(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
+        # check ID priors functions
+        id1 = cdpr.priors_id(ks=[0], torquess=[gtd.Torque(results, ji, 0) for ji in range(4)])
+        id2 = cdpr.priors_id(ks=[0], values=results)
+        self.gtsamAssertEquals(id1, id2)
 
     def testDynamicsCollocation(self):
         """Test dynamics factors across multiple timesteps by using collocation.
