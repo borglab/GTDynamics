@@ -20,7 +20,7 @@ class TestJumpingRobot(unittest.TestCase):
         super(TestJumpingRobot, self).__init__(*args, **kwargs)
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
-        self.jr_simulator = JRSimulator(self.yaml_file_path, init_config)
+        self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
 
     def test_jumping_robot(self):
         """ Test creating jumping robot """
@@ -34,22 +34,22 @@ class TestJumpingRobot(unittest.TestCase):
         k = 0
         phase = 0
         values = gtsam.Values()
-        for acutator in jr_simulator.jr.actuators:
+        for acutator in self.jr_simulator.jr.actuators:
             j = acutator.j
             gtd.InsertTorqueDouble(values, j, k, 0.0)
             gtd.InsertJointAngleDouble(values, j, k, 0.0)
             gtd.InsertJointVelDouble(values, j, k ,0.0)
         self.jr_simulator.step_robot_dynamics(k, values, phase)
-        joint_accels = gtd.DynamicsGraph.jointAccels(jr_simulator.jr.robot, values, k)
+        joint_accels = gtd.DynamicsGraph.jointAccels(self.jr_simulator.jr.robot, values, k)
         np.testing.assert_array_almost_equal(joint_accels, np.zeros(6), decimal=5)
 
     def test_actuator_dynamics(self):
         """ test forward dynamics of actuator """
         controls = JumpingRobot.create_controls()
-        values = jr_simulator.init_config_values(controls)
+        values = self.jr_simulator.init_config_values(controls)
         k=0
         curr_time = 1.0
-        jr_simulator.step_actuator_dynamics(k, values, curr_time)
+        self.jr_simulator.step_actuator_dynamics(k, values, curr_time)
 
         torques = []
         for actuator in jr_simulator.jr.actuators:

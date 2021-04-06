@@ -53,7 +53,7 @@ jobs:
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
       - name: Configure
-        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
+        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
         working-directory: ./build
       - name: Build
         run: make -j4
