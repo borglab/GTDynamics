@@ -7,7 +7,7 @@
 
 /**
  * @file  PneumaticActuatorFactor.h
- * @brief pneumatic factors.
+ * @brief Pneumatic factors.
  * @Author: Yetong Zhang
  */
 

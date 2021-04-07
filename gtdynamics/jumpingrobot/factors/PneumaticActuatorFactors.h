@@ -7,7 +7,7 @@
 
 /**
  * @file  ClippingActuatorFactor.h
- * @brief factors related to pneumatic actuator.
+ * @brief Factors related to pneumatic actuator.
  * @Author: Yetong Zhang
  */
 

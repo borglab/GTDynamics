@@ -7,7 +7,7 @@
 
 /**
  *  @file testPneumaticFactors.cpp
- *  @test for pneumatic actuator factors
+ *  @brief Tests for pneumatic factors.
  *  @author Yetong Zhang
  **/
 

@@ -7,8 +7,8 @@
 
 /**
  *  @file testActuatorJointFactor.cpp
- *  @test for pneumatic actuator facot
- *  @author Yetong
+ *  @brief Tests for pneumatic actuator factors.
+ *  @author Yetong Zhang
  **/
 
 #include <gtsam/base/Matrix.h>
