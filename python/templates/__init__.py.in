@@ -1,2 +1,11 @@
 import gtsam
 from ${PROJECT_NAME}.${PROJECT_NAME} import *
+
+class GtdKeyFormatter(object):
+    def __repr__(self):
+        return str(self)
+
+class Values(GtdKeyFormatter, gtsam.Values):
+    pass
+class NonlinearFactorGraph(GtdKeyFormatter, gtsam.NonlinearFactorGraph):
+    pass
