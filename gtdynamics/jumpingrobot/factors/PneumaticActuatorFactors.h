@@ -165,23 +165,23 @@ class JointTorqueFactor
 
     if (H_q) {
       if (antagonistic_active) {
-        *H_q = -gtsam::I_1x1 * ka_;
+        H_q->setConstant(1, 1, -ka_);
       } else {
-        *H_q = gtsam::I_1x1 * 0.0;
+        H_q->setConstant(1, 1, 0);
       }
     }
     if (H_v) {
-      *H_v = -gtsam::I_1x1 * b_;
+      H_v->setConstant(1, 1, -b_);
     }
     if (H_f) {
       if (positive_) {
-        *H_f = gtsam::I_1x1 * r_;
+        H_f->setConstant(1, 1, r_);
       } else {
-        *H_f = -gtsam::I_1x1 * r_;
+        H_f->setConstant(1, 1, -r_);
       }
     }
     if (H_torque) {
-      *H_torque = -gtsam::I_1x1;
+      H_torque->setConstant(1, 1, -1);
     }
 
     if (positive_) {
@@ -258,7 +258,7 @@ class SmoothActuatorFactor
     double gauge_p = p - 101.325;
 
     if (H_f) {
-      *H_f = -gtsam::I_1x1;
+      H_f->setConstant(1, 1, -1);
     }
 
     double x0 = 0;
@@ -297,12 +297,10 @@ class SmoothActuatorFactor
     if (delta_x < 0) {
       if (H_delta_x) *H_delta_x = gtsam::I_1x1 * (-k);
       if (H_p) {
-        *H_p = gtsam::I_1x1 * (j_f0_p - j_k_p * delta_x);
+        H_p->setConstant(1, 1, j_f0_p - j_k_p * delta_x);
       }
       return gtsam::Vector1(f0 - k * delta_x - f);
     }
-
-    // std::cout << x0 << ", " << f0 << ", " << k << "\n";
 
     // normal condition
     double c = (2 * k * x0 - 3 * f0) / (x0 * x0);
@@ -311,8 +309,7 @@ class SmoothActuatorFactor
     double x0_3 = x0_2 * x0;
     double x0_4 = x0_3 * x0;
     if (H_delta_x)
-      *H_delta_x =
-          gtsam::I_1x1 * (3 * d * delta_x * delta_x + 2 * c * delta_x - k);
+      H_delta_x->setConstant(1, 1, 3 * d * delta_x * delta_x + 2 * c * delta_x - k);
     if (H_p) {
       double j_x0_p = 0;
       for (size_t i = 1; i < x0_coeffs_.size(); i++) {
@@ -324,9 +321,7 @@ class SmoothActuatorFactor
                      (-1 / x0_2) * j_k_p + (2 / x0_3) * j_f0_p;
       double j_p = pow(delta_x, 3) * j_d_p + pow(delta_x, 2) * j_c_p +
                    delta_x * (-j_k_p) + j_f0_p;
-      // std::cout << j_k_p << ", " << j_f0_p << ", " << j_x0_p << ", " << j_c_p
-      // << ", " << j_d_p << ", " << j_p << "\n";
-      *H_p = gtsam::I_1x1 * j_p;
+      H_p->setConstant(1, 1, j_p);
     }
     double expected_f =
         d * pow(delta_x, 3) + c * pow(delta_x, 2) + (-k) * delta_x + f0;
@@ -412,7 +407,7 @@ class ClippingActuatorFactor
       if (f_x0 < 0) {
         f_x0 = 0;
         if (H_p) {
-          *H_p = gtsam::I_1x1 * 0;
+          H_p->setConstant(1, 1, 0);
         }
       } else {
         if (H_p) {
@@ -423,19 +418,17 @@ class ClippingActuatorFactor
                               pow(0, powx_[i]);
             }
           }
-          *H_p = gtsam::I_1x1 * derivative_y;
+          H_p->setConstant(1, 1, derivative_y);
         }
       }
 
       if (H_delta_x) {
-        *H_delta_x = gtsam::I_1x1 * extension_k_;
+        H_delta_x->setConstant(1, 1, extension_k_);
       }
       if (H_f) {
-        *H_f = -gtsam::I_1x1;
+        H_f->setConstant(1, 1, -1);
       }
       f_expected = f_x0 + extension_k_ * delta_x;
-      // std::cout << "f_x0: " << f_x0 << "\n";
-      // std::cout << "f_expected: " << f_expected << "\n";
       return gtsam::Vector1(f_expected - f);
     }
 
@@ -446,13 +439,13 @@ class ClippingActuatorFactor
     if (delta_x > 8 || (p < 100 && delta_x > 6.5) || (p < 0 && delta_x > 0) ||
         f_expected < 0) {
       if (H_delta_x) {
-        *H_delta_x = gtsam::I_1x1 * 0;
+        H_delta_x->setConstant(1, 1, 0);
       }
       if (H_p) {
-        *H_p = gtsam::I_1x1 * 0;
+        H_p->setConstant(1, 1, 0);
       }
       if (H_f) {
-        *H_f = -gtsam::I_1x1;
+        H_f->setConstant(1, 1, -1);
       }
       return gtsam::Vector1(-f);
     } else {
@@ -464,7 +457,7 @@ class ClippingActuatorFactor
                             pow(p, powy_[i]);
           }
         }
-        *H_delta_x = gtsam::I_1x1 * derivative_x;
+        H_delta_x->setConstant(1, 1, derivative_x);
       }
       if (H_p) {
         double derivative_y = 0;
@@ -474,7 +467,7 @@ class ClippingActuatorFactor
                             pow(delta_x, powx_[i]);
           }
         }
-        *H_p = gtsam::I_1x1 * derivative_y;
+        H_p->setConstant(1, 1, derivative_y);
       }
       if (H_f) {
         *H_f = -gtsam::I_1x1;

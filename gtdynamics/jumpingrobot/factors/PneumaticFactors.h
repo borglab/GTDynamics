@@ -48,13 +48,13 @@ class GassLawFactor
       boost::optional<gtsam::Matrix &> H_v = boost::none,
       boost::optional<gtsam::Matrix &> H_m = boost::none) const override {
     if (H_p) {
-      *H_p = gtsam::I_1x1 * (1e3 * v);
+      H_p->setConstant(1, 1, 1e3 * v);
     }
     if (H_v) {
-      *H_v = gtsam::I_1x1 * (1e3 * p);
+      H_v->setConstant(1, 1, 1e3 * p);
     }
     if (H_m) {
-      *H_m = gtsam::I_1x1 * (-c_);
+      H_m->setConstant(1, 1, -c_);
     }
 
     return gtsam::Vector1(1e3 * p * v - c_ * m);
@@ -90,13 +90,16 @@ class MassFlowRateFactor
   typedef MassFlowRateFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
   double D_, L_, mu_, epsilon_, k_;
+  double term1_, term2_, c1_, coeff_;
 
  public:
   MassFlowRateFactor(gtsam::Key pm_key, gtsam::Key ps_key, gtsam::Key mdot_key,
                  const gtsam::noiseModel::Base::shared_ptr &cost_model,
                  const double D, const double L, const double mu, const double epsilon, const double k)
       : Base(cost_model, pm_key, ps_key, mdot_key),
-        D_(D), L_(L), mu_(mu), epsilon_(epsilon), k_(k) {}
+        D_(D), L_(L), mu_(mu), epsilon_(epsilon), k_(k),
+        term1_(6.9/4 * M_PI * D_ * mu_), term2_(pow(epsilon_ / (3.7 * D_), 1.11)),
+        c1_(pow(1.8 / log(10), -2)), coeff_(1e3 * sqrt(pow(M_PI, 2) * pow(D_, 5) * k_ / (16.0 * L_))) {}
   virtual ~MassFlowRateFactor() {}
 
  public:
@@ -106,29 +109,24 @@ class MassFlowRateFactor
       boost::optional<gtsam::Matrix &> H_ps = boost::none,
       boost::optional<gtsam::Matrix &> H_mdot = boost::none) const override {
 
-    double term1 = 6.9/4 * M_PI * D_ * mu_;
-    double term2 = pow(epsilon_ / (3.7 * D_), 1.11);
-    double tmp = term1 / abs(mdot) + term2;
-    double c1 = pow(1.8 / log(10), -2);
-    double fD = c1 * pow(log(tmp), -2);
-
-    double coeff = 1e3 * sqrt(pow(M_PI, 2) * pow(D_, 5) * k_ / (16.0 * L_));
+    double tmp = term1_ / abs(mdot) + term2_;
+    double fD = c1_ * pow(log(tmp), -2);
     double p_square_diff = abs(ps * ps - pm * pm);
     int sign_p = abs(ps) > abs(pm) ? 1 : -1;
     int sign_mdot = mdot > 0 ? 1 : -1;
-    double expected_mdot = sign_p * coeff * sqrt(p_square_diff/fD);
+    double expected_mdot = sign_p * coeff_ * sqrt(p_square_diff/fD);
 
     if (H_pm) {
-      *H_pm = gtsam::I_1x1 * (-coeff * pow(p_square_diff*fD, -0.5) * pm);
+      H_pm->setConstant(1, 1, -coeff_ * pow(p_square_diff*fD, -0.5) * pm);
     }
     if (H_ps) {
-      *H_ps = gtsam::I_1x1 * (coeff * pow(p_square_diff*fD, -0.5) * ps);
+      H_ps->setConstant(1, 1, coeff_ * pow(p_square_diff*fD, -0.5) * ps);
     }
     if (H_mdot) {
-      double d_fD = -0.5 * sign_p * coeff * sqrt(p_square_diff) * pow(fD, -1.5);
-      double d_fD_tmp = c1 * (-2) * pow(log(tmp), -3) / tmp;
-      double d_tmp_mdot = -term1 / (mdot * mdot) * sign_mdot;
-      *H_mdot = gtsam::I_1x1 * (-1 + d_fD * d_fD_tmp * d_tmp_mdot);
+      double d_fD = -0.5 * sign_p * coeff_ * sqrt(p_square_diff) * pow(fD, -1.5);
+      double d_fD_tmp = c1_ * (-2) * pow(log(tmp), -3) / tmp;
+      double d_tmp_mdot = -term1_ / (mdot * mdot) * sign_mdot;
+      H_mdot->setConstant(1, 1, -1 + d_fD * d_fD_tmp * d_tmp_mdot);
     }
     return gtsam::Vector1(expected_mdot - mdot);
   }
@@ -161,7 +159,7 @@ class MassFlowRateFactor
 double sigmoid (double x,  boost::optional<gtsam::Matrix &> H_x = boost::none) {
     double neg_exp = exp(-x);
     if (H_x) {
-        *H_x = gtsam::I_1x1 * neg_exp / pow(1.0 + neg_exp, 2);
+        H_x->setConstant(1, 1, neg_exp / pow(1.0 + neg_exp, 2));
     }
     return 1.0/(1.0+neg_exp);
 }
@@ -207,10 +205,10 @@ class ValveControlFactor
       *H_tc = *H_tc * (mdot / ct_);
     }
     if (H_mdot) {
-      *H_mdot = gtsam::I_1x1 * coeff;
+      H_mdot->setConstant(1, 1, coeff);
     }
     if (H_true_mdot) {
-      *H_true_mdot = -gtsam::I_1x1 ;
+      H_true_mdot->setConstant(1, 1, -1);
     }
     return gtsam::Vector1(coeff * mdot - true_mdot);
   }
