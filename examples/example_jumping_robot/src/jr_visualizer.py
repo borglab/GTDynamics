@@ -1,7 +1,12 @@
 """
-@file   jr_visualizer.py
-@brief  visualize the jumping trajectory of the jumping robot
-@author Yetong Zhang
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ *
+ * @file  jr_visualizer.py
+ * @brief Visualize the jumping trajectory of the jumping robot.
+ * @author Yetong Zhang
 """
 
 import os,sys,inspect
@@ -20,7 +25,7 @@ from matplotlib.animation import FuncAnimation
 from jumping_robot import JumpingRobot
 
 def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
-    """ visualize jumping robot
+    """ Visualize the jumping robot.
 
     Args:
         values (gtsam.Values): all values of the time step
