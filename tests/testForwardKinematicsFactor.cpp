@@ -41,7 +41,7 @@ using simple_rr::robot;
 
 gtsam::Values zeroValues() {
   gtsam::Values joint_angles;
-  for (auto &&joint : robot.joints()) {
+  for (auto&& joint : robot.joints()) {
     InsertJointAngle(&joint_angles, joint->id(), 0.0);
   }
   return joint_angles;
@@ -105,8 +105,8 @@ TEST(ForwardKinematicsFactor, Movement) {
   // We rotated the last link by 90 degrees
   // Since the joint is originally at 0.8, the CoM of link_2 will have z=0.8,
   // and the extra 0.3 moves to the x-axis.
-  Pose3 bTl2(Rot3(0, 0, 1, //
-                  0, 1, 0, //
+  Pose3 bTl2(Rot3(0, 0, 1,  //
+                  0, 1, 0,  //
                   -1, 0, 0),
              Point3(0.3, 0, 0.8));
   Vector error = factor.evaluateError(bTl1, bTl2);
@@ -117,6 +117,23 @@ TEST(ForwardKinematicsFactor, Movement) {
   InsertPose(&values_for_jacobians, i1, bTl1);
   InsertPose(&values_for_jacobians, i2, bTl2);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values_for_jacobians, 1e-7, 1e-5);
+}
+
+TEST(ForwardKinematicsFactor, ArbitraryTime) {
+  Robot robot = CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+  std::string base_link = "l1", end_link = "l2";
+  size_t t = 81;
+  Values joint_angles;
+  InsertJointAngle(&joint_angles, robot.joint("j1")->id(), t, M_PI_2);
+
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
+                                 joint_angles, kModel, t);
+
+  Pose3 actual = factor.measured();
+  Values fk = robot.forwardKinematics(joint_angles, t, base_link);
+  Pose3 wTl1 = Pose(fk, robot.link("l1")->id(), t), wTl2 = Pose(fk, robot.link("l2")->id(), t);
+  Pose3 expected = wTl1.between(wTl2);
+  EXPECT(assert_equal(expected, actual));
 }
 
 int main() {
