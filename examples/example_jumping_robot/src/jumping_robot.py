@@ -233,38 +233,12 @@ class JumpingRobot:
             dict, dict: link poses, joint poses
         """
 
-        # compute the configuration by solving a simple factor graph:
-        #   - under the constraint that thigh and shank are in the same line,
-        #   the robot can be simplied as 3 links
-        #   - 0 represents the point of right foot contact
-        #   - 1 represents the point of right hip joint
-        #   - 2 represents the point of left hip joint
-        #   - 3 represents the point of left foot contact
-        length_right = length_list[-1] + length_list[-2]
-        length_left = length_list[0] + length_list[1]
-        length_mid = length_list[2]
-
-        init_values = Values()
-        init_values.insert(0, Pose2(foot_distance/2, 0, 0))
-        init_values.insert(1, Pose2(foot_distance/2, length_right, 0))
-        init_values.insert(2, Pose2(-foot_distance/2, length_left, 0))
-        init_values.insert(3, Pose2(-foot_distance/2, 0, 0))
-
-        range_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1]))
-        prior_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1, 1, 1]))
-        graph = NonlinearFactorGraph()
-        graph.add(RangeFactorPose2(0, 1, length_right, range_noise))
-        graph.add(RangeFactorPose2(1, 2, length_mid, range_noise))
-        graph.add(RangeFactorPose2(2, 3, length_left, range_noise))
-        graph.add(PriorFactorPose2(0, Pose2(foot_distance/2, 0, 0), prior_noise))
-        graph.add(PriorFactorPose2(3, Pose2(-foot_distance/2, 0, 0), prior_noise))
-
-        result = gtsam.LevenbergMarquardtOptimizer(
-            graph, init_values).optimize()
-        p0 = result.atPose2(0)
-        p1 = result.atPose2(1)
-        p2 = result.atPose2(2)
-        p3 = result.atPose2(3)
+        # compute the configuration of the robot by solving a small optimization problem
+        values = JumpingRobot.compute_poses_helper(length_list, foot_distance)
+        p0 = values.atPose2(0)
+        p1 = values.atPose2(1)
+        p2 = values.atPose2(2)
+        p3 = values.atPose2(3)
         rot_r = Rot3.Rx(np.arctan2(p1.y() - p0.y(), p1.x() - p0.x()))
         rot_m = Rot3.Rx(np.arctan2(p2.y() - p1.y(), p2.x() - p1.x()))
         rot_l = Rot3.Rx(np.arctan2(p3.y() - p2.y(), p3.x() - p2.x()))
@@ -286,6 +260,37 @@ class JumpingRobot:
         joint_poses["knee_l"] = Pose3(Rot3(), Point3(0, (p2.x() + p3.x())/2, (p2.y()+p3.y())/2))
         joint_poses["foot_l"] = Pose3(Rot3(), Point3(0, p3.x(), p3.y()))
         return link_poses, joint_poses
+
+    @staticmethod
+    def compute_poses_helper(length_list: list, foot_distance: float) -> Values:
+        """ compute the configuration by solving a simple factor graph:
+            - under the constraint that thigh and shank are in the same line,
+                the robot can be simplied as 3 links
+            - 0 represents the point of right foot contact
+            - 1 represents the point of right hip joint
+            - 2 represents the point of left hip joint
+            - 3 represents the point of left foot contact
+        """
+        length_right = length_list[-1] + length_list[-2]
+        length_left = length_list[0] + length_list[1]
+        length_mid = length_list[2]
+
+        init_values = Values()
+        init_values.insert(0, Pose2(foot_distance/2, 0, 0))
+        init_values.insert(1, Pose2(foot_distance/2, length_right, 0))
+        init_values.insert(2, Pose2(-foot_distance/2, length_left, 0))
+        init_values.insert(3, Pose2(-foot_distance/2, 0, 0))
+
+        range_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1]))
+        prior_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1, 1, 1]))
+        graph = NonlinearFactorGraph()
+        graph.add(RangeFactorPose2(0, 1, length_right, range_noise))
+        graph.add(RangeFactorPose2(1, 2, length_mid, range_noise))
+        graph.add(RangeFactorPose2(2, 3, length_left, range_noise))
+        graph.add(PriorFactorPose2(0, Pose2(foot_distance/2, 0, 0), prior_noise))
+        graph.add(PriorFactorPose2(3, Pose2(-foot_distance/2, 0, 0), prior_noise))
+
+        return gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
 
     @staticmethod
     def construct_link(link_id: int, link_name: str, mass: float, length: float, radius: float, pose: Pose3):
