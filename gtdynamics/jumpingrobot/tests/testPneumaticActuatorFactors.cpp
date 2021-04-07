@@ -31,21 +31,22 @@ using gtdynamics::JointTorqueFactor, gtdynamics::ActuatorVolumeFactor,
 using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
     gtsam::assert_equal, gtsam::noiseModel::Isotropic;
 
-TEST(JointTorqueFactor, ExpandInactive) {
-  Key q_key = Symbol('q', 0);
-  Key v_key = Symbol('v', 0);
-  Key f_key = Symbol('f', 0);
-  Key torque_key = Symbol('T', 0);
+namespace example {
+  auto cost_model = Isotropic::Sigma(1, 0.001);
+  gtsam::Symbol q_key('q', 0), v_key('v', 0), f_key('f', 0), torque_key('T', 0),
+    l_key('l', 0), p_key('p', 0), delta_x_key('x', 0);
+}  // namespace example
 
+TEST(JointTorqueFactor, ExpandInactive) {
   double q_limit = 0.4;
   double ka = 5;
   double r = 0.02;
   double b = 0.6;
   bool positive = false;
 
-  JointTorqueFactor factor(q_key, v_key, f_key, torque_key,
-                           Isotropic::Sigma(1, 0.001), q_limit, ka, r, b,
-                           positive);
+  JointTorqueFactor factor(example::q_key, example::v_key, example::f_key,
+                           example::torque_key, example::cost_model, q_limit,
+                           ka, r, b, positive);
 
   double q = 0.8;
   double v = 0.1;
@@ -59,29 +60,24 @@ TEST(JointTorqueFactor, ExpandInactive) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
 
   Values values;
-  values.insert(q_key, q);
-  values.insert(v_key, v);
-  values.insert(f_key, f);
-  values.insert(torque_key, torque);
+  values.insert(example::q_key, q);
+  values.insert(example::v_key, v);
+  values.insert(example::f_key, f);
+  values.insert(example::torque_key, torque);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(JointTorqueFactor, ContractActive) {
-  Key q_key = Symbol('q', 0);
-  Key v_key = Symbol('v', 0);
-  Key f_key = Symbol('f', 0);
-  Key torque_key = Symbol('T', 0);
-
   double q_limit = 0.4;
   double ka = 5;
   double r = 0.02;
   double b = 0.6;
   bool positive = true;
 
-  JointTorqueFactor factor(q_key, v_key, f_key, torque_key,
-                           Isotropic::Sigma(1, 0.001), q_limit, ka, r, b,
-                           positive);
+  JointTorqueFactor factor(example::q_key, example::v_key, example::f_key,
+                           example::torque_key, example::cost_model, q_limit,
+                           ka, r, b, positive);
 
   double q = 0.8;
   double v = 0.1;
@@ -95,30 +91,24 @@ TEST(JointTorqueFactor, ContractActive) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
 
   Values values;
-  values.insert(q_key, q);
-  values.insert(v_key, v);
-  values.insert(f_key, f);
-  values.insert(torque_key, torque);
+  values.insert(example::q_key, q);
+  values.insert(example::v_key, v);
+  values.insert(example::f_key, f);
+  values.insert(example::torque_key, torque);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(JointTorqueFactor, ExpandActive) {
-  Key q_key = Symbol('q', 0);
-  Key v_key = Symbol('v', 0);
-  Key f_key = Symbol('f', 0);
-  Key torque_key = Symbol('T', 0);
-
   double q_limit = 0.4;
   double ka = 5;
   double r = 0.02;
   double b = 0.6;
   bool positive = false;
 
-  JointTorqueFactor factor(q_key, v_key, f_key, torque_key,
-                           Isotropic::Sigma(1, 0.001), q_limit, ka, r, b,
-                           positive);
-
+  JointTorqueFactor factor(example::q_key, example::v_key, example::f_key,
+                           example::torque_key, example::cost_model, q_limit,
+                           ka, r, b, positive);
   double q = 0.0;
   double v = 0.1;
   double f = 10;
@@ -131,29 +121,24 @@ TEST(JointTorqueFactor, ExpandActive) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
 
   Values values;
-  values.insert(q_key, q);
-  values.insert(v_key, v);
-  values.insert(f_key, f);
-  values.insert(torque_key, torque);
+  values.insert(example::q_key, q);
+  values.insert(example::v_key, v);
+  values.insert(example::f_key, f);
+  values.insert(example::torque_key, torque);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(JointTorqueFactor, contractInactive) {
-  Key q_key = Symbol('q', 0);
-  Key v_key = Symbol('v', 0);
-  Key f_key = Symbol('f', 0);
-  Key torque_key = Symbol('T', 0);
-
   double q_limit = 0.4;
   double ka = 5;
   double r = 0.02;
   double b = 0.6;
   bool positive = true;
 
-  JointTorqueFactor factor(q_key, v_key, f_key, torque_key,
-                           Isotropic::Sigma(1, 0.001), q_limit, ka, r, b,
-                           positive);
+  JointTorqueFactor factor(example::q_key, example::v_key, example::f_key,
+                           example::torque_key, example::cost_model, q_limit,
+                           ka, r, b, positive);
 
   double q = 0.0;
   double v = 0.1;
@@ -167,24 +152,22 @@ TEST(JointTorqueFactor, contractInactive) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
 
   Values values;
-  values.insert(q_key, q);
-  values.insert(v_key, v);
-  values.insert(f_key, f);
-  values.insert(torque_key, torque);
+  values.insert(example::q_key, q);
+  values.insert(example::v_key, v);
+  values.insert(example::f_key, f);
+  values.insert(example::torque_key, torque);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ActuatorVolumeFactor, Factor) {
-  Key v_key = Symbol('v', 0);
-  Key l_key = Symbol('l', 0);
-
   double l = 10;
   double v = 0.001;
   double D = 0.1575 * 0.0254;
   double L = 74 * 0.0254;
 
-  ActuatorVolumeFactor factor(v_key, l_key, Isotropic::Sigma(1, 0.001), D, L);
+  ActuatorVolumeFactor factor(example::v_key, example::l_key,
+                              example::cost_model, D, L);
 
   Vector1 actual_errors, expected_errors;
 
@@ -194,17 +177,14 @@ TEST(ActuatorVolumeFactor, Factor) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
   // Make sure linearization is correct
   Values values;
-  values.insert(v_key, v);
-  values.insert(l_key, l);
+  values.insert(example::v_key, v);
+  values.insert(example::l_key, l);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
 }
 
 TEST(SmoothActuatorFactor, negative_contraction_zero) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
+  // TODO(yetong): put coefficients into class
   const vector<double> x0_coeffs{3.05583930e+00, 7.58361626e-02,
                                  -4.91579771e-04, 1.42792618e-06,
                                  -1.54817477e-09};
@@ -215,9 +195,9 @@ TEST(SmoothActuatorFactor, negative_contraction_zero) {
   const double p = 800;
   const double f = 0;
 
-  SmoothActuatorFactor factor(delta_x_key, p_key, f_key,
-                              Isotropic::Sigma(1, 0.001), x0_coeffs, k_coeffs,
-                              f0_coeffs);
+  SmoothActuatorFactor factor(example::delta_x_key, example::p_key,
+                              example::f_key, example::cost_model, x0_coeffs,
+                              k_coeffs, f0_coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -227,19 +207,15 @@ TEST(SmoothActuatorFactor, negative_contraction_zero) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-1));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 //// following tests are deprecated
 TEST(ClippingActuatorFactor, Factor) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
   const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
                p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
                p12 = 0.0001081, p03 = -7.703e-07;
@@ -249,8 +225,8 @@ TEST(ClippingActuatorFactor, Factor) {
   const double p = 120;
   const double f = 0;
 
-  ClippingActuatorFactor factor(delta_x_key, p_key, f_key,
-                                Isotropic::Sigma(1, 0.001), coeffs);
+  ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
+                                example::f_key, example::cost_model, coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -260,18 +236,14 @@ TEST(ClippingActuatorFactor, Factor) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ClippingActuatorFactor, negative_force) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
   const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
                p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
                p12 = 0.0001081, p03 = -7.703e-07;
@@ -281,8 +253,8 @@ TEST(ClippingActuatorFactor, negative_force) {
   const double p = 240;
   const double f = 100;
 
-  ClippingActuatorFactor factor(delta_x_key, p_key, f_key,
-                                Isotropic::Sigma(1, 0.001), coeffs);
+  ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
+                                example::f_key, example::cost_model, coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -292,18 +264,14 @@ TEST(ClippingActuatorFactor, negative_force) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ClippingActuatorFactor, zero_region) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
   const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
                p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
                p12 = 0.0001081, p03 = -7.703e-07;
@@ -313,8 +281,8 @@ TEST(ClippingActuatorFactor, zero_region) {
   const double p = 200;
   const double f = 100;
 
-  ClippingActuatorFactor factor(delta_x_key, p_key, f_key,
-                                Isotropic::Sigma(1, 0.001), coeffs);
+  ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
+                                example::f_key, example::cost_model, coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -324,18 +292,14 @@ TEST(ClippingActuatorFactor, zero_region) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ClippingActuatorFactor, negative_contraction) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
   const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
                p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
                p12 = 0.0001081, p03 = -7.703e-07;
@@ -345,8 +309,8 @@ TEST(ClippingActuatorFactor, negative_contraction) {
   const double p = 345;
   const double f = 1059.28;
 
-  ClippingActuatorFactor factor(delta_x_key, p_key, f_key,
-                                Isotropic::Sigma(1, 0.001), coeffs);
+  ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
+                                example::f_key, example::cost_model, coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -356,18 +320,14 @@ TEST(ClippingActuatorFactor, negative_contraction) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-1));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ClippingActuatorFactor, negative_contraction_zero) {
-  Key delta_x_key = Symbol('x', 0);
-  Key p_key = Symbol('p', 0);
-  Key f_key = Symbol('f', 0);
-
   const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
                p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
                p12 = 0.0001081, p03 = -7.703e-07;
@@ -377,8 +337,8 @@ TEST(ClippingActuatorFactor, negative_contraction_zero) {
   const double p = 1;
   const double f = 400;
 
-  ClippingActuatorFactor factor(delta_x_key, p_key, f_key,
-                                Isotropic::Sigma(1, 0.001), coeffs);
+  ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
+                                example::f_key, example::cost_model, coeffs);
 
   Vector1 actual_errors, expected_errors;
 
@@ -388,9 +348,9 @@ TEST(ClippingActuatorFactor, negative_contraction_zero) {
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-1));
   // Make sure linearization is correct
   Values values;
-  values.insert(delta_x_key, delta_x);
-  values.insert(p_key, p);
-  values.insert(f_key, f);
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::p_key, p);
+  values.insert(example::f_key, f);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
