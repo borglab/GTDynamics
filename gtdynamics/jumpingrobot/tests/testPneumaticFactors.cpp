@@ -26,9 +26,10 @@
 
 #include "gtdynamics/jumpingrobot/factors/PneumaticFactors.h"
 
-using namespace std;
-using namespace gtsam;
-using namespace gtdynamics;
+using gtdynamics::GassLawFactor, gtdynamics::MassFlowRateFactor,
+    gtdynamics::ValveControlFactor;
+using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
+    gtsam::assert_equal, gtsam::noiseModel::Isotropic;
 
 TEST(GassLawFactor, Factor) {
   Key p_key = Symbol('p', 1);
@@ -40,8 +41,7 @@ TEST(GassLawFactor, Factor) {
   double v = 5e-5;
   double m = 3;
 
-  GassLawFactor factor(p_key, v_key, m_key,
-                       noiseModel::Isotropic::Sigma(1, 0.001), c);
+  GassLawFactor factor(p_key, v_key, m_key, Isotropic::Sigma(1, 0.001), c);
 
   Vector1 actual_errors, expected_errors;
 
@@ -75,8 +75,7 @@ TEST(MassFlowRateFactor, Factor) {
   double k = 1. / (Rs * T);
 
   MassFlowRateFactor factor(pm_key, pt_key, mdot_key,
-                            noiseModel::Isotropic::Sigma(1, 0.001), D, L, mu,
-                            epsilon, k);
+                            Isotropic::Sigma(1, 0.001), D, L, mu, epsilon, k);
 
   Vector1 actual_errors, expected_errors;
 
@@ -110,8 +109,7 @@ TEST(MassFlowRateFactor, Negative) {
   double k = 1. / (Rs * T);
 
   MassFlowRateFactor factor(pm_key, pt_key, mdot_key,
-                            noiseModel::Isotropic::Sigma(1, 0.001), D, L, mu,
-                            epsilon, k);
+                            Isotropic::Sigma(1, 0.001), D, L, mu, epsilon, k);
 
   Vector1 actual_errors, expected_errors;
 
@@ -143,7 +141,7 @@ TEST(ValveControlFactor, Factor) {
   double ct = 0.1;
 
   ValveControlFactor factor(t_key, to_key, tc_key, mdot_key, true_mdot_key,
-                            noiseModel::Isotropic::Sigma(1, 0.001), ct);
+                            Isotropic::Sigma(1, 0.001), ct);
 
   Vector1 actual_errors, expected_errors;
 
