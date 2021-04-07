@@ -9,7 +9,9 @@
  * @author Gerry Chen
 """
 
+from io import StringIO
 import unittest
+from unittest.mock import patch
 
 import gtdynamics as gtd
 import gtsam
@@ -27,6 +29,22 @@ class Print(unittest.TestCase):
         fg.push_back(gtd.MinTorqueFactor(gtd.internal.TorqueKey(0, 0).key(),
                                          gtsam.noiseModel.Unit.Create(1)))
         self.assertTrue('T(0)0' in fg.__repr__())
+
+    def test_key_formatter(self):
+        """Tests print_ method with various key formatters"""
+        torqueKey = gtd.internal.TorqueKey(0, 0).key()
+        factor = gtd.MinTorqueFactor(torqueKey, gtsam.noiseModel.Unit.Create(1))
+        with patch('sys.stdout', new = StringIO()) as fake_out:
+            factor.print_('factor: ', gtd.GetKeyFormatter())
+            self.assertTrue('factor: min torque factor' in fake_out.getvalue())
+            self.assertTrue('keys = { T(0)0 }' in fake_out.getvalue())
+        def myKeyFormatter(key):
+            return 'this is my key formatter {}'.format(key)
+        with patch('sys.stdout', new = StringIO()) as fake_out:
+            factor.print_('factor: ', myKeyFormatter)
+            self.assertTrue('factor: min torque factor' in fake_out.getvalue())
+            self.assertTrue(
+                'keys = {{ this is my key formatter {} }}'.format(torqueKey) in fake_out.getvalue())
 
 if __name__ == "__main__":
     unittest.main()
