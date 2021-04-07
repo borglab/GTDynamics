@@ -36,11 +36,11 @@ namespace gtdynamics {
  * taken in the robot base/model frame.
  */
 class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
-private:
+ private:
   using This = ForwardKinematicsFactor;
   using Base = gtsam::BetweenFactor<gtsam::Pose3>;
 
-public:
+ public:
   /**
    * Construct the factor by computing the end link estimate via forward
    * kinematics.
@@ -51,17 +51,18 @@ public:
    * @param start_link_name The name of the robot's base link.
    * @param end_link_name   The name of end link whose pose we wish to compute.
    * @param joint_angles    gtsam::Values with joint angles for relevant joints.
-   * @param cost_model      The noise model for this factor.
-   *   */
+   * @param model           The noise model for this factor.
+   * @param t               The integer time index
+   */
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
                           const Robot &robot,
                           const std::string &start_link_name,
                           const std::string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::SharedNoiseModel &model)
+                          const gtsam::SharedNoiseModel &model, size_t t = 0)
       : Base(bTl1_key, bTl2_key,
              forwardKinematics(robot, joint_angles, start_link_name,
-                               end_link_name),
+                               end_link_name, t),
              model) {}
 
   virtual ~ForwardKinematicsFactor() {}
@@ -79,19 +80,20 @@ public:
   gtsam::Pose3 forwardKinematics(const Robot &robot,
                                  const gtsam::Values &known_values,
                                  const std::string &start_link_name,
-                                 const std::string &end_link_name) {
+                                 const std::string &end_link_name,
+                                 size_t t) {
     gtsam::Values values = known_values;
     for (auto &&joint : robot.joints()) {
       InsertJointVel(&values, joint->id(), 0.0);
     }
     auto start_link = robot.link(start_link_name);
-    InsertPose(&values, 0, start_link->lTcom());
-    InsertTwist(&values, 0, gtsam::Z_6x1);
-    gtsam::Values result = robot.forwardKinematics(values, 0, start_link_name);
+    // InsertPose(&values, 0, start_link->wTl());
+    // InsertTwist(&values, 0, gtsam::Z_6x1);
+    gtsam::Values result = robot.forwardKinematics(values, t, start_link_name);
 
     auto end_link = robot.link(end_link_name);
-    gtsam::Pose3 bTl1 = Pose(result, start_link->id());
-    gtsam::Pose3 bTl2 = Pose(result, end_link->id());
+    gtsam::Pose3 bTl1 = Pose(result, start_link->id(), t);
+    gtsam::Pose3 bTl2 = Pose(result, end_link->id(), t);
     return bTl1.between(bTl2);
   }
 
@@ -104,4 +106,4 @@ public:
   }
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics
