@@ -87,8 +87,6 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
       InsertJointVel(&values, joint->id(), 0.0);
     }
     auto start_link = robot.link(start_link_name);
-    // InsertPose(&values, 0, start_link->wTl());
-    // InsertTwist(&values, 0, gtsam::Z_6x1);
     gtsam::Values result = robot.forwardKinematics(values, t, start_link_name);
 
     auto end_link = robot.link(end_link_name);
