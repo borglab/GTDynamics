@@ -14,9 +14,19 @@
 
 #pragma once
 
-#include "gtsam/nonlinear/utilities.h"  // for RedirectCout.
+#include <gtdynamics/utils/DynamicsSymbol.h>
+
+#include <gtsam/nonlinear/utilities.h>  // for RedirectCout.
 
 namespace gtdynamics {
+
+typedef std::function<std::string(gtsam::Key)> StdKeyFormatter;
+
+/// Adapts the GTDKeyFormatter from a boost::function to a std::function
+StdKeyFormatter KeyFormatter() {
+  return [](gtsam::Key key) { return GTDKeyFormatter(key); };
+}
+
 
 template <typename T>
 std::string str(const T& t, const std::string& s = "") {
