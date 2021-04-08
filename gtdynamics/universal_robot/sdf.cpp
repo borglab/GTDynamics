@@ -14,7 +14,6 @@
 #include "gtdynamics/universal_robot/sdf_internal.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
-#include <sdf/parser_urdf.hh>
 #include <sdf/sdf.hh>
 
 #include "gtdynamics/universal_robot/Link.h"
