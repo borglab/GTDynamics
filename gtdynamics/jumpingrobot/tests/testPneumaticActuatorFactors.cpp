@@ -184,20 +184,12 @@ TEST(ActuatorVolumeFactor, Factor) {
 }
 
 TEST(SmoothActuatorFactor, negative_contraction_zero) {
-  // TODO(yetong): put coefficients into class
-  const vector<double> x0_coeffs{3.05583930e+00, 7.58361626e-02,
-                                 -4.91579771e-04, 1.42792618e-06,
-                                 -1.54817477e-09};
-  const vector<double> f0_coeffs{0, 1.966409};
-  const vector<double> k_coeffs{0, 0.35541599};
-
   const double delta_x = 2;
   const double p = 800;
   const double f = 0;
 
   SmoothActuatorFactor factor(example::delta_x_key, example::p_key,
-                              example::f_key, example::cost_model, x0_coeffs,
-                              k_coeffs, f0_coeffs);
+                              example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 
@@ -216,17 +208,12 @@ TEST(SmoothActuatorFactor, negative_contraction_zero) {
 
 //// following tests are deprecated
 TEST(ClippingActuatorFactor, Factor) {
-  const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-               p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-               p12 = 0.0001081, p03 = -7.703e-07;
-  const vector<double> coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-
   const double delta_x = 1;
   const double p = 120;
   const double f = 0;
 
   ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
-                                example::f_key, example::cost_model, coeffs);
+                                example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 
@@ -244,17 +231,12 @@ TEST(ClippingActuatorFactor, Factor) {
 }
 
 TEST(ClippingActuatorFactor, negative_force) {
-  const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-               p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-               p12 = 0.0001081, p03 = -7.703e-07;
-  const vector<double> coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-
   const double delta_x = 10;
   const double p = 240;
   const double f = 100;
 
   ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
-                                example::f_key, example::cost_model, coeffs);
+                                example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 
@@ -272,17 +254,12 @@ TEST(ClippingActuatorFactor, negative_force) {
 }
 
 TEST(ClippingActuatorFactor, zero_region) {
-  const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-               p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-               p12 = 0.0001081, p03 = -7.703e-07;
-  const vector<double> coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-
   const double delta_x = 13;
   const double p = 200;
   const double f = 100;
 
   ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
-                                example::f_key, example::cost_model, coeffs);
+                                example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 
@@ -300,17 +277,12 @@ TEST(ClippingActuatorFactor, zero_region) {
 }
 
 TEST(ClippingActuatorFactor, negative_contraction) {
-  const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-               p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-               p12 = 0.0001081, p03 = -7.703e-07;
-  const vector<double> coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-
   const double delta_x = -1.9;
   const double p = 345;
   const double f = 1059.28;
 
   ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
-                                example::f_key, example::cost_model, coeffs);
+                                example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 
@@ -328,17 +300,12 @@ TEST(ClippingActuatorFactor, negative_contraction) {
 }
 
 TEST(ClippingActuatorFactor, negative_contraction_zero) {
-  const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-               p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-               p12 = 0.0001081, p03 = -7.703e-07;
-  const vector<double> coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-
   const double delta_x = -2;
   const double p = 1;
   const double f = 400;
 
   ClippingActuatorFactor factor(example::delta_x_key, example::p_key,
-                                example::f_key, example::cost_model, coeffs);
+                                example::f_key, example::cost_model);
 
   Vector1 actual_errors, expected_errors;
 

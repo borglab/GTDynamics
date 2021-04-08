@@ -34,23 +34,19 @@ class ActuatorVolumeFactor: gtsam::NonlinearFactor{
 class ClippingActuatorFactor: gtsam::NonlinearFactor{
   ClippingActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                           gtsam::Key f_key,
-                          const gtsam::noiseModel::Base *cost_model,
-                          const std::vector<double> &coeffs);
+                          const gtsam::noiseModel::Base *cost_model);
 };
 
 class SmoothActuatorFactor: gtsam::NonlinearFactor{
   SmoothActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                           gtsam::Key f_key,
-                          const gtsam::noiseModel::Base *cost_model,
-                          const std::vector<double> &x0_coeffs,
-                          const std::vector<double> &k_coeffs,
-                          const std::vector<double> &f0_coeffs);
+                          const gtsam::noiseModel::Base *cost_model);
 };
 
 class ForceBalanceFactor: gtsam::NonlinearFactor{
   ForceBalanceFactor(gtsam::Key delta_x_key, gtsam::Key q_key, gtsam::Key f_key,
                      const gtsam::noiseModel::Base *cost_model,
-                     const double k, const double r, const double qRest,
+                     const double k, const double r, const double q_rest,
                      const bool contract);
 };
 

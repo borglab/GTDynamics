@@ -207,9 +207,11 @@ class SmoothActuatorFactor
  private:
   typedef SmoothActuatorFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
-  std::vector<double> x0_coeffs_;
-  std::vector<double> k_coeffs_;
-  std::vector<double> f0_coeffs_;
+  const std::vector<double> x0_coeffs_{3.05583930e+00, 7.58361626e-02,
+                                -4.91579771e-04, 1.42792618e-06,
+                                -1.54817477e-09};
+  const std::vector<double> f0_coeffs_{0, 1.966409};
+  const std::vector<double> k_coeffs_{0, 0.35541599};
 
  public:
   /** Create pneumatic actuator factor
@@ -217,14 +219,8 @@ class SmoothActuatorFactor
    */
   SmoothActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                        gtsam::Key f_key,
-                       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                       const std::vector<double> &x0_coeffs,
-                       const std::vector<double> &k_coeffs,
-                       const std::vector<double> &f0_coeffs)
-      : Base(cost_model, delta_x_key, p_key, f_key),
-        x0_coeffs_(x0_coeffs),
-        k_coeffs_(k_coeffs),
-        f0_coeffs_(f0_coeffs) {}
+                       const gtsam::noiseModel::Base::shared_ptr &cost_model)
+      : Base(cost_model, delta_x_key, p_key, f_key) {}
   virtual ~SmoothActuatorFactor() {}
 
  private:
@@ -344,12 +340,14 @@ class ClippingActuatorFactor
  private:
   typedef ClippingActuatorFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
-  std::vector<double> coeffs_;
+  std::vector<double> coeffs_{-17.39,    1.11,       2.22,   -0.9486,
+                              -0.4481,   -0.0003159, 0.1745, 0.01601,
+                              0.0001081, -7.703e-07};
   const std::vector<double> powx_ =
       std::vector<double>{0, 1, 0, 2, 1, 0, 3, 2, 1, 0};
   const std::vector<double> powy_ =
       std::vector<double>{0, 0, 1, 0, 1, 2, 0, 1, 2, 3};
-  double extension_k_;
+  const double extension_k_ = -200;
 
  public:
   /** Create pneumatic actuator factor
@@ -362,11 +360,8 @@ class ClippingActuatorFactor
    */
   ClippingActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                           gtsam::Key f_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const std::vector<double> &coeffs)
-      : Base(cost_model, delta_x_key, p_key, f_key),
-        coeffs_(coeffs),
-        extension_k_(-200) {}
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model)
+      : Base(cost_model, delta_x_key, p_key, f_key) {}
   virtual ~ClippingActuatorFactor() {}
 
  private:
