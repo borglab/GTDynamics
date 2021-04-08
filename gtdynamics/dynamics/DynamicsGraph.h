@@ -328,7 +328,7 @@ class DynamicsGraph {
   static JointValueMap jointTorquesMap(const Robot &robot,
                                      const gtsam::Values &result, const int t);
 
-  /// Rrint the factors of the factor graph
+  /// Print the factors of the factor graph
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
 
   /// Print the values
