@@ -75,6 +75,7 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
    * @param joint_angles Values with joint angles in radians.
    * @param start_link_name String for the start link in the kinematic chain.
    * @param end_link_name String for the end link in the kinematic chain.
+   * @param t The time index at which to compute the forward kinematics.
    * @return relative pose of the end link in the start link's frame.
    */
   gtsam::Pose3 forwardKinematics(const Robot &robot,
