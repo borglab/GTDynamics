@@ -2,6 +2,8 @@
 
 virtual class gtsam::NonlinearFactor;
 virtual class gtsam::NoiseModelFactor;
+virtual class gtsam::NonlinearFactorGraph;
+virtual class gtsam::Values;
 
 namespace gtdynamics {
 
@@ -521,6 +523,12 @@ gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
 
+#include <gtdynamics/utils/DynamicsSymbol-wrap.h>
+gtdynamics::StdKeyFormatter KeyFormatter();
+string str(const gtsam::Values &t);
+string str(const gtsam::Values &t, const string &s);
+string str(const gtsam::NonlinearFactorGraph &t);
+string str(const gtsam::NonlinearFactorGraph &t, const string &s);
 
 ///////////////////// Key Methods /////////////////////
 template<T = {double}>
