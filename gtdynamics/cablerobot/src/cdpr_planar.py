@@ -304,7 +304,7 @@ class Cdpr:
             VAs = [gtd.TwistAccel(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
-            graph.push_back(gtsam.PriorFactorVector6(
+            graph.push_back(gtd.PriorFactorVector6(
                 gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
                 VA, self.costmodel_prior_twistaccel))
         return graph
