@@ -171,7 +171,7 @@ class ValveControlFactor
  private:
   typedef ValveControlFactor This;
   typedef gtsam::NoiseModelFactor5<double, double, double, double, double>  Base;
-  double ct_ = 0.1;
+  double ct_inv_;
 
  public:
   ValveControlFactor(gtsam::Key t_key, gtsam::Key to_key, gtsam::Key tc_key, 
@@ -179,7 +179,7 @@ class ValveControlFactor
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     const double ct)
       : Base(cost_model, t_key, to_key, tc_key, mdot_key, true_mdot_key),
-        ct_(ct) {}
+        ct_inv_(1/ct) {}
   virtual ~ValveControlFactor() {}
 
  public:
@@ -191,18 +191,18 @@ class ValveControlFactor
       boost::optional<gtsam::Matrix &> H_mdot = boost::none,
       boost::optional<gtsam::Matrix &> H_true_mdot = boost::none) const override {
 
-    double dto = (t - to) / ct_;
-    double dtc = (t - tc) / ct_;
+    double dto = (t - to) * ct_inv_;
+    double dtc = (t - tc) * ct_inv_;
     double coeff = sigmoid(dto, H_to) - sigmoid(dtc, H_tc);
 
     if (H_t) {
-      *H_t = (*H_to - *H_tc) * (mdot / ct_);
+      *H_t = (*H_to - *H_tc) * (mdot * ct_inv_);
     }
     if (H_to) {
-      *H_to = *H_to * (-mdot / ct_);
+      *H_to = *H_to * (-mdot * ct_inv_);
     }
     if (H_tc) {
-      *H_tc = *H_tc * (mdot / ct_);
+      *H_tc = *H_tc * (mdot * ct_inv_);
     }
     if (H_mdot) {
       H_mdot->setConstant(1, 1, coeff);
