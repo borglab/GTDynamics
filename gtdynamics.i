@@ -46,6 +46,14 @@ class TorqueFactor : gtsam::NonlinearFactor {
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/factors/MinTorqueFactor.h>
+class MinTorqueFactor : gtsam::NonlinearFactor {
+  MinTorqueFactor(gtsam::Key torque_key,
+               const gtsam::noiseModel::Base *cost_model);
+
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
 #include <gtdynamics/factors/WrenchFactor.h>
 class WrenchFactor : gtsam::NonlinearFactor {
   WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
@@ -339,10 +347,18 @@ class DynamicsGraph {
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
+      const gtdynamics::Robot &robot, const int num_steps, const double dt) const;
+
+  gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::DynamicsGraph::CollocationScheme collocation,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
+
+  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
+      const std::vector<gtdynamics::Robot> &robots,
+      const std::vector<int> &phase_steps,
+      const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<gtdynamics::Robot> &robots,
