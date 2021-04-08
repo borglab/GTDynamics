@@ -31,8 +31,9 @@ class ForceBalanceFactor
  private:
   typedef ForceBalanceFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
-  double k_, r_, qRest_;
+  double k_, r_, q_rest_;
   bool positive_;
+  gtsam::Matrix H_delta_x_, H_q_, H_f_;
 
  public:
   /** Create pneumatic actuator factor
@@ -45,13 +46,18 @@ class ForceBalanceFactor
    */
   ForceBalanceFactor(gtsam::Key delta_x_key, gtsam::Key q_key, gtsam::Key f_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     const double k, const double r, const double qRest,
+                     const double k, const double r, const double q_rest,
                      const bool contract = false)
       : Base(cost_model, delta_x_key, q_key, f_key),
         k_(k),
         r_(r),
-        qRest_(qRest),
-        positive_(contract) {}
+        q_rest_(q_rest),
+        positive_(contract) {
+    double sign = positive_? 1 : -1;
+    H_delta_x_.setConstant(1, 1, 0.01);  // from cm to m
+    H_q_.setConstant(1, 1, sign * r_);
+    H_f_.setConstant(1, 1, -k_);
+  }
   virtual ~ForceBalanceFactor() {}
 
  private:
@@ -67,24 +73,10 @@ class ForceBalanceFactor
       boost::optional<gtsam::Matrix &> H_delta_x = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_f = boost::none) const override {
-    if (H_delta_x) {
-      *H_delta_x = gtsam::I_1x1 / 100.0;  // from cm to m
-    }
-    if (H_q) {
-      if (positive_) {
-        *H_q = -gtsam::I_1x1 * r_;
-      } else {
-        *H_q = gtsam::I_1x1 * r_;
-      }
-    }
-    if (H_f) {
-      *H_f = -gtsam::I_1x1 / k_;
-    }
-    if (positive_) {
-      return gtsam::Vector1(-f / k_ + delta_x / 100.0 - r_ * (q - qRest_));
-    } else {
-      return gtsam::Vector1(-f / k_ + delta_x / 100.0 + r_ * (q - qRest_));
-    }
+    if (H_delta_x) *H_delta_x = H_delta_x_;
+    if (H_q) *H_q = H_q_;
+    if (H_f) *H_f = H_f_;
+    return H_f_ * f + H_delta_x_ * delta_x + H_q_ * (q - q_rest_);
   }
 
   // @return a deep copy of this factor
@@ -120,6 +112,8 @@ class JointTorqueFactor
   typedef gtsam::NoiseModelFactor4<double, double, double, double> Base;
   double q_limit_, ka_, r_, b_;
   bool positive_;
+  gtsam::Matrix H_v_, H_f_, H_torque_;
+  double sign_;
 
  public:
   /** Create pneumatic actuator factor
@@ -142,7 +136,12 @@ class JointTorqueFactor
         ka_(ka),
         r_(r),
         b_(b),
-        positive_(positive) {}
+        positive_(positive) {
+    sign_ = positive_ ? 1 : -1;
+    H_v_.setConstant(1, 1, -b_);
+    H_f_.setConstant(1, 1, sign_ * r_);
+    H_torque_.setConstant(1, 1, -1);
+  }
   virtual ~JointTorqueFactor() {}
 
  private:
@@ -170,25 +169,11 @@ class JointTorqueFactor
         H_q->setConstant(1, 1, 0);
       }
     }
-    if (H_v) {
-      H_v->setConstant(1, 1, -b_);
-    }
-    if (H_f) {
-      if (positive_) {
-        H_f->setConstant(1, 1, r_);
-      } else {
-        H_f->setConstant(1, 1, -r_);
-      }
-    }
-    if (H_torque) {
-      H_torque->setConstant(1, 1, -1);
-    }
+    if (H_v) *H_v = H_v_;
+    if (H_f) *H_f = H_f_;
+    if (H_torque) *H_torque = H_torque_;
 
-    if (positive_) {
-      return gtsam::Vector1(r_ * f - ka_ * delta_q - b_ * v - torque);
-    } else {
-      return gtsam::Vector1(-r_ * f - ka_ * delta_q - b_ * v - torque);
-    }
+    return gtsam::Vector1(sign_ * r_ * f - ka_ * delta_q - b_ * v - torque);
   }
 
   // @return a deep copy of this factor
