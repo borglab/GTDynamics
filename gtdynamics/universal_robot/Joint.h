@@ -89,7 +89,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     Revolute = 'R',
     Prismatic = 'P',
     Screw = 'C',
-    ScrewAxis = 'A'
+    ScrewAxis = 'A',
+    Fixed = 'F'
   };
 
  protected:
@@ -352,7 +353,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @return joint limit factors.
    */
   virtual gtsam::NonlinearFactorGraph jointLimitFactors(
-      size_t t, const OptimizerSetting &opt) const = 0;
+      size_t t, const OptimizerSetting &opt) const {
+      throw std::runtime_error(
+        "jointLimitFactors not implemented for the "
+        "desired joint type.  A linearized version may not be possible.");
+      }
 
   /**@}*/
 
