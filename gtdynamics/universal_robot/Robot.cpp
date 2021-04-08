@@ -149,11 +149,6 @@ LinkSharedPtr Robot::findRootLink(
   // Use prior_link if given.
   if (prior_link_name) {
     root_link = link(*prior_link_name);
-    if (!values.exists(internal::PoseKey(root_link->id(), t)) ||
-        !values.exists(internal::TwistKey(root_link->id(), t))) {
-      throw std::invalid_argument(
-          "forwardKinematics: values does not contain pose/twist.");
-    }
   } else {
     auto links = this->links();
     auto links_iter =
@@ -230,6 +225,13 @@ gtsam::Values Robot::forwardKinematics(
   // Set root link.
   const auto root_link = findRootLink(values, prior_link_name, t);
   InsertFixedLinks(links(), t, &values);
+
+  if (!values.exists(internal::PoseKey(root_link->id(), t))) {
+    InsertPose(&values, root_link->id(), t, gtsam::Pose3());
+  }
+  if (!values.exists(internal::TwistKey(root_link->id(), t))) {
+    InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
+  }
 
   // BFS to update all poses downstream in the graph.
   std::queue<LinkSharedPtr> q;
