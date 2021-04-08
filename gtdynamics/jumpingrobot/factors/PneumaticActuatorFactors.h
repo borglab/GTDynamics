@@ -53,7 +53,7 @@ class ForceBalanceFactor
         r_(r),
         q_rest_(q_rest),
         positive_(contract) {
-    double sign = positive_? 1 : -1;
+    double sign = positive_ ? 1 : -1;
     H_delta_x_.setConstant(1, 1, 0.01);  // from cm to m
     H_q_.setConstant(1, 1, sign * r_);
     H_f_.setConstant(1, 1, -k_);
@@ -208,8 +208,8 @@ class SmoothActuatorFactor
   typedef SmoothActuatorFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
   const std::vector<double> x0_coeffs_{3.05583930e+00, 7.58361626e-02,
-                                -4.91579771e-04, 1.42792618e-06,
-                                -1.54817477e-09};
+                                       -4.91579771e-04, 1.42792618e-06,
+                                       -1.54817477e-09};
   const std::vector<double> f0_coeffs_{0, 1.966409};
   const std::vector<double> k_coeffs_{0, 0.35541599};
 
@@ -242,70 +242,74 @@ class SmoothActuatorFactor
       H_f->setConstant(1, 1, -1);
     }
 
+    std::vector<double> gauge_p_powers(x0_coeffs_.size(), 1);
+    for (size_t i = 1; i < x0_coeffs_.size(); i++) {
+      gauge_p_powers[i] = gauge_p_powers[i - 1] * gauge_p;
+    }
+
     double x0 = 0;
     for (size_t i = 0; i < x0_coeffs_.size(); i++) {
-      x0 += x0_coeffs_[i] * pow(gauge_p, i);
+      x0 += x0_coeffs_[i] * gauge_p_powers[i];
     }
 
     // over contraction: should return 0
     if (gauge_p <= 0 || delta_x > x0) {
-      if (H_delta_x) *H_delta_x = gtsam::I_1x1 * 0;
-      if (H_p) *H_p = gtsam::I_1x1 * 0;
+      if (H_delta_x) H_delta_x->setConstant(1, 1, 0);
+      if (H_p) H_p->setConstant(1, 1, 0);
       return gtsam::Vector1(-f);
     }
 
     double k = 0;
     for (size_t i = 0; i < k_coeffs_.size(); i++) {
-      k += k_coeffs_[i] * pow(gauge_p, i);
+      k += k_coeffs_[i] * gauge_p_powers[i];
     }
     double f0 = 0;
     for (size_t i = 0; i < f0_coeffs_.size(); i++) {
-      f0 += f0_coeffs_[i] * pow(gauge_p, i);
+      f0 += f0_coeffs_[i] * gauge_p_powers[i];
     }
     double j_k_p, j_f0_p;
     if (H_p) {
       j_k_p = 0;
       for (size_t i = 1; i < k_coeffs_.size(); i++) {
-        j_k_p += i * k_coeffs_[i] * pow(gauge_p, i - 1);
+        j_k_p += i * k_coeffs_[i] * gauge_p_powers[i - 1];
       }
       j_f0_p = 0;
       for (size_t i = 1; i < f0_coeffs_.size(); i++) {
-        j_f0_p += i * f0_coeffs_[i] * pow(gauge_p, i - 1);
+        j_f0_p += i * f0_coeffs_[i] * gauge_p_powers[i - 1];
       }
     }
 
     // over extension: should model as a spring
     if (delta_x < 0) {
-      if (H_delta_x) *H_delta_x = gtsam::I_1x1 * (-k);
-      if (H_p) {
-        H_p->setConstant(1, 1, j_f0_p - j_k_p * delta_x);
-      }
+      if (H_delta_x) H_delta_x->setConstant(1, 1, -k);
+      if (H_p) H_p->setConstant(1, 1, j_f0_p - j_k_p * delta_x);
       return gtsam::Vector1(f0 - k * delta_x - f);
     }
 
     // normal condition
+    double delta_x_2 = delta_x * delta_x;
+    double delta_x_3 = delta_x_2 * delta_x;
     double c = (2 * k * x0 - 3 * f0) / (x0 * x0);
     double d = (-k * x0 + 2 * f0) / (x0 * x0 * x0);
     double x0_2 = x0 * x0;
     double x0_3 = x0_2 * x0;
     double x0_4 = x0_3 * x0;
     if (H_delta_x)
-      H_delta_x->setConstant(1, 1, 3 * d * delta_x * delta_x + 2 * c * delta_x - k);
+      H_delta_x->setConstant(1, 1, 3 * d * delta_x_2 + 2 * c * delta_x - k);
     if (H_p) {
       double j_x0_p = 0;
       for (size_t i = 1; i < x0_coeffs_.size(); i++) {
-        j_x0_p += i * x0_coeffs_[i] * pow(gauge_p, i - 1);
+        j_x0_p += i * x0_coeffs_[i] * gauge_p_powers[i - 1];
       }
       double j_c_p = (-2 * k / x0_2 + 6 * f0 / x0_3) * j_x0_p +
                      (2 / x0) * j_k_p + (-3 / x0_2) * j_f0_p;
       double j_d_p = (2 * k / x0_3 - 6 * f0 / x0_4) * j_x0_p +
                      (-1 / x0_2) * j_k_p + (2 / x0_3) * j_f0_p;
-      double j_p = pow(delta_x, 3) * j_d_p + pow(delta_x, 2) * j_c_p +
-                   delta_x * (-j_k_p) + j_f0_p;
+      double j_p =
+          delta_x_3 * j_d_p + delta_x_2 * j_c_p + delta_x * (-j_k_p) + j_f0_p;
       H_p->setConstant(1, 1, j_p);
     }
-    double expected_f =
-        d * pow(delta_x, 3) + c * pow(delta_x, 2) + (-k) * delta_x + f0;
+    double expected_f = d * delta_x_3 + c * delta_x_2 + (-k) * delta_x + f0;
     return gtsam::Vector1(expected_f - f);
   }
 
@@ -359,8 +363,8 @@ class ClippingActuatorFactor
       p00, p10, p01, p20, p11, p02, p30, p21, p12, p03
    */
   ClippingActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
-                          gtsam::Key f_key,
-                          const gtsam::noiseModel::Base::shared_ptr &cost_model)
+                         gtsam::Key f_key,
+                         const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, delta_x_key, p_key, f_key) {}
   virtual ~ClippingActuatorFactor() {}
 
@@ -377,12 +381,19 @@ class ClippingActuatorFactor
       boost::optional<gtsam::Matrix &> H_delta_x = boost::none,
       boost::optional<gtsam::Matrix &> H_p = boost::none,
       boost::optional<gtsam::Matrix &> H_f = boost::none) const override {
+    std::vector<double> p_powers(4, 1);
+    std::vector<double> delta_x_powers(4, 1);
+    for (size_t i = 1; i < 4; i++) {
+      p_powers[i] = p_powers[i - 1] * p;
+      delta_x_powers[i] = delta_x_powers[i - 1] * delta_x;
+    }
+
     double f_expected = 0;
     if (delta_x < 0) {
       // calculate F(p, 0)
       double f_x0 = 0;
       for (size_t i = 0; i < coeffs_.size(); i++) {
-        f_x0 += coeffs_[i] * pow(0, powx_[i]) * pow(p, powy_[i]);
+        if (powx_[i] == 0) f_x0 += coeffs_[i] * p_powers[powy_[i]];
       }
       if (f_x0 < 0) {
         f_x0 = 0;
@@ -393,9 +404,8 @@ class ClippingActuatorFactor
         if (H_p) {
           double derivative_y = 0;
           for (size_t i = 0; i < coeffs_.size(); i++) {
-            if (powy_[i] > 0) {
-              derivative_y += coeffs_[i] * powy_[i] * pow(p, powy_[i] - 1) *
-                              pow(0, powx_[i]);
+            if (powy_[i] > 0 && powx_[i] == 0) {
+              derivative_y += coeffs_[i] * powy_[i] * p_powers[powy_[i] - 1];
             }
           }
           H_p->setConstant(1, 1, derivative_y);
@@ -414,7 +424,7 @@ class ClippingActuatorFactor
 
     f_expected = 0;
     for (size_t i = 0; i < coeffs_.size(); i++) {
-      f_expected += coeffs_[i] * pow(delta_x, powx_[i]) * pow(p, powy_[i]);
+      f_expected += coeffs_[i] * delta_x_powers[powx_[i]] * p_powers[powy_[i]];
     }
     if (delta_x > 8 || (p < 100 && delta_x > 6.5) || (p < 0 && delta_x > 0) ||
         f_expected < 0) {
@@ -433,8 +443,8 @@ class ClippingActuatorFactor
         double derivative_x = 0;
         for (size_t i = 0; i < coeffs_.size(); i++) {
           if (powx_[i] > 0) {
-            derivative_x += coeffs_[i] * powx_[i] * pow(delta_x, powx_[i] - 1) *
-                            pow(p, powy_[i]);
+            derivative_x += coeffs_[i] * powx_[i] *
+                            delta_x_powers[powx_[i] - 1] * p_powers[powy_[i]];
           }
         }
         H_delta_x->setConstant(1, 1, derivative_x);
@@ -443,8 +453,8 @@ class ClippingActuatorFactor
         double derivative_y = 0;
         for (size_t i = 0; i < coeffs_.size(); i++) {
           if (powy_[i] > 0) {
-            derivative_y += coeffs_[i] * powy_[i] * pow(p, powy_[i] - 1) *
-                            pow(delta_x, powx_[i]);
+            derivative_y += coeffs_[i] * powy_[i] * p_powers[powy_[i] - 1] *
+                            delta_x_powers[powx_[i]];
           }
         }
         H_p->setConstant(1, 1, derivative_y);
@@ -499,16 +509,22 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
  public:
   double computeVolume(const double &l, boost::optional<gtsam::Matrix &> H_l =
                                             boost::none) const {
+    std::vector<double> l_powers(c_.size(), 0);
+    l_powers[0] = 1;
+    for (size_t i = 1; i < c_.size(); i++) {
+      l_powers[i] = l_powers[i - 1] * l;
+    }
+
     double expected_v = L_ * M_PI * pow(D_ / 2, 2);
     for (size_t i = 0; i < c_.size(); i++) {
-      expected_v += c_[i] * pow(l, i);
+      expected_v += c_[i] * l_powers[i];
     }
     if (H_l) {
       double derivative = 0;
       for (size_t i = 1; i < c_.size(); i++) {
-        derivative += i * c_[i] * pow(l, i - 1);
+        derivative += i * c_[i] * l_powers[i - 1];
       }
-      *H_l = gtsam::I_1x1 * derivative;
+      H_l->setConstant(1, 1, derivative);
     }
     return expected_v;
   }
