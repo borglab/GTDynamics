@@ -11,6 +11,8 @@
  * @Author: Yetong Zhang
  */
 
+// TODO(yetong): split into different files
+
 #pragma once
 
 #include <gtsam/base/Matrix.h>

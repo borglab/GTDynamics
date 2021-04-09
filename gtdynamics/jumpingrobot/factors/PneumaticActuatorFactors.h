@@ -211,7 +211,7 @@ class SmoothActuatorFactor
   const gtsam::Vector5 x0_coeffs_ =
       (gtsam::Vector(5) << 3.05583930e+00, 7.58361626e-02, -4.91579771e-04,
        1.42792618e-06, -1.54817477e-09)
-          .finished();
+          .finished();  // TODO(yetong): using static
   const gtsam::Vector2 f0_coeffs_ = gtsam::Vector2(0, 1.966409);
   const gtsam::Vector2 k_coeffs_ = gtsam::Vector2(0, 0.35541599);
 
