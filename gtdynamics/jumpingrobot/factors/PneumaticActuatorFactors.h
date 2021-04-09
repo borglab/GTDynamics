@@ -207,11 +207,12 @@ class SmoothActuatorFactor
  private:
   typedef SmoothActuatorFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
-  const std::vector<double> x0_coeffs_{3.05583930e+00, 7.58361626e-02,
-                                       -4.91579771e-04, 1.42792618e-06,
-                                       -1.54817477e-09};
-  const std::vector<double> f0_coeffs_{0, 1.966409};
-  const std::vector<double> k_coeffs_{0, 0.35541599};
+  const gtsam::Vector5 x0_coeffs_ =
+      (gtsam::Vector(5) << 3.05583930e+00, 7.58361626e-02, -4.91579771e-04,
+       1.42792618e-06, -1.54817477e-09)
+          .finished();
+  const gtsam::Vector2 f0_coeffs_ = gtsam::Vector2(0, 1.966409);
+  const gtsam::Vector2 k_coeffs_ = gtsam::Vector2(0, 0.35541599);
 
  public:
   /** Create pneumatic actuator factor
@@ -242,15 +243,16 @@ class SmoothActuatorFactor
       H_f->setConstant(1, 1, -1);
     }
 
-    std::vector<double> gauge_p_powers(x0_coeffs_.size(), 1);
-    for (size_t i = 1; i < x0_coeffs_.size(); i++) {
-      gauge_p_powers[i] = gauge_p_powers[i - 1] * gauge_p;
+    gtsam::Vector5 gauge_p_powers5;
+    gtsam::Vector2 gauge_p_powers2(1, gauge_p);
+    // (1, gauge_p, gauge_p*gauge_p, pow(gauge_p,3), pow(gauge_p,4));
+
+    gauge_p_powers5(0) = 1;
+    for (size_t i = 1; i < 5; i++) {
+      gauge_p_powers5(i) = gauge_p_powers5(i - 1) * gauge_p;
     }
 
-    double x0 = 0;
-    for (size_t i = 0; i < x0_coeffs_.size(); i++) {
-      x0 += x0_coeffs_[i] * gauge_p_powers[i];
-    }
+    double x0 = x0_coeffs_.dot(gauge_p_powers5);
 
     // over contraction: should return 0
     if (gauge_p <= 0 || delta_x > x0) {
@@ -259,23 +261,17 @@ class SmoothActuatorFactor
       return gtsam::Vector1(-f);
     }
 
-    double k = 0;
-    for (size_t i = 0; i < k_coeffs_.size(); i++) {
-      k += k_coeffs_[i] * gauge_p_powers[i];
-    }
-    double f0 = 0;
-    for (size_t i = 0; i < f0_coeffs_.size(); i++) {
-      f0 += f0_coeffs_[i] * gauge_p_powers[i];
-    }
+    double k = k_coeffs_.dot(gauge_p_powers2);
+    double f0 = f0_coeffs_.dot(gauge_p_powers2);
     double j_k_p, j_f0_p;
     if (H_p) {
       j_k_p = 0;
-      for (size_t i = 1; i < k_coeffs_.size(); i++) {
-        j_k_p += i * k_coeffs_[i] * gauge_p_powers[i - 1];
+      for (size_t i = 1; i < 2; i++) {
+        j_k_p += i * k_coeffs_(i) * gauge_p_powers2(i - 1);
       }
       j_f0_p = 0;
-      for (size_t i = 1; i < f0_coeffs_.size(); i++) {
-        j_f0_p += i * f0_coeffs_[i] * gauge_p_powers[i - 1];
+      for (size_t i = 1; i < 2; i++) {
+        j_f0_p += i * f0_coeffs_(i) * gauge_p_powers2(i - 1);
       }
     }
 
@@ -298,8 +294,8 @@ class SmoothActuatorFactor
       H_delta_x->setConstant(1, 1, 3 * d * delta_x_2 + 2 * c * delta_x - k);
     if (H_p) {
       double j_x0_p = 0;
-      for (size_t i = 1; i < x0_coeffs_.size(); i++) {
-        j_x0_p += i * x0_coeffs_[i] * gauge_p_powers[i - 1];
+      for (size_t i = 1; i < 5; i++) {
+        j_x0_p += i * x0_coeffs_(i) * gauge_p_powers5(i - 1);
       }
       double j_c_p = (-2 * k / x0_2 + 6 * f0 / x0_3) * j_x0_p +
                      (2 / x0) * j_k_p + (-3 / x0_2) * j_f0_p;
@@ -496,7 +492,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
  private:
   typedef ActuatorVolumeFactor This;
   typedef gtsam::NoiseModelFactor2<double, double> Base;
-  std::vector<double> c_{4.243e-5, 3.141e-5, -3.251e-6, 1.28e-7};
+  gtsam::Vector4 c_ = gtsam::Vector4(4.243e-5, 3.141e-5, -3.251e-6, 1.28e-7);
   double D_, L_;
 
  public:
@@ -509,20 +505,14 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
  public:
   double computeVolume(const double &l, boost::optional<gtsam::Matrix &> H_l =
                                             boost::none) const {
-    std::vector<double> l_powers(c_.size(), 0);
-    l_powers[0] = 1;
-    for (size_t i = 1; i < c_.size(); i++) {
-      l_powers[i] = l_powers[i - 1] * l;
-    }
-
+    gtsam::Vector4 l_powers(1, l, l*l, l*l*l);
     double expected_v = L_ * M_PI * pow(D_ / 2, 2);
-    for (size_t i = 0; i < c_.size(); i++) {
-      expected_v += c_[i] * l_powers[i];
-    }
+    expected_v += c_.dot(l_powers);
+
     if (H_l) {
       double derivative = 0;
-      for (size_t i = 1; i < c_.size(); i++) {
-        derivative += i * c_[i] * l_powers[i - 1];
+      for (size_t i = 1; i < 4; i++) {
+        derivative += i * c_(i) * l_powers(i - 1);
       }
       H_l->setConstant(1, 1, derivative);
     }
