@@ -101,8 +101,12 @@ class Robot {
    * Calculate forward kinematics by performing BFS in the link-joint graph
    * (will throw an error when invalid joint angle specification detected).
    *
+   * If the root link pose and twist are not provided in `known_values`,
+   * default Pose3() and Vector6::Zeros() are used respectively.
+   *
    * @param[in] t integer time index
-   * @param[in] known_values Values with joint angles and velocities
+   * @param[in] known_values Values with joint angles, joint velocities, and
+   * (optionally) root link pose and twist.
    * @param[in] prior_link_name name of link with known pose & twist
    * @return poses and twists of all links, as a new Values instance
    */
