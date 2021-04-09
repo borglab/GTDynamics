@@ -7,6 +7,12 @@ if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
 endif()
 
+# Include jumping robot stuff
+if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
+  add_subdirectory(jumpingrobot)
+  set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
+endif()
+
 # Add this directory as include.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
