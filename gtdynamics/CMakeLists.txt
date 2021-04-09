@@ -10,7 +10,7 @@ endif()
 # Include jumping robot stuff
 if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
   add_subdirectory(jumpingrobot)
-  set(ADDITIONAL_INTERFACE_FILES_JR ${ADDITIONAL_INTERFACE_FILES_JR} PARENT_SCOPE)
+  set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
 endif()
 
 # Add this directory as include.

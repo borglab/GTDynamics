@@ -24,21 +24,21 @@
 
 namespace gtdynamics {
 
-/** GassLawFactor: P*V=Rs*T */
-class GassLawFactor
+/** GasLawFactor: P*V=Rs*T */
+class GasLawFactor
     : public gtsam::NoiseModelFactor3<double, double, double> {
  private:
-  typedef GassLawFactor This;
+  typedef GasLawFactor This;
   typedef gtsam::NoiseModelFactor3<double, double, double> Base;
   double c_;
 
  public:
-  GassLawFactor(gtsam::Key p_key, gtsam::Key v_key, gtsam::Key m_key,
+  GasLawFactor(gtsam::Key p_key, gtsam::Key v_key, gtsam::Key m_key,
                  const gtsam::noiseModel::Base::shared_ptr &cost_model,
                  const double c)
       : Base(cost_model, p_key, v_key, m_key),
         c_(c) {}
-  virtual ~GassLawFactor() {}
+  virtual ~GasLawFactor() {}
 
  private:
  public:

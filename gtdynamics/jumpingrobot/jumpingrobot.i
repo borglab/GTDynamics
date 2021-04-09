@@ -6,8 +6,8 @@ namespace gtdynamics {
 
 #include <gtdynamics/jumpingrobot/factors/PneumaticFactors.h>
 #include <gtdynamics/jumpingrobot/factors/PneumaticActuatorFactors.h>
-class GassLawFactor: gtsam::NonlinearFactor{
-   GassLawFactor(gtsam::Key p_key, gtsam::Key v_key, gtsam::Key m_key,
+class GasLawFactor: gtsam::NonlinearFactor{
+   GasLawFactor(gtsam::Key p_key, gtsam::Key v_key, gtsam::Key m_key,
                  const gtsam::noiseModel::Base *cost_model,
                  const double c);
 };

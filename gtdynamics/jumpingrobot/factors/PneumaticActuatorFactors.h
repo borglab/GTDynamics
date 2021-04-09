@@ -41,6 +41,7 @@ class ForceBalanceFactor
    Keyword arguments:
      k      -- spring constant
      r      -- pulley radius
+     delta_x_key -- key for actuator contraction in cm
      create factor corresponding to the equation:
      F/k - delta_x - r * theta = 0
    */
@@ -216,7 +217,7 @@ class SmoothActuatorFactor
 
  public:
   /** Create pneumatic actuator factor
-   *
+   *  delta_x_key -- key for actuator contraction in cm
    */
   SmoothActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                        gtsam::Key f_key,
@@ -350,13 +351,12 @@ class ClippingActuatorFactor
   const double extension_k_ = -200;
 
  public:
-  /** Create pneumatic actuator factor
-   *
-   Keyword arguments:
-     create factor corresponding to the equation:
+  /** Create factor corresponding to the equation:
      f = p00 + p10*x + p01*y + p20*x^2 + p11*x*y + p02*y^2 + p30*x^3 +
               p21*x^2*y + p12*x*y^2 + p03*y^3
       p00, p10, p01, p20, p11, p02, p30, p21, p12, p03
+   Keyword arguments:
+     delta_x_key -- key for actuator contraction in cm
    */
   ClippingActuatorFactor(gtsam::Key delta_x_key, gtsam::Key p_key,
                          gtsam::Key f_key,

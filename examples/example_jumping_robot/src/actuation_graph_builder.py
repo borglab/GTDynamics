@@ -36,7 +36,7 @@ class ActuationGraphBuilder:
         self.prior_time_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
         self.prior_v_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)  
 
-        self.gass_law_model = noiseModel.Isotropic.Sigma(1, 0.0001)  
+        self.gas_law_model = noiseModel.Isotropic.Sigma(1, 0.0001)  
         self.mass_rate_model = noiseModel.Isotropic.Sigma(1, 1e-5)  
         self.volume_model = noiseModel.Isotropic.Sigma(1, 1e-7)  
         self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, 1e-7)  
@@ -49,7 +49,7 @@ class ActuationGraphBuilder:
         P_s_key = Actuator.SourcePressureKey(k)
         V_s_key = Actuator.SourceVolumeKey()
         graph = NonlinearFactorGraph()
-        graph.add(gtd.GassLawFactor(P_s_key, V_s_key, m_s_key, jr.gas_constant))
+        graph.add(gtd.GasLawFactor(P_s_key, V_s_key, m_s_key, jr.gas_constant))
         return graph
     
     def actuator_dynamics_graph(self, jr: JumpingRobot, actuator: Actuator, k: int) -> NonlinearFactorGraph:
@@ -91,7 +91,7 @@ class ActuationGraphBuilder:
         graph = NonlinearFactorGraph()
         graph.push_back(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k))
         graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
-        graph.add(gtd.GassLawFactor(P_a_key, V_a_key, m_a_key, self.gass_law_model, jr.gas_constant))
+        graph.add(gtd.GasLawFactor(P_a_key, V_a_key, m_a_key, self.gas_law_model, jr.gas_constant))
         graph.add(gtd.ActuatorVolumeFactor(V_a_key, delta_x_key, self.volume_model, d_tube, l_tube))
         graph.add(gtd.SmoothActuatorFactor(delta_x_key, P_a_key, f_a_key, self.force_cost_model))
         graph.add(gtd.ForceBalanceFactor(delta_x_key, q_key, f_a_key, self.balance_cost_model, kt, radius, q_rest, actuator.positive))

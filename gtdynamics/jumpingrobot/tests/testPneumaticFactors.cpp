@@ -26,7 +26,7 @@
 
 #include "gtdynamics/jumpingrobot/factors/PneumaticFactors.h"
 
-using gtdynamics::GassLawFactor, gtdynamics::MassFlowRateFactor,
+using gtdynamics::GasLawFactor, gtdynamics::MassFlowRateFactor,
     gtdynamics::ValveControlFactor;
 using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
     gtsam::assert_equal, gtsam::noiseModel::Isotropic;
@@ -36,13 +36,13 @@ auto cost_model = Isotropic::Sigma(1, 0.001);
 gtsam::Symbol p_key('p', 0), v_key('v', 0), m_key('m', 0), t_key('t', 0), to_key('t', 1), tc_key('t', 2), mdot_key('m', 1), true_mdot_key('m',2), pa_key('p', 1), ps_key('p', 2);
 }  // namespace example
 
-TEST(GassLawFactor, Factor) {
+TEST(GasLawFactor, Factor) {
   double c = 3;
   double p = 200;
   double v = 5e-5;
   double m = 3;
 
-  GassLawFactor factor(example::p_key, example::v_key, example::m_key, example::cost_model, c);
+  GasLawFactor factor(example::p_key, example::v_key, example::m_key, example::cost_model, c);
 
   Vector1 actual_errors, expected_errors;
 
