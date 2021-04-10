@@ -14,6 +14,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -31,6 +33,8 @@
 typedef std::vector<gtsam::Vector> CoeffVector;
 typedef std::map<int, std::map<std::string, gtsam::Pose3>> TargetFootholds;
 typedef std::map<std::string, gtsam::Pose3> TargetPoses;
+
+using namespace gtdynamics;
 
 #define GROUND_HEIGHT -0.2
 
@@ -181,7 +185,7 @@ TargetPoses compute_target_poses(TargetFootholds targ_footholds,
 int main(int argc, char **argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  gtdynamics::Robot vision60 = gtdynamics::Robot("../vision60.urdf");
+  Robot vision60 = CreateRobotFromFile("../vision60.urdf");
 
   // Coordinate system:
   //  z
@@ -193,12 +197,12 @@ int main(int argc, char **argv) {
   //  ‾‾‾‾‾‾‾‾‾‾‾‾‾ x
 
   std::cout << "\033[1;32;7;4mParsed Robot:\033[0m" << std::endl;
-  vision60.printRobot();
+  vision60.print();
   std::cout << "-------------" << std::endl;
 
   // Compute coefficients for cubic spline from current robot position
   // to final position using hermite parameterization.
-  gtsam::Pose3 wTb_i = vision60.getLinkByName("body")->wTcom();
+  gtsam::Pose3 wTb_i = vision60.link("body")->wTcom();
   gtsam::Pose3 wTb_f = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(3, 0, 0.1));
   gtsam::Vector3 x_0_p = (gtsam::Vector(3) << 1, 0, 0).finished();
   gtsam::Vector3 x_0_p_traj = (gtsam::Vector(3) << 1.0, 0, 0.4).finished();
@@ -227,7 +231,7 @@ int main(int argc, char **argv) {
   gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0.14, 0, 0));
   for (auto &&leg : swing_sequence)
     bTfs.insert(std::make_pair(
-        leg, wTb_i.inverse() * (vision60.getLinkByName(leg)->wTcom() * comTc)));
+        leg, wTb_i.inverse() * (vision60.link(leg)->wTcom() * comTc)));
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -236,14 +240,14 @@ int main(int argc, char **argv) {
   // Iteratively solve the inverse kinematics problem to obtain joint angles.
   double dt = 1. / 240., curr_t = 0.0;
   int ti = 0;  // The time index.
-  auto dgb = gtdynamics::DynamicsGraph();
+  auto dgb = DynamicsGraph();
 
   // Initialize values.
   gtsam::Values values;
   for (auto &&link : vision60.links())
-    values.insert(gtdynamics::PoseKey(link->getID(), 0), link->wTcom());
+    values.insert(internal::PoseKey(link->id(), 0), link->wTcom());
   for (auto &&joint : vision60.joints())
-    values.insert(gtdynamics::JointAngleKey(joint->getID(), 0), 0.0);
+    values.insert(internal::JointAngleKey(joint->id(), 0), 0.0);
 
   // Write body,foot poses and joint angles to csv file.
   std::ofstream pose_file;
@@ -274,13 +278,13 @@ int main(int argc, char **argv) {
 
     // Constrain the base pose using trajectory value.
     kfg.add(gtsam::PriorFactor<gtsam::Pose3>(
-      gtdynamics::PoseKey(vision60.getLinkByName("body")->getID(), ti),
+      internal::PoseKey(vision60.link("body")->id(), ti),
       tposes["body"], gtsam::noiseModel::Constrained::All(6)));
 
     // Constrain the footholds.
     for (auto &&leg : swing_sequence)
-      kfg.add(gtdynamics::PointGoalFactor(
-          gtdynamics::PoseKey(vision60.getLinkByName(leg)->getID(), ti),
+      kfg.add(PointGoalFactor(
+          internal::PoseKey(vision60.link(leg)->id(), ti),
           gtsam::noiseModel::Constrained::All(3), comTc,
           tposes[leg].translation()));
 
@@ -294,17 +298,17 @@ int main(int argc, char **argv) {
     // Update the values for next iteration.
     values.clear();
     for (auto &&link : vision60.links())
-      values.insert(gtdynamics::PoseKey(link->getID(), ti + 1),
-          results.at<gtsam::Pose3>(gtdynamics::PoseKey(link->getID(), ti)));
+      values.insert(internal::PoseKey(link->id(), ti + 1),
+          results.at<gtsam::Pose3>(internal::PoseKey(link->id(), ti)));
     for (auto &&joint : vision60.joints())
       values.insert(
-          gtdynamics::JointAngleKey(joint->getID(), ti + 1),
-          results.atDouble(gtdynamics::JointAngleKey(joint->getID(), ti)));
+          internal::JointAngleKey(joint->id(), ti + 1),
+          results.atDouble(internal::JointAngleKey(joint->id(), ti)));
 
     for (auto &&joint : vision60.joints())
       pose_file << ","
                 << results.atDouble(
-                       gtdynamics::JointAngleKey(joint->getID(), ti));
+                       internal::JointAngleKey(joint->id(), ti));
 
     pose_file << "\n";
     curr_t = curr_t + dt;
