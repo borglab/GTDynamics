@@ -21,7 +21,7 @@ from gtsam.utils.test_case import GtsamTestCase
 class TestPaintParse(GtsamTestCase):
     """Unit tests for paint trajectory file parsing"""
     def testParse(self):
-        e_painton = np.array([1, 1, 1, 1, 1, 1])
+        e_painton = np.array([1, 1, 0, 1, 1, 1])
         e_colorinds = np.array([0, 0, 1, 1, 2, 3])
         e_colorpalette = np.array([[4, 49, 75],
                                    [209, 4, 32],

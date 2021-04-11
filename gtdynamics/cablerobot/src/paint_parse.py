@@ -20,7 +20,7 @@ def ParseFile(fname):
     with open(fname) as f:
         # painton
         assert next(f) == 'bool painton[] = {\n', "variable `painton` not found"
-        paintons = [bool(e) for e in next(f).strip().split(',')]
+        paintons = [bool(int(e)) for e in next(f).strip().split(',')]
         assert next(f) == '};\n', "parse error on variable `painton`"
 
         # colorinds
