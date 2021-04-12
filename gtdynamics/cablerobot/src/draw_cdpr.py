@@ -36,30 +36,65 @@ def ab_coords(cdpr, x, ji):
     return np.array([[cdpr.params.a_locs[ji][0], b[0, ji]],
                      [cdpr.params.a_locs[ji][2], b[1, ji]]])
 def draw_cdpr(ax, cdpr, x):
-    """Draws the CDPR in the specified axis and returns the line objects:
-    l_a - the frame
-    l_b - the end effector
-    l_abs - a 4-list containing the 4 cable lines
+    """Draws the CDPR in the specified axis.
+    Args:
+        ax (plt.Axes): matplotlib axis object
+        cdpr (Cdpr): cable robot object
+        x (gtsam.Pose3): current pose of the end effector
+    
+    Returns:
+        tuple(): matplotlib line objects:
+            l_a - the frame
+            l_b - the end effector
+            ls_ab - a 4-list containing the 4 cable lines
     """
-    l_a, = ax.plot(*a_coords(cdpr))
-    l_b, = ax.plot(*b_coords(cdpr, x))
-    l_abs = [ax.plot(*ab_coords(cdpr, x, ji))[0] for ji in range(4)]
+    l_a, = ax.plot(*a_coords(cdpr), 'k-')
+    l_b, = ax.plot(*b_coords(cdpr, x), color='#caa472')
+    ls_ab = [ax.plot(*ab_coords(cdpr, x, ji))[0] for ji in range(4)]
     ax.axis('equal')
     ax.set_xlabel('x(m)');ax.set_ylabel('y(m)');ax.set_title('Trajectory')
-    return l_a, l_b, l_abs
-def redraw_cdpr(l_a, l_b, l_abs, cdpr, x):
+    return l_a, l_b, ls_ab
+def redraw_cdpr(l_a, l_b, ls_ab, cdpr, x):
     """Updates the lines for the frame, end effector, and cables"""
     l_a.set_data(*a_coords(cdpr))
     l_b.set_data(*b_coords(cdpr, x))
-    [l_abs[ci].set_data(*ab_coords(cdpr, x, ci)) for ci in range(4)]
-    return l_a, l_b, *l_abs
+    [ls_ab[ci].set_data(*ab_coords(cdpr, x, ci)) for ci in range(4)]
+    return l_a, l_b, *ls_ab
+def draw_traj(ax, cdpr, des_xy, act_xy):
+    """Draws the desired and actual x/y trajectories"""
+    l_des, = plt.plot(*des_xy, 'r-')  # desired trajectory
+    l_act, = plt.plot(*act_xy, 'k-')  # actual trajectory
+    ax.axis('equal')
+    ax.set_xlabel('x(m)');ax.set_ylabel('y(m)');ax.set_title('Trajectory')
+    return l_des, l_act
+def redraw_traj(l_des, l_act, des_xy, act_xy, N=None):
+    """Updates the lines for the trajectory drawing"""
+    if N is None:
+        N = des_xy.shape[1]
+    l_des.set_data(*des_xy[:, :N])
+    l_act.set_data(*act_xy[:, :N])
+    return l_des, l_act
+def draw_ctrl(ax, cdpr, tensions, Tf, dt):
+    """Draws the control tension signals"""
+    ls_ctrl = plt.plot(np.arange(0,Tf,dt), tensions)
+    plt.plot([0, Tf], [cdpr.params.tmin,]*2, 'r--')
+    plt.plot([0, Tf], [cdpr.params.tmax,]*2, 'r--')
+    plt.xlabel('time (s)');plt.ylabel('Cable tension (N)');plt.title('Control Inputs')
+    return ls_ctrl,
+def redraw_ctrl(ls_ctrl, tensions, Tf, dt, N=None):
+    """Updates the lines for the tensions plot"""
+    if N is None:
+        N = tensions.shape[0]
+    for ji in range(4):
+        ls_ctrl[ji].set_data(np.arange(0,Tf,dt)[:N], tensions[:N, ji])
+    return *ls_ctrl,
 
 def plot_all(cdpr, result, Tf, dt, N, x_des, step=1):
     """Animates the cdpr and controls in side-by-side subplots.
 
     Args:
         cdpr (Cdpr): cable robot object
-        result (gtsam.Values): the data from the simulation including poses and torques
+        result (gtsam.Values): the data from the simulation including poses and tensions
         Tf (float): final time
         dt (float): time step interval
         N (int): number of discrete samples
@@ -73,28 +108,24 @@ def plot_all(cdpr, result, Tf, dt, N, x_des, step=1):
     act_T = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(N+1)]
     act_xy = np.array([pose32xy(pose) for pose in act_T]).T
     des_xy = np.array([pose32xy(pose) for pose in x_des]).T
-    torques = np.array([[gtd.TorqueDouble(result, ji, k) for ji in range(4)] for k in range(N)])
+    tensions = np.array([[gtd.TorqueDouble(result, ji, k) for ji in range(4)] for k in range(N)])
 
     # plot
     fig = plt.figure(1, figsize=(12,4))
     # xy plot
     ax1 = plt.subplot(1,2,1)
     cdpr_lines = draw_cdpr(ax1, cdpr, gtd.Pose(result, cdpr.ee_id(), 0))
-    plt.plot(*des_xy, 'r-') # desired trajectory
-    ltraj, = plt.plot(*act_xy, 'k-') # actual trajectory
+    traj_lines = draw_traj(ax1, cdpr, des_xy, act_xy)
     # controls
     ax2 = plt.subplot(1,2,2)
-    lsctrl = plt.plot(np.arange(0,Tf,dt), torques)
-    plt.xlabel('time (s)');plt.ylabel('Cable tension (N)');plt.title('Control Inputs')
+    ctrl_lines = draw_ctrl(ax2, cdpr, tensions, Tf, dt)
 
     # animate
     plt.rcParams["savefig.dpi"] = 80
-
     def update_line(num):
-        lines_to_update = redraw_cdpr(*cdpr_lines, cdpr, gtd.Pose(result, cdpr.ee_id(), num))
-        for ji in range(4):
-            lsctrl[ji].set_data(np.arange(0,Tf,dt)[:num], torques[:num, ji])
-        return [*lines_to_update, *lsctrl]
-
+        cdpr_to_update = redraw_cdpr(*cdpr_lines, cdpr, gtd.Pose(result, cdpr.ee_id(), num))
+        traj_to_update = redraw_traj(*traj_lines, des_xy, act_xy, num if num > 0 else None)
+        ctrl_to_update = redraw_ctrl(*ctrl_lines, tensions, Tf, dt, num if num > 0 else None)
+        return [*cdpr_to_update, *traj_to_update, *ctrl_to_update]
     return animation.FuncAnimation(fig, update_line, frames=range(0, N, step),
                                    interval=dt*step*1e3, blit=True)
