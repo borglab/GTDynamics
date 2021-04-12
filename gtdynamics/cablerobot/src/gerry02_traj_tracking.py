@@ -44,9 +44,42 @@ def xy2Pose3(traj):
         des_T.append(gtsam.Pose3(gtsam.Rot3(), (xy[0], 0, xy[1])))
     return des_T
 
-def main(fname='data/iros_logo_2.h', debug=False):
+def main(fname='data/iros_logo_2.h',
+         debug=False,
+         Q=np.ones(6) * 1e2,
+         R=np.ones(1) * 1e-2,
+         N0=0,
+         N=500,
+         dN=1):
+    """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
+
+    Args:
+        fname (str, optional): The trajectory filename. Defaults to 'data/iros_logo_2.h'.
+        debug (bool, optional): Whether to print debug information. Defaults to False.
+        Q (np.ndarray, optional): Vector of weights to apply to the state objectives.  The real
+        weight matrix will be diag(Q). Defaults to np.ones(6)*1e2.
+        R (np.ndarray, optional): Vector of weights to apply to the control costs.  The real weight
+        matrix will be diag(R). Defaults to np.ones(1)*1e-2.
+        N0 (int, optional): The initial timestep of the trajectory to start at, since running the
+        full trajectory is very time consuming. Defaults to 0.
+        N (int, optional): The number of timesteps of the trajectory to run, since running the full
+        trajectory is very time consuming. Defaults to 500.
+        dN (int, optional): Skips some timesteps from the input trajectory, to make things faster.
+        The controller and simulation both will only use each dN'th time step.  Defaults to 1.
+
+    Returns:
+        tuple(Cdpr, CdprControllerIlqr, gtsam.Values, int, float, list[gtsam.Pose3]): The relevant
+        output data including:
+            - cdpr: the cable robot object
+            - controller: the controller
+            - result: the Values object containing the full state and controls of the robot in
+            open-loop
+            - N: the number of time steps (equal to N passed in)
+            - dt: the time step size
+            - des_T: the desired poses
+    """
     # cdpr object
-    aw, ah = 2.32, 1.92
+    aw, ah = 2.92, 2.32
     bw, bh = 0.15, 0.30
     params = CdprParams()
     params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
@@ -55,12 +88,16 @@ def main(fname='data/iros_logo_2.h', debug=False):
     cdpr = Cdpr(params)
 
     # import data
+    dt = 0.01 * dN # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
+    N = int(N/dN)  # scale time by dN
+    N0 = int(N0/dN)
     isPaints, colorinds, colorpalette, traj = ParseFile(fname)
-    dt = 0.01  # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
-    N = 500  # only simulate a subset of the trajectory, since the trajectory is very large
+    traj = (traj - [aw/2, ah/2]) * 0.8 + [aw/2, ah/2]  # rescale trajectory to be smaller
+    traj = traj[::dN, :]
     if debug:
         print_data(isPaints, colorinds, colorpalette, traj, N=100)
-    des_T = xy2Pose3(traj[:N, :])
+    # only simulate a subset of the trajectory, since the trajectory is very large
+    des_T = xy2Pose3(traj[N0:N0+N, :])
 
 
     # initial configuration
@@ -70,7 +107,7 @@ def main(fname='data/iros_logo_2.h', debug=False):
     gtd.InsertTwist(x0, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, 0))
 
     # controller
-    controller = CdprControllerIlqr(cdpr, x0, des_T, dt, np.ones(6)*1e2, np.ones(1)*1e-2)
+    controller = CdprControllerIlqr(cdpr, x0, des_T, dt, Q, R)
     # feedforward control
     xff = np.zeros((N, 2))
     uff = np.zeros((N, 4))
@@ -80,9 +117,9 @@ def main(fname='data/iros_logo_2.h', debug=False):
     if debug:
         print(xff)
         print(uff)
-    
+
     # simulate
-    sim = CdprSimulator(cdpr, x0, controller, dt=0.01)
+    sim = CdprSimulator(cdpr, x0, controller, dt=dt)
     result = sim.run(N=N)
     if debug:
         print(result)
