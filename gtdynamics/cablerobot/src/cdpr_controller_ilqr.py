@@ -77,10 +77,11 @@ class CdprControllerIlqr(CdprControllerBase):
         # dynamics
         fg.push_back(cdpr.all_factors(N, dt))
         # control costs
+        tmid = (cdpr.params.tmin + cdpr.params.tmax) / 2
         for k in range(N):
             for ji in range(4):
                 fg.push_back(
-                    gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
+                    gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), tmid,
                                           gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
         cost_x = gtsam.noiseModel.Constrained.All(6) if Q is None else \
