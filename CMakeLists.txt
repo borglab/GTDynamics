@@ -58,6 +58,7 @@ find_package(sdformat8 REQUIRED)
 # Dynamics library
 # ##############################################################################
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
 
 add_subdirectory(gtdynamics)
 
