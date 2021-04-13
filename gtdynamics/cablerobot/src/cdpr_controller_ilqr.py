@@ -45,6 +45,8 @@ class CdprControllerIlqr(CdprControllerBase):
         self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess)
         self.result = self.optimizer.optimize()
         self.fg = fg
+        # gains
+        self.gains = self.extract_gains(cdpr, fg, self.result)
 
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
@@ -91,3 +93,17 @@ class CdprControllerIlqr(CdprControllerBase):
                 gtsam.PriorFactorPose3(
                     gtd.internal.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
         return fg
+
+    @staticmethod
+    def extract_gains(cdpr, fg, openloop_results):
+        """Extracts the locally linear optimal feedback control gains
+
+        Args:
+            cdpr (Cdpr): cable robot object
+            fg (gtsam.NonlinearFactorGraph): The iLQR factor graph
+            openloop_results (gtsam.Values): The open-loop optimal trajectory and controls
+        """
+        return [[{gtd.internal.PoseKey(cdpr.ee_id(), t).key(): np.zeros((1, 6)),
+                  gtd.internal.TwistKey(cdpr.ee_id(), t).key(): np.zeros((1, 6))}
+                  for ji in range(4)]
+                for t in range(3)]
