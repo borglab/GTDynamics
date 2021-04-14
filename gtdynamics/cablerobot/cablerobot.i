@@ -43,6 +43,6 @@ class PriorFactor : gtsam::NonlinearFactor {
 gtsam::GaussianBayesNet* EliminateSequential(gtsam::GaussianFactorGraph graph,
                                              const gtsam::Ordering &ordering);
 gtsam::GaussianBayesNet* BlockEliminateSequential(
-    gtsam::GaussianFactorGraph graph, const BlockOrdering &ordering);
+    gtsam::GaussianFactorGraph graph, const gtdynamics::BlockOrdering &ordering);
 
 }  // namespace gtdynamics

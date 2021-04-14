@@ -20,28 +20,10 @@ namespace gtdynamics {
 /// Performs sequential elimination and preserves correct bayes net order
 GaussianBayesNet::shared_ptr EliminateSequential(GaussianFactorGraph graph,
                                                  const Ordering& ordering) {
-  // setup
-  VariableIndex variableIndex(graph);   // maps keys to factor indices
-  auto bn = boost::make_shared<GaussianBayesNet>();
-
-  // loop
-  for (auto key : ordering) {
-    // collect factors
-    GaussianFactorGraph factors;
-    for (size_t factorindex : variableIndex[key]) {
-      factors.push_back(graph.at(factorindex));
-      graph.remove(factorindex);
-    }
-    // eliminate
-    auto [conditional, newfactor] =
-        EliminationTraits<GaussianFactorGraph>::DefaultEliminate(
-            factors, boost::assign::list_of(key));
-    bn->push_back(conditional);
-    // add new joint factor
-    graph.push_back(newfactor);
-    variableIndex.augment(GaussianFactorGraph(newfactor));
-  }
-  return bn;
+  BlockOrdering blockOrdering;
+  for (auto k : ordering)
+    blockOrdering.push_back(boost::assign::list_of(k));
+  return BlockEliminateSequential(graph, blockOrdering);
 }
 
 /// Performs sequential elimination and preserves correct bayes net order
