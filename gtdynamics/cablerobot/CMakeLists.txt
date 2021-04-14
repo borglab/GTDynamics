@@ -1,5 +1,5 @@
 # add cablerobot subfolders to gtdynamics' SOURCE_SUBDIRS list
-list(APPEND SOURCE_SUBDIRS cablerobot/factors)
+list(APPEND SOURCE_SUBDIRS cablerobot/factors cablerobot/utils)
 set(SOURCE_SUBDIRS ${SOURCE_SUBDIRS} PARENT_SCOPE)
 
 # add wrapper interface file
