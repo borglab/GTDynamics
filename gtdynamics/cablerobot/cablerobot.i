@@ -40,7 +40,9 @@ class PriorFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/cablerobot/utils/CustomWrap.h>
-gtsam::GaussianBayesNet *EliminateSequential(gtsam::GaussianFactorGraph graph,
+gtsam::GaussianBayesNet* EliminateSequential(gtsam::GaussianFactorGraph graph,
                                              const gtsam::Ordering &ordering);
+gtsam::GaussianBayesNet* BlockEliminateSequential(
+    gtsam::GaussianFactorGraph graph, const BlockOrdering &ordering);
 
 }  // namespace gtdynamics

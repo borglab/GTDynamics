@@ -13,11 +13,15 @@
 
 namespace gtdynamics {
 
-using BlockOrdering = std::vector<gtsam::KeyVector>;
+using BlockOrdering = std::vector<gtsam::Ordering>;
 
 /// Performs sequential elimination and preserves correct bayes net order
 gtsam::GaussianBayesNet::shared_ptr EliminateSequential(
     gtsam::GaussianFactorGraph graph, const gtsam::Ordering& ordering);
 
+/// Performs sequential block elimination and preserves correct bayes net order
+gtsam::GaussianBayesNet::shared_ptr BlockEliminateSequential(
+    gtsam::GaussianFactorGraph graph,
+    const BlockOrdering& ordering);
 
 }  // namespace gtdynamics
