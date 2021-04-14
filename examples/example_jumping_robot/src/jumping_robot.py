@@ -104,12 +104,16 @@ class JumpingRobot:
             return params
 
     @staticmethod
-    def create_init_config(rest_angles=[0, 0, 0, 0, 0, 0],
+    def create_init_config(torso_pose=gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.1)),
+                           torso_twist = np.zeros(6),
+                           rest_angles=[0, 0, 0, 0, 0, 0],
                            init_angles=[0, 0, 0, 0, 0, 0],
                            init_vels=[0, 0, 0, 0, 0, 0]):
         """ Create initial configuration specification.
 
         Args:
+            torso_pose (gtsam.Pose3, optional): torso pose
+            torso_twist (Vector6, optional): torso twist
             rest_angles (list, optional): joint angles at rest.
             init_angles (list, optional): initial joint angles.
             init_vels (list, optional): initial joint velocities.
@@ -120,6 +124,8 @@ class JumpingRobot:
         joint_names = ["foot_r", "knee_r",
                        "hip_r", "hip_l", "knee_l", "foot_l"]
         init_config = {}
+        init_config["torso_pose"] = torso_pose
+        init_config["torso_twist"] = torso_twist
         init_config["qs"] = {}
         init_config["vs"] = {}
         init_config["qs_rest"] = {}
@@ -240,17 +246,17 @@ class JumpingRobot:
         p2 = values.atPose2(2)
         p3 = values.atPose2(3)
         rot_r = Rot3.Rx(np.arctan2(p1.y() - p0.y(), p1.x() - p0.x()))
-        rot_m = Rot3.Rx(np.arctan2(p2.y() - p1.y(), p2.x() - p1.x()))
-        rot_l = Rot3.Rx(np.arctan2(p3.y() - p2.y(), p3.x() - p2.x()))
+        rot_m = Rot3.Rx(np.arctan2(p1.y() - p2.y(), p1.x() - p2.x()))
+        rot_l = Rot3.Rx(np.arctan2(p2.y() - p3.y(), p2.x() - p3.x()))
 
         # use the optimization result of 4 points to initialize the poses
         # of links and joints
         link_poses = {}
         link_poses["shank_r"] = Pose3(rot_r, Point3(0, p0.x(), p0.y()))
         link_poses["thigh_r"] = Pose3(rot_r, Point3(0, (p0.x() + p1.x())/2, (p0.y() + p1.y())/2))
-        link_poses["torso"] = Pose3(rot_m, Point3(0, p1.x(), p1.y()))
-        link_poses["thigh_l"] = Pose3(rot_l, Point3(0, p2.x(), p2.y()))
-        link_poses["shank_l"] = Pose3(rot_l, Point3(0, (p2.x() + p3.x())/2, (p2.y()+p3.y())/2))
+        link_poses["torso"] = Pose3(rot_m, Point3(0, p2.x(), p2.y()))
+        link_poses["thigh_l"] = Pose3(rot_l, Point3(0, (p2.x() + p3.x())/2, (p2.y()+p3.y())/2))
+        link_poses["shank_l"] = Pose3(rot_l, Point3(0, p3.x(), p3.y()))
 
         joint_poses = {}
         joint_poses["foot_r"] = Pose3(Rot3(), Point3(0, p0.x(), p0.y()))

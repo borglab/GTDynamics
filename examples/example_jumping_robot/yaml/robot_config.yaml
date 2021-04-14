@@ -54,6 +54,5 @@ pneumatic: # pneumatic system parameters
   eps_tube: 1.0e-5 # (m) TODO: how to determine? can vary from 1.5e-6 to 1e-5
   mu_tube: 1.8377e-5
   v_source: 1.475e-3 # (m^3) Ninja SL 90 carbon fiber paintball tank (90 cubic in)
-  p_source0: 65 # (gauge psi) source pressure TODO: adjust based on test setup
   time_constant_valve: 1.0e-3
   init_mass: 7.873172488131229e-05

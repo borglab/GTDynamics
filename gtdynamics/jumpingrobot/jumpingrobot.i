@@ -16,6 +16,9 @@ class MassFlowRateFactor: gtsam::NonlinearFactor{
   MassFlowRateFactor(gtsam::Key pm_key, gtsam::Key ps_key, gtsam::Key mdot_key,
                  const gtsam::noiseModel::Base* cost_model,
                  const double D, const double L, const double mu, const double epsilon, const double k);
+  
+  double computeExpectedMassFlow(
+      const double &pm, const double &ps, const double &mdot);
 };
 
 class ValveControlFactor: gtsam::NonlinearFactor{
@@ -23,12 +26,17 @@ class ValveControlFactor: gtsam::NonlinearFactor{
                      gtsam::Key mdot_key, gtsam::Key true_mdot_key,
                      const gtsam::noiseModel::Base *cost_model,
                     const double ct);
+  
+  double computeExpectedTrueMassFlow(
+      const double &t, const double &to, const double &tc, const double &mdot);
 };
 
 class ActuatorVolumeFactor: gtsam::NonlinearFactor{
   ActuatorVolumeFactor(gtsam::Key v_key, gtsam::Key l_key,
                  const gtsam::noiseModel::Base *cost_model,
                  const double D, const double L);
+  
+  double computeVolume(const double &l);
 };
 
 class ClippingActuatorFactor: gtsam::NonlinearFactor{
