@@ -66,4 +66,10 @@ class JointTorqueFactor: gtsam::NonlinearFactor{
                     const double b, const bool positive);
 };
 
+
+#include <gtdynamics/jumpingrobot/factors/ValueUtils.h>
+gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector& keys);
+gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeySet& keys);
+gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys);
+
 }  // namespace gtdynamics

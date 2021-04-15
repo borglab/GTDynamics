@@ -83,10 +83,21 @@ class JumpingRobot:
     """ Class that stores a GTDynamics robot class and all parameters for 
         a jumping robot. """
 
-    def __init__(self, yaml_file_path, init_config):
+    def __init__(self, yaml_file_path, init_config, phase=0):
+        """ Constructor
+
+        Args:
+            yaml_file_path (str): path for yaml file that specifies jr parameters
+            init_config (dict): initial configuration
+            phase (int, optional): phase Defaults to 0
+                - 0: ground
+                - 1: left on ground
+                - 2: right on ground 
+                - 3: in air
+        """
         self.params = self.load_file(yaml_file_path)
         self.init_config = init_config
-        self.robot = self.create_robot(self.params)
+        self.robot = self.create_robot(self.params, phase)
         self.actuators = [Actuator("knee_r", self.robot, self.params["knee"], False),
                           Actuator("hip_r", self.robot, self.params["hip"], True),
                           Actuator("hip_l", self.robot, self.params["hip"], True),
@@ -161,15 +172,8 @@ class JumpingRobot:
         return controls
 
     @staticmethod
-    def create_robot(params) -> gtd.Robot:
-        """ Create the robot.
-
-        Args:
-            params (Dict): jumping robot parameters
-
-        Returns:
-            gtd.Robot
-        """
+    def create_robot(params, phase) -> gtd.Robot:
+        """ Create the robot. """
         # morphology parameters
         length_list = params["morphology"]["l"]
         mass_list = params["morphology"]["m"]
@@ -209,8 +213,20 @@ class JumpingRobot:
             5, "foot_l", joint_poses["foot_l"], ground, shank_l, gtd.JointParams(), axis_l)
 
         # use links, joints to create robot
-        links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
-        joints = [foot_r, knee_r, hip_r, hip_l, knee_l, foot_l]
+        if phase == 0:
+            links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
+            joints = [foot_r, knee_r, hip_r, hip_l, knee_l, foot_l]
+        elif phase == 1:
+            links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
+            joints = [knee_r, hip_r, hip_l, knee_l, foot_l]
+        elif phase == 2:
+            links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
+            joints = [foot_r, knee_r, hip_r, hip_l, knee_l]
+        elif phase == 3:
+            links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
+            joints = [foot_r, knee_r, hip_r, hip_l, knee_l]
+        else:
+            raise Exception("no such phase " + str(phase))
 
         # TODO(yetong): make Robot constructor simpler by directly taking lists
         # (attach joints to links)

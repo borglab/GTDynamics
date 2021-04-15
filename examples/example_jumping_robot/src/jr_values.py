@@ -150,8 +150,15 @@ class JRValues:
         init_values = gtsam.Values()
         for joint in robot.joints():
             j = joint.id()
-            gtd.InsertJointAngleDouble(init_values, j, k, gtd.JointAngleDouble(values, j, k-1))
-            gtd.InsertJointVelDouble(init_values, j, k, gtd.JointVelDouble(values, j, k-1))
+            if values.exists(gtd.internal.JointAngleKey(j, k).key()):
+                gtd.InsertJointAngleDouble(init_values, j, k, gtd.JointAngleDouble(values, j, k))
+            else:
+                gtd.InsertJointAngleDouble(init_values, j, k, gtd.JointAngleDouble(values, j, k-1))
+
+            if values.exists(gtd.internal.JointVelKey(j, k).key()):
+                gtd.InsertJointVelDouble(init_values, j, k, gtd.JointVelDouble(values, j, k))
+            else:
+                gtd.InsertJointVelDouble(init_values, j, k, gtd.JointVelDouble(values, j, k-1))
             gtd.InsertJointAccelDouble(init_values, j, k, gtd.JointAccelDouble(values, j, k-1))
             i1 = joint.parent().id()
             i2 = joint.child().id()
@@ -160,8 +167,14 @@ class JRValues:
             gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(values, j, k-1))
         for link in robot.links():
             i = link.id()
-            gtd.InsertPose(init_values, i, k, gtd.Pose(values, i, k-1))
-            gtd.InsertTwist(init_values, i, k, gtd.Twist(values, i, k-1))
+            if values.exists(gtd.internal.PoseKey(i, k).key()):
+                gtd.InsertPose(init_values, i, k, gtd.Pose(values, i, k))
+            else:
+                gtd.InsertPose(init_values, i, k, gtd.Pose(values, i, k-1))
+            if values.exists(gtd.internal.TwistKey(i, k).key()):
+                gtd.InsertTwist(init_values, i, k, gtd.Twist(values, i, k))
+            else:
+                gtd.InsertTwist(init_values, i, k, gtd.Twist(values, i, k-1))
             gtd.InsertTwistAccel(init_values, i, k, gtd.TwistAccel(values, i, k-1))
         return init_values
 

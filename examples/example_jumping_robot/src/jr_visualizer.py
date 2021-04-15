@@ -47,20 +47,20 @@ def update_jr_frame(ax, values, jr, k):
 
         ax.plot([start_y, end_y], [start_z, end_z], color=color)
 
-    for link in jr.robot.links():
-        i = link.id()
-        pose = link.wTcom()
+    # for link in jr.robot.links():
+    #     i = link.id()
+    #     pose = link.wTcom()
 
-        y = pose.y()
-        z = pose.z()
-        theta = pose.rotation().roll()
-        l = 0.55
-        start_y = y - l/2 * np.cos(theta)
-        start_z = z - l/2 * np.sin(theta)
-        end_y = y + l/2 * np.cos(theta)
-        end_z = z + l/2 * np.sin(theta)
+    #     y = pose.y()
+    #     z = pose.z()
+    #     theta = pose.rotation().roll()
+    #     l = 0.55
+    #     start_y = y - l/2 * np.cos(theta)
+    #     start_z = z - l/2 * np.sin(theta)
+    #     end_y = y + l/2 * np.cos(theta)
+    #     end_z = z + l/2 * np.sin(theta)
 
-        ax.plot([start_y, end_y], [start_z, end_z], color='k', alpha=0.2)
+    #     ax.plot([start_y, end_y], [start_z, end_z], color='k', alpha=0.2)
 
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-1, 1)
