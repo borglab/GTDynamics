@@ -75,9 +75,6 @@ class JRSimulator:
             values (gtsam.Values): contain values and derivatives of previous step
         """
         # integrate joint angles
-        # vs_prev = []
-        # vs = []
-        # a_s = []
         for joint in self.jr.robot.joints():
             j = joint.id()
             q_prev = values.atDouble(gtd.internal.JointAngleKey(j, k-1).key())
@@ -87,13 +84,7 @@ class JRSimulator:
             q_curr = q_prev + v_prev * dt + 0.5 * a_prev * dt * dt
             values.insertDouble(gtd.internal.JointAngleKey(j, k).key(), q_curr)
             values.insertDouble(gtd.internal.JointVelKey(j, k).key(), v_curr)
-            # vs.append(v_curr)
-            # vs_prev.append(v_prev)
-            # a_s.append(a_prev)
-        # print("prev a:", a_s)
-        # print("prev v: ", vs_prev)
-        # print("curr v: ", vs)
-        
+
         # integrate torso link for air phase
         torso_i = self.jr.robot.link("torso").id()
         pose_torso_prev = gtd.Pose(values, torso_i, k-1)
@@ -130,7 +121,7 @@ class JRSimulator:
 
         Args:
             k (int): current step index
-            values (gtsam.Values): values contains q, v, m_a, m_s of 
+            values (gtsam.Values): values containing q, v, m_a, m_s of 
                                    current step and To, Ti, V_s
 
         Raises:
@@ -142,7 +133,6 @@ class JRSimulator:
         V_s = values.atDouble(Actuator.SourceVolumeKey())
         P_s = m_s * self.jr.gas_constant / V_s / 1e3
         P_s_key = Actuator.SourcePressureKey(k)
-        t_key = gtd.TimeKey(k).key()
 
         # perform forward dynamics for each actuator by solving its dynamcis factor graph
         for actuator in self.jr.actuators:
@@ -153,13 +143,6 @@ class JRSimulator:
             m_a_key = Actuator.MassKey(j, k)
             q_key = gtd.internal.JointAngleKey(j, k).key()
             v_key = gtd.internal.JointVelKey(j, k).key()
-            P_a_key = Actuator.PressureKey(j, k)
-            V_a_key = Actuator.VolumeKey(j, k)
-            delta_x_key = Actuator.ContractionKey(j, k)
-            f_a_key = Actuator.ForceKey(j, k)
-            torque_key = gtd.internal.TorqueKey(j, k).key()
-            mdot_key = Actuator.MassRateOpenKey(j, k)
-            mdot_sigma_key = Actuator.MassRateActualKey(j, k)
             m_a = values.atDouble(m_a_key)
             q = values.atDouble(q_key)
             v = values.atDouble(v_key)
@@ -170,21 +153,26 @@ class JRSimulator:
             graph.add(gtd.PriorFactorDouble(v_key, v, actuation_graph_builder.prior_v_cost_model))
             # TODO(yetong): check why adding the massflow graph makes it unable to optimize
 
-            # construct init values
+            # construct init values and optimize
             if k == 0:
-                init_values = JRValues.init_values_from_init_config(self.jr, j, k, values)
+                init_values = JRValues.init_values_from_init_config_actuator(self.jr, j, k, values)
             else:
                 init_values = JRValues.init_values_from_prev_actuator(j, k, values)
-            
             results = self.optimize(graph, init_values)
-
             mergeValues(values, results)
+
+            # compute mass flow
             mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
-            # print(mdot, mdot_sigma)
-            values.insertDouble(mdot_key, mdot)
-            values.insertDouble(mdot_sigma_key, mdot_sigma)
+            values.insertDouble(Actuator.MassRateOpenKey(j, k), mdot)
+            values.insertDouble(Actuator.MassRateActualKey(j, k), mdot_sigma)
 
     def step_robot_dynamics_by_layer(self, k, values):
+        """ In case solving the entire dynamics graph is hard to converge, 
+            this function provides a more robust method to solve the dynamics
+            graph by layers (q, v, dynamics).
+        """
+
+        # construct init values
         if k==0:
             init_values = JRValues.init_values_from_fk_robot(self.jr, k, values)
         else:
@@ -326,6 +314,7 @@ class JRSimulator:
         return results
 
     def check_convergence(self, graph, init_values, results, threshold = 1e-5):
+        """ Check if optimization converges. """
         if (graph.error(results) > 1e-5):
             for f_idx in range(graph.size()):
                 factor = graph.at(f_idx)
@@ -403,29 +392,6 @@ class JRSimulator:
             if k!=0:
                 self.step_integration(k, dt, values)
             self.step_actuation_dynamics(k, values)
-            
-            torques = []
-            pressures = []
-            masses = []
-            mass_rates = []
-            volumes = []
-            for j in [1, 2, 3, 4]:
-                torques.append(gtd.TorqueDouble(values, j, k))
-                pressures.append(values.atDouble(Actuator.PressureKey(j, k)))
-                masses.append(values.atDouble(Actuator.MassKey(j, k)))
-                mass_rates.append(values.atDouble(Actuator.MassRateActualKey(j, k)))
-                volumes.append(values.atDouble(Actuator.VolumeKey(j, k)))
-            source_pressure = values.atDouble(Actuator.SourcePressureKey(k))
-            source_mass = values.atDouble(Actuator.SourceMassKey(k))
-
-            print("torques: ", torques)
-            print("pressures: ", pressures)
-            print("masses: ", masses)
-            print("mass_rates: ", mass_rates)
-            print("volumes: ", volumes)
-            print("source_pressure: ", source_pressure)
-            print("source_mass: ", source_mass)
-
             self.step_robot_dynamics_by_layer(k, values)
             phase = self.step_phase_change(k, phase, values)
             step_phases.append(phase)
@@ -471,6 +437,7 @@ class JRSimulator:
         return values, step_phases
 
 if __name__=="__main__":
+    """ Show an example robot jumping trajectory """
     yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
 
     theta = np.pi/3
@@ -482,12 +449,12 @@ if __name__=="__main__":
     init_config = JumpingRobot.create_init_config(torso_pose, torso_twist, rest_angles, init_angles, init_vels)
 
     num_steps = 100
-    dt = 0.001
+    dt = 0.005
     jr_simulator = JRSimulator(yaml_file_path, init_config)
 
     Tos = [0, 0, 0, 0]
     Tcs = [1, 1, 1, 1]
-    P_s_0 = 100 * 6894.76/1000
+    P_s_0 = 65 * 6894.76/1000
     controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
 
@@ -497,6 +464,6 @@ if __name__=="__main__":
     # torques_seq = [[0, -1, 1, 1, -1, 0]] * 10 + [[0, -5, 5, 5, -5, 0]] * 300
     # values, step_phases = jr_simulator.simulate_with_torque_seq(num_steps, dt, torques_seq)
 
-    from jr_visualizer import visualize_jr_trajectory, draw_q_plot
-    # draw_q_plot(values, jr_simulator.jr, num_steps)
-    visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=10)
+    from jr_visualizer import visualize_jr_trajectory, make_plot
+    make_plot(values, jr_simulator.jr, num_steps)
+    # visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
