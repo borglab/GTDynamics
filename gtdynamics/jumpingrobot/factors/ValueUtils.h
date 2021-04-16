@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ClippingActuatorFactor.h
- * @brief Factors related to pneumatic actuator.
+ * @file  ValueUtils.h
+ * @brief Some value related utils which are hard to implement in Python.
  * @Author: Yetong Zhang
  */
 
@@ -15,12 +15,9 @@
 
 #include <gtsam/nonlinear/Values.h>
 
-// #include <boost/optional.hpp>
-// #include <iostream>
-// #include <string>
-
 namespace gtdynamics {
 
+/* Extract values with specified keys, (note: we need this because values.at() is not wrapped in Python) */
 gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector& keys) {
     gtsam::Values extracted_values;
     for (gtsam::Key key: keys) {
@@ -37,6 +34,7 @@ gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeySet& ke
     return extracted_values;
 }
 
+/* Turn a KeySet to KeyVector */
 gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys) {
     return gtsam::KeyVector(keys.begin(), keys.end());
 }
