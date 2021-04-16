@@ -29,6 +29,7 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           size_t t);
 
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  const gtsam::Pose3 measured() const;
 };
 
 #include <gtdynamics/factors/TwistFactor.h>
