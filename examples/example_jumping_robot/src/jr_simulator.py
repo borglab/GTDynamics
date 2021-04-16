@@ -38,7 +38,7 @@ class JRSimulator:
         values = gtsam.Values()
         V_s = self.jr.params["pneumatic"]["v_source"]
         P_s_0 = controls["P_s_0"]
-        m_s_0 = V_s * P_s_0 / self.jr.gas_constant
+        m_s_0 = V_s * P_s_0 * 1e3 / self.jr.gas_constant
         m_a_0 = self.jr.params["pneumatic"]["init_mass"]
         values.insertDouble(Actuator.SourceVolumeKey(), V_s)
         values.insertDouble(Actuator.SourceMassKey(0), m_s_0)
@@ -63,18 +63,21 @@ class JRSimulator:
         torso_i = self.jr.robot.link("torso").id()
         gtd.InsertPose(values, torso_i, 0, self.init_config["torso_pose"])
         gtd.InsertTwist(values, torso_i, 0, self.init_config["torso_twist"])
+        values.insertDouble(gtd.TimeKey(0).key(), 0)
         return values
 
-    def step_integration(self, k, dt, values, phase, include_actuation=True):
+    def step_integration(self, k, dt, values, include_actuation=True):
         """ Perform integration, and add results to values.
 
         Args:
             k (int): current step index
             dt (float): duration of time step
             values (gtsam.Values): contain values and derivatives of previous step
-            phase (int): current phase of jumping robot
         """
         # integrate joint angles
+        # vs_prev = []
+        # vs = []
+        # a_s = []
         for joint in self.jr.robot.joints():
             j = joint.id()
             q_prev = values.atDouble(gtd.internal.JointAngleKey(j, k-1).key())
@@ -83,7 +86,13 @@ class JRSimulator:
             v_curr = v_prev + a_prev * dt
             q_curr = q_prev + v_prev * dt + 0.5 * a_prev * dt * dt
             values.insertDouble(gtd.internal.JointAngleKey(j, k).key(), q_curr)
-            values.insertDouble(gtd.internal.JointVelKey(j, k).key(), q_curr)
+            values.insertDouble(gtd.internal.JointVelKey(j, k).key(), v_curr)
+            # vs.append(v_curr)
+            # vs_prev.append(v_prev)
+            # a_s.append(a_prev)
+        # print("prev a:", a_s)
+        # print("prev v: ", vs_prev)
+        # print("curr v: ", vs)
         
         # integrate torso link for air phase
         torso_i = self.jr.robot.link("torso").id()
@@ -109,8 +118,13 @@ class JRSimulator:
             m_s_prev = values.atDouble(Actuator.SourceMassKey(k-1))
             m_s_curr = m_s_prev - total_m_out
             values.insertDouble(Actuator.SourceMassKey(k), m_s_curr)
+        
+        # integrate time
+        t_prev = values.atDouble(gtd.TimeKey(k-1).key())
+        t_curr = t_prev + dt
+        values.insertDouble(gtd.TimeKey(k).key(), t_curr)
 
-    def step_actuation_dynamics(self, k, values, curr_time):
+    def step_actuation_dynamics(self, k, values):
         """ Perform actuation dynamics by solving the actuation dynamics factor 
             graph of the current step, and add results to values.
 
@@ -118,7 +132,6 @@ class JRSimulator:
             k (int): current step index
             values (gtsam.Values): values contains q, v, m_a, m_s of 
                                    current step and To, Ti, V_s
-            curr_time (float): current time
 
         Raises:
             Exception: optimization does not converge
@@ -127,7 +140,7 @@ class JRSimulator:
         # directly compute source pressure
         m_s = values.atDouble(Actuator.SourceMassKey(k))
         V_s = values.atDouble(Actuator.SourceVolumeKey())
-        P_s = m_s * self.jr.gas_constant / V_s
+        P_s = m_s * self.jr.gas_constant / V_s / 1e3
         P_s_key = Actuator.SourcePressureKey(k)
         t_key = gtd.TimeKey(k).key()
 
@@ -166,7 +179,8 @@ class JRSimulator:
             results = self.optimize(graph, init_values)
 
             mergeValues(values, results)
-            mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k, curr_time)
+            mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
+            # print(mdot, mdot_sigma)
             values.insertDouble(mdot_key, mdot)
             values.insertDouble(mdot_sigma_key, mdot_sigma)
 
@@ -179,12 +193,18 @@ class JRSimulator:
         robot_graph_builder = self.jr_graph_builder.robot_graph_builder
         opt = robot_graph_builder.graph_builder.opt()
         torso_i = self.jr.robot.link("torso").id()
+        link_names = [link.name() for link in self.jr.robot.links()]
 
         # solve q level
         graph_q = robot_graph_builder.graph_builder.qFactors(self.jr.robot, k, None)
         pose_key = gtd.internal.PoseKey(torso_i, k).key()
         torso_pose = gtd.Pose(values, torso_i, k)
         graph_q.add(gtsam.PriorFactorPose3(pose_key, torso_pose, opt.p_cost_model))
+        if not "ground" in link_names:
+            for joint in self.jr.robot.joints():
+                j = joint.id()
+                q_key = gtd.internal.JointAngleKey(j, k).key()
+                graph_q.add(gtd.PriorFactorDouble(q_key, gtd.JointAngleDouble(values, j, k), opt.prior_q_cost_model))
 
         init_values_q = gtd.ExtractValues(init_values, graph_q.keys())
         results_q = self.optimize(graph_q, init_values_q)
@@ -199,6 +219,11 @@ class JRSimulator:
             j = joint.id()
             q_key = gtd.internal.JointAngleKey(j, k).key()
             graph_v.add(gtd.PriorFactorDouble(q_key, init_values.atDouble(q_key), opt.prior_q_cost_model))
+        if not "ground" in link_names:
+            for joint in self.jr.robot.joints():
+                j = joint.id()
+                v_key = gtd.internal.JointVelKey(j, k).key()
+                graph_v.add(gtd.PriorFactorDouble(v_key, gtd.JointVelDouble(values, j, k), opt.prior_qv_cost_model))
 
         init_values_v = gtd.ExtractValues(init_values, graph_v.keys())
         results_v = self.optimize(graph_v, init_values_v)
@@ -269,7 +294,7 @@ class JRSimulator:
         twist_key = gtd.internal.TwistKey(i, k).key()
         torso_twist = gtd.Twist(values, i, k)
         graph.add(gtd.PriorFactorVector6(twist_key, torso_twist, opt.v_cost_model))
-        print(torso_pose.translation())
+        # print(torso_pose.translation())
 
         # prior for joint angles and vels
         if not "ground" in link_names:
@@ -295,18 +320,20 @@ class JRSimulator:
             TODO(yetong): check why each optimizer does not converge for cases
         """
         results = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
-        if graph.error(results) > 1e-5:
-            results = gtsam.DoglegOptimizer(graph, init_values).optimize()
+        # if graph.error(results) > 1e-5:
+        #     results = gtsam.DoglegOptimizer(graph, init_values).optimize()
         self.check_convergence(graph, init_values, results)
         return results
 
     def check_convergence(self, graph, init_values, results, threshold = 1e-5):
         if (graph.error(results) > 1e-5):
-            # for f_idx in range(graph.size()):
-            #     factor = graph.at(f_idx)
-            #     print()
-            #     print(factor)
-            #     print(factor.error(init_values))
+            for f_idx in range(graph.size()):
+                factor = graph.at(f_idx)
+                print()
+                graph_tmp = gtsam.NonlinearFactorGraph()
+                graph_tmp.add(factor)
+                gtd.DynamicsGraph.printGraph(graph_tmp)
+                print(factor.error(init_values))
 
             print("init error: ", graph.error(init_values))
             params = gtsam.LevenbergMarquardtParams()
@@ -369,17 +396,40 @@ class JRSimulator:
         self.jr = JumpingRobot(self.yaml_file_path, init_config)
         phase = 0  
         step_phases = [phase]
-        curr_time = 0
+
         values = self.init_config_values(controls)
         for k in range(num_steps):
             print("step", k, "phase", phase)
             if k!=0:
-                self.step_integration(k, dt, values, phase)
-            self.step_actuation_dynamics(k, values, curr_time)
-            self.step_robot_dynamics(k, values)
+                self.step_integration(k, dt, values)
+            self.step_actuation_dynamics(k, values)
+            
+            torques = []
+            pressures = []
+            masses = []
+            mass_rates = []
+            volumes = []
+            for j in [1, 2, 3, 4]:
+                torques.append(gtd.TorqueDouble(values, j, k))
+                pressures.append(values.atDouble(Actuator.PressureKey(j, k)))
+                masses.append(values.atDouble(Actuator.MassKey(j, k)))
+                mass_rates.append(values.atDouble(Actuator.MassRateActualKey(j, k)))
+                volumes.append(values.atDouble(Actuator.VolumeKey(j, k)))
+            source_pressure = values.atDouble(Actuator.SourcePressureKey(k))
+            source_mass = values.atDouble(Actuator.SourceMassKey(k))
+
+            print("torques: ", torques)
+            print("pressures: ", pressures)
+            print("masses: ", masses)
+            print("mass_rates: ", mass_rates)
+            print("volumes: ", volumes)
+            print("source_pressure: ", source_pressure)
+            print("source_mass: ", source_mass)
+
+            self.step_robot_dynamics_by_layer(k, values)
             phase = self.step_phase_change(k, phase, values)
             step_phases.append(phase)
-            curr_time += dt
+
         return values, step_phases
 
     def simulate_with_const_torque(self, num_steps, dt, torques):
@@ -387,19 +437,37 @@ class JRSimulator:
         self.jr = JumpingRobot(self.yaml_file_path, controls)
         phase = 0  
         step_phases = [phase]
-        curr_time = 0
         values = self.init_config_values(controls)
         for k in range(num_steps):
             print("step", k, "phase", phase)
             if k!=0:
-                self.step_integration(k, dt, values, phase, False)
+                self.step_integration(k, dt, values, False)
+
             for joint in self.jr.robot.joints():
                 j = joint.id()
                 gtd.InsertTorqueDouble(values, j, k, torques[j])
             self.step_robot_dynamics_by_layer(k, values)
             phase = self.step_phase_change(k, phase, values)
             step_phases.append(phase)
-            curr_time += dt
+        return values, step_phases
+
+    def simulate_with_torque_seq(self, num_steps, dt, torques_seq):
+        controls = JumpingRobot.create_controls()
+        self.jr = JumpingRobot(self.yaml_file_path, controls)
+        phase = 0  
+        step_phases = [phase]
+        values = self.init_config_values(controls)
+        for k in range(num_steps):
+            print("step", k, "phase", phase)
+            if k!=0:
+                self.step_integration(k, dt, values, False)
+
+            for joint in self.jr.robot.joints():
+                j = joint.id()
+                gtd.InsertTorqueDouble(values, j, k, torques_seq[k][j])
+            self.step_robot_dynamics_by_layer(k, values)
+            phase = self.step_phase_change(k, phase, values)
+            step_phases.append(phase)
         return values, step_phases
 
 if __name__=="__main__":
@@ -413,16 +481,22 @@ if __name__=="__main__":
     torso_twist = np.zeros(6)
     init_config = JumpingRobot.create_init_config(torso_pose, torso_twist, rest_angles, init_angles, init_vels)
 
-    # Tos = [0, 0, 0, 0]
-    # Tcs = [1, 1, 1, 1]
-    # P_s_0 = 90 * 6894.76
-    # controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
-
-    num_steps = 230
+    num_steps = 100
     dt = 0.001
     jr_simulator = JRSimulator(yaml_file_path, init_config)
-    torques = [0, -5, 10, 10, -5, 0]
-    values, step_phases = jr_simulator.simulate_with_const_torque(num_steps, dt, torques)
 
-    from jr_visualizer import visualize_jr_trajectory
-    visualize_jr_trajectory(values, jr_simulator.jr, num_steps)
+    Tos = [0, 0, 0, 0]
+    Tcs = [1, 1, 1, 1]
+    P_s_0 = 100 * 6894.76/1000
+    controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
+    values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
+
+    # torques = [0, -5, 0, 0, -5, 0]
+    # values, step_phases = jr_simulator.simulate_with_const_torque(num_steps, dt, torques)
+
+    # torques_seq = [[0, -1, 1, 1, -1, 0]] * 10 + [[0, -5, 5, 5, -5, 0]] * 300
+    # values, step_phases = jr_simulator.simulate_with_torque_seq(num_steps, dt, torques_seq)
+
+    from jr_visualizer import visualize_jr_trajectory, draw_q_plot
+    # draw_q_plot(values, jr_simulator.jr, num_steps)
+    visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=10)

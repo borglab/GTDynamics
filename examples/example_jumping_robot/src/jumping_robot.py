@@ -223,8 +223,8 @@ class JumpingRobot:
             links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
             joints = [foot_r, knee_r, hip_r, hip_l, knee_l]
         elif phase == 3:
-            links = [ground, shank_r, thigh_r, torso, thigh_l, shank_l]
-            joints = [foot_r, knee_r, hip_r, hip_l, knee_l]
+            links = [shank_r, thigh_r, torso, thigh_l, shank_l]
+            joints = [knee_r, hip_r, hip_l, knee_l]
         else:
             raise Exception("no such phase " + str(phase))
 

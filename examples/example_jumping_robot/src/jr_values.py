@@ -73,7 +73,7 @@ class JRValues:
         return volume_factor.computeVolume(delta_x)
 
     @staticmethod
-    def compute_mass_flow(jr, values, j, k, curr_time):
+    def compute_mass_flow(jr, values, j, k):
         model = noiseModel.Isotropic.Sigma(1, 0.0001)
         d_tube = jr.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
         l_tube = jr.params["pneumatic"]["l_tube_valve_musc"] * 0.0254
@@ -102,9 +102,15 @@ class JRValues:
         init_values = gtsam.Values()
         init_values.insertDouble(P_a_key, P_a)
         init_values.insertDouble(P_s_key, P_s)
-        init_values.insertDouble(mdot_key, 1e-7)
+        init_values.insertDouble(mdot_key, 0.00665209781339859)
 
         result = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
+        if graph.error(result)>1e-5:
+            params = gtsam.LevenbergMarquardtParams()
+            params.setVerbosityLM("SUMMARY")
+            results = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params).optimize()
+            print("error: ", graph.error(results))
+            raise Exception("computing mass rate fails")
 
         mdot = result.atDouble(mdot_key)
 
@@ -114,6 +120,7 @@ class JRValues:
         mdot_sigma_key = Actuator.MassRateActualKey(j, k)
         To = values.atDouble(To_a_key)
         Tc = values.atDouble(Tc_a_key)
+        curr_time = values.atDouble(gtd.TimeKey(k).key())
         valve_control_factor = gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, mass_rate_model, ct)
         mdot_sigma = valve_control_factor.computeExpectedTrueMassFlow(curr_time, To, Tc, mdot)
         return mdot, mdot_sigma
@@ -164,7 +171,10 @@ class JRValues:
             i2 = joint.child().id()
             gtd.InsertWrench(init_values, i1, j, k, gtd.Wrench(values, i1, j, k-1))
             gtd.InsertWrench(init_values, i2, j, k, gtd.Wrench(values, i2, j, k-1))
-            gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(values, j, k-1))
+            if values.exists(gtd.internal.TorqueKey(j, k).key()):
+                gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(values, j, k))
+            else:
+                gtd.InsertTorqueDouble(init_values, j, k, gtd.TorqueDouble(values, j, k-1))
         for link in robot.links():
             i = link.id()
             if values.exists(gtd.internal.PoseKey(i, k).key()):
@@ -231,3 +241,24 @@ class JRValues:
                 gtd.InsertTorqueDouble(init_values, j, k, 0.0)
 
         return init_values
+
+
+if __name__ == "__main__":
+    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+    jr = JumpingRobot(yaml_file_path, JumpingRobot.create_init_config())
+
+    j = 1
+    k = 0
+
+    values = gtsam.Values()
+    values.insertDouble(Actuator.ValveOpenTimeKey(j), 0)
+    values.insertDouble(Actuator.ValveCloseTimeKey(j), 1)
+    P_a_key = Actuator.PressureKey(j, k)
+    P_s_key = Actuator.SourcePressureKey(k)
+    t_key = gtd.TimeKey(k).key()
+    values.insertDouble(P_a_key, 101.325)
+    values.insertDouble(P_s_key, 65 * 6894.76/1000)
+    values.insertDouble(t_key, 0.5)
+
+    mdot, mdot_sigma = JRValues.compute_mass_flow(jr, values, j, k)
+    print(mdot, mdot_sigma)

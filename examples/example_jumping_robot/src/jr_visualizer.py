@@ -27,7 +27,7 @@ from jumping_robot import JumpingRobot
 
 def update_jr_frame(ax, values, jr, k):
     link_names = ["shank_r", "thigh_r", "torso", "thigh_l", "shank_l"]
-    colors = ["red", "orange", "green", "blue", "purple"]
+    colors = ["red", "orange", "black", "green", "blue"]
 
     ax.clear()
 
@@ -83,15 +83,38 @@ def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
 
 
 
-def visualize_jr_trajectory(values, jr, num_steps):
+def visualize_jr_trajectory(values, jr, num_steps, step=1):
     fig = plt.figure(figsize=(10, 10), dpi=80)
     ax = fig.add_subplot(1,1,1)
 
     def animate(i):
         update_jr_frame(ax, values, jr, i)
         
-    ani = FuncAnimation(fig, animate, frames=np.arange(num_steps), interval=10) 
+    ani = FuncAnimation(fig, animate, frames=np.arange(0, num_steps, step), interval=10) 
     plt.show()
+
+
+def draw_q_plot(values, jr, num_steps):
+    qs = []
+    times = []
+    for k in range(num_steps):
+        qs_step = []
+        times.append(values.atDouble(gtd.TimeKey(k).key()))
+        for j in [1, 2, 3, 4]:
+            q_j = gtd.JointAngleDouble(values, j, k)
+            qs_step.append(q_j)
+        qs.append(qs_step)
+    qs = np.array(qs)
+
+    fig = plt.figure(figsize=(10, 10), dpi=80)
+    ax = fig.add_subplot(1,1,1)    
+
+    colors = ["red", "orange", "green", "blue"]
+    for idx in range(4):
+        ax.plot(times, qs[:, idx], color=colors[idx])
+
+    plt.show()
+
 
 if __name__ == "__main__":
     yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
