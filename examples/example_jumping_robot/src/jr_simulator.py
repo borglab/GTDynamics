@@ -36,6 +36,8 @@ class JRSimulator:
     def init_config_values(self, controls) -> gtsam.Values:
         """ Values to specify initial configuration. """
         values = gtsam.Values()
+
+        # initial condition for source
         V_s = self.jr.params["pneumatic"]["v_source"]
         P_s_0 = controls["P_s_0"]
         m_s_0 = V_s * P_s_0 * 1e3 / self.jr.gas_constant
@@ -43,6 +45,8 @@ class JRSimulator:
         values.insertDouble(Actuator.SourceVolumeKey(), V_s)
         values.insertDouble(Actuator.SourceMassKey(0), m_s_0)
         values.insertDouble(Actuator.SourcePressureKey(0), P_s_0)
+
+        # initial joint angles nad velocities
         for joint in self.jr.robot.joints():
             j = joint.id()
             name = joint.name()
@@ -52,6 +56,13 @@ class JRSimulator:
             v = float(self.init_config["vs"][name])
             values.insertDouble(q_key, q)
             values.insertDouble(v_key, v)
+
+        # torso pose and twists
+        torso_i = self.jr.robot.link("torso").id()
+        gtd.InsertPose(values, torso_i, 0, self.init_config["torso_pose"])
+        gtd.InsertTwist(values, torso_i, 0, self.init_config["torso_twist"])
+
+        # valve open close times
         for actuator in self.jr.actuators:
             j = actuator.j
             values.insertDouble(Actuator.MassKey(j, 0), m_a_0)
@@ -60,9 +71,7 @@ class JRSimulator:
             values.insertDouble(To_key, float(controls["Tos"][name]))
             values.insertDouble(Tc_key, float(controls["Tcs"][name]))
         
-        torso_i = self.jr.robot.link("torso").id()
-        gtd.InsertPose(values, torso_i, 0, self.init_config["torso_pose"])
-        gtd.InsertTwist(values, torso_i, 0, self.init_config["torso_twist"])
+        # time for the first step
         values.insertDouble(gtd.TimeKey(0).key(), 0)
         return values
 
@@ -308,8 +317,6 @@ class JRSimulator:
             TODO(yetong): check why each optimizer does not converge for cases
         """
         results = gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
-        # if graph.error(results) > 1e-5:
-        #     results = gtsam.DoglegOptimizer(graph, init_values).optimize()
         self.check_convergence(graph, init_values, results)
         return results
 
@@ -348,7 +355,9 @@ class JRSimulator:
         return wrench_w[5]
 
     def step_phase_change(self, k: int, phase: int, values: gtsam.Values):
-        """ Check if phase change happens in the step. """
+        """ Check if phase change happens in the step.
+            We follow event-driven algorithms in Brogliato02amr_simulating_non_smooth
+            by checking the contact forcds. """
         threshold = 0
         new_phase = phase
         if phase == 0:
@@ -398,26 +407,8 @@ class JRSimulator:
 
         return values, step_phases
 
-    def simulate_with_const_torque(self, num_steps, dt, torques):
-        controls = JumpingRobot.create_controls()
-        self.jr = JumpingRobot(self.yaml_file_path, controls)
-        phase = 0  
-        step_phases = [phase]
-        values = self.init_config_values(controls)
-        for k in range(num_steps):
-            print("step", k, "phase", phase)
-            if k!=0:
-                self.step_integration(k, dt, values, False)
-
-            for joint in self.jr.robot.joints():
-                j = joint.id()
-                gtd.InsertTorqueDouble(values, j, k, torques[j])
-            self.step_robot_dynamics_by_layer(k, values)
-            phase = self.step_phase_change(k, phase, values)
-            step_phases.append(phase)
-        return values, step_phases
-
     def simulate_with_torque_seq(self, num_steps, dt, torques_seq):
+        """ Run simulation with specified torque sequence. """
         controls = JumpingRobot.create_controls()
         self.jr = JumpingRobot(self.yaml_file_path, controls)
         phase = 0  
@@ -427,7 +418,6 @@ class JRSimulator:
             print("step", k, "phase", phase)
             if k!=0:
                 self.step_integration(k, dt, values, False)
-
             for joint in self.jr.robot.joints():
                 j = joint.id()
                 gtd.InsertTorqueDouble(values, j, k, torques_seq[k][j])
@@ -458,10 +448,7 @@ if __name__=="__main__":
     controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
 
-    # torques = [0, -5, 0, 0, -5, 0]
-    # values, step_phases = jr_simulator.simulate_with_const_torque(num_steps, dt, torques)
-
-    # torques_seq = [[0, -1, 1, 1, -1, 0]] * 10 + [[0, -5, 5, 5, -5, 0]] * 300
+    # torques_seq = [[0, -5, 5, 5, -5, 0]] * 300
     # values, step_phases = jr_simulator.simulate_with_torque_seq(num_steps, dt, torques_seq)
 
     from jr_visualizer import visualize_jr_trajectory, make_plot
