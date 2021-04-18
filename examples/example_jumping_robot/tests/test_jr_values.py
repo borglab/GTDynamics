@@ -4,7 +4,7 @@
  * All Rights Reserved
  * See LICENSE for the license information
  *
- * @file  test_jumping_robot.py
+ * @file  test_jr_values.py
  * @brief Unit test for jumping robot.
  * @author Yetong Zhang
 """
@@ -26,14 +26,14 @@ import numpy as np
 class TestJRValues(unittest.TestCase):
     """ Tests for jumping robot. """
 
-    def __init__(self, *args, **kwargs):
-        """ Constructor. """
-        super(TestJRValues, self).__init__(*args, **kwargs)
+    def setUp(self):
+        """ Set up the jumping robot. """
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
 
     def test_compute_mass_flow(self):
+        """ Test computation of air mass flow. """
         j = 1
         k = 0
 

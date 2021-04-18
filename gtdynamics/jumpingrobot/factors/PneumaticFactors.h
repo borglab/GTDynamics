@@ -108,6 +108,10 @@ class MassFlowRateFactor
   virtual ~MassFlowRateFactor() {}
 
  public:
+  /** compute the mass flow assuming valve is always open
+   * fD = [-1.8 log(6.9/Re+(epsilon/3.7D)^1.11)]^-2
+   * mdot^2 = (pi^2 D^5)/(16fD L Rs T)/(ps^2-pm^2)
+   */
   double computeExpectedMassFlow(
       const double &pm, const double &ps, const double &mdot,
       boost::optional<gtsam::Matrix &> H_pm = boost::none,
@@ -173,6 +177,8 @@ class MassFlowRateFactor
   }
 };
 
+/** Sigmoid function, 1/(1+e^-x), used to model the change of mass flow 
+ * rate when valve is open/closed. */
 double sigmoid(double x, boost::optional<gtsam::Matrix &> H_x = boost::none) {
   double neg_exp = exp(-x);
   if (H_x) {
@@ -181,7 +187,7 @@ double sigmoid(double x, boost::optional<gtsam::Matrix &> H_x = boost::none) {
   return 1.0 / (1.0 + neg_exp);
 }
 
-/** ValveControlFactor: compute true mdot based on valve open/close time */
+/** ValveControlFactor: compute true mdot based on valve open/close time. */
 class ValveControlFactor
     : public gtsam::NoiseModelFactor5<double, double, double, double, double> {
  private:
@@ -199,6 +205,10 @@ class ValveControlFactor
   virtual ~ValveControlFactor() {}
 
  public:
+  /* Compute the expected mass flow given current time, valve open/close times,
+   * and the nominal mass flow rate assuming valve is always open.
+   * mdot_sigma = (sigmoid((t-to)/ct) - sigmoid((t-tc)/ct)) * mdot
+   */
   double computeExpectedTrueMassFlow(
       const double &t, const double &to, const double &tc, const double &mdot,
       boost::optional<gtsam::Matrix &> H_t = boost::none,

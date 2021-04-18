@@ -12,8 +12,8 @@
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir) 
-sys.path.insert(0,currentdir) 
+sys.path.insert(0, parentdir)
+sys.path.insert(0, currentdir)
 
 import gtdynamics as gtd
 import gtsam
@@ -21,11 +21,12 @@ import gtsam
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-# import matplotlib.animation as animation
 
 from jumping_robot import JumpingRobot, Actuator
 
+
 def update_jr_frame(ax, values, jr, k):
+    """ Update the jr animation frame. """
     link_names = ["shank_r", "thigh_r", "torso", "thigh_l", "shank_l"]
     colors = ["red", "orange", "black", "green", "blue"]
 
@@ -65,7 +66,7 @@ def update_jr_frame(ax, values, jr, k):
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 2)
-    # return fig
+
 
 def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
     """ Visualize the jumping robot.
@@ -77,20 +78,20 @@ def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
     """
 
     fig = plt.figure(figsize=(10, 10), dpi=80)
-    ax = fig.add_subplot(1,1,1)
+    ax = fig.add_subplot(1, 1, 1)
     update_jr_frame(ax, values, jr, k)
     plt.show()
 
 
-
 def visualize_jr_trajectory(values, jr, num_steps, step=1):
+    """ Visualize the jumping robot trajectory as animation. """
     fig = plt.figure(figsize=(10, 10), dpi=80)
-    ax = fig.add_subplot(1,1,1)
+    ax = fig.add_subplot(1, 1, 1)
 
     def animate(i):
         update_jr_frame(ax, values, jr, i)
-        
-    ani = FuncAnimation(fig, animate, frames=np.arange(0, num_steps, step), interval=10) 
+    frames = np.arange(0, num_steps, step)
+    FuncAnimation(fig, animate, frames=frames, interval=10)
     plt.show()
 
 
@@ -103,14 +104,14 @@ def make_plot(values, jr, num_steps):
               "knee_l": "blue",
               "source": "black"}
 
-    qs_dict = {name:[] for name in joint_names}
-    vs_dict = {name:[] for name in joint_names}
-    torques_dict = {name:[] for name in joint_names}
-    pressures_dict = {name:[] for name in joint_names}
-    masses_dict = {name:[] for name in joint_names}
-    mdots_dict = {name:[] for name in joint_names}
-    contractions_dict = {name:[] for name in joint_names}
-    forces_dict = {name:[] for name in joint_names}
+    qs_dict = {name: [] for name in joint_names}
+    vs_dict = {name: [] for name in joint_names}
+    torques_dict = {name: [] for name in joint_names}
+    pressures_dict = {name: [] for name in joint_names}
+    masses_dict = {name: [] for name in joint_names}
+    mdots_dict = {name: [] for name in joint_names}
+    contractions_dict = {name: [] for name in joint_names}
+    forces_dict = {name: [] for name in joint_names}
     pressures_dict["source"] = []
     masses_dict["source"] = []
     time_list = []
@@ -169,4 +170,3 @@ if __name__ == "__main__":
         pose = link.wTcom()
         gtd.InsertPose(values, i, k, pose)
     visualize_jr(values, jr, k)
-

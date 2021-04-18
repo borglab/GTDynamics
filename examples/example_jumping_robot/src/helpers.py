@@ -27,7 +27,3 @@ def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False)
             else:
                 new_values.erase(key)
     values.insert(new_values)
-
-import gtdynamics as gtd
-symbol = gtd.DynamicsSymbol(31527392119881955)
-print(symbol)
