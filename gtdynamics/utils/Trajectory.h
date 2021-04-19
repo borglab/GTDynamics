@@ -296,21 +296,29 @@ class Trajectory {
   /**
    * @fn Generates a PointGoalFactor object
    * @param[in] link_name         concerned link
-   * @param[in] t                 time t
+   * @param[in] k                 time index k
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
   const PointGoalFactor pointGoalFactor(
-      const std::string &link_name, const int &t,
+      const std::string &link_name, const int k,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link =
         walk_cycle_.phases().at(0).getRobotConfiguration().link(link_name);
-    gtsam::Key pose_key = internal::PoseKey(link->id(), t);
+    gtsam::Key pose_key = internal::PoseKey(link->id(), k);
     gtsam::Pose3 comTp = gtsam::Pose3(
         gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
     return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
   }
+
+  /**
+   * @fn Create desired stance and swing trajectories for all contact links.
+   * @return All objective factors as a NonlinearFactorGraph
+   */
+  const gtsam::NonlinearFactorGraph contactLinkObjectives(
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const double ground_height) const;
 
   /**
    * @fn Writes the angles, vels, accels, torques and time values for a single

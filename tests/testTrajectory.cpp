@@ -142,10 +142,17 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(205, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
-  NonlinearFactorGraph multi_phase_graph = trajectory.multiPhaseFactorGraph(
+  auto multi_phase_graph = trajectory.multiPhaseFactorGraph(
       graph_builder, gtdynamics::DynamicsGraph::CollocationScheme::Euler, mu);
   // regression test
   EXPECT_LONGS_EQUAL(6760, multi_phase_graph.size());
+
+  // Test objectives for contact links.
+  const double ground_height = 0.0;
+  auto contact_link_objectives = trajectory.contactLinkObjectives(
+      noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
+  // regression test
+  EXPECT_LONGS_EQUAL(130, contact_link_objectives.size());
 }
 
 int main() {
