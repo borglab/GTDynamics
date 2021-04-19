@@ -478,9 +478,7 @@ DynamicsGraph::collocationFactors(const Robot &robot, const int t,
       break;
     }
   }
-  NonlinearFactorGraph nonlinear_graph;
-  nonlinear_graph.add(graph);
-  return nonlinear_graph;
+  return graph;
 }
 
 // the * operator for doubles in expression factor does not work well yet
@@ -529,9 +527,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseCollocationFactors(
           "runge-kutta and hermite-simpson not implemented yet");
     }
   }
-  NonlinearFactorGraph nonlinear_graph;
-  nonlinear_graph.add(graph);
-  return nonlinear_graph;
+  return graph;
 }
 
 gtsam::NonlinearFactorGraph
