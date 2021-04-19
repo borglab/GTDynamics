@@ -7,7 +7,7 @@
 
 /**
  * @file  testSpiderWalking.cpp
- * @brief Test spider trajectory optimization with Phases.
+ * @brief Test robot trajectory optimization with Phases.
  * @author: Alejandro Escontrela, Stephanie McCormick
  * @author: Disha Das, Tarushree Gandhi
  * @author: Frank Dellaert, Varun Agrawal, Stefanos Charalambous
@@ -48,9 +48,7 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
-using gtsam::Vector;
 using gtsam::Vector3;
-using gtsam::Vector6;
 using gtsam::noiseModel::Isotropic;
 using gtsam::noiseModel::Unit;
 using std::string;
@@ -58,20 +56,20 @@ using std::vector;
 
 using namespace gtdynamics;
 
-// Returns a Trajectory object for a single spider walk cycle.
-Trajectory getTrajectory(const Robot &spider, size_t repeat) {
+// Returns a Trajectory object for a single robot walk cycle.
+Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   vector<string> odd_links{"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"};
   vector<string> even_links{"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
-  Phase stationary(spider, 4);
+  Phase stationary(robot, 4);
   stationary.addContactPoints(links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
-  Phase odd(spider, 2);
+  Phase odd(robot, 2);
   odd.addContactPoints(odd_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
-  Phase even(spider, 2);
+  Phase even(robot, 2);
   even.addContactPoints(even_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   WalkCycle walk_cycle;
@@ -85,8 +83,8 @@ Trajectory getTrajectory(const Robot &spider, size_t repeat) {
 }
 
 TEST(testSpiderWalking, WholeEnchilada) {
-  // Load Stephanie's spider robot (alt version, created by Tarushree/Disha).
-  Robot spider =
+  // Load Stephanie's robot robot (alt version, created by Tarushree/Disha).
+  Robot robot =
       CreateRobotFromFile(SDF_PATH + "/test/spider_alt.sdf", "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
@@ -111,7 +109,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create the trajectory, consisting of 2 walk phases, each consisting of 4
   // phases: [stationary, odd, stationary, even].
-  auto trajectory = getTrajectory(spider, 2);
+  auto trajectory = getTrajectory(robot, 2);
 
   // Create multi-phase trajectory factor graph
   auto collocation = DynamicsGraph::CollocationScheme::Euler;
@@ -130,40 +128,31 @@ TEST(testSpiderWalking, WholeEnchilada) {
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
 
   // Add base goal objectives to the factor graph.
-  auto base_link = spider.link("body");
+  auto base_link = robot.link("body");
   for (int k = 0; k <= K; k++) {
     add_link_objective(&objective_factors, Pose3(Rot3(), Point3(0, 0.0, 0.5)),
                        Isotropic::Sigma(6, 5e-5), gtsam::Z_6x1,
                        Isotropic::Sigma(6, 5e-5), base_link->id(), k);
   }
 
-  // Add link boundary conditions to FG.
-  for (auto &&link : spider.links()) {
-    // Initial link pose, twists.
-    add_link_objective(&objective_factors, link->wTcom(), dynamics_model_6,
-                       Vector6::Zero(), dynamics_model_6, link->id(), 0);
-
-    // Final link twists, accelerations.
-    add_twist_objective(&objective_factors, gtsam::Z_6x1, objectives_model_6,
-                        gtsam::Z_6x1, objectives_model_6, link->id(), K);
-  }
+  // Add link and joint boundary conditions to FG.
+  auto boundary_conditions = trajectory.boundaryConditions(
+      robot, dynamics_model_6, dynamics_model_6, objectives_model_6,
+      objectives_model_1, objectives_model_1);
 
   // Add joint boundary conditions to FG.
-  for (auto &&joint : spider.joints()) {
-    const int id = joint->id();
-    // Add priors to joint angles
-    for (int k = 0; k <= K; k++) {
-      if (joint->name().find("hip2") == 0) {
-        add_joint_objective(&objective_factors, 2.5, dynamics_model_1_2, id, k);
+  for (auto &&joint : robot.joints()) {
+    if (joint->name().find("hip2") == 0) {
+      const int id = joint->id();
+      // Add priors to joint angles
+      for (int k = 0; k <= K; k++) {
+        add_joint_objective(&boundary_conditions, 2.5, dynamics_model_1_2, id,
+                            k);
       }
     }
-    add_joint_derivative_objectives(&objective_factors,     //
-                                    0, objectives_model_1,  //
-                                    0, objectives_model_1, id, 0);
-    add_joint_derivative_objectives(&objective_factors,     //
-                                    0, objectives_model_1,  //
-                                    0, objectives_model_1, id, K);
   }
+
+  objective_factors.add(boundary_conditions);
 
   // Add prior factor constraining all Phase keys to have duration of 1 /240.
   double desired_dt = 1. / 240;
@@ -176,7 +165,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Add min torque objectives.
   for (int t = 0; t <= K; t++) {
-    for (auto &&joint : spider.joints())
+    for (auto &&joint : robot.joints())
       objective_factors.add(
           MinTorqueFactor(TorqueKey(joint->id(), t), Unit::Create(1)));
   }
