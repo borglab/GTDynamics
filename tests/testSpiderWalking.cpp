@@ -123,48 +123,12 @@ TEST(testSpiderWalking, WholeEnchilada) {
   LONGS_EQUAL(7311, graph.keys().size());
 
   // Build the objective factors.
-  gtsam::NonlinearFactorGraph objective_factors;
-  auto base_link = spider.link("body");
-
-  // Previous contact point goal.
-  std::map<string, Point3> prev_cp = trajectory.initContactPointGoal();
-
-  // Distance to move contact point per time step during swing.
-  auto contact_offset = Point3(0, 0.02, 0);
-
-  // Add contact point objectives to factor graph.
-  for (int p = 0; p < trajectory.numPhases(); p++) {
-    // if(p <2) contact_offset /=2 ;
-    // Phase start and end timesteps.
-    int t_p_i = trajectory.getStartTimeStep(p);
-    int t_p_f = trajectory.getEndTimeStep(p);
-
-    // Obtain the contact links and swing links for this phase.
-    vector<string> phase_contact_links = trajectory.getPhaseContactLinks(p);
-    vector<string> phase_swing_links = trajectory.getPhaseSwingLinks(p);
-
-    for (int t = t_p_i; t <= t_p_f; t++) {
-      // Normalized phase progress.
-      double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
-
-      for (auto &&pcl : phase_contact_links)
-        objective_factors.add(trajectory.pointGoalFactor(
-            pcl, t, Isotropic::Sigma(3, 1e-7),  // 1e-7
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
-
-      double h =
-          GROUND_HEIGHT + std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
-
-      for (auto &&psl : phase_swing_links)
-        objective_factors.add(trajectory.pointGoalFactor(
-            psl, t, Isotropic::Sigma(3, 1e-7),
-            Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
-
-      // Update the goal point for the swing links.
-      for (auto &&psl : phase_swing_links)
-        prev_cp[psl] = prev_cp[psl] + contact_offset;
-    }
-  }
+  gtsam::NonlinearFactorGraph objective_factors =
+      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7),
+                                       GROUND_HEIGHT);
+  // Regression test on objective factors
+  LONGS_EQUAL(200, objective_factors.size());
+  LONGS_EQUAL(200, objective_factors.keys().size());
 
   // TODO(frank): the fact that I'm doing this is a red flag
   using gtdynamics::PhaseKey;
@@ -180,6 +144,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   int t_f = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
 
   // Add base goal objectives to the factor graph.
+  auto base_link = spider.link("body");
   for (int t = 0; t <= t_f; t++) {
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         PoseKey(base_link->id(), t),
@@ -237,12 +202,12 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Regression test on objective factors
-  LONGS_EQUAL(1486, objective_factors.size());
+  LONGS_EQUAL(200 + 1286, objective_factors.size());
   LONGS_EQUAL(1475, objective_factors.keys().size());
 
   // Add objective factors to the graph
   graph.add(objective_factors);
-  LONGS_EQUAL(6551 + 1486, graph.size());
+  LONGS_EQUAL(6551 + 200 + 1286, graph.size());
   LONGS_EQUAL(7311, graph.keys().size());
 
   // TODO: Pass Trajectory here
