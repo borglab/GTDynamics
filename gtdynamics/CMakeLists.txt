@@ -31,7 +31,8 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
   list(APPEND headers ${GLOB_RESULT})
-  install(FILES ${GLOB_RESULT} DESTINATION include/${SOURCE_SUBDIR})
+  # Install header file to INSTALL_INCUDEDIR/gtdynamics/subdirectory.
+  install(FILES ${GLOB_RESULT} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/${SOURCE_SUBDIR})
 
   # Process subdirectory.
   message(STATUS "Building ${SOURCE_SUBDIR}")
