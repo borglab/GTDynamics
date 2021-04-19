@@ -40,7 +40,7 @@ class WalkCycle {
 
   /**
    * @fn Adds phase in walk cycle
-   * @param[in] phase      Phase object
+   * @param[in] phase Swing or stance phase in the walk cycle.
    */
   void addPhase(const Phase& phase) {
     auto phase_contact_points = phase.getAllContactPoints();

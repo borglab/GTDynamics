@@ -57,6 +57,10 @@ struct ContactPoint {
   int id;
   double height = 0.0;
 
+  ContactPoint() {}
+  ContactPoint(const gtsam::Point3 point, int id, double height = 0.0)
+      : point(point), id(id), height(height) {}
+
   bool operator==(const ContactPoint &other) {
     return (point == other.point && id == other.id && height == other.height);
   }
@@ -314,19 +318,20 @@ class DynamicsGraph {
    * @param t     time step
    */
   static JointValueMap jointAccelsMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
+                                      const gtsam::Values &result, const int t);
 
   /// Return joint velocities as std::map<name, velocity>.
   static JointValueMap jointVelsMap(const Robot &robot,
-                                  const gtsam::Values &result, const int t);
+                                    const gtsam::Values &result, const int t);
 
   /// Return joint angles as std::map<name, angle>.
   static JointValueMap jointAnglesMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
+                                      const gtsam::Values &result, const int t);
 
   /// Return joint torques as std::map<name, torque>.
   static JointValueMap jointTorquesMap(const Robot &robot,
-                                     const gtsam::Values &result, const int t);
+                                       const gtsam::Values &result,
+                                       const int t);
 
   /// Print the factors of the factor graph
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
