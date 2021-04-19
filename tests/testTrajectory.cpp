@@ -23,6 +23,9 @@
 using namespace gtsam;
 using namespace std;
 
+auto kModel1 = gtsam::noiseModel::Unit::Create(1);
+auto kModel6 = gtsam::noiseModel::Unit::Create(6);
+
 using gtdynamics::ContactPoints;
 using gtdynamics::Phase;
 using gtdynamics::Robot;
@@ -39,20 +42,20 @@ class TrajectoryTest : public gtdynamics::Trajectory {
 };
 
 TEST(Trajectory, Intersection) {
-  Robot robot_configuration =
+  Robot robot =
       gtdynamics::CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
 
   double contact_height = 5;
   size_t num_time_steps = 1;
 
   // Initialize first phase
-  auto phase_1 = Phase(robot_configuration, num_time_steps);
+  auto phase_1 = Phase(robot, num_time_steps);
   phase_1.addContactPoint("tarsus_2", {3., 3., 3.}, contact_height);
   phase_1.addContactPoint("tarsus_1", {3., 3., 3.}, contact_height);
   phase_1.addContactPoint("tarsus_3", {3., 3., 3.}, contact_height);
 
   // Initialize second phase
-  auto phase_2 = Phase(robot_configuration, num_time_steps);
+  auto phase_2 = Phase(robot, num_time_steps);
   phase_2.addContactPoint("tarsus_3", {3., 3., 3.}, contact_height);
   phase_2.addContactPoint("tarsus_4", {3., 3., 3.}, contact_height);
   phase_2.addContactPoint("tarsus_5", {3., 3., 3.}, contact_height);
@@ -71,12 +74,12 @@ TEST(Trajectory, Intersection) {
 }
 
 TEST(Trajectory, error) {
-  Robot robot_configuration =
+  Robot robot =
       gtdynamics::CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
 
   // Initialize first phase
   size_t num_time_steps = 2;
-  auto phase_1 = Phase(robot_configuration, num_time_steps);
+  auto phase_1 = Phase(robot, num_time_steps);
   double contact_height = 5;
   phase_1.addContactPoint("tarsus_1", {3., 3., 3.}, contact_height);
   phase_1.addContactPoint("tarsus_2", {3., 3., 3.}, contact_height);
@@ -84,7 +87,7 @@ TEST(Trajectory, error) {
 
   // Initialize second phase
   size_t num_time_steps_2 = 3;
-  auto phase_2 = Phase(robot_configuration, num_time_steps_2);
+  auto phase_2 = Phase(robot, num_time_steps_2);
   phase_2.addContactPoint("tarsus_2", {3., 3., 3.}, contact_height);
   phase_2.addContactPoint("tarsus_3", {3., 3., 3.}, contact_height);
   phase_2.addContactPoint("tarsus_4", {3., 3., 3.}, contact_height);
@@ -153,6 +156,12 @@ TEST(Trajectory, error) {
       noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
   // regression test
   EXPECT_LONGS_EQUAL(130, contact_link_objectives.size());
+
+  // Test boundary conditions.
+  auto boundary_conditions = trajectory.boundaryConditions(
+      robot, kModel6, kModel6, kModel6, kModel1, kModel1);
+  // regression test
+  EXPECT_LONGS_EQUAL(260, boundary_conditions.size());
 }
 
 int main() {

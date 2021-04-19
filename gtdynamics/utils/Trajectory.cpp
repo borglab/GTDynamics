@@ -12,6 +12,7 @@
  * @author: Frank Dellaert, Gerry Chen
  */
 
+#include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
@@ -72,6 +73,41 @@ const NonlinearFactorGraph Trajectory::contactLinkObjectives(
       for (auto &&psl : phase_swing_links)
         prev_cp[psl] = prev_cp[psl] + contact_offset;
     }
+  }
+  return factors;
+}
+
+const NonlinearFactorGraph Trajectory::boundaryConditions(
+    const Robot &robot, const gtsam::SharedNoiseModel &pose_model,
+    const gtsam::SharedNoiseModel &twist_model,
+    const gtsam::SharedNoiseModel &twist_acceleration_model,
+    const gtsam::SharedNoiseModel &joint_velocity_model,
+    const gtsam::SharedNoiseModel &joint_acceleration_model) const {
+  NonlinearFactorGraph factors;
+
+  // Get final time step.
+  int K = getEndTimeStep(numPhases() - 1);
+
+  // Add link boundary conditions to FG.
+  for (auto &&link : robot.links()) {
+    // Initial link pose, twists.
+    add_link_objective(&factors, link->wTcom(), pose_model, gtsam::Z_6x1,
+                       twist_model, link->id(), 0);
+
+    // Final link twists, accelerations.
+    add_twist_objective(&factors, gtsam::Z_6x1, twist_model, gtsam::Z_6x1,
+                        twist_acceleration_model, link->id(), K);
+  }
+
+  // Add joint boundary conditions to FG.
+  for (auto &&joint : robot.joints()) {
+    const int id = joint->id();
+    add_joint_derivative_objectives(&factors,                 //
+                                    0, joint_velocity_model,  //
+                                    0, joint_acceleration_model, id, 0);
+    add_joint_derivative_objectives(&factors,                 //
+                                    0, joint_velocity_model,  //
+                                    0, joint_acceleration_model, id, K);
   }
   return factors;
 }

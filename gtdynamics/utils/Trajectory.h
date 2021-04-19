@@ -321,6 +321,23 @@ class Trajectory {
       const double ground_height) const;
 
   /**
+   * @fn Create objective factors for slice 0 and slice K.
+   *
+   * Links at time step 0 are constrainted to their wTcom poses and
+   * zero twist, and zero twist and twist acceleration at last time step.
+   * Joint angles velocities and accelerations are set to zero for all joints at
+   * start *and* end.
+   *
+   * @return All factors as a NonlinearFactorGraph
+   */
+  const gtsam::NonlinearFactorGraph boundaryConditions(
+      const Robot &robot, const gtsam::SharedNoiseModel &pose_model,
+      const gtsam::SharedNoiseModel &twist_model,
+      const gtsam::SharedNoiseModel &twist_acceleration_model,
+      const gtsam::SharedNoiseModel &joint_velocity_model,
+      const gtsam::SharedNoiseModel &joint_acceleration_model) const;
+
+  /**
    * @fn Writes the angles, vels, accels, torques and time values for a single
    * phase to disk.
    * @param[in] traj_file    Trajectory File being written onto.
