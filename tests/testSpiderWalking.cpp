@@ -160,10 +160,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
                                    dynamics_model_6, link->id(), 0);
 
     // Final link twists, accelerations.
-    objective_factors.add(PriorFactor<Vector6>(
-        TwistKey(link->id(), K), Vector6::Zero(), objectives_model_6));
-    objective_factors.add(PriorFactor<Vector6>(
-        TwistAccelKey(link->id(), K), Vector6::Zero(), objectives_model_6));
+    gtdynamics::add_twist_objective(&graph, gtsam::Z_6x1, objectives_model_6,
+                                    gtsam::Z_6x1, objectives_model_6,
+                                    link->id(), K);
   }
 
   // Add joint boundary conditions to FG.
