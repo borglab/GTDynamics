@@ -25,24 +25,39 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Pose3;
 using gtsam::noiseModel::Unit;
 
-auto kModel = Unit::Create(6);
+auto kModel1 = Unit::Create(1);
+auto kModel6 = Unit::Create(6);
 
 TEST(ObjectiveFactors, PoseAndTwist) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  gtdynamics::add_pose_objective(&graph, Pose3(), kModel, id, k);
+  gtdynamics::add_pose_objective(&graph, Pose3(), kModel6, id, k);
   EXPECT_LONGS_EQUAL(1, graph.size());
-  gtdynamics::add_link_objective(&graph, Pose3(), kModel, gtsam::Z_6x1, kModel,
-                                 id, k);
+  gtdynamics::add_link_objective(&graph, Pose3(), kModel6, gtsam::Z_6x1,
+                                 kModel6, id, k);
   EXPECT_LONGS_EQUAL(3, graph.size());
 }
 
 TEST(ObjectiveFactors, TwistWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  gtdynamics::add_twist_objective(&graph, gtsam::Z_6x1, kModel, gtsam::Z_6x1,
-                                  kModel, id, k);
+  gtdynamics::add_twist_objective(&graph, gtsam::Z_6x1, kModel6, gtsam::Z_6x1,
+                                  kModel6, id, k);
   EXPECT_LONGS_EQUAL(2, graph.size());
+}
+
+TEST(ObjectiveFactors, JointAngleWithDerivatives) {
+  NonlinearFactorGraph graph;
+  constexpr int id = 5, k = 777;
+  gtdynamics::add_joint_objective(&graph,  //
+                                  0, kModel1, id, k);
+  EXPECT_LONGS_EQUAL(1, graph.size());
+  gtdynamics::add_joint_derivative_objectives(&graph,  //
+                                              0, kModel1, 0, kModel1, id, k);
+  EXPECT_LONGS_EQUAL(3, graph.size());
+  gtdynamics::add_joint_objectives(&graph,  //
+                                   0, kModel1, 0, kModel1, 0, kModel1, id, k);
+  EXPECT_LONGS_EQUAL(6, graph.size());
 }
 
 int main() {

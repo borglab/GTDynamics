@@ -36,8 +36,7 @@ void add_pose_objective(gtsam::NonlinearFactorGraph* graph,
                         const gtsam::Pose3& pose,
                         const gtsam::SharedNoiseModel& model, int i,
                         int k = 0) {
-  graph->emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(
-      internal::PoseKey(i, k), pose, model);
+  graph->addPrior<gtsam::Pose3>(internal::PoseKey(i, k), pose, model);
 }
 
 /**
@@ -58,8 +57,7 @@ void add_link_objective(gtsam::NonlinearFactorGraph* graph,
                         const gtsam::SharedNoiseModel& twist_model, int i,
                         int k = 0) {
   add_pose_objective(graph, pose, pose_model, i, k);
-  graph->emplace_shared<gtsam::PriorFactor<gtsam::Vector6>>(
-      internal::TwistKey(i, k), twist, twist_model);
+  graph->addPrior<gtsam::Vector6>(internal::TwistKey(i, k), twist, twist_model);
 }
 
 /**
@@ -79,10 +77,75 @@ void add_twist_objective(
     const gtsam::Vector6& twist_acceleration,
     const gtsam::SharedNoiseModel& twist_acceleration_model,  //
     int i, int k = 0) {
-  graph->emplace_shared<gtsam::PriorFactor<gtsam::Vector6>>(
-      internal::TwistKey(i, k), twist, twist_model);
-  graph->emplace_shared<gtsam::PriorFactor<gtsam::Vector6>>(
-      internal::TwistAccelKey(i, k), twist_acceleration,
-      twist_acceleration_model);
+  graph->addPrior<gtsam::Vector6>(internal::TwistKey(i, k), twist, twist_model);
+  graph->addPrior<gtsam::Vector6>(internal::TwistAccelKey(i, k),
+                                  twist_acceleration, twist_acceleration_model);
+}
+
+/**
+ * @brief Add joint_angle objective to graph for joint j at time k.
+ *
+ * @param graph to add to.
+ * @param joint_angle target joint= angle.
+ * @param joint_angle_model noise model used for joint_angle.
+ * @param j The joint id.
+ * @param k Time step index (default 0).
+ */
+void add_joint_objective(gtsam::NonlinearFactorGraph* graph, double joint_angle,
+                         const gtsam::SharedNoiseModel& joint_angle_model,  //
+                         int j, int k = 0) {
+  graph->addPrior<double>(internal::JointAngleKey(j, k), joint_angle,
+                          joint_angle_model);
+}
+
+/**
+ * @brief Add joint_angle derivatives objective to graph for joint j at time k.
+ *
+ * @param graph to add to.
+ * @param joint_velocity target velocity.
+ * @param joint_velocity_model noise model used for velocity.
+ * @param joint_acceleration target acceleration.
+ * @param joint_acceleration_model noise model used for acceleration.
+ * @param j The joint id.
+ * @param k Time step index (default 0).
+ */
+void add_joint_derivative_objectives(
+    gtsam::NonlinearFactorGraph* graph,  //
+    double joint_velocity,
+    const gtsam::SharedNoiseModel& joint_velocity_model,  //
+    double joint_acceleration,
+    const gtsam::SharedNoiseModel& joint_acceleration_model,  //
+    int j, int k = 0) {
+  graph->addPrior<double>(internal::JointVelKey(j, k), joint_velocity,
+                          joint_velocity_model);
+  graph->addPrior<double>(internal::JointAccelKey(j, k), joint_acceleration,
+                          joint_acceleration_model);
+}
+
+/**
+ * @brief Add joint_angle+derivatives objective to graph for joint j at time k.
+ *
+ * @param graph to add to.
+ * @param joint_angle target joint= angle.
+ * @param joint_angle_model noise model used for joint_angle.
+ * @param joint_velocity target velocity.
+ * @param joint_velocity_model noise model used for velocity.
+ * @param joint_acceleration target acceleration.
+ * @param joint_acceleration_model noise model used for acceleration.
+ * @param j The joint id.
+ * @param k Time step index (default 0).
+ */
+void add_joint_objectives(
+    gtsam::NonlinearFactorGraph* graph, double joint_angle,
+    const gtsam::SharedNoiseModel& joint_angle_model,  //
+    double joint_velocity,
+    const gtsam::SharedNoiseModel& joint_velocity_model,  //
+    double joint_acceleration,
+    const gtsam::SharedNoiseModel& joint_acceleration_model,  //
+    int j, int k = 0) {
+  add_joint_objective(graph, joint_angle, joint_angle_model, j, k);
+  add_joint_derivative_objectives(graph, joint_velocity, joint_velocity_model,
+                                  joint_acceleration, joint_acceleration_model,
+                                  j, k);
 }
 }  // namespace gtdynamics
