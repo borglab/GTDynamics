@@ -22,7 +22,6 @@ from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
 class TestCdprControllerIlqr(GtsamTestCase):
-    @unittest.skip
     def testTrajFollow(self):
         """Tests trajectory tracking controller
         """
@@ -51,7 +50,7 @@ class TestCdprControllerIlqr(GtsamTestCase):
         for k, (des, act) in enumerate(zip(x_des, pAct)):
             self.gtsamAssertEquals(des, act)
 
-    def testGains(self):
+    def testGainsNearConstrained(self):
         """Tests locally linear, time-varying feedback gains
         """
         cdpr = Cdpr()
@@ -84,10 +83,10 @@ class TestCdprControllerIlqr(GtsamTestCase):
         self.gtsamAssertEquals(actual_0c0_K_0v[:, 3:], expected_0c0_K_0v[:, 3:], tol=dt)
         
         # feedforward term (uff) - time 0, cable 0, feedforward term
-        actual_0c0_ff = controller.gains[0][1]
+        actual_0c0_ff = controller.gains[0][1][0:1]
         expected_0c0_ff = np.zeros(1)
-        self.gtsamAssertEquals(actual_0c0_ff[:, 3:], expected_0c0_ff[:, 3:])
-    
+        self.gtsamAssertEquals(actual_0c0_ff, expected_0c0_ff, tol=1e-6)
+
     def testRun(self):
         """Tests that controller will not "compile" (aka run without errors)
         """

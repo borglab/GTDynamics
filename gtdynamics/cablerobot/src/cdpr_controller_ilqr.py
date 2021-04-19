@@ -143,8 +143,6 @@ class CdprControllerIlqr(CdprControllerBase):
         """
         lid = cdpr.ee_id()
         net, u_inds = CdprControllerIlqr.extract_bayesnets(cdpr, fg, openloop_results, N)
-        # print(net.__repr__("net", gtd.KeyFormatter()))
-        utils.print_bayesnet_reduced(net)
 
         # extract_gains
         gains = [None for t in range(N)]
@@ -155,9 +153,11 @@ class CdprControllerIlqr(CdprControllerBase):
             icond = net.at(neti)
             u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
             u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, 24:])
+            u_k = solve_triangular(ucond.R(), ucond.d())
             F_K_x = solve_triangular(icond.R(), -icond.S())[:24, -12:]
+            F_k = solve_triangular(icond.R(), icond.d())[:24]
             u_K_x = u_K_F @ F_K_x
             u_K_x[:, 6:] += u_K_p
-            gains[t] = u_K_x, 0#solve_triangular(R, gc.d())
-        print(gains[0][0])
+            u_k += u_K_F @ F_k
+            gains[t] = u_K_x, u_k
         return gains
