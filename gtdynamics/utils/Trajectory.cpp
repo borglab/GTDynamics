@@ -23,7 +23,8 @@
 
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
-using gtsam::noiseModel::Base;
+using gtsam::SharedNoiseModel;
+using gtsam::Z_6x1;
 using std::map;
 using std::string;
 using std::vector;
@@ -31,7 +32,7 @@ using std::vector;
 namespace gtdynamics {
 
 NonlinearFactorGraph Trajectory::contactLinkObjectives(
-    const Base::shared_ptr &cost_model, const double ground_height) const {
+    const SharedNoiseModel &cost_model, const double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Previous contact point goal.
@@ -79,11 +80,11 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
 }
 
 NonlinearFactorGraph Trajectory::boundaryConditions(
-    const Robot &robot, const gtsam::SharedNoiseModel &pose_model,
-    const gtsam::SharedNoiseModel &twist_model,
-    const gtsam::SharedNoiseModel &twist_acceleration_model,
-    const gtsam::SharedNoiseModel &joint_velocity_model,
-    const gtsam::SharedNoiseModel &joint_acceleration_model) const {
+    const Robot &robot, const SharedNoiseModel &pose_model,
+    const SharedNoiseModel &twist_model,
+    const SharedNoiseModel &twist_acceleration_model,
+    const SharedNoiseModel &joint_velocity_model,
+    const SharedNoiseModel &joint_acceleration_model) const {
   NonlinearFactorGraph factors;
 
   // Get final time step.
@@ -92,11 +93,11 @@ NonlinearFactorGraph Trajectory::boundaryConditions(
   // Add link boundary conditions to FG.
   for (auto &&link : robot.links()) {
     // Initial link pose, twists.
-    add_link_objective(&factors, link->wTcom(), pose_model, gtsam::Z_6x1,
-                       twist_model, link->id(), 0);
+    add_link_objective(&factors, link->wTcom(), pose_model, Z_6x1, twist_model,
+                       link->id(), 0);
 
     // Final link twists, accelerations.
-    add_twist_objective(&factors, gtsam::Z_6x1, twist_model, gtsam::Z_6x1,
+    add_twist_objective(&factors, Z_6x1, twist_model, Z_6x1,
                         twist_acceleration_model, link->id(), K);
   }
 
@@ -105,6 +106,20 @@ NonlinearFactorGraph Trajectory::boundaryConditions(
                                 joint_acceleration_model, 0);
   add_joints_at_rest_objectives(&factors, robot, joint_velocity_model,
                                 joint_acceleration_model, K);
+  return factors;
+}
+
+NonlinearFactorGraph Trajectory::minimumTorqueObjectives(
+    const Robot &robot, const SharedNoiseModel &cost_model) const {
+  NonlinearFactorGraph factors;
+  int K = getEndTimeStep(numPhases() - 1);
+  for (auto &&joint : robot.joints()) {
+    auto j = joint->id();
+    for (int k = 0; k <= K; k++) {
+      factors.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
+                                              cost_model);
+    }
+  }
   return factors;
 }
 

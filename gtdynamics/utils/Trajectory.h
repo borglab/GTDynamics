@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Phase.h>
@@ -297,10 +298,9 @@ class Trajectory {
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
-  PointGoalFactor pointGoalFactor(
-      const std::string &link_name, int k,
-      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Point3 &goal_point) const {
+  PointGoalFactor pointGoalFactor(const std::string &link_name, int k,
+                                  const gtsam::SharedNoiseModel &cost_model,
+                                  const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link =
         walk_cycle_.phases().at(0).getRobotConfiguration().link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
@@ -314,8 +314,14 @@ class Trajectory {
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactLinkObjectives(
-      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      double ground_height) const;
+      const gtsam::SharedNoiseModel &cost_model, double ground_height) const;
+
+  /**
+   * @fn Add minimum torque objectives.
+   * @return All MinTorqueFactor factors as a NonlinearFactorGraph
+   */
+  gtsam::NonlinearFactorGraph minimumTorqueObjectives(
+      const Robot &robot, const gtsam::SharedNoiseModel &cost_model) const;
 
   /**
    * @fn Create objective factors for slice 0 and slice K.
@@ -343,21 +349,21 @@ class Trajectory {
    */
   void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
                         int phase) const {
-    int t = getStartTimeStep(phase);
+    int k = getStartTimeStep(phase);
     auto phase_durations = phaseDurations();
     Robot robot = phaseRobotModels()[phase];
     for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
       std::vector<std::string> vals;
       for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
+        vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
       for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointVel(results, joint->id(), t)));
+        vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
       for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointAccel(results, joint->id(), t)));
+        vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
       for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(Torque(results, joint->id(), t)));
+        vals.push_back(std::to_string(Torque(results, joint->id(), k)));
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-      t++;
+      k++;
       std::string vals_str = boost::algorithm::join(vals, ",");
       traj_file << vals_str << "\n";
     }
