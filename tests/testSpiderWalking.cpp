@@ -17,6 +17,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
@@ -69,13 +70,13 @@ gtdynamics::Trajectory getTrajectory(const Robot &spider, size_t repeat) {
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   gtdynamics::Phase stationary(spider, 4);
-  stationary.addContactPoints(links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  stationary.addContactPoints(links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::Phase odd(spider, 2);
-  odd.addContactPoints(odd_links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  odd.addContactPoints(odd_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::Phase even(spider, 2);
-  even.addContactPoints(even_links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  even.addContactPoints(even_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -123,9 +124,8 @@ TEST(testSpiderWalking, WholeEnchilada) {
   LONGS_EQUAL(7311, graph.keys().size());
 
   // Build the objective factors.
-  gtsam::NonlinearFactorGraph objective_factors =
-      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7),
-                                       GROUND_HEIGHT);
+  NonlinearFactorGraph objective_factors = trajectory.contactLinkObjectives(
+      Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
   // Regression test on objective factors
   LONGS_EQUAL(200, objective_factors.size());
   LONGS_EQUAL(200, objective_factors.keys().size());
@@ -141,64 +141,58 @@ TEST(testSpiderWalking, WholeEnchilada) {
   using gtdynamics::internal::TwistKey;
 
   // Get final time step.
-  int t_f = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
+  int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
 
   // Add base goal objectives to the factor graph.
   auto base_link = spider.link("body");
-  for (int t = 0; t <= t_f; t++) {
-    objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(base_link->id(), t),
-        gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),  // 0.5
-        Isotropic::Sigma(6, 5e-5)));  // 6.2e-5 //5e-5
-    objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(base_link->id(), t), Vector6::Zero(),
-        Isotropic::Sigma(6, 5e-5)));
+  for (int k = 0; k <= K; k++) {
+    gtdynamics::add_link_objective(
+        &objective_factors, Pose3(Rot3(), Point3(0, 0.0, 0.5)),
+        Isotropic::Sigma(6, 5e-5), gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5),
+        base_link->id(), k);
   }
 
   // Add link boundary conditions to FG.
   for (auto &&link : spider.links()) {
     // Initial link pose, twists.
-    objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(link->id(), 0), link->wTcom(), dynamics_model_6));
-    objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
+    gtdynamics::add_link_objective(&objective_factors, link->wTcom(),
+                                   dynamics_model_6, Vector6::Zero(),
+                                   dynamics_model_6, link->id(), 0);
 
     // Final link twists, accelerations.
-    objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
-    objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistAccelKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
+    objective_factors.add(PriorFactor<Vector6>(
+        TwistKey(link->id(), K), Vector6::Zero(), objectives_model_6));
+    objective_factors.add(PriorFactor<Vector6>(
+        TwistAccelKey(link->id(), K), Vector6::Zero(), objectives_model_6));
   }
 
   // Add joint boundary conditions to FG.
   for (auto &&joint : spider.joints()) {
     // Add priors to joint angles
-    for (int t = 0; t <= t_f; t++) {
+    for (int t = 0; t <= K; t++) {
       if (joint->name().find("hip2") == 0)
-        objective_factors.add(gtsam::PriorFactor<double>(
-            JointAngleKey(joint->id(), t), 2.5, dynamics_model_1_2));
+        objective_factors.add(PriorFactor<double>(JointAngleKey(joint->id(), t),
+                                                  2.5, dynamics_model_1_2));
     }
-    objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
-    objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
-    objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
+    objective_factors.add(PriorFactor<double>(JointVelKey(joint->id(), 0), 0.0,
+                                              dynamics_model_1));
+    objective_factors.add(PriorFactor<double>(JointVelKey(joint->id(), K), 0.0,
+                                              objectives_model_1));
+    objective_factors.add(PriorFactor<double>(JointAccelKey(joint->id(), K),
+                                              0.0, objectives_model_1));
   }
 
   // Add prior factor constraining all Phase keys to have duration of 1 /240.
   double desired_dt = 1. / 240;
   for (int phase = 0; phase < trajectory.numPhases(); phase++)
-    objective_factors.add(gtsam::PriorFactor<double>(
-        PhaseKey(phase), desired_dt,
-        gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
+    objective_factors.add(PriorFactor<double>(
+        PhaseKey(phase), desired_dt, noiseModel::Isotropic::Sigma(1, 1e-30)));
 
   // Add min torque objectives.
-  for (int t = 0; t <= t_f; t++) {
+  for (int t = 0; t <= K; t++) {
     for (auto &&joint : spider.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          TorqueKey(joint->id(), t),
-          gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+          TorqueKey(joint->id(), t), noiseModel::Gaussian::Covariance(I_1x1)));
   }
 
   // Regression test on objective factors
@@ -219,18 +213,18 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto robots = trajectory.phaseRobotModels();
   auto phase_durations = trajectory.phaseDurations();
   auto phase_cps = trajectory.phaseContactPoints();
-  gtsam::Values init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+  Values init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
       robots, phase_durations, transition_graph_init, desired_dt,
       gaussian_noise, phase_cps);
   LONGS_EQUAL(7311, init_vals.size());  // says it's 7435
 
   // Optimize!
-  gtsam::LevenbergMarquardtParams params;
+  LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
   params.setlambdaInitial(1e0);
   params.setlambdaLowerBound(1e-7);
   params.setlambdaUpperBound(1e10);
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
+  LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   auto results = optimizer.optimize();
 
   // TODO(frank): test whether it works
