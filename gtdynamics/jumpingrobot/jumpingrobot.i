@@ -66,6 +66,25 @@ class JointTorqueFactor: gtsam::NonlinearFactor{
                     const double b, const bool positive);
 };
 
+#include <gtdynamics/jumpingrobot/factors/PosePointFactor.h>
+class PosePointFactor: gtsam::NonlinearFactor{
+  PosePointFactor(gtsam::Key pose_key, gtsam::Key point_key,
+                   const gtsam::noiseModel::Base *cost_model,
+                   const gtsam::Point3 point_local);
+};
+
+#include <gtdynamics/jumpingrobot/factors/ProjectionFactorPPC.h>
+class CustomProjectionFactor: gtsam::NonlinearFactor{
+  CustomProjectionFactor(const gtsam::Point2 measured,
+                         const gtsam::noiseModel::Base *model,
+                         gtsam::Key poseKey, gtsam::Key pointKey,
+                         gtsam::Key calibKey);
+};
+
+class PriorFactorCal3Bundler : gtsam::NoiseModelFactor {
+  PriorFactorCal3Bundler(gtsam::Key key, const gtsam::Cal3Bundler& prior, 
+                         const gtsam::noiseModel::Base* noiseModel);
+};
 
 #include <gtdynamics/jumpingrobot/factors/ValueUtils.h>
 gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector& keys);
