@@ -24,6 +24,7 @@ from src.jr_visualizer import visualize_jr
 from src.robot_graph_builder import RobotGraphBuilder
 from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
+from src.jr_values import JRValues
 from src.jr_simulator import JRSimulator
 
 
@@ -40,7 +41,7 @@ class TestJRSimulator(unittest.TestCase):
         m2 = self.jr_simulator.jr.robot.link("thigh_r").mass()
         m3 = self.jr_simulator.jr.robot.link("torso").mass()
         link_radius = self.jr_simulator.jr.params["morphology"]["r_cyl"]
-        l_link = self.jr_simulator.jr.params["morphology"]["l_link"][0]
+        l_link = self.jr_simulator.jr.params["morphology"]["l"][0]
 
         g = 9.8
         moment = (0.5 * m1 + 1.5 * m2 + 1.0 * m3) * g * l_link * np.sin(theta)
@@ -48,9 +49,10 @@ class TestJRSimulator(unittest.TestCase):
         J2 = (l_link ** 2 + 3 * link_radius ** 2) * 1.0 / 12 * m2
         J = l_link ** 2 * (1.0 / 4 * m1 + (1.0 / 4 + 2 * np.sin(theta) ** 2) * m2 + 2 * np.sin(theta) ** 2 * m3)
 
-        acc = (torque_hip - torque_knee * 2 -  moment) / (J + J1 + J2)
-        expected_joint_accels = {"foot_r": acc, "knee_r": -2*acc, "hip_r": acc, "hip_l": acc, "knee_l": -2*acc, "foot_l": acc}
-        return expected_joint_accels
+        acc = (torque_hip - torque_knee * 2 - moment) / (J + J1 + J2)
+        expected_q_accels = {"foot_r": acc, "knee_r": -2*acc, "hip_r": acc,
+                             "hip_l": acc, "knee_l": -2*acc, "foot_l": acc}
+        return expected_q_accels
 
     def test_robot_forward_dynamics(self):
         """ Test forward dynamics of robot frame: specify the angles,
@@ -70,8 +72,7 @@ class TestJRSimulator(unittest.TestCase):
             j = joint.id()
             gtd.InsertTorqueDouble(values, j, k, torques[j])
             gtd.InsertJointAngleDouble(values, j, k, qs[j])
-            gtd.InsertJointVelDouble(values, j, k , vs[j])
-
+            gtd.InsertJointVelDouble(values, j, k, vs[j])
         torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
         torso_i = self.jr_simulator.jr.robot.link("torso").id()
         gtd.InsertPose(values, torso_i, k, torso_pose)
@@ -81,11 +82,13 @@ class TestJRSimulator(unittest.TestCase):
         self.jr_simulator.step_robot_dynamics(k, values)
 
         # check joint accelerations
-        joint_accels = gtd.DynamicsGraph.jointAccelsMap(self.jr_simulator.jr.robot, values, k)
-        expected_joint_accels = self.cal_jr_accels(theta, torque_hip, torque_knee)
+        q_accels = gtd.DynamicsGraph.jointAccelsMap(self.jr_simulator.jr.robot,
+                                                    values, k)
+        expected_q_accels = self.cal_jr_accels(theta, torque_hip, torque_knee)
         for joint in self.jr_simulator.jr.robot.joints():
             name = joint.name()
-            self.assertAlmostEqual(joint_accels[name], expected_joint_accels[name], places=7)
+            self.assertAlmostEqual(q_accels[name],
+                                   expected_q_accels[name], places=7)
 
     def test_actuation_forward_dynamics(self):
         """ Test forward dynamics of actuator: specify mass, time, controls,
@@ -94,16 +97,15 @@ class TestJRSimulator(unittest.TestCase):
         # create controls
         Tos = [0, 0, 0, 0]
         Tcs = [1, 1, 1, 1]
-        P_s_0 = 65 * 6894.76
+        P_s_0 = 65 * 6894.76 / 1e3
         controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
 
         # create init values of known variables
-        values = self.jr_simulator.init_config_values(controls)
+        values = JRValues.init_config_values(self.jr_simulator.jr, controls)
         k = 0
-        curr_time = 0.1
 
         # compute dynamics
-        self.jr_simulator.step_actuation_dynamics(k, values, curr_time)
+        self.jr_simulator.step_actuation_dynamics(k, values)
 
         torques = []
         for actuator in self.jr_simulator.jr.actuators:
