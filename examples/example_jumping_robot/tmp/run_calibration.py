@@ -7,10 +7,20 @@ Tests to develop the calibration of the jumping robot.
 Author: Yetong Zhang
 """
 
-import numpy as np
+import gtdynamics as gtd
 import gtsam
-import gtdynamics
+import numpy as np
+
 import os
+import sys
+import inspect
+currentdir = os.path.dirname(os.path.abspath(
+    inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+
+from src.jr_visualizer import visualize_jr
+from src.jumping_robot import Actuator, JumpingRobot
 
 # noise model for measurements TODO: change noise models?
 model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01) # (m) 0.01
@@ -41,11 +51,11 @@ class TestCalibration():
         self.path_data = path_data
 
 
-    def load_robot(self, file_name):
-        file_type = file_name.split(".")[-1]
-        current_folder = os.path.dirname(os.path.abspath(__file__))
-        robot_file = os.path.join(current_folder, "../../" + file_type + "s/test/" + file_name)
-        return gtdynamics.CreateRobotFromFile(robot_file, "robot")
+    def load_robot(self):
+        yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        init_config = JumpingRobot.create_init_config()
+        jr = JumpingRobot(yaml_file_path, init_config, phase=3)
+        return jr.robot
 
 
     def get_marker_locations(self):
@@ -137,8 +147,7 @@ class TestCalibration():
         ################################################
         ############ set initial parameters ############
         ################################################
-        my_robot = self.load_robot("jumping_robot.sdf") # load jumping robot
-        my_robot.removeLinkByName("l0") # remove ground link
+        my_robot = self.load_robot() # load jumping robot
 
         # pixel measurements
         pixels_all_frames = self.get_pixel_measurement()
@@ -166,7 +175,7 @@ class TestCalibration():
 
             for j in range(1, my_robot.numJoints()+1): # loop over joints
                 key = JointAngleKey(j, k)
-                gtdynamics.InsertDouble(initial_estimate, key, joint_angles[k][j-1])
+                initial_estimate.insertDouble(key, joint_angles[k][j-1])
 
             for i in range(1, my_robot.numLinks()+1):
                 markers_i = marker_locations[i-1]

@@ -12,8 +12,7 @@ import gtdynamics as gtd
 import gtsam
 import numpy as np
 import unittest
-from src.jr_visualizer import visualize_jr
-from src.jumping_robot import Actuator, JumpingRobot
+
 import os
 import sys
 import inspect
@@ -21,6 +20,10 @@ currentdir = os.path.dirname(os.path.abspath(
     inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
+
+from src.jr_visualizer import visualize_jr
+from src.jumping_robot import Actuator, JumpingRobot
+
 
 
 # noise model for measurements
