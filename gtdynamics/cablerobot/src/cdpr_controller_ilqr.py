@@ -16,6 +16,8 @@ import gtdynamics as gtd
 import numpy as np
 import utils
 from cdpr_controller import CdprControllerBase
+from scipy.linalg import solve_triangular
+
 
 class CdprControllerIlqr(CdprControllerBase):
     """Precomputes the open-loop trajectory
@@ -46,12 +48,12 @@ class CdprControllerIlqr(CdprControllerBase):
         self.result = self.optimizer.optimize()
         self.fg = fg
         # gains
-        self.gains = self.extract_gains(cdpr, fg, self.result)
+        self.gains = self.extract_gains(cdpr, fg, self.result, len(self.pdes))
 
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
         control from the optimal trajectory.
-        """        
+        """
         return self.result
 
     @staticmethod
@@ -95,15 +97,67 @@ class CdprControllerIlqr(CdprControllerBase):
         return fg
 
     @staticmethod
-    def extract_gains(cdpr, fg, openloop_results):
+    def extract_bayesnets(cdpr, fg, openloop_results, N):
+        lid = cdpr.ee_id()
+        gfg = fg.linearize(openloop_results)
+
+        # ordering
+        ordering = []
+        # ordering.append(gtsam.Ordering())
+        for t in range(N - 1, -1, -1):
+            # stuff we don't care about
+            ordering.append(gtsam.Ordering())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.JointAngleKey(ji, t).key())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.JointVelKey(ji, t).key())
+            # immediate control variables
+            ordering.append(gtsam.Ordering())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.TorqueKey(ji, t).key())
+            # intermediate control variables
+            ordering.append(gtsam.Ordering())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.WrenchKey(lid, ji, t).key())
+            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
+            # measurement inputs
+            ordering.append(gtsam.Ordering())
+            ordering[-1].push_back(gtd.internal.TwistKey(lid, t).key())
+            ordering[-1].push_back(gtd.internal.PoseKey(lid, t).key())
+        ordering.append(gtsam.Ordering())
+        ordering[-1].push_back(0)
+
+        # eliminate
+        return gtd.BlockEliminateSequential(gfg, ordering), reversed(range(3, 4*N, 4))
+
+    @staticmethod
+    def extract_gains(cdpr, fg, openloop_results, N):
         """Extracts the locally linear optimal feedback control gains
 
         Args:
             cdpr (Cdpr): cable robot object
             fg (gtsam.NonlinearFactorGraph): The iLQR factor graph
             openloop_results (gtsam.Values): The open-loop optimal trajectory and controls
+        Returns:
+            gains (List[Tuple[np.ndarray, np.ndarray]]): The feedback gains in the form u = Kx
         """
-        return [[{gtd.internal.PoseKey(cdpr.ee_id(), t).key(): np.zeros((1, 6)),
-                  gtd.internal.TwistKey(cdpr.ee_id(), t).key(): np.zeros((1, 6))}
-                  for ji in range(4)]
-                for t in range(3)]
+        lid = cdpr.ee_id()
+        net, u_inds = CdprControllerIlqr.extract_bayesnets(cdpr, fg, openloop_results, N)
+        # print(net.__repr__("net", gtd.KeyFormatter()))
+        utils.print_bayesnet_reduced(net)
+
+        # extract_gains
+        gains = [None for t in range(N)]
+        # for t, neti in enumerate(u_inds):
+        for t, (neti, netu) in enumerate(zip(reversed(range(2, 4*N, 4)),
+                                             reversed(range(1, 4*N, 4)))):
+            ucond = net.at(netu)
+            icond = net.at(neti)
+            u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
+            u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, 24:])
+            F_K_x = solve_triangular(icond.R(), -icond.S())[:24, -12:]
+            u_K_x = u_K_F @ F_K_x
+            u_K_x[:, 6:] += u_K_p
+            gains[t] = u_K_x, 0#solve_triangular(R, gc.d())
+        print(gains[0][0])
+        return gains
