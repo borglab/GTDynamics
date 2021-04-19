@@ -341,6 +341,19 @@ class Trajectory {
       const gtsam::SharedNoiseModel &joint_acceleration_model) const;
 
   /**
+   * @fn Add priors on all variable time steps.
+   * @param[in, out] graph NonlinearFactorGraph to add to
+   * @param[in] desired_dt desired time step
+   * @param[in] sigma      standard deviation (default 0: constrained)
+   */
+  void add_time_step_priors(gtsam::NonlinearFactorGraph *graph,
+                            double desired_dt, double sigma = 0) const {
+    auto model = gtsam::noiseModel::Isotropic::Sigma(1, sigma);
+    for (int phase = 0; phase < numPhases(); phase++)
+      graph->addPrior<double>(PhaseKey(phase), desired_dt, model);
+  }
+
+  /**
    * @fn Writes the angles, vels, accels, torques and time values for a single
    * phase to disk.
    * @param[in] traj_file    Trajectory File being written onto.

@@ -131,11 +131,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
     }
   }
 
-  // Add prior factor constraining all Phase keys to have duration of 1 /240.
-  double desired_dt = 1. / 240;
-  for (int phase = 0; phase < trajectory.numPhases(); phase++)
-    objective_factors.addPrior<double>(PhaseKey(phase), desired_dt,
-                                       Isotropic::Sigma(1, 1e-30));
+  // Constrain all Phase keys to have duration of 1 /240.
+  const double desired_dt = 1. / 240;
+  trajectory.add_time_step_priors(&objective_factors, desired_dt);
 
   // Add min torque objectives.
   objective_factors.add(
