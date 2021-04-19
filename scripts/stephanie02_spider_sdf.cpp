@@ -11,10 +11,10 @@
  * @author Stephanie McCormick
  */
 
+#include <string>
+
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
-
-#include <string>
 
 using namespace gtdynamics;
 
