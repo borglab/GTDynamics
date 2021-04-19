@@ -150,7 +150,7 @@ class Trajectory {
    * @return Vector of Transition Graphs
    */
   const std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      gtdynamics::DynamicsGraph &graph_builder, const double &mu) const {
+      DynamicsGraph &graph_builder, const double &mu) const {
     std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
     std::vector<ContactPoints> trans_cps = transitionContactPoints();
     std::vector<Robot> phase_robots = phaseRobotModels();
@@ -160,6 +160,24 @@ class Trajectory {
           phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
     }
     return transition_graphs;
+  }
+
+  /**
+   * @fn Builds multi-phase factor graph.
+   * @param[in]graph_builder    Dynamics Graph
+   * @param[in]mu               Coefficient of static friction
+   * @return Multi-phase factor graph
+   */
+  const gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
+      DynamicsGraph &graph_builder,
+      const DynamicsGraph::CollocationScheme collocation,
+      const double &mu) const {
+    // Graphs for transition between phases + their initial values.
+    auto transition_graphs = getTransitionGraphs(graph_builder, mu);
+    auto graph = graph_builder.multiPhaseTrajectoryFG(
+        phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
+        phaseContactPoints(), mu);
+    return graph;
   }
 
   /**
