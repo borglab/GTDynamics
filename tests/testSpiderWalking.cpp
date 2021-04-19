@@ -62,7 +62,7 @@ using namespace gtsam;
 using namespace gtdynamics;
 
 // Returns a Trajectory object for a single spider walk cycle.
-gtdynamics::Trajectory getTrajectory(const Robot &spider, size_t repeat = 2) {
+gtdynamics::Trajectory getTrajectory(const Robot &spider, size_t repeat) {
   vector<string> odd_links{"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"};
   vector<string> even_links{"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"};
   auto links = odd_links;
@@ -112,52 +112,43 @@ TEST(testSpiderWalking, WholeEnchilada) {
   gtdynamics::OptimizerSetting opt(sigma_dynamics);
   gtdynamics::DynamicsGraph graph_builder(opt, gravity);
 
-  vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4",
-                          "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
-  auto spider_trajectory = getTrajectory(spider);
-
-  // Define noise to be added to initial values, desired timestep duration,
-  // vector of link name strings, robot model for each phase, and
-
-  // Collocation scheme.
-  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
+  // Create the trajectory, consisting of 2 walk phases, each consisting of 4
+  // phases: [stationary, odd, stationary, even].
+  auto trajectory = getTrajectory(spider, 2);
 
   // Create multi-phase trajectory factor graph
-  auto graph =
-      spider_trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
+  auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
+  auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
+  LONGS_EQUAL(6551, graph.size());
+  LONGS_EQUAL(7311, graph.keys().size());
 
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
   auto base_link = spider.link("body");
 
-  std::map<string, gtdynamics::LinkSharedPtr> link_map;
-  for (auto &&link : links)
-    link_map.insert(std::make_pair(link, spider.link(link)));
-
   // Previous contact point goal.
-  std::map<string, Point3> prev_cp = spider_trajectory.initContactPointGoal();
+  std::map<string, Point3> prev_cp = trajectory.initContactPointGoal();
 
   // Distance to move contact point per time step during swing.
   auto contact_offset = Point3(0, 0.02, 0);
 
   // Add contact point objectives to factor graph.
-  for (int p = 0; p < spider_trajectory.numPhases(); p++) {
+  for (int p = 0; p < trajectory.numPhases(); p++) {
     // if(p <2) contact_offset /=2 ;
     // Phase start and end timesteps.
-    int t_p_i = spider_trajectory.getStartTimeStep(p);
-    int t_p_f = spider_trajectory.getEndTimeStep(p);
+    int t_p_i = trajectory.getStartTimeStep(p);
+    int t_p_f = trajectory.getEndTimeStep(p);
 
     // Obtain the contact links and swing links for this phase.
-    vector<string> phase_contact_links =
-        spider_trajectory.getPhaseContactLinks(p);
-    vector<string> phase_swing_links = spider_trajectory.getPhaseSwingLinks(p);
+    vector<string> phase_contact_links = trajectory.getPhaseContactLinks(p);
+    vector<string> phase_swing_links = trajectory.getPhaseSwingLinks(p);
 
     for (int t = t_p_i; t <= t_p_f; t++) {
       // Normalized phase progress.
       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
 
       for (auto &&pcl : phase_contact_links)
-        objective_factors.add(spider_trajectory.pointGoalFactor(
+        objective_factors.add(trajectory.pointGoalFactor(
             pcl, t, Isotropic::Sigma(3, 1e-7),  // 1e-7
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
 
@@ -165,7 +156,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
           GROUND_HEIGHT + std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
       for (auto &&psl : phase_swing_links)
-        objective_factors.add(spider_trajectory.pointGoalFactor(
+        objective_factors.add(trajectory.pointGoalFactor(
             psl, t, Isotropic::Sigma(3, 1e-7),
             Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
 
@@ -186,7 +177,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   using gtdynamics::internal::TwistKey;
 
   // Get final time step.
-  int t_f = spider_trajectory.getEndTimeStep(spider_trajectory.numPhases() - 1);
+  int t_f = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
 
   // Add base goal objectives to the factor graph.
   for (int t = 0; t <= t_f; t++) {
@@ -232,7 +223,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Add prior factor constraining all Phase keys to have duration of 1 /240.
   double desired_dt = 1. / 240;
-  for (int phase = 0; phase < spider_trajectory.numPhases(); phase++)
+  for (int phase = 0; phase < trajectory.numPhases(); phase++)
     objective_factors.add(gtsam::PriorFactor<double>(
         PhaseKey(phase), desired_dt,
         gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
@@ -244,9 +235,14 @@ TEST(testSpiderWalking, WholeEnchilada) {
           TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
+
+  // Regression test on objective factors
+  LONGS_EQUAL(1486, objective_factors.size());
+  LONGS_EQUAL(1475, objective_factors.keys().size());
+
+  // Add objective factors to the graph
   graph.add(objective_factors);
-  GTD_PRINT(graph);
-  LONGS_EQUAL(8037, graph.size());
+  LONGS_EQUAL(6551 + 1486, graph.size());
   LONGS_EQUAL(7311, graph.keys().size());
 
   // TODO: Pass Trajectory here
@@ -254,15 +250,14 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // phase transition initial values.
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
-      spider_trajectory.getInitTransitionValues(gaussian_noise);
-  auto robots = spider_trajectory.phaseRobotModels();
-  auto phase_durations = spider_trajectory.phaseDurations();
-  auto phase_cps = spider_trajectory.phaseContactPoints();
+      trajectory.getInitTransitionValues(gaussian_noise);
+  auto robots = trajectory.phaseRobotModels();
+  auto phase_durations = trajectory.phaseDurations();
+  auto phase_cps = trajectory.phaseContactPoints();
   gtsam::Values init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
       robots, phase_durations, transition_graph_init, desired_dt,
       gaussian_noise, phase_cps);
-  GTD_PRINT(init_vals);
-  LONGS_EQUAL(7311, init_vals.size());
+  LONGS_EQUAL(7311, init_vals.size());  // says it's 7435
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
