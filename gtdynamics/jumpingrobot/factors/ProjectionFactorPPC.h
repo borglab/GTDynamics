@@ -19,6 +19,7 @@
 #include <gtsam/geometry/Cal3_S2.h>
 #include <gtsam/geometry/PinholeCamera.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <boost/optional.hpp>
 
@@ -183,6 +184,11 @@ class CustomProjectionFactor
 //     public Testable<CustomProjectionFactor > {
 // };
 
-typedef gtsam::PriorFactor<gtsam::Cal3Bundler> PriorFactorCal3Bundler;
+void addPriorFactorCal3Bundler(gtsam::NonlinearFactorGraph& graph, gtsam::Key key,
+                            const gtsam::Cal3Bundler& prior,
+                            const gtsam::SharedNoiseModel& model) {
+  graph.add(gtsam::PriorFactor<gtsam::Cal3Bundler>(key, prior, model));
+}
+// typedef gtsam::PriorFactor<gtsam::Cal3Bundler> PriorFactorCal3Bundler;
 
 }  // namespace gtdynamics

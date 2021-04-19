@@ -81,10 +81,14 @@ class CustomProjectionFactor: gtsam::NonlinearFactor{
                          gtsam::Key calibKey);
 };
 
-class PriorFactorCal3Bundler : gtsam::NoiseModelFactor {
-  PriorFactorCal3Bundler(gtsam::Key key, const gtsam::Cal3Bundler& prior, 
-                         const gtsam::noiseModel::Base* noiseModel);
-};
+// class PriorFactorCal3Bundler : gtsam::NoiseModelFactor {
+//   PriorFactorCal3Bundler(gtsam::Key key, const gtsam::Cal3Bundler& prior, 
+//                          const gtsam::noiseModel::Base* noiseModel);
+// };
+
+void addPriorFactorCal3Bundler(gtsam::NonlinearFactorGraph& graph, gtsam::Key key,
+                            const gtsam::Cal3Bundler& prior,
+                            const gtsam::noiseModel::Base *model);
 
 #include <gtdynamics/jumpingrobot/factors/ValueUtils.h>
 gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector& keys);

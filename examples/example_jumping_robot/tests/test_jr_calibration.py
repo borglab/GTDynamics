@@ -189,8 +189,9 @@ class TestCalibration(GtsamTestCase):
         # prior factor for the camera pose
         graph.add(gtsam.PriorFactorPose3(
             cam_pose_key, cam_pose, model_cam_pose_prior))
-        graph.add(gtd.PriorFactorCal3Bundler(
-            cal_key, calibration, model_calib))
+        gtd.addPriorFactorCal3Bundler(graph, cal_key, calibration, model_calib)
+        # graph.add(gtd.PriorFactorCal3Bundler(
+        #     cal_key, calibration, model_calib))
 
         ################################################
         ############ solve the factor graph ############
