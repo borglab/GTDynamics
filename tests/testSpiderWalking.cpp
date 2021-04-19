@@ -14,31 +14,11 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
-#include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/Trajectory.h>
-#include <gtdynamics/utils/WalkCycle.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
-#include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/PriorFactor.h>
-
-#include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <utility>
 
 #define GROUND_HEIGHT -1.75  //-1.75
 
