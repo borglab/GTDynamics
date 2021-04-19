@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -148,4 +149,17 @@ void add_joint_objectives(
                                   joint_acceleration, joint_acceleration_model,
                                   j, k);
 }
+
+void add_joints_at_rest_objectives(
+    gtsam::NonlinearFactorGraph* graph, const Robot& robot,
+    const gtsam::SharedNoiseModel& joint_velocity_model,
+    const gtsam::SharedNoiseModel& joint_acceleration_model, int k = 0) {
+  for (auto&& joint : robot.joints()) {
+    add_joint_derivative_objectives(graph,                        //
+                                    0, joint_velocity_model,      //
+                                    0, joint_acceleration_model,  //
+                                    joint->id(), k);
+  }
+}
+
 }  // namespace gtdynamics

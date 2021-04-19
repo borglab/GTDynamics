@@ -13,6 +13,7 @@
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
+#include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
@@ -29,7 +30,7 @@ using std::vector;
 
 namespace gtdynamics {
 
-const NonlinearFactorGraph Trajectory::contactLinkObjectives(
+NonlinearFactorGraph Trajectory::contactLinkObjectives(
     const Base::shared_ptr &cost_model, const double ground_height) const {
   NonlinearFactorGraph factors;
 
@@ -77,7 +78,7 @@ const NonlinearFactorGraph Trajectory::contactLinkObjectives(
   return factors;
 }
 
-const NonlinearFactorGraph Trajectory::boundaryConditions(
+NonlinearFactorGraph Trajectory::boundaryConditions(
     const Robot &robot, const gtsam::SharedNoiseModel &pose_model,
     const gtsam::SharedNoiseModel &twist_model,
     const gtsam::SharedNoiseModel &twist_acceleration_model,
@@ -100,15 +101,10 @@ const NonlinearFactorGraph Trajectory::boundaryConditions(
   }
 
   // Add joint boundary conditions to FG.
-  for (auto &&joint : robot.joints()) {
-    const int id = joint->id();
-    add_joint_derivative_objectives(&factors,                 //
-                                    0, joint_velocity_model,  //
-                                    0, joint_acceleration_model, id, 0);
-    add_joint_derivative_objectives(&factors,                 //
-                                    0, joint_velocity_model,  //
-                                    0, joint_acceleration_model, id, K);
-  }
+  add_joints_at_rest_objectives(&factors, robot, joint_velocity_model,
+                                joint_acceleration_model, 0);
+  add_joints_at_rest_objectives(&factors, robot, joint_velocity_model,
+                                joint_acceleration_model, K);
   return factors;
 }
 
