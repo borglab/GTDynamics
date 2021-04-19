@@ -16,7 +16,6 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
-#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -139,20 +138,18 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto boundary_conditions = trajectory.boundaryConditions(
       robot, dynamics_model_6, dynamics_model_6, objectives_model_6,
       objectives_model_1, objectives_model_1);
+  objective_factors.add(boundary_conditions);
 
-  // Add joint boundary conditions to FG.
+  // Add prior on hip joint angles
   for (auto &&joint : robot.joints()) {
     if (joint->name().find("hip2") == 0) {
       const int id = joint->id();
       // Add priors to joint angles
       for (int k = 0; k <= K; k++) {
-        add_joint_objective(&boundary_conditions, 2.5, dynamics_model_1_2, id,
-                            k);
+        add_joint_objective(&objective_factors, 2.5, dynamics_model_1_2, id, k);
       }
     }
   }
-
-  objective_factors.add(boundary_conditions);
 
   // Add prior factor constraining all Phase keys to have duration of 1 /240.
   double desired_dt = 1. / 240;
@@ -160,15 +157,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
     objective_factors.addPrior<double>(PhaseKey(phase), desired_dt,
                                        Isotropic::Sigma(1, 1e-30));
 
-  // TODO(frank): the fact that I'm doing this is a red flag
-  using internal::TorqueKey;
-
   // Add min torque objectives.
-  for (int t = 0; t <= K; t++) {
-    for (auto &&joint : robot.joints())
-      objective_factors.add(
-          MinTorqueFactor(TorqueKey(joint->id(), t), Unit::Create(1)));
-  }
+  objective_factors.add(
+      trajectory.minimumTorqueObjectives(robot, Unit::Create(1)));
 
   // Regression test on objective factors
   LONGS_EQUAL(1518, objective_factors.size());
