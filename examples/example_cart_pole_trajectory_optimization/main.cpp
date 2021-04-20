@@ -33,7 +33,7 @@ using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto cp = CreateRobotFromFile("../cart_pole.urdf");
+  auto cp = CreateRobotFromFile(URDF_PATH + "/cart_pole.urdf");
   int j0_id = cp.joint("j0")->id(), j1_id = cp.joint("j1")->id();
   cp.fixLink("l0");
   cp.print();
@@ -71,26 +71,35 @@ int main(int argc, char** argv) {
   graph.addPrior(internal::JointVelKey(j1_id, 0), X_i[4], dynamics_model);
 
   // Add terminal conditions to the factor graph.
-  graph.addPrior(internal::JointVelKey(j0_id, t_steps), X_T[1], objectives_model);
-  graph.addPrior(internal::JointAccelKey(j0_id, t_steps), X_T[2], objectives_model);
-  graph.addPrior(internal::JointVelKey(j1_id, t_steps), X_T[4], objectives_model);
-  graph.addPrior(internal::JointAccelKey(j1_id, t_steps), X_T[5], objectives_model);
+  graph.addPrior(internal::JointVelKey(j0_id, t_steps), X_T[1],
+                 objectives_model);
+  graph.addPrior(internal::JointAccelKey(j0_id, t_steps), X_T[2],
+                 objectives_model);
+  graph.addPrior(internal::JointVelKey(j1_id, t_steps), X_T[4],
+                 objectives_model);
+  graph.addPrior(internal::JointAccelKey(j1_id, t_steps), X_T[5],
+                 objectives_model);
 
   // Insert position objective (x, theta) factor at every timestep or only at
   // the terminal state. Adding the position objective at every timestep will
   // force the system to converge to the desired state quicker at the cost of
   // more impulsive control actions.
   bool apply_pos_objective_all_dt = false;
-  graph.addPrior(internal::JointAngleKey(j0_id, t_steps), X_T[0], pos_objectives_model);
-  graph.addPrior(internal::JointAngleKey(j1_id, t_steps), X_T[3], pos_objectives_model);
+  graph.addPrior(internal::JointAngleKey(j0_id, t_steps), X_T[0],
+                 pos_objectives_model);
+  graph.addPrior(internal::JointAngleKey(j1_id, t_steps), X_T[3],
+                 pos_objectives_model);
   if (apply_pos_objective_all_dt) {
     for (int t = 0; t < t_steps; t++) {
-      graph.addPrior(internal::JointAngleKey(j0_id, t), X_T[0], pos_objectives_model);
-      graph.addPrior(internal::JointAngleKey(j1_id, t), X_T[3], pos_objectives_model);
+      graph.addPrior(internal::JointAngleKey(j0_id, t), X_T[0],
+                     pos_objectives_model);
+      graph.addPrior(internal::JointAngleKey(j1_id, t), X_T[3],
+                     pos_objectives_model);
     }
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j0_id, t), control_model);
+    graph.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j0_id, t),
+                                          control_model);
 
   // Initialize solution.
   auto init_vals = ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
@@ -102,7 +111,7 @@ int main(int argc, char** argv) {
 
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::ofstream traj_file;
-  traj_file.open("../traj.csv");
+  traj_file.open("traj.csv");
   traj_file << "t,x,xdot,xddot,xtau,theta,thetadot,thetaddot,thetatau\n";
   double t_elapsed = 0;
   for (int t = 0; t <= t_steps; t++, t_elapsed += dt) {
