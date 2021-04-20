@@ -68,12 +68,10 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
-  double sigma_joints = 1.85e-4;   // 1.85e-4
 
   // Noise models.
   auto dynamics_model_6 = Isotropic::Sigma(6, sigma_dynamics),
        dynamics_model_1 = Isotropic::Sigma(1, sigma_dynamics),
-       dynamics_model_1_2 = Isotropic::Sigma(1, sigma_joints),
        objectives_model_6 = Isotropic::Sigma(6, sigma_objectives),
        objectives_model_1 = Isotropic::Sigma(1, sigma_objectives);
 
@@ -91,15 +89,15 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Create multi-phase trajectory factor graph
   auto collocation = DynamicsGraph::CollocationScheme::Euler;
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
-  EXPECT_LONGS_EQUAL(3443, graph.size());
-  EXPECT_LONGS_EQUAL(3819, graph.keys().size());
+  EXPECT_LONGS_EQUAL(3583, graph.size());
+  EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
-  NonlinearFactorGraph objective_factors = trajectory.contactLinkObjectives(
+  NonlinearFactorGraph objectives = trajectory.contactLinkObjectives(
       Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
   // Regression test on objective factors
-  EXPECT_LONGS_EQUAL(104, objective_factors.size());
-  EXPECT_LONGS_EQUAL(104, objective_factors.keys().size());
+  EXPECT_LONGS_EQUAL(104, objectives.size());
+  EXPECT_LONGS_EQUAL(104, objectives.keys().size());
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -107,66 +105,47 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Add base goal objectives to the factor graph.
   auto base_link = robot.link("body");
   for (int k = 0; k <= K; k++) {
-    add_link_objective(&objective_factors, Pose3(Rot3(), Point3(0, 0.0, 0.5)),
+    add_link_objective(&objectives, Pose3(Rot3(), Point3(0, 0.0, 0.5)),
                        Isotropic::Sigma(6, 5e-5), gtsam::Z_6x1,
                        Isotropic::Sigma(6, 5e-5), base_link->id(), k);
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objective_factors, robot, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
-  // Add prior on hip joint angles
-  for (auto &&joint : robot.joints()) {
-    if (joint->name().find("hip2") == 0) {
-      const int id = joint->id();
-      // Add priors to joint angles
-      for (int k = 0; k <= K; k++) {
-        add_joint_objective(&objective_factors, 2.5, dynamics_model_1_2, id, k);
-      }
-    }
-  }
-
   // Constrain all Phase keys to have duration of 1 /240.
   const double desired_dt = 1. / 240;
-  trajectory.addIntegrationTimeFactors(&objective_factors, desired_dt);
+  trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objective_factors, robot,
-                                     Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
+
+  // Add prior on hip joint angles (spider specific)
+  auto prior_model = Isotropic::Sigma(1, 1.85e-4);
+  for (auto &&joint : robot.joints())
+    if (joint->name().find("hip2") == 0)
+      for (int k = 0; k <= K; k++)
+        add_joint_objective(&objectives, 2.5, prior_model, joint->id(), k);
 
   // Regression test on objective factors
-  EXPECT_LONGS_EQUAL(918, objective_factors.size());
-  EXPECT_LONGS_EQUAL(907, objective_factors.keys().size());
+  EXPECT_LONGS_EQUAL(918, objectives.size());
+  EXPECT_LONGS_EQUAL(907, objectives.keys().size());
 
   // Add objective factors to the graph
-  graph.add(objective_factors);
-  EXPECT_LONGS_EQUAL(3443 + 918, graph.size());
-  EXPECT_LONGS_EQUAL(3819, graph.keys().size());
+  graph.add(objectives);
+  EXPECT_LONGS_EQUAL(3583 + 918, graph.size());
+  EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Initialize solution.
   double gaussian_noise = 1e-5;
   Values init_vals =
       trajectory.multiPhaseInitialValues(gaussian_noise, desired_dt);
-
-  // Check all the keys
-  auto graph_keys = graph.keys();
-  for (auto &&key : init_vals.keys()) {
-    if (!graph_keys.exists(key)) {
-      std::cout << _GTDKeyFormatter(key) << std::endl;
-    }
-  }
-
-  EXPECT_LONGS_EQUAL(3819, init_vals.size());  // says it's 3847
+  EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
   // Optimize!
-  gtsam::LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  params.setlambdaInitial(1e0);
-  params.setlambdaLowerBound(1e-7);
-  params.setlambdaUpperBound(1e10);
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
   auto results = optimizer.optimize();
 
   // TODO(frank): test whether it works

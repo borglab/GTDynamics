@@ -240,41 +240,35 @@ Values MultiPhaseZeroValuesTrajectory(
   Values values;
   int num_phases = robots.size();
 
-  int t = 0;
-  if (phase_contact_points) {
-    values.insert(
-        ZeroValues(robots[0], t, gaussian_noise, (*phase_contact_points)[0]));
-  } else {
-    values.insert(ZeroValues(robots[0], t, gaussian_noise));
-  }
+  // Return either ContactPoints or None if none specified for phase p
+  auto contact_points =
+      [&phase_contact_points](int p) -> boost::optional<ContactPoints> {
+    if (phase_contact_points) return (*phase_contact_points)[p];
+    return boost::none;
+  };
 
-  for (int phase = 0; phase < num_phases; phase++) {
+  // First slice, k==0
+  values.insert(ZeroValues(robots[0], 0, gaussian_noise, contact_points(0)));
+
+  int k = 0;
+  for (int p = 0; p < num_phases; p++) {
     // in-phase
-    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
-         phase_step++) {
-      if (phase_contact_points) {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise,
-                                 (*phase_contact_points)[phase]));
-      } else {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise));
-      }
+    for (int step = 0; step < phase_steps[p] - 1; step++) {
+      values.insert(
+          ZeroValues(robots[p], ++k, gaussian_noise, contact_points(p)));
     }
 
-    if (phase == num_phases - 1) {
-      if (phase_contact_points) {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise,
-                                 (*phase_contact_points)[phase]));
-      } else {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise));
-      }
+    if (p == num_phases - 1) {
+      values.insert(
+          ZeroValues(robots[p], ++k, gaussian_noise, contact_points(p)));
     } else {
-      t++;
-      values.insert(transition_graph_init[phase]);
+      values.insert(transition_graph_init[p]);
+      k++;
     }
   }
 
-  for (int phase = 0; phase < num_phases; phase++) {
-    values.insert(PhaseKey(phase), dt_i);
+  for (int p = 0; p < num_phases; p++) {
+    values.insert(PhaseKey(p), dt_i);
   }
 
   return values;

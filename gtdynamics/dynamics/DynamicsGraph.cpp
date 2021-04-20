@@ -411,31 +411,38 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   NonlinearFactorGraph graph;
   int num_phases = robots.size();
 
-  // add dynamcis for each step
-  int t = 0;
-  graph.add(dynamicsFactorGraph(robots[0], t));
+  // Return either ContactPoints or None if none specified for phase p
+  auto contact_points =
+      [&phase_contact_points](int p) -> boost::optional<ContactPoints> {
+    if (phase_contact_points) return (*phase_contact_points)[p];
+    return boost::none;
+  };
 
-  for (int phase = 0; phase < num_phases; phase++) {
+  // First slice, k==0
+  graph.add(dynamicsFactorGraph(robots[0], 0, contact_points(0), mu));
+
+  int k = 0;
+  for (int p = 0; p < num_phases; p++) {
     // in-phase
-    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
-         phase_step++) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t));
+    // add dynamics for each step
+    for (int step = 0; step < phase_steps[p] - 1; step++) {
+      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
     }
-    // transition
-    if (phase == num_phases - 1) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t));
+    if (p == num_phases - 1) {
+      // Last slice, k==K-1
+      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
     } else {
-      t++;
-      graph.add(transition_graphs[phase]);
+      // transition
+      graph.add(transition_graphs[p]);
+      k++;
     }
   }
 
   // add collocation factors
-  t = 0;
-  for (int phase = 0; phase < num_phases; phase++) {
-    for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-      graph.add(
-          multiPhaseCollocationFactors(robots[phase], t++, phase, collocation));
+  k = 0;
+  for (int p = 0; p < num_phases; p++) {
+    for (int step = 0; step < phase_steps[p]; step++) {
+      graph.add(multiPhaseCollocationFactors(robots[p], k++, p, collocation));
     }
   }
   return graph;

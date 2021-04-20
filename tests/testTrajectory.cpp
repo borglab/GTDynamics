@@ -16,6 +16,7 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/Phase.h"
 #include "gtdynamics/utils/Trajectory.h"
 #include "gtdynamics/utils/WalkCycle.h"
@@ -99,22 +100,22 @@ TEST(Trajectory, error) {
   walk_cycle.addPhase(phase_2);
 
   // Initialize Trajectory
-  size_t repeat = 5;
+  size_t repeat = 3;
   auto trajectory = gtdynamics::Trajectory(walk_cycle, repeat);
 
   auto phase_cps = trajectory.phaseContactPoints();
-  EXPECT_LONGS_EQUAL(10, phase_cps.size());
+  EXPECT_LONGS_EQUAL(repeat * 2, phase_cps.size());
   EXPECT_LONGS_EQUAL(3, phase_cps[2].size());
 
   auto trans_cps = trajectory.transitionContactPoints();
-  EXPECT_LONGS_EQUAL(9, trans_cps.size());
+  EXPECT_LONGS_EQUAL(5, trans_cps.size());
   EXPECT_LONGS_EQUAL(2, trans_cps[1].size());
 
   auto phase_durations = trajectory.phaseDurations();
   EXPECT_LONGS_EQUAL(2, phase_durations[2]);
 
   auto robot_models = trajectory.phaseRobotModels();
-  EXPECT_LONGS_EQUAL(10, robot_models.size());
+  EXPECT_LONGS_EQUAL(6, robot_models.size());
 
   auto final_timesteps = trajectory.finalTimeSteps();
   EXPECT_LONGS_EQUAL(7, final_timesteps[2]);
@@ -130,7 +131,7 @@ TEST(Trajectory, error) {
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
       trajectory.transitionPhaseInitialValues(gaussian_noise);
-  EXPECT_LONGS_EQUAL(9, transition_graph_init.size());
+  EXPECT_LONGS_EQUAL(5, transition_graph_init.size());
 
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
@@ -139,23 +140,26 @@ TEST(Trajectory, error) {
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
       trajectory.getTransitionGraphs(graph_builder, mu);
-  // 5 repeates, 2 phaes -> 10 phases, 9 transitions
-  EXPECT_LONGS_EQUAL(9, transition_graphs.size());
+  EXPECT_LONGS_EQUAL(repeat * 2 - 1, transition_graphs.size());
   // regression test
   EXPECT_LONGS_EQUAL(205, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
-  auto multi_phase_graph = trajectory.multiPhaseFactorGraph(
+  auto graph = trajectory.multiPhaseFactorGraph(
       graph_builder, gtdynamics::DynamicsGraph::CollocationScheme::Euler, mu);
   // regression test
-  EXPECT_LONGS_EQUAL(6760, multi_phase_graph.size());
+  EXPECT_LONGS_EQUAL(4330, graph.size());
+  EXPECT_LONGS_EQUAL(4712, graph.keys().size());
+
+  Values init_vals = trajectory.multiPhaseInitialValues(1e-5, 1. / 240);
+  EXPECT_LONGS_EQUAL(4712, init_vals.size());
 
   // Test objectives for contact links.
   const double ground_height = 0.0;
   auto contact_link_objectives = trajectory.contactLinkObjectives(
       noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
   // regression test
-  EXPECT_LONGS_EQUAL(130, contact_link_objectives.size());
+  EXPECT_LONGS_EQUAL(80, contact_link_objectives.size());
 
   // Test boundary conditions.
   NonlinearFactorGraph boundary_conditions;
