@@ -92,12 +92,12 @@ class JumpingRobot:
             phase (int, optional): phase Defaults to 0
                 - 0: ground
                 - 1: left on ground
-                - 2: right on ground 
+                - 2: right on ground
                 - 3: in air
         """
         self.params = self.load_file(yaml_file_path)
         self.init_config = init_config
-        self.robot = self.create_robot(self.params, phase)
+        self.robot = self.create_robot(self.params, init_config, phase)
         self.actuators = [Actuator("knee_r", self.robot, self.params["knee"], False),
                           Actuator("hip_r", self.robot, self.params["hip"], True),
                           Actuator("hip_l", self.robot, self.params["hip"], True),
@@ -116,10 +116,11 @@ class JumpingRobot:
 
     @staticmethod
     def create_init_config(torso_pose=gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.1)),
-                           torso_twist = np.zeros(6),
+                           torso_twist=np.zeros(6),
                            rest_angles=[0, 0, 0, 0, 0, 0],
                            init_angles=[0, 0, 0, 0, 0, 0],
-                           init_vels=[0, 0, 0, 0, 0, 0]):
+                           init_vels=[0, 0, 0, 0, 0, 0],
+                           foot_dist=0.55):
         """ Create initial configuration specification.
 
         Args:
@@ -128,6 +129,7 @@ class JumpingRobot:
             rest_angles (list, optional): joint angles at rest.
             init_angles (list, optional): initial joint angles.
             init_vels (list, optional): initial joint velocities.
+            foot_dist (double): distance between two feet
 
         Returns:
             Dict: specifiction of initial configuration
@@ -146,6 +148,7 @@ class JumpingRobot:
             init_config["vs"][joint_name] = joint_vel
         for joint_name, rest_angle in zip(joint_names, rest_angles):
             init_config["qs_rest"][joint_name] = rest_angle
+        init_config["foot_dist"] = foot_dist
         return init_config
 
     @staticmethod
@@ -153,8 +156,8 @@ class JumpingRobot:
         """ Create control specficiation for jumping robot.
 
         Args:
-            Tos (list, optional): valve open times. 
-            Tcs (list, optional): valve close times. 
+            Tos (list, optional): valve open times.
+            Tcs (list, optional): valve close times.
             P_s_0 (float, optional): initial tank pressure.
 
         Returns:
@@ -172,17 +175,17 @@ class JumpingRobot:
         return controls
 
     @staticmethod
-    def create_robot(params, phase) -> gtd.Robot:
+    def create_robot(params, init_config, phase) -> gtd.Robot:
         """ Create the robot. """
         # morphology parameters
         length_list = params["morphology"]["l"]
         mass_list = params["morphology"]["m"]
         link_radius = params["morphology"]["r_cyl"]
-        foot_distance = params["morphology"]["foot_dist"]
+        foot_dist = init_config["foot_dist"]
 
         # compute link, joint poses
-        link_poses, joint_poses = JumpingRobot.compute_poses(length_list, foot_distance)
-        
+        link_poses, joint_poses = JumpingRobot.compute_poses(length_list, foot_dist)
+
         # cosntruct links
         ground = gtd.Link(0, "ground", 1, np.eye(3), Pose3(), Pose3(), True)
         shank_r = JumpingRobot.construct_link(
@@ -243,20 +246,20 @@ class JumpingRobot:
         return gtd.Robot(link_dict, joint_dict)
 
     @staticmethod
-    def compute_poses(length_list: list, foot_distance: float):
+    def compute_poses(length_list: list, foot_dist: float):
         """ Compute poses for links and joints. (Assume the shank link
         and the thigh link of a leg are on the same line.)
 
         Args:
             length_list (list): length of links
-            foot_distance (float): distance between two feet
+            foot_dist (float): distance between two feet
 
         Returns:
             dict, dict: link poses, joint poses
         """
 
         # compute the configuration of the robot by solving a small optimization problem
-        values = JumpingRobot.compute_poses_helper(length_list, foot_distance)
+        values = JumpingRobot.compute_poses_helper(length_list, foot_dist)
         p0 = values.atPose2(0)
         p1 = values.atPose2(1)
         p2 = values.atPose2(2)
@@ -284,7 +287,7 @@ class JumpingRobot:
         return link_poses, joint_poses
 
     @staticmethod
-    def compute_poses_helper(length_list: list, foot_distance: float) -> Values:
+    def compute_poses_helper(length_list: list, foot_dist: float) -> Values:
         """ compute the configuration by solving a simple factor graph:
             - under the constraint that thigh and shank are in the same line,
                 the robot can be simplied as 3 links
@@ -298,10 +301,10 @@ class JumpingRobot:
         length_mid = length_list[2]
 
         init_values = Values()
-        init_values.insert(0, Pose2(foot_distance/2, 0, 0))
-        init_values.insert(1, Pose2(foot_distance/2, length_right, 0))
-        init_values.insert(2, Pose2(-foot_distance/2, length_left, 0))
-        init_values.insert(3, Pose2(-foot_distance/2, 0, 0))
+        init_values.insert(0, Pose2(foot_dist/2, 0, 0))
+        init_values.insert(1, Pose2(foot_dist/2, length_right, 0))
+        init_values.insert(2, Pose2(-foot_dist/2, length_left, 0))
+        init_values.insert(3, Pose2(-foot_dist/2, 0, 0))
 
         range_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1]))
         prior_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1, 1, 1]))
@@ -309,8 +312,8 @@ class JumpingRobot:
         graph.add(RangeFactorPose2(0, 1, length_right, range_noise))
         graph.add(RangeFactorPose2(1, 2, length_mid, range_noise))
         graph.add(RangeFactorPose2(2, 3, length_left, range_noise))
-        graph.add(PriorFactorPose2(0, Pose2(foot_distance/2, 0, 0), prior_noise))
-        graph.add(PriorFactorPose2(3, Pose2(-foot_distance/2, 0, 0), prior_noise))
+        graph.add(PriorFactorPose2(0, Pose2(foot_dist/2, 0, 0), prior_noise))
+        graph.add(PriorFactorPose2(3, Pose2(-foot_dist/2, 0, 0), prior_noise))
 
         return gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
 
