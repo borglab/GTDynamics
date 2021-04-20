@@ -83,6 +83,46 @@ class TestCdprControllerIlqr(GtsamTestCase):
         expected_0c0_K_0v = 2 * expected_0c0_K_1v
         self.gtsamAssertEquals(actual_0c0_K_0v[:, 3:], expected_0c0_K_0v[:, 3:], tol=dt)
 
+    def testGainsLongHorizon(self):
+        """Approximate infinite horizon problem by doing very long horizon.  Compare with matlab.
+        """
+        cdpr = Cdpr()
+        cdpr.params.tmin = -1
+        cdpr.params.tmax = 1
+        dt = 0.01
+
+        x0 = gtsam.Values()
+        gtd.InsertPose(x0, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
+        gtd.InsertTwist(x0, cdpr.ee_id(), 0, np.zeros(6))
+        x_des = [Pose3(Rot3(), (1.5, 0, 1.5)) for t in range(1000)]
+        controller = CdprControllerIlqr(cdpr, x0=x0, pdes=x_des, dt=dt,
+                                        Q=np.array([0,1,0,2,0,3]), R=np.array([0.12]))
+        ''' matlab code:
+        dt = 0.01;
+        m = 1;
+
+        A = [zeros(2), eye(2);...
+             zeros(2), zeros(2)];
+        B_F = [zeros(2);...
+               eye(2) / m];
+        F_T = [1, 1, -1, -1;...
+               -1, 1, 1, -1] / sqrt(2);
+        B = B_F * F_T;
+        Q = diag([2, 3, 0, 0]);
+        R = diag(repmat([0.12], 4, 1));
+        [K, ~, ~] = lqrd(A, B, Q, R, dt)
+        '''
+        expected_0c_K = -np.array([ # minus sign because matlab uses u=-Kx convention
+            #  vx      vy       x       y
+            [ 2.0069, -2.4534,  1.1912, -1.3171],
+            [ 2.0069,  2.4534,  1.1912,  1.3171],
+            [-2.0069,  2.4534, -1.1912,  1.3171],
+            [-2.0069, -2.4534, -1.1912, -1.3171]
+        ])
+        actual_0c_K = controller.gains_ff[0][0]
+        actual_0c_K = actual_0c_K[:, [9, 11, 3, 5]]
+        self.gtsamAssertEquals(expected_0c_K, actual_0c_K, 2e-2)
+
     def testRun(self):
         """Tests that controller will not "compile" (aka run without errors)
         """
