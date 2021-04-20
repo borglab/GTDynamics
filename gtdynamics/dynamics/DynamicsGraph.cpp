@@ -205,12 +205,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
                                    internal::JointAngleKey(joint->id(), t),
                                    opt_.p_cost_model, joint);
 
-  // TODO(frank): clearly document this behavior
+  // TODO(frank): whoever write this should clean up this mess.
   gtsam::Vector3 gravity;
   if (gravity_)
     gravity = *gravity_;
   else
-    gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+    gravity = gtsam::Vector3(0, 0, -9.8);
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -307,12 +307,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
 
-  // TODO(frank): clearly document this behavior
+  // TODO(frank): whoever write this should clean up this mess.
   gtsam::Vector3 gravity;
   if (gravity_)
     gravity = *gravity_;
   else
-    gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+    gravity = gtsam::Vector3(0, 0, -9.8);
 
   double mu_;  // Static friction coefficient.
   if (mu)
@@ -334,18 +334,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       if (contact_points) {
         for (auto &&contact_point : *contact_points) {
           if (contact_point.first != link->name()) continue;
-
-          wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
+          auto wrench_key = ContactWrenchKey(i, contact_point.second.id, t);
+          wrenches.push_back(wrench_key);
 
           // Add contact dynamics constraints.
           graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-              internal::PoseKey(i, t),
-              ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cfriction_cost_model, mu_, gravity);
+              internal::PoseKey(i, t), wrench_key, opt_.cfriction_cost_model,
+              mu_, gravity);
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
-              ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cm_cost_model,
+              wrench_key, opt_.cm_cost_model,
               gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         }
       }
@@ -360,19 +358,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   }
 
   for (auto &&joint : robot.joints()) {
+    auto j = joint->id(), child_id = joint->child()->id();
     graph.emplace_shared<WrenchEquivalenceFactor>(
-        internal::WrenchKey(joint->parent()->id(), joint->id(), t),
-        internal::WrenchKey(joint->child()->id(), joint->id(), t),
-        internal::JointAngleKey(joint->id(), t), opt_.f_cost_model,
-        boost::static_pointer_cast<const JointTyped>(joint));
+        internal::WrenchKey(joint->parent()->id(), j, t),
+        internal::WrenchKey(child_id, j, t), internal::JointAngleKey(j, t),
+        opt_.f_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
     graph.emplace_shared<TorqueFactor>(
-        internal::WrenchKey(joint->child()->id(), joint->id(), t),
-        internal::TorqueKey(joint->id(), t), opt_.t_cost_model,
-        boost::static_pointer_cast<const JointTyped>(joint));
+        internal::WrenchKey(child_id, j, t), internal::TorqueKey(j, t),
+        opt_.t_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
     if (planar_axis_)
       graph.emplace_shared<WrenchPlanarFactor>(
-          internal::WrenchKey(joint->child()->id(), joint->id(), t),
-          opt_.planar_cost_model, *planar_axis_);
+          internal::WrenchKey(child_id, j, t), opt_.planar_cost_model,
+          *planar_axis_);
   }
   return graph;
 }
