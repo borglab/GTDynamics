@@ -20,11 +20,11 @@ make
 
 - You will need to copy the generated `traj.csv` file in the example build directory to this directory.
 
-- Open MatLab and navigate to this example's directory. In the MatLab command window, run:
+- Open Matlab and navigate to this example's directory. In the Matlab command window, run:
 
 `>> visualize_traj`
 
-**3. Simulating the controller (_required Python3 and PyBullet_)**
+**3. Simulating the controller (_requires Python3 and PyBullet_)**
 
 First execute step 1.
 
