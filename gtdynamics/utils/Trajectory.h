@@ -174,10 +174,9 @@ class Trajectory {
       const DynamicsGraph::CollocationScheme collocation, double mu) const {
     // Graphs for transition between phases + their initial values.
     auto transition_graphs = getTransitionGraphs(graph_builder, mu);
-    auto graph = graph_builder.multiPhaseTrajectoryFG(
+    return graph_builder.multiPhaseTrajectoryFG(
         phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
         phaseContactPoints(), mu);
-    return graph;
   }
 
   /**
@@ -320,8 +319,9 @@ class Trajectory {
    * @fn Add minimum torque objectives.
    * @return All MinTorqueFactor factors as a NonlinearFactorGraph
    */
-  gtsam::NonlinearFactorGraph minimumTorqueObjectives(
-      const Robot &robot, const gtsam::SharedNoiseModel &cost_model) const;
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
+                               const Robot &robot,
+                               const gtsam::SharedNoiseModel &cost_model) const;
 
   /**
    * @fn Create objective factors for slice 0 and slice K.
@@ -333,8 +333,9 @@ class Trajectory {
    *
    * @return All factors as a NonlinearFactorGraph
    */
-  gtsam::NonlinearFactorGraph boundaryConditions(
-      const Robot &robot, const gtsam::SharedNoiseModel &pose_model,
+  void addBoundaryConditions(
+      gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+      const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,
       const gtsam::SharedNoiseModel &joint_velocity_model,
@@ -346,8 +347,8 @@ class Trajectory {
    * @param[in] desired_dt desired time step
    * @param[in] sigma      standard deviation (default 0: constrained)
    */
-  void add_time_step_priors(gtsam::NonlinearFactorGraph *graph,
-                            double desired_dt, double sigma = 0) const {
+  void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph *graph,
+                                 double desired_dt, double sigma = 0) const {
     auto model = gtsam::noiseModel::Isotropic::Sigma(1, sigma);
     for (int phase = 0; phase < numPhases(); phase++)
       graph->addPrior<double>(PhaseKey(phase), desired_dt, model);

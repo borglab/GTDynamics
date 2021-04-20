@@ -72,11 +72,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Noise models.
   auto dynamics_model_6 = Isotropic::Sigma(6, sigma_dynamics),
-       dynamics_model_3 = Isotropic::Sigma(3, sigma_dynamics),
        dynamics_model_1 = Isotropic::Sigma(1, sigma_dynamics),
        dynamics_model_1_2 = Isotropic::Sigma(1, sigma_joints),
        objectives_model_6 = Isotropic::Sigma(6, sigma_objectives),
-       objectives_model_3 = Isotropic::Sigma(3, sigma_objectives),
        objectives_model_1 = Isotropic::Sigma(1, sigma_objectives);
 
   // Env parameters.
@@ -115,10 +113,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Add link and joint boundary conditions to FG.
-  auto boundary_conditions = trajectory.boundaryConditions(
-      robot, dynamics_model_6, dynamics_model_6, objectives_model_6,
-      objectives_model_1, objectives_model_1);
-  objective_factors.add(boundary_conditions);
+  trajectory.addBoundaryConditions(&objective_factors, robot, dynamics_model_6,
+                                   dynamics_model_6, objectives_model_6,
+                                   objectives_model_1, objectives_model_1);
 
   // Add prior on hip joint angles
   for (auto &&joint : robot.joints()) {
@@ -133,11 +130,11 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Constrain all Phase keys to have duration of 1 /240.
   const double desired_dt = 1. / 240;
-  trajectory.add_time_step_priors(&objective_factors, desired_dt);
+  trajectory.addIntegrationTimeFactors(&objective_factors, desired_dt);
 
   // Add min torque objectives.
-  objective_factors.add(
-      trajectory.minimumTorqueObjectives(robot, Unit::Create(1)));
+  trajectory.addMinimumTorqueFactors(&objective_factors, robot,
+                                     Unit::Create(1));
 
   // Regression test on objective factors
   LONGS_EQUAL(1518, objective_factors.size());

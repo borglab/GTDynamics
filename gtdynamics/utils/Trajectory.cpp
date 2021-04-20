@@ -79,48 +79,44 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
   return factors;
 }
 
-NonlinearFactorGraph Trajectory::boundaryConditions(
-    const Robot &robot, const SharedNoiseModel &pose_model,
-    const SharedNoiseModel &twist_model,
+void Trajectory::addBoundaryConditions(
+    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+    const SharedNoiseModel &pose_model, const SharedNoiseModel &twist_model,
     const SharedNoiseModel &twist_acceleration_model,
     const SharedNoiseModel &joint_velocity_model,
     const SharedNoiseModel &joint_acceleration_model) const {
-  NonlinearFactorGraph factors;
-
   // Get final time step.
   int K = getEndTimeStep(numPhases() - 1);
 
   // Add link boundary conditions to FG.
   for (auto &&link : robot.links()) {
     // Initial link pose, twists.
-    add_link_objective(&factors, link->wTcom(), pose_model, Z_6x1, twist_model,
+    add_link_objective(graph, link->wTcom(), pose_model, Z_6x1, twist_model,
                        link->id(), 0);
 
     // Final link twists, accelerations.
-    add_twist_objective(&factors, Z_6x1, twist_model, Z_6x1,
+    add_twist_objective(graph, Z_6x1, twist_model, Z_6x1,
                         twist_acceleration_model, link->id(), K);
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(&factors, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
                                 joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(&factors, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
                                 joint_acceleration_model, K);
-  return factors;
 }
 
-NonlinearFactorGraph Trajectory::minimumTorqueObjectives(
-    const Robot &robot, const SharedNoiseModel &cost_model) const {
-  NonlinearFactorGraph factors;
+void Trajectory::addMinimumTorqueFactors(
+    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+    const SharedNoiseModel &cost_model) const {
   int K = getEndTimeStep(numPhases() - 1);
   for (auto &&joint : robot.joints()) {
     auto j = joint->id();
     for (int k = 0; k <= K; k++) {
-      factors.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
-                                              cost_model);
+      graph->emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
+                                             cost_model);
     }
   }
-  return factors;
 }
 
 }  // namespace gtdynamics

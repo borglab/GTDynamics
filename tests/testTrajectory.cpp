@@ -158,8 +158,9 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(130, contact_link_objectives.size());
 
   // Test boundary conditions.
-  auto boundary_conditions = trajectory.boundaryConditions(
-      robot, kModel6, kModel6, kModel6, kModel1, kModel1);
+  NonlinearFactorGraph boundary_conditions;
+  trajectory.addBoundaryConditions(&boundary_conditions, robot, kModel6,
+                                   kModel6, kModel6, kModel1, kModel1);
   // regression test
   EXPECT_LONGS_EQUAL(260, boundary_conditions.size());
 }
