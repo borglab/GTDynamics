@@ -42,7 +42,7 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
-  Phase stationary(robot, 4);
+  Phase stationary(robot, 1);
   stationary.addContactPoints(links, Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   Phase odd(robot, 2);
@@ -91,15 +91,15 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Create multi-phase trajectory factor graph
   auto collocation = DynamicsGraph::CollocationScheme::Euler;
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
-  LONGS_EQUAL(6551, graph.size());
-  LONGS_EQUAL(7311, graph.keys().size());
+  EXPECT_LONGS_EQUAL(3443, graph.size());
+  EXPECT_LONGS_EQUAL(3819, graph.keys().size());
 
   // Build the objective factors.
   NonlinearFactorGraph objective_factors = trajectory.contactLinkObjectives(
       Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
   // Regression test on objective factors
-  LONGS_EQUAL(200, objective_factors.size());
-  LONGS_EQUAL(200, objective_factors.keys().size());
+  EXPECT_LONGS_EQUAL(104, objective_factors.size());
+  EXPECT_LONGS_EQUAL(104, objective_factors.keys().size());
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -137,27 +137,28 @@ TEST(testSpiderWalking, WholeEnchilada) {
                                      Unit::Create(1));
 
   // Regression test on objective factors
-  LONGS_EQUAL(1518, objective_factors.size());
-  LONGS_EQUAL(1507, objective_factors.keys().size());
+  EXPECT_LONGS_EQUAL(918, objective_factors.size());
+  EXPECT_LONGS_EQUAL(907, objective_factors.keys().size());
 
   // Add objective factors to the graph
   graph.add(objective_factors);
-  LONGS_EQUAL(6551 + 1518, graph.size());
-  LONGS_EQUAL(7311, graph.keys().size());
+  EXPECT_LONGS_EQUAL(3443 + 918, graph.size());
+  EXPECT_LONGS_EQUAL(3819, graph.keys().size());
 
-  // TODO: Pass Trajectory here
   // Initialize solution.
-  // phase transition initial values.
   double gaussian_noise = 1e-5;
-  vector<Values> transition_graph_init =
-      trajectory.getInitTransitionValues(gaussian_noise);
-  auto robots = trajectory.phaseRobotModels();
-  auto phase_durations = trajectory.phaseDurations();
-  auto phase_cps = trajectory.phaseContactPoints();
-  Values init_vals = MultiPhaseZeroValuesTrajectory(
-      robots, phase_durations, transition_graph_init, desired_dt,
-      gaussian_noise, phase_cps);
-  LONGS_EQUAL(7311, init_vals.size());  // says it's 7435
+  Values init_vals =
+      trajectory.multiPhaseInitialValues(gaussian_noise, desired_dt);
+
+  // Check all the keys
+  auto graph_keys = graph.keys();
+  for (auto &&key : init_vals.keys()) {
+    if (!graph_keys.exists(key)) {
+      std::cout << _GTDKeyFormatter(key) << std::endl;
+    }
+  }
+
+  EXPECT_LONGS_EQUAL(3819, init_vals.size());  // says it's 3847
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
