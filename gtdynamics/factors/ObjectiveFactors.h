@@ -93,7 +93,7 @@ class add_link_objectives {
  * 
  * Example Usage:
  *  add_joint_objectives(graph, id, k).angle(0, noise)
- *                                    .vel(0, noise)
+ *                                    .velocity(0, noise)
  *                                    .accel(0, noise);
  */
 class add_joint_objectives {
