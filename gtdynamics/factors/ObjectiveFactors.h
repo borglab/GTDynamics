@@ -80,7 +80,7 @@ class add_link_objectives {
   add_link_objectives& twistAccel(
       gtsam::Vector6 twistAccel,
       const gtsam::SharedNoiseModel& twistAccel_model) {
-    graph_->addPrior<gtsam::Vector6>(internal::JointAccelKey(i_, k_),
+    graph_->addPrior<gtsam::Vector6>(internal::TwistAccelKey(i_, k_),
                                      twistAccel, twistAccel_model);
     return *this;
   }
