@@ -54,6 +54,8 @@ class TestCdprControllerIlqr(GtsamTestCase):
         """Tests locally linear, time-varying feedback gains
         """
         cdpr = Cdpr()
+        cdpr.params.tmin = -1
+        cdpr.params.tmax = 1
         dt = 0.01
 
         x0 = gtsam.Values()
@@ -63,7 +65,6 @@ class TestCdprControllerIlqr(GtsamTestCase):
                  Pose3(Rot3(), (1.5, 0, 1.5)),
                  Pose3(Rot3(), (1.5, 0, 1.5))]  # don't move
         controller = CdprControllerIlqr(cdpr, x0=x0, pdes=x_des, dt=dt, Q=np.ones(6)*1e12, R=np.array([1.]))
-        print(controller.fg.error(controller.result))
 
         # notation: x_K_y means xstar = K * dy
         #           where xstar is optimal x and dy is (desired_y - actual_y)
