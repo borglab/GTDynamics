@@ -9,19 +9,17 @@
  * @author Yetong Zhang
 """
 
-import os,sys,inspect
+import gtdynamics as gtd
+from gtsam import noiseModel, NonlinearFactorGraph
+import numpy as np
+
+import os, sys, inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 sys.path.insert(0, currentdir)
 
-import gtdynamics as gtd
-import gtsam
-from gtsam import noiseModel, NonlinearFactorGraph
-import numpy as np
-
 from jumping_robot import Actuator, JumpingRobot
-
 
 
 class RobotGraphBuilder:
@@ -67,20 +65,25 @@ class RobotGraphBuilder:
         return gtd.DynamicsGraph(opt, gravity, planar_axis)
 
     def dynamics_graph(self, jr: JumpingRobot, k: int) -> NonlinearFactorGraph:
-        """ Create a factor graph containing dynamcis constraints for robot frame. """
+        """ Create a factor graph of dynamcis constraints for robot frame. """
         graph = self.graph_builder.dynamicsFactorGraph(jr.robot, k, None, None)
-        joint_names = []
-        for joint in jr.robot.joints():
-            joint_names.append(joint.name())
+        joint_names = [joint.name() for joint in jr.robot.joints()]
         for name in ["foot_l", "foot_r"]:
             if name in joint_names:
                 j = jr.robot.joint(name).id()
                 torque_key = gtd.internal.TorqueKey(j, k).key()
-                graph.add(gtd.PriorFactorDouble(torque_key, 0.0, self.graph_builder.opt().prior_q_cost_model))
+                graph.add(gtd.PriorFactorDouble(torque_key, 0.0,
+                                                self.graph_builder.opt().t_cost_model))
         return graph
 
-    def collocation_graph(self, jr: JumpingRobot, step_phases: list) -> NonlinearFactorGraph:
-        """ Create a factor graph containing collocation constraints. """
+    def collocation_graph(self, jr: JumpingRobot, step_phases: list):
+        """ Create a factor graph containing collocation constraints.
+            - For ground phase, only collocation on the torso link, which is
+                enough to determine the constraints for the next step.
+                Additional constraints may cause conflict.
+            - For air phase, collocation on torso link and all joints.
+            - TODO(yetong): For single leg contact, collocation on all joints
+        """
         graph = NonlinearFactorGraph()
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
@@ -89,25 +92,17 @@ class RobotGraphBuilder:
             dt_key = gtd.PhaseKey(phase).key()
 
             # collocation on joint angles
-            collo_joint_names = ["hip_r", "hip_l"]
             if phase == 3:
-                collo_joint_names += ["knee_r", "knee_l"]
-            for name in collo_joint_names:
-                joint = self.jr.robot.joint(name)
-                j = joint.id()
-                q_prev_key = gtd.internal.JointAngleKey(j, k_prev).key()
-                q_curr_key = gtd.internal.JointAngleKey(j, k_curr).key()
-                v_prev_key = gtd.internal.JointVelKey(j, k_prev).key()
-                v_curr_key = gtd.internal.JointVelKey(j, k_curr).key()
-                a_prev_key = gtd.internal.JointAccelKey(j, k_prev).key()
-                a_curr_key = gtd.internal.JointAccelKey(j, k_curr).key()
-
-                q_col_cost_model = self.graph_builder.opt().q_col_cost_model
-                graph.add(gtd.TrapezoidalScalarColloFactor(
-                    q_prev_key, q_curr_key, v_prev_key, v_curr_key, dt_key, q_col_cost_model))
-                v_col_cost_model = self.graph_builder.opt().v_col_cost_model
-                graph.add(gtd.TrapezoidalScalarColloFactor(
-                    v_prev_key, v_curr_key, a_prev_key, a_curr_key, dt_key, v_col_cost_model))
+                collo_joint_names = ["hip_r", "hip_l", "knee_r", "knee_l"]
+                for name in collo_joint_names:
+                    joint = self.jr.robot.joint(name)
+                    j = joint.id()
+                    q_col_cost_model = self.graph_builder.opt().q_col_cost_model
+                    v_col_cost_model = self.graph_builder.opt().v_col_cost_model
+                    graph.add(gtd.TrapezoidalScalarColloFactor.Velocity(
+                        j, k_curr, dt_key, q_col_cost_model))
+                    graph.add(gtd.TrapezoidalScalarColloFactor.Angle(
+                        j, k_curr, dt_key, v_col_cost_model))
 
             # collocation on torso link
             link = self.jr.robot.link("torso")
@@ -121,9 +116,11 @@ class RobotGraphBuilder:
 
             pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
             graph.add(gtd.TrapezoidalPoseColloFactor(
-                pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key, dt_key, pose_col_cost_model))
+                pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
+                dt_key, pose_col_cost_model))
             twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
             graph.add(gtd.TrapezoidalPoseColloFactor(
-                twist_prev_key, twist_curr_key, twistaccel_prev_key, twistaccel_curr_key, dt_key, pose_col_cost_model))
+                twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                twistaccel_curr_key, dt_key, twist_col_cost_model))
 
         return graph
