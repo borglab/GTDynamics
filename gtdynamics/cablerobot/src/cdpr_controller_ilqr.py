@@ -48,13 +48,24 @@ class CdprControllerIlqr(CdprControllerBase):
         self.result = self.optimizer.optimize()
         self.fg = fg
         # gains
-        self.gains = self.extract_gains(cdpr, fg, self.result, len(self.pdes))
+        self.gains_ff = self.extract_gains_ff(cdpr, fg, self.result, len(self.pdes))
 
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
         control from the optimal trajectory.
         """
-        return self.result
+        K, uff, Vff, Tff = self.gains_ff[t]
+        # compute dx
+        Vhat = gtd.Twist(values, self.cdpr.ee_id(), t)
+        That = gtd.Pose(values, self.cdpr.ee_id(), t)
+        dx = np.hstack((Vhat - Vff, Tff.localCoordinates(That)))
+        #compute u
+        u = K @ dx + uff
+        # populate into values object
+        result = gtsam.Values()
+        for ji in range(4):
+            gtd.InsertTorqueDouble(result, ji, t, u[ji])
+        return result
 
     @staticmethod
     def create_ilqr_fg(cdpr, x0, pdes, dt, Q, R):
@@ -138,8 +149,9 @@ class CdprControllerIlqr(CdprControllerBase):
             cdpr (Cdpr): cable robot object
             fg (gtsam.NonlinearFactorGraph): The iLQR factor graph
             openloop_results (gtsam.Values): The open-loop optimal trajectory and controls
+            N (int): The total number of timesteps in the iLQR factor graph
         Returns:
-            gains (List[Tuple[np.ndarray, np.ndarray]]): The feedback gains in the form u = Kx
+            gains (List[np.ndarray]): The feedback gains in the form u = K*(x-xff) + uff
         """
         lid = cdpr.ee_id()
         net, u_inds = CdprControllerIlqr.extract_bayesnets(cdpr, fg, openloop_results, N)
@@ -153,11 +165,65 @@ class CdprControllerIlqr(CdprControllerBase):
             icond = net.at(neti)
             u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
             u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, 24:])
-            u_k = solve_triangular(ucond.R(), ucond.d())
             F_K_x = solve_triangular(icond.R(), -icond.S())[:24, -12:]
-            F_k = solve_triangular(icond.R(), icond.d())[:24]
             u_K_x = u_K_F @ F_K_x
             u_K_x[:, 6:] += u_K_p
-            u_k += u_K_F @ F_k
-            gains[t] = u_K_x, u_k
+            gains[t] = u_K_x
         return gains
+
+    @staticmethod
+    def extract_uff(results, N):
+        """Extracts the feedforward control terms in a more python-friendly format
+
+        Args:
+            results (gtsam.Values): contains the result of optimizing an iLQR factor graph
+            N (int): The total number of timesteps in the iLQR factor graph
+
+        Returns:
+            List[np.ndarray]: Feedforward control terms.
+        """
+        uff = []
+        for t in range(N):
+            uff.append(np.array([gtd.TorqueDouble(results, ji, t) for ji in range(4)]))
+        return uff
+
+    @staticmethod
+    def extract_xff(cdpr, results, N):
+        """Extracts the feedforward trajectory terms in a more python-friendly format
+
+        Args:
+            cdpr (Cdpr): cable robot
+            results (gtsam.Values): contains the result of optimizing an iLQR factor graph
+            N (int): The total number of timesteps in the iLQR factor graph
+
+        Returns:
+            List[Tuple[np.ndarray, gtsam.Pose3]]: Feedforward twist and pose terms, where each
+            element of the list contains a tuple of (Twist, Pose).
+        """
+        xff = []
+        for t in range(N):
+            xff.append((
+                gtd.Twist(results, cdpr.ee_id(), t),  #
+                gtd.Pose(results, cdpr.ee_id(), t)))
+        return xff
+
+    @staticmethod
+    def extract_gains_ff(cdpr, fg, openloop_results, N):
+        """Extracts both the gains and the feedforward controls/trajectory terms of the form
+        u = K*(x-xff) + uff
+
+        Args:
+            cdpr (Cdpr): cable robot object
+            fg (gtsam.NonlinearFactorGraph): The iLQR factor graph
+            openloop_results (gtsam.Values): The open-loop optimal trajectory and controls
+            N (int): The total number of timesteps in the iLQR factor graph
+        
+        Returns:
+            List[Tuple[np.ndarray, np.ndarray, np.ndarray, gtsam.Pose3]]: Gains and feedforward
+            terms as a list of tuples: (K, tension_ff, twist_ff, pose_ff) where u = K*(x-xff) + uff
+            and x stacks twist on top of pose.
+        """
+        return list(
+            zip(CdprControllerIlqr.extract_gains(cdpr, fg, openloop_results, N),
+                CdprControllerIlqr.extract_uff(openloop_results, N),
+                *zip(*CdprControllerIlqr.extract_xff(cdpr, openloop_results, N))))

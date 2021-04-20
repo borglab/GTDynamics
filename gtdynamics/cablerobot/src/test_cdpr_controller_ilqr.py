@@ -69,7 +69,7 @@ class TestCdprControllerIlqr(GtsamTestCase):
         #           where xstar is optimal x and dy is (desired_y - actual_y)
         #           note: when multiplying gain matrices together, be mindful of negative signs
         # position gain (Kp) - time 0, cable 0, pose gain
-        actual_0c0_K_0x = controller.gains[0][0][0:1, 6:]
+        actual_0c0_K_0x = controller.gains_ff[0][0][0:1, 6:]
         expected_1v_K_0x = np.diag([0, -1, 0, -1, 0, -1]) / dt  # v at t=1 in response to x at t=0
         expected_0c0_K_1v = np.array([0, 1e9, 0,
                                       -1 / np.sqrt(2) / 2, 0, 1 / np.sqrt(2) / 2]).reshape((1, -1)) * \
@@ -78,14 +78,9 @@ class TestCdprControllerIlqr(GtsamTestCase):
         self.gtsamAssertEquals(actual_0c0_K_0x[:, 3:], expected_0c0_K_0x[:, 3:], tol=1/dt)
 
         # velocity gain (Kd) - time 0, cable 0, twist gain
-        actual_0c0_K_0v = controller.gains[0][0][0:1, :6]
+        actual_0c0_K_0v = controller.gains_ff[0][0][0:1, :6]
         expected_0c0_K_0v = 2 * expected_0c0_K_1v
         self.gtsamAssertEquals(actual_0c0_K_0v[:, 3:], expected_0c0_K_0v[:, 3:], tol=dt)
-        
-        # feedforward term (uff) - time 0, cable 0, feedforward term
-        actual_0c0_ff = controller.gains[0][1][0:1]
-        expected_0c0_ff = np.zeros(1)
-        self.gtsamAssertEquals(actual_0c0_ff, expected_0c0_ff, tol=1e-6)
 
     def testRun(self):
         """Tests that controller will not "compile" (aka run without errors)
