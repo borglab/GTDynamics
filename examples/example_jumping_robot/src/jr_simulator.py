@@ -27,6 +27,9 @@ from jr_visualizer import visualize_jr_trajectory, make_plot
 
 
 class JRSimulator:
+    # TODO(yetong) create pneumatics.py and actuator.py, which contain
+    # the factors but also the functionality below that is
+    # pneumatics/actuator specific.
     """ Class for jumping robot simulation.
         Refer to `example_simulate` on setup and use. """
     def __init__(self, yaml_file_path, init_config):
