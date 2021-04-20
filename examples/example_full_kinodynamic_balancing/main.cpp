@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
   opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   auto graph_builder = DynamicsGraph(opt, gravity);
   gtsam::NonlinearFactorGraph graph = graph_builder.trajectoryFG(
-      vision60, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal,
+      vision60, t_steps, dt, CollocationScheme::Trapezoidal,
       contact_points, mu);
 
   auto base_link = vision60.link("body");

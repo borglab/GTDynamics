@@ -297,6 +297,9 @@ class OptimizerSetting {
 
 
 #include<gtdynamics/dynamics/DynamicsGraph.h>
+
+enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
+
 class DynamicsGraph {
   DynamicsGraph();
   DynamicsGraph(const boost::optional<gtsam::Vector3> &gravity,
@@ -305,8 +308,6 @@ class DynamicsGraph {
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt,
                 const boost::optional<gtsam::Vector3> &gravity,
                 const boost::optional<gtsam::Vector3> &planar_axis);
-
-  // enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const gtdynamics::Robot &robot, const int t,
@@ -368,7 +369,7 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation,
+      const gtdynamics::CollocationScheme collocation,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
@@ -381,15 +382,37 @@ class DynamicsGraph {
       const std::vector<gtdynamics::Robot> &robots,
       const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
+
+  void addCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph &graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const double dt, gtsam::noiseModel::Base* cost_model,
+      const gtdynamics::CollocationScheme collocation);
+
+  /** Add collocation factor for doubles, with dt as a variable. */
+  static void addMultiPhaseCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph &graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const gtsam::Key phase_key,
+      gtsam::noiseModel::Base* cost_model,
+      const gtdynamics::CollocationScheme collocation);
+
+  gtsam::NonlinearFactorGraph jointCollocationFactors(
+      const int j, const int t, const double dt,
+      const gtdynamics::CollocationScheme collocation) const;
+
+  gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
+      const int j, const int t, const int phase,
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph collocationFactors(
       const gtdynamics::Robot &robot, const int t, const double dt,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
       const gtdynamics::Robot &robot, const int t, const int phase,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph jointLimitFactors(const gtdynamics::Robot &robot,
                                                 const int t) const;

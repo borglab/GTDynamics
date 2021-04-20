@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   auto graph_builder = DynamicsGraph();
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
   auto kdfg = graph_builder.trajectoryFG(
-      simple_rpr, T, dt, DynamicsGraph::CollocationScheme::Euler, gravity);
+      simple_rpr, T, dt, CollocationScheme::Euler, gravity);
 
   // Specify the forward dynamics priors and add them to the factor graph.
   gtsam::Vector theta = (gtsam::Vector(3) << 0, 0, 0).finished();

@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
   // Create trajectory factor graph.
   auto graph_builder = DynamicsGraph(gravity, planar_axis);
   auto graph = graph_builder.trajectoryFG(
-      ip, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
+      ip, t_steps, dt, CollocationScheme::Trapezoidal);
 
   // Add initial conditions to trajectory factor graph.
   graph.addPrior(internal::JointAngleKey(j1_id, 0), theta_i, dynamics_model);
