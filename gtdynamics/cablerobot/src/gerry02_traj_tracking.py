@@ -49,7 +49,7 @@ def main(fname='data/iros_logo_2.h',
          Q=np.ones(6) * 1e2,
          R=np.ones(1) * 1e-2,
          N0=0,
-         N=500,
+         N=None,
          dN=1):
     """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
 
@@ -88,10 +88,11 @@ def main(fname='data/iros_logo_2.h',
     cdpr = Cdpr(params)
 
     # import data
+    isPaints, colorinds, colorpalette, traj = ParseFile(fname)
+    N = len(traj) if N is None else N
     dt = 0.01 * dN # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
     N = int(N/dN)  # scale time by dN
     N0 = int(N0/dN)
-    isPaints, colorinds, colorpalette, traj = ParseFile(fname)
     traj = (traj - [aw/2, ah/2]) * 0.8 + [aw/2, ah/2]  # rescale trajectory to be smaller
     traj = traj[::dN, :]
     if debug:
