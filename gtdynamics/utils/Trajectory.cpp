@@ -24,12 +24,59 @@
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
+using gtsam::Values;
 using gtsam::Z_6x1;
 using std::map;
 using std::string;
 using std::vector;
 
 namespace gtdynamics {
+
+vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
+    DynamicsGraph &graph_builder, double mu) const {
+  vector<NonlinearFactorGraph> transition_graphs;
+  vector<ContactPoints> trans_cps = transitionContactPoints();
+  vector<Robot> phase_robots = phaseRobotModels();
+  vector<int> final_timesteps = finalTimeSteps();
+  for (int p = 1; p < numPhases(); p++) {
+    transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
+        phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
+  }
+  return transition_graphs;
+}
+
+NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
+    DynamicsGraph &graph_builder,
+    const DynamicsGraph::CollocationScheme collocation, double mu) const {
+  // Graphs for transition between phases + their initial values.
+  auto transition_graphs = getTransitionGraphs(graph_builder, mu);
+  return graph_builder.multiPhaseTrajectoryFG(
+      phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
+      phaseContactPoints(), mu);
+}
+
+vector<Values> Trajectory::transitionPhaseInitialValues(
+    double gaussian_noise) const {
+  vector<ContactPoints> trans_cps = transitionContactPoints();
+  vector<Values> transition_graph_init;
+  vector<Robot> phase_robots = phaseRobotModels();
+  vector<int> final_timesteps = finalTimeSteps();
+  for (int p = 1; p < numPhases(); p++) {
+    transition_graph_init.push_back(
+        ZeroValues(phase_robots[p], final_timesteps[p - 1], gaussian_noise,
+                   trans_cps[p - 1]));
+  }
+  return transition_graph_init;
+}
+
+Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
+                                           double dt) const {
+  vector<Values> transition_graph_init =
+      transitionPhaseInitialValues(gaussian_noise);
+  return MultiPhaseZeroValuesTrajectory(phaseRobotModels(), phaseDurations(),
+                                        transition_graph_init, dt,
+                                        gaussian_noise, phaseContactPoints());
+}
 
 NonlinearFactorGraph Trajectory::contactLinkObjectives(
     const SharedNoiseModel &cost_model, const double ground_height) const {

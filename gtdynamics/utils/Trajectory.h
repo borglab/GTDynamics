@@ -151,17 +151,7 @@ class Trajectory {
    * @return Vector of Transition Graphs
    */
   std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      DynamicsGraph &graph_builder, double mu) const {
-    std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
-    std::vector<ContactPoints> trans_cps = transitionContactPoints();
-    std::vector<Robot> phase_robots = phaseRobotModels();
-    std::vector<int> final_timesteps = finalTimeSteps();
-    for (int p = 1; p < numPhases(); p++) {
-      transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-          phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
-    }
-    return transition_graphs;
-  }
+      DynamicsGraph &graph_builder, double mu) const;
 
   /**
    * @fn Builds multi-phase factor graph.
@@ -171,32 +161,23 @@ class Trajectory {
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
       DynamicsGraph &graph_builder,
-      const DynamicsGraph::CollocationScheme collocation, double mu) const {
-    // Graphs for transition between phases + their initial values.
-    auto transition_graphs = getTransitionGraphs(graph_builder, mu);
-    return graph_builder.multiPhaseTrajectoryFG(
-        phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
-        phaseContactPoints(), mu);
-  }
+      const DynamicsGraph::CollocationScheme collocation, double mu) const;
 
   /**
    * @fn Returns Initial values for transition graphs.
    * @param[in]gaussian_noise    Gaussian noise to add to initial values
    * @return Initial values for transition graphs
    */
-  std::vector<gtsam::Values> getInitTransitionValues(
-      double gaussian_noise) const {
-    std::vector<ContactPoints> trans_cps = transitionContactPoints();
-    std::vector<gtsam::Values> transition_graph_init;
-    std::vector<Robot> phase_robots = phaseRobotModels();
-    std::vector<int> final_timesteps = finalTimeSteps();
-    for (int p = 1; p < numPhases(); p++) {
-      transition_graph_init.push_back(
-          ZeroValues(phase_robots[p], final_timesteps[p - 1], gaussian_noise,
-                     trans_cps[p - 1]));
-    }
-    return transition_graph_init;
-  }
+  std::vector<gtsam::Values> transitionPhaseInitialValues(
+      double gaussian_noise) const;
+
+  /**
+   * @fn Returns Initial values for multi-phase factor graph.
+   * @param[in]gaussian_noise    Gaussian noise to add to initial values
+   * @param[in]desired_dt        integration timestep
+   * @return Initial values for multi-phase factor graph
+   */
+  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
 
   /**
    * @fn Returns a vector of final time step for every phase.

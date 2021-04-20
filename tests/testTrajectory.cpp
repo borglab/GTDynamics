@@ -129,7 +129,7 @@ TEST(Trajectory, error) {
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
-      trajectory.getInitTransitionValues(gaussian_noise);
+      trajectory.transitionPhaseInitialValues(gaussian_noise);
   EXPECT_LONGS_EQUAL(9, transition_graph_init.size());
 
   gtsam::Vector3 gravity(0, 0, -9.8);
