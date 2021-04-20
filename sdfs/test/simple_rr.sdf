@@ -2,7 +2,7 @@
 <world name='default'>
   <model name='simple_rr_sdf'>
     <plugin name='set_joint_velocity_plugin' filename='libSetJointVelocityPlugin.so'/>
-
+  
     <!-- A simple rr robot with three links and two revolute joints -->
     <link name='link_0'>
       <pose frame=''>0 0 0.0 0 -0 0</pose>

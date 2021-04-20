@@ -33,7 +33,7 @@ using gtsam::noiseModel::Isotropic;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
-  auto ip = CreateRobotFromFile("../inverted_pendulum.urdf");
+  auto ip = CreateRobotFromFile(URDF_PATH + "/inverted_pendulum.urdf");
   auto j1_id = ip.joint("j1")->id();
   ip.fixLink("l1");
   ip.print();
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::ofstream traj_file;
-  traj_file.open("../traj.csv");
+  traj_file.open("traj.csv");
   traj_file << "t,theta,dtheta,ddtheta,tau"
             << "\n";
   double t_elapsed = 0;

@@ -35,9 +35,9 @@
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
+  // Load the Vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = CreateRobotFromFile("../vision60.urdf");
+  auto vision60 = CreateRobotFromFile(URDF_PATH + "/vision60.urdf");
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
   for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
   std::string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
-  traj_file.open("../traj.csv");
+  traj_file.open("traj.csv");
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
             << jnames_str << ",gol_x"

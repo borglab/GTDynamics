@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
-project(gtdynamics_demo C CXX)
+project(example_forward_dynamics C CXX)
 
-## Find Dependencies
+# Find Dependencies
 
 # For parsing urdf/sdf files.
 find_package(sdformat8 REQUIRED)
@@ -13,11 +13,16 @@ find_package(GTSAM REQUIRED) # Uses installed package
 find_library(GTDYNAMICS NAMES gtdynamics)
 find_path(GTDYNAMICS_INCLUDE_DIR NAMES gtdynamics)
 
-## Build Executable
+# Build Executable
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GTDYNAMICS} gtsam
+                                             ${SDFormat_LIBRARIES})
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC ${GTDYNAMICS_INCLUDE_DIR} ${GTSAM_INCLUDE_DIR}
+                         ${SDFormat_INCLUDE_DIRS})
 
-add_executable(exec main.cpp)
-target_link_libraries(exec PUBLIC ${GTDYNAMICS} gtsam ${SDFormat_LIBRARIES})
-target_include_directories(exec PUBLIC
-    ${GTDYNAMICS_INCLUDE_DIR}
-    ${GTSAM_INCLUDE_DIR}
-    ${SDFormat_INCLUDE_DIRS})
+add_custom_target(
+  ${PROJECT_NAME}.run
+  COMMAND ./${PROJECT_NAME}
+  DEPENDS ${PROJECT_NAME}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
