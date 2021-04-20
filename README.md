@@ -62,7 +62,7 @@ $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
 # We can specify the install path with -DCMAKE_INSTALL_PREFIX
-$ cmake -DCMAKE_INSTALL_PREFIX ../install ..
+$ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
 ```
