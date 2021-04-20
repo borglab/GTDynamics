@@ -56,6 +56,15 @@ class TestDynamicsGraph(unittest.TestCase):
             .angle(0., noise1)  # duplicate angle
         self.assertEqual(graph.size(), 6)
         self.assertEqual(graph.keys().size(), 5)
+        # optional time index and noise model
+        gtd.add_joint_objectives(graph, 2)\
+            .acceleration(0.)\
+            .angle(0.)
+        gtd.add_link_objectives(graph, 1)\
+            .pose(gtsam.Pose3())\
+            .twistAccel(np.zeros(6))
+        self.assertEqual(graph.size(), 10)
+        self.assertEqual(graph.keys().size(), 9)
 
 
 if __name__ == "__main__":

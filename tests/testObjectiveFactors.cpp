@@ -64,6 +64,19 @@ TEST(ObjectiveFactors, JointAngleWithDerivatives) {
   EXPECT_LONGS_EQUAL(6, graph.size());
 }
 
+TEST(ObjectiveFactors, OptionalNoiseModels) {
+  NonlinearFactorGraph graph;
+  constexpr int id = 5, k = 777;
+  gtdynamics::add_joint_objectives(&graph, id, k)
+      .velocity(0)
+      .acceleration(0);
+  gtdynamics::add_joint_objectives(&graph, id, k)
+      .acceleration(0)
+      .angle(0)
+      .velocity(0);
+  EXPECT_LONGS_EQUAL(5, graph.size());
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

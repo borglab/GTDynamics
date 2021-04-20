@@ -466,24 +466,26 @@ class DynamicsGraph {
 class add_link_objectives {
   add_link_objectives(gtsam::NonlinearFactorGraph @graph, int i, int k = 0);
 
-  add_link_objectives &pose(gtsam::Pose3 pose,
-                            const gtsam::SharedNoiseModel &pose_model);
-  add_link_objectives &twist(gtsam::Vector6 twist,
-                             const gtsam::SharedNoiseModel &twist_model);
+  add_link_objectives &pose(
+      gtsam::Pose3 pose, const gtsam::SharedNoiseModel &pose_model = nullptr);
+  add_link_objectives &twist(
+      gtsam::Vector6 twist,
+      const gtsam::SharedNoiseModel &twist_model = nullptr);
   add_link_objectives &twistAccel(
       gtsam::Vector6 twistAccel,
-      const gtsam::SharedNoiseModel &twistAccel_model);
+      const gtsam::SharedNoiseModel &twistAccel_model = nullptr);
 };
 
 class add_joint_objectives {
   add_joint_objectives(gtsam::NonlinearFactorGraph @graph, int j, int k = 0);
 
-  add_joint_objectives &angle(double angle,
-                              const gtsam::SharedNoiseModel &angle_model);
-  add_joint_objectives &velocity(double velocity,
-                                 const gtsam::SharedNoiseModel &velocity_model);
+  add_joint_objectives &angle(
+      double angle, const gtsam::SharedNoiseModel &angle_model = nullptr);
+  add_joint_objectives &velocity(
+      double velocity, const gtsam::SharedNoiseModel &velocity_model = nullptr);
   add_joint_objectives &acceleration(
-      double acceleration, const gtsam::SharedNoiseModel &acceleration_model);
+      double acceleration,
+      const gtsam::SharedNoiseModel &acceleration_model = nullptr);
 };
 
 /********************** Value Initialization **********************/
