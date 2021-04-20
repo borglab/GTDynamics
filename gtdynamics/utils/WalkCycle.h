@@ -13,16 +13,13 @@
 
 #pragma once
 
+#include <gtdynamics/utils/Phase.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/Phase.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
 
 namespace gtdynamics {
 /**

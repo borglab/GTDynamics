@@ -205,12 +205,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
                                    internal::JointAngleKey(joint->id(), t),
                                    opt_.p_cost_model, joint);
 
-  // TODO(frank): clearly document this behavior
+  // TODO(frank): whoever write this should clean up this mess.
   gtsam::Vector3 gravity;
   if (gravity_)
     gravity = *gravity_;
   else
-    gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+    gravity = gtsam::Vector3(0, 0, -9.8);
 
   // Add contact factors.
   for (auto &&link : robot.links()) {
@@ -307,12 +307,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
 
-  // TODO(frank): clearly document this behavior
+  // TODO(frank): whoever write this should clean up this mess.
   gtsam::Vector3 gravity;
   if (gravity_)
     gravity = *gravity_;
   else
-    gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+    gravity = gtsam::Vector3(0, 0, -9.8);
 
   double mu_;  // Static friction coefficient.
   if (mu)
@@ -334,18 +334,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       if (contact_points) {
         for (auto &&contact_point : *contact_points) {
           if (contact_point.first != link->name()) continue;
-
-          wrenches.push_back(ContactWrenchKey(i, contact_point.second.id, t));
+          auto wrench_key = ContactWrenchKey(i, contact_point.second.id, t);
+          wrenches.push_back(wrench_key);
 
           // Add contact dynamics constraints.
           graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-              internal::PoseKey(i, t),
-              ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cfriction_cost_model, mu_, gravity);
+              internal::PoseKey(i, t), wrench_key, opt_.cfriction_cost_model,
+              mu_, gravity);
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
-              ContactWrenchKey(i, contact_point.second.id, t),
-              opt_.cm_cost_model,
+              wrench_key, opt_.cm_cost_model,
               gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
         }
       }
@@ -360,19 +358,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   }
 
   for (auto &&joint : robot.joints()) {
+    auto j = joint->id(), child_id = joint->child()->id();
     graph.emplace_shared<WrenchEquivalenceFactor>(
-        internal::WrenchKey(joint->parent()->id(), joint->id(), t),
-        internal::WrenchKey(joint->child()->id(), joint->id(), t),
-        internal::JointAngleKey(joint->id(), t), opt_.f_cost_model,
-        boost::static_pointer_cast<const JointTyped>(joint));
+        internal::WrenchKey(joint->parent()->id(), j, t),
+        internal::WrenchKey(child_id, j, t), internal::JointAngleKey(j, t),
+        opt_.f_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
     graph.emplace_shared<TorqueFactor>(
-        internal::WrenchKey(joint->child()->id(), joint->id(), t),
-        internal::TorqueKey(joint->id(), t), opt_.t_cost_model,
-        boost::static_pointer_cast<const JointTyped>(joint));
+        internal::WrenchKey(child_id, j, t), internal::TorqueKey(j, t),
+        opt_.t_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
     if (planar_axis_)
       graph.emplace_shared<WrenchPlanarFactor>(
-          internal::WrenchKey(joint->child()->id(), joint->id(), t),
-          opt_.planar_cost_model, *planar_axis_);
+          internal::WrenchKey(child_id, j, t), opt_.planar_cost_model,
+          *planar_axis_);
   }
   return graph;
 }
@@ -414,31 +411,38 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   NonlinearFactorGraph graph;
   int num_phases = robots.size();
 
-  // add dynamcis for each step
-  int t = 0;
-  graph.add(dynamicsFactorGraph(robots[0], t));
+  // Return either ContactPoints or None if none specified for phase p
+  auto contact_points =
+      [&phase_contact_points](int p) -> boost::optional<ContactPoints> {
+    if (phase_contact_points) return (*phase_contact_points)[p];
+    return boost::none;
+  };
 
-  for (int phase = 0; phase < num_phases; phase++) {
+  // First slice, k==0
+  graph.add(dynamicsFactorGraph(robots[0], 0, contact_points(0), mu));
+
+  int k = 0;
+  for (int p = 0; p < num_phases; p++) {
     // in-phase
-    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
-         phase_step++) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t));
+    // add dynamics for each step
+    for (int step = 0; step < phase_steps[p] - 1; step++) {
+      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
     }
-    // transition
-    if (phase == num_phases - 1) {
-      graph.add(dynamicsFactorGraph(robots[phase], ++t));
+    if (p == num_phases - 1) {
+      // Last slice, k==K-1
+      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
     } else {
-      t++;
-      graph.add(transition_graphs[phase]);
+      // transition
+      graph.add(transition_graphs[p]);
+      k++;
     }
   }
 
   // add collocation factors
-  t = 0;
-  for (int phase = 0; phase < num_phases; phase++) {
-    for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-      graph.add(
-          multiPhaseCollocationFactors(robots[phase], t++, phase, collocation));
+  k = 0;
+  for (int p = 0; p < num_phases; p++) {
+    for (int step = 0; step < phase_steps[p]; step++) {
+      graph.add(multiPhaseCollocationFactors(robots[p], k++, p, collocation));
     }
   }
   return graph;
@@ -478,9 +482,7 @@ DynamicsGraph::collocationFactors(const Robot &robot, const int t,
       break;
     }
   }
-  NonlinearFactorGraph nonlinear_graph;
-  nonlinear_graph.add(graph);
-  return nonlinear_graph;
+  return graph;
 }
 
 // the * operator for doubles in expression factor does not work well yet
@@ -529,9 +531,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseCollocationFactors(
           "runge-kutta and hermite-simpson not implemented yet");
     }
   }
-  NonlinearFactorGraph nonlinear_graph;
-  nonlinear_graph.add(graph);
-  return nonlinear_graph;
+  return graph;
 }
 
 gtsam::NonlinearFactorGraph
