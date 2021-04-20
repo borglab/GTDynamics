@@ -17,7 +17,7 @@ using namespace gtsam;
 
 namespace gtdynamics {
 
-/// Performs sequential elimination and preserves correct bayes net order
+/******************************************************************************/
 GaussianBayesNet::shared_ptr EliminateSequential(GaussianFactorGraph graph,
                                                  const Ordering& ordering) {
   BlockOrdering blockOrdering;
@@ -26,7 +26,7 @@ GaussianBayesNet::shared_ptr EliminateSequential(GaussianFactorGraph graph,
   return BlockEliminateSequential(graph, blockOrdering);
 }
 
-/// Performs sequential elimination and preserves correct bayes net order
+/******************************************************************************/
 GaussianBayesNet::shared_ptr BlockEliminateSequential(
     GaussianFactorGraph graph, const BlockOrdering &ordering) {
   // setup
