@@ -35,11 +35,15 @@ class TestJRSimulator(unittest.TestCase):
         self.init_config = JumpingRobot.create_init_config()
         self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
 
+    def robot(self):
+        """ Return the robot model. """
+        return self.jr_simulator.jr.robot
+
     def cal_jr_accels(self, theta, torque_hip, torque_knee):
         """ Compute groundtruth joint accelerations from virtual work. """
-        m1 = self.jr_simulator.jr.robot.link("shank_r").mass()
-        m2 = self.jr_simulator.jr.robot.link("thigh_r").mass()
-        m3 = self.jr_simulator.jr.robot.link("torso").mass()
+        m1 = self.robot().link("shank_r").mass()
+        m2 = self.robot().link("thigh_r").mass()
+        m3 = self.robot().link("torso").mass()
         link_radius = self.jr_simulator.jr.params["morphology"]["r_cyl"]
         l_link = self.jr_simulator.jr.params["morphology"]["l"][0]
 
@@ -68,13 +72,13 @@ class TestJRSimulator(unittest.TestCase):
         # construct known values
         values = gtsam.Values()
         k = 0
-        for joint in self.jr_simulator.jr.robot.joints():
+        for joint in self.robot().joints():
             j = joint.id()
             gtd.InsertTorqueDouble(values, j, k, torques[j])
             gtd.InsertJointAngleDouble(values, j, k, qs[j])
             gtd.InsertJointVelDouble(values, j, k, vs[j])
         torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
-        torso_i = self.jr_simulator.jr.robot.link("torso").id()
+        torso_i = self.robot().link("torso").id()
         gtd.InsertPose(values, torso_i, k, torso_pose)
         gtd.InsertTwist(values, torso_i, k, np.zeros(6))
 
@@ -82,10 +86,10 @@ class TestJRSimulator(unittest.TestCase):
         self.jr_simulator.step_robot_dynamics(k, values)
 
         # check joint accelerations
-        q_accels = gtd.DynamicsGraph.jointAccelsMap(self.jr_simulator.jr.robot,
+        q_accels = gtd.DynamicsGraph.jointAccelsMap(self.robot(),
                                                     values, k)
         expected_q_accels = self.cal_jr_accels(theta, torque_hip, torque_knee)
-        for joint in self.jr_simulator.jr.robot.joints():
+        for joint in self.robot().joints():
             name = joint.name()
             self.assertAlmostEqual(q_accels[name],
                                    expected_q_accels[name], places=7)
