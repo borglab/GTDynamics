@@ -259,9 +259,9 @@ class Cdpr:
         return graph
 
     # note: I am not using the strict definitions for forward/inverse dynamics.
-    # priors_fd solves for torques given twistaccel (no joint accel)
-    # priors_id solves for twistaccel (no joint accel) given torques
-    def priors_id(self, ks=[], torquess=[[]], values=None):
+    # priors_fd solves for twistaccel (no joint accel) given torques
+    # priors_id solves for torques given twistaccel (no joint accel)
+    def priors_fd(self, ks=[], torquess=[[]], values=None):
         """Creates factors roughly corresponding to the inverse dynamics problem.  While strictly
         inverse dynamics in Lynch & Park refers to the problem of calculating joint accelerations
         given joint torques, temproarily this function is more convenient which directly relates
@@ -286,7 +286,7 @@ class Cdpr:
                                                       torque, self.costmodel_prior_tau))
         return graph
 
-    def priors_fd(self, ks=[], VAs=[], values=None):
+    def priors_id(self, ks=[], VAs=[], values=None):
         """Creates factors roughly corresponding to the forward dynamics problem.  While strictly
         forward dynamics in Lynch & Park refers to the problem of calculating joint torques given
         joint accelerations, temproarily this function is more convenient which directly relates

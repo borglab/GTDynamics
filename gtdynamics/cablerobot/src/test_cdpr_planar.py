@@ -76,7 +76,7 @@ class TestCdprPlanar(GtsamTestCase):
         cdpr = Cdpr()
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
-        # things needed to define kinematic
+        # things needed to define IK
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
         # things needed to define ID
@@ -95,10 +95,10 @@ class TestCdprPlanar(GtsamTestCase):
         dfg.push_back(
             cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
                            [gtd.Twist(values, cdpr.ee_id(), 0)]))
-        fd1 = cdpr.priors_fd(ks=[0], VAs=[gtd.TwistAccel(values, cdpr.ee_id(), 0)])
-        fd2 = cdpr.priors_fd(ks=[0], values=values)
-        self.gtsamAssertEquals(fd1, fd2)
-        dfg.push_back(fd1)
+        id1 = cdpr.priors_id(ks=[0], VAs=[gtd.TwistAccel(values, cdpr.ee_id(), 0)])
+        id2 = cdpr.priors_id(ks=[0], values=values)
+        self.gtsamAssertEquals(id1, id2)
+        dfg.push_back(id1)
         # redundancy resolution
         dfg.push_back(
             gtd.PriorFactorDouble(
@@ -115,10 +115,10 @@ class TestCdprPlanar(GtsamTestCase):
             gtd.InsertTorqueDouble(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
-        # check ID priors functions
-        id1 = cdpr.priors_id(ks=[0], torquess=[[gtd.TorqueDouble(results, ji, 0) for ji in range(4)]])
-        id2 = cdpr.priors_id(ks=[0], values=results)
-        self.gtsamAssertEquals(id1, id2)
+        # check FD priors functions
+        fd1 = cdpr.priors_fd(ks=[0], torquess=[[gtd.TorqueDouble(results, ji, 0) for ji in range(4)]])
+        fd2 = cdpr.priors_fd(ks=[0], values=results)
+        self.gtsamAssertEquals(fd1, fd2)
 
     def testDynamicsCollocation(self):
         """Test dynamics factors across multiple timesteps by using collocation.
@@ -133,8 +133,8 @@ class TestCdprPlanar(GtsamTestCase):
         # initial state
         fg.push_back(
             cdpr.priors_ik(ks=[0], Ts=[Pose3(Rot3(), (1.5, 0, 1.5))], Vs=[np.zeros(6)]))
-        # torque inputs (ID priors)
-        fg.push_back(cdpr.priors_id(ks=[0, 1, 2], torquess=[[1,1,0,0],]*3))
+        # torque inputs (FD priors)
+        fg.push_back(cdpr.priors_fd(ks=[0, 1, 2], torquess=[[1,1,0,0],]*3))
         # construct initial guess
         init = gtsam.Values()
         init.insertDouble(0, 0.01)

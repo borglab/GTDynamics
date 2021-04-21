@@ -112,14 +112,13 @@ class CdprSimulator:
         xd.insertDouble(0, dt)
         gtd.InsertPose(xd, lid, k, gtd.Pose(x, lid, k))
         gtd.InsertTwist(xd, lid, k, gtd.Twist(x, lid, k))
-        # ID for this timestep + collocation to next time step
+        # FD for this timestep + collocation to next time step
         fg.push_back(cdpr.dynamics_factors(ks=[k]))
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
         # priors (pose/twist and torque inputs)
         fg.push_back(cdpr.priors_ik(ks=[k], values=xd))
-        fg.push_back(
-            cdpr.priors_id(ks=[k], values=u))
-        # ID initial guess
+        fg.push_back(cdpr.priors_fd(ks=[k], values=u))
+        # FD initial guess
         for ji in range(4):
             gtd.InsertTorqueDouble(xd, ji, k, gtd.TorqueDouble(u, ji, k))
             gtd.InsertWrench(xd, cdpr.ee_id(), ji, k, np.zeros(6))
