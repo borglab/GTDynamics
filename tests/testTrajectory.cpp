@@ -122,8 +122,11 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto prev_cp = trajectory.initContactPointGoal();
-  EXPECT_LONGS_EQUAL(5, prev_cp.size());
+  auto cp_goals = trajectory.initContactPointGoal();
+  EXPECT_LONGS_EQUAL(5, cp_goals.size());
+  // regression
+  EXPECT(gtsam::assert_equal(gtsam::Point3(3.18367, 1.06573, -2.99761),
+                             cp_goals["tarsus_2"], 1e-5));
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
