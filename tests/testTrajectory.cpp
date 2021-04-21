@@ -64,7 +64,7 @@ TEST(Trajectory, Intersection) {
 
   TrajectoryTest traj;
   ContactPoints intersection = traj.getIntersection(
-      phase_1.getAllContactPoints(), phase_2.getAllContactPoints());
+      phase_1.contactPoints(), phase_2.contactPoints());
 
   ContactPoints expected = {{"tarsus_2", {{3., 3., 3.}, 0, contact_height}},
                             {"tarsus_3", {{3., 3., 3.}, 0, contact_height}}};

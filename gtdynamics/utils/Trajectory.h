@@ -66,7 +66,7 @@ class Trajectory {
     const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
-        phase_cps.push_back(phase.getAllContactPoints());
+        phase_cps.push_back(phase.contactPoints());
       }
     }
     return phase_cps;
@@ -85,11 +85,11 @@ class Trajectory {
     ContactPoints phase_2_cps;
 
     for (int p = 0; p < walk_cycle_.numPhases(); p++) {
-      phase_1_cps = phases[p].getAllContactPoints();
+      phase_1_cps = phases[p].contactPoints();
       if (p == walk_cycle_.numPhases() - 1) {
-        phase_2_cps = phases[0].getAllContactPoints();
+        phase_2_cps = phases[0].contactPoints();
       } else {
-        phase_2_cps = phases[p + 1].getAllContactPoints();
+        phase_2_cps = phases[p + 1].contactPoints();
       }
 
       ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
@@ -231,7 +231,7 @@ class Trajectory {
   std::vector<std::string> getPhaseContactLinks(int phase) const {
     auto phases = walk_cycle_.phases();
     ContactPoints contact_points =
-        phases[phase % walk_cycle_.numPhases()].getAllContactPoints();
+        phases[phase % walk_cycle_.numPhases()].contactPoints();
     std::vector<std::string> contact_links;
     for (auto &&cp : contact_points) contact_links.push_back(cp.first);
     return contact_links;

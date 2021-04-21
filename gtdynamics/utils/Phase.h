@@ -72,7 +72,7 @@ class Phase {
   const Robot& getRobotConfiguration() const { return robot_configuration_; }
 
   /// Returns all the contact points in the stance
-  const ContactPoints& getAllContactPoints() const { return contact_points_; }
+  const ContactPoints &contactPoints() const { return contact_points_; }
 
   /// Returns the contact point object of link.
   const ContactPoint &getContactPointAtLink(const std::string &link) const {
