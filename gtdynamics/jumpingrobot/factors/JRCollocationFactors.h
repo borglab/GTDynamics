@@ -46,6 +46,8 @@ void AddSourceMassCollocationFactor(
   gtsam::Double_ expr_dt(dt_key);
   std::vector<gtsam::Double_> mdot0dt_vec;
   std::vector<gtsam::Double_> mdot1dt_vec;
+  mdot0dt_vec.reserve(mdot_prev_keys.size());
+  mdot1dt_vec.reserve(mdot_curr_keys.size());
   for (int idx = 0; idx < mdot_prev_keys.size(); idx++) {
     gtsam::Double_ mdot_prev(mdot_prev_keys[idx]);
     gtsam::Double_ mdot_curr(mdot_curr_keys[idx]);
