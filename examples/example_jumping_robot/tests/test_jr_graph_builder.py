@@ -25,7 +25,8 @@ from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
 
 
-class TestJRSimulator(unittest.TestCase):
+class TestJRGraphBuilder(unittest.TestCase):
+    """ Tests for JRGraphBuilder. """
     def setUp(self):
         """ Set up the graph builder and jumping robot. """
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"

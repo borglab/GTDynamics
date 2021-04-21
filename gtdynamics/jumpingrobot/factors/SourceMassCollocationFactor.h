@@ -28,6 +28,7 @@
 
 namespace gtdynamics {
 
+/** Function for creating expressions. */
 double multDouble1(const double& d1, const double& d2,
                    gtsam::OptionalJacobian<1, 1> H1,
                    gtsam::OptionalJacobian<1, 1> H2) {
@@ -36,6 +37,7 @@ double multDouble1(const double& d1, const double& d2,
   return d1 * d2;
 }
 
+/** Add mass collocation factors for source tank. */
 void AddSourceMassCollocationFactor(
     gtsam::NonlinearFactorGraph& graph,
     const std::vector<gtsam::Key>& mdot_prev_keys,
@@ -63,6 +65,9 @@ void AddSourceMassCollocationFactor(
   }
 }
 
+/** Add collocation factors for time.
+ * t_curr = t_prev + dt
+ */
 void AddTimeCollocationFactor(
   gtsam::NonlinearFactorGraph& graph,
   gtsam::Key t_prev_key, gtsam::Key t_curr_key, gtsam::Key dt_key,
