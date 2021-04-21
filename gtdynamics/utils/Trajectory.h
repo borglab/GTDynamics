@@ -198,44 +198,50 @@ class Trajectory {
   }
 
   /**
+   * @fn Return phase for given phase number p.
+   * @param[in]p    Phase number.
+   * @return Phase instance.
+   */
+  const Phase &phase(int p) const {
+    return walk_cycle_.phases().at(p % walk_cycle_.numPhases());
+  }
+
+  /**
    * @fn Returns the start time step for a given phase.
-   * @param[in]phase    Phase number.
+   * @param[in]p    Phase number.
    * @return Initial time step.
    */
-  int getStartTimeStep(int phase) const {
+  int getStartTimeStep(int p) const {
     std::vector<int> final_timesteps = finalTimeSteps();
-    auto phases = walk_cycle_.phases();
-    int t_p_i = final_timesteps[phase] -
-                phases[phase % walk_cycle_.numPhases()].numTimeSteps();
-    if (phase != 0) t_p_i += 1;
+    int t_p_i = final_timesteps[p] - phase(p).numTimeSteps();
+    if (p != 0) t_p_i += 1;
     return t_p_i;
   }
 
   /**
    * @fn Returns the end time step for a given phase.
-   * @param[in]phase    Phase number.
+   * @param[in]p    Phase number.
    * @return Final time step.
    */
-  int getEndTimeStep(int phase) const { return finalTimeSteps()[phase]; }
+  int getEndTimeStep(int p) const { return finalTimeSteps()[p]; }
 
   /**
    * @fn Returns the contact links for a given phase.
-   * @param[in]phase    Phase number.
+   * @param[in]p    Phase number.
    * @return Vector of contact links.
    */
-  ContactPoints getPhaseContactLinks(int phase) const {
-    auto phases = walk_cycle_.phases();
-    return phases[phase % walk_cycle_.numPhases()].contactPoints();
+  ContactPoints getPhaseContactLinks(int p) const {
+    return phase(p).contactPoints();
   }
 
   /**
    * @fn Returns the swing links for a given phase.
-   * @param[in]phase    Phase number.
+   * @param[in]p    Phase number.
    * @return Vector of swing links.
    */
-  std::vector<std::string> getPhaseSwingLinks(int phase) const {
+  std::vector<std::string> getPhaseSwingLinks(int p) const {
     std::vector<std::string> phase_swing_links;
-    auto contact_links = getPhaseContactLinks(phase);
+    auto contact_links = getPhaseContactLinks(p);
     for (auto &&kv : walk_cycle_.contactPoints()) {
       auto link_name = kv.first;
       if (contact_links.count(link_name) == 0)
