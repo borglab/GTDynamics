@@ -8,8 +8,8 @@
 using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the robot
-  auto simple_rr =
-      CreateRobotFromFile(kSdfPath + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto simple_rr = CreateRobotFromFile(
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
   simple_rr.print();
 
   gtsam::Vector3 gravity(0, 0, -9.8);

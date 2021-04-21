@@ -47,7 +47,8 @@ double kNoiseSigma = 1e-8;
 //   double T_i = 0, T_f = 10, dt = 1;
 
 //   gtsam::Values init_vals =
-//       InitializeSolutionInterpolation(robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
+//       InitializeSolutionInterpolation(robot, "l1", wTb_i, wTb_f, T_i, T_f,
+//       dt);
 
 //   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
@@ -64,7 +65,8 @@ double kNoiseSigma = 1e-8;
 //   // Check penultimate pose.
 //   EXPECT(
 //       assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
-//                          Point3(0.794193007439, 1.03129011851, 0.961521708273)),
+//                          Point3(0.794193007439, 1.03129011851,
+//                          0.961521708273)),
 //                    Pose(init_vals, id, n_steps_final - 1)));
 
 //   // Check end pose.
@@ -107,7 +109,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
 
 TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
   auto robot =
-      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -134,7 +136,7 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
 
 TEST(InitializeSolutionUtils, InverseKinematics) {
   auto robot =
-      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -204,7 +206,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
 TEST(InitializeSolutionUtils, ZeroValues) {
   auto robot =
-      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -232,7 +234,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
 
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto robot =
-      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -260,7 +262,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
 
 TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   auto robot =
-      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");

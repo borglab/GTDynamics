@@ -23,7 +23,7 @@ using namespace gtdynamics;
 
 TEST(WalkCycle, error) {
   Robot robot_configuration =
-      CreateRobotFromFile(kSdfPath + "/test/spider.sdf", "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
 
   // Initialize first phase
   size_t num_time_steps = 20;

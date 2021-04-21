@@ -120,7 +120,8 @@ TEST(ForwardKinematicsFactor, Movement) {
 }
 
 TEST(ForwardKinematicsFactor, ArbitraryTime) {
-  Robot robot = CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
   std::string base_link = "l1", end_link = "l2";
   size_t t = 81;
   Values joint_angles;
@@ -131,7 +132,8 @@ TEST(ForwardKinematicsFactor, ArbitraryTime) {
 
   Pose3 actual = factor.measured();
   Values fk = robot.forwardKinematics(joint_angles, t, base_link);
-  Pose3 wTl1 = Pose(fk, robot.link("l1")->id(), t), wTl2 = Pose(fk, robot.link("l2")->id(), t);
+  Pose3 wTl1 = Pose(fk, robot.link("l1")->id(), t),
+        wTl2 = Pose(fk, robot.link("l2")->id(), t);
   Pose3 expected = wTl1.between(wTl2);
   EXPECT(assert_equal(expected, actual));
 }
