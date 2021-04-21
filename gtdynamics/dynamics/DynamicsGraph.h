@@ -58,7 +58,7 @@ struct ContactPoint {
   double height = 0.0;
 
   ContactPoint() {}
-  ContactPoint(const gtsam::Point3 point, int id, double height = 0.0)
+  ContactPoint(const gtsam::Point3 &point, int id, double height = 0.0)
       : point(point), id(id), height(height) {}
 
   bool operator==(const ContactPoint &other) {

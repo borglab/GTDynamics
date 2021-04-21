@@ -69,20 +69,20 @@ class Phase {
   }
 
   /// Returns the robot configuration of the stance
-  Robot getRobotConfiguration() const { return robot_configuration_; }
+  const Robot& getRobotConfiguration() const { return robot_configuration_; }
 
   /// Returns all the contact points in the stance
-  ContactPoints getAllContactPoints() const { return contact_points_; }
+  const ContactPoints& getAllContactPoints() const { return contact_points_; }
 
   /// Returns the contact point object of link.
-  const ContactPoint getContactPointAtLink(const std::string& link) {
+  const ContactPoint &getContactPointAtLink(const std::string &link) const {
     if (contact_points_.find(link) == contact_points_.end()) {
       throw std::runtime_error("Link " + link + " has no contact point!");
     }
-    return contact_points_[link];
+    return contact_points_.at(link);
   }
 
   /// Returns the number of time steps in this phase
-  const int numTimeSteps() const { return num_time_steps_; }
+  int numTimeSteps() const { return num_time_steps_; }
 };
 }  // namespace gtdynamics
