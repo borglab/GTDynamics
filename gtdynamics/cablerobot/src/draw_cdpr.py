@@ -52,7 +52,7 @@ def draw_cdpr(ax, cdpr, x):
     l_b, = ax.plot(*b_coords(cdpr, x), color='#caa472')
     ls_ab = [ax.plot(*ab_coords(cdpr, x, ji))[0] for ji in range(4)]
     ax.axis('equal')
-    ax.set_xlabel('x(m)');ax.set_ylabel('y(m)');ax.set_title('Trajectory')
+    ax.set_xlabel('x(m)');ax.set_ylabel('y(m)');ax.set_title('Trajectory');ax.grid()
     return l_a, l_b, ls_ab
 def redraw_cdpr(l_a, l_b, ls_ab, cdpr, x):
     """Updates the lines for the frame, end effector, and cables"""
@@ -76,15 +76,18 @@ def redraw_traj(l_des, l_act, des_xy, act_xy, N=None):
     return l_des, l_act
 def draw_ctrl(ax, cdpr, tensions, Tf, dt):
     """Draws the control tension signals"""
-    ls_ctrl = plt.plot(np.arange(0,Tf,dt), tensions)
-    plt.plot([0, Tf], [cdpr.params.tmin,]*2, 'r--')
-    plt.plot([0, Tf], [cdpr.params.tmax,]*2, 'r--')
-    plt.xlabel('time (s)');plt.ylabel('Cable tension (N)');plt.title('Control Inputs')
+    ls_ctrl = ax.plot(np.arange(0,Tf,dt), tensions)
+    ax.plot([0, Tf], [cdpr.params.tmin,]*2, 'r--')
+    ax.plot([0, Tf], [cdpr.params.tmax,]*2, 'r--')
+    ax.set_xlabel('time (s)');ax.set_ylabel('Cable tension (N)');ax.set_title('Control Inputs')
+    ax.grid()
     return ls_ctrl,
 def redraw_ctrl(ls_ctrl, tensions, Tf, dt, N=None):
     """Updates the lines for the tensions plot"""
     if N is None:
         N = tensions.shape[0]
+    else:
+        ls_ctrl[0].axes.set_xlim(max(0, dt*N-10), max(10, dt*N))
     for ji in range(4):
         ls_ctrl[ji].set_data(np.arange(0,Tf,dt)[:N], tensions[:N, ji])
     return *ls_ctrl,
