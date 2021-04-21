@@ -84,26 +84,25 @@ class DynamicsSymbol {
    */
   DynamicsSymbol(const gtsam::Key& key);
 
-  /** Cast to integer */
+  /// Cast to a GTSAM Key.
   operator gtsam::Key() const;
 
-  inline std::string label() const {
-    std::string s = "";
-    if (c1_ != 0) s += c1_;
-    if (c2_ != 0) s += c2_;
-    return s;
-  }
+  /// Return string label.
+  std::string label() const;
 
+  /// Return link id.
   inline unsigned char linkIdx() const { return link_idx_; }
 
+  /// Return joint id.
   inline unsigned char jointIdx() const { return joint_idx_; }
 
-  /// Retrieve key index
+  /// Retrieve key index.
   inline size_t time() const { return t_; }
 
-  /// Testable Requirements
+  /// Print.
   void print(const std::string& s = "") const;
 
+  /// Check equality.
   bool equals(const DynamicsSymbol& expected, double tol = 0.0) const {
     return (*this) == expected;
   }

@@ -526,37 +526,27 @@ gtsam::Values ZeroValuesTrajectory(
 #include <gtdynamics/utils/DynamicsSymbol.h>
 class DynamicsSymbol {
   DynamicsSymbol();
-
+  DynamicsSymbol(const gtsam::Key& key);
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
   static DynamicsSymbol LinkJointSymbol(const string& s,
                                         unsigned char link_idx,
                                         unsigned char joint_idx,
                                         std::uint64_t t);
-
   static DynamicsSymbol JointSymbol(const string& s,
                                     unsigned char joint_idx, std::uint64_t t);
-
   static DynamicsSymbol LinkSymbol(const string& s, unsigned char link_idx,
                                    std::uint64_t t);
-
   static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
 
-  DynamicsSymbol(const gtsam::Key& key);
-
   string label() const;
-
   unsigned char linkIdx() const;
-
   unsigned char jointIdx() const;
-
   size_t time() const;
-
-  void print(const string& s);
-
-  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
-
   gtsam::Key key() const;
+
+  void print(const string& s = "");
+  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
 namespace internal {
