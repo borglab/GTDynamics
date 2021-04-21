@@ -51,6 +51,16 @@ using gtsam::ExpressionFactor;
 
 namespace gtdynamics {
 
+std::ostream &operator<<(std::ostream &os, const ContactPoint &cp) {
+  os << "{[" << cp.point.transpose() << "], " << cp.id << ", " << cp.height
+     << "}";
+  return os;
+}
+
+void ContactPoint::print(const std::string &s) const {
+  std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
+}
+
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     const Robot &robot, const int t, const gtsam::Values &known_values) {
   GaussianFactorGraph graph;

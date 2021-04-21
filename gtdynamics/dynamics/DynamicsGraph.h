@@ -65,6 +65,12 @@ struct ContactPoint {
     return (point == other.point && id == other.id && height == other.height);
   }
   bool operator!=(const ContactPoint &other) { return !(*this == other); }
+
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const ContactPoint &cp);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
 };
 
 ///< Map of link name to ContactPoint
