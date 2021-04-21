@@ -303,6 +303,14 @@ class OptimizerSetting {
 #include<gtdynamics/dynamics/DynamicsGraph.h>
 enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
+class ContactPoint {
+  ContactPoint();
+  ContactPoint(const gtsam::Point3& point, int id, double height = 0.0);
+  void print(const string &s = "");
+};
+
+// ContactPoints defined in specializations.h
+
 class DynamicsGraph {
   DynamicsGraph();
   DynamicsGraph(const boost::optional<gtsam::Vector3> &gravity,
@@ -487,13 +495,6 @@ class DynamicsGraph {
   /* return the optimizer setting. */
   const gtdynamics::OptimizerSetting &opt() const;
 };
-
-class ContactPoint {
-  ContactPoint();
-  ContactPoint(const gtsam::Point3& point, int id, double height = 0.0);
-};
-
-// ContactPoints defined in specializations.h
 
 /********************** Objective Factors **********************/
 #include <gtdynamics/factors/ObjectiveFactors.h>
@@ -689,6 +690,7 @@ class Phase {
   const gtdynamics::ContactPoints& contactPoints() const;
   const gtdynamics::ContactPoint& getContactPointAtLink(const string& link) const;
   int numTimeSteps() const;
+  void print(const string &s = "");
 };
 
 }  // namespace gtdynamics
