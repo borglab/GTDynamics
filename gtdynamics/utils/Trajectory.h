@@ -218,25 +218,14 @@ class Trajectory {
    */
   int getEndTimeStep(int phase) const { return finalTimeSteps()[phase]; }
 
-  std::vector<std::string> getLinks() const {
-    std::vector<std::string> link_list;
-    for (auto &&elem : walk_cycle_.contactPoints())
-      link_list.push_back(elem.first);
-    return link_list;
-  }
-
   /**
    * @fn Returns the contact links for a given phase.
    * @param[in]phase    Phase number.
    * @return Vector of contact links.
    */
-  std::vector<std::string> getPhaseContactLinks(int phase) const {
+  ContactPoints getPhaseContactLinks(int phase) const {
     auto phases = walk_cycle_.phases();
-    ContactPoints contact_points =
-        phases[phase % walk_cycle_.numPhases()].contactPoints();
-    std::vector<std::string> contact_links;
-    for (auto &&cp : contact_points) contact_links.push_back(cp.first);
-    return contact_links;
+    return phases[phase % walk_cycle_.numPhases()].contactPoints();
   }
 
   /**
@@ -246,11 +235,11 @@ class Trajectory {
    */
   std::vector<std::string> getPhaseSwingLinks(int phase) const {
     std::vector<std::string> phase_swing_links;
-    std::vector<std::string> contact_links = getPhaseContactLinks(phase);
-    for (auto &&l : getLinks()) {
-      if (std::find(contact_links.begin(), contact_links.end(), l) ==
-          contact_links.end())
-        phase_swing_links.push_back(l);
+    auto contact_links = getPhaseContactLinks(phase);
+    for (auto &&kv : walk_cycle_.contactPoints()) {
+      auto link_name = kv.first;
+      if (contact_links.count(link_name) == 0)
+        phase_swing_links.push_back(link_name);
     }
     return phase_swing_links;
   }
@@ -261,13 +250,12 @@ class Trajectory {
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal() const {
     std::map<std::string, gtsam::Point3> prev_cp;
-    ContactPoints wc_cps = walk_cycle_.contactPoints();
-    for (auto &&cp : wc_cps) {
-      LinkSharedPtr link =
-          walk_cycle_.phases().at(0).robot().link(cp.first);
+    for (auto &&kv : walk_cycle_.contactPoints()) {
+      auto link_name = kv.first;
+      LinkSharedPtr link = walk_cycle_.phases().at(0).robot().link(link_name);
       prev_cp.insert(std::make_pair(
-          cp.first,
-          (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
+          link_name,
+          (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), kv.second.point))
               .translation()));
     }
     return prev_cp;

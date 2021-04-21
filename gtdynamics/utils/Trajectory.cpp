@@ -96,17 +96,18 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
     int t_p_f = getEndTimeStep(p);
 
     // Obtain the contact links and swing links for this phase.
-    vector<string> phase_contact_links = getPhaseContactLinks(p);
-    vector<string> phase_swing_links = getPhaseSwingLinks(p);
+    auto phase_contact_links = getPhaseContactLinks(p);
+    auto phase_swing_links = getPhaseSwingLinks(p);
 
     for (int t = t_p_i; t <= t_p_f; t++) {
       // Normalized phase progress.
       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
 
-      for (auto &&pcl : phase_contact_links) {
-        Point3 goal_point(prev_cp[pcl].x(), prev_cp[pcl].y(),
+      for (auto &&kv : phase_contact_links) {
+        auto contact_name = kv.first;
+        Point3 goal_point(prev_cp[contact_name].x(), prev_cp[contact_name].y(),
                           ground_height - 0.05);
-        factors.add(pointGoalFactor(pcl, t, cost_model, goal_point));
+        factors.add(pointGoalFactor(contact_name, t, cost_model, goal_point));
       }
 
       // Swing trajectory height over time.

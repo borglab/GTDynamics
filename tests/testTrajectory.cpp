@@ -119,7 +119,6 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(7, final_timesteps[2]);
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
   EXPECT_LONGS_EQUAL(7, trajectory.getEndTimeStep(2));
-  EXPECT_LONGS_EQUAL(5, trajectory.getLinks().size());
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
