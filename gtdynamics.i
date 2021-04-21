@@ -8,8 +8,8 @@ virtual class gtsam::Values;
 namespace gtdynamics {
 
 #include <gtdynamics/config.h>
-const string SDF_PATH = SDF_PATH;
-const string URDF_PATH = URDF_PATH;
+const string URDF_PATH = kUrdfPath;
+const string SDF_PATH = kSdfPath;
 
 /********************** factors **********************/
 #include <gtdynamics/factors/PoseFactor.h>

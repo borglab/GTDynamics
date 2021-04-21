@@ -33,7 +33,7 @@ using gtsam::Vector6;
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
   Robot four_bar =
-      CreateRobotFromFile(SDF_PATH + "/test/four_bar_linkage.sdf");
+      CreateRobotFromFile(kSdfPath + std::string("/test/four_bar_linkage.sdf"));
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -56,7 +56,7 @@ TEST(Robot, four_bar_sdf) {
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
   Robot simple_rr = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -74,8 +74,8 @@ TEST(Robot, simple_rr_sdf) {
 
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
-  Robot four_bar = CreateRobotFromFile(SDF_PATH +
-                                       "/test/four_bar_linkage_pure.sdf");
+  Robot four_bar = CreateRobotFromFile(
+      kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
   four_bar.removeLink(four_bar.link("l2"));
   EXPECT(four_bar.numLinks() == 3);
   EXPECT(four_bar.numJoints() == 2);
@@ -85,7 +85,7 @@ TEST(Robot, removeLink) {
 
 TEST(Robot, forwardKinematics) {
   Robot robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   Values values;
 
@@ -146,7 +146,7 @@ TEST(Robot, forwardKinematics) {
 
 TEST(Robot, forwardKinematics_rpr) {
   Robot robot = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      kSdfPath + std::string("/test/simple_rpr.sdf"), "simple_rpr_sdf");
 
   Values values;
 
@@ -202,8 +202,8 @@ TEST(Robot, forwardKinematics_rpr) {
 
 // test fk for a four bar linkage (loopy)
 TEST(forwardKinematics, four_bar) {
-  Robot four_bar = CreateRobotFromFile(SDF_PATH +
-                                       "/test/four_bar_linkage_pure.sdf");
+  Robot four_bar = CreateRobotFromFile(
+      kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
   four_bar.link("l1")->fix();
 
   Values values;

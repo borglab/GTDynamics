@@ -107,7 +107,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
 
   // Create values with rest kinematics and unit torques
   Values known_values = zero_values(robot, t);
-  for (auto &&joint : robot.joints()) {
+  for (auto&& joint : robot.joints()) {
     InsertTorque(&known_values, joint->id(), t, 1.0);
   }
 
@@ -236,14 +236,17 @@ TEST(collocationFactors, simple_urdf) {
   int j = robot.joints()[0]->id();
 
   NonlinearFactorGraph prior_factors;
-  prior_factors.add(PriorFactor<double>(
-      internal::JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
+  prior_factors.add(
+      PriorFactor<double>(internal::JointAngleKey(j, t), 1,
+                          graph_builder.opt().prior_q_cost_model));
   prior_factors.add(PriorFactor<double>(
       internal::JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
-  prior_factors.add(PriorFactor<double>(
-      internal::JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
-  prior_factors.add(PriorFactor<double>(
-      internal::JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
+  prior_factors.add(
+      PriorFactor<double>(internal::JointAccelKey(j, t), 1,
+                          graph_builder.opt().prior_qa_cost_model));
+  prior_factors.add(
+      PriorFactor<double>(internal::JointAccelKey(j, t + 1), 2,
+                          graph_builder.opt().prior_qa_cost_model));
 
   Values init_values;
   InsertJointAngle(&init_values, j, t, 0.0);
@@ -267,15 +270,15 @@ TEST(collocationFactors, simple_urdf) {
 
   // test Euler
   NonlinearFactorGraph euler_graph;
-  euler_graph.add(graph_builder.collocationFactors(
-      robot, t, dt, CollocationScheme::Euler));
+  euler_graph.add(
+      graph_builder.collocationFactors(robot, t, dt, CollocationScheme::Euler));
   euler_graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
   Values euler_result = optimizer_e.optimize();
 
-  EXPECT(assert_equal(2.0, JointAngle(euler_result, j, t+ 1)));
-  EXPECT(assert_equal(2.0, JointVel(euler_result, j, t+ 1)));
+  EXPECT(assert_equal(2.0, JointAngle(euler_result, j, t + 1)));
+  EXPECT(assert_equal(2.0, JointVel(euler_result, j, t + 1)));
 
   // test the scenario with dt as a variable
   int phase = 0;
@@ -292,8 +295,8 @@ TEST(collocationFactors, simple_urdf) {
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
 
-  EXPECT(assert_equal(2.0, JointAngle(mp_euler_result, j, t+ 1)));
-  EXPECT(assert_equal(2.0, JointVel(mp_euler_result, j, t+ 1)));
+  EXPECT(assert_equal(2.0, JointAngle(mp_euler_result, j, t + 1)));
+  EXPECT(assert_equal(2.0, JointVel(mp_euler_result, j, t + 1)));
 
   // multi-phase trapezoidal
   NonlinearFactorGraph mp_trapezoidal_graph;
@@ -331,10 +334,10 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   Values init_values = ZeroValuesTrajectory(robot, num_steps);
 
   // test Euler
-  auto euler_graph = graph_builder.trajectoryFG(
-      robot, num_steps, dt, CollocationScheme::Euler);
-  euler_graph.add(graph_builder.trajectoryFDPriors(
-      robot, num_steps, known_values));
+  auto euler_graph = graph_builder.trajectoryFG(robot, num_steps, dt,
+                                                CollocationScheme::Euler);
+  euler_graph.add(
+      graph_builder.trajectoryFDPriors(robot, num_steps, known_values));
 
   gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
   Values euler_result = optimizer_e.optimize();
@@ -379,8 +382,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs,
-      CollocationScheme::Euler);
+      robots, phase_steps, transition_graphs, CollocationScheme::Euler);
   mp_euler_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
@@ -400,8 +402,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs,
-      CollocationScheme::Trapezoidal);
+      robots, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
   mp_trapezoidal_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph,
                                             mp_euler_result);
@@ -482,7 +483,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Load the robot from urdf file
-  Robot biped = CreateRobotFromFile(URDF_PATH + "/biped.urdf");
+  Robot biped = CreateRobotFromFile(kUrdfPath + std::string("/biped.urdf"));
 
   // Add some contact points.
   ContactPoints contact_points;
@@ -529,7 +530,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   //   std::cout << "Error: " << graph.error(results) << std::endl;
 
   double normal_force = 0;
-  for (auto &&contact_point : contact_points) {
+  for (auto&& contact_point : contact_points) {
     LinkSharedPtr l = biped.link("lower0");
     auto contact_wrench_key =
         ContactWrenchKey(l->id(), contact_point.second.id, 0);
@@ -563,7 +564,7 @@ TEST(jointlimitFactors, simple_urdf) {
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Load the robot from urdf file
   Robot robot = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rrr.sdf", "simple_rrr_sdf");
+      kSdfPath + std::string("/test/simple_rrr.sdf"), "simple_rrr_sdf");
 
   // Add some contact points.
   ContactPoints contact_points;
