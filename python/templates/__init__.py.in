@@ -1,9 +1,10 @@
 import gtsam
 from ${PROJECT_NAME}.${PROJECT_NAME} import *
+import gtdynamics as gtd
 
 class GtdKeyFormatter(object):
     def __repr__(self):
-        return str(self)
+        return gtd.str(self)
 
 class Values(GtdKeyFormatter, gtsam.Values):
     pass
