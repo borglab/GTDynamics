@@ -488,6 +488,13 @@ class DynamicsGraph {
   const gtdynamics::OptimizerSetting &opt() const;
 };
 
+class ContactPoint {
+  ContactPoint();
+  ContactPoint(const gtsam::Point3& point, int id, double height = 0.0);
+};
+
+// ContactPoints defined in specializations.h
+
 /********************** Objective Factors **********************/
 #include <gtdynamics/factors/ObjectiveFactors.h>
 class add_link_objectives {
@@ -668,6 +675,20 @@ class Simulator {
   gtsam::Values simulate(const std::vector<gtsam::Values> &torques_seq,
                          const double dt);
   const gtsam::Values &getValues() const;
+};
+
+/********************** Trajectory et al  **********************/
+#include <gtdynamics/utils/Phase.h>
+class Phase {
+  Phase(const gtdynamics::Robot& robot_configuration, const int& num_time_steps);
+  void addContactPoint(const string& link, const gtsam::Point3& point,
+                       double contact_height);
+  void addContactPoints(const std::vector<string>& links,
+                        const gtsam::Point3& point, double contact_height);
+  const gtdynamics::Robot& getRobotConfiguration() const;
+  const gtdynamics::ContactPoints& getAllContactPoints() const;
+  const gtdynamics::ContactPoint& getContactPointAtLink(const string& link) const;
+  int numTimeSteps() const;
 };
 
 }  // namespace gtdynamics
