@@ -58,13 +58,19 @@ struct ContactPoint {
   double height = 0.0;
 
   ContactPoint() {}
-  ContactPoint(const gtsam::Point3 point, int id, double height = 0.0)
+  ContactPoint(const gtsam::Point3 &point, int id, double height = 0.0)
       : point(point), id(id), height(height) {}
 
   bool operator==(const ContactPoint &other) {
     return (point == other.point && id == other.id && height == other.height);
   }
   bool operator!=(const ContactPoint &other) { return !(*this == other); }
+
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const ContactPoint &cp);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
 };
 
 ///< Map of link name to ContactPoint

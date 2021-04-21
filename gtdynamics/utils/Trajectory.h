@@ -66,7 +66,7 @@ class Trajectory {
     const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
-        phase_cps.push_back(phase.getAllContactPoints());
+        phase_cps.push_back(phase.contactPoints());
       }
     }
     return phase_cps;
@@ -85,11 +85,11 @@ class Trajectory {
     ContactPoints phase_2_cps;
 
     for (int p = 0; p < walk_cycle_.numPhases(); p++) {
-      phase_1_cps = phases[p].getAllContactPoints();
+      phase_1_cps = phases[p].contactPoints();
       if (p == walk_cycle_.numPhases() - 1) {
-        phase_2_cps = phases[0].getAllContactPoints();
+        phase_2_cps = phases[0].contactPoints();
       } else {
-        phase_2_cps = phases[p + 1].getAllContactPoints();
+        phase_2_cps = phases[p + 1].contactPoints();
       }
 
       ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
@@ -133,7 +133,7 @@ class Trajectory {
     const auto &phases = walk_cycle_.phases();
     for (int i = 0; i < repeat_; i++) {
       for (auto &&phase : phases)
-        robots.push_back(phase.getRobotConfiguration());
+        robots.push_back(phase.robot());
     }
     return robots;
   }
@@ -231,7 +231,7 @@ class Trajectory {
   std::vector<std::string> getPhaseContactLinks(int phase) const {
     auto phases = walk_cycle_.phases();
     ContactPoints contact_points =
-        phases[phase % walk_cycle_.numPhases()].getAllContactPoints();
+        phases[phase % walk_cycle_.numPhases()].contactPoints();
     std::vector<std::string> contact_links;
     for (auto &&cp : contact_points) contact_links.push_back(cp.first);
     return contact_links;
@@ -262,7 +262,7 @@ class Trajectory {
     ContactPoints wc_cps = walk_cycle_.allContactPoints();
     for (auto &&cp : wc_cps) {
       LinkSharedPtr link =
-          walk_cycle_.phases().at(0).getRobotConfiguration().link(cp.first);
+          walk_cycle_.phases().at(0).robot().link(cp.first);
       prev_cp.insert(std::make_pair(
           cp.first,
           (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
@@ -282,7 +282,7 @@ class Trajectory {
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link =
-        walk_cycle_.phases().at(0).getRobotConfiguration().link(link_name);
+        walk_cycle_.phases().at(0).robot().link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
     gtsam::Pose3 comTp = gtsam::Pose3(
         gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
