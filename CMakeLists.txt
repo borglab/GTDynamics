@@ -26,19 +26,8 @@ include(GtsamTesting)
 # For unit tests and scripts.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
-# Boost - same requirement as gtsam.
-find_package(Boost 1.58 REQUIRED)
-find_package(
-  Boost
-  COMPONENTS filesystem
-             system
-             thread
-             program_options
-             serialization
-             regex
-             timer
-  REQUIRED)
-
+# Boost is automatically added when we add GTSAM above.
+# This ensures both GTSAM and GTDynamics have the same Boost version.
 include_directories(${Boost_INCLUDE_DIR})
 
 if(NOT (${Boost_VERSION} LESS 105600))
