@@ -70,6 +70,9 @@ struct ContactPoint {
 ///< Map of link name to ContactPoint
 using ContactPoints = std::map<std::string, ContactPoint>;
 
+/** Collocation methods. */
+enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
+
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
  * motion planning
@@ -105,8 +108,6 @@ class DynamicsGraph {
       : opt_(opt), gravity_(gravity), planar_axis_(planar_axis) {}
 
   ~DynamicsGraph() {}
-
-  enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
   /**
    * Return linear factor graph of all dynamics factors, Values version
@@ -239,6 +240,32 @@ class DynamicsGraph {
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
+  /** Add collocation factor for doubles. */
+  static void addCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph *graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const double dt, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const CollocationScheme collocation = Trapezoidal);
+
+  /** Add collocation factor for doubles, with dt as a variable. */
+  static void addMultiPhaseCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph *graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const gtsam::Key phase_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const CollocationScheme collocation = Trapezoidal);
+
+  /** return collocation factors for the specified joint. */
+  gtsam::NonlinearFactorGraph jointCollocationFactors(
+      const int j, const int t, const double dt,
+      const CollocationScheme collocation = Trapezoidal) const;
+
+  /** return collocation factors for the specified joint, with dt as a variable.
+   */
+  gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
+      const int j, const int t, const int phase,
+      const CollocationScheme collocation = Trapezoidal) const;
+
   /**
    * Return collocation factors on angles and velocities from time step t to t+1
    * @param robot       the robot
@@ -248,7 +275,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph collocationFactors(
       const Robot &robot, const int t, const double dt,
-      const CollocationScheme collocation) const;
+      const CollocationScheme collocation = Trapezoidal) const;
 
   /**
    * Return collocation factors on angles and velocities from time step t to
@@ -260,7 +287,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
       const Robot &robot, const int t, const int phase,
-      const CollocationScheme collocation) const;
+      const CollocationScheme collocation = Trapezoidal) const;
 
   /**
    * Return joint factors to limit angle, velocity, acceleration, and torque

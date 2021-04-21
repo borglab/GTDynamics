@@ -87,7 +87,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto trajectory = getTrajectory(robot, 2);
 
   // Create multi-phase trajectory factor graph
-  auto collocation = DynamicsGraph::CollocationScheme::Euler;
+  auto collocation = CollocationScheme::Euler;
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
   EXPECT_LONGS_EQUAL(3583, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());

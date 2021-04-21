@@ -146,7 +146,7 @@ TEST(Trajectory, error) {
 
   // Test multi-phase factor graph.
   auto graph = trajectory.multiPhaseFactorGraph(
-      graph_builder, gtdynamics::DynamicsGraph::CollocationScheme::Euler, mu);
+      graph_builder, gtdynamics::CollocationScheme::Euler, mu);
   // regression test
   EXPECT_LONGS_EQUAL(4330, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
