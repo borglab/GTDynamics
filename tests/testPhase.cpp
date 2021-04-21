@@ -45,8 +45,14 @@ TEST(Phase, error) {
 
   // Check printing
   std::stringstream ss;
+  ss << phase;
   EXPECT("[tarsus_1: {[1 1 1], 0, 5}, tarsus_2: {[2 2 2], 0, 5},"
          " tarsus_3: {[3 3 3], 0, 5}, ]" == ss.str());
+}
+
+TEST(Phase, inverse_kinematics) {
+  Robot robot_configuration =
+      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
 }
 
 int main() {
