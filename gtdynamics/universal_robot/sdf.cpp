@@ -23,6 +23,8 @@
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
+#include <fstream>
+
 namespace gtdynamics {
 
 using gtsam::Pose3;
@@ -206,6 +208,12 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
  */
 static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
                                           const std::string &model_name) {
+  std::ifstream is(file_path);
+  if (!is.good())
+    throw std::runtime_error("ExtractRobotFromFile: no file found at " +
+                             file_path);
+  is.close();
+
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
