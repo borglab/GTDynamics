@@ -161,7 +161,7 @@ class Trajectory {
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
       DynamicsGraph &graph_builder,
-      const DynamicsGraph::CollocationScheme collocation, double mu) const;
+      const CollocationScheme collocation, double mu) const;
 
   /**
    * @fn Returns Initial values for transition graphs.

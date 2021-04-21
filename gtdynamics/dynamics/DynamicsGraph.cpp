@@ -14,7 +14,7 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 
 #include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
@@ -46,6 +46,8 @@ using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
 using gtsam::Z_6x1;
+using gtsam::Key;
+using gtsam::ExpressionFactor;
 
 namespace gtdynamics {
 
@@ -388,7 +390,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const Robot &robot, const int num_steps, const double dt,
-    const DynamicsGraph::CollocationScheme collocation,
+    const CollocationScheme collocation,
     const boost::optional<ContactPoints> &contact_points,
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
@@ -448,41 +450,26 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::collocationFactors(const Robot &robot, const int t,
-                                  const double dt,
-                                  const CollocationScheme collocation) const {
-  gtsam::ExpressionFactorGraph graph;
-  for (auto &&joint : robot.joints()) {
-    int j = joint->id();
-    Double_ q0_expr(internal::JointAngleKey(j, t));
-    Double_ q1_expr(internal::JointAngleKey(j, t + 1));
-    Double_ v0_expr(internal::JointVelKey(j, t));
-    Double_ v1_expr(internal::JointVelKey(j, t + 1));
-    Double_ a0_expr(internal::JointAccelKey(j, t));
-    Double_ a1_expr(internal::JointAccelKey(j, t + 1));
-    switch (collocation) {
-    case CollocationScheme::Euler:
-      graph.addExpressionFactor(q0_expr + dt * v0_expr - q1_expr, 0.0,
-                                opt_.q_col_cost_model);
-      graph.addExpressionFactor(v0_expr + dt * a0_expr - v1_expr, 0.0,
-                                opt_.v_col_cost_model);
-      break;
-    case CollocationScheme::Trapezoidal:
-      graph.addExpressionFactor(q0_expr + 0.5 * dt * v0_expr +
-                                    0.5 * dt * v1_expr - q1_expr,
-                                0.0, opt_.q_col_cost_model);
-      graph.addExpressionFactor(v0_expr + 0.5 * dt * a0_expr +
-                                    0.5 * dt * a1_expr - v1_expr,
-                                0.0, opt_.v_col_cost_model);
-      break;
-    default:
-      throw std::runtime_error(
-          "runge-kutta and hermite-simpson not implemented yet");
-      break;
-    }
+void DynamicsGraph::addCollocationFactorDouble(
+    NonlinearFactorGraph &graph, const Key x0_key, const Key x1_key,
+    const Key v0_key, const Key v1_key, const double dt,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  Double_ x0_expr(x0_key);
+  Double_ x1_expr(x1_key);
+  Double_ v0_expr(v0_key);
+  Double_ v1_expr(v1_key);
+  if (collocation == CollocationScheme::Euler) {
+    graph.add(
+        ExpressionFactor(cost_model, 0.0, x0_expr + dt * v0_expr - x1_expr));
+  } else if (collocation == CollocationScheme::Trapezoidal) {
+    graph.add(ExpressionFactor(
+        cost_model, 0.0,
+        x0_expr + 0.5 * dt * v0_expr + 0.5 * dt * v1_expr - x1_expr));
+  } else {
+    throw std::runtime_error(
+        "runge-kutta and hermite-simpson not implemented yet");
   }
-  return graph;
 }
 
 // the * operator for doubles in expression factor does not work well yet
@@ -496,40 +483,76 @@ double multDouble(const double &d1, const double &d2,
   return d1 * d2;
 }
 
+void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
+    NonlinearFactorGraph &graph, const Key x0_key, const Key x1_key,
+    const Key v0_key, const Key v1_key, const Key phase_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  Double_ phase_expr(phase_key);
+  Double_ x0_expr(x0_key);
+  Double_ x1_expr(x1_key);
+  Double_ v0_expr(v0_key);
+  Double_ v1_expr(v1_key);
+  Double_ v0dt(multDouble, phase_expr, v0_expr);
+
+  if (collocation == CollocationScheme::Euler) {
+    graph.add(ExpressionFactor(cost_model, 0.0, x0_expr + v0dt - x1_expr));
+  } else if (collocation == CollocationScheme::Trapezoidal) {
+    Double_ v1dt(multDouble, phase_expr, v1_expr);
+    graph.add(ExpressionFactor(cost_model, 0.0,
+                               x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
+  } else {
+    throw std::runtime_error(
+        "runge-kutta and hermite-simpson not implemented yet");
+  }
+}
+
+gtsam::NonlinearFactorGraph
+DynamicsGraph::jointCollocationFactors(const int j, const int t,
+                                  const double dt,
+                                  const CollocationScheme collocation) const {
+  NonlinearFactorGraph graph;
+  Key q0_key = internal::JointAngleKey(j, t), q1_key  = internal::JointAngleKey(j, t + 1), 
+  v0_key = internal::JointVelKey(j, t), v1_key = internal::JointVelKey(j, t + 1),
+  a0_key = internal::JointAccelKey(j, t), a1_key = internal::JointAccelKey(j, t + 1);
+  addCollocationFactorDouble(graph, q0_key, q1_key, v0_key, v1_key, dt, opt_.q_col_cost_model, collocation);
+  addCollocationFactorDouble(graph, v0_key, v1_key, a0_key, a1_key, dt, opt_.v_col_cost_model, collocation);
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph
+DynamicsGraph::collocationFactors(const Robot &robot, const int t,
+                                  const double dt,
+                                  const CollocationScheme collocation) const {
+  NonlinearFactorGraph graph;
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    graph.add(jointCollocationFactors(j, t, dt, collocation));
+  }
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph DynamicsGraph::jointMultiPhaseCollocationFactors(
+    const int j, const int t, const int phase,
+    const CollocationScheme collocation) const {
+
+  Key phase_key = PhaseKey(phase), q0_key = internal::JointAngleKey(j, t), q1_key  = internal::JointAngleKey(j, t + 1), 
+  v0_key = internal::JointVelKey(j, t), v1_key = internal::JointVelKey(j, t + 1),
+  a0_key = internal::JointAccelKey(j, t), a1_key = internal::JointAccelKey(j, t + 1);
+
+  gtsam::NonlinearFactorGraph graph;
+  addMultiPhaseCollocationFactorDouble(graph, q0_key, q1_key, v0_key, v1_key, phase_key, opt_.q_col_cost_model, collocation);
+  addMultiPhaseCollocationFactorDouble(graph, v0_key, v1_key, a0_key, a1_key, phase_key, opt_.v_col_cost_model, collocation);
+  return graph;
+}
+
 gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseCollocationFactors(
     const Robot &robot, const int t, const int phase,
     const CollocationScheme collocation) const {
-  gtsam::ExpressionFactorGraph graph;
-  Double_ phase_expr(PhaseKey(phase));
+  NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    Double_ q0_expr(internal::JointAngleKey(j, t));
-    Double_ q1_expr(internal::JointAngleKey(j, t + 1));
-    Double_ v0_expr(internal::JointVelKey(j, t));
-    Double_ v1_expr(internal::JointVelKey(j, t + 1));
-    Double_ a0_expr(internal::JointAccelKey(j, t));
-    Double_ a1_expr(internal::JointAccelKey(j, t + 1));
-
-    if (collocation == CollocationScheme::Euler) {
-      Double_ v0dt(multDouble, phase_expr, v0_expr);
-      Double_ a0dt(multDouble, phase_expr, a0_expr);
-      graph.addExpressionFactor(q0_expr + v0dt - q1_expr, 0.0,
-                                opt_.q_col_cost_model);
-      graph.addExpressionFactor(v0_expr + a0dt - v1_expr, 0.0,
-                                opt_.v_col_cost_model);
-    } else if (collocation == CollocationScheme::Trapezoidal) {
-      Double_ v0dt(multDouble, phase_expr, v0_expr);
-      Double_ a0dt(multDouble, phase_expr, a0_expr);
-      Double_ v1dt(multDouble, phase_expr, v1_expr);
-      Double_ a1dt(multDouble, phase_expr, a1_expr);
-      graph.addExpressionFactor(q0_expr + 0.5 * v0dt + 0.5 * v1dt - q1_expr,
-                                0.0, opt_.q_col_cost_model);
-      graph.addExpressionFactor(v0_expr + 0.5 * a0dt + 0.5 * a1dt - v1_expr,
-                                0.0, opt_.v_col_cost_model);
-    } else {
-      throw std::runtime_error(
-          "runge-kutta and hermite-simpson not implemented yet");
-    }
+    graph.add(jointMultiPhaseCollocationFactors(j, t, phase, collocation));
   }
   return graph;
 }

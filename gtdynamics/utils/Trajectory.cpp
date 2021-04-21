@@ -47,7 +47,7 @@ vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
 
 NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
     DynamicsGraph &graph_builder,
-    const DynamicsGraph::CollocationScheme collocation, double mu) const {
+    const CollocationScheme collocation, double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(graph_builder, mu);
   return graph_builder.multiPhaseTrajectoryFG(

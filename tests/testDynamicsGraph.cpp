@@ -256,7 +256,7 @@ TEST(collocationFactors, simple_urdf) {
   // test trapezoidal
   NonlinearFactorGraph trapezoidal_graph;
   trapezoidal_graph.add(graph_builder.collocationFactors(
-      robot, t, dt, DynamicsGraph::CollocationScheme::Trapezoidal));
+      robot, t, dt, CollocationScheme::Trapezoidal));
   trapezoidal_graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer_t(trapezoidal_graph, init_values);
@@ -268,7 +268,7 @@ TEST(collocationFactors, simple_urdf) {
   // test Euler
   NonlinearFactorGraph euler_graph;
   euler_graph.add(graph_builder.collocationFactors(
-      robot, t, dt, DynamicsGraph::CollocationScheme::Euler));
+      robot, t, dt, CollocationScheme::Euler));
   euler_graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer_e(euler_graph, init_values);
@@ -286,7 +286,7 @@ TEST(collocationFactors, simple_urdf) {
   // multi-phase euler
   NonlinearFactorGraph mp_euler_graph;
   mp_euler_graph.add(graph_builder.multiPhaseCollocationFactors(
-      robot, t, phase, DynamicsGraph::CollocationScheme::Euler));
+      robot, t, phase, CollocationScheme::Euler));
   mp_euler_graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
@@ -298,7 +298,7 @@ TEST(collocationFactors, simple_urdf) {
   // multi-phase trapezoidal
   NonlinearFactorGraph mp_trapezoidal_graph;
   mp_trapezoidal_graph.add(graph_builder.collocationFactors(
-      robot, t, dt, DynamicsGraph::CollocationScheme::Trapezoidal));
+      robot, t, dt, CollocationScheme::Trapezoidal));
   mp_trapezoidal_graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph, init_values);
@@ -332,7 +332,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test Euler
   auto euler_graph = graph_builder.trajectoryFG(
-      robot, num_steps, dt, DynamicsGraph::CollocationScheme::Euler);
+      robot, num_steps, dt, CollocationScheme::Euler);
   euler_graph.add(graph_builder.trajectoryFDPriors(
       robot, num_steps, known_values));
 
@@ -348,7 +348,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test trapezoidal
   auto trapezoidal_graph = graph_builder.trajectoryFG(
-      robot, num_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
+      robot, num_steps, dt, CollocationScheme::Trapezoidal);
   trapezoidal_graph.add(
       graph_builder.trajectoryFDPriors(robot, num_steps, known_values));
 
@@ -380,7 +380,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
       robots, phase_steps, transition_graphs,
-      DynamicsGraph::CollocationScheme::Euler);
+      CollocationScheme::Euler);
   mp_euler_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
@@ -401,7 +401,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
       robots, phase_steps, transition_graphs,
-      DynamicsGraph::CollocationScheme::Trapezoidal);
+      CollocationScheme::Trapezoidal);
   mp_trapezoidal_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph,
                                             mp_euler_result);

@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
   // Create trajectory factor graph.
   auto graph_builder = DynamicsGraph(gravity);
   auto graph = graph_builder.trajectoryFG(
-      cp, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal);
+      cp, t_steps, dt, CollocationScheme::Trapezoidal);
 
   // Set the pendulum joint to be unactuated.
   for (int t = 0; t <= t_steps; t++)
