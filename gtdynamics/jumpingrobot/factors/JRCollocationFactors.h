@@ -37,7 +37,7 @@ double multDouble1(const double& d1, const double& d2,
 
 /** Add mass collocation factors for source tank. */
 void AddSourceMassCollocationFactor(
-    gtsam::NonlinearFactorGraph& graph, const gtsam::KeyVector& mdot_prev_keys,
+    gtsam::NonlinearFactorGraph* graph, const gtsam::KeyVector& mdot_prev_keys,
     const gtsam::KeyVector& mdot_curr_keys, gtsam::Key source_mass_key_prev,
     gtsam::Key source_mass_key_curr, gtsam::Key dt_key, bool isEuler,
     const gtsam::noiseModel::Base::shared_ptr& cost_model) {
@@ -56,12 +56,12 @@ void AddSourceMassCollocationFactor(
   }
 
   if (isEuler) {
-    graph.add(gtsam::ExpressionFactor(cost_model, 0.0,
-                                      expr0 - mdot0dt_vec[0] - mdot0dt_vec[1] -
-                                          mdot0dt_vec[2] - mdot0dt_vec[3] -
-                                          expr1));
+    graph->add(gtsam::ExpressionFactor(cost_model, 0.0,
+                                       expr0 - mdot0dt_vec[0] - mdot0dt_vec[1] -
+                                           mdot0dt_vec[2] - mdot0dt_vec[3] -
+                                           expr1));
   } else {
-    graph.add(gtsam::ExpressionFactor(
+    graph->add(gtsam::ExpressionFactor(
         cost_model, 0.0,
         expr0 - 0.5 * mdot1dt_vec[0] - 0.5 * mdot1dt_vec[1] -
             0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] - 0.5 * mdot1dt_vec[0] -
@@ -74,14 +74,14 @@ void AddSourceMassCollocationFactor(
  * t_curr = t_prev + dt
  */
 void AddTimeCollocationFactor(
-    gtsam::NonlinearFactorGraph& graph, gtsam::Key t_prev_key,
+    gtsam::NonlinearFactorGraph* graph, gtsam::Key t_prev_key,
     gtsam::Key t_curr_key, gtsam::Key dt_key,
     const gtsam::noiseModel::Base::shared_ptr& cost_model) {
   gtsam::Double_ t_curr_expr(t_curr_key);
   gtsam::Double_ t_prev_expr(t_prev_key);
   gtsam::Double_ dt_expr(dt_key);
   gtsam::Double_ expr = t_curr_expr + dt_expr - t_prev_expr;
-  graph.add(gtsam::ExpressionFactor(cost_model, 0.0, expr));
+  graph->add(gtsam::ExpressionFactor(cost_model, 0.0, expr));
 }
 
 }  // namespace gtdynamics

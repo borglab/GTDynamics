@@ -75,7 +75,7 @@ gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys);
 
 #include <gtdynamics/jumpingrobot/factors/JRCollocationFactors.h>
 void AddSourceMassCollocationFactor(
-    gtsam::NonlinearFactorGraph& graph,
+    gtsam::NonlinearFactorGraph @graph,
     const std::vector<gtsam::Key>& mdot_prev_keys,
     const std::vector<gtsam::Key>& mdot_curr_keys,
     gtsam::Key source_mass_key_prev, gtsam::Key source_mass_key_curr,
@@ -83,9 +83,8 @@ void AddSourceMassCollocationFactor(
     const gtsam::noiseModel::Base *cost_model);
 
 void AddTimeCollocationFactor(
-  gtsam::NonlinearFactorGraph& graph,
+  gtsam::NonlinearFactorGraph @graph,
   gtsam::Key t_prev_key, gtsam::Key t_curr_key, gtsam::Key dt_key,
-  const gtsam::noiseModel::Base::shared_ptr& cost_model
-);
+  const gtsam::noiseModel::Base *cost_model);
 
 }  // namespace gtdynamics
