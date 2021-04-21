@@ -86,7 +86,7 @@ TEST(MassFlowRateFactor, Factor) {
   values.insert(example::ps_key, ps);
   values.insert(example::mdot_key, mdot);
   double diffDelta = 1e-10;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-2);
 }
 
 TEST(MassFlowRateFactor, Negative) {
