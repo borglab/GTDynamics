@@ -26,8 +26,6 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
 
-#define DEFAULT_MU 1.0
-
 namespace gtdynamics {
 
 using JointValueMap = std::map<std::string, double>;
@@ -266,7 +264,7 @@ class DynamicsGraph {
       const CollocationScheme collocation = Trapezoidal);
 
   /**
-   * Return collocation factors for the specified joint. 
+   * Return collocation factors for the specified joint.
    * @param j           joint index
    * @param t           time step
    * @param dt          time delta

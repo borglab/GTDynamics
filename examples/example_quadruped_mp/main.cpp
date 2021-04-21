@@ -44,8 +44,6 @@ using TargetPoses = std::map<std::string, Pose3>;
 
 using namespace gtdynamics;
 
-using namespace gtdynamics;
-
 #define GROUND_HEIGHT -0.2
 
 /**
