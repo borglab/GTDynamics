@@ -8,136 +8,125 @@
 /**
  * @file  Simulator.h
  * @brief robot Simulator using forward dynamics factor graph
- * @Author:Yetong Zhang
+ * @author Yetong Zhang
  */
-#ifndef GTDYNAMICS_DYNAMICS_SIMULATOR_H_
-#define GTDYNAMICS_DYNAMICS_SIMULATOR_H_
+
+#pragma once
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <vector>
-#include <string>
-
 #include <boost/optional.hpp>
+#include <string>
+#include <vector>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 /**
  * Simulator is a class which simulate robot arm motion using forward
- * dynamics
+ * dynamics.
  */
 class Simulator {
- private:
+private:
   Robot robot_;
   int t_;
   DynamicsGraph graph_builder_;
-  Robot::JointValues initial_angles_, initial_vels_;
+  gtsam::Values initial_values_;
   boost::optional<gtsam::Vector3> gravity_;
   boost::optional<gtsam::Vector3> planar_axis_;
-  Robot::JointValues qs_, vs_, as_;
-  gtsam::Values results_;
+  gtsam::Values current_values_;
+  gtsam::Values new_kinematics_;
 
- public:
+public:
   /**
    * Constructor
-   * Keyword arguments:
-   *  time_step                -- Simulator time step
-   *  robot                    -- robotic robot
-   *  initial_angels           -- initial joint angles
-   *  initial_vels             -- initial joint velocities
+   *
+   * @param time_step      Simulator time step
+   * @param robot          robotic robot
+   * @param initial_values initial joint angles and velocities
+   * @param gravity        gravity vector
+   * @param planar_axis    planar axis vector
    */
-  Simulator(const Robot &robot, const Robot::JointValues &initial_angles,
-            const Robot::JointValues &initial_vels,
+  Simulator(const Robot &robot, const gtsam::Values &initial_values,
             const boost::optional<gtsam::Vector3> &gravity = boost::none,
             const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
-      : robot_(robot),
-        t_(0),
-        graph_builder_(DynamicsGraph()),
-        initial_angles_(initial_angles),
-        initial_vels_(initial_vels),
-        gravity_(gravity),
-        planar_axis_(planar_axis) {
+      : robot_(robot), t_(0),
+        graph_builder_(DynamicsGraph(gravity, planar_axis)),
+        initial_values_(initial_values) {
     reset();
   }
   ~Simulator() {}
 
-  /* reset simulation. */
+  /// Reset simulation.
   void reset(const double t = 0) {
     t_ = t;
-    qs_ = initial_angles_;
-    vs_ = initial_vels_;
-    as_ = Robot::JointValues();
-    results_ = gtsam::Values();
+    new_kinematics_ = initial_values_;
   }
 
   /**
-   * perform forward dynamics to calculate accelerations, update a_, add new
-   * values to results_ Keyword arguments: torques                   -- torques
-   * for the time step
+   * Perform forward dynamics to calculate accelerations.
+   * @param torques torques for the time step
    */
-  void forwardDynamics(const Robot::JointValues &torques) {
-    auto fk_results = robot_.forwardKinematics(qs_, vs_);
-    gtsam::Values result = graph_builder_.linearSolveFD(
-        robot_, t_, qs_, vs_, torques, fk_results, gravity_, planar_axis_);
-    results_.insert(result);
+  void forwardDynamics(const gtsam::Values &torques) {
+    // Do FK to add poses
+    auto values = robot_.forwardKinematics(new_kinematics_);
 
-    // update accelerations
-    as_ = DynamicsGraph::jointAccelsMap(robot_, result, t_);
+    // Add torques
+    for (auto &&joint : robot_.joints()) {
+      auto j = joint->id();
+      InsertTorque(&values, j, Torque(torques, j));
+    }
+
+    // Now compute accelerations with forward dynamics
+    current_values_ = graph_builder_.linearSolveFD(robot_, 0, values);
   }
 
   /**
-   * integrate to calculate new q, v for one time step, update q_, v_
-   * Keyword arguments:
-   *  torques                   -- torques for the time step
-   *  dt                        -- duration for the time step
+   * Integrate to calculate new q, v for one time step, update q_, v_
+   * @param torques torques for the time step
+   * @param dt duration for the time step
    */
   void integration(const double dt) {
-    Robot::JointValues vs_new, qs_new;
-    for (JointSharedPtr joint : robot_.joints()) {
-      std::string name = joint->name();
-      vs_new[name] = vs_.at(name) + dt * as_.at(name);
-      qs_new[name] = qs_.at(name) + dt * vs_.at(name) +
-                     0.5 * as_.at(name) * std::pow(dt, 2);
+    new_kinematics_ = gtsam::Values();
+    const double dt2 = std::pow(dt, 2);
+    for (auto &&joint : robot_.joints()) {
+      auto j = joint->id();
+      const double q = JointAngle<double>(current_values_, j);
+      const double v = JointVel<double>(current_values_, j);
+      const double a = JointAccel<double>(current_values_, j);
+
+      // TODO(frank): one could use t values and save entire simulation.
+      const double v_new = v + dt * a;
+      InsertJointVel(&new_kinematics_, j, v_new);
+      // TODO(frank): consider using v_new for symplectic integration.
+      InsertJointAngle(&new_kinematics_, j, q + dt * v + 0.5 * a * dt2);
     }
-    vs_ = vs_new;
-    qs_ = qs_new;
   }
 
   /**
-   * simulate for one time step, update q_, v_, a_, t_, add the new values into
-   * result_ Keyword arguments: torques                   -- torques for the
-   * time step dt                        -- duration for the time step
+   * Simulate for one time step.
+   * @param torques torques for the
+   * @param dt duration for the time step
    */
-  void step(const Robot::JointValues &torques, const double dt) {
+  void step(const gtsam::Values &torques, const double dt) {
     forwardDynamics(torques);
     integration(dt);
     t_++;
   }
 
-  /* simulation for the specified sequence of torques */
-  gtsam::Values simulate(const std::vector<Robot::JointValues> torques_seq,
+  /// Simulation for the specified sequence of torques.
+  gtsam::Values simulate(const std::vector<gtsam::Values> &torques_seq,
                          const double dt) {
-    for (const Robot::JointValues &torques : torques_seq) {
+    for (const auto &torques : torques_seq) {
       step(torques, dt);
     }
-    return results_;
+    return current_values_;
   }
 
-  /* return joint angle values. */
-  const Robot::JointValues &getJointAngles() const { return qs_; }
-
-  /* return joint velocity values. */
-  const Robot::JointValues &getJointVelocities() const { return vs_; }
-
-  /* return joint acceleration values. */
-  const Robot::JointValues &getJointAccelerations() const { return as_; }
-
-  /* return all values during simulation. */
-  const gtsam::Values &getValues() const { return results_; }
+  /// Return all values during simulation.
+  const gtsam::Values &getValues() const { return current_values_; }
 };
 
-}  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_DYNAMICS_SIMULATOR_H_
+} // namespace gtdynamics

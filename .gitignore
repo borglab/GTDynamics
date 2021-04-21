@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+**/.DS_Store
+
 # C extensions
 *.so
 
@@ -113,3 +115,4 @@ visualization/*.json
 
 # gerry00 visualization data
 scripts/gerry00_rpr_viz.gif
+traj.csv

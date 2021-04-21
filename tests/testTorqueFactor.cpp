@@ -8,7 +8,7 @@
 /**
  * @file  testTorqueFactor.cpp
  * @brief Test torque factor.
- * @Author: Frank Dellaert and Mandy Xie
+ * @author Frank Dellaert and Mandy Xie
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -24,8 +24,12 @@
 #include <iostream>
 
 #include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
+#include "make_joint.h"
 
+using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::Pose3, gtsam::Vector6, gtsam::Vector3, gtsam::Rot3, gtsam::Point3;
 
 namespace example {
 
@@ -39,11 +43,14 @@ gtsam::Key torque_key = gtsam::Symbol('t', 1),
 // Test Torque factor for stationary case
 TEST(TorqueFactor, error) {
   // Create all factors
+  Pose3 kMj = Pose3(Rot3(), Point3(0, 0, -2));  // doesn't matter
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  gtdynamics::TorqueFactor factor(example::wrench_key, example::torque_key,
-                                  example::cost_model, screw_axis);
+  auto joint = make_joint(kMj, screw_axis);
+
+  TorqueFactor factor(example::wrench_key, example::torque_key,
+                      example::cost_model, joint);
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   gtsam::Vector1 actual_errors, expected_errors;

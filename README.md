@@ -9,53 +9,76 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 ## Dependencies
 
-* [`GTSAM4`](https://github.com/borglab/gtsam)
+* [GTSAM4](https://github.com/borglab/gtsam)
+* [gtwrap](https://github.com/borglab/wrap)
+* [sdformat8](https://github.com/osrf/sdformat)
 
-### macOS
-* [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
-```bash
+## Installing SDFormat
+
+GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot descriptions.
+
+### Homebrew
+
+Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+
+```sh
 $ # Install homebrew.
-$ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+$ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
 $ brew install sdformat8
 ```
 
-### Ubuntu
-* [`sdformat8`](https://bitbucket.org/osrf/sdformat/src/default/)
-```bash
-$ # Install homebrew (for linux).
-$ sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
-$ # Download sdformat to your preferred location.
-$ brew tap osrf/simulation
-$ brew install sdformat8
+### Source
+
+Alternatively, you can install from source if you want more fine-tuned control.
+
+We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
+
+
+```sh
+# Install basic dependencies
+sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cmake pkg-config
+
+# sdformat requires libignition-math
+sudo apt-get install libignition-math4-dev
+
+# Specifically download sdformat8
+wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-8.6.1.tar.bz2
+
+tar -xvjf sdformat-8.6.1.tar.bz2
+
+cd sdformat-8.6.1
+mkdir build && cd build
+
+cmake -DCMAKE_INSTALL_PREFIX ../install ..
+make -j4
+sudo make install
 ```
 
-If issues arise when installing dependencies for sdformat, reference the following [tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) to install sdformat from source.
-
-## Installing
-```bash
+## Installing GTDynamics
+```sh
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
-# Optionally specify install path with -DCMAKE_INSTALL_PREFIX
-$ cmake ../
+# We can specify the install path with -DCMAKE_INSTALL_PREFIX
+$ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
 ```
 
-## Running tests
+## Running Tests
 
-```bash
+```sh
 $ make check
 ```
 
-## Running examples
+## Running Examples
 
 The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
-```bash
+```sh
 cd GTDynamics/examples/example_forward_dynamics
 mkdir build; cd build
 ```
@@ -64,25 +87,52 @@ mkdir build; cd build
 
 If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
 
-```bash
-cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install
+```sh
+cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
 make
 ```
 
 3. Run the example!
-```bash
+```sh
 ./exec
 ```
 
-## Citing this work
+## Python Wrapper
 
-The core paper behind this work is:
+GTDynamics now supports a Pybind11-based Python API.
+
+To start, please download and install the [GTwrap repository](https://github.com/borglab/wrap).
+
+To compile and install the GTDynamics python library:
+
+1. In the build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
+
+    ```sh
+    cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
+    ```
+
+2. Build as normal and install the python package.
+
+    ```sh
+    make && make python-install
+    ```
+
+3. To run the Python tests, you can simply run:
+
+    ```sh
+    make python-test
+    ```
+
+## Citing This Work
+
+Please cite the following paper if you use this code as part of any published research:
+
 ```
-@misc{1911.10065,
-    Author = {Mandy Xie and Frank Dellaert},
-    Title = {A Unified Method for Solving Inverse, Forward, and Hybrid Robot Dynamics using Factor Graphs},
-    Year = {2019},
-    Eprint = {arXiv:1911.10065},
+@misc{2011.06194,
+    Author = {Mandy Xie, Alejandro Escontrela, and Frank Dellaert},
+    Title = {A Factor-Graph Approach for Optimization Problems with Dynamics Constraints},
+    Year = {2020},
+    Eprint = {arXiv:2011.06194},
 }
 ```
 

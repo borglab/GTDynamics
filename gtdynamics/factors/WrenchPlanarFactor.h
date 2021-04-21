@@ -8,36 +8,33 @@
 /**
  * @file  WrenchPlanarFactor.h
  * @brief Wrench planar factor, enforce the wrench to be planar.
- * @Author: Yetong Zhang
+ * @author Yetong Zhang
  */
-
-#ifndef GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_
-#define GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <string>
-
 #include <boost/optional.hpp>
+#include <string>
 
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
-/** WrenchPlanarFactor is a one-way nonlinear factor which enforces the
- * wrench to be planar*/
+/**
+ * WrenchPlanarFactor is a one-way nonlinear factor which enforces the
+ * wrench to be planar
+ */
 class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
  private:
-  typedef WrenchPlanarFactor This;
-  typedef gtsam::NoiseModelFactor1<gtsam::Vector6> Base;
+  using This = WrenchPlanarFactor;
+  using Base = gtsam::NoiseModelFactor1<gtsam::Vector6>;
   gtsam::Matrix36 H_wrench_;
 
  public:
   /** Constructor
-      Keyword argument:
-          planar_axis        -- axis of the plane
+   * @param planar_axis axis of the plane
    */
   WrenchPlanarFactor(gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -53,10 +50,10 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
   virtual ~WrenchPlanarFactor() {}
 
-  /** evaluate error
-      Keyword argument:
-          wrench      -- wrench on the link
-  */
+  /**
+   * Evaluate error
+   * @param wrench wrench on the link
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none) const override {
@@ -69,13 +66,13 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
     return error;
   }
 
-  // @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -84,14 +81,12 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_FACTORS_WRENCHPLANARFACTOR_H_

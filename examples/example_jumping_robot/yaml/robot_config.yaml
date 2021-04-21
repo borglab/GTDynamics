@@ -1,0 +1,58 @@
+cam: # cam parameters (general parameters used for all 4 joints)
+  d: 55 # (cm) robot link length; required for muscle-cam tangency calculation
+  phi_range: [0, 180] # (deg) cam parameterization angle range (range for which cam geometry exists)
+  beta_range: [-20, 200] # (deg) joint angle (cam) range for cam profile calculations
+  beta_inc: 10 # (deg) joint angle (cam) increment for cam profile calculations
+
+knee: # knee joint parameters
+  rad0: 0.04 # (m) cam radius at zero degrees
+  slope: 0 # (cm/rad) cam profile radius slope
+  theta_range: [180, 0] # (deg) joint angle theta range over which to map cam angle beta from 0 to 180  
+  k_tendon: 8200 # (N/m) tendon stiffness # NOTE: not currently used; nonlinear mesh stiffness used instead
+  k_anta: 2.1
+  q_anta_limit: 0
+  b: 0.03
+
+hip: # hip joint parameters
+  rad0: 0.04
+  slope: 0
+  theta_range: [-90, 90]
+  k_tendon: 8200 # NOTE: not currently used; nonlinear mesh stiffness used instead
+  k_anta: 2.5
+  q_anta_limit: 0
+  b: 0.03
+
+model: # overall robot model parameters
+  joint_order: [knee_right, hip_right, hip_left, knee_left] # order of joints corresponding to below parameters
+  joint_damp: [0.03, 0.03, 0.03, 0.03] # (N-m/rad/s) joint damping TODO: how to determine?
+  joint_damp_lims: [180, -90, -90, 180] # joint damping over entire joint range
+  joint_stiff: [2.1, 2.5, 2.5, 2.1] # (Nm/rad) stiffness of antagonistic springs: 142.8x24.0 mm nylon strips at knees; 160x25 mm rubber strips at hips
+  joint_stiff_lims:  [0, 70, 70, 0] # (deg) spring engagement starting angle
+  mu: 0.9 # Coulomb foot friction coefficient TODO: how to determine?
+
+morphology: # robot morphology [shank_r, thigh_r, torso, thigh_l, shank_l]
+  l: [0.55, 0.55, 0.55, 0.55, 0.55] # (m) link lengths
+  m: [0.285, 0.428, 0.883, 0.428, 0.285] # (kg) robot link masses: tethered robot
+  r_cyl: 0.02 # (m) cylinder radius of each link for inertial calcs
+  foot_dist: 0.55
+  # J: 1/12*m*(3*r_cyl^2 + l^2); # (kg/m^2) # cylinder inertia formula
+
+state0: # initial robot state
+  q0: [0, 161.7, -59.1, -59.1, 161.7] # based on tape-marked-start-pose.MOV
+  qd0: [0, 0, 0, 0, 0]  # (rad/s) [angle 1, knee_r, hip_r, hip_l, knee_l] initial joint velocities
+
+control: # control parameters [knee_r, hip_r, hip_l, knee_l]
+  p_max: [255, 241, 241, 255] #241 # (gauge kPa) (35 psi) max muscle pressure
+  t_musc_activate: [0.0, 0.0, 0.0, 0.0] # (sec) muscle activation timings
+
+pneumatic: # pneumatic system parameters
+  gas: air # gas type
+  Rs: 287.0550
+  T: 296.15
+  l_tube_valve_musc: 74 # (in)  ~2.0" valve fittings + 68.75" valve to muscle + ~3.2" muscle inlet tube
+  d_tube_valve_musc: 0.1575 # (in) 3/16" ID #NOTE: reduced from nominal 0.1875" dimension
+  eps_tube: 1.0e-5 # (m) TODO: how to determine? can vary from 1.5e-6 to 1e-5
+  mu_tube: 1.8377e-5
+  v_source: 1.475e-3 # (m^3) Ninja SL 90 carbon fiber paintball tank (90 cubic in)
+  time_constant_valve: 1.0e-3
+  init_mass: 7.873172488131229e-05

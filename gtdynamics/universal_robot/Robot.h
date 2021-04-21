@@ -8,60 +8,39 @@
 /**
  * @file Robot.h
  * @brief Robot structure.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
+#pragma once
 
-#include <sdf/parser_urdf.hh>
+#include <boost/optional.hpp>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "gtdynamics/config.h"
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 
-#include <boost/optional.hpp>
-
-
 namespace gtdynamics {
 
-/** Construct all Link and Joint objects from an input
- * urdf::ModelInterfaceSharedPtr. Keyword arguments: urdf_ptr         -- a
- * shared pointer to a urdf::ModelInterface object. joint_params     -- a vector
- * contanining optional params for joints.
- *
- */
+/// Map from link name to link shared pointer
+using LinkMap = std::map<std::string, LinkSharedPtr>;
+/// Map from joint name to joint shared pointer
+using JointMap = std::map<std::string, JointSharedPtr>;
 
-typedef std::map<std::string, gtdynamics::LinkSharedPtr> LinkMap;
-typedef std::map<std::string, gtdynamics::JointSharedPtr> JointMap;
-typedef std::pair<LinkMap, JointMap> LinkJointPair;
+using LinkVector = std::vector<std::reference_wrapper<Link>>;
+using JointVector = std::vector<std::reference_wrapper<Joint>>;
 
-/** Construct all Link and Joint objects from an input
- sdf::ElementPtr.
- * Keyword arguments:
- *    sdf_ptr          -- a shared pointer to a sdf::ElementPtr containing the
-        robot model.
- *    joint_params     -- a vector contanining optional params for joints.
- *
- */
-LinkJointPair extract_structure_from_sdf(
-    const sdf::Model sdf,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
-        boost::none);
-
-/** Construct all Link and Joint objects from an input urdf or sdf
- * file. Keyword arguments: file_path    -- absolute path to the urdf or sdf
- * file containing the robot description. joint_params -- a vector containing
- * optional params for joints.
- */
-LinkJointPair extract_structure_from_file(
-    const std::string file_path, const std::string model_name,
-    const boost::optional<std::vector<gtdynamics::JointParams>> joint_params =
-        boost::none);
+using LinkJointPair = std::pair<LinkMap, JointMap>;
+// map from link name to link pose
+using LinkPoses = std::map<std::string, gtsam::Pose3>;
+// map from link name to link twist
+using LinkTwists = std::map<std::string, gtsam::Vector6>;
+// type for storing forward kinematics results
+using FKResults = std::pair<LinkPoses, LinkTwists>;
 
 /**
  * Robot is used to create a representation of a robot's
@@ -80,18 +59,13 @@ class Robot {
   Robot() {}
 
   /**
-   * Constructor.
-   * Keyword Arguments:
-   *  robot_links_and_joints    -- LinkJointPair containing links and joints.
-   */
-  explicit Robot(LinkJointPair links_and_joints);
-
-  /** Constructor from a urdf or sdf file.
+   * Constructor from link and joint elements.
    *
-   * Keyword Arguments:
-   *  file_path -- path to the file.
+   * @param[in] links LinkMap containing all links
+   * @param[in] joints JointMap containing all joints
+   * joints.
    */
-  explicit Robot(const std::string file_path, std::string model_name = "");
+  explicit Robot(const LinkMap &links, const JointMap &joints);
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;
@@ -100,16 +74,19 @@ class Robot {
   std::vector<JointSharedPtr> joints() const;
 
   /// remove specified link from the robot
-  void removeLink(LinkSharedPtr link);
+  void removeLink(const LinkSharedPtr &link);
 
   /// remove specified joint from the robot
-  void removeJoint(JointSharedPtr joint);
+  void removeJoint(const JointSharedPtr &joint);
 
   /// Return the link corresponding to the input string.
-  LinkSharedPtr getLinkByName(std::string name) const;
+  LinkSharedPtr link(const std::string &name) const;
+
+  /// Fix the link corresponding to the input string.
+  Robot fixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
-  JointSharedPtr getJointByName(std::string name) const;
+  JointSharedPtr joint(const std::string &name) const;
 
   /// Return number of *moving* links.
   int numLinks() const;
@@ -117,39 +94,30 @@ class Robot {
   /// Return number of joints.
   int numJoints() const;
 
-  // print links and joints of the robot, for debug purposes
-  void printRobot() const;
-
-  // map from joint name to joint angle/vel/accel/torque
-  typedef std::map<std::string, double> JointValues;
-
-  // map from link name to link pose
-  typedef std::map<std::string, gtsam::Pose3> LinkPoses;
-
-  // map from link name to link twist
-  typedef std::map<std::string, gtsam::Vector6> LinkTwists;
-
-  // type for storing forward kinematics results
-  typedef std::pair<LinkPoses, LinkTwists> FKResults;
+  /// Print links and joints of the robot, for debug purposes
+  void print() const;
 
   /**
-   * calculate forward kinematics by performing bfs in the link-joint graph
-   * (will throw an error when invalid joint angle specification detected)
-   * Keyword Arguments:
-   *    joint_angles      -- joint angles for all joints
-   *    joint_vels        -- joint velocities for all joints
-   *    prior_link_name   -- name of link with known pose & twist
-   *    prior_link_pose   -- pose of the known link
-   *    prior_link_twist  -- twist of the konwn link
-   * return poses and twists of all links
+   * Calculate forward kinematics by performing BFS in the link-joint graph
+   * (will throw an error when invalid joint angle specification detected).
+   *
+   * If the root link pose and twist are not provided in `known_values`,
+   * default Pose3() and Vector6::Zeros() are used respectively.
+   *
+   * @param[in] t integer time index
+   * @param[in] known_values Values with joint angles, joint velocities, and
+   * (optionally) root link pose and twist.
+   * @param[in] prior_link_name name of link with known pose & twist
+   * @return poses and twists of all links, as a new Values instance
    */
-  FKResults forwardKinematics(
-      const JointValues &joint_angles, const JointValues &joint_vels,
-      const boost::optional<std::string> prior_link_name = boost::none,
-      const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none,
-      const boost::optional<gtsam::Vector6> &prior_link_twist =
-          boost::none) const;
+  gtsam::Values forwardKinematics(
+      const gtsam::Values &known_values, size_t t = 0,
+      const boost::optional<std::string> &prior_link_name = boost::none) const;
+
+ private:
+  /// Find root link for forward kinematics
+  LinkSharedPtr findRootLink(
+      const gtsam::Values &values,
+      const boost::optional<std::string> &prior_link_name, size_t t = 0) const;
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_

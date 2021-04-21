@@ -7,367 +7,387 @@
 
 /**
  * @file  Joint.h
- * @brief Representation of a robot joint.
- * @Author: Frank Dellaert, Mandy Xie, Alejandro Escontrela, Yetong Zhang
+ * @brief Absract representation of a robot joint.
+ * @author: Frank Dellaert
+ * @author: Mandy Xie
+ * @author: Alejandro Escontrela
+ * @author: Yetong Zhang
+ * @author: Varun Agrawal
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_
+#pragma once
 
-#include <gtsam/base/Matrix.h>
-#include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
 
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
 
 namespace gtdynamics {
 
+class Joint;  // forward declaration
+class Link;   // forward declaration
+
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
+
+enum JointEffortType { Actuated, Unactuated, Impedance };
+
 /**
- * Joint is the base class for a joint connecting two Link objects.
+ * This struct contains information for scalar limits.
+ * The lower and upper limits denote physical axis limits of the joint,
+ * and the threshold is an error threshold used in calculations.
  */
-class Joint : public std::enable_shared_from_this<Joint> {
+struct JointScalarLimit {
+  double value_lower_limit = -M_PI_2;
+  double value_upper_limit = M_PI_2;
+  double value_limit_threshold = 1e-9;
+};
+
+/**
+ * This struct contains all parameters needed to construct a joint.
+ */
+struct JointParams {
+  JointEffortType effort_type = JointEffortType::Actuated;
+  JointScalarLimit scalar_limits;
+  double velocity_limit = 10000.0;
+  double velocity_limit_threshold = 0.0;
+  double acceleration_limit = 10000.0;
+  double acceleration_limit_threshold = 0.0;
+  double torque_limit = 10000.0;
+  double torque_limit_threshold = 0.0;
+  double damping_coefficient = 0.0;
+  double spring_coefficient = 0.0;
+  JointParams() {}
+};
+
+/// Joint is the base class for a joint connecting two Link objects.
+class Joint : public boost::enable_shared_from_this<Joint> {
+ protected:
+  using Pose3 = gtsam::Pose3;
+
  public:
-  /** joint effort types
+  /**
+   * Joint effort types
+   *
    * Actuated: motor powered
    * Unactuated: not powered, free to move, exert zero torque
    * Impedance: with spring resistance
    */
-  enum JointEffortType { Actuated, Unactuated, Impedance };
 
-  /**
-   * JointParams contains all parameters to construct a joint
-   */
-  struct Params {
-    std::string name;                   // name of the joint
-    char joint_type;                    // type of joint
-    Joint::JointEffortType effort_type;  // joint effort type
-    LinkSharedPtr parent_link;          // shared pointer to parent link
-    LinkSharedPtr child_link;           // shared pointer to child link
-    gtsam::Vector3 axis;                // joint axis expressed in joint frame
-    gtsam::Pose3 wTj;                   // joint pose expressed in world frame
-    double joint_lower_limit;
-    double joint_upper_limit;
-    double joint_limit_threshold;
+  enum Type : char {
+    Revolute = 'R',
+    Prismatic = 'P',
+    Screw = 'C',
+    ScrewAxis = 'A'
   };
 
- private:
-  // This joint's name, as described in the URDF file.
+ protected:
+  /// This joint's name.
   std::string name_;
 
-  // ID reference to gtsam::LabeledSymbol.
-  int id_ = -1;
-  // 'R' for revolute, 'P' for prismatic
-  char joint_type_;
+  /// ID reference to DynamicsSymbol.
+  unsigned char id_;
 
-  JointEffortType jointEffortType_;
-  gtsam::Vector3 axis_;
+  /// Joint frame defined in world frame.
+  Pose3 wTj_;
+  /// Rest transform to parent link CoM frame from joint frame.
+  Pose3 jTpcom_;
+  /// Rest transform to child link CoM frame from joint frame.
+  Pose3 jTccom_;
+  /// Rest transform to parent link com frame from child link com frame at rest.
+  Pose3 pMccom_;
 
-  // Joint parameters.
-  double joint_lower_limit_;
-  double joint_upper_limit_;
-  double joint_limit_threshold_;
-
-  double damping_coeff_;
-  double spring_coeff_;
-
-  double velocity_limit_;
-  double velocity_limit_threshold_;
-
-  double acceleration_limit_;
-  double acceleration_limit_threshold_;
-
-  double torque_limit_;
-  double torque_limit_threshold_;
-
+  using LinkSharedPtr = boost::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
   LinkSharedPtr child_link_;
 
-  // SDF Elements.
-  gtsam::Pose3 wTj_;  // Joint frame defined in world frame.
-  gtsam::Pose3
-      jTpcom_;  // Rest transform to parent link CoM frame from joint frame.
-  gtsam::Pose3
-      jTccom_;  // Rest transform to child link CoM frame from joint frame.
-  gtsam::Pose3 pMccom_;  // Rest transform to parent link com frame from child
-                          // link com frame at rest.
-  gtsam::Vector6
-      pScrewAxis_;  // Joint axis expressed in COM frame of parent link
-  gtsam::Vector6
-      cScrewAxis_;  // Joint axis expressed in COM frame of child link
+  /// Joint parameters struct.
+  JointParams parameters_;
 
-  /// Return transform of child link com frame w.r.t parent link com frame
-  gtsam::Pose3 pMcCom(boost::optional<double> q = boost::none) const {
-    if (q)
-      return pMccom_ * gtsam::Pose3::Expmap(cScrewAxis_ * (*q));
-    else
-      return pMccom_;
-  }
-
-  /// Return transform of parent link com frame w.r.t child link com frame
-  gtsam::Pose3 cMpCom(boost::optional<double> q = boost::none) const {
-    if (q)
-      // return gtsam::Pose3::Expmap(screwAxis_ * (*q)).inverse() *
-      //        (pMccom_.inverse());
-      return pMccom_.inverse() * gtsam::Pose3::Expmap(pScrewAxis_ * (*q));
-    else
-      return pMccom_.inverse();
-  }
-
-  /// Return the joint axis. Rotational axis for revolute and translation
-  /// direction for prismatic in the joint frame.
-  const gtsam::Vector3& axis() const { return axis_; }
-
-  /// Transform from the world frame to the joint frame.
-  const gtsam::Pose3& wTj() const { return wTj_; }
-
-  /// Transform from the joint frame to the parent's center of mass.
-  const gtsam::Pose3& jTpcom() const { return jTpcom_; }
-
-  /// Transform from the joint frame to the child's center of mass.
-  const gtsam::Pose3& jTccom() const { return jTccom_; }
-
-  /// check if the link is Child link, throw an error if link is not connected
-  /// to this joint
-  bool isChildLink(const LinkSharedPtr link) const {
-    LinkSharedPtr link_ptr = link;
-    if (link_ptr != child_link_ && link_ptr != parent_link_) {
-      throw std::runtime_error("link " + link_ptr->name() +
-                               " is not connected to this joint " + name_);
-    }
-    return link_ptr == child_link_;
-  }
-
-  void setScrewAxis(double qInit) {
-    jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-    jTccom_ = wTj_.inverse() * child_link_->wTcom();
-
-    gtsam::Rot3 pcomRj = jTpcom_.rotation().inverse();
-    gtsam::Rot3 ccomRj = jTccom_.rotation().inverse();
-
-    if (joint_type_ == 'R') {
-      pScrewAxis_ = gtdynamics::unit_twist(pcomRj * -axis_,
-          pcomRj * (-jTpcom_.translation()));
-      cScrewAxis_ = gtdynamics::unit_twist(ccomRj * axis_,
-          ccomRj * (-jTccom_.translation()));
-    } else if (joint_type_ == 'P') {
-      pScrewAxis_ << 0, 0, 0, pcomRj * -axis_;
-      cScrewAxis_ << 0, 0, 0, ccomRj * axis_;
-    } else {
-      throw std::runtime_error(
-        "joint type " + std::string(1, joint_type_) + " not supported");
-    }
-
-    if (qInit == 0)
-      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
-    else
-      pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom() *
-                gtsam::Pose3::Expmap(cScrewAxis_ * -qInit);
-  }
+  /// Check if the link is a child link, throw an error if link is not
+  /// connected to this joint.
+  bool isChildLink(const LinkSharedPtr &link) const;
 
  public:
   Joint() {}
 
   /**
-   * Create Joint from a sdf::Joint instance, as described in
-   * ROS/urdfdom_headers:
-   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Joint.hh
+   * @brief Constructor to create Joint from joint name, joint pose in
+   * world frame, and shared pointers to the parent and child links.
    *
-   * Keyword arguments:
-   *   sdf_joint                  -- sdf::Joint instance to derive joint
-   * attributes from. jointEffortType_           -- joint effort type.
-   *   springCoefficient          -- spring coefficient for Impedance joint.
-   *   jointLimitThreshold        -- joint angle limit threshold.
-   *   velocityLimitThreshold     -- joint velocity limit threshold.
-   *   accelerationLimit          -- joint acceleration limit
-   *   accelerationLimitThreshold -- joint acceleration limit threshold
-   *   torqueLimitThreshold       -- joint torque limit threshold
-   *   parent_link                -- shared pointer to the parent Link.
-   *   child_link                 -- shared pointer to the child Link.
+   * @param[in] name         name of joint
+   * @param[in] wTj          joint pose expressed in world frame
+   * @param[in] parent_link  Shared pointer to the parent Link.
+   * @param[in] child_link   Shared pointer to the child Link.
    */
-  Joint(const sdf::Joint& sdf_joint, JointEffortType joint_effort_type,
-        double springCoefficient, double jointLimitThreshold,
-        double velocityLimitThreshold, double accelerationLimit,
-        double accelerationLimitThreshold, double torqueLimitThreshold,
-        LinkSharedPtr parent_link, LinkSharedPtr child_link)
-      : name_(sdf_joint.Name()),
-        jointEffortType_(joint_effort_type),
-        axis_(gtsam::Vector3(sdf_joint.Axis()->Xyz()[0],
-                             sdf_joint.Axis()->Xyz()[1],
-                             sdf_joint.Axis()->Xyz()[2])),
-        joint_lower_limit_(sdf_joint.Axis()->Lower()),
-        joint_upper_limit_(sdf_joint.Axis()->Upper()),
-        joint_limit_threshold_(jointLimitThreshold),
-        damping_coeff_(sdf_joint.Axis()->Damping()),
-        spring_coeff_(springCoefficient),
-        velocity_limit_(sdf_joint.Axis()->MaxVelocity()),
-        velocity_limit_threshold_(velocityLimitThreshold),
-        acceleration_limit_(accelerationLimit),
-        acceleration_limit_threshold_(accelerationLimitThreshold),
-        torque_limit_(sdf_joint.Axis()->Effort()),
-        torque_limit_threshold_(torqueLimitThreshold),
-        parent_link_(parent_link),
-        child_link_(child_link) {
-    if (sdf_joint.PoseFrame() == "" ||
-        sdf_joint.PoseFrame() == child_link->name()) {
-      if (sdf_joint.Pose() == ignition::math::Pose3d())
-        wTj_ = child_link->wTl();
-      else
-        wTj_ = child_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
-    } else if (sdf_joint.PoseFrame() == parent_link->name()) {
-      if (sdf_joint.Pose() == ignition::math::Pose3d())
-        wTj_ = parent_link->wTl();
-      else
-        wTj_ = parent_link->wTl() * parse_ignition_pose(sdf_joint.Pose());
-    } else if (sdf_joint.PoseFrame() == "world") {
-      wTj_ = parse_ignition_pose(sdf_joint.Pose());
-    } else {
-      // TODO: get pose frame from name.  Need sdf::Model to do that though.
-      throw std::runtime_error("joint pose frames other than world, parent, or "
-                               "child not yet supported");
-    }
+  Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
+        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+        const JointParams &parameters);
 
-    if (sdf_joint.Axis()->UseParentModelFrame()) {
-      axis_ = wTj_.rotation().inverse() * parent_link->wTl().rotation() * axis_;
-    }
-
-    if (sdf_joint.Type() == sdf::JointType::REVOLUTE) {
-      joint_type_ = 'R';
-    } else if (sdf_joint.Type() == sdf::JointType::PRISMATIC) {
-      joint_type_ = 'P';
-    } else {
-      throw std::runtime_error("joint type not supported");
-    }
-    setScrewAxis(sdf_joint.Axis()->InitialPosition());
-  }
-
-  /** constructor using JointParams */
-  explicit Joint(const Params& params)
-      : name_(params.name),
-        joint_type_(params.joint_type),
-        jointEffortType_(params.effort_type),
-        axis_(params.axis),
-        joint_lower_limit_(params.joint_lower_limit),
-        joint_upper_limit_(params.joint_upper_limit),
-        joint_limit_threshold_(params.joint_limit_threshold),
-        parent_link_(params.parent_link),
-        child_link_(params.child_link),
-        wTj_(params.wTj) {
-    setScrewAxis(0);
-  }
+  /**
+   * @brief Default destructor.
+   */
+  virtual ~Joint() = default;
 
   /// Return a shared ptr to this joint.
-  JointSharedPtr getSharedPtr() { return shared_from_this(); }
+  JointSharedPtr shared() { return shared_from_this(); }
 
-  /// Set the joint's ID to track reference to gtsam::LabeledSymbol.
-  void setID(unsigned char id) { id_ = id; }
+  /// Return a const shared ptr to this joint.
+  JointConstSharedPtr shared() const { return shared_from_this(); }
 
-  /// Get the joint's ID to track reference to gtsam::LabeledSymbol.
-  int getID() const {
-    if (id_ == -1)
-      throw std::runtime_error(
-          "Calling getID on a link whose ID has not been set");
-    return id_;
-  }
+  /// Get the joint's ID.
+  unsigned char id() const { return id_; }
 
-  // Return joint name.
+  /// Transform from the world frame to the joint frame.
+  const Pose3 &wTj() const { return wTj_; }
+
+  /// Transform from the joint frame to the parent's center of mass.
+  const Pose3 &jTpcom() const { return jTpcom_; }
+
+  /// Transform from the joint frame to the child's center of mass.
+  const Pose3 &jTccom() const { return jTccom_; }
+
+  /// Get a gtsam::Key for this joint
+  gtsam::Key key() const { return gtsam::Key(id()); }
+
+  /// Return joint name.
   std::string name() const { return name_; }
 
-  /// Return jointType
-  char jointType() const { return joint_type_; }
-
-  /// Return joint effort type
-  JointEffortType jointEffortType() const { return jointEffortType_; }
-
-  LinkSharedPtr otherLink(const LinkSharedPtr link) const {
+  /// Return the connected link other than the one provided.
+  LinkSharedPtr otherLink(const LinkSharedPtr &link) const {
     return isChildLink(link) ? parent_link_ : child_link_;
   }
 
-  /// Return the transform from this link com to the other link com frame
-  gtsam::Pose3 transformFrom(const LinkSharedPtr link,
-                             boost::optional<double> q = boost::none) const {
-    return isChildLink(link) ? pMcCom(q) : cMpCom(q);
-  }
-
-  /// Return the transform from the other link com to this link com frame
-  gtsam::Pose3 transformTo(const LinkSharedPtr link,
-                           boost::optional<double> q = boost::none) const {
-    return isChildLink(link) ? cMpCom(q) : pMcCom(q);
-  }
-
-  /// Return screw axis expressed in the specified link frame
-  const gtsam::Vector6& screwAxis(const LinkSharedPtr link) const {
-    return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
-  }
-
+  /// Return the links connected to this joint.
   std::vector<LinkSharedPtr> links() const {
     return std::vector<LinkSharedPtr>{parent_link_, child_link_};
   }
 
   /// Return a shared ptr to the parent link.
-  LinkSharedPtr parentLink() { return parent_link_; }
+  LinkSharedPtr parent() const { return parent_link_; }
 
   /// Return a shared ptr to the child link.
-  LinkSharedPtr childLink() { return child_link_; }
+  LinkSharedPtr child() const { return child_link_; }
 
-  /// Return joint angle lower limit.
-  double jointLowerLimit() const { return joint_lower_limit_; }
+  /// Return joint parameters.
+  const JointParams &parameters() const { return parameters_; }
 
-  /// Return joint angle upper limit.
-  double jointUpperLimit() const { return joint_upper_limit_; }
-
-  /// Return joint angle limit threshold.
-  double jointLimitThreshold() const { return joint_limit_threshold_; }
-
-  /// Return joint damping coefficient
-  double dampCoefficient() const { return damping_coeff_; }
-
-  /// Return joint spring coefficient
-  double springCoefficient() const { return spring_coeff_; }
-
-  /// Return joint velocity limit.
-  double velocityLimit() const { return velocity_limit_; }
-
-  /// Return joint velocity limit threshold.
-  double velocityLimitThreshold() const { return velocity_limit_threshold_; }
-
-  /// Return joint acceleration limit.
-  double accelerationLimit() const { return acceleration_limit_; }
-
-  /// Return joint acceleration limit threshold.
-  double accelerationLimitThreshold() const {
-    return acceleration_limit_threshold_;
+  bool operator==(const Joint &other) const {
+    return (this->name_ == other.name_ && this->id_ == other.id_ &&
+            this->wTj_.equals(other.wTj_) &&
+            this->jTpcom_.equals(other.jTpcom_) &&
+            this->jTccom_.equals(other.jTccom_) &&
+            this->pMccom_.equals(other.pMccom_));
   }
 
-  /// Return joint torque limit.
-  double torqueLimit() const { return torque_limit_; }
+  bool operator!=(const Joint &other) const { return !(*this == other); }
 
-  /// Return joint torque limit threshold.
-  double torqueLimitThreshold() const { return torque_limit_threshold_; }
+  friend std::ostream &operator<<(std::ostream &stream, const Joint &j);
 
-  virtual ~Joint() = default;
-};
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const JointSharedPtr &j);
 
-struct JointParams {
-  std::string name;  // Name of this joint as described in the URDF file.
+  /// Helper print function
+  void print() const { std::cout << *this; }
 
-  Joint::JointEffortType jointEffortType = Joint::JointEffortType::Actuated;
-  double springCoefficient = 0;      // spring coefficient for Impedance joint.
-  double jointLimitThreshold = 0.0;  // joint angle limit threshold.
-  double velocityLimitThreshold = 0.0;  // joint velocity limit threshold.
-  double accelerationLimit = 10000;     // joint acceleration limit.
-  double accelerationLimitThreshold =
-      0.0;                            // joint acceleration limit threshold.
-  double torqueLimitThreshold = 0.0;  // joint torque limit threshold.
+  /**
+   * \defgroup AbstractMethods Abstract methods for the joint class.
+   * @{
+   */
+
+  /**
+   * Abstract method: Return joint type for use in reconstructing robot from
+   * JointParams.
+   */
+  virtual Type type() const = 0;
+
+  /**
+   * Abstract method. Return the pose of the child link in the parent link
+   * frame, given a Values object containing the joint coordinate.
+   */
+  virtual Pose3
+  parentTchild(const gtsam::Values &q, size_t t = 0,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+
+  /**
+   * Abstract method. Return the pose of the parent link in the child link
+   * frame, given a Values object containing the joint coordinate.
+   */
+  virtual Pose3
+  childTparent(const gtsam::Values &q, size_t t = 0,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+
+  /**
+   * Abstract method. Return the relative pose of the specified link [link2] in
+   * the other link's [link1] reference frame.
+   */
+  virtual Pose3
+  relativePoseOf(const LinkSharedPtr &link2, const gtsam::Values &q,
+                 size_t t = 0,
+                 boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+
+  /**
+   * Return the world pose of the specified link [link2], given
+   * the world pose of the other link [link1].
+   */
+  Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1,
+               const gtsam::Values &q, size_t t = 0,
+               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
+               boost::optional<gtsam::Matrix &> H_q = boost::none) const {
+    auto T12 = relativePoseOf(link2, q, t, H_q);
+    return wT1.compose(T12, H_wT1); // H_wT2_T12 is identity
+  }
+
+  /** Abstract method. Return the twist of the other link given this link's
+   * twist and a Values object containing this joint's angle Value.
+   */
+  virtual gtsam::Vector6 transformTwistTo(
+      size_t t, const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot,
+      boost::optional<gtsam::Vector6> other_twist = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none) const = 0;
+
+  /**
+   * Return the twist acceleration of the other link given this link's twist
+   * accel and a Values object containing this joint's angle Value and
+   * derivatives.
+   */
+  virtual gtsam::Vector6 transformTwistAccelTo(
+      size_t t, const LinkSharedPtr &link, const gtsam::Values &q_and_q_dot_and_q_ddot,
+      boost::optional<gtsam::Vector6> this_twist = boost::none,
+      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
+      boost::optional<gtsam::Matrix &> H_q = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
+      boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
+          boost::none) const = 0;
+
+  /// Abstract method. Returns forward dynamics priors on torque
+  virtual gtsam::GaussianFactorGraph linearFDPriors(
+      size_t t, const gtsam::Values &torques,
+      const OptimizerSetting &opt) const {
+    throw std::runtime_error(
+        "linearFDPriors not implemented for the desired "
+        "joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return linear accel factors in the dynamics graph.
+   *
+   * @param[in] t The timestep for which to generate factors.
+   * @param[in] known_values Link poses, twists, Joint angles, Joint velocities.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear accel factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearAFactors(
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
+    throw std::runtime_error(
+        "linearAFactors not implemented for the desired "
+        "joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
+   *
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] known_values  Link poses, twists, Joint angles, Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear dynamics factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
+      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
+    throw std::runtime_error(
+        "linearDynamicsFactors not implemented for the "
+        "desired joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return linear dynamics factors in the dynamics graph.
+   *
+   * @param[in] t             The timestep for which to generate factors.
+   * @param[in] poses         Link poses.
+   * @param[in] twists        Link twists.
+   * @param[in] joint_angles  Joint angles.
+   * @param[in] joint_vels    Joint velocities.
+   * @param[in] opt           OptimizerSetting object containing NoiseModels
+   *    for factors.
+   * @param[in] planar_axis   Optional planar axis.
+   * @return linear dynamics factors.
+   */
+  virtual gtsam::GaussianFactorGraph linearDynamicsFactors(
+      size_t t, const std::map<std::string, gtsam::Pose3> &poses,
+      const std::map<std::string, gtsam::Vector6> &twists,
+      const std::map<std::string, double> &joint_angles,
+      const std::map<std::string, double> &joint_vels,
+      const OptimizerSetting &opt,
+      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const {
+    throw std::runtime_error(
+        "linearDynamicsFactors not implemented for the "
+        "desired joint type.  A linearized version may not be possible.");
+  }
+
+  /**
+   * @fn (ABSTRACT) Return joint limit factors in the dynamics graph.
+   *
+   * @param[in] t   The timestep for which to generate joint limit factors.
+   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @return joint limit factors.
+   */
+  virtual gtsam::NonlinearFactorGraph jointLimitFactors(
+      size_t t, const OptimizerSetting &opt) const = 0;
+
+  /**@}*/
+
+  /// Joint-induced twist in child frame
+  virtual gtsam::Vector6 childTwist(const gtsam::Values &values,
+                                    size_t t = 0) const = 0;
+
+  /// Joint-induced twist in parent frame
+  virtual gtsam::Vector6 parentTwist(const gtsam::Values &values,
+                                     size_t t = 0) const = 0;
+
+  /// Calculate pose/twist of child given parent pose/twist
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  childPoseTwist(const gtsam::Pose3 &wTp, const gtsam::Vector6 &Vp,
+                 const gtsam::Values &known_values, size_t t = 0) const {
+    const gtsam::Pose3 pTc = parentTchild(known_values, t);
+    return {wTp * pTc, pTc.inverse().Adjoint(Vp) + childTwist(known_values, t)};
+  }
+
+  /// Calculate pose/twist of parent given child pose/twist
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  parentPoseTwist(const gtsam::Pose3 &wTc, const gtsam::Vector6 &Vc,
+                  const gtsam::Values &known_values, size_t t = 0) const {
+    const gtsam::Pose3 pTc = parentTchild(known_values, t);
+    return {wTc * pTc.inverse(), pTc.Adjoint(Vc) + parentTwist(known_values, t)};
+  }
+
+  /// Given link pose/twist, calculate pose/twist of other link
+  std::pair<gtsam::Pose3, gtsam::Vector6>
+  otherPoseTwist(const LinkSharedPtr &link, const gtsam::Pose3 &wTl,
+                 const gtsam::Vector6 &Vl, const gtsam::Values &known_values,
+                 size_t t = 0) const {
+    return isChildLink(link) ? parentPoseTwist(wTl, Vl, known_values, t)
+                             : childPoseTwist(wTl, Vl, known_values, t);
+  }
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_JOINT_H_

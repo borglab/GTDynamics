@@ -9,45 +9,37 @@
  * @file  stephanie01_ForwardDynamicsThreeLink.cpp
  * @brief Test forward dynamics optimization for a three-link robot with two
  * revolute joints.
- * @Author: Stephanie McCormick
+ * @author: Stephanie McCormick
  */
 
-#include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
-#include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-int main(int argc, char** argv) {
+using namespace gtdynamics;
+
+int main(int argc, char **argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
-  using three_link::my_robot;
+  using simple_rr::robot;
 
   // Build the factor graph for the robot.
+  robot.fixLink("link_0");
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-  auto graph_builder = gtdynamics::DynamicsGraph();
-  auto graph =
-      graph_builder.dynamicsFactorGraph(my_robot, 0, gravity, planar_axis);
+  DynamicsGraph graph_builder(gravity, planar_axis);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Add forward dynamics priors to factor graph.
-  gtdynamics::Robot::JointValues joint_angles, joint_vels, joint_torques;
-  joint_angles["joint_1"] = 0;
-  joint_vels["joint_1"] = 0;
-  joint_torques["joint_1"] = 0;
-  joint_angles["joint_2"] = 0;
-  joint_vels["joint_2"] = 0;
-  joint_torques["joint_2"] = 0;
+  gtsam::Values values;
 
-  auto priorFactors = graph_builder.forwardDynamicsPriors(
-      my_robot, 0, joint_angles, joint_vels, joint_torques);
+  auto priorFactors = graph_builder.forwardDynamicsPriors(robot, 0, values);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = gtdynamics::ZeroValues(my_robot, 0);
+  auto init_values = ZeroValues(robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

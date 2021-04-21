@@ -8,173 +8,151 @@
 /**
  * @file  Link.h
  * @brief only link part of a robot, does not include joint part
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
+#pragma once
+
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactor.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/PriorFactor.h>
 
-#include <sdf/sdf.hh>
-
+#include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
-
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
+
+class Link; // forward declaration
+class Joint; // forward declaration
+
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
+
 /**
- * Link is the base class for links taking different format of parameters
+ * @class Base class for links taking different format of parameters.
  */
-class Link : public std::enable_shared_from_this<Link> {
+class Link : public boost::enable_shared_from_this<Link> {
  private:
+  unsigned char id_;
   std::string name_;
 
-  int id_ = -1;
-
-  // Inertial elements.
+  /// Inertial elements.
   double mass_;
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
-  // SDF Elements.
+  /// SDF Elements.
   gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
   gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
 
-  // option to fix the link, used for ground link
+  /// Option to fix the link, used for ground link
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  std::vector<JointSharedPtr> joints_;  // joints connected to the link
+  /// Joints connected to the link
+  std::vector<JointSharedPtr> joints_;
 
  public:
-  /**
-   * Params contains all parameters to construct a link
-   */
-  struct Params {
-    std::string name;        // name of the link
-    double mass;             // mass of the link
-    gtsam::Matrix3 inertia;  // inertia of the link
-    gtsam::Pose3 wTl;        // link pose expressed in world frame
-    gtsam::Pose3 lTcom;      // link com expressed in link frame
-  };
 
   Link() {}
 
-  /**
-   * Initialize Link's inertial properties with a sdf::Link instance, as
-   * described in the sdformat8 documentation:
-   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
-   *
-   * Keyword arguments:
-   *    sdf_link -- sdf::Link object containing link information.
-   */
-  explicit Link(sdf::Link sdf_link)
-      : name_(sdf_link.Name()),
-        mass_(sdf_link.Inertial().MassMatrix().Mass()),
-        inertia_(
-            (gtsam::Matrix(3, 3) << sdf_link.Inertial().Moi()(0, 0),
-             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
-             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
-             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
-             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2))
-                .finished()),
-        wTl_(parse_ignition_pose(sdf_link.Pose())),
-        lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
-        is_fixed_(false) {}
 
-  /** constructor using Params */
-  explicit Link(const Params& params)
-      : name_(params.name),
-        mass_(params.mass),
-        inertia_(params.inertia),
-        wTl_(params.wTl),
-        lTcom_(params.lTcom),
-        is_fixed_(false) {}
+  /**
+   * Initialize Link's inertial properties with a LinkParams instance.
+   *
+   * @param params LinkParams object containing link information.
+   */
+  Link(unsigned char id, const std::string &name, const double mass,
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
+       const gtsam::Pose3 &lTcom, bool is_fixed = false)
+      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
+        lTcom_(lTcom), is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
 
-  // return a shared pointer of the link
-  LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
-
-  // remove the joint
-  void removeJoint(JointSharedPtr joint) {
-    for (auto joint_it = joints_.begin(); joint_it != joints_.end();
-         joint_it++) {
-      if ((*joint_it) == joint) {
-        joints_.erase(joint_it);
-        break;
-      }
-    }
+  bool operator==(const Link &other) const {
+    return (this->name_ == other.name_ && this->id_ == other.id_ &&
+            this->mass_ == other.mass_ &&
+            this->centerOfMass_.equals(other.centerOfMass_) &&
+            this->inertia_ == other.inertia_ && this->wTl_.equals(other.wTl_) &&
+            this->lTcom_.equals(other.lTcom_) &&
+            this->is_fixed_ == other.is_fixed_ &&
+            this->fixed_pose_.equals(other.fixed_pose_));
   }
 
-  // set ID for the link
-  void setID(unsigned char id) {
-    // if (id == 0) throw std::runtime_error("ID cannot be 0");
-    id_ = id;
+  bool operator!=(const Link &other) const { return !(*this == other); }
+
+  /// return a shared pointer of the link
+  LinkSharedPtr shared(void) { return shared_from_this(); }
+
+  /// remove the joint
+  void removeJoint(const JointSharedPtr& joint) {
+    joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
-  // return ID of the link
-  int getID() const {
-    if (id_ == -1)
-      throw std::runtime_error(
-          "Calling getID on a link whose ID has not been set");
-    return id_;
-  }
+  /// return ID of the link
+  unsigned char id() const { return id_; }
 
-  // add joint to the link
-  void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
+  /// add joint to the link
+  void addJoint(const JointSharedPtr& joint) { joints_.push_back(joint); }
 
-  // transform from link to world frame
-  const gtsam::Pose3& wTl() const { return wTl_; }
+  /// transform from link to world frame
+  const gtsam::Pose3 &wTl() const { return wTl_; }
 
-  // transfrom from link com frame to link frame
-  const gtsam::Pose3& lTcom() const { return lTcom_; }
+  /// transform from link CoM frame to link frame
+  const gtsam::Pose3 &lTcom() const { return lTcom_; }
 
-  // transform from link com frame to world frame
+  /// transform from link CoM frame to world frame
   inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
-  // the fixed pose of the link
-  const gtsam::Pose3& getFixedPose() { return fixed_pose_; }
+  /// the fixed pose of the link
+  const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }
 
-  // whether the link is fixed
+  /// whether the link is fixed
   bool isFixed() const { return is_fixed_; }
 
-  // fix the link to fixed_pose, if fixed_pose not specify, fix the link to
-  // default pose
-  void fix(const boost::optional<gtsam::Pose3&> fixed_pose = boost::none) {
+  /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
+  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
     is_fixed_ = true;
     fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
   }
 
-  // unfix the link
+  /// Unfix the link
   void unfix() { is_fixed_ = false; }
 
-  // return all joints of the link
-  const std::vector<JointSharedPtr>& getJoints(void) const { return joints_; }
+  /// return all joints of the link
+  const std::vector<JointSharedPtr> &joints() const { return joints_; }
 
-  // Return link name.
+  /// return the number of connected joints
+  size_t numJoints() const { return joints_.size(); }
+
+  /// Return link name.
   std::string name() const { return name_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
 
   /// Return center of mass (gtsam::Pose3)
-  const gtsam::Pose3& centerOfMass() const { return centerOfMass_; }
+  const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
   /// Return inertia.
-  const gtsam::Matrix3& inertia() const { return inertia_; }
+  const gtsam::Matrix3 &inertia() const { return inertia_; }
 
   /// Return general mass gtsam::Matrix
   gtsam::Matrix6 inertiaMatrix() const {
@@ -183,7 +161,14 @@ class Link : public std::enable_shared_from_this<Link> {
     gmm.push_back(gtsam::I_3x3 * mass_);
     return gtsam::diag(gmm);
   }
+
+  /// Print to ostream
+  friend std::ostream &operator<<(std::ostream &os, const Link &l) {
+    os << l.name();
+    return os;
+  }
+
+  /// Helper print function
+  void print() const { std::cout << *this; }
 };
 }  // namespace gtdynamics
-
-#endif   // GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_

@@ -8,7 +8,7 @@
 /**
  * @file  testWrenchPlanarFactor.cpp
  * @brief Test wrench planar factor.
- * @Author: Yetong Zhang
+ * @author Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -25,10 +25,11 @@
 
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 namespace example {
-// nosie model
+// noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
 gtsam::Key wrench_key = gtsam::Symbol('W', 1);
@@ -39,8 +40,8 @@ TEST(WrenchPlanarFactor, x_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 1, 0, 0;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
-                                        example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;
@@ -60,8 +61,8 @@ TEST(WrenchPlanarFactor, y_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 1, 0;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
-                                        example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;
@@ -81,8 +82,8 @@ TEST(WrenchPlanarFactor, z_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 0, 1;
-  gtdynamics::WrenchPlanarFactor factor(example::wrench_key,
-                                        example::cost_model, planar_axis);
+  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
+                            planar_axis);
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
 
   gtsam::Vector3 actual_errors, expected_errors;

@@ -8,7 +8,7 @@
 /**
  * @file  testContactDynamicsMomentFactor.cpp
  * @brief test contact dynamics moment factor.
- * @Author: Alejandro Escontrela
+ * @author Alejandro Escontrela
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -27,13 +27,14 @@
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
+using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
  * Test the evaluateError method with various contact wrenches.
  **/
 TEST(ContactDynamicsMomentFactor, error) {
-  using simple_urdf::my_robot;
+  using simple_urdf::robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
@@ -42,8 +43,7 @@ TEST(ContactDynamicsMomentFactor, error) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
-                                                 cTcom);
+  ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model, cTcom);
 
   // A link with zero contact wrench should have zero
   // moment at the contact point.
@@ -80,7 +80,7 @@ TEST(ContactDynamicsMomentFactor, error) {
  * moment at the contact point.
  **/
 TEST(ContactDynamicsMomentFactor, optimization) {
-  using simple_urdf::my_robot;
+  using simple_urdf::robot;
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Constrained::All(3);
@@ -89,8 +89,7 @@ TEST(ContactDynamicsMomentFactor, optimization) {
 
   // Transform from the robot com to the contact point.
   gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  gtdynamics::ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model,
-                                                 cTcom);
+  ContactDynamicsMomentFactor factor(contact_wrench_key, cost_model, cTcom);
 
   // Initial link twist.
   gtsam::Vector6 contact_wrench_init =
