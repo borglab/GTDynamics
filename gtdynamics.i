@@ -686,7 +686,7 @@ class Phase {
                        double contact_height);
   void addContactPoints(const std::vector<string>& links,
                         const gtsam::Point3& point, double contact_height);
-  const gtdynamics::Robot& getRobotConfiguration() const;
+  const gtdynamics::Robot& robot() const;
   const gtdynamics::ContactPoints& contactPoints() const;
   const gtdynamics::ContactPoint& getContactPointAtLink(const string& link) const;
   int numTimeSteps() const;
