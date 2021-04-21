@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
   // Load the robot and build a nonlinear factor graph of kinodynamics
   // constraints.
   auto simple_rpr = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      kSdfPath + "/test/simple_rpr.sdf", "simple_rpr_sdf");
   std::cout << "\033[1;31m"
             << "Robot Model:"
             << "\033[0m\n"

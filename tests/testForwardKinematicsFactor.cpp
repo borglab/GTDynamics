@@ -120,7 +120,7 @@ TEST(ForwardKinematicsFactor, Movement) {
 }
 
 TEST(ForwardKinematicsFactor, ArbitraryTime) {
-  Robot robot = CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+  Robot robot = CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
   std::string base_link = "l1", end_link = "l2";
   size_t t = 81;
   Values joint_angles;

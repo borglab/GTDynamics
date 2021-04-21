@@ -37,7 +37,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the Vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = CreateRobotFromFile(URDF_PATH + "/vision60.urdf");
+  auto vision60 = CreateRobotFromFile(kUrdfPath + "/vision60.urdf");
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

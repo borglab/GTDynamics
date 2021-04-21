@@ -107,7 +107,7 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
 
 TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -134,7 +134,7 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
 
 TEST(InitializeSolutionUtils, InverseKinematics) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -204,7 +204,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
 TEST(InitializeSolutionUtils, ZeroValues) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -232,7 +232,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
 
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -260,7 +260,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
 
 TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + "/test/simple_urdf.urdf");
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
