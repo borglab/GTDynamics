@@ -386,13 +386,13 @@ class DynamicsGraph {
       const gtdynamics::CollocationScheme collocation) const;
 
   static void addCollocationFactorDouble(
-      gtsam::NonlinearFactorGraph* graph, const gtsam::Key x0_key,
+      gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
       const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
       const double dt, gtsam::noiseModel::Base* cost_model,
       const gtdynamics::CollocationScheme collocation);
 
   static void addMultiPhaseCollocationFactorDouble(
-      gtsam::NonlinearFactorGraph* graph, const gtsam::Key x0_key,
+      gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
       const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
       const gtsam::Key phase_key,
       gtsam::noiseModel::Base* cost_model,
