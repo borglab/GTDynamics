@@ -7,6 +7,10 @@ virtual class gtsam::Values;
 
 namespace gtdynamics {
 
+#include <gtdynamics/config.h>
+const string SDF_PATH = SDF_PATH;
+const string URDF_PATH = URDF_PATH;
+
 /********************** factors **********************/
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {

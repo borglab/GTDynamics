@@ -26,5 +26,8 @@
 #define GTDYNAMICS_VERSION_STRING "@CMAKE_PROJECT_VERSION@"
 
 // Paths to SDF & URDF files.
-const std::string SDF_PATH = "@PROJECT_SOURCE_DIR@/sdfs";
-const std::string URDF_PATH = "@PROJECT_SOURCE_DIR@/urdfs";
+namespace gtdynamics {
+// Paths to SDF & URDF files.
+constexpr const char* SDF_PATH = "@PROJECT_SOURCE_DIR@/sdfs";
+constexpr const char* URDF_PATH = "@PROJECT_SOURCE_DIR@/urdfs";
+}  // namespace gtdynamics
