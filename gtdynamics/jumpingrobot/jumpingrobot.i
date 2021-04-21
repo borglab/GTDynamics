@@ -73,7 +73,7 @@ gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeySet& ke
 gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys);
 
 
-#include <gtdynamics/jumpingrobot/factors/SourceMassCollocationFactor.h>
+#include <gtdynamics/jumpingrobot/factors/JRCollocationFactors.h>
 void AddSourceMassCollocationFactor(
     gtsam::NonlinearFactorGraph& graph,
     const std::vector<gtsam::Key>& mdot_prev_keys,

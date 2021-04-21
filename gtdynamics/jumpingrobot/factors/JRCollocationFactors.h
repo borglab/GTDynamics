@@ -6,21 +6,19 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  PneumaticActuatorFactor.h
- * @brief Pneumatic factors.
+ * @file  JRCollocationFactor.h
+ * @brief Collocation factors for jumping robot.
  * @Author: Yetong Zhang
  */
-
-// TODO(yetong): split into different files
 
 #pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/expressions.h>
-#include <gtsam/nonlinear/ExpressionFactor.h>
 
 #include <boost/optional.hpp>
 #include <iostream>
@@ -39,11 +37,9 @@ double multDouble1(const double& d1, const double& d2,
 
 /** Add mass collocation factors for source tank. */
 void AddSourceMassCollocationFactor(
-    gtsam::NonlinearFactorGraph& graph,
-    const std::vector<gtsam::Key>& mdot_prev_keys,
-    const std::vector<gtsam::Key>& mdot_curr_keys,
-    gtsam::Key source_mass_key_prev, gtsam::Key source_mass_key_curr,
-    gtsam::Key dt_key, bool isEuler,
+    gtsam::NonlinearFactorGraph& graph, const gtsam::KeyVector& mdot_prev_keys,
+    const gtsam::KeyVector& mdot_curr_keys, gtsam::Key source_mass_key_prev,
+    gtsam::Key source_mass_key_curr, gtsam::Key dt_key, bool isEuler,
     const gtsam::noiseModel::Base::shared_ptr& cost_model) {
   gtsam::Double_ expr0(source_mass_key_prev);
   gtsam::Double_ expr1(source_mass_key_curr);
@@ -58,10 +54,17 @@ void AddSourceMassCollocationFactor(
   }
 
   if (isEuler) {
-        graph.add(gtsam::ExpressionFactor(cost_model, 0.0, expr0 - mdot0dt_vec[0] - mdot0dt_vec[1] - mdot0dt_vec[2] - mdot0dt_vec[3] - expr1));
+    graph.add(gtsam::ExpressionFactor(cost_model, 0.0,
+                                      expr0 - mdot0dt_vec[0] - mdot0dt_vec[1] -
+                                          mdot0dt_vec[2] - mdot0dt_vec[3] -
+                                          expr1));
   } else {
-        graph.add(gtsam::ExpressionFactor(cost_model, 0.0, expr0 - 0.5 * mdot1dt_vec[0] - 0.5 * mdot1dt_vec[1] - 0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3]
-                                        - 0.5 * mdot1dt_vec[0] - 0.5 * mdot1dt_vec[1] - 0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] - expr1));
+    graph.add(gtsam::ExpressionFactor(
+        cost_model, 0.0,
+        expr0 - 0.5 * mdot1dt_vec[0] - 0.5 * mdot1dt_vec[1] -
+            0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] - 0.5 * mdot1dt_vec[0] -
+            0.5 * mdot1dt_vec[1] - 0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] -
+            expr1));
   }
 }
 
@@ -69,15 +72,14 @@ void AddSourceMassCollocationFactor(
  * t_curr = t_prev + dt
  */
 void AddTimeCollocationFactor(
-  gtsam::NonlinearFactorGraph& graph,
-  gtsam::Key t_prev_key, gtsam::Key t_curr_key, gtsam::Key dt_key,
-  const gtsam::noiseModel::Base::shared_ptr& cost_model
-) {
-    gtsam::Double_ t_curr_expr(t_curr_key);
-    gtsam::Double_ t_prev_expr(t_prev_key);
-    gtsam::Double_ dt_expr(dt_key);
-    gtsam::Double_ expr = t_curr_expr + dt_expr - t_prev_expr;
-    graph.add(gtsam::ExpressionFactor(cost_model, 0.0, expr));
+    gtsam::NonlinearFactorGraph& graph, gtsam::Key t_prev_key,
+    gtsam::Key t_curr_key, gtsam::Key dt_key,
+    const gtsam::noiseModel::Base::shared_ptr& cost_model) {
+  gtsam::Double_ t_curr_expr(t_curr_key);
+  gtsam::Double_ t_prev_expr(t_prev_key);
+  gtsam::Double_ dt_expr(dt_key);
+  gtsam::Double_ expr = t_curr_expr + dt_expr - t_prev_expr;
+  graph.add(gtsam::ExpressionFactor(cost_model, 0.0, expr));
 }
 
-}
+}  // namespace gtdynamics
