@@ -451,7 +451,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
 }
 
 void DynamicsGraph::addCollocationFactorDouble(
-    NonlinearFactorGraph &graph, const Key x0_key, const Key x1_key,
+    NonlinearFactorGraph* graph, const Key x0_key, const Key x1_key,
     const Key v0_key, const Key v1_key, const double dt,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
@@ -460,10 +460,10 @@ void DynamicsGraph::addCollocationFactorDouble(
   Double_ v0_expr(v0_key);
   Double_ v1_expr(v1_key);
   if (collocation == CollocationScheme::Euler) {
-    graph.add(
+    graph->add(
         ExpressionFactor(cost_model, 0.0, x0_expr + dt * v0_expr - x1_expr));
   } else if (collocation == CollocationScheme::Trapezoidal) {
-    graph.add(ExpressionFactor(
+    graph->add(ExpressionFactor(
         cost_model, 0.0,
         x0_expr + 0.5 * dt * v0_expr + 0.5 * dt * v1_expr - x1_expr));
   } else {
@@ -484,7 +484,7 @@ double multDouble(const double &d1, const double &d2,
 }
 
 void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-    NonlinearFactorGraph &graph, const Key x0_key, const Key x1_key,
+    NonlinearFactorGraph* graph, const Key x0_key, const Key x1_key,
     const Key v0_key, const Key v1_key, const Key phase_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
@@ -496,10 +496,10 @@ void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
   Double_ v0dt(multDouble, phase_expr, v0_expr);
 
   if (collocation == CollocationScheme::Euler) {
-    graph.add(ExpressionFactor(cost_model, 0.0, x0_expr + v0dt - x1_expr));
+    graph->add(ExpressionFactor(cost_model, 0.0, x0_expr + v0dt - x1_expr));
   } else if (collocation == CollocationScheme::Trapezoidal) {
     Double_ v1dt(multDouble, phase_expr, v1_expr);
-    graph.add(ExpressionFactor(cost_model, 0.0,
+    graph->add(ExpressionFactor(cost_model, 0.0,
                                x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
   } else {
     throw std::runtime_error(
@@ -507,16 +507,20 @@ void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
   }
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::jointCollocationFactors(const int j, const int t,
-                                  const double dt,
-                                  const CollocationScheme collocation) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::jointCollocationFactors(
+    const int j, const int t, const double dt,
+    const CollocationScheme collocation) const {
   NonlinearFactorGraph graph;
-  Key q0_key = internal::JointAngleKey(j, t), q1_key  = internal::JointAngleKey(j, t + 1), 
-  v0_key = internal::JointVelKey(j, t), v1_key = internal::JointVelKey(j, t + 1),
-  a0_key = internal::JointAccelKey(j, t), a1_key = internal::JointAccelKey(j, t + 1);
-  addCollocationFactorDouble(graph, q0_key, q1_key, v0_key, v1_key, dt, opt_.q_col_cost_model, collocation);
-  addCollocationFactorDouble(graph, v0_key, v1_key, a0_key, a1_key, dt, opt_.v_col_cost_model, collocation);
+  Key q0_key = internal::JointAngleKey(j, t),
+      q1_key = internal::JointAngleKey(j, t + 1),
+      v0_key = internal::JointVelKey(j, t),
+      v1_key = internal::JointVelKey(j, t + 1),
+      a0_key = internal::JointAccelKey(j, t),
+      a1_key = internal::JointAccelKey(j, t + 1);
+  addCollocationFactorDouble(&graph, q0_key, q1_key, v0_key, v1_key, dt,
+                             opt_.q_col_cost_model, collocation);
+  addCollocationFactorDouble(&graph, v0_key, v1_key, a0_key, a1_key, dt,
+                             opt_.v_col_cost_model, collocation);
   return graph;
 }
 
@@ -535,14 +539,20 @@ DynamicsGraph::collocationFactors(const Robot &robot, const int t,
 gtsam::NonlinearFactorGraph DynamicsGraph::jointMultiPhaseCollocationFactors(
     const int j, const int t, const int phase,
     const CollocationScheme collocation) const {
-
-  Key phase_key = PhaseKey(phase), q0_key = internal::JointAngleKey(j, t), q1_key  = internal::JointAngleKey(j, t + 1), 
-  v0_key = internal::JointVelKey(j, t), v1_key = internal::JointVelKey(j, t + 1),
-  a0_key = internal::JointAccelKey(j, t), a1_key = internal::JointAccelKey(j, t + 1);
+  Key phase_key = PhaseKey(phase), q0_key = internal::JointAngleKey(j, t),
+      q1_key = internal::JointAngleKey(j, t + 1),
+      v0_key = internal::JointVelKey(j, t),
+      v1_key = internal::JointVelKey(j, t + 1),
+      a0_key = internal::JointAccelKey(j, t),
+      a1_key = internal::JointAccelKey(j, t + 1);
 
   gtsam::NonlinearFactorGraph graph;
-  addMultiPhaseCollocationFactorDouble(graph, q0_key, q1_key, v0_key, v1_key, phase_key, opt_.q_col_cost_model, collocation);
-  addMultiPhaseCollocationFactorDouble(graph, v0_key, v1_key, a0_key, a1_key, phase_key, opt_.v_col_cost_model, collocation);
+  addMultiPhaseCollocationFactorDouble(&graph, q0_key, q1_key, v0_key, v1_key,
+                                       phase_key, opt_.q_col_cost_model,
+                                       collocation);
+  addMultiPhaseCollocationFactorDouble(&graph, v0_key, v1_key, a0_key, a1_key,
+                                       phase_key, opt_.v_col_cost_model,
+                                       collocation);
   return graph;
 }
 
