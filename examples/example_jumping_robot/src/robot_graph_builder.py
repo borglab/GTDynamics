@@ -85,6 +85,7 @@ class RobotGraphBuilder:
             - TODO(yetong): For single leg contact, collocation on all joints
         """
         graph = NonlinearFactorGraph()
+        collocation = gtd.CollocationScheme.Trapezoidal
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
             k_prev = time_step
@@ -95,17 +96,15 @@ class RobotGraphBuilder:
             if phase == 3:
                 collo_joint_names = ["hip_r", "hip_l", "knee_r", "knee_l"]
                 for name in collo_joint_names:
-                    joint = self.jr.robot.joint(name)
+                    joint = jr.robot.joint(name)
                     j = joint.id()
                     q_col_cost_model = self.graph_builder.opt().q_col_cost_model
                     v_col_cost_model = self.graph_builder.opt().v_col_cost_model
-                    graph.add(gtd.TrapezoidalScalarColloFactor.Velocity(
-                        j, k_curr, dt_key, q_col_cost_model))
-                    graph.add(gtd.TrapezoidalScalarColloFactor.Angle(
-                        j, k_curr, dt_key, v_col_cost_model))
+                    graph.push_back(self.graph_builder.jointMultiPhaseCollocationFactors(
+                        j, k_curr, phase, collocation))
 
             # collocation on torso link
-            link = self.jr.robot.link("torso")
+            link = jr.robot.link("torso")
             i = link.id()
             pose_prev_key = gtd.internal.PoseKey(i, k_prev).key()
             pose_curr_key = gtd.internal.PoseKey(i, k_curr).key()
