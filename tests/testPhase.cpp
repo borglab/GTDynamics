@@ -52,13 +52,18 @@ TEST(Phase, error) {
 TEST(Phase, inverse_kinematics) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+
   constexpr size_t num_time_steps = 5;
   gtdynamics::Phase phase(robot, num_time_steps);
-  phase.addContactPoint("lower1", Point3(0, 0, 0), 0); // LH
-  phase.addContactPoint("lower0", Point3(0, 0, 0), 0); // LF
-  phase.addContactPoint("lower2", Point3(0, 0, 0), 0); // RF
-  phase.addContactPoint("lower3", Point3(0, 0, 0), 0); // RF
-  std::cout << phase;
+  EXPECT_LONGS_EQUAL(13, phase.robot().numLinks());
+
+  // Set contacts to reasonable values
+  phase.addContactPoint("lower1", Point3(0, 0.15, 0), 0);    // LH
+  phase.addContactPoint("lower0", Point3(0.6, 0.15, 0), 0);  // LF
+  phase.addContactPoint("lower2", Point3(0.6, -0.15, 0), 0);   // RF
+  phase.addContactPoint("lower3", Point3(0, -0.15, 0), 0); // RF
+
+
 }
 
 int main() {
