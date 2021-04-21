@@ -213,9 +213,9 @@ class Trajectory {
    */
   int getStartTimeStep(int p) const {
     std::vector<int> final_timesteps = finalTimeSteps();
-    int t_p_i = final_timesteps[p] - phase(p).numTimeSteps();
-    if (p != 0) t_p_i += 1;
-    return t_p_i;
+    int k_start = final_timesteps[p] - phase(p).numTimeSteps();
+    if (p != 0) k_start += 1;
+    return k_start;
   }
 
   /**
@@ -255,16 +255,15 @@ class Trajectory {
    * @return Map of Contact Link and its goal point.
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal() const {
-    std::map<std::string, gtsam::Point3> prev_cp;
+    std::map<std::string, gtsam::Point3> cp_goals;
+    auto robot = walk_cycle_.phases().at(0).robot();  // TODO(frank): all same?
     for (auto &&kv : walk_cycle_.contactPoints()) {
       auto link_name = kv.first;
-      LinkSharedPtr link = walk_cycle_.phases().at(0).robot().link(link_name);
-      prev_cp.insert(std::make_pair(
-          link_name,
-          (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), kv.second.point))
-              .translation()));
+      LinkSharedPtr link = robot.link(link_name);
+      auto foot_w = link->wTcom().transformFrom(kv.second.point);
+      cp_goals.emplace(link_name, foot_w);
     }
-    return prev_cp;
+    return cp_goals;
   }
 
   /**
