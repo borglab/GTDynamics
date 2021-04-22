@@ -79,8 +79,6 @@ TEST(PointGoalFactor, optimization) {
 
   // Initial link pose.
   Pose3 pose_init = robot.link("l1")->wTcom();
-  // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose()
-  // << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -98,8 +96,6 @@ TEST(PointGoalFactor, optimization) {
   optimizer.optimize();
   Values results = optimizer.values();
   Pose3 pose_optimized = results.at<Pose3>(pose_key);
-  // std::cout << "Error Final: "
-  //           << factor.evaluateError(pose_optimized).transpose() << std::endl;
   EXPECT(assert_equal(factor.evaluateError(pose_optimized), Vector3::Zero(),
                       1e-4));
 }

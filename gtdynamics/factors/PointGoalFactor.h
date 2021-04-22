@@ -40,9 +40,10 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
   /**
    * Construct from joint angle limits
-   * @param key
+   * @param pose_key key for COM pose of the link
    * @param cost_model noise model
-   * @param goalPose end effector pose goal
+   * @param point_com point on link, in COM coordinate frame
+   * @param goal_point end effector pose goal, in world coordinates
    */
   PointGoalFactor(gtsam::Key pose_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
