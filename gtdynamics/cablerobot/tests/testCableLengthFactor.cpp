@@ -5,7 +5,8 @@
  * @author Gerry Chen
  */
 
-#include "factors/CableLengthFactor.h"
+#include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
+
 #include <gtdynamics/utils/values.h>
 
 #include <gtsam/base/Vector.h>
