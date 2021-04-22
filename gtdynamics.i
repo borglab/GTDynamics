@@ -576,13 +576,6 @@ gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
 
-#include <gtdynamics/utils/DynamicsSymbol-wrap.h>
-gtdynamics::StdKeyFormatter KeyFormatter();
-string str(const gtsam::Values &t);
-string str(const gtsam::Values &t, const string &s);
-string str(const gtsam::NonlinearFactorGraph &t);
-string str(const gtsam::NonlinearFactorGraph &t, const string &s);
-
 ///////////////////// Key Methods /////////////////////
 template<T = {double}>
 void InsertJointAngle(gtsam::Values@ values, int j, int t, T value);
@@ -692,5 +685,10 @@ class Phase {
   int numTimeSteps() const;
   void print(const string &s = "");
 };
+
+/********************** Utilities  **********************/
+#include <gtdynamics/utils/utils.h>
+string GtdFormat(const gtsam::Values &t, const string &s = "");
+string GtdFormat(const gtsam::NonlinearFactorGraph &t, const string &s = "");
 
 }  // namespace gtdynamics
