@@ -17,9 +17,12 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <iostream>
 #include <string>
+
+#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -39,11 +42,11 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
  public:
   /**
-   * Construct from joint angle limits
+   * Constructor from goal point.
    * @param pose_key key for COM pose of the link
    * @param cost_model noise model
    * @param point_com point on link, in COM coordinate frame
-   * @param goal_point end effector pose goal, in world coordinates
+   * @param goal_point end effector goal point, in world coordinates
    */
   PointGoalFactor(gtsam::Key pose_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -95,5 +98,30 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
+
+/**
+ * Construct many PointGoalFactors from goal trajectory.
+ * 
+ * This function willl take a key to the first pose and then increment the key 
+ * by 1, for each time-step in the goal trajectory. If you need more 
+ * sophisticated behavior then this function is not it ;-).
+ * 
+ * @param first_key key for the COM pose.
+ * @param cost_model noise model
+ * @param point_com point on link, in COM coordinate frame
+ * @param goal_trajectory end effector goal trajectory, in world coordinates
+ */
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    gtsam::Key first_key, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const gtsam::Point3 &point_com,
+    const std::vector<gtsam::Point3> &goal_trajectory) {
+  gtsam::NonlinearFactorGraph factors;
+  for (auto &&goal_point : goal_trajectory) {
+    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com,
+                                            goal_point);
+    first_key += 1;
+  }
+  return factors;
+}
 
 }  // namespace gtdynamics

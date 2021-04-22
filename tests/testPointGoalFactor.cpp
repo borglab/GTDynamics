@@ -35,9 +35,7 @@ using gtsam::Vector3;
 using gtsam::noiseModel::Constrained;
 using gtsam::noiseModel::Unit;
 
-/**
- * Test the evaluateError method with various link poses.
- **/
+// Test the evaluateError method with various link poses.
 TEST(PointGoalFactor, error) {
   using simple_urdf::robot;
 
@@ -63,9 +61,7 @@ TEST(PointGoalFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test the optimization of a link pose to ensure goal point is reached.
- **/
+// Test the optimization of a link pose to ensure goal point is reached.
 TEST(PointGoalFactor, optimization) {
   using simple_urdf::robot;
 
