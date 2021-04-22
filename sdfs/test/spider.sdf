@@ -162,7 +162,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_1">
+		<link name="tarsus_1_L1">
 			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -244,7 +244,7 @@
 		
 		<joint name="ankle_1" type="revolute">
 			<parent>tibia_1</parent>
-			<child>tarsus_1</child>
+			<child>tarsus_1_L1</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -373,7 +373,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_2">
+		<link name="tarsus_2_L2">
 			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -455,7 +455,7 @@
 		
 		<joint name="ankle_2" type="revolute">
 			<parent>tibia_2</parent>
-			<child>tarsus_2</child>
+			<child>tarsus_2_L2</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -584,7 +584,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_3">
+		<link name="tarsus_3_L3">
 			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -666,7 +666,7 @@
 		
 		<joint name="ankle_3" type="revolute">
 			<parent>tibia_3</parent>
-			<child>tarsus_3</child>
+			<child>tarsus_3_L3</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -795,7 +795,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_4">
+		<link name="tarsus_4_L4">
 			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -877,7 +877,7 @@
 		
 		<joint name="ankle_4" type="revolute">
 			<parent>tibia_4</parent>
-			<child>tarsus_4</child>
+			<child>tarsus_4_L4</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1006,7 +1006,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_5">
+		<link name="tarsus_5_R4">
 			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -1088,7 +1088,7 @@
 		
 		<joint name="ankle_5" type="revolute">
 			<parent>tibia_5</parent>
-			<child>tarsus_5</child>
+			<child>tarsus_5_R4</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1217,7 +1217,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_6">
+		<link name="tarsus_6_R3">
 			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -1299,7 +1299,7 @@
 		
 		<joint name="ankle_6" type="revolute">
 			<parent>tibia_6</parent>
-			<child>tarsus_6</child>
+			<child>tarsus_6_R3</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1428,7 +1428,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_7">
+		<link name="tarsus_7_R2">
 			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -1510,7 +1510,7 @@
 		
 		<joint name="ankle_7" type="revolute">
 			<parent>tibia_7</parent>
-			<child>tarsus_7</child>
+			<child>tarsus_7_R2</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>
@@ -1639,7 +1639,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_8">
+		<link name="tarsus_8_R1">
 			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
 				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
@@ -1721,7 +1721,7 @@
 		
 		<joint name="ankle_8" type="revolute">
 			<parent>tibia_8</parent>
-			<child>tarsus_8</child>
+			<child>tarsus_8_R1</child>
 			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
 				<xyz>1 0 0</xyz>

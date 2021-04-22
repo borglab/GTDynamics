@@ -29,24 +29,24 @@ TEST(Phase, error) {
   constexpr size_t num_time_steps = 20;
   gtdynamics::Phase phase(robot, num_time_steps);
   constexpr double contact_height = 5;
-  phase.addContactPoint("tarsus_1", Point3(1, 1, 1), contact_height);
-  phase.addContactPoint("tarsus_2", Point3(2, 2, 2), contact_height);
-  phase.addContactPoint("tarsus_3", Point3(3, 3, 3), contact_height);
+  phase.addContactPoint("tarsus_1_L1", Point3(1, 1, 1), contact_height);
+  phase.addContactPoint("tarsus_2_L2", Point3(2, 2, 2), contact_height);
+  phase.addContactPoint("tarsus_3_L3", Point3(3, 3, 3), contact_height);
   EXPECT_LONGS_EQUAL(33, robot.numLinks());
 
-  ContactPoint cp = phase.getContactPointAtLink("tarsus_3");
+  ContactPoint cp = phase.getContactPointAtLink("tarsus_3_L3");
   EXPECT(assert_equal(Point3(3, 3, 3), cp.point));
 
   ContactPoints cps = phase.contactPoints();
   EXPECT_LONGS_EQUAL(3, cps.size());
-  EXPECT(assert_equal(Point3(1, 1, 1), cps["tarsus_1"].point));
+  EXPECT(assert_equal(Point3(1, 1, 1), cps["tarsus_1_L1"].point));
   EXPECT_LONGS_EQUAL(20, phase.numTimeSteps());
 
   // Check printing
   std::stringstream ss;
   ss << phase;
-  EXPECT("[tarsus_1: {[1 1 1], 0, 5}, tarsus_2: {[2 2 2], 0, 5},"
-         " tarsus_3: {[3 3 3], 0, 5}, ]" == ss.str());
+  EXPECT("[tarsus_1_L1: {[1 1 1], 0, 5}, tarsus_2_L2: {[2 2 2], 0, 5},"
+         " tarsus_3_L3: {[3 3 3], 0, 5}, ]" == ss.str());
 }
 
 TEST(Phase, inverse_kinematics) {
