@@ -157,13 +157,7 @@ class add_joint_objectives {
 void add_joints_at_rest_objectives(
     gtsam::NonlinearFactorGraph* graph, const Robot& robot,
     const gtsam::SharedNoiseModel& joint_velocity_model,
-    const gtsam::SharedNoiseModel& joint_acceleration_model, int k = 0) {
-  for (auto&& joint : robot.joints()) {
-    add_joint_objectives(graph, joint->id(), k)
-        .velocity(0, joint_velocity_model)
-        .acceleration(0, joint_acceleration_model);
-  }
-}
+    const gtsam::SharedNoiseModel& joint_acceleration_model, int k = 0);
 
 /**
  * @brief  Add PointGoalFactors given a trajectory.
@@ -178,10 +172,7 @@ void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
                          const gtsam::SharedNoiseModel& cost_model,
                          const gtsam::Point3& point_com,
                          const std::vector<gtsam::Point3>& goal_trajectory,
-                         unsigned char i, size_t k = 0) {
-  gtsam::Key key = internal::PoseKey(i, k);
-  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
-}
+                         unsigned char i, size_t k = 0);
 
 /**
  * @brief Create stance foot trajectory.
@@ -190,9 +181,7 @@ void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
  * @param stance_point end effector goal, in world coordinates
  */
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3& stance_point,
-                                            size_t num_steps) {
-  return std::vector<gtsam::Point3>(num_steps, stance_point);
-}
+                                            size_t num_steps);
 
 /**
  * @brief Create simple swing foot trajectory, from start to start + step.
@@ -215,18 +204,6 @@ std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3& stance_point,
  */
 std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3& start,
                                                  const gtsam::Point3& step,
-                                                 size_t num_steps) {
-  std::vector<gtsam::Point3> goal_trajectory;
-  const double dt = 1.0 / (num_steps + 1);
-  const gtsam::Point3 delta_step = step * dt;
-  gtsam::Point3 cp_goal = start + delta_step;
-  for (int k = 0; k < num_steps; k++) {
-    double t = dt * (k + 1);
-    double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
-    goal_trajectory.push_back(cp_goal + gtsam::Point3(0, 0, h));
-    cp_goal = cp_goal + delta_step;
-  }
-  return goal_trajectory;
-}
+                                                 size_t num_steps);
 
 }  // namespace gtdynamics

@@ -19,7 +19,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <iostream>
 #include <string>
 
 #include "gtdynamics/utils/values.h"
@@ -67,11 +66,7 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTcom,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change point reference frame from com to spatial.
-    auto sTp_t = wTcom.transformFrom(point_com_, H_pose);
-    return sTp_t - goal_point_;
-  }
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override;
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
@@ -82,12 +77,7 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "PointGoalFactor\n";
-    Base::print("", keyFormatter);
-    std::cout << "point on link: " << point_com_.transpose() << std::endl;
-    std::cout << "goal point: " << goal_point_.transpose() << std::endl;
-  }
+                 gtsam::DefaultKeyFormatter) const override;
 
  private:
   /// Serialization function
@@ -101,11 +91,11 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
 /**
  * Construct many PointGoalFactors from goal trajectory.
- * 
- * This function willl take a key to the first pose and then increment the key 
- * by 1, for each time-step in the goal trajectory. If you need more 
+ *
+ * This function willl take a key to the first pose and then increment the key
+ * by 1, for each time-step in the goal trajectory. If you need more
  * sophisticated behavior then this function is not it ;-).
- * 
+ *
  * @param first_key key for the COM pose.
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
@@ -114,14 +104,6 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 gtsam::NonlinearFactorGraph PointGoalFactors(
     gtsam::Key first_key, const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const gtsam::Point3 &point_com,
-    const std::vector<gtsam::Point3> &goal_trajectory) {
-  gtsam::NonlinearFactorGraph factors;
-  for (auto &&goal_point : goal_trajectory) {
-    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com,
-                                            goal_point);
-    first_key += 1;
-  }
-  return factors;
-}
+    const std::vector<gtsam::Point3> &goal_trajectory);
 
 }  // namespace gtdynamics
