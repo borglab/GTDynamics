@@ -74,18 +74,17 @@ class TestCdprPlanar(GtsamTestCase):
         """Test dynamics factors: relates torque to wrench+twistaccel.  Also tests ID solving
         """
         cdpr = Cdpr()
-        cdpr.motor_inertia = 1.23
+        cdpr.params.winch_params.inertia_ = 1.23
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
         # things needed to define IK
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
-        # gtd.InsertTwistAccel(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
         # things needed to define ID
         for j, tau in zip(range(4), [1 + 1.23, 0 - 1.23, 0 - 1.23, 1 + 1.23]):
             gtd.InsertTorqueDouble(values, j, 0, tau)
         # things needed to define FD
-        for j, lddot in zip(range(4), [1, 0, 0, 1]):
+        for j, lddot in zip(range(4), [-1, 1, 1, -1]):
             gtd.InsertJointAccelDouble(values, j, 0, lddot)
         # things needed intermediaries
         gtd.InsertWrench(values, cdpr.ee_id(), 0, [0,0,0,1/np.sqrt(2),0,-1/np.sqrt(2)])
@@ -93,6 +92,10 @@ class TestCdprPlanar(GtsamTestCase):
         gtd.InsertWrench(values, cdpr.ee_id(), 2, [0,0,0,0,0,0])
         gtd.InsertWrench(values, cdpr.ee_id(), 3, [0,0,0,-1/np.sqrt(2),0,-1/np.sqrt(2)])
         gtd.InsertTwistAccel(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
+        for ji, t in enumerate([1, 0, 0, 1]):
+            gtd.InsertTensionDouble(values, ji, 0, t)
+        for ji in range(4):
+            gtd.InsertJointVelDouble(values, ji, 0, 0)  # for WinchFactor, ugh
         # check FD/ID is valid
         self.assertAlmostEqual(0.0, dfg.error(values), 10)
         # build ID graph
@@ -108,11 +111,11 @@ class TestCdprPlanar(GtsamTestCase):
         # redundancy resolution
         dfg.push_back(
             gtd.PriorFactorDouble(
-                gtd.internal.TorqueKey(1, 0).key(), 0.0,
+                gtd.internal.TorqueKey(1, 0).key(), -1.23,
                 gtsam.noiseModel.Unit.Create(1)))
         dfg.push_back(
             gtd.PriorFactorDouble(
-                gtd.internal.TorqueKey(2, 0).key(), 0.0,
+                gtd.internal.TorqueKey(2, 0).key(), -1.23,
                 gtsam.noiseModel.Unit.Create(1)))
         # initialize and solve
         init = gtsam.Values(values)
@@ -130,7 +133,7 @@ class TestCdprPlanar(GtsamTestCase):
         """Test dynamics factors across multiple timesteps by using collocation.
         """
         cdpr = Cdpr()
-        cdpr.motor_inertia = 1.23
+        cdpr.params.winch_params.inertia_ = 1.23
         # kinematics
         fg = cdpr.kinematics_factors(ks=[0, 1, 2])
         # dynamics
@@ -152,6 +155,7 @@ class TestCdprPlanar(GtsamTestCase):
                 gtd.InsertJointVelDouble(init, j, t, 1)
                 gtd.InsertJointAccelDouble(init, j, t, 1)
                 gtd.InsertTorqueDouble(init, j, t, 1)
+                gtd.InsertTensionDouble(init, j, t, 1)
                 gtd.InsertWrench(init, cdpr.ee_id(), j, t, np.ones(6))
             gtd.InsertPose(init, cdpr.ee_id(), t, Pose3(Rot3(), (1.5, 1, 1.5)))
             gtd.InsertTwist(init, cdpr.ee_id(), t, np.ones(6))

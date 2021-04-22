@@ -27,7 +27,11 @@ class CdprParams:
         self.gravity = np.zeros((3, 1))
         self.tmin = 0.1 / (0.0254 / 2)  # tension = torque / radius
         self.tmax = 1.2 / (0.0254 / 2)
-        self.motor_inertia = 0
+        self.winch_params = gtd.WinchParams(inertia=0,
+                                            radius=1,
+                                            staticFriction=0,
+                                            viscousFriction=0)
+
 
 class Cdpr:
     """Utility functions for a planar cable robot; mostly assembles together factors.
@@ -146,7 +150,7 @@ class Cdpr:
         generalized version of F=ma and calculates wrenches from cable tensions.
         Primary variables:          Torque <--> lengthddot
         Intermediate variables:     Wrenches, TwistAccel
-        Prerequisite variables:     Pose, Twist
+        Prerequisite variables:     Pose, Twist, length, lengthdot
 
 
         Args:
@@ -172,12 +176,12 @@ class Cdpr:
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(
-                        gtd.internal.TensionKey(ji, k).key(),
+                        gtd.cinternal.TensionKey(ji, k).key(),
                         gtd.internal.PoseKey(self.ee_id(), k).key(),
                         gtd.internal.WrenchKey(self.ee_id(), ji, k).key(),
                         self.costmodel_torque, self.params.a_locs[ji], self.params.b_locs[ji]))
                 dfg.push_back(
-                    gtd.CableAccelFactor(
+                    gtd.CableAccelerationFactor(
                         gtd.internal.JointAccelKey(ji, k).key(),
                         gtd.internal.PoseKey(self.ee_id(), k).key(),
                         gtd.internal.TwistKey(self.ee_id(), k).key(),
@@ -186,10 +190,10 @@ class Cdpr:
                 dfg.push_back(
                     gtd.WinchFactor(
                         gtd.internal.TorqueKey(ji, k).key(),
-                        gtd.internal.TensionKey(ji, k).key(),
-                        gtd.internal.JointVelKey(ki, k).key(),
-                        gtd.internal.JointAccelKey(ki, k).key(),
-                        self.costmodel_winch, self.params.motor_inertia
+                        gtd.cinternal.TensionKey(ji, k).key(),
+                        gtd.internal.JointVelKey(ji, k).key(),
+                        gtd.internal.JointAccelKey(ji, k).key(),
+                        self.costmodel_winch, self.params.winch_params
                     )
                 )
         return dfg
@@ -323,8 +327,7 @@ class Cdpr:
             for ji, lddot in enumerate(lddots):
                 graph.push_back(
                     gtd.PriorFactorDouble(
-                        gtd.internal.JointAccelKey(self.ee_id(), k).key(), lddot,
-                        self.costmodel_prior_lddot))
+                        gtd.internal.JointAccelKey(ji, k).key(), lddot, self.costmodel_prior_lddot))
         return graph
 
     def priors_id_va(self, ks=[], VAs=[], values=None):
