@@ -21,6 +21,8 @@
 #include <iostream>
 #include <string>
 
+#include "gtdynamics/utils/values.h"
+
 namespace gtdynamics {
 
 /**
@@ -95,5 +97,28 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
+
+/**
+ * @brief  Add PointGoalFactors for a stance foot.
+ * @param factors graph to add to.
+ * @param pose_key key for COM pose of the link
+ * @param cost_model noise model
+ * @param point_com point on link, in COM coordinate frame
+ * @param goal_point end effector pose goal, in world coordinates
+ * @param i The link id.
+ * @param num_time_steps number of time steps
+ * @param k_start starting time index (default 0).
+ */
+void AddStanceGoals(gtsam::NonlinearFactorGraph *factors,
+                    const gtsam::SharedNoiseModel &cost_model,
+                    const gtsam::Point3 &point_com,
+                    const gtsam::Point3 &goal_point, unsigned char i,
+                    size_t num_time_steps, size_t k_start = 0) {
+  for (int k = k_start; k <= k_start + num_time_steps; k++) {
+    gtsam::Key pose_key = internal::PoseKey(i, k);
+    factors->emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
+                                             goal_point);
+  }
+}
 
 }  // namespace gtdynamics

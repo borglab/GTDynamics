@@ -35,9 +35,7 @@ using gtsam::Vector3;
 using gtsam::noiseModel::Constrained;
 using gtsam::noiseModel::Unit;
 
-/**
- * Test the evaluateError method with various link poses.
- **/
+// Test the evaluateError method with various link poses.
 TEST(PointGoalFactor, error) {
   using simple_urdf::robot;
 
@@ -63,9 +61,7 @@ TEST(PointGoalFactor, error) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/**
- * Test the optimization of a link pose to ensure goal point is reached.
- **/
+// Test the optimization of a link pose to ensure goal point is reached.
 TEST(PointGoalFactor, optimization) {
   using simple_urdf::robot;
 
@@ -98,6 +94,37 @@ TEST(PointGoalFactor, optimization) {
   Pose3 pose_optimized = results.at<Pose3>(pose_key);
   EXPECT(assert_equal(factor.evaluateError(pose_optimized), Vector3::Zero(),
                       1e-4));
+}
+
+TEST(Phase, AddStanceGoals) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+
+  // Foot is sphere of radius 1.1 cm, 14cm along X in COM
+  Point3 point_com(0.14 + 0.011, 0, 0);
+
+  // Predict goal point in world coordinates
+  auto LF = robot.link("lower0");  // left forward leg
+  auto bTcom = LF->wTcom();        // world is really body
+  Point3 goal_point = bTcom.transformFrom(point_com);
+
+  // Call AddStanceGoals function, creating 10 factors
+  gtsam::NonlinearFactorGraph factors;
+  unsigned char id = LF->id();
+  const gtsam::SharedNoiseModel &cost_model = nullptr;
+  size_t num_time_steps = 10;
+  size_t k_start = 10;
+  AddStanceGoals(&factors, cost_model, point_com, goal_point, id,
+                 num_time_steps, k_start);
+
+  auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
+
+  // Regression, but realistic, at least in Z: 19.5 cm below body.
+  EXPECT(gtsam::assert_equal(gtsam::Point3(0.289324, 0.1575, -0.194667),
+                             f->goalPoint(), 1e-5));
+
+  // Check that prediction error is zero.
+  EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
 }
 
 int main() {
