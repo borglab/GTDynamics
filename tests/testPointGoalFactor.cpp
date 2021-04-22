@@ -96,7 +96,7 @@ TEST(PointGoalFactor, optimization) {
                       1e-4));
 }
 
-TEST(Phase, AddStanceGoals) {
+TEST(Phase, AddGoals) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
 
@@ -108,23 +108,39 @@ TEST(Phase, AddStanceGoals) {
   auto bTcom = LF->wTcom();        // world is really body
   Point3 goal_point = bTcom.transformFrom(point_com);
 
-  // Call AddStanceGoals function, creating 10 factors
   gtsam::NonlinearFactorGraph factors;
   unsigned char id = LF->id();
+  size_t num_steps = 10;
+  size_t k_start = 777;
   const gtsam::SharedNoiseModel &cost_model = nullptr;
-  size_t num_time_steps = 10;
-  size_t k_start = 10;
-  AddStanceGoals(&factors, cost_model, point_com, goal_point, id,
-                 num_time_steps, k_start);
+
+  // Call AddStanceGoals function, creating 10 factors
+  AddStanceGoals(&factors, cost_model, point_com, goal_point, id, num_steps,
+                 k_start);
+  EXPECT_LONGS_EQUAL(10, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
 
   // Regression, but realistic, at least in Z: 19.5 cm below body.
-  EXPECT(gtsam::assert_equal(gtsam::Point3(0.289324, 0.1575, -0.194667),
-                             f->goalPoint(), 1e-5));
+  EXPECT(
+      assert_equal(Point3(0.289324, 0.1575, -0.194667), f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
   EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
+
+  // Call AddSwingGoals function, creating 10 factors
+  Point3 step(0.10, 0, 0);  // move by 10 centimeters
+  AddSwingGoals(&factors, cost_model, point_com, goal_point, step, id,
+                num_steps, k_start);
+  EXPECT_LONGS_EQUAL(20, factors.size());
+
+  auto g = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
+
+  // Last goal point should have moved exactly a step
+  EXPECT(assert_equal(Point3(goal_point + step), g->goalPoint(), 1e-5));
+
+  // Check that prediction error is zero.
+  EXPECT(assert_equal(Vector3(-0.1, 0, 0), g->evaluateError(bTcom)));
 }
 
 int main() {

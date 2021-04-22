@@ -101,23 +101,57 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 /**
  * @brief  Add PointGoalFactors for a stance foot.
  * @param factors graph to add to.
- * @param pose_key key for COM pose of the link
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
- * @param goal_point end effector pose goal, in world coordinates
+ * @param goal_point end effector goal, in world coordinates
  * @param i The link id.
- * @param num_time_steps number of time steps
+ * @param num_steps number of time steps
  * @param k_start starting time index (default 0).
  */
 void AddStanceGoals(gtsam::NonlinearFactorGraph *factors,
                     const gtsam::SharedNoiseModel &cost_model,
                     const gtsam::Point3 &point_com,
-                    const gtsam::Point3 &goal_point, unsigned char i,
-                    size_t num_time_steps, size_t k_start = 0) {
-  for (int k = k_start; k <= k_start + num_time_steps; k++) {
+                    const gtsam::Point3 &goal_point,  //
+                    unsigned char i, size_t num_steps, size_t k_start = 0) {
+  for (int k = k_start; k < k_start + num_steps; k++) {
     gtsam::Key pose_key = internal::PoseKey(i, k);
     factors->emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
                                              goal_point);
+  }
+}
+
+/**
+ * @brief Add PointGoalFactors for swing foot, starting at (k_start, cp_goal).
+ *
+ * Swing feet is moved according to a pre-determined height trajectory, and
+ * moved by the 3D vector step.
+ * To see the curve, go to https://www.wolframalpha.com/ and type
+ *    0.2 * pow(t, 1.1) * pow(1 - t, 0.7) for t from 0 to 1
+ *
+ * @param factors graph to add to.
+ * @param cost_model noise model
+ * @param point_com point on link, in COM coordinate frame
+ * @param cp_goal initial end effector goal, in world coordinates
+ * @param step 3D vector to move by
+ * @param i The link id.
+ * @param num_steps number of time steps
+ * @param k_start starting time index (default 0).
+ */
+void AddSwingGoals(gtsam::NonlinearFactorGraph *factors,
+                   const gtsam::SharedNoiseModel &cost_model,
+                   const gtsam::Point3 &point_com,
+                   gtsam::Point3 cp_goal,  // by value
+                   const gtsam::Point3 &step, unsigned char i, size_t num_steps,
+                   size_t k_start = 0) {
+  const double dt = 1.0 / (num_steps - 1);
+  const gtsam::Point3 delta_step = step * dt;
+  for (int k = k_start; k < k_start + num_steps; k++) {
+    gtsam::Key pose_key = internal::PoseKey(i, k);
+    double t = dt * (k - k_start);
+    double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
+    factors->emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
+                                             cp_goal + gtsam::Point3(0, 0, h));
+    cp_goal = cp_goal + delta_step;
   }
 }
 
