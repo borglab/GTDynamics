@@ -26,7 +26,7 @@ using gtsam::Point3;
 
 TEST(Phase, error) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   constexpr size_t num_time_steps = 20;
   gtdynamics::Phase phase(robot, num_time_steps);
   constexpr double contact_height = 5;

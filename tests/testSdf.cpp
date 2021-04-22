@@ -118,7 +118,7 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (joint limits) from spider.sdf.
   auto spider_sdf =
-      GetSdf(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      GetSdf(kSdfPath + std::string("/spider.sdf"), "spider");
   auto knee_1_parameters =
       ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
@@ -159,7 +159,7 @@ TEST(File, create_robot_from_file) {
   // Test for reading parameters (joint limits) from a robot created via
   // spider.sdf.
   auto spider_robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   auto spider_knee1 = spider_robot.joint("knee_1");
 
   EXPECT(assert_equal(
