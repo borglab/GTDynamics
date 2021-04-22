@@ -122,6 +122,11 @@ class CdprControllerIlqr(CdprControllerBase):
                 ordering[-1].push_back(gtd.internal.JointAngleKey(ji, t).key())
             for ji in range(4):
                 ordering[-1].push_back(gtd.internal.JointVelKey(ji, t).key())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.JointAccelKey(ji, t).key())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.cinternal.TensionKey(ji, t).key())
+            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
             # immediate control variables
             ordering.append(gtsam.Ordering())
             for ji in range(4):
@@ -130,7 +135,6 @@ class CdprControllerIlqr(CdprControllerBase):
             ordering.append(gtsam.Ordering())
             for ji in range(4):
                 ordering[-1].push_back(gtd.internal.WrenchKey(lid, ji, t).key())
-            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
             # measurement inputs
             ordering.append(gtsam.Ordering())
             ordering[-1].push_back(gtd.internal.TwistKey(lid, t).key())
@@ -163,8 +167,11 @@ class CdprControllerIlqr(CdprControllerBase):
                                              reversed(range(1, 4*N, 4)))):
             ucond = net.at(netu)
             icond = net.at(neti)
-            u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
-            u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, 24:])
+            if 0 in ucond.keys():
+                u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, 1:25])
+            else:
+                u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
+            u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, -6:])
             F_K_x = solve_triangular(icond.R(), -icond.S())[:24, -12:]
             u_K_x = u_K_F @ F_K_x
             u_K_x[:, 6:] += u_K_p

@@ -120,7 +120,11 @@ class CdprSimulator:
         fg.push_back(cdpr.priors_fd(ks=[k], values=u))
         # FD initial guess
         for ji in range(4):
+            gtd.InsertJointVelDouble(xd, ji, k, 0)
+            gtd.InsertJointAccelDouble(xd, ji, k, 0)
             gtd.InsertTorqueDouble(xd, ji, k, gtd.TorqueDouble(u, ji, k))
+            gtd.InsertTensionDouble(xd, ji, k,
+                                    gtd.TorqueDouble(u, ji, k) / cdpr.params.winch_params.radius_)
             gtd.InsertWrench(xd, cdpr.ee_id(), ji, k, np.zeros(6))
         gtd.InsertPose(xd, cdpr.ee_id(), k+1, gtsam.Pose3(gtsam.Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(xd, cdpr.ee_id(), k+1, np.zeros(6))
