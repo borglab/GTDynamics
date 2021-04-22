@@ -30,9 +30,9 @@ namespace gtdynamics {
 
 using JointValueMap = std::map<std::string, double>;
 
-/* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
-inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
-  return DynamicsSymbol::LinkJointSymbol("C", i, k, t);
+/// Shorthand for C_i_c_k, for contact wrench c on i-th link at time step k.
+inline DynamicsSymbol ContactWrenchKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
@@ -40,9 +40,9 @@ inline DynamicsSymbol PhaseKey(int k) {
   return DynamicsSymbol::SimpleSymbol("dt", k);
 }
 
-/* Shorthand for t_t, time at time step t. */
-inline DynamicsSymbol TimeKey(int t) {
-  return DynamicsSymbol::SimpleSymbol("t", t);
+/* Shorthand for t_k, time at time step k. */
+inline DynamicsSymbol TimeKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("t", k);
 }
 
 /**
