@@ -8,7 +8,7 @@
 /**
  * @file  testPointGoalFactor.cpp
  * @brief test point goal factor.
- * @author Alejandro Escontrela
+ * @author Alejandro Escontrela, Frank dellaert
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -26,6 +26,14 @@
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::LabeledSymbol;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
+using gtsam::Values;
+using gtsam::Vector3;
+using gtsam::noiseModel::Constrained;
+using gtsam::noiseModel::Unit;
 
 /**
  * Test the evaluateError method with various link poses.
@@ -33,26 +41,24 @@ using gtsam::assert_equal;
 TEST(PointGoalFactor, error) {
   using simple_urdf::robot;
 
-  gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
-  gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
+  auto cost_model = Unit::Create(3);
+  LabeledSymbol pose_key('P', 0, 0);
 
   // Initialize factor with goal point.
-  gtsam::Point3 goal_point = gtsam::Point3(0, 0, 2);
-  gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
+  Point3 goal_point(0, 0, 2);
+  Pose3 comTp(Rot3(), Point3(0, 0, 1));
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
-  EXPECT(assert_equal((gtsam::Vector(3) << 0, 0, 0).finished(),
+  EXPECT(assert_equal(Vector3(0, 0, 0),
                       factor.evaluateError(robot.link("l1")->wTcom())));
 
-  EXPECT(assert_equal((gtsam::Vector(3) << 0, 0, 2).finished(),
+  EXPECT(assert_equal(Vector3(0, 0, 2),
                       factor.evaluateError(robot.link("l2")->wTcom())));
 
   // Make sure linearization is correct
-  gtsam::Values values;
-  gtsam::Pose3 pose = gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 4, 0.4932, 9.81),
-                                   gtsam::Point3(-12, 5, 16));
+  Values values;
+  Pose3 pose(Rot3::RzRyRx(M_PI / 4, 0.4932, 9.81), Point3(-12, 5, 16));
   values.insert(pose_key, pose);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
@@ -64,24 +70,23 @@ TEST(PointGoalFactor, error) {
 TEST(PointGoalFactor, optimization) {
   using simple_urdf::robot;
 
-  gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Constrained::All(3);
+  auto cost_model = Constrained::All(3);
 
-  gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('P', 0, 0);
+  LabeledSymbol pose_key('P', 0, 0);
 
   // Initialize factor with goal point.
-  gtsam::Point3 goal_point = gtsam::Point3(2, 15, 6);
-  gtsam::Pose3 comTp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
+  Point3 goal_point(2, 15, 6);
+  Pose3 comTp(Rot3(), Point3(0, 0, 1));
   PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
 
   // Initial link pose.
-  gtsam::Pose3 pose_init = robot.link("l1")->wTcom();
+  Pose3 pose_init = robot.link("l1")->wTcom();
   // std::cout << "Error Init: " << factor.evaluateError(pose_init).transpose()
   // << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
-  gtsam::Values init_values;
+  Values init_values;
   init_values.insert(pose_key, pose_init);
 
   gtsam::LevenbergMarquardtParams params;
@@ -93,12 +98,12 @@ TEST(PointGoalFactor, optimization) {
   // at the contact point.
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
   optimizer.optimize();
-  gtsam::Values results = optimizer.values();
-  gtsam::Pose3 pose_optimized = results.at<gtsam::Pose3>(pose_key);
+  Values results = optimizer.values();
+  Pose3 pose_optimized = results.at<Pose3>(pose_key);
   // std::cout << "Error Final: "
   //           << factor.evaluateError(pose_optimized).transpose() << std::endl;
-  EXPECT(assert_equal(factor.evaluateError(pose_optimized),
-                      gtsam::Vector3::Zero(), 1e-4));
+  EXPECT(assert_equal(factor.evaluateError(pose_optimized), Vector3::Zero(),
+                      1e-4));
 }
 
 int main() {
