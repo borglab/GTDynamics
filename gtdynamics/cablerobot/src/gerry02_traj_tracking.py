@@ -85,11 +85,13 @@ def main(fname='data/iros_logo_2.h',
     params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
     params.b_locs = np.array([[bw, 0., -bh], [bw, 0., bh], [-bw, 0., bh], [-bw, 0, -bh]]) / 2
     params.b_locs = params.b_locs - [0, 0, bh * 0.4]
+    params.winch_params.inertia_ = 9.26e-5 * 890 / 420 # https://bit.ly/3sOF2Wt
+    params.winch_params.radius_ = 0.0127
     cdpr = Cdpr(params)
 
     # import data
     isPaints, colorinds, colorpalette, traj = ParseFile(fname)
-    N = len(traj) if N is None else N
+    N = len(traj) - N0 - 1 if N is None else N
     dt = 0.01 * dN # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
     N = int(N/dN)  # scale time by dN
     N0 = int(N0/dN)

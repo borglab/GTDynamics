@@ -25,8 +25,8 @@ class CdprParams:
         self.mass = 1.0
         self.inertia = np.eye(3)
         self.gravity = np.zeros((3, 1))
-        self.tmin = 0.1 / (0.0254 / 2)  # tension = torque / radius
-        self.tmax = 1.2 / (0.0254 / 2)
+        self.tmin = 0.1  # minimum torque in N.m
+        self.tmax = 1.2
         self.winch_params = gtd.WinchParams(inertia=0,
                                             radius=1,
                                             staticFriction=0,

@@ -79,7 +79,7 @@ def draw_ctrl(ax, cdpr, tensions, Tf, dt):
     ls_ctrl = ax.plot(np.arange(0,Tf,dt), tensions)
     ax.plot([0, Tf], [cdpr.params.tmin,]*2, 'r--')
     ax.plot([0, Tf], [cdpr.params.tmax,]*2, 'r--')
-    ax.set_xlabel('time (s)');ax.set_ylabel('Cable tension (N)');ax.set_title('Control Inputs')
+    ax.set_xlabel('time (s)');ax.set_ylabel('Motor torque (N.m)');ax.set_title('Control Inputs')
     ax.grid()
     return ls_ctrl,
 def redraw_ctrl(ls_ctrl, tensions, Tf, dt, N=None):
