@@ -20,7 +20,8 @@ from cdpr_planar import Cdpr, CdprParams
 from cdpr_controller_ilqr import CdprControllerIlqr
 from cdpr_planar_sim import CdprSimulator
 from paint_parse import ParseFile
-from draw_cdpr import plot_all
+from draw_cdpr import plot_trajectory
+from draw_controller import draw_controller_anim
 
 import cProfile
 from pstats import SortKey
@@ -131,8 +132,8 @@ def main(fname='data/iros_logo_2.h',
 
 def plot(cdpr, controller, result, N, dt, des_T):
     """Plots the results"""
-    plot_all(cdpr, result, dt*N, dt, N, des_T, step=1)
+    plot_trajectory(cdpr, result, dt*N, dt, N, des_T, step=1)
 
 if __name__ == '__main__':
-    cProfile.run('results = main()', sort=SortKey.TIME)
+    cProfile.run('results = main(N=100)', sort=SortKey.TIME)
     plot(*results)

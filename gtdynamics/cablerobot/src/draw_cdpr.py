@@ -92,7 +92,7 @@ def redraw_ctrl(ls_ctrl, tensions, Tf, dt, N=None):
         ls_ctrl[ji].set_data(np.arange(0,Tf,dt)[:N], tensions[:N, ji])
     return *ls_ctrl,
 
-def plot_all(cdpr, result, Tf, dt, N, x_des, step=1):
+def plot_trajectory(cdpr, result, Tf, dt, N, x_des, step=1):
     """Animates the cdpr and controls in side-by-side subplots.
 
     Args:
