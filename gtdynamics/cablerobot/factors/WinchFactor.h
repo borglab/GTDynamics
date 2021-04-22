@@ -80,7 +80,7 @@ class WinchFactor
   WinchFactor(gtsam::Key torque, gtsam::Key tension, gtsam::Key cableVelocity,
               gtsam::Key cableAcceleration,
               const gtsam::noiseModel::Base::shared_ptr &cost_model,
-              WinchParams params)
+              const WinchParams &params)
       : Base(cost_model, torque, tension, cableVelocity, cableAcceleration),
         params_(params) {}
   virtual ~WinchFactor() {}
@@ -124,6 +124,14 @@ class WinchFactor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /** print contents */
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 GTDKeyFormatter) const override {
+    std::cout << s << "winch factor" << std::endl;
+    Base::print("", keyFormatter);
   }
 
  private:
