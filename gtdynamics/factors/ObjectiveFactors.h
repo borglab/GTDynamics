@@ -166,25 +166,34 @@ void add_joints_at_rest_objectives(
 }
 
 /**
- * @brief  Add PointGoalFactors for a stance foot.
+ * @brief  Add PointGoalFactors given a trajectory.
  * @param factors graph to add to.
  *
- * @param num_steps number of time steps
- * @param goal_point end effector goal, in world coordinates
+ * @param goal_trajectory end effector goal trajectory, in world coordinates
  *
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
  * @param i The link id.
- * @param k_start starting time index (default 0).
+ * @param k starting time index (default 0).
  */
-void AddStanceGoals(gtsam::NonlinearFactorGraph* factors, size_t num_steps,
-                    const gtsam::Point3& goal_point,
-                    const gtsam::SharedNoiseModel& cost_model,
-                    const gtsam::Point3& point_com, unsigned char i,
-                    size_t k_start = 0) {
-  std::vector<gtsam::Point3> goal_trajectory(num_steps, goal_point);
-  gtsam::Key key = internal::PoseKey(i, k_start);
+void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
+                         const gtsam::SharedNoiseModel& cost_model,
+                         const gtsam::Point3& point_com,
+                         const std::vector<gtsam::Point3>& goal_trajectory,
+                         unsigned char i, size_t k = 0) {
+  gtsam::Key key = internal::PoseKey(i, k);
   factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
+}
+
+/**
+ * @brief Create stance foot trajectory.
+ *
+ * @param num_steps number of time steps
+ * @param stance_point end effector goal, in world coordinates
+ */
+std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3& stance_point,
+                                            size_t num_steps) {
+  return std::vector<gtsam::Point3>(num_steps, stance_point);
 }
 
 /**
@@ -216,37 +225,6 @@ std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3& start,
     cp_goal = cp_goal + delta_step;
   }
   return goal_trajectory;
-}
-
-/**
- * @brief Add PointGoalFactors for swing foot, starting at (k_start, cp_goal).
- *
- * Swing feet is moved according to a pre-determined height trajectory, and
- * moved by the 3D vector step.
- * To see the curve, go to https://www.wolframalpha.com/ and type
- *    0.2 * pow(t, 1.1) * pow(1 - t, 0.7) for t from 0 to 1
- *
- * @param factors graph to add to.
- *
- * @param start initial end effector goal, in world coordinates
- * @param step 3D vector to move by
- * @param num_steps number of time steps
- *
- * @param cost_model noise model
- * @param point_com point on link, in COM coordinate frame
- *
- * @param i The link id.
- * @param k_start starting time index (default 0).
- */
-void AddSwingGoals(gtsam::NonlinearFactorGraph* factors,
-                   const gtsam::Point3& start, const gtsam::Point3& step,
-                   size_t num_steps, const gtsam::SharedNoiseModel& cost_model,
-                   const gtsam::Point3& point_com, unsigned char i,
-                   size_t k_start = 0) {
-  std::vector<gtsam::Point3> goal_trajectory =
-      SimpleSwingTrajectory(start, step, num_steps);
-  gtsam::Key key = internal::PoseKey(i, k_start);
-  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
 }
 
 }  // namespace gtdynamics

@@ -88,18 +88,18 @@ TEST(Phase, AddGoals) {
   // Predict goal point in world coordinates
   auto LF = robot.link("lower0");  // left forward leg
   auto bTcom = LF->wTcom();        // world is really body
-  Point3 goal_point = bTcom.transformFrom(point_com);
+  Point3 stance_point = bTcom.transformFrom(point_com);
 
   gtsam::NonlinearFactorGraph factors;
   unsigned char id = LF->id();
-  size_t num_steps = 10;
-  size_t k_start = 777;
+  constexpr size_t num_stance_steps = 10;
+  constexpr size_t k = 777;
   const gtsam::SharedNoiseModel &cost_model = nullptr;
 
   // Call AddStanceGoals function, creating 10 factors
-  AddStanceGoals(&factors, num_steps, goal_point, cost_model, point_com, id,
-                 k_start);
-  EXPECT_LONGS_EQUAL(10, factors.size());
+  AddPointGoalFactors(&factors, cost_model, point_com,
+                      StanceTrajectory(stance_point, num_stance_steps), id, k);
+  EXPECT_LONGS_EQUAL(num_stance_steps, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
 
@@ -113,17 +113,20 @@ TEST(Phase, AddGoals) {
 
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps
+  constexpr size_t num_swing_steps = 3;
   gtsam::NonlinearFactorGraph swing_factors;
-  AddSwingGoals(&swing_factors, goal_point, step, 3, cost_model, point_com, id);
-  EXPECT_LONGS_EQUAL(3, swing_factors.size());
+  AddPointGoalFactors(
+      &swing_factors, cost_model, point_com,
+      SimpleSwingTrajectory(stance_point, step, num_swing_steps), id);
+  EXPECT_LONGS_EQUAL(num_swing_steps, swing_factors.size());
 
-  // Last goal point should have moved just in front of goal_point
+  // Last goal point should have moved just in front of stance_point
   auto g = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.front());
   EXPECT(assert_equal<Point3>(
       expected + Point3(0.01, 0, expected_height - 0.159079), g->goalPoint(),
       1e-5));
 
-  // Last goal point should have moved just shy of goal_point + step
+  // Last goal point should have moved just shy of stance_point + step
   auto h = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.back());
   EXPECT(assert_equal<Point3>(
       expected + step + Point3(-0.01, 0, expected_height - 0.139439),
