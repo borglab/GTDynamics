@@ -41,11 +41,11 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
  public:
   /**
-   * Construct from joint angle limits
+   * Constructor from goal point.
    * @param pose_key key for COM pose of the link
    * @param cost_model noise model
    * @param point_com point on link, in COM coordinate frame
-   * @param goal_point end effector pose goal, in world coordinates
+   * @param goal_point end effector goal point, in world coordinates
    */
   PointGoalFactor(gtsam::Key pose_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
@@ -99,6 +99,25 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 };
 
 /**
+ * Construct many PointGoalFactors from goal trajectory.
+ * @param pose_key key for the first COM pose, incremented by 1 in time.
+ * @param cost_model noise model
+ * @param point_com point on link, in COM coordinate frame
+ * @param goal_trajectory end effector goal trajectory, in world coordinates
+ */
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    gtsam::Key pose_key, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const gtsam::Point3 &point_com,
+    const std::vector<gtsam::Point3> &goal_trajectory) {
+  gtsam::NonlinearFactorGraph factors;
+  for (auto &&goal_point : goal_trajectory) {
+    factors.emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
+                                            goal_point);
+  }
+  return factors;
+}
+
+/**
  * @brief  Add PointGoalFactors for a stance foot.
  * @param factors graph to add to.
  * @param cost_model noise model
@@ -113,11 +132,12 @@ void AddStanceGoals(gtsam::NonlinearFactorGraph *factors,
                     const gtsam::Point3 &point_com,
                     const gtsam::Point3 &goal_point,  //
                     unsigned char i, size_t num_steps, size_t k_start = 0) {
+  std::vector<gtsam::Point3> goal_trajectory;
+  gtsam::Key key = internal::PoseKey(i, k_start);
   for (int k = k_start; k < k_start + num_steps; k++) {
-    gtsam::Key pose_key = internal::PoseKey(i, k);
-    factors->emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
-                                             goal_point);
+    goal_trajectory.push_back(goal_point);
   }
+  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
 }
 
 /**
@@ -143,16 +163,17 @@ void AddSwingGoals(gtsam::NonlinearFactorGraph *factors,
                    gtsam::Point3 cp_goal,  // by value
                    const gtsam::Point3 &step, unsigned char i, size_t num_steps,
                    size_t k_start = 0) {
+  std::vector<gtsam::Point3> goal_trajectory;
+  gtsam::Key key = internal::PoseKey(i, k_start);
   const double dt = 1.0 / (num_steps - 1);
   const gtsam::Point3 delta_step = step * dt;
   for (int k = k_start; k < k_start + num_steps; k++) {
-    gtsam::Key pose_key = internal::PoseKey(i, k);
     double t = dt * (k - k_start);
     double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
-    factors->emplace_shared<PointGoalFactor>(pose_key, cost_model, point_com,
-                                             cp_goal + gtsam::Point3(0, 0, h));
+    goal_trajectory.push_back(cp_goal + gtsam::Point3(0, 0, h));
     cp_goal = cp_goal + delta_step;
   }
+  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
 }
 
 }  // namespace gtdynamics
