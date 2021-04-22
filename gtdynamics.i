@@ -686,9 +686,9 @@ class Phase {
   void print(const string &s = "");
 };
 
-// /********************** Utilities  **********************/
-// #include <gtdynamics/utils/utils.h>
-// string GtdFormat(const gtsam::Values &t, const string &s = "");
-// string GtdFormat(const gtsam::NonlinearFactorGraph &t, const string &s = "");
+/********************** Utilities  **********************/
+#include <gtdynamics/utils/utils.h>
+string GtdFormat(const gtsam::Values &t, const string &s = "");
+string GtdFormat(const gtsam::NonlinearFactorGraph &t, const string &s = "");
 
 }  // namespace gtdynamics
