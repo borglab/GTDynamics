@@ -13,12 +13,12 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
 #include <iosfwd>
-
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/universal_robot/Robot.h>
 
 namespace gtdynamics {
 /**
@@ -27,9 +27,9 @@ namespace gtdynamics {
  */
 class Phase {
  protected:
-  Robot robot_;                  ///< Robot configuration of this stance
-  ContactPoints contact_points_; ///< Contact Points
-  int num_time_steps_;           ///< Number of time steps in this phase
+  Robot robot_;                   ///< Robot configuration of this stance
+  ContactPoints contact_points_;  ///< Contact Points
+  int num_time_steps_;            ///< Number of time steps in this phase
 
  public:
   /// Constructor
@@ -70,8 +70,8 @@ class Phase {
   const ContactPoints &contactPoints() const { return contact_points_; }
 
   /// Returns the contact point object of link.
-  const ContactPoint &
-  getContactPointAtLink(const std::string &link_name) const {
+  const ContactPoint &getContactPointAtLink(
+      const std::string &link_name) const {
     if (contact_points_.find(link_name) == contact_points_.end()) {
       throw std::runtime_error("Link " + link_name + " has no contact point!");
     }
@@ -86,5 +86,19 @@ class Phase {
 
   /// GTSAM-style print, works with wrapper.
   void print(const std::string &s) const;
+
+  /**
+   * Add PointGoalFactors for all stance feet as given in cp_goals.
+   * Swing feet are moved according to a pre-determined height trajectory, and
+   * moved by the 3D vector step.
+   * are added starting at k, default 0.
+   */
+  void addpointGoalFactors(gtsam::NonlinearFactorGraph *factors,
+                           std::map<std::string, gtsam::Point3> *cp_goals,
+                           const std::set<std::string> &all_feet,
+                           const gtsam::Point3 &step,
+                           const gtsam::SharedNoiseModel &cost_model,
+                           const double ground_height, size_t num_steps,
+                           size_t k = 0) const;
 };
-} // namespace gtdynamics
+}  // namespace gtdynamics
