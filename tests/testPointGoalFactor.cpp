@@ -45,9 +45,8 @@ TEST(PointGoalFactor, error) {
   LabeledSymbol pose_key('P', 0, 0);
 
   // Initialize factor with goal point.
-  Point3 goal_point(0, 0, 2);
-  Pose3 comTp(Rot3(), Point3(0, 0, 1));
-  PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
+  Point3 goal_point(0, 0, 2), point_com(0, 0, 1);
+  PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
   EXPECT(assert_equal(Vector3(0, 0, 0),
@@ -75,9 +74,8 @@ TEST(PointGoalFactor, optimization) {
   LabeledSymbol pose_key('P', 0, 0);
 
   // Initialize factor with goal point.
-  Point3 goal_point(2, 15, 6);
-  Pose3 comTp(Rot3(), Point3(0, 0, 1));
-  PointGoalFactor factor(pose_key, cost_model, comTp, goal_point);
+  Point3 goal_point(2, 15, 6), point_com(0, 0, 1);
+  PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Initial link pose.
   Pose3 pose_init = robot.link("l1")->wTcom();

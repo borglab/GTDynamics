@@ -32,10 +32,10 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   using This = PointGoalFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
-  // Transform from link CoM to point on link where this factor is enforced.
-  gtsam::Pose3 comTp_;
+  // Point, expressed in link CoM, where this factor is enforced.
+  gtsam::Point3 point_com_;
   // Goal point in the spatial frame.
-  gtsam::Point3 goalPoint_;
+  gtsam::Point3 goal_point_;
 
  public:
   /**
@@ -46,27 +46,27 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
    */
   PointGoalFactor(gtsam::Key pose_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                  const gtsam::Pose3 &comTp, const gtsam::Point3 &goal_point)
-      : Base(cost_model, pose_key), comTp_(comTp), goalPoint_(goal_point) {}
+                  const gtsam::Point3 &point_com,
+                  const gtsam::Point3 &goal_point)
+      : Base(cost_model, pose_key),
+        point_com_(point_com),
+        goal_point_(goal_point) {}
 
   virtual ~PointGoalFactor() {}
 
+  /// Return goal point.
+  const gtsam::Point3 &goalPoint() const { return goal_point_; }
+
   /**
    * Error function
-   * @param pose -- The link pose.
+   * @param wTcom -- The link pose.
    */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose,
+      const gtsam::Pose3 &wTcom,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     // Change point reference frame from com to spatial.
-    gtsam::Pose3 sTp = pose.transformPoseFrom(comTp_);
-    gtsam::Matrix H_point;
-    gtsam::Point3 sTp_t = sTp.translation(H_point);
-    gtsam::Vector error = sTp_t - goalPoint_;
-
-    if (H_pose) *H_pose = H_point * comTp_.inverse().AdjointMap();
-
-    return error;
+    auto sTp_t = wTcom.transformFrom(point_com_, H_pose);
+    return sTp_t - goal_point_;
   }
 
   //// @return a deep copy of this factor
@@ -79,8 +79,10 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "point goal factor" << std::endl;
+    std::cout << s << "PointGoalFactor\n";
     Base::print("", keyFormatter);
+    std::cout << "point on link: " << point_com_.transpose() << std::endl;
+    std::cout << "goal point: " << goal_point_.transpose() << std::endl;
   }
 
  private:
