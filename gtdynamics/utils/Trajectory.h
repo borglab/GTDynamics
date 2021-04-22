@@ -284,9 +284,8 @@ class Trajectory {
     LinkSharedPtr link =
         walk_cycle_.phases().at(0).robot().link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
-    gtsam::Pose3 comTp = gtsam::Pose3(
-        gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
-    return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
+    auto point_com = walk_cycle_.allContactPoints()[link_name].point;
+    return PointGoalFactor(pose_key, cost_model, point_com, goal_point);
   }
 
   /**

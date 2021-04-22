@@ -160,6 +160,11 @@ TEST(Trajectory, error) {
       noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
   // regression test
   EXPECT_LONGS_EQUAL(80, contact_link_objectives.size());
+  // regression
+  auto last_factor = boost::dynamic_pointer_cast<gtdynamics::PointGoalFactor>(
+      contact_link_objectives.back());
+  EXPECT(gtsam::assert_equal(gtsam::Point3(3.00478, -1.33761, 0),
+                             last_factor->goalPoint(), 1e-5));
 
   // Test boundary conditions.
   NonlinearFactorGraph boundary_conditions;
