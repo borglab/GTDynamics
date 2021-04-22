@@ -2,186 +2,45 @@
 <sdf version='1.6'>
 <world name='default'>
 	<model name="spider">
-
-		<!-- Prevents the robot from falling through the world when visualized in Gazebo. -->	
+	
+		<!-- Prevents the robot from falling through the world when visualized in Gazebo. -->
 		<joint name="body2world" type="fixed">
 			<parent>world</parent>
 			<child>body</child>
 		</joint>
+		
+		<!--TODO: Fix all inertia/mass values!-->
 
 		<!-- Floating base link -->
 		
 		<link name="body">
-			<pose>0 0 0 0 0 0</pose>
+			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
-				<mass>1.57</mass>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.13083</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.13083</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="body_collision">
-			    <pose>0 0 0 1.57 1.57 0 </pose>
 				<geometry>
 					<cylinder>
-						<length>1</length>
-						<radius>0.2</radius>
+						<length>0.1</length>
+						<radius>0.3</radius>
 					</cylinder>
 				</geometry>
 			</collision>
-			<visual name="abdomen_1">
-		    	<pose>0 -0.2 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.2</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="abdomen_2">
-		    	<pose>0 -0.27 0 1.57 1.57 0</pose>
+			<visual name="body_visual">
 				<geometry>
 					<cylinder>
-					    <length>0.14</length>
-						<radius>0.2</radius>
+						<length>0.1</length>
+						<radius>0.3</radius>
 					</cylinder>
 				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="abdomen_3">
-		    	<pose>0 -0.34 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.2</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="thorax_1">
-		    	<pose>0 0.175 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.175</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.57 0.26 0.027 1</ambient>
-					<diffuse>0.57 0.26 0.027 1</diffuse>
-				</material>
-			</visual>
-			<visual name="thorax_2">
-		    	<pose>0 0.2 0 1.57 1.57 0</pose>
-				<geometry>
-					<cylinder>
-					    <length>0.048</length>
-						<radius>0.175</radius>
-					</cylinder>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="thorax_3">
-		    	<pose>0 0.223 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.175</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.57 0.26 0.027 1</ambient>
-					<diffuse>0.57 0.26 0.027 1</diffuse>
-				</material>
-			</visual>
-			<visual name="chelicera_1">
-		    	<pose>-0.05 0.398 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.05</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="chelicera_2">
-		    	<pose>0.05 0.398 0 0 0 0</pose>
-				<geometry>
-					<sphere>
-						<radius>0.05</radius>
-					</sphere>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="pedipalp_left_1">
-		    	<pose>-0.1 0.398 0 1.57 1.57 0.4</pose>
-				<geometry>
-					<cylinder>
-					    <length>0.2</length>
-						<radius>0.02</radius>
-					</cylinder>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="pedipalp_left_2">
-		    	<pose>-0.1 0.57 0 1.57 1.57 -0.4</pose>
-				<geometry>
-					<cylinder>
-					    <length>0.2</length>
-						<radius>0.02</radius>
-					</cylinder>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="pedipalp_right_1">
-		    	<pose>0.1 0.398 0 1.57 1.57 -0.4</pose>
-				<geometry>
-					<cylinder>
-					    <length>0.2</length>
-						<radius>0.02</radius>
-					</cylinder>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
-			</visual>
-			<visual name="pedipalp_right_2">
-		    	<pose>0.1 0.57 0 1.57 1.57 0.4</pose>
-				<geometry>
-					<cylinder>
-					    <length>0.2</length>
-						<radius>0.02</radius>
-					</cylinder>
-				</geometry>
-				<material>
-				    <ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
-				</material>
 			</visual>
 		</link>
 		
@@ -190,59 +49,59 @@
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_1">
-			<pose>-0.124 0.315 0 0 0 0.79</pose>
+			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_1_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_1_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 
 		<link name="femur_1">
-			<pose>-0.194 0.385 0 0 0 0.79</pose>
+			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_1_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -251,7 +110,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_1_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -259,92 +118,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_1">
-			<pose>-0.54 0.73 0 0 0 0.79</pose>
+			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_1_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_1_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_1">
-			<pose>-0.95 1.14 0 0 0 0.79</pose>
+			<pose frame=''>0 0 0 0 0 0</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_1_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_1_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -354,12 +205,12 @@
 		<joint name="hip_1" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_1</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -367,11 +218,12 @@
 		<joint name="hip2_1" type="revolute">
 			<parent>trochanter_1</parent>
 			<child>femur_1</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -380,12 +232,12 @@
 		<joint name="knee_1" type="revolute">
 			<parent>femur_1</parent>
 			<child>tibia_1</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -393,12 +245,12 @@
 		<joint name="ankle_1" type="revolute">
 			<parent>tibia_1</parent>
 			<child>tarsus_1</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -408,59 +260,59 @@
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_2">
-			<pose>-0.169 0.268 0 0 0 1.28</pose>
+			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_2_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_2_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 
 		<link name="femur_2">
-			<pose>-0.269 0.294 0 0 0 1.28</pose>
+			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_2_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -469,7 +321,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_2_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -477,92 +329,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_2">
-			<pose>-0.72 0.426 0 0 0 1.28</pose>
+			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_2_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_2_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_2">
-			<pose>-1.29 0.590 0 0 0 1.28</pose>
+			<pose frame=''>0 0 0 0 0 0.785398</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_2_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_2_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -572,12 +416,12 @@
 		<joint name="hip_2" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_2</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -585,11 +429,12 @@
 		<joint name="hip2_2" type="revolute">
 			<parent>trochanter_2</parent>
 			<child>femur_2</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -598,12 +443,12 @@
 		<joint name="knee_2" type="revolute">
 			<parent>femur_2</parent>
 			<child>tibia_2</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -611,75 +456,74 @@
 		<joint name="ankle_2" type="revolute">
 			<parent>tibia_2</parent>
 			<child>tarsus_2</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 		<!-- Leg 3 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_3">
-			<pose>-0.169 0.178 0 0 0 1.78</pose>
+			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_3_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_3_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_3">
-			<pose>-0.269 0.158 0 0 0 1.78</pose>
+			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_3_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -688,7 +532,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_3_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -696,92 +540,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_3">
-			<pose>-0.73 0.06 0 0 0 1.78</pose>
+			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_3_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_3_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_3">
-			<pose>-1.30 -0.07 0 0 0 1.78</pose>
+			<pose frame=''>0 0 0 0 0 1.570796</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_3_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_3_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -791,12 +627,12 @@
 		<joint name="hip_3" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_3</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -804,11 +640,12 @@
 		<joint name="hip2_3" type="revolute">
 			<parent>trochanter_3</parent>
 			<child>femur_3</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -817,12 +654,12 @@
 		<joint name="knee_3" type="revolute">
 			<parent>femur_3</parent>
 			<child>tibia_3</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -830,75 +667,74 @@
 		<joint name="ankle_3" type="revolute">
 			<parent>tibia_3</parent>
 			<child>tarsus_3</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 		<!-- Leg 4 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_4">
-			<pose>-0.124 0.131 0 0 0 2.147</pose>
+			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_4_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_4_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_4">
-			<pose>-0.194 0.081 0 0 0 2.147</pose>
+			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_4_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -907,7 +743,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_4_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -915,92 +751,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_4">
-			<pose>-0.60 -0.20 0 0 0 2.147</pose>
+			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_4_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_4_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_4">
-			<pose>-1.08 -0.51 0 0 0 2.147</pose>
+			<pose frame=''>0 0 0 0 0 2.356194</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_4_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_4_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -1010,12 +838,12 @@
 		<joint name="hip_4" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_4</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1023,11 +851,12 @@
 		<joint name="hip2_4" type="revolute">
 			<parent>trochanter_4</parent>
 			<child>femur_4</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1036,12 +865,12 @@
 		<joint name="knee_4" type="revolute">
 			<parent>femur_4</parent>
 			<child>tibia_4</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -1049,75 +878,74 @@
 		<joint name="ankle_4" type="revolute">
 			<parent>tibia_4</parent>
 			<child>tarsus_4</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 		<!-- Leg 5 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_5">
-			<pose>0.124 0.131 0 0 0 4.14</pose>
+			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_5_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_5_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_5">
-			<pose>0.225 0.071 0 0 0 4.14</pose>
+			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_5_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1126,7 +954,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_5_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1134,92 +962,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_5">
-			<pose>0.624 -0.19 0 0 0 4.14</pose>
+			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_5_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_5_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_5">
-			<pose>1.1 -0.49 0 0 0 4.14</pose>
+			<pose frame=''>0 0 0 0 0 3.141592</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_5_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_5_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -1229,12 +1049,12 @@
 		<joint name="hip_5" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_5</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1242,11 +1062,12 @@
 		<joint name="hip2_5" type="revolute">
 			<parent>trochanter_5</parent>
 			<child>femur_5</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1255,12 +1076,12 @@
 		<joint name="knee_5" type="revolute">
 			<parent>femur_5</parent>
 			<child>tibia_5</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -1268,75 +1089,74 @@
 		<joint name="ankle_5" type="revolute">
 			<parent>tibia_5</parent>
 			<child>tarsus_5</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 		<!-- Leg 6 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_6">
-			<pose>0.169 0.178 0 0 0 4.5</pose>
+			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_6_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_6_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_6">
-			<pose>0.28 0.158 0 0 0 4.5</pose>
+			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_6_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1345,7 +1165,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_6_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1353,92 +1173,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_6">
-			<pose>0.75 0.05 0 0 0 4.5</pose>
+			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_6_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_6_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_6">
-			<pose>1.33 -0.08 0 0 0 4.5</pose>
+			<pose frame=''>0 0 0 0 0 3.92699</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_6_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_6_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -1448,12 +1260,12 @@
 		<joint name="hip_6" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_6</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1461,11 +1273,12 @@
 		<joint name="hip2_6" type="revolute">
 			<parent>trochanter_6</parent>
 			<child>femur_6</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1474,12 +1287,12 @@
 		<joint name="knee_6" type="revolute">
 			<parent>femur_6</parent>
 			<child>tibia_6</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -1487,74 +1300,74 @@
 		<joint name="ankle_6" type="revolute">
 			<parent>tibia_6</parent>
 			<child>tarsus_6</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
+
 		<!-- Leg 7 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_7">
-			<pose>0.169 0.268 0 0 0 5</pose>
+			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_7_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_7_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_7">
-			<pose>0.27 0.298 0 0 0 5</pose>
+			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_7_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1563,7 +1376,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_7_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1571,92 +1384,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_7">
-			<pose>0.7 0.44 0 0 0 5</pose>
+			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_7_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_7_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tarsus_7">
-			<pose>1.25 0.61 0 0 0 5</pose>
+			<pose frame=''>0 0 0 0 0 4.712388</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_7_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_7_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -1666,12 +1471,12 @@
 		<joint name="hip_7" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_7</child>
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1679,11 +1484,12 @@
 		<joint name="hip2_7" type="revolute">
 			<parent>trochanter_7</parent>
 			<child>femur_7</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1692,12 +1498,12 @@
 		<joint name="knee_7" type="revolute">
 			<parent>femur_7</parent>
 			<child>tibia_7</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -1705,75 +1511,74 @@
 		<joint name="ankle_7" type="revolute">
 			<parent>tibia_7</parent>
 			<child>tarsus_7</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 		<!-- Leg 8 links -->
 
 		<!-- A temporary link, for the temporary solution of testing
 		this file using revolute instead of universal joints -->
 		<link name="trochanter_8">
-			<pose>0.124 0.315 0 0 0 5.497</pose>
+			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
-				<pose>0 0.05 0 1.57 1.57 0</pose>
-				<mass>0.00047</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000016</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000016</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="trochanter_8_collision">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="trochanter_8_visual">
-				<pose>0 0.05 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.1</length>
+						<length>0.001</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="femur_8">
-			<pose>0.204 0.395 0 0 0 5.497</pose>
+			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
-				<pose>0 0.24 0 1.57 1.57 0</pose>
-				<mass>0.00226</mass>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000174</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000174</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="femur_8_collision">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1782,7 +1587,7 @@
 				</geometry>
 			</collision>
 			<visual name="femur_8_visual">
-				<pose>0 0.24 0 1.57 1.57 0</pose>
+				<pose frame=''>0 0.54 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
 						<length>0.48</length>
@@ -1790,93 +1595,84 @@
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
 		<link name="tibia_8">
-		    <pose>0.53 0.72 0 0 0 5.497</pose>
+			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
-				<pose>0 0.29 0 1.57 1.57 0</pose>
-				<mass>0.00273</mass>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.000306</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.000306</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tibia_8_collision">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 			</collision>
 			<visual name="tibia_8_visual">
-				<pose>0 0.29 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.02 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.58</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
 		
-		
 		<link name="tarsus_8">
-			<pose>0.93 1.13 0 0 0 5.497</pose>
+			<pose frame=''>0 0 0 0 0 5.497786</pose>
 			<inertial>
-				<pose>0 0.19 0 1.57 1.57 0</pose>
-				<mass>0.00179</mass>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
+				<mass>5</mass>
 				<inertia>
-					<ixx>0.0000862</ixx>
+					<ixx>5</ixx>
 					<ixy>0</ixy>
 					<ixz>0</ixz>
-					<iyy>0</iyy>
+					<iyy>5</iyy>
 					<iyz>0</iyz>
-					<izz>0.0000862</izz>
+					<izz>5</izz>
 				</inertia>
 			</inertial>
 			<collision name="tarsus_8_collision">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
-				<surface>
-          			<friction>
-            			<ode>
-              				<mu>1</mu>
-              				<mu2>1</mu2>
-            			</ode>
-          			</friction>
-         		</surface>
 			</collision>
 			<visual name="tarsus_8_visual">
-				<pose>0 0.19 0 1.57 1.57 0</pose>
+				<pose frame=''>0 1.5 0 1.57 1.57 0</pose>
 				<geometry>
 					<cylinder>
-						<length>0.38</length>
+						<length>0.48</length>
 						<radius>0.04</radius>
 					</cylinder>
 				</geometry>
 				<material>
-					<ambient>0.88 0.45 0.08 1</ambient>
-					<diffuse>0.88 0.45 0.08 1</diffuse>
+					<ambient>0 1 0 0.6</ambient>
+					<diffuse>0 1 0 0.6</diffuse>
 				</material>
 			</visual>
 		</link>
@@ -1886,13 +1682,12 @@
 		<joint name="hip_8" type="revolute">
 			<parent>body</parent>
 			<child>trochanter_8</child>
-	
+			<pose frame=''>0 0.3 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-				<xyz>0 0 1</xyz>
+				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>0.61</upper>
+					<lower>-0.9162979</lower>
+					<upper>0.9162979</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1900,11 +1695,12 @@
 		<joint name="hip2_8" type="revolute">
 			<parent>trochanter_8</parent>
 			<child>femur_8</child>
+			<pose frame=''>0 0.3001 0 0 0 0</pose>
 			<axis>
-				<xyz>1 0 0</xyz>
+				<xyz>0 0 1</xyz>
 				<limit>
-					<lower>-0.916</lower>
-					<upper>0.916</upper>
+					<lower>-0.610865</lower>
+					<upper>0.610865</upper>
 				</limit>
 				<use_parent_model_frame>0</use_parent_model_frame>
 			</axis>
@@ -1913,13 +1709,12 @@
 		<joint name="knee_8" type="revolute">
 			<parent>femur_8</parent>
 			<child>tibia_8</child>
+			<pose frame=''>0 0.78001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
-
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-2.79</lower>
-					<upper>0</upper>
+					<lower>-0.349066</lower>
+					<upper>2.44346</upper>
 				</limit>
 			</axis>
 		</joint>
@@ -1927,16 +1722,15 @@
 		<joint name="ankle_8" type="revolute">
 			<parent>tibia_8</parent>
 			<child>tarsus_8</child>
+			<pose frame=''>0 1.26001 0 0 0 0</pose>
 			<axis>
-				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
 				<limit>
-					<lower>-0.61</lower>
-					<upper>1.57</upper>
+					<lower>-1.090831</lower>
+					<upper>1.090831</upper>
 				</limit>
 			</axis>
 		</joint>
-		
 
 	</model>
 </world>

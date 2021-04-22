@@ -182,6 +182,18 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
+    robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
+
+  EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
+
+  Pose3 pose = Pose(init_vals, l1->id()) * oTc_l1;
+  EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
+
+  double joint_angle = JointAngle(init_vals, robot.joint("j1")->id());
+  EXPECT(assert_equal(0.0, joint_angle, 1e-3));
+
+  size_t T = std::roundl(ts[0] / dt);
+  for (size_t t = 0; t <= T; t++) {
     pose = Pose(init_vals, l1->id(), t) * oTc_l1;
     EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
   }
@@ -190,7 +202,6 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   EXPECT(assert_equal(wTb_t[0], pose, 1e-3));
   pose = Pose(init_vals, l1->id(), T) * oTc_l1;
   EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
->>>>>>> master
 }
 
 TEST(InitializeSolutionUtils, ZeroValues) {
@@ -202,25 +213,6 @@ TEST(InitializeSolutionUtils, ZeroValues) {
 
   Pose3 wTb_i = l2->wTcom();
 
-  gtsam::Pose3 oTc_l1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1.0));
-  ContactPoints contact_points {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
-
-  gtsam::Values init_vals =
-      ZeroValues(my_robot, 0, 0.0, contact_points);
-
-  gtsam::Pose3 T;
-  double jangle;
-  for (auto&& link : my_robot.links()){
-      T = init_vals.at<gtsam::Pose3>(PoseKey(link->getID(), 0));
-      EXPECT(assert_equal(link->wTcom(), T));
-  }
-    
-  for (auto&& joint : my_robot.joints()){
-      jangle = init_vals.atDouble(JointAngleKey(joint->getID(), 0));
-      EXPECT(assert_equal(0.0, jangle));
-  }  
-=======
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
       {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
@@ -238,7 +230,6 @@ TEST(InitializeSolutionUtils, ZeroValues) {
     joint_angle = JointAngle(init_vals, joint->id());
     EXPECT(assert_equal(0.0, joint_angle));
   }
->>>>>>> master
 }
 
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
