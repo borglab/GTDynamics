@@ -27,14 +27,12 @@ namespace gtdynamics {
  */
 class Phase {
  protected:
-  Robot robot_;                   ///< Robot configuration of this stance
   ContactPoints contact_points_;  ///< Contact Points
   int num_time_steps_;            ///< Number of time steps in this phase
 
  public:
   /// Constructor
-  Phase(const Robot &robot_configuration, const int &num_time_steps)
-      : robot_(robot_configuration), num_time_steps_(num_time_steps) {}
+  Phase(const int &num_time_steps) : num_time_steps_(num_time_steps) {}
 
   /** @fn Adds a contact point in the phase.
    *
@@ -62,9 +60,6 @@ class Phase {
       addContactPoint(link_name, point);
     }
   }
-
-  /// Returns the robot configuration of the stance
-  const Robot &robot() const { return robot_; }
 
   /// Returns all the contact points in the stance
   const ContactPoints &contactPoints() const { return contact_points_; }

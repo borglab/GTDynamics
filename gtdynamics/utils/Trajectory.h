@@ -29,6 +29,7 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
+  Robot robot_;           ///< Copy of the robot configuration
   int repeat_;            ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
@@ -55,8 +56,8 @@ class Trajectory {
    * @param walk_cycle The Walk Cycle for the robot.
    * @param repeat The number of repetitions for each phase of the gait.
    */
-  Trajectory(const WalkCycle &walk_cycle, int repeat)
-      : repeat_(repeat), walk_cycle_(walk_cycle) {}
+  Trajectory(const Robot &robot, const WalkCycle &walk_cycle, int repeat)
+      : robot_(robot), repeat_(repeat), walk_cycle_(walk_cycle) {}
 
   /**
    * @fn Returns a vector of ContactPoints objects for all phases after
@@ -126,21 +127,6 @@ class Trajectory {
   }
 
   /**
-   * @fn Returns a vector of robot models for all phases after
-   * applying repetition on the walk cycle.
-   * @return Robot models.
-   */
-  std::vector<Robot> phaseRobotModels() const {
-    std::vector<Robot> robots;
-    const auto &phases = walk_cycle_.phases();
-    for (int i = 0; i < repeat_; i++) {
-      for (auto &&phase : phases)
-        robots.push_back(phase.robot());
-    }
-    return robots;
-  }
-
-  /**
    * @fn Returns the number of phases.
    * @return Number of phases.
    */
@@ -162,8 +148,8 @@ class Trajectory {
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
-      DynamicsGraph &graph_builder,
-      const CollocationScheme collocation, double mu) const;
+      DynamicsGraph &graph_builder, const CollocationScheme collocation,
+      double mu) const;
 
   /**
    * @fn Returns Initial values for transition graphs.
@@ -242,28 +228,11 @@ class Trajectory {
   std::vector<std::string> getPhaseSwingLinks(int p) const {
     std::vector<std::string> phase_swing_links;
     auto contact_links = getPhaseContactLinks(p);
-    for (auto &&kv : walk_cycle_.contactPoints()) {
-      auto link_name = kv.first;
+    for (auto &&link_name : walk_cycle_.contactLinkNames()) {
       if (contact_links.count(link_name) == 0)
         phase_swing_links.push_back(link_name);
     }
     return phase_swing_links;
-  }
-
-  /**
-   * @fn Returns the initial contact point goal for every contact link.
-   * @return Map of Contact Link and its goal point.
-   */
-  std::map<std::string, gtsam::Point3> initContactPointGoal() const {
-    std::map<std::string, gtsam::Point3> cp_goals;
-    auto robot = walk_cycle_.phases().at(0).robot();  // TODO(frank): all same?
-    for (auto &&kv : walk_cycle_.contactPoints()) {
-      auto link_name = kv.first;
-      LinkSharedPtr link = robot.link(link_name);
-      auto foot_w = link->wTcom().transformFrom(kv.second.point);
-      cp_goals.emplace(link_name, foot_w);
-    }
-    return cp_goals;
   }
 
   /**
@@ -273,13 +242,13 @@ class Trajectory {
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
-  PointGoalFactor pointGoalFactor(const std::string &link_name, int k,
+  PointGoalFactor pointGoalFactor(const std::string &link_name,
+                                  const ContactPoint &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const {
-    LinkSharedPtr link =
-        walk_cycle_.phases().at(0).robot().link(link_name);
+    LinkSharedPtr link = robot_.link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
-    auto point_com = walk_cycle_.contactPoints()[link_name].point;
+    auto point_com = cp.point; // TODO(frank): BROKEN ???
     return PointGoalFactor(pose_key, cost_model, point_com, goal_point);
   }
 
@@ -337,11 +306,10 @@ class Trajectory {
    * @param[in] results      Results of Optimization.
    * @param[in] phase        Phase number.
    */
-  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
-                        int phase) const {
+  void writePhaseToFile(const Robot &robot, std::ofstream &traj_file,
+                        const gtsam::Values &results, int phase) const {
     int k = getStartTimeStep(phase);
     auto phase_durations = phaseDurations();
-    Robot robot = phaseRobotModels()[phase];
     for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
       std::vector<std::string> vals;
       for (auto &&joint : robot.joints())

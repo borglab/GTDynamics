@@ -36,35 +36,32 @@ vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
   vector<ContactPoints> trans_cps = transitionContactPoints();
-  vector<Robot> phase_robots = phaseRobotModels();
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
+        robot_, final_timesteps[p - 1], trans_cps[p - 1], mu));
   }
   return transition_graphs;
 }
 
 NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
-    DynamicsGraph &graph_builder,
-    const CollocationScheme collocation, double mu) const {
+    DynamicsGraph &graph_builder, const CollocationScheme collocation,
+    double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(graph_builder, mu);
-  return graph_builder.multiPhaseTrajectoryFG(
-      phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
-      phaseContactPoints(), mu);
+  return graph_builder.multiPhaseTrajectoryFG(robot_, phaseDurations(),
+                                              transition_graphs, collocation,
+                                              phaseContactPoints(), mu);
 }
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
     double gaussian_noise) const {
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
-  vector<Robot> phase_robots = phaseRobotModels();
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
-    transition_graph_init.push_back(
-        ZeroValues(phase_robots[p], final_timesteps[p - 1], gaussian_noise,
-                   trans_cps[p - 1]));
+    transition_graph_init.push_back(ZeroValues(
+        robot_, final_timesteps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
   return transition_graph_init;
 }
@@ -73,7 +70,7 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
                                            double dt) const {
   vector<Values> transition_graph_init =
       transitionPhaseInitialValues(gaussian_noise);
-  return MultiPhaseZeroValuesTrajectory(phaseRobotModels(), phaseDurations(),
+  return MultiPhaseZeroValuesTrajectory(robot_, phaseDurations(),
                                         transition_graph_init, dt,
                                         gaussian_noise, phaseContactPoints());
 }
@@ -83,9 +80,10 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
   NonlinearFactorGraph factors;
 
   // Previous contact point goal.
-  map<string, Point3> cp_goals = initContactPointGoal();
+  map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_);
 
   // Distance to move contact point per time step during swing.
+  // TODO(frank): this increases y. That can't be general in any way.
   auto contact_offset = Point3(0, 0.02, 0);
 
   // Add contact point objectives to factor graph.
@@ -101,10 +99,11 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
 
     for (int k = k_start; k <= k_end; k++) {
       for (auto &&kv : phase_contact_links) {
-        auto contact_name = kv.first;
-        Point3 goal_point(cp_goals[contact_name].x(),
-                          cp_goals[contact_name].y(), ground_height - 0.05);
-        factors.add(pointGoalFactor(contact_name, k, cost_model, goal_point));
+        auto name = kv.first;
+        Point3 goal_point(cp_goals[name].x(), cp_goals[name].y(),
+                          ground_height - 0.05);
+        factors.add(
+            pointGoalFactor(name, kv.second, k, cost_model, goal_point));
       }
 
       // Normalized phase progress.
@@ -114,14 +113,18 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
       // TODO(frank): Alejandro should document this.
       double h = ground_height + pow(t_normed, 1.1) * pow(1 - t_normed, 0.7);
 
-      for (auto &&psl : phase_swing_links) {
-        Point3 goal_point(cp_goals[psl].x(), cp_goals[psl].y(), h);
-        factors.add(pointGoalFactor(psl, k, cost_model, goal_point));
-
-        // Update the goal point for the swing links.
-        cp_goals[psl] = cp_goals[psl] + contact_offset;
+      for (auto &&name : phase_swing_links) {
+        Point3 goal_point(cp_goals[name].x(), cp_goals[name].y(), h);
+        // TODO(frank): BROKEN !!
+        // factors.add(
+        //     pointGoalFactor(name, kv.second, k, cost_model, goal_point));
       }
-    }
+
+      // Update the goal point for the swing links.
+      for (auto &&name : phase_swing_links) {
+        cp_goals[name] = cp_goals[name] + contact_offset;
+      }
+    }  // k
   }
   return factors;
 }

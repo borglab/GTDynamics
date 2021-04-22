@@ -49,13 +49,13 @@ TEST(Trajectory, Intersection) {
   size_t num_time_steps = 1;
 
   // Initialize first phase
-  auto phase_1 = Phase(robot, num_time_steps);
+  auto phase_1 = Phase(num_time_steps);
   phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
-  auto phase_2 = Phase(robot, num_time_steps);
+  auto phase_2 = Phase(num_time_steps);
   phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
@@ -79,14 +79,14 @@ TEST(Trajectory, error) {
 
   // Initialize first phase
   size_t num_time_steps = 2;
-  auto phase_1 = Phase(robot, num_time_steps);
+  auto phase_1 = Phase(num_time_steps);
   phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
   size_t num_time_steps_2 = 3;
-  auto phase_2 = Phase(robot, num_time_steps_2);
+  auto phase_2 = Phase(num_time_steps_2);
   phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
@@ -99,7 +99,7 @@ TEST(Trajectory, error) {
 
   // Initialize Trajectory
   size_t repeat = 3;
-  auto trajectory = gtdynamics::Trajectory(walk_cycle, repeat);
+  auto trajectory = gtdynamics::Trajectory(robot, walk_cycle, repeat);
 
   auto phase_cps = trajectory.phaseContactPoints();
   EXPECT_LONGS_EQUAL(repeat * 2, phase_cps.size());
@@ -112,9 +112,6 @@ TEST(Trajectory, error) {
   auto phase_durations = trajectory.phaseDurations();
   EXPECT_LONGS_EQUAL(2, phase_durations[2]);
 
-  auto robot_models = trajectory.phaseRobotModels();
-  EXPECT_LONGS_EQUAL(6, robot_models.size());
-
   auto final_timesteps = trajectory.finalTimeSteps();
   EXPECT_LONGS_EQUAL(7, final_timesteps[2]);
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
@@ -122,7 +119,7 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = trajectory.initContactPointGoal();
+  auto cp_goals = walk_cycle.initContactPointGoal(robot);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(3.18367, 1.06573, -2.99761),

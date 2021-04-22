@@ -27,14 +27,14 @@ TEST(WalkCycle, error) {
 
   // Initialize first phase
   size_t num_time_steps = 20;
-  auto phase_1 = gtdynamics::Phase(robot, num_time_steps);
+  auto phase_1 = gtdynamics::Phase(num_time_steps);
   phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
   phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
   size_t num_time_steps_2 = 25;
-  auto phase_2 = gtdynamics::Phase(robot, num_time_steps_2);
+  auto phase_2 = gtdynamics::Phase(num_time_steps_2);
   phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
   phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
@@ -49,7 +49,7 @@ TEST(WalkCycle, error) {
   EXPECT(walk_cycle_phases[0].contactPoints().size() == 3);
   EXPECT(walk_cycle_phases[1].contactPoints().size() == 4);
   EXPECT(walk_cycle.numPhases() == 2);
-  EXPECT(walk_cycle.contactPoints().size() == 5);
+  EXPECT(walk_cycle.contactLinkNames().size() == 5);
 }
 
 int main() {

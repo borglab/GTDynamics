@@ -55,8 +55,8 @@ TEST(Phase, inverse_kinematics) {
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
 
   constexpr size_t num_time_steps = 5;
-  gtdynamics::Phase phase(robot, num_time_steps);
-  EXPECT_LONGS_EQUAL(13, phase.robot().numLinks());
+  gtdynamics::Phase phase(num_time_steps);
+  EXPECT_LONGS_EQUAL(13, robot.numLinks());
 
   // Set contacts to reasonable values
   phase.addContactPoint("lower1", Point3(0, 0.15, 0));     // LH
