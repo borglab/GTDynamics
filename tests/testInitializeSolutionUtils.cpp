@@ -287,6 +287,7 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   std::vector<double> ts;
 
   wTb_t.push_back(Pose3(Rot3(), Point3(1, 0, 0.2)));
+
   ts.push_back(3 * steps_per_phase);
 
   // Initial values for transition graphs.

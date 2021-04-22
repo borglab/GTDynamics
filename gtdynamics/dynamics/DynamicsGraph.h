@@ -233,10 +233,12 @@ class DynamicsGraph {
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
-   * @param robots            the robot configuration for each phase
-   * @param phase_steps       number of time steps for each phase
-   * @param transition_graphs transition step graphs with guardian factors
-   * @param collocation       the collocation scheme
+   * @param robots               the robot configuration for each phase
+   * @param phase_steps          number of time steps for each phase
+   * @param transition_graphs    transition step graphs with guardian factors
+   * @param collocation          the collocation scheme
+   * @param phase_contact_points contact points at each phase
+   * @param mu                   optional coefficient of static friction
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
@@ -261,12 +263,23 @@ class DynamicsGraph {
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const CollocationScheme collocation = Trapezoidal);
 
-  /** return collocation factors for the specified joint. */
+  /**
+   * Return collocation factors for the specified joint.
+   * @param j           joint index
+   * @param t           time step
+   * @param dt          time delta
+   * @param collocation the collocation scheme
+   */
   gtsam::NonlinearFactorGraph jointCollocationFactors(
       const int j, const int t, const double dt,
       const CollocationScheme collocation = Trapezoidal) const;
 
-  /** return collocation factors for the specified joint, with dt as a variable.
+  /**
+   * Return collocation factors for the specified joint, with dt as a variable.
+   * @param j           joint index
+   * @param t           time step
+   * @param phase       the phase of the timestamp
+   * @param collocation the collocation scheme
    */
   gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
       const int j, const int t, const int phase,

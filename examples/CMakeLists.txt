@@ -5,6 +5,7 @@ set(EXAMPLE_SUBDIRS
     example_cart_pole_trajectory_optimization
     example_forward_dynamics
     example_full_kinodynamic_balancing
+    example_full_kinodynamic_walking
     example_inverted_pendulum_trajectory_optimization
     # example_jumping_robot  # Python based example
     example_quadruped_mp

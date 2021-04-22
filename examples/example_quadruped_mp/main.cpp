@@ -352,8 +352,10 @@ int main(int argc, char **argv) {
 
     // Update the values for next iteration.
     values.clear();
+
     for (auto &&link : vision60.links())
       InsertPose(&values, link->id(), ti + 1, Pose(results, link->id(), ti));
+
     for (auto &&joint : vision60.joints())
       InsertJointAngle(&values, joint->id(), ti + 1,
                        JointAngle(results, joint->id(), ti));
