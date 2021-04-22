@@ -9,11 +9,12 @@
  * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
 """
 
+import numpy as np
 import os.path as osp
 import unittest
 
 import gtdynamics as gtd
-
+import gtsam
 
 class TestDynamicsGraph(unittest.TestCase):
     """Unit tests for DynamicsGraph."""
@@ -36,6 +37,34 @@ class TestDynamicsGraph(unittest.TestCase):
         graph_builder = gtd.DynamicsGraph()
         graph = graph_builder.dynamicsFactorGraph(simple_rr, 0, None, None)
         self.assertEqual(graph.size(), 13)
+
+    def test_objective_factors(self):
+        noise1 = gtsam.noiseModel.Unit.Create(1)
+        noise6 = gtsam.noiseModel.Unit.Create(6)
+        graph = gtsam.NonlinearFactorGraph()
+        gtd.add_link_objectives(graph, 1, k=777)\
+            .pose(gtsam.Pose3(), noise1)\
+            .twistAccel(np.zeros(6), noise6)
+        self.assertEqual(graph.size(), 2)
+        gtd.add_joint_objectives(graph, 2, 777)\
+            .angle(0., noise1)\
+            .velocity(0., noise1)
+        self.assertEqual(graph.size(), 4)
+        self.assertEqual(graph.keys().size(), 4)
+        gtd.add_joint_objectives(graph, 2, 777)\
+            .acceleration(0., noise1)\
+            .angle(0., noise1)  # duplicate angle
+        self.assertEqual(graph.size(), 6)
+        self.assertEqual(graph.keys().size(), 5)
+        # optional time index and noise model
+        gtd.add_joint_objectives(graph, 2)\
+            .acceleration(0.)\
+            .angle(0.)
+        gtd.add_link_objectives(graph, 1)\
+            .pose(gtsam.Pose3())\
+            .twistAccel(np.zeros(6))
+        self.assertEqual(graph.size(), 10)
+        self.assertEqual(graph.keys().size(), 9)
 
 
 if __name__ == "__main__":

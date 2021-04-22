@@ -23,7 +23,7 @@ using namespace gtdynamics;
 
 TEST(WalkCycle, error) {
   Robot robot_configuration =
-      CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
 
   // Initialize first phase
   size_t num_time_steps = 20;
@@ -47,8 +47,8 @@ TEST(WalkCycle, error) {
   walk_cycle.addPhase(phase_2);
 
   auto walk_cycle_phases = walk_cycle.phases();
-  EXPECT(walk_cycle_phases[0].getAllContactPoints().size() == 3);
-  EXPECT(walk_cycle_phases[1].getAllContactPoints().size() == 4);
+  EXPECT(walk_cycle_phases[0].contactPoints().size() == 3);
+  EXPECT(walk_cycle_phases[1].contactPoints().size() == 4);
   EXPECT(walk_cycle.numPhases() == 2);
   EXPECT(walk_cycle.allContactPoints().size() == 5);
 }
