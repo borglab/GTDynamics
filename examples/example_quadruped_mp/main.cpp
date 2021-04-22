@@ -341,7 +341,8 @@ int main(int argc, char **argv) {
     auto model3 = gtsam::noiseModel::Constrained::All(3);
     for (auto &&leg : swing_sequence) {
       kfg.add(PointGoalFactor(internal::PoseKey(vision60.link(leg)->id(), ti),
-                              model3, comTfoot, tposes.at(leg).translation()));
+                              model3, comTfoot.translation(),
+                              tposes.at(leg).translation()));
     }
 
     gtsam::GaussNewtonOptimizer optimizer(kfg, values);

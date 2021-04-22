@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
 
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
-            Pose3(Rot3(), c0.point), new_cp));
+            c0.point, new_cp));
       }
 
       double h = GROUND_HEIGHT +
@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
 
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[psl]->id(), t), objectives_model_3,
-            Pose3(Rot3(), c0.point), new_cp));
+            c0.point, new_cp));
       }
     }
   }

@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
         // TODO(aescontrela): Use correct contact point for each link.
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
-            Pose3(Rot3(), c0.point),
+            c0.point,
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.03)));
 
       double h = GROUND_HEIGHT +
@@ -224,8 +224,7 @@ int main(int argc, char** argv) {
       for (auto&& psl : phase_swing_links)
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[psl]->id(), t), objectives_model_3,
-            Pose3(Rot3(), c0.point),
-            Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+            c0.point, Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
     }
   }
 

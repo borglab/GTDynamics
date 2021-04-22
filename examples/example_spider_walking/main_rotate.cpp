@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
         // TODO(aescontrela): Use correct contact point for each link.
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), Pose3(Rot3(), c1.point),
+            Isotropic::Sigma(3, 1e-7), c1.point,
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
       }
 
@@ -258,7 +258,7 @@ int main(int argc, char** argv) {
       for (auto&& psl : phase_swing_links) {
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[psl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), Pose3(Rot3(), c1.point),
+            Isotropic::Sigma(3, 1e-7), c1.point,
             Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
       }
 
