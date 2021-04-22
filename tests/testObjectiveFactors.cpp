@@ -102,11 +102,7 @@ TEST(Phase, AddGoals) {
   EXPECT_LONGS_EQUAL(num_stance_steps, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
-
-  // Regression, but realistic, at least in Z: 19.5 cm below body.
-  constexpr double expected_height = 0.194667;
-  Point3 expected(0.289324, 0.1575, -expected_height);
-  EXPECT(assert_equal(expected, f->goalPoint(), 1e-5));
+  EXPECT(assert_equal(stance_point, f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
   EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
@@ -122,15 +118,13 @@ TEST(Phase, AddGoals) {
 
   // Last goal point should have moved just in front of stance_point
   auto g = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.front());
-  EXPECT(assert_equal<Point3>(
-      expected + Point3(0.01, 0, expected_height - 0.159079), g->goalPoint(),
-      1e-5));
+  EXPECT(assert_equal<Point3>(stance_point + Point3(0.01, 0, 0.035588),
+                              g->goalPoint(), 1e-5));
 
   // Last goal point should have moved just shy of stance_point + step
   auto h = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.back());
-  EXPECT(assert_equal<Point3>(
-      expected + step + Point3(-0.01, 0, expected_height - 0.139439),
-      h->goalPoint(), 1e-5));
+  EXPECT(assert_equal<Point3>(stance_point + step + Point3(-0.01, 0, 0.055228),
+                              h->goalPoint(), 1e-5));
 }
 
 int main() {

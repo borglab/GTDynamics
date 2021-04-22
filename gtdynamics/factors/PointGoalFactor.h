@@ -101,7 +101,12 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
 /**
  * Construct many PointGoalFactors from goal trajectory.
- * @param first_key key for the COM pose. Will be incremented by 1 in time.
+ * 
+ * This function willl take a key to the first pose and then increment the key 
+ * by 1, for each time-step in the goal trajectory. If you need more 
+ * sophisticated behavior then this function is not it ;-).
+ * 
+ * @param first_key key for the COM pose.
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
  * @param goal_trajectory end effector goal trajectory, in world coordinates

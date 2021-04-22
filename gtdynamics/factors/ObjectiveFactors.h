@@ -168,11 +168,9 @@ void add_joints_at_rest_objectives(
 /**
  * @brief  Add PointGoalFactors given a trajectory.
  * @param factors graph to add to.
- *
- * @param goal_trajectory end effector goal trajectory, in world coordinates
- *
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
+ * @param goal_trajectory end effector goal trajectory, in world coordinates
  * @param i The link id.
  * @param k starting time index (default 0).
  */
@@ -199,12 +197,17 @@ std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3& stance_point,
 /**
  * @brief Create simple swing foot trajectory, from start to start + step.
  *
- * Swing feet is moved according to a pre-determined height trajectory, and
+ * Swing foot is moved according to a pre-determined height trajectory, and
  * moved by the 3D vector step.
  * To see the curve, go to https://www.wolframalpha.com/ and type
  *    0.2 * pow(t, 1.1) * pow(1 - t, 0.7) for t from 0 to 1
  * Note the first goal point is *off* the ground and forwards of start.
  * Likewise the last goal point is off the ground and is not yet at start+step.
+ *
+ * The following diagram shows the situation for num_steps==3:
+ *    0--|--|--|--1
+ * Where t=0 is the last stance time step in the previous phase, and t=1 the
+ * first stance time step in the next phase.
  *
  * @param start initial end effector goal, in world coordinates
  * @param step 3D vector to move by
@@ -214,7 +217,6 @@ std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3& start,
                                                  const gtsam::Point3& step,
                                                  size_t num_steps) {
   std::vector<gtsam::Point3> goal_trajectory;
-  // if num_steps==3 -> 0--|--|--|--1
   const double dt = 1.0 / (num_steps + 1);
   const gtsam::Point3 delta_step = step * dt;
   gtsam::Point3 cp_goal = start + delta_step;
