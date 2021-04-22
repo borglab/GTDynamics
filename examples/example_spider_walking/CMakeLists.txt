@@ -1,14 +1,28 @@
 cmake_minimum_required(VERSION 3.0)
 project(example_spider_walking C CXX)
 
-## Build Executables
+# Build Executables
 
 # Walk forward one meter.
-add_executable(exec_walk_forward main.cpp)
-target_link_libraries(exec_walk_forward PUBLIC gtdynamics)
-target_include_directories(exec_walk_forward PUBLIC $${CMAKE_PREFIX_PATH}/include)
+set(WALK_FORWARD ${PROJECT_NAME}_forward)
+add_executable(${WALK_FORWARD} main.cpp)
+target_link_libraries(${WALK_FORWARD} PUBLIC gtdynamics)
+target_include_directories(${WALK_FORWARD} PUBLIC ${CMAKE_PREFIX_PATH}/include)
+
+add_custom_target(
+  ${WALK_FORWARD}.run
+  COMMAND ./${WALK_FORWARD}
+  DEPENDS ${WALK_FORWARD}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
 
 # Rotate robot 90 degrees.
-#add_executable(exec_rotate main_rotate.cpp)
-#target_link_libraries(exec_rotate PUBLIC ${GTDYNAMICS} gtsam ${SDFormat_LIBRARIES})
-#target_include_directories(exec_rotate PUBLIC ${GTSAM_INCLUDE_DIR} ${SDFormat_INCLUDE_DIRS} ${CMAKE_PREFIX_PATH}/include)
+set(ROTATE ${PROJECT_NAME}_rotate)
+add_executable(${ROTATE} main_rotate.cpp)
+target_link_libraries(${ROTATE} PUBLIC gtdynamics)
+target_include_directories(${ROTATE} PUBLIC ${CMAKE_PREFIX_PATH}/include)
+
+add_custom_target(
+  ${ROTATE}.run
+  COMMAND ./${ROTATE}
+  DEPENDS ${ROTATE}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
