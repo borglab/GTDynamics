@@ -218,7 +218,7 @@ class Trajectory {
 
   std::vector<std::string> getLinks() const {
     std::vector<std::string> link_list;
-    for (auto &&elem : walk_cycle_.allContactPoints())
+    for (auto &&elem : walk_cycle_.contactPoints())
       link_list.push_back(elem.first);
     return link_list;
   }
@@ -259,7 +259,7 @@ class Trajectory {
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal() const {
     std::map<std::string, gtsam::Point3> prev_cp;
-    ContactPoints wc_cps = walk_cycle_.allContactPoints();
+    ContactPoints wc_cps = walk_cycle_.contactPoints();
     for (auto &&cp : wc_cps) {
       LinkSharedPtr link =
           walk_cycle_.phases().at(0).robot().link(cp.first);
@@ -285,7 +285,7 @@ class Trajectory {
         walk_cycle_.phases().at(0).robot().link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
     gtsam::Pose3 comTp = gtsam::Pose3(
-        gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
+        gtsam::Rot3(), walk_cycle_.contactPoints()[link_name].point);
     return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
   }
 

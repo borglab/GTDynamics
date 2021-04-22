@@ -229,8 +229,6 @@ class JsonSaver {
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
       return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor8*>(&(*factor))) {
-      return "Wrench";
     } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
       return "Pose";
     } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
