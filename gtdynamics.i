@@ -320,8 +320,6 @@ class DynamicsGraph {
                 const boost::optional<gtsam::Vector3> &gravity,
                 const boost::optional<gtsam::Vector3> &planar_axis);
 
-  // enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
-
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const gtdynamics::Robot &robot, const int t,
       const gtsam::Values &known_values);
