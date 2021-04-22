@@ -11,6 +11,8 @@
  * @author: Disha Das, Tarushree Gandhi, Varun Agrawal
  */
 
+#pragma once
+
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
