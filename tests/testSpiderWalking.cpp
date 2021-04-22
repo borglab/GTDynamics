@@ -64,7 +64,7 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
 TEST(testSpiderWalking, WholeEnchilada) {
   // Load Stephanie's robot robot (alt version, created by Tarushree/Disha).
   Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/test/spider_alt.sdf"), "spider");
+      kSdfPath + std::string("/spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.

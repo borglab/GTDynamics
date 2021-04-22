@@ -26,12 +26,12 @@ namespace gtdynamics {
  * and its duration.
  */
 class Phase {
-protected:
+ protected:
   Robot robot_;                  ///< Robot configuration of this stance
   ContactPoints contact_points_; ///< Contact Points
   int num_time_steps_;           ///< Number of time steps in this phase
 
-public:
+ public:
   /// Constructor
   Phase(const Robot &robot_configuration, const int &num_time_steps)
       : robot_(robot_configuration), num_time_steps_(num_time_steps) {}

@@ -8,7 +8,7 @@
 /**
  * @file  testWalkCycle.cpp
  * @brief Test WalkCycle class.
- * @Author: Frank Dellaert, Tarushree Gandhi, Disha Das
+ * @author: Frank Dellaert, Tarushree Gandhi, Disha Das
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -23,7 +23,7 @@ using namespace gtdynamics;
 
 TEST(WalkCycle, error) {
   Robot robot_configuration =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   // Initialize first phase
   size_t num_time_steps = 20;
@@ -50,7 +50,7 @@ TEST(WalkCycle, error) {
   EXPECT(walk_cycle_phases[0].contactPoints().size() == 3);
   EXPECT(walk_cycle_phases[1].contactPoints().size() == 4);
   EXPECT(walk_cycle.numPhases() == 2);
-  EXPECT(walk_cycle.allContactPoints().size() == 5);
+  EXPECT(walk_cycle.contactPoints().size() == 5);
 }
 
 int main() {

@@ -8,7 +8,7 @@
 /**
  * @file  Trajectory.h
  * @brief Utility methods for generating Trajectory phases.
- * @author: Disha Das, Tarushree Gandhi
+ * @author: Disha Das, Tarushree Gandhi, Varun Agrawal
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -218,7 +218,7 @@ class Trajectory {
 
   std::vector<std::string> getLinks() const {
     std::vector<std::string> link_list;
-    for (auto &&elem : walk_cycle_.allContactPoints())
+    for (auto &&elem : walk_cycle_.contactPoints())
       link_list.push_back(elem.first);
     return link_list;
   }
@@ -259,7 +259,7 @@ class Trajectory {
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal() const {
     std::map<std::string, gtsam::Point3> prev_cp;
-    ContactPoints wc_cps = walk_cycle_.allContactPoints();
+    ContactPoints wc_cps = walk_cycle_.contactPoints();
     for (auto &&cp : wc_cps) {
       LinkSharedPtr link =
           walk_cycle_.phases().at(0).robot().link(cp.first);
@@ -284,7 +284,7 @@ class Trajectory {
     LinkSharedPtr link =
         walk_cycle_.phases().at(0).robot().link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
-    auto point_com = walk_cycle_.allContactPoints()[link_name].point;
+    auto point_com = walk_cycle_.contactPoints()[link_name].point;
     return PointGoalFactor(pose_key, cost_model, point_com, goal_point);
   }
 

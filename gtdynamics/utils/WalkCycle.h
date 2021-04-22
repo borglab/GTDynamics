@@ -61,6 +61,6 @@ class WalkCycle {
   int numPhases() const { return phases_.size(); }
 
   /// Return all the contact points.
-  ContactPoints allContactPoints() const { return contact_points_; }
+  ContactPoints contactPoints() const { return contact_points_; }
 };
 }  // namespace gtdynamics

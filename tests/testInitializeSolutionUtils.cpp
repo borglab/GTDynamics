@@ -182,7 +182,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
-      robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
+    robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
 
   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 
@@ -299,7 +299,7 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   double dt = 1.0;
 
-  gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
+  gtsam::Values init_vals = MultiPhaseInverseKinematicsTrajectory(
       robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
       dt, kNoiseSigma, phase_contact_points);
 

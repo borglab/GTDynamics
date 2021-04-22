@@ -13,11 +13,12 @@
 
 #include <CppUnitLite/TestHarness.h>
 
+#include <sstream>
+
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/Phase.h"
-#include <sstream>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -25,7 +26,7 @@ using gtsam::Point3;
 
 TEST(Phase, error) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   constexpr size_t num_time_steps = 20;
   gtdynamics::Phase phase(robot, num_time_steps);
   constexpr double contact_height = 5;
@@ -45,8 +46,9 @@ TEST(Phase, error) {
   // Check printing
   std::stringstream ss;
   ss << phase;
-  EXPECT("[tarsus_1_L1: {[1 1 1], 0, 5}, tarsus_2_L2: {[2 2 2], 0, 5},"
-         " tarsus_3_L3: {[3 3 3], 0, 5}, ]" == ss.str());
+  EXPECT(
+      "[tarsus_1_L1: {[1 1 1], 0, 5}, tarsus_2_L2: {[2 2 2], 0, 5},"
+      " tarsus_3_L3: {[3 3 3], 0, 5}, ]" == ss.str());
 }
 
 TEST(Phase, inverse_kinematics) {
@@ -58,12 +60,10 @@ TEST(Phase, inverse_kinematics) {
   EXPECT_LONGS_EQUAL(13, phase.robot().numLinks());
 
   // Set contacts to reasonable values
-  phase.addContactPoint("lower1", Point3(0, 0.15, 0), 0);    // LH
-  phase.addContactPoint("lower0", Point3(0.6, 0.15, 0), 0);  // LF
-  phase.addContactPoint("lower2", Point3(0.6, -0.15, 0), 0);   // RF
-  phase.addContactPoint("lower3", Point3(0, -0.15, 0), 0); // RF
-
-
+  phase.addContactPoint("lower1", Point3(0, 0.15, 0), 0);     // LH
+  phase.addContactPoint("lower0", Point3(0.6, 0.15, 0), 0);   // LF
+  phase.addContactPoint("lower2", Point3(0.6, -0.15, 0), 0);  // RF
+  phase.addContactPoint("lower3", Point3(0, -0.15, 0), 0);    // RF
 }
 
 int main() {
