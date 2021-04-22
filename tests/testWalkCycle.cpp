@@ -29,17 +29,17 @@ TEST(WalkCycle, error) {
   size_t num_time_steps = 20;
   auto phase_1 = gtdynamics::Phase(robot_configuration, num_time_steps);
   double contact_height = 5;
-  phase_1.addContactPoint("tarsus_1", gtsam::Point3(3, 3, 3), contact_height);
-  phase_1.addContactPoint("tarsus_2", gtsam::Point3(3, 3, 3), contact_height);
-  phase_1.addContactPoint("tarsus_3", gtsam::Point3(3, 3, 3), contact_height);
+  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.}, contact_height);
+  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
+  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
 
   // Initialize second phase
   size_t num_time_steps_2 = 25;
   auto phase_2 = gtdynamics::Phase(robot_configuration, num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_3", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_4", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_5", gtsam::Point3(3, 3, 3), contact_height);
+  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
+  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
+  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.}, contact_height);
+  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.}, contact_height);
 
   // Initialize walk cycle
   auto walk_cycle = gtdynamics::WalkCycle();
