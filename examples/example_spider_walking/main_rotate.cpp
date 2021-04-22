@@ -110,17 +110,18 @@ int main(int argc, char** argv) {
   auto c7 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front right.
   auto c8 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind right.
 
-  vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4",
-                          "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
+  vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
+                          "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
+                          "tarsus_7_R2", "tarsus_8_R1"};
 
-  auto cp1 = std::make_pair("tarsus_1", c1);
-  auto cp2 = std::make_pair("tarsus_2", c2);
-  auto cp3 = std::make_pair("tarsus_3", c3);
-  auto cp4 = std::make_pair("tarsus_4", c4);
-  auto cp5 = std::make_pair("tarsus_5", c5);
-  auto cp6 = std::make_pair("tarsus_6", c6);
-  auto cp7 = std::make_pair("tarsus_7", c7);
-  auto cp8 = std::make_pair("tarsus_8", c8);
+  auto cp1 = std::make_pair("tarsus_1_L1", c1);
+  auto cp2 = std::make_pair("tarsus_2_L2", c2);
+  auto cp3 = std::make_pair("tarsus_3_L3", c3);
+  auto cp4 = std::make_pair("tarsus_4_L4", c4);
+  auto cp5 = std::make_pair("tarsus_5_R4", c5);
+  auto cp6 = std::make_pair("tarsus_6_R3", c6);
+  auto cp7 = std::make_pair("tarsus_7_R2", c7);
+  auto cp8 = std::make_pair("tarsus_8_R1", c8);
 
   // Contact points for each phase.
   // This gait moves one leg at a time.

@@ -66,12 +66,14 @@ gtdynamics::Trajectory getTrajectory(vector<string> links, Robot robot,
   stationary.addContactPoints(links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::Phase odd(robot, 20);
-  odd.addContactPoints({{"tarsus_1", "tarsus_3", "tarsus_5", "tarsus_7"}},
-                       gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  odd.addContactPoints(
+      {{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4", "tarsus_7_R2"}},
+      gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::Phase even(robot, 20);
-  even.addContactPoints({{"tarsus_2", "tarsus_4", "tarsus_6", "tarsus_8"}},
-                        gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  even.addContactPoints(
+      {{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3", "tarsus_8_R1"}},
+      gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
 
   gtdynamics::WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -108,8 +110,9 @@ int main(int argc, char **argv) {
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
 
-  vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4",
-                          "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
+  vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
+                          "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
+                          "tarsus_7_R2", "tarsus_8_R1"};
   auto spider_trajectory = getTrajectory(links, spider);
 
   // Get phase information
