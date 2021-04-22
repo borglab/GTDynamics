@@ -8,503 +8,360 @@
 /**
  * @file  Trajectory.h
  * @brief Utility methods for generating Trajectory phases.
- * @Author: Disha Das, Tarushree Gandhi
+ * @author: Disha Das, Tarushree Gandhi, Varun Agrawal
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include <gtdynamics/utils/initialize_solution_utils.h>
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include "gtdynamics/utils/WalkCycle.h"
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/WalkCycle.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 
-#include <string>
-#include <algorithm>
-#include <boost/algorithm/string/join.hpp>
+namespace gtdynamics {
 
-using gtdynamics::ContactPoints, gtdynamics::ContactPoint,
-    std::vector, std::string, gtsam::Rot3, gtsam::Pose3;
+/**
+ * @class Trajectory class implements functions derived
+ * from phase-related calculations.
+ */
+class Trajectory {
+ protected:
+  int repeat_;            ///< Number of repetitions of walk cycle
+  WalkCycle walk_cycle_;  ///< Walk Cycle
 
-namespace gtdynamics
-{
+  /// Gets the intersection between two ContactPoints objects
+  ContactPoints getIntersection(ContactPoints CPs_1,
+                                ContactPoints CPs_2) const {
+    ContactPoints intersection;
+    for (auto &&cp : CPs_1) {
+      if (CPs_2.find(cp.first) != CPs_2.end()) {
+        intersection.emplace(cp.first, cp.second);
+      }
+    }
+    return intersection;
+  }
+
+ public:
+  /// Default Constructor (for serialization)
+  Trajectory(){};
+
   /**
-  * @class Trajectory class implements functions derived 
-  * from phase-related calculations.
-  */
-  class Trajectory
-  {
-  protected:
-    int repeat_;                   ///< Number of repetitions of walk cycle
-    WalkCycle walk_cycle_;         ///< Walk Cycle 
+   * Construct trajectory from WalkCycle and specified number of gait
+   * repetitions.
+   *
+   * @param walk_cycle The Walk Cycle for the robot.
+   * @param repeat The number of repetitions for each phase of the gait.
+   */
+  Trajectory(const WalkCycle &walk_cycle, int repeat)
+      : repeat_(repeat), walk_cycle_(walk_cycle) {}
 
-    /// Gets the intersection between two ContactPoints objects
-    const ContactPoints getIntersection(ContactPoints CPs_1, ContactPoints CPs_2) const
-    {
-      ContactPoints intersection;
-      for (auto &&cp : CPs_1) {
-        if (CPs_2.find(cp.first) != CPs_2.end()) {
-          intersection.emplace(cp.first, cp.second);
-        }
-      }
-      return intersection;
-    }
-
-  public:
-    /// Default Constructor (for serialization)
-    Trajectory() {};
-
-    /**
-     * Construct trajectory from WalkCycle and specified number of gait repetitions.
-     */
-    Trajectory(const WalkCycle &walk_cycle, const int &repeat)
-        : repeat_(repeat),
-          walk_cycle_(walk_cycle){}
-
-    /** @fn Returns a vector of ContactPoints objects for all phases after 
-       * applying repetition on the walk cycle.
-       * @return Phase CPs.
-       */
-    const vector<ContactPoints> phaseContactPoints() const
-    {
-      vector<ContactPoints> phase_cps;
-      vector<Phase> phases = walk_cycle_.phases();
-      for(int i = 0; i < repeat_; i++){
-        for (auto &&phase : phases){
-          phase_cps.push_back(phase.getAllContactPoints());
-        }
-      }
-      return phase_cps;
-    }
-
-    /** @fn Returns a vector of ContactPoints objects for all transitions between phases after 
-       * applying repetition on the original sequence.
-       * @return Transition CPs.
-       */
-    const vector<ContactPoints> transitionContactPoints() const
-    {
-      vector<ContactPoints> trans_cps_orig;
-
-      auto phases = walk_cycle_.phases();
-      ContactPoints phase_1_cps;
-      ContactPoints phase_2_cps;
-      for(int p = 0; p < walk_cycle_.numPhases(); p++){
-        phase_1_cps = phases[p].getAllContactPoints();
-        if(p == walk_cycle_.numPhases() - 1)
-          phase_2_cps = phases[0].getAllContactPoints();
-        else
-          phase_2_cps = phases[p+1].getAllContactPoints();
-        ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
-        trans_cps_orig.push_back(intersection);
-      }
-
-      vector<ContactPoints> trans_cps(trans_cps_orig) ;
-      for(int i = 0; i < repeat_ - 1; i++)
-        trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(), trans_cps_orig.end());
-      trans_cps.pop_back();
-
-      return trans_cps;
-    }
-
-    /** @fn Returns a vector of phase durations for all phases after 
-       * applying repetition on the walk cycle.
-       * @return Phase durations.
-       */
-    const vector<int> phaseDurations() const
-    {
-      vector<int> phase_durations;
-      vector<Phase> phases = walk_cycle_.phases();
-      for(int i = 0; i < repeat_; i++){
-        for (auto &&phase : phases)
-          phase_durations.push_back(phase.numTimeSteps());
-      }
-      return phase_durations;
-    }
-
-    /** @fn Returns a vector of robot models for all phases after 
-       * applying repetition on the walk cycle.
-       * @return Robot models.
-       */
-    const vector<Robot> phaseRobotModels() const
-    {
-      vector<Robot> robots;
-      vector<Phase> phases = walk_cycle_.phases();
-      for(int i = 0; i < repeat_; i++){
-        for (auto &&phase : phases)
-          robots.push_back(phase.getRobotConfiguration());
-      }
-      return robots;
-    }
-
-    /** @fn Returns the number of phases.
-       * @return Number of phases.
-       */
-    const int numPhases() const { return walk_cycle_.numPhases()*repeat_; }
-
-    /** @fn Builds vector of Transition Graphs.
-       * @param[in]graph_builder    Dynamics Graph
-       * @param[in]gravity          Gravity
-       * @param[in]mu               Coefficient of static friction
-       * @return Vector of Transition Graphs
-       */
-    const vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(gtdynamics::DynamicsGraph &graph_builder,
-                                                                  const gtsam::Vector3 &gravity, const double &mu) const
-    {
-      vector<gtsam::NonlinearFactorGraph> transition_graphs;
-      vector<ContactPoints> trans_cps = transitionContactPoints();
-      vector<Robot> phase_robots = phaseRobotModels();
-      vector<int> final_timesteps = finalTimeSteps();
-      for (int p = 1; p < numPhases(); p++)
-      {
-        transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-            phase_robots[p], final_timesteps[p-1], gravity,
-            boost::none, trans_cps[p - 1], mu));
-      }
-      return transition_graphs;
-    }
-
-    /** @fn Returns Initial values for transition graphs.
-       * @param[in]gaussian_noise    Gaussian noise to add to initial values
-       * @return Initial values for transition graphs
-       */
-    const vector<gtsam::Values> getInitTransitionValues(const double &gaussian_noise) const
-    {
-      vector<ContactPoints> trans_cps = transitionContactPoints();
-      vector<gtsam::Values> transition_graph_init;
-      vector<Robot> phase_robots = phaseRobotModels();
-      vector<int> final_timesteps = finalTimeSteps();
-      for (int p = 1; p < numPhases(); p++)
-      {
-        transition_graph_init.push_back(ZeroValues(
-            phase_robots[p],
-            final_timesteps[p-1], gaussian_noise, trans_cps[p - 1]));
-      }
-      return transition_graph_init;
-    }
-
-    /** @fn Returns a vector of final time step for every phase.
-     * @return Vector of final time steps.
-     */
-    const vector<int> finalTimeSteps() const
-    {
-      int final_timestep = 0;
-      vector<int> final_timesteps;
-      auto phases = walk_cycle_.phases();
-      for (int i = 0; i < numPhases(); i++)
-      {
-        int phase_timestep = phases[i % walk_cycle_.numPhases()].numTimeSteps();
-        final_timestep += phase_timestep;
-        final_timesteps.push_back(final_timestep);
-      }
-      return final_timesteps;
-    }
-
-    /** @fn Returns the start time step for a given phase.
-       * @param[in]phase    Phase number.
-       * @return Initial time step.
-       */
-    const int getStartTimeStep(const int &phase) const
-    {
-      vector<int> final_timesteps = finalTimeSteps();
-      auto phases = walk_cycle_.phases();
-      int t_p_i = final_timesteps[phase] - 
-                    phases[phase % walk_cycle_.numPhases()].numTimeSteps();
-      if (phase != 0)
-        t_p_i += 1;
-      return t_p_i;
-    }
-
-    /** @fn Returns the end time step for a given phase.
-       * @param[in]phase    Phase number.
-       * @return Final time step.
-       */
-    const int getEndTimeStep(const int &phase) const
-    {
-      return finalTimeSteps()[phase];
-    }
-
-    const vector<string> getLinks() const{
-      vector<string> link_list;
-      for(auto &&elem : walk_cycle_.allContactPoints())
-        link_list.push_back(elem.first);
-      return link_list;
-    }
-
-    /** @fn Returns the contact links for a given phase.
-       * @param[in]phase    Phase number.
-       * @return Vector of contact links.
-       */
-    const vector<string> getPhaseContactLinks(const int &phase) const
-    {
-      auto phases = walk_cycle_.phases();
-      ContactPoints contact_points = phases[phase % walk_cycle_.numPhases()].getAllContactPoints();
-      vector<string> contact_links;
-      for(auto &&cp : contact_points) contact_links.push_back(cp.first);
-      return contact_links;
-    }
-
-    /** @fn Returns the swing links for a given phase.
-       * @param[in]phase    Phase number.
-       * @return Vector of swing links.
-       */
-    const vector<string> getPhaseSwingLinks(const int &phase) const
-    {
-      vector<string> phase_swing_links;
-      vector<string> contact_links = getPhaseContactLinks(phase);
-      for (auto &&l : getLinks())
-      {
-        if (std::find(contact_links.begin(),
-                      contact_links.end(), l) == contact_links.end())
-          phase_swing_links.push_back(l);
-      }
-      return phase_swing_links;
-    }
-
-    /** @fn Returns the initial contact point goal for every contact link.
-       * @return Map of Contact Link and its goal point.
-       */
-    const std::map<string, gtsam::Point3> initContactPointGoal() const
-    {
-      std::map<string, gtsam::Point3> prev_cp;
-      ContactPoints wc_cps = walk_cycle_.allContactPoints();
-      for (auto &&cp : wc_cps){
-        gtdynamics::LinkSharedPtr link_ptr = walk_cycle_.phases()[0].
-                                        getRobotConfiguration().getLinkByName(cp.first);
-          prev_cp.insert(std::make_pair(cp.first,
-                                        (link_ptr->wTcom() * Pose3(Rot3(), cp.second.contact_point)).translation()));
-      }
-      return prev_cp;
-    }
-
-    /** @fn Generates a PointGoalFactor object
-       * @param[in]link              concerned link
-       * @param[in]t                 time t
-       * @param[in]cost_model        Noise model
-       * @param[in]goal_point        target goal point
-       */
-    const PointGoalFactor pointGoalFactor(const string &link, const int &t,
-                                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                                          const gtsam::Point3 &goal_point) const
-    {
-      gtdynamics::LinkSharedPtr link_ptr = walk_cycle_.phases()[0].
-                                              getRobotConfiguration().getLinkByName(link);
-      gtsam::Key pose_key = PoseKey(link_ptr->getID(), t);
-      gtsam::Pose3 comTp = Pose3(Rot3(), walk_cycle_.allContactPoints()[link].contact_point);
-      return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
-    }
-
-    /** @fn Writes the angles, vels, accels, torques and time values for a single phase to disk.
-       * @param[in]traj_file    Trajectory File being written onto.
-       * @param[in]results      Results of Optimization.
-       * @param[in]phase        Phase number.
-       */
-    const void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results, const int &phase) const
-    {
-      int t = getStartTimeStep(phase);
-      auto phase_durations = phaseDurations();
-      Robot robot = phaseRobotModels()[phase];
-      for (int time_step = 0; time_step < phase_durations[phase]; time_step++)
-      {
-        vector<string> vals;
-        for (auto &&joint : robot.joints())
-          vals.push_back(std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
-        for (auto &&joint : robot.joints())
-          vals.push_back(std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
-        for (auto &&joint : robot.joints())
-          vals.push_back(std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
-        for (auto &&joint : robot.joints())
-          vals.push_back(std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
-        vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-        t++;
-        string vals_str = boost::algorithm::join(vals, ",");
-        traj_file << vals_str << "\n";
+  /**
+   * @fn Returns a vector of ContactPoints objects for all phases after
+   * applying repetition on the walk cycle.
+   * @return Phase CPs.
+   */
+  std::vector<ContactPoints> phaseContactPoints() const {
+    std::vector<ContactPoints> phase_cps;
+    const auto &phases = walk_cycle_.phases();
+    for (int i = 0; i < repeat_; i++) {
+      for (auto &&phase : phases) {
+        phase_cps.push_back(phase.contactPoints());
       }
     }
+    return phase_cps;
+  }
 
-    // void blahBlah() const
-    // {
-    //   //Get phase information
-    //   vector<CPs> phase_cps = this->phaseContactPoints();
-    //   vector<int> phase_durations = this->phaseDurations();
-    //   vector<Robot> robots = this->phaseRobotModels();
+  /**
+   * @fn Returns a vector of ContactPoints objects for all transitions between
+   * phases after applying repetition on the original sequence.
+   * @return Transition CPs.
+   */
+  std::vector<ContactPoints> transitionContactPoints() const {
+    std::vector<ContactPoints> trans_cps_orig;
 
-    //   // Define noise to be added to initial values, desired timestep duration,
-    //   // vector of link name strings, robot model for each phase, and
-    //   // phase transition initial values.
-    //   double gaussian_noise = 1e-5;
-    //   double dt_des = 1. / 240;
-    //   vector<Values> transition_graph_init = this->getInitTransitionValues(gaussian_noise);
+    auto phases = walk_cycle_.phases();
+    ContactPoints phase_1_cps;
+    ContactPoints phase_2_cps;
 
-    //   // Get final time step.
-    //   int t_f = this->getEndTimeStep(this->numPhases() - 1); // Final timestep.
+    for (int p = 0; p < walk_cycle_.numPhases(); p++) {
+      phase_1_cps = phases[p].contactPoints();
+      if (p == walk_cycle_.numPhases() - 1) {
+        phase_2_cps = phases[0].contactPoints();
+      } else {
+        phase_2_cps = phases[p + 1].contactPoints();
+      }
 
-    //   // Collocation scheme.
-    //   auto collocation = gtdynamics::DynamicsGraph::CollocationScheme::Euler;
+      ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
+      trans_cps_orig.push_back(intersection);
+    }
 
-    //   // Graphs for transition between phases + their initial values.
-    //   vector<gtsam::NonlinearFactorGraph> transition_graphs = this->getTransitionGraphs(graph_builder, gravity, mu);
+    // Copy the original transition contact point sequence
+    // `repeat_` number of times.
+    std::vector<ContactPoints> trans_cps(trans_cps_orig);
+    for (int i = 0; i < repeat_ - 1; i++) {
+      trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),
+                       trans_cps_orig.end());
+    }
+    trans_cps.pop_back();
 
-    //   // Construct the multi-phase trajectory factor graph.
-    //   //TODO: Pass Trajectory here
-    //   std::cout << "Creating dynamics graph" << std::endl;
-    //   auto graph = graph_builder.multiPhaseTrajectoryFG(
-    //       robots, phase_durations, transition_graphs, collocation, gravity, boost::none, phase_cps, mu);
+    return trans_cps;
+  }
 
-    //   // Build the objective factors.
-    //   gtsam::NonlinearFactorGraph objective_factors;
-    //   auto base_link = spider.getLinkByName("body");
+  /**
+   * @fn Returns a vector of phase durations for all phases after
+   * applying repetition on the walk cycle.
+   * @return Phase durations.
+   */
+  std::vector<int> phaseDurations() const {
+    std::vector<int> phase_durations;
+    const auto &phases = walk_cycle_.phases();
+    for (int i = 0; i < repeat_; i++) {
+      for (auto &&phase : phases)
+        phase_durations.push_back(phase.numTimeSteps());
+    }
+    return phase_durations;
+  }
 
-    //   std::map<string, gtdynamics::LinkSharedPtr> link_map;
-    //   for (auto &&link : links)
-    //     link_map.insert(std::make_pair(link, spider.getLinkByName(link)));
+  /**
+   * @fn Returns a vector of robot models for all phases after
+   * applying repetition on the walk cycle.
+   * @return Robot models.
+   */
+  std::vector<Robot> phaseRobotModels() const {
+    std::vector<Robot> robots;
+    const auto &phases = walk_cycle_.phases();
+    for (int i = 0; i < repeat_; i++) {
+      for (auto &&phase : phases)
+        robots.push_back(phase.robot());
+    }
+    return robots;
+  }
 
-    //   // Previous contact point goal.
-    //   std::map<string, Point3> prev_cp = this->initContactPointGoal();
+  /**
+   * @fn Returns the number of phases.
+   * @return Number of phases.
+   */
+  int numPhases() const { return walk_cycle_.numPhases() * repeat_; }
 
-    //   // Distance to move contact point per time step during swing.
-    //   auto contact_offset = Point3(0, 0.02, 0);
+  /**
+   * @fn Builds vector of Transition Graphs.
+   * @param[in]graph_builder    Dynamics Graph
+   * @param[in]mu               Coefficient of static friction
+   * @return Vector of Transition Graphs
+   */
+  std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
+      DynamicsGraph &graph_builder, double mu) const;
 
-    //   // Add contact point objectives to factor graph.
-    //   for (int p = 0; p < this->numPhases(); p++)
-    //   {
-    //     // if(p <2) contact_offset /=2 ;
-    //     // Phase start and end timesteps.
-    //     int t_p_i = this->getStartTimeStep(p);
-    //     int t_p_f = this->getEndTimeStep(p);
+  /**
+   * @fn Builds multi-phase factor graph.
+   * @param[in]graph_builder    Dynamics Graph
+   * @param[in]mu               Coefficient of static friction
+   * @return Multi-phase factor graph
+   */
+  gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
+      DynamicsGraph &graph_builder,
+      const CollocationScheme collocation, double mu) const;
 
-    //     // Obtain the contact links and swing links for this phase.
-    //     vector<string> phase_contact_links = this->getPhaseContactLinks(p);
-    //     vector<string> phase_swing_links = this->getPhaseSwingLinks(p);
+  /**
+   * @fn Returns Initial values for transition graphs.
+   * @param[in]gaussian_noise    Gaussian noise to add to initial values
+   * @return Initial values for transition graphs
+   */
+  std::vector<gtsam::Values> transitionPhaseInitialValues(
+      double gaussian_noise) const;
 
-    //     //Setting the contact point goals for one time 
-    //     for (int t = t_p_i; t <= t_p_f; t++)
-    //     {
-    //       // Normalized phase progress.
-    //       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
+  /**
+   * @fn Returns Initial values for multi-phase factor graph.
+   * @param[in]gaussian_noise    Gaussian noise to add to initial values
+   * @param[in]desired_dt        integration timestep
+   * @return Initial values for multi-phase factor graph
+   */
+  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
 
-    //       for (auto &&pcl : phase_contact_links)
-    //         objective_factors.add(this->pointGoalFactor(
-    //             pcl, t, Isotropic::Sigma(3, 1e-7), //1e-7
-    //             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
+  /**
+   * @fn Returns a vector of final time step for every phase.
+   * @return Vector of final time steps.
+   */
+  std::vector<int> finalTimeSteps() const {
+    int final_timestep = 0;
+    std::vector<int> final_timesteps;
+    auto phases = walk_cycle_.phases();
+    for (int i = 0; i < numPhases(); i++) {
+      int phase_timestep = phases[i % walk_cycle_.numPhases()].numTimeSteps();
+      final_timestep += phase_timestep;
+      final_timesteps.push_back(final_timestep);
+    }
+    return final_timesteps;
+  }
 
-    //       double h = GROUND_HEIGHT + std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
+  /**
+   * @fn Returns the start time step for a given phase.
+   * @param[in]phase    Phase number.
+   * @return Initial time step.
+   */
+  int getStartTimeStep(int phase) const {
+    std::vector<int> final_timesteps = finalTimeSteps();
+    auto phases = walk_cycle_.phases();
+    int t_p_i = final_timesteps[phase] -
+                phases[phase % walk_cycle_.numPhases()].numTimeSteps();
+    if (phase != 0) t_p_i += 1;
+    return t_p_i;
+  }
 
-    //       for (auto &&psl : phase_swing_links)
-    //         objective_factors.add(this->pointGoalFactor(
-    //             psl, t, Isotropic::Sigma(3, 1e-7),
-    //             Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+  /**
+   * @fn Returns the end time step for a given phase.
+   * @param[in]phase    Phase number.
+   * @return Final time step.
+   */
+  int getEndTimeStep(int phase) const { return finalTimeSteps()[phase]; }
 
-    //       // Update the goal point for the swing links.
-    //       for (auto &&psl : phase_swing_links)
-    //         prev_cp[psl] = prev_cp[psl] + contact_offset;
-    //     }
-    //   }
+  std::vector<std::string> getLinks() const {
+    std::vector<std::string> link_list;
+    for (auto &&elem : walk_cycle_.allContactPoints())
+      link_list.push_back(elem.first);
+    return link_list;
+  }
 
-    //   // Add base goal objectives to the factor graph.
-    //   for (int t = 0; t <= t_f; t++)
-    //   {
-    //     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-    //         PoseKey(base_link->getID(), t),
-    //         gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)), //0.5
-    //         Isotropic::Sigma(6, 5e-5)));                             //6.2e-5 //5e-5
-    //     objective_factors.add(gtsam::PriorFactor<Vector6>(
-    //         TwistKey(base_link->getID(), t), Vector6::Zero(), Isotropic::Sigma(6, 5e-5)));
-    //   }
+  /**
+   * @fn Returns the contact links for a given phase.
+   * @param[in]phase    Phase number.
+   * @return Vector of contact links.
+   */
+  std::vector<std::string> getPhaseContactLinks(int phase) const {
+    auto phases = walk_cycle_.phases();
+    ContactPoints contact_points =
+        phases[phase % walk_cycle_.numPhases()].contactPoints();
+    std::vector<std::string> contact_links;
+    for (auto &&cp : contact_points) contact_links.push_back(cp.first);
+    return contact_links;
+  }
 
-    //   // Add link boundary conditions to FG.
-    //   for (auto &&link : spider.links())
-    //   {
-    //     // Initial link pose, twists.
-    //     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-    //         PoseKey(link->getID(), 0), link->wTcom(), dynamics_model_6));
-    //     objective_factors.add(gtsam::PriorFactor<Vector6>(
-    //         TwistKey(link->getID(), 0), Vector6::Zero(), dynamics_model_6));
+  /**
+   * @fn Returns the swing links for a given phase.
+   * @param[in]phase    Phase number.
+   * @return Vector of swing links.
+   */
+  std::vector<std::string> getPhaseSwingLinks(int phase) const {
+    std::vector<std::string> phase_swing_links;
+    std::vector<std::string> contact_links = getPhaseContactLinks(phase);
+    for (auto &&l : getLinks()) {
+      if (std::find(contact_links.begin(), contact_links.end(), l) ==
+          contact_links.end())
+        phase_swing_links.push_back(l);
+    }
+    return phase_swing_links;
+  }
 
-    //     // Final link twists, accelerations.
-    //     objective_factors.add(gtsam::PriorFactor<Vector6>(
-    //         TwistKey(link->getID(), t_f), Vector6::Zero(), objectives_model_6));
-    //     objective_factors.add(gtsam::PriorFactor<Vector6>(
-    //         TwistAccelKey(link->getID(), t_f), Vector6::Zero(),
-    //         objectives_model_6));
-    //   }
+  /**
+   * @fn Returns the initial contact point goal for every contact link.
+   * @return Map of Contact Link and its goal point.
+   */
+  std::map<std::string, gtsam::Point3> initContactPointGoal() const {
+    std::map<std::string, gtsam::Point3> prev_cp;
+    ContactPoints wc_cps = walk_cycle_.allContactPoints();
+    for (auto &&cp : wc_cps) {
+      LinkSharedPtr link =
+          walk_cycle_.phases().at(0).robot().link(cp.first);
+      prev_cp.insert(std::make_pair(
+          cp.first,
+          (link->wTcom() * gtsam::Pose3(gtsam::Rot3(), cp.second.point))
+              .translation()));
+    }
+    return prev_cp;
+  }
 
-    //   // Add joint boundary conditions to FG.
-    //   for (auto &&joint : spider.joints())
-    //   {
-    //     //Add priors to joint angles
-    //     for (int t = 0; t <= t_f; t++)
-    //     {
-    //       if (joint->name().find("hip2") == 0)
-    //         objective_factors.add(gtsam::PriorFactor<double>(JointAngleKey(joint->getID(), t), 2.5, dynamics_model_1_2));
-    //     }
-    //     objective_factors.add(gtsam::PriorFactor<double>(
-    //         JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
-    //     objective_factors.add(gtsam::PriorFactor<double>(
-    //         JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
-    //     objective_factors.add(gtsam::PriorFactor<double>(
-    //         JointAccelKey(joint->getID(), t_f), 0.0, objectives_model_1));
-    //   }
+  /**
+   * @fn Generates a PointGoalFactor object
+   * @param[in] link_name         concerned link
+   * @param[in] k                 time index k
+   * @param[in] cost_model        Noise model
+   * @param[in] goal_point        target goal point
+   */
+  PointGoalFactor pointGoalFactor(const std::string &link_name, int k,
+                                  const gtsam::SharedNoiseModel &cost_model,
+                                  const gtsam::Point3 &goal_point) const {
+    LinkSharedPtr link =
+        walk_cycle_.phases().at(0).robot().link(link_name);
+    gtsam::Key pose_key = internal::PoseKey(link->id(), k);
+    gtsam::Pose3 comTp = gtsam::Pose3(
+        gtsam::Rot3(), walk_cycle_.allContactPoints()[link_name].point);
+    return PointGoalFactor(pose_key, cost_model, comTp, goal_point);
+  }
 
-    //   // Add prior factor constraining all Phase keys to have duration of 1 / 240.
-    //   for (int phase = 0; phase < this->numPhases(); phase++)
-    //     objective_factors.add(gtsam::PriorFactor<double>(
-    //         PhaseKey(phase), dt_des,
-    //         gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
+  /**
+   * @fn Create desired stance and swing trajectories for all contact links.
+   * @return All objective factors as a NonlinearFactorGraph
+   */
+  gtsam::NonlinearFactorGraph contactLinkObjectives(
+      const gtsam::SharedNoiseModel &cost_model, double ground_height) const;
 
-    //   // Add min torque objectives.
-    //   for (int t = 0; t <= t_f; t++)
-    //   {
-    //     for (auto &&joint : spider.joints())
-    //       objective_factors.add(gtdynamics::MinTorqueFactor(
-    //           TorqueKey(joint->getID(), t),
-    //           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
-    //   }
-    //   graph.add(objective_factors);
+  /**
+   * @fn Add minimum torque objectives.
+   * @return All MinTorqueFactor factors as a NonlinearFactorGraph
+   */
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
+                               const Robot &robot,
+                               const gtsam::SharedNoiseModel &cost_model) const;
 
-    //   //TODO: Pass Trajectory here
-    //   // Initialize solution.
-    //   gtsam::Values init_vals;
-    //   init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
-    //       robots, phase_durations, transition_graph_init, dt_des, gaussian_noise,
-    //       phase_cps);
+  /**
+   * @fn Create objective factors for slice 0 and slice K.
+   *
+   * Links at time step 0 are constrainted to their wTcom poses and
+   * zero twist, and zero twist and twist acceleration at last time step.
+   * Joint angles velocities and accelerations are set to zero for all joints at
+   * start *and* end.
+   *
+   * @return All factors as a NonlinearFactorGraph
+   */
+  void addBoundaryConditions(
+      gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+      const gtsam::SharedNoiseModel &pose_model,
+      const gtsam::SharedNoiseModel &twist_model,
+      const gtsam::SharedNoiseModel &twist_acceleration_model,
+      const gtsam::SharedNoiseModel &joint_velocity_model,
+      const gtsam::SharedNoiseModel &joint_acceleration_model) const;
 
-    //   // Optimize!
-    //   gtsam::LevenbergMarquardtParams params;
-    //   params.setVerbosityLM("SUMMARY");
-    //   params.setlambdaInitial(1e0);
-    //   params.setlambdaLowerBound(1e-7);
-    //   params.setlambdaUpperBound(1e10);
-    //   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
-    //   auto results = optimizer.optimize();
+  /**
+   * @fn Add priors on all variable time steps.
+   * @param[in, out] graph NonlinearFactorGraph to add to
+   * @param[in] desired_dt desired time step
+   * @param[in] sigma      standard deviation (default 0: constrained)
+   */
+  void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph *graph,
+                                 double desired_dt, double sigma = 0) const {
+    auto model = gtsam::noiseModel::Isotropic::Sigma(1, sigma);
+    for (int phase = 0; phase < numPhases(); phase++)
+      graph->addPrior<double>(PhaseKey(phase), desired_dt, model);
+  }
 
-    //   //Write results to traj file
-    //   vector<string> jnames;
-    //   for (auto &&joint : spider.joints())
-    //     jnames.push_back(joint->name());
-    //   std::cout << jnames.size() << std::endl;
-    //   string jnames_str = boost::algorithm::join(jnames, ",");
-    //   std::ofstream traj_file;
-
-    //   //Get current directory to save the generated traj.csv file
-    //   char cwd[PATH_MAX];
-    //   char *fgh = getcwd(cwd, PATH_MAX);
-    //   string example_directory = strcat(cwd, "/..");
-
-    //   traj_file.open(example_directory + "/forward_traj.csv");
-    //   // angles, vels, accels, torques, time.
-    //   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
-    //             << jnames_str << ",t"
-    //             << "\n";
-    //   for (int phase = 0; phase < this->numPhases(); phase++)
-    //     this->writePhaseToFile(traj_file, results, phase);
-
-    //   //Write the last 4 phases to disk n times
-    //   for (int i = 0; i < 10; i++)
-    //   {
-    //     for (int phase = 4; phase < phase_durations.size(); phase++)
-    //       this->writePhaseToFile(traj_file, results, phase);
-    //   }
-    //   traj_file.close();
-    //   return 0;
-    // }
-  };
-} //namespace gtdynamics
+  /**
+   * @fn Writes the angles, vels, accels, torques and time values for a single
+   * phase to disk.
+   * @param[in] traj_file    Trajectory File being written onto.
+   * @param[in] results      Results of Optimization.
+   * @param[in] phase        Phase number.
+   */
+  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
+                        int phase) const {
+    int k = getStartTimeStep(phase);
+    auto phase_durations = phaseDurations();
+    Robot robot = phaseRobotModels()[phase];
+    for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
+      std::vector<std::string> vals;
+      for (auto &&joint : robot.joints())
+        vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
+      for (auto &&joint : robot.joints())
+        vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
+      for (auto &&joint : robot.joints())
+        vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
+      for (auto &&joint : robot.joints())
+        vals.push_back(std::to_string(Torque(results, joint->id(), k)));
+      vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
+      k++;
+      std::string vals_str = boost::algorithm::join(vals, ",");
+      traj_file << vals_str << "\n";
+    }
+  }
+};
+}  // namespace gtdynamics

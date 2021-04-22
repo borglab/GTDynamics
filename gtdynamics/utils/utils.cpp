@@ -8,7 +8,7 @@
 /**
  * @file  utils.cpp
  * @brief Utility methods.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include "gtdynamics/utils/utils.h"
@@ -43,8 +43,8 @@ gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
   auto w_skew = gtsam::skewSymmetric(w);
   gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
   gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  gtsam::Vector3 H_T = H_expo * (jMi.translation() - w_skew * v) +
-                       w * w.transpose() * v;
+  gtsam::Vector3 H_T =
+      H_expo * (jMi.translation() - w_skew * v) + w * w.transpose() * v;
   gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
                         gtsam::skewSymmetric(kTj.translation()) * H_R;
   gtsam::Matrix6 H = gtsam::Z_6x6;
@@ -164,45 +164,6 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
   }
   // generate sdf
   return data;
-}
-
-}  // namespace gtdynamics
-
-namespace gtdynamics {
-
-sdf::Model get_sdf(std::string sdf_file_path, std::string model_name) {
-  auto sdf = sdf::readFile(sdf_file_path);
-
-  sdf::Model model = sdf::Model();
-  model.Load(sdf->Root()->GetElement("model"));
-
-  // Check whether this is a world file, in which case we have to first
-  // access the world element then check whether one of its child models
-  // corresponds to model_name.
-  if (model.Name() != "__default__") return model;
-
-  // Load the world element.
-  sdf::World world = sdf::World();
-  world.Load(sdf->Root()->GetElement("world"));
-
-  for (uint i = 0; i < world.ModelCount(); i++) {
-    sdf::Model curr_model = *world.ModelByIndex(i);
-    if (curr_model.Name() == model_name) return curr_model;
-  }
-
-  // TODO(aescontrela): Make this error message more clear.
-  throw std::runtime_error("Model not found.");
-}
-
-gtsam::Pose3 parse_ignition_pose(ignition::math::Pose3d ignition_pose) {
-  gtsam::Pose3 parsed_pose = gtsam::Pose3(
-    gtsam::Rot3(gtsam::Quaternion(
-      ignition_pose.Rot().W(), ignition_pose.Rot().X(),
-      ignition_pose.Rot().Y(), ignition_pose.Rot().Z())),
-    gtsam::Point3(
-      ignition_pose.Pos()[0], ignition_pose.Pos()[1], ignition_pose.Pos()[2]));
-
-  return parsed_pose;
 }
 
 gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {

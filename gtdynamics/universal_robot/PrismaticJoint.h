@@ -16,8 +16,7 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_
+#pragma once
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
@@ -39,27 +38,26 @@ class PrismaticJoint : public ScrewJointBase {
 
  public:
   /**
-   * @brief Create PrismaticJoint using Parameters, joint name, joint pose in
+   * @brief Create PrismaticJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
+   * @param[in] id            id for keys
    * @param[in] name          Name of the joint
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    Joint::Parameters struct
+   * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    */
-  PrismaticJoint(const std::string &name, const gtsam::Pose3 &wTj,
+  PrismaticJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
-                 const LinkSharedPtr &child_link, const Parameters &parameters,
+                 const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis)
-      : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
+      : ScrewJointBase(id, name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis)) {}
 
-  /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Prismatic; }
+  /// Return joint type for use in reconstructing robot from JointParams.
+  Type type() const override { return Type::Prismatic; }
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_PRISMATICJOINT_H_

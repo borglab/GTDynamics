@@ -8,11 +8,17 @@
 /**
  * @file  Link.h
  * @brief only link part of a robot, does not include joint part
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_
+#pragma once
+
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactor.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
@@ -22,156 +28,97 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <sdf/sdf.hh>
+#include <boost/optional.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/optional.hpp>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
 
-/// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("p", i, t);
-}
+class Link; // forward declaration
+class Joint; // forward declaration
 
-/// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("V", i, t);
-}
-
-/// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t) {
-  return DynamicsSymbol::LinkSymbol("A", i, t);
-}
-
-/// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline DynamicsSymbol WrenchKey(int i, int j, int t) {
-  return DynamicsSymbol::LinkJointSymbol("F", i, j, t); 
-}
+LINK_TYPEDEF_CLASS_POINTER(Link);
+LINK_TYPEDEF_CLASS_POINTER(Joint);
 
 /**
- * @class Link is the base class for links taking different format of
- *  parameters.
+ * @class Base class for links taking different format of parameters.
  */
-class Link : public std::enable_shared_from_this<Link> {
+class Link : public boost::enable_shared_from_this<Link> {
  private:
+  unsigned char id_;
   std::string name_;
 
-  int id_ = -1;
-
-  // Inertial elements.
+  /// Inertial elements.
   double mass_;
   gtsam::Pose3 centerOfMass_;
   gtsam::Matrix3 inertia_;
 
-  // SDF Elements.
+  /// SDF Elements.
   gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
   gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
 
-  // option to fix the link, used for ground link
+  /// Option to fix the link, used for ground link
   bool is_fixed_;
   gtsam::Pose3 fixed_pose_;
 
-  std::vector<JointSharedPtr> joints_;  // joints connected to the link
+  /// Joints connected to the link
+  std::vector<JointSharedPtr> joints_;
 
  public:
-  /**
-   * Params contains all parameters to construct a link
-   */
-  struct Params {
-    std::string name;        // name of the link
-    double mass;             // mass of the link
-    gtsam::Matrix3 inertia;  // inertia of the link
-    gtsam::Pose3 wTl;        // link pose expressed in world frame
-    gtsam::Pose3 lTcom;      // link com expressed in link frame
-  };
 
   Link() {}
 
-  /**
-   * Initialize Link's inertial properties with a sdf::Link instance, as
-   * described in the sdformat8 documentation:
-   * https://bitbucket.org/osrf/sdformat/src/7_to_gz11/include/sdf/Link.hh
-   *
-   * @param sdf_link sdf::Link object containing link information.
-   */
-  explicit Link(sdf::Link sdf_link)
-      : name_(sdf_link.Name()),
-        mass_(sdf_link.Inertial().MassMatrix().Mass()),
-        inertia_(
-            (gtsam::Matrix(3, 3) << sdf_link.Inertial().Moi()(0, 0),
-             sdf_link.Inertial().Moi()(0, 1), sdf_link.Inertial().Moi()(0, 2),
-             sdf_link.Inertial().Moi()(1, 0), sdf_link.Inertial().Moi()(1, 1),
-             sdf_link.Inertial().Moi()(1, 2), sdf_link.Inertial().Moi()(2, 0),
-             sdf_link.Inertial().Moi()(2, 1), sdf_link.Inertial().Moi()(2, 2))
-                .finished()),
-        wTl_(parse_ignition_pose(sdf_link.Pose())),
-        lTcom_(parse_ignition_pose(sdf_link.Inertial().Pose())),
-        is_fixed_(false) {}
 
   /**
-   * Initialize Link's inertial properties with a Link::Params instance.
+   * Initialize Link's inertial properties with a LinkParams instance.
    *
-   * @param params Link::Params object containing link information.
+   * @param params LinkParams object containing link information.
    */
-  explicit Link(const Params &params)
-      : name_(params.name),
-        mass_(params.mass),
-        inertia_(params.inertia),
-        wTl_(params.wTl),
-        lTcom_(params.lTcom),
-        is_fixed_(false) {}
+  Link(unsigned char id, const std::string &name, const double mass,
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
+       const gtsam::Pose3 &lTcom, bool is_fixed = false)
+      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
+        lTcom_(lTcom), is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
 
-  /// return a shared pointer of the link
-  LinkSharedPtr getSharedPtr(void) { return shared_from_this(); }
-
-  /// remove the joint
-  void removeJoint(JointSharedPtr joint) {
-    for (auto joint_it = joints_.begin(); joint_it != joints_.end();
-         joint_it++) {
-      if ((*joint_it) == joint) {
-        joints_.erase(joint_it);
-        break;
-      }
-    }
+  bool operator==(const Link &other) const {
+    return (this->name_ == other.name_ && this->id_ == other.id_ &&
+            this->mass_ == other.mass_ &&
+            this->centerOfMass_.equals(other.centerOfMass_) &&
+            this->inertia_ == other.inertia_ && this->wTl_.equals(other.wTl_) &&
+            this->lTcom_.equals(other.lTcom_) &&
+            this->is_fixed_ == other.is_fixed_ &&
+            this->fixed_pose_.equals(other.fixed_pose_));
   }
 
-  /// set ID for the link
-  void setID(unsigned char id) {
-    // if (id == 0) throw std::runtime_error("ID cannot be 0");
-    id_ = id;
+  bool operator!=(const Link &other) const { return !(*this == other); }
+
+  /// return a shared pointer of the link
+  LinkSharedPtr shared(void) { return shared_from_this(); }
+
+  /// remove the joint
+  void removeJoint(const JointSharedPtr& joint) {
+    joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
   /// return ID of the link
-  int getID() const {
-    if (id_ == -1)
-      throw std::runtime_error(
-          "Calling getID on a link whose ID has not been set");
-    return id_;
-  }
+  unsigned char id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
+  void addJoint(const JointSharedPtr& joint) { joints_.push_back(joint); }
 
   /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
 
-  /// transfrom from link com frame to link frame
+  /// transform from link CoM frame to link frame
   const gtsam::Pose3 &lTcom() const { return lTcom_; }
 
-  /// transform from link com frame to world frame
+  /// transform from link CoM frame to world frame
   inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
 
   /// the fixed pose of the link
@@ -186,11 +133,14 @@ class Link : public std::enable_shared_from_this<Link> {
     fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
   }
 
-  /// unfix the link
+  /// Unfix the link
   void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
-  const std::vector<JointSharedPtr> &getJoints(void) const { return joints_; }
+  const std::vector<JointSharedPtr> &joints() const { return joints_; }
+
+  /// return the number of connected joints
+  size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
   std::string name() const { return name_; }
@@ -212,99 +162,13 @@ class Link : public std::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
-  /** @fn Return pose factors in the dynamics graph.
-   * 
-   * @param[in] t   The timestep for which to generate q factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return pose factors.
-   */
-  gtsam::NonlinearFactorGraph qFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Pose3>(
-          PoseKey(getID(), t), getFixedPose(), opt.bp_cost_model));
-    return graph;
+  /// Print to ostream
+  friend std::ostream &operator<<(std::ostream &os, const Link &l) {
+    os << l.name();
+    return os;
   }
 
-  /** @fn Return velocity factors in the dynamics graph.
-   * 
-   * @param[in] t   The timestep for which to generate v factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return velocity factors.
-   */
-  gtsam::NonlinearFactorGraph vFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Vector6>(
-          TwistKey(getID(), t), gtsam::Vector6::Zero(), opt.bv_cost_model));
-    return graph;
-  }
-
-  /** @fn Return accel factors in the dynamics graph.
-   * 
-   * @param[in] t   The timestep for which to generate a factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return accel factors.
-   */
-  gtsam::NonlinearFactorGraph aFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.add(gtsam::PriorFactor<gtsam::Vector6>(TwistAccelKey(getID(), t),
-                                                   gtsam::Vector6::Zero(),
-                                                   opt.ba_cost_model));
-    return graph;
-  }
-
-  /** @fn Return dynamics factors in the dynamics graph.
-   * 
-   * @param[in] t   The timestep for which to generate dynamics factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return dynamics factors.
-   */
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const std::vector<DynamicsSymbol> &wrenches,
-      const boost::optional<gtsam::Vector3> &gravity) const {
-    gtsam::NonlinearFactorGraph graph;
-    // Add wrench factors.
-    if (wrenches.size() == 0) {
-      graph.add(WrenchFactor0(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              PoseKey(getID(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 1) {
-      graph.add(WrenchFactor1(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], PoseKey(getID(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 2) {
-      graph.add(WrenchFactor2(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], wrenches[1], PoseKey(getID(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 3) {
-      graph.add(WrenchFactor3(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], wrenches[1], wrenches[2],
-                              PoseKey(getID(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 4) {
-      graph.add(WrenchFactor4(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], wrenches[1], wrenches[2],
-                              wrenches[3], PoseKey(getID(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 8) {
-      graph.add(WrenchFactor8(TwistKey(getID(), t), TwistAccelKey(getID(), t),
-                              wrenches[0], wrenches[1], wrenches[2],
-                              wrenches[3], wrenches[4], wrenches[5],
-                              wrenches[6], wrenches[7], PoseKey(getID(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else {
-      throw std::runtime_error("Wrench factor not defined");
-    }
-
-    return graph;
-  }
+  /// Helper print function
+  void print() const { std::cout << *this; }
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_LINK_H_

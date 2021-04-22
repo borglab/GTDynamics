@@ -8,28 +8,39 @@
 /**
  * @file Robot.h
  * @brief Robot structure.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_
+#pragma once
 
+#include <boost/optional.hpp>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <boost/optional.hpp>
-
-#include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/config.h"
 #include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 
-typedef std::map<std::string, LinkSharedPtr> LinkMap;
-typedef std::map<std::string, JointSharedPtr> JointMap;
-typedef std::pair<LinkMap, JointMap> LinkJointPair;
+/// Map from link name to link shared pointer
+using LinkMap = std::map<std::string, LinkSharedPtr>;
+/// Map from joint name to joint shared pointer
+using JointMap = std::map<std::string, JointSharedPtr>;
+
+using LinkVector = std::vector<std::reference_wrapper<Link>>;
+using JointVector = std::vector<std::reference_wrapper<Joint>>;
+
+using LinkJointPair = std::pair<LinkMap, JointMap>;
+// map from link name to link pose
+using LinkPoses = std::map<std::string, gtsam::Pose3>;
+// map from link name to link twist
+using LinkTwists = std::map<std::string, gtsam::Vector6>;
+// type for storing forward kinematics results
+using FKResults = std::pair<LinkPoses, LinkTwists>;
 
 /**
  * Robot is used to create a representation of a robot's
@@ -47,11 +58,14 @@ class Robot {
   /** Default Constructor */
   Robot() {}
 
-  /** Constructor from link and joint elements.
-   *  @param[in] robot_links_and_joints LinkJointPair containing links
-   *    and joints.
+  /**
+   * Constructor from link and joint elements.
+   *
+   * @param[in] links LinkMap containing all links
+   * @param[in] joints JointMap containing all joints
+   * joints.
    */
-  explicit Robot(LinkJointPair links_and_joints);
+  explicit Robot(const LinkMap &links, const JointMap &joints);
 
   /// Return this robot's links.
   std::vector<LinkSharedPtr> links() const;
@@ -60,16 +74,19 @@ class Robot {
   std::vector<JointSharedPtr> joints() const;
 
   /// remove specified link from the robot
-  void removeLink(LinkSharedPtr link);
+  void removeLink(const LinkSharedPtr &link);
 
   /// remove specified joint from the robot
-  void removeJoint(JointSharedPtr joint);
+  void removeJoint(const JointSharedPtr &joint);
 
   /// Return the link corresponding to the input string.
-  LinkSharedPtr getLinkByName(std::string name) const;
+  LinkSharedPtr link(const std::string &name) const;
+
+  /// Fix the link corresponding to the input string.
+  Robot fixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
-  JointSharedPtr getJointByName(std::string name) const;
+  JointSharedPtr joint(const std::string &name) const;
 
   /// Return number of *moving* links.
   int numLinks() const;
@@ -77,128 +94,30 @@ class Robot {
   /// Return number of joints.
   int numJoints() const;
 
-  // print links and joints of the robot, for debug purposes
-  void printRobot() const;
-
-  // map from joint name to joint angle/vel/accel/torque
-  typedef std::map<std::string, double> JointValues;
-
-  // map from link name to link pose
-  typedef std::map<std::string, gtsam::Pose3> LinkPoses;
-
-  // map from link name to link twist
-  typedef std::map<std::string, gtsam::Vector6> LinkTwists;
-
-  // type for storing forward kinematics results
-  typedef std::pair<LinkPoses, LinkTwists> FKResults;
+  /// Print links and joints of the robot, for debug purposes
+  void print() const;
 
   /**
-   * @fn calculate forward kinematics by performing bfs in the link-joint graph
-   * (will throw an error when invalid joint angle specification detected)
-   * 
-   * @param[in] joint_angles     joint angles for all joints
-   * @param[in] joint_vels       joint velocities for all joints
-   * @param[in] prior_link_name  name of link with known pose & twist
-   * @param[in] prior_link_pose  pose of the known link
-   * @param[in] prior_link_twist twist of the konwn link
-   * @return poses and twists of all links
-   */
-  FKResults forwardKinematics(
-      const JointValues &joint_angles, const JointValues &joint_vels,
-      const boost::optional<std::string> prior_link_name = boost::none,
-      const boost::optional<gtsam::Pose3> &prior_link_pose = boost::none,
-      const boost::optional<gtsam::Vector6> &prior_link_twist =
-          boost::none) const;
-
-  /** @fn Returns q factors for the robot.
+   * Calculate forward kinematics by performing BFS in the link-joint graph
+   * (will throw an error when invalid joint angle specification detected).
    *
-   * @param[in] t    Timestep to return q factors for.
-   * @param[in] opt  OptimizerSetting object.
-   * @return pose factors.
-   */
-  gtsam::NonlinearFactorGraph qFactors(const int &t,
-                                       const OptimizerSetting &opt) const;
-
-  /** @fn Returns v factors for the robot.
+   * If the root link pose and twist are not provided in `known_values`,
+   * default Pose3() and Vector6::Zeros() are used respectively.
    *
-   * @param[in]t    Timestep to return q factors for.
-   * @param[in]opt  OptimizerSetting object.
-   * @return velocity factors.
+   * @param[in] t integer time index
+   * @param[in] known_values Values with joint angles, joint velocities, and
+   * (optionally) root link pose and twist.
+   * @param[in] prior_link_name name of link with known pose & twist
+   * @return poses and twists of all links, as a new Values instance
    */
-  gtsam::NonlinearFactorGraph vFactors(const int &t,
-                                       const OptimizerSetting &opt) const;
+  gtsam::Values forwardKinematics(
+      const gtsam::Values &known_values, size_t t = 0,
+      const boost::optional<std::string> &prior_link_name = boost::none) const;
 
-  /** @fn Returns a factors for the robot.
-   * 
-   * @param[in] t    Timestep to return q factors for.
-   * @param[in] opt  OptimizerSetting object.
-   * @return acceleration factors.
-   */
-  gtsam::NonlinearFactorGraph aFactors(const int &t,
-                                       const OptimizerSetting &opt) const;
-
-  /** @fn Returns accel factors linearized about specified operating
-   *    condition.
-   * 
-   * @param[in] t             Timestep to return q factors for.
-   * @param[in] poses         Link poses.
-   * @param[in] twists        Link twists.
-   * @param[in] joint_angles  Joint angles.
-   * @param[in] joint_vels    Joint velocities.
-   * @param[in] opt           OptimizerSetting object.
-   * @param[in] planar_axis    Optional planar axis.
-   * @return Linearized accel factors.
-   */
-  gtsam::GaussianFactorGraph linearAFactors(
-    const int &t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
-
-  /** @fn Returns dynamics factors for the robot.
-   *
-   * @param[in] t          Timestep to return q factors for.
-   * @param[in] opt        OptimizerSetting object.
-   * @param[in]planar_axis Optional planar axis.
-   * @return dynamics factors.
-   */
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      const int &t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const;
-
-  /** @fn Returns dynamics factors linearized about specified operating
-   *    condition.
-   * 
-   * @param[in] t             Timestep to return q factors for.
-   * @param[in] poses         Link poses.
-   * @param[in] twists        Link twists.
-   * @param[in] joint_angles  Joint angles.
-   * @param[in] joint_vels    Joint velocities.
-   * @param[in] opt           OptimizerSetting object.
-   * @param[in] planar_axis    Optional planar axis.
-   * @return Linearized dynamics factors.
-   */
-  gtsam::GaussianFactorGraph linearDynamicsFactors(
-    const int &t,
-    const std::map<std::string, gtsam::Pose3> &poses,
-    const std::map<std::string, gtsam::Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
-
-  /** @fn Returns joint limit factors for the robot.
-   *
-   * @param[in] t    Timestep to return q factors for.
-   * @param[in] opt  OptimizerSetting object.
-   * @return joint limit factors.
-   */
-  gtsam::NonlinearFactorGraph jointLimitFactors(
-      const int &t, const OptimizerSetting &opt) const;
+ private:
+  /// Find root link for forward kinematics
+  LinkSharedPtr findRootLink(
+      const gtsam::Values &values,
+      const boost::optional<std::string> &prior_link_name, size_t t = 0) const;
 };
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOT_H_

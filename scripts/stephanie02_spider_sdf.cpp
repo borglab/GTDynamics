@@ -8,21 +8,21 @@
 /**
  * @file  stephanie02_spider_sdf.cpp
  * @brief Test reading a spider sdf file and doing something with it.
- * @Author: Stephanie McCormick
+ * @author Stephanie McCormick
  */
+
+#include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
-#include <string>
-
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  const auto spider =
-      CreateRobotFromFile(std::string(SDF_PATH) + "/test/spider.sdf", "spider");
+  const Robot spider =
+      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
 
-  spider.printRobot();
+  spider.print();
 
   return 0;
 }

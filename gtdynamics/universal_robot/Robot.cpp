@@ -8,13 +8,10 @@
 /**
  * @file Robot.h
  * @brief Robot structure.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
 #include "gtdynamics/universal_robot/Robot.h"
-
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
 
 #include <algorithm>
 #include <memory>
@@ -22,16 +19,19 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
 
-using gtsam::Pose3, gtsam::NonlinearFactorGraph, gtsam::Vector6,
-    gtsam::GaussianFactorGraph, gtsam::Vector3;
+using gtsam::Pose3;
+using gtsam::Vector3;
+using gtsam::Vector6;
 
 namespace gtdynamics {
 
-template <typename K, typename V>
-std::vector<V> getValues(std::map<K, V> m) {
+template <typename K, typename V> std::vector<V> getValues(std::map<K, V> m) {
   std::vector<V> vec;
   vec.reserve(m.size());
   std::transform(m.begin(), m.end(), back_inserter(vec),
@@ -39,9 +39,8 @@ std::vector<V> getValues(std::map<K, V> m) {
   return vec;
 }
 
-Robot::Robot(LinkJointPair links_and_joints)
-    : name_to_link_(links_and_joints.first),
-      name_to_joint_(links_and_joints.second) {}
+Robot::Robot(const LinkMap &links, const JointMap &joints)
+    : name_to_link_(links), name_to_joint_(joints) {}
 
 std::vector<LinkSharedPtr> Robot::links() const {
   return getValues<std::string, LinkSharedPtr>(name_to_link_);
@@ -51,9 +50,9 @@ std::vector<JointSharedPtr> Robot::joints() const {
   return getValues<std::string, JointSharedPtr>(name_to_joint_);
 }
 
-void Robot::removeLink(LinkSharedPtr link) {
+void Robot::removeLink(const LinkSharedPtr &link) {
   // remove all joints associated to the link
-  auto joints = link->getJoints();
+  auto joints = link->joints();
   for (JointSharedPtr joint : joints) {
     removeJoint(joint);
   }
@@ -62,7 +61,7 @@ void Robot::removeLink(LinkSharedPtr link) {
   name_to_link_.erase(link->name());
 }
 
-void Robot::removeJoint(JointSharedPtr joint) {
+void Robot::removeJoint(const JointSharedPtr &joint) {
   // in all links connected to the joint, remove the joint
   for (auto link : joint->links()) {
     link->removeJoint(joint);
@@ -71,14 +70,22 @@ void Robot::removeJoint(JointSharedPtr joint) {
   name_to_joint_.erase(joint->name());
 }
 
-LinkSharedPtr Robot::getLinkByName(std::string name) const {
+LinkSharedPtr Robot::link(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
   return name_to_link_.at(name);
 }
 
-JointSharedPtr Robot::getJointByName(std::string name) const {
+Robot Robot::fixLink(const std::string &name) {
+  if (name_to_link_.find(name) == name_to_link_.end()) {
+    throw std::runtime_error("no link named " + name);
+  }
+  name_to_link_.at(name)->fix();
+  return *this;
+}
+
+JointSharedPtr Robot::joint(const std::string &name) const {
   if (name_to_joint_.find(name) == name_to_joint_.end()) {
     throw std::runtime_error("no joint named " + name);
   }
@@ -89,173 +96,168 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void Robot::printRobot() const {
-  for (const auto &link : links()) {
-    std::cout << link->name() << ":\n";
-    std::cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose()
-              << ", " << link->wTl().translation() << "\n";
-    std::cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose()
-              << ", " << link->wTcom().translation() << "\n";
-    std::cout << "\tjoints: ";
-    for (const auto &joint : link->getJoints()) {
-      std::cout << joint->name() << " ";
+void Robot::print() const {
+  using std::cout;
+  using std::endl;
+
+  // Sort joints by id.
+  auto sorted_links = links();
+  std::sort(sorted_links.begin(), sorted_links.end(),
+            [](LinkSharedPtr i, LinkSharedPtr j) { return i->id() < j->id(); });
+
+  // Print links in sorted id order.
+  cout << "LINKS:" << endl;
+  for (const auto &link : sorted_links) {
+    std::string fixed = link->isFixed() ? " (fixed)" : "";
+    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
+    cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose() << ", "
+         << link->wTl().translation().transpose() << "\n";
+    cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose() << ", "
+         << link->wTcom().translation().transpose() << "\n";
+    cout << "\tjoints: ";
+    for (const auto &joint : link->joints()) {
+      cout << joint->name() << " ";
     }
-    std::cout << "\n";
+    cout << "\n";
   }
 
-  for (const auto &joint : joints()) {
-    std::cout << joint->name() << ":\n";
-    LinkSharedPtr parent_link = joint->parentLink();
-    LinkSharedPtr child_link = joint->childLink();
-    // TODO(aescontrela): Call link and joint toString methods here.
-    std::cout << "\tparent: " << parent_link->name()
-              << "\tchild: " << child_link->name() << "\n";
-    // std::cout<<"\tMpc: " << joint->Mpc().rotation().rpy().transpose() << ", "
-    // << joint->Mpc().translation() << "\n";
-    std::cout << "\tpMc_com: "
-              << joint->transformTo(child_link).rotation().rpy().transpose()
-              << ", " << joint->transformTo(child_link).translation() << "\n";
+  // Sort joints by id.
+  auto sorted_joints = joints();
+  std::sort(
+      sorted_joints.begin(), sorted_joints.end(),
+      [](JointSharedPtr i, JointSharedPtr j) { return i->id() < j->id(); });
+
+  // Print joints in sorted id order.
+  cout << "JOINTS:" << endl;
+  for (const auto &joint : sorted_joints) {
+    cout << joint << endl;
+
+    gtsam::Values joint_angles;
+    InsertJointAngle(&joint_angles, joint->id(), 0.0);
+
+    auto pTc = joint->parentTchild(joint_angles);
+    cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
+         << pTc.translation().transpose() << "\n";
   }
 }
 
-Robot::FKResults Robot::forwardKinematics(
-    const JointValues &joint_angles, const JointValues &joint_vels,
-    const boost::optional<std::string> prior_link_name,
-    const boost::optional<Pose3> &prior_link_pose,
-    const boost::optional<Vector6> &prior_link_twist) const {
-  LinkPoses link_poses;
-  LinkTwists link_twists;
-
-  // link_poses["aa"] = Pose3();
-
-  //// set root link
+LinkSharedPtr Robot::findRootLink(
+    const gtsam::Values &values,
+    const boost::optional<std::string> &prior_link_name, size_t t) const {
   LinkSharedPtr root_link;
-  // check fixed links
-  for (LinkSharedPtr link : links()) {
-    if (link->isFixed()) {
-      root_link = link;
-      link_poses[link->name()] = link->getFixedPose();
-      link_twists[link->name()] = Vector6::Zero();
+
+  // Use prior_link if given.
+  if (prior_link_name) {
+    root_link = link(*prior_link_name);
+  } else {
+    auto links = this->links();
+    auto links_iter =
+        std::find_if(links.rbegin(), links.rend(),
+                     [](const LinkSharedPtr &link) { return link->isFixed(); });
+    // If valid link is found by find_if, assign root_link to the iterator.
+    if (links_iter != links.rend()) {
+      root_link = *links_iter;
     }
   }
-  if (prior_link_name) {
-    root_link = getLinkByName(*prior_link_name);
-    link_poses[*prior_link_name] = *prior_link_pose;
-    link_twists[*prior_link_name] = *prior_link_twist;
-  }
-  if (link_poses.size() == 0) {
-    throw std::runtime_error("cannot find a fixed link");
+  if (!root_link) {
+    throw std::runtime_error(
+        "forwardKinematics: no prior link given and "
+        "cannot find a fixed link.");
   }
 
-  //// bfs to set the pose
+  return root_link;
+}
+
+// Insert fixed link poses into values
+static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
+                             gtsam::Values *values) {
+  for (auto &&link : links) {
+    if (link->isFixed()) {
+      InsertPose(values, link->id(), t, link->getFixedPose());
+      InsertTwist(values, link->id(), t, Vector6::Zero());
+    }
+  }
+}
+
+// Add zero default values for joint angles and joint velocities.
+// if they do not yet exist
+static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
+  using namespace internal;
+  for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
+    if (!values->exists(key)) {
+      values->insertDouble(key, 0.0);
+    }
+  }
+}
+
+// Insert a pose/twist into values, but if they already are present, just check
+// if they are consistent. Throw exception otherwise.
+// Returns true if values were inserted.
+static bool InsertWithCheck(size_t i, size_t t,
+                            const std::pair<Pose3, Vector6> &poseTwist,
+                            gtsam::Values *values) {
+  Pose3 pose;
+  Vector6 twist;
+  std::tie(pose, twist) = poseTwist;
+  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
+  auto pose_key = internal::PoseKey(i, t);
+  auto twist_key = internal::TwistKey(i, t);
+  const bool exists = values->exists(pose_key);
+  if (!exists) {
+    values->insert(pose_key, pose);
+    values->insert<Vector6>(twist_key, twist);
+  } else {
+    // If already insert, check for consistency.
+    if (!(pose.equals(values->at<Pose3>(pose_key), 1e-4) &&
+          (twist - values->at<Vector6>(twist_key)).norm() < 1e-4)) {
+      throw std::runtime_error(
+          "Inconsistent joint angles detected in forward kinematics");
+    }
+  }
+  return !exists;
+}
+
+gtsam::Values Robot::forwardKinematics(
+    const gtsam::Values &known_values, size_t t,
+    const boost::optional<std::string> &prior_link_name) const {
+  gtsam::Values values = known_values;
+
+  // Set root link.
+  const auto root_link = findRootLink(values, prior_link_name, t);
+  InsertFixedLinks(links(), t, &values);
+
+  if (!values.exists(internal::PoseKey(root_link->id(), t))) {
+    InsertPose(&values, root_link->id(), t, gtsam::Pose3());
+  }
+  if (!values.exists(internal::TwistKey(root_link->id(), t))) {
+    InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
+  }
+
+  // BFS to update all poses downstream in the graph.
   std::queue<LinkSharedPtr> q;
   q.push(root_link);
   int loop_count = 0;
   while (!q.empty()) {
-    auto link1 = q.front();
-    const Pose3 T_w1 = link_poses.at(link1->name());
-    const Vector6 V_1 = link_twists.at(link1->name());
+    // Pop link from the queue and retrieve the pose and twist.
+    const auto link1 = q.front();
+    const Pose3 T_w1 = Pose(values, link1->id(), t);
+    const Vector6 V_1 = Twist(values, link1->id(), t);
     q.pop();
-    for (JointSharedPtr joint : link1->getJoints()) {
-      JointSharedPtr joint_ptr = joint;
-      LinkSharedPtr link2 = joint_ptr->otherLink(link1);
-      // calculate the pose and twist of link2
-      double joint_angle = joint_angles.at(joint_ptr->name());
-      double joint_vel = joint_vels.at(joint_ptr->name());
-      const Pose3 T_12 = joint_ptr->transformTo(link1, joint_angle);
-      const Pose3 T_21 = joint_ptr->transformFrom(link1, joint_angle);
-      const Pose3 T_w2 = T_w1 * T_12;
-      const Vector6 V_2 =
-          joint->transformTwistFrom(link1, joint_angle, joint_vel, V_1);
 
-      // check if link 2 is already assigned
-      if (link_poses.find(link2->name()) == link_poses.end()) {
-        link_poses[link2->name()] = T_w2;
-        link_twists[link2->name()] = V_2;
+    // Loop through all joints to find the pose and twist of child links.
+    for (auto &&joint : link1->joints()) {
+      InsertZeroDefaults(joint->id(), t, &values);
+      const auto poseTwist = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
+      const auto link2 = joint->otherLink(link1);
+      if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
         q.push(link2);
-      } else {  // link 2 is already assigned
-        Pose3 T_w2_prev = link_poses.at(link2->name());
-        Vector6 V_2_prev = link_twists.at(link2->name());
-        if (!(T_w2.equals(T_w2_prev, 1e-4) && (V_2 - V_2_prev).norm() < 1e-4)) {
-          throw std::runtime_error(
-              "inconsistent joint angles detected in forward kinematics");
-        }
       }
     }
     if (loop_count++ > 100000) {
       throw std::runtime_error("infinite loop in bfs");
     }
   }
-  return FKResults(link_poses, link_twists);
+  return values;
 }
 
-NonlinearFactorGraph Robot::qFactors(const int &t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->qFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->qFactors(t, opt));
-  return graph;
-}
-
-NonlinearFactorGraph Robot::vFactors(const int &t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->vFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->vFactors(t, opt));
-  return graph;
-}
-
-NonlinearFactorGraph Robot::aFactors(const int &t,
-                                     const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : links()) graph.add(link->aFactors(t, opt));
-  for (auto &&joint : joints()) graph.add(joint->aFactors(t, opt));
-  return graph;
-}
-
-GaussianFactorGraph Robot::linearAFactors(
-    const int &t, const std::map<std::string, Pose3> &poses,
-    const std::map<std::string, Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  GaussianFactorGraph graph;
-  for (auto &&joint : joints())
-    graph += joint->linearAFactors(t, poses, twists, joint_angles, joint_vels,
-                                   opt, planar_axis);
-
-  return graph;
-}
-
-NonlinearFactorGraph Robot::dynamicsFactors(
-    const int &t, const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  NonlinearFactorGraph graph;
-  for (auto &&joint : joints())
-    graph.add(joint->dynamicsFactors(t, opt, planar_axis));
-  return graph;
-}
-
-GaussianFactorGraph Robot::linearDynamicsFactors(
-    const int &t, const std::map<std::string, Pose3> &poses,
-    const std::map<std::string, Vector6> &twists,
-    const std::map<std::string, double> &joint_angles,
-    const std::map<std::string, double> &joint_vels,
-    const OptimizerSetting &opt,
-    const boost::optional<Vector3> &planar_axis) const {
-  GaussianFactorGraph graph;
-  for (auto &&joint : joints())
-    graph += joint->linearDynamicsFactors(t, poses, twists, joint_angles,
-                                          joint_vels, opt, planar_axis);
-  return graph;
-}
-
-NonlinearFactorGraph Robot::jointLimitFactors(
-    const int &t, const OptimizerSetting &opt) const {
-  NonlinearFactorGraph graph;
-  for (auto &&joint : joints()) graph.add(joint->jointLimitFactors(t, opt));
-  return graph;
-}
-
-}  // namespace gtdynamics.
+} // namespace gtdynamics.

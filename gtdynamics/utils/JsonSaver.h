@@ -7,8 +7,7 @@
  * notice.
  */
 
-#ifndef GTDYNAMICS_UTILS_JSONSAVER_H_
-#define GTDYNAMICS_UTILS_JSONSAVER_H_
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -18,25 +17,25 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <typeinfo>
-#include <vector>
-#include <map>
 #include <utility>
+#include <vector>
 
 #include "gtdynamics/factors/PoseFactor.h"
 #include "gtdynamics/factors/TorqueFactor.h"
 #include "gtdynamics/factors/TwistAccelFactor.h"
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/WrenchFactors.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
-
-#include <boost/optional.hpp>
 
 #define kQuote_ "\""
 
@@ -44,7 +43,7 @@
 namespace gtdynamics {
 /**
  * @brief
- * store optimization results history, export factor graph in json format. The
+ * Store optimization results history, export factor graph in json format. The
  * format is as follows: [[{}, {}, ...], [{}, {}, ...]]. The first list contains
  * variables, and the second list contains factors. Each variable/list is
  * represented as a dictionary, with each of its attribute as an element of the
@@ -170,22 +169,22 @@ class JsonSaver {
          << p->value().rotation().rpy()[1] << ", "
          << p->value().rotation().rpy()[2] << "]";
     } else if (const gtsam::GenericValue<gtsam::Vector6>* p =
-                 dynamic_cast<const gtsam::GenericValue<gtsam::Vector6>*>(
-                     &value)) {
+                   dynamic_cast<const gtsam::GenericValue<gtsam::Vector6>*>(
+                       &value)) {
       // Wrench, Twist, Twistaccel variable
       ss << p->value().transpose();
     } else if (const gtsam::GenericValue<gtsam::Vector3>* p =
-                 dynamic_cast<const gtsam::GenericValue<gtsam::Vector3>*>(
-                     &value)) {
+                   dynamic_cast<const gtsam::GenericValue<gtsam::Vector3>*>(
+                       &value)) {
       // velocity, acceleration variables
       ss << p->value().transpose();
     } else if (const gtsam::GenericValue<gtsam::Vector>* p =
-                 dynamic_cast<const gtsam::GenericValue<gtsam::Vector>*>(
-                     &value)) {
+                   dynamic_cast<const gtsam::GenericValue<gtsam::Vector>*>(
+                       &value)) {
       // general vector
       ss << p->value().transpose();
     } else if (const gtsam::GenericValue<double>* p =
-                 dynamic_cast<const gtsam::GenericValue<double>*>(&value)) {
+                   dynamic_cast<const gtsam::GenericValue<double>*>(&value)) {
       // Torque, q, v, a
       ss << p->value();
     }
@@ -200,17 +199,22 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    if (const TorqueFactor* f =
-            dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      ss << GetVector(f->getScrewAxis().transpose());
+    if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
+      auto joint = f->getJoint();
+      ss << GetVector(boost::static_pointer_cast<const ScrewJointBase>(joint)
+                          ->screwAxis(joint->child())
+                          .transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
-                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(&(*factor))) {
+                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
+                       &(*factor))) {
       ss << GetVector(f->prior().transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector6>* f =
-                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector6>*>(&(*factor))) {
+                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector6>*>(
+                       &(*factor))) {
       ss << GetVector(f->prior().transpose());
     } else if (const gtsam::PriorFactor<double>* f =
-                   dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
+                   dynamic_cast<const gtsam::PriorFactor<double>*>(
+                       &(*factor))) {
       ss << f->prior();
     }
     return ss.str();
@@ -223,13 +227,7 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (dynamic_cast<const WrenchFactor1*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor2*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor3*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const WrenchFactor4*>(&(*factor))) {
+    if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
       return "Wrench";
     } else if (dynamic_cast<const WrenchFactor8*>(&(*factor))) {
       return "Wrench";
@@ -241,17 +239,17 @@ class JsonSaver {
       return "TwistAccel";
     } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
       return "Torque";
-    } else if (dynamic_cast<const WrenchPlanarFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(
-                   &(*factor))) {
+    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
       return "WrenchEq";
     } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";
-    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(&(*factor))) {
+    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(
+                   &(*factor))) {
       return "Prior";
-    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Pose3>*>(&(*factor))) {
+    } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Pose3>*>(
+                   &(*factor))) {
       return "PriorPose";
     } else {
       return typeid(factor).name();
@@ -275,24 +273,24 @@ class JsonSaver {
               dynamic_cast<const gtsam::noiseModel::Unit*>(&(*noise_model))) {
         ss << "unit " << true_noise_model->isUnit();
       } else if (const gtsam::noiseModel::Isotropic* true_noise_model =
-                   dynamic_cast<const gtsam::noiseModel::Isotropic*>(
-                       &(*noise_model))) {
+                     dynamic_cast<const gtsam::noiseModel::Isotropic*>(
+                         &(*noise_model))) {
         // isotropic
         ss << boost::format("isotropic dim=%1% sigma=%2%") %
                   true_noise_model->dim() % true_noise_model->sigma();
       } else if (const gtsam::noiseModel::Constrained* true_noise_model =
-                   dynamic_cast<const gtsam::noiseModel::Constrained*>(
-                       &(*noise_model))) {
+                     dynamic_cast<const gtsam::noiseModel::Constrained*>(
+                         &(*noise_model))) {
         // constrained
         ss << "constrained mus:" << GetVector(true_noise_model->mu());
       } else if (const gtsam::noiseModel::Diagonal* true_noise_model =
-                   dynamic_cast<const gtsam::noiseModel::Diagonal*>(
-                       &(*noise_model))) {
+                     dynamic_cast<const gtsam::noiseModel::Diagonal*>(
+                         &(*noise_model))) {
         // diagonal
         ss << "diagonal sigmas: " << GetVector(true_noise_model->sigmas());
       } else if (const gtsam::noiseModel::Gaussian* true_noise_model =
-                   dynamic_cast<const gtsam::noiseModel::Gaussian*>(
-                       &(*noise_model))) {
+                     dynamic_cast<const gtsam::noiseModel::Gaussian*>(
+                         &(*noise_model))) {
         // gaussian
         ss << "gaussian sigmas: " << GetVector(true_noise_model->sigmas());
       } else {
@@ -309,7 +307,8 @@ class JsonSaver {
    * @return                  a string displaying the error
    */
   static inline std::string GetError(
-      const gtsam::NonlinearFactor::shared_ptr& factor, const gtsam::Values& values) {
+      const gtsam::NonlinearFactor::shared_ptr& factor,
+      const gtsam::Values& values) {
     std::stringstream ss;
     ss << factor->error(values);
     return ss.str();
@@ -322,7 +321,8 @@ class JsonSaver {
    * @return                  a string displaying the whitened error
    */
   static inline std::string GetWhitenedError(
-      const gtsam::NonlinearFactor::shared_ptr& factor, const gtsam::Values& values) {
+      const gtsam::NonlinearFactor::shared_ptr& factor,
+      const gtsam::Values& values) {
     std::stringstream ss;
     if (const gtsam::NoiseModelFactor* noise_factor =
             dynamic_cast<const gtsam::NoiseModelFactor*>(&(*factor))) {
@@ -352,8 +352,8 @@ class JsonSaver {
               dynamic_cast<const gtsam::GenericValue<gtsam::Pose3>*>(&value)) {
         ss << GetVector(p->value().translation());
       } else if (const gtsam::GenericValue<gtsam::Point3>* p =
-                   dynamic_cast<const gtsam::GenericValue<gtsam::Point3>*>(
-                       &value)) {
+                     dynamic_cast<const gtsam::GenericValue<gtsam::Point3>*>(
+                         &value)) {
         // landmark variable
         ss << GetVector(p->value());
       }
@@ -446,8 +446,8 @@ class JsonSaver {
    * @param[in] stm           output stream
    * @param[in] values        gtsam values of variables
    * @param[in] locations     manually specify the location of variables
-  // TODO: add option to include GT values
    */
+  // TODO: add option to include GT values
   static inline void SaveFactorGraph(
       const gtsam::NonlinearFactorGraph& graph, std::ostream& stm,
       const gtsam::Values& values = gtsam::Values(),
@@ -513,20 +513,19 @@ class JsonSaver {
     return JsonList(value_types, -1);
   }
 
-  static inline void SaveClusteredGraph(std::ostream &stm,
-                                        const std::map<std::string, gtsam::NonlinearFactorGraph> &clustered_graphs,
-                                        const std::map<std::string, gtsam::Values> &clustered_values,
-                                        const gtsam::Values &values,
-                                        const StrLocationType &locations = StrLocationType())
-  {
+  static inline void SaveClusteredGraph(
+      std::ostream& stm,
+      const std::map<std::string, gtsam::NonlinearFactorGraph>&
+          clustered_graphs,
+      const std::map<std::string, gtsam::Values>& clustered_values,
+      const gtsam::Values& values,
+      const StrLocationType& locations = StrLocationType()) {
     // create map from key to value_cluster name for faster searching
     std::map<gtsam::Key, std::string> key_to_cluster;
-    for (auto value_cluster : clustered_values)
-    {
+    for (auto value_cluster : clustered_values) {
       std::string cluster_name = value_cluster.first;
       // std::cout << "value cluster: " << cluster_name << "\n";
-      for (const auto &key : value_cluster.second.keys())
-      {
+      for (const auto& key : value_cluster.second.keys()) {
         key_to_cluster[key] = cluster_name;
       }
     }
@@ -535,69 +534,63 @@ class JsonSaver {
     std::vector<std::string> graphs_strings;
 
     // add clustered values
-    for (const auto &it : clustered_values)
-    {
+    for (const auto& it : clustered_values) {
       std::string cluster_name = it.first;
-      const gtsam::Values &values = it.second;
+      const gtsam::Values& values = it.second;
 
       std::vector<AttributeType> attributes;
       // name
-      attributes.emplace_back(Quoted("name"),
-                              Quoted(cluster_name));
+      attributes.emplace_back(Quoted("name"), Quoted(cluster_name));
 
       // location
-      if (locations.find(cluster_name) != locations.end())
-      {
+      if (locations.find(cluster_name) != locations.end()) {
         const auto loc_str = GetVector(locations.at(cluster_name));
         attributes.emplace_back(Quoted("location"), loc_str);
       }
 
       // values
       std::vector<std::string> varaible_names;
-      for (const gtsam::Key &key : values.keys())
-      {
+      for (const gtsam::Key& key : values.keys()) {
         varaible_names.emplace_back(GetName(key));
       }
-      attributes.emplace_back(JsonSaver::Quoted("value"), Quoted(JsonList(varaible_names, -1)));
+      attributes.emplace_back(JsonSaver::Quoted("value"),
+                              Quoted(JsonList(varaible_names, -1)));
       values_strings.emplace_back(JsonDict(attributes));
     }
 
     // add clustered graphs
-    for (const auto &it : clustered_graphs)
-    {
+    for (const auto& it : clustered_graphs) {
       std::string cluster_name = it.first;
-      const gtsam::NonlinearFactorGraph &graph = it.second;
+      const gtsam::NonlinearFactorGraph& graph = it.second;
 
-      // std::cout << "graph cluster: " << cluster_name << "\tsize:" << graph.size() << "\n";
+      // std::cout << "graph cluster: " << cluster_name << "\tsize:" <<
+      // graph.size() << "\n";
 
       std::vector<AttributeType> attributes;
       // name
-      attributes.emplace_back(Quoted("name"),
-                              Quoted(cluster_name));
+      attributes.emplace_back(Quoted("name"), Quoted(cluster_name));
 
       // varaible clusters
       std::set<std::string> values_cluster_names;
-      for (const auto &factor : graph)
-      {
-        for (const auto &key : factor->keys())
-        {
+      for (const auto& factor : graph) {
+        for (const auto& key : factor->keys()) {
           values_cluster_names.insert(Quoted(key_to_cluster[key]));
         }
       }
-      std::vector<std::string> vec_cluster_names(values_cluster_names.begin(), values_cluster_names.end());
-      attributes.emplace_back(Quoted("variables"), JsonList(vec_cluster_names, -1));
+      std::vector<std::string> vec_cluster_names(values_cluster_names.begin(),
+                                                 values_cluster_names.end());
+      attributes.emplace_back(Quoted("variables"),
+                              JsonList(vec_cluster_names, -1));
 
       // calculate errors
       double error = 0;
-      for (const auto &factor : graph)
-      {
+      for (const auto& factor : graph) {
         error += factor->error(values);
       }
       attributes.emplace_back(Quoted("error"), std::to_string(error));
 
       // location
-      if (locations.find(cluster_name) != locations.end())
-      {
+      if (locations.find(cluster_name) != locations.end()) {
         const auto loc_str = GetVector(locations.at(cluster_name));
         attributes.emplace_back(Quoted("location"), loc_str);
       }
@@ -737,6 +730,4 @@ class StorageManager {
 
 // const std::string JsonSaver::kQuote_ = "\"";
 
-}  // namespace gtsam
-
-#endif   // GTDYNAMICS_UTILS_JSONSAVER_H_
+}  // namespace gtdynamics

@@ -8,7 +8,7 @@
 /**
  * @file  CollocationFactors.h
  * @brief collocation factor on link poses and twists.
- * @Author: Yetong Zhang
+ * @author Yetong Zhang
  */
 
 #pragma once
@@ -23,66 +23,69 @@
 
 namespace gtdynamics {
 
-/** predict link pose
-    Keyword argument:
-        pose_i        -- link pose at current time step
-        twistdt       -- link twist * dt
-    Returns:
-        pose_j        -- link pose at next time step
-*/
+/**
+ * Predict link pose
+ * @param pose_t0 link pose at current time step
+ * @param twistdt link twist * dt
+ *
+ * @return pose_t1 link pose at next time step
+ */
 gtsam::Pose3 predictPose(
-    const gtsam::Pose3 &pose_i, const gtsam::Vector6 &twistdt,
-    gtsam::OptionalJacobian<6, 6> H_pose_i = boost::none,
+    const gtsam::Pose3 &pose_t0, const gtsam::Vector6 &twistdt,
+    gtsam::OptionalJacobian<6, 6> H_pose_t0 = boost::none,
     gtsam::OptionalJacobian<6, 6> H_twistdt = boost::none) {
   gtsam::Matrix6 Hexp;
-  gtsam::Pose3 jTi = gtsam::Pose3::Expmap(twistdt, Hexp);
+  gtsam::Pose3 t1Tt0 = gtsam::Pose3::Expmap(twistdt, Hexp);
 
-  gtsam::Matrix6 pose_j_H_jTi;
-  auto pose_j = pose_i.compose(jTi, H_pose_i, H_twistdt ? & pose_j_H_jTi : nullptr);
+  gtsam::Matrix6 pose_t1_H_t1Tt0;
+  auto pose_t1 =
+      pose_t0.compose(t1Tt0, H_pose_t0, H_twistdt ? &pose_t1_H_t1Tt0 : nullptr);
   if (H_twistdt) {
-    *H_twistdt = pose_j_H_jTi * (Hexp);
+    *H_twistdt = pose_t1_H_t1Tt0 * (Hexp);
   }
-  return pose_j;
+  return pose_t1;
 }
 
-/** EulerPoseColloFactor is a four-way nonlinear factor between link pose of
- * current and next time steps*/
+/**
+ * EulerPoseColloFactor is a four-way nonlinear factor between link pose of
+ * current and next time steps
+ */
 class EulerPoseColloFactor
     : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, double> {
  private:
-  typedef EulerPoseColloFactor This;
+  using This = EulerPoseColloFactor;
   using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, double>;
 
  public:
-  EulerPoseColloFactor(gtsam::Key pose_key_i, gtsam::Key pose_key_j,
+  EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                        gtsam::Key twist_key, gtsam::Key dt_key,
                        const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, pose_key_i, pose_key_j, twist_key, dt_key) {}
+      : Base(cost_model, pose_t0_key, pose_t1_key, twist_key, dt_key) {}
 
   virtual ~EulerPoseColloFactor() {}
 
-  /** evaluate link pose errors
-      Keyword argument:
-          pose_i         -- link pose of current step
-          pose_j         -- link pose of next step
-          twist          -- link twist
-          dt             -- duration of time step
-  */
+  /**
+   * Evaluate link pose errors
+   * @param pose_t0 link pose of current step
+   * @param pose_t1 link pose of next step
+   * @param twist link twist
+   * @param dt duration of time step
+   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j,
+      const gtsam::Pose3 &pose_t0, const gtsam::Pose3 &pose_t1,
       const gtsam::Vector6 &twist, const double &dt,
-      boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
+      boost::optional<gtsam::Matrix &> H_pose_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_pose_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_dt = boost::none) const override {
     gtsam::Vector6 twistdt = twist * dt;
     gtsam::Matrix6 H_twistdt;
-    auto pose_j_hat = predictPose(pose_i, twistdt, H_pose_i, H_twistdt);
-    gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
-    if (H_pose_j) {
-      *H_pose_j = -gtsam::I_6x6;
+    auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
+    gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+    if (H_pose_t1) {
+      *H_pose_t1 = -gtsam::I_6x6;
     }
     if (H_twist) {
       *H_twist = H_twistdt * dt;
@@ -93,13 +96,13 @@ class EulerPoseColloFactor
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -108,7 +111,7 @@ class EulerPoseColloFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
@@ -117,68 +120,72 @@ class EulerPoseColloFactor
   }
 };
 
-/** TrapezoidalPoseColloFactor is a five-way nonlinear factor between link pose
- * of current and next time steps*/
+/**
+ * TrapezoidalPoseColloFactor is a five-way nonlinear factor between link pose
+ * of current and next time steps
+ */
 class TrapezoidalPoseColloFactor
     : public gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  typedef TrapezoidalPoseColloFactor This;
-  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3, gtsam::Vector6,
-                                   gtsam::Vector6, double>;
+  using This = TrapezoidalPoseColloFactor;
+  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
+                                        gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
   TrapezoidalPoseColloFactor(
-      gtsam::Key pose_key_i, gtsam::Key pose_key_j, gtsam::Key twist_i_key,
-      gtsam::Key twist_j_key, gtsam::Key dt_key,
+      gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
+      gtsam::Key twist_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, pose_key_i, pose_key_j, twist_i_key, twist_j_key,
+      : Base(cost_model, pose_t0_key, pose_t1_key, twist_t0_key, twist_t1_key,
              dt_key) {}
 
   virtual ~TrapezoidalPoseColloFactor() {}
 
-  /** evaluate link pose errors
-      Keyword argument:
-          pose_i         -- link pose of current step
-          pose_j         -- link pose of next step
-          twist_i        -- link twist of current step
-          twist_j        -- link twist of next step
-          dt             -- duration of time step
+  /**
+   * Evaluate link pose errors
+
+   * @param pose_t0 link pose of current step
+   * @param pose_t1 link pose of next step
+   * @param twist_t0 link twist of current step
+   * @param twist_t1 link twist of next step
+   * @param dt duration of time step
   */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose_i, const gtsam::Pose3 &pose_j,
-      const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
-      const double &dt, boost::optional<gtsam::Matrix &> H_pose_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_pose_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
+      const gtsam::Pose3 &pose_t0, const gtsam::Pose3 &pose_t1,
+      const gtsam::Vector6 &twist_t0, const gtsam::Vector6 &twist_t1,
+      const double &dt,
+      boost::optional<gtsam::Matrix &> H_pose_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_pose_t1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_dt = boost::none) const override {
-    gtsam::Vector6 twistdt = 0.5 * dt * (twist_i + twist_j);
+    gtsam::Vector6 twistdt = 0.5 * dt * (twist_t0 + twist_t1);
     gtsam::Matrix6 H_twistdt;
-    auto pose_j_hat = predictPose(pose_i, twistdt, H_pose_i, H_twistdt);
-    gtsam::Vector6 error = pose_j.logmap(pose_j_hat);
-    if (H_pose_j) {
-      *H_pose_j = -gtsam::I_6x6;
+    auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
+    gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+    if (H_pose_t1) {
+      *H_pose_t1 = -gtsam::I_6x6;
     }
-    if (H_twist_i) {
-      *H_twist_i = 0.5 * dt * H_twistdt;
+    if (H_twist_t0) {
+      *H_twist_t0 = 0.5 * dt * H_twistdt;
     }
-    if (H_twist_j) {
-      *H_twist_j = 0.5 * dt * H_twistdt;
+    if (H_twist_t1) {
+      *H_twist_t1 = 0.5 * dt * H_twistdt;
     }
     if (H_dt) {
-      *H_dt = H_twistdt * (0.5 * (twist_i + twist_j));
+      *H_dt = H_twistdt * (0.5 * (twist_t0 + twist_t1));
     }
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -187,7 +194,7 @@ class TrapezoidalPoseColloFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
@@ -196,45 +203,47 @@ class TrapezoidalPoseColloFactor
   }
 };
 
-/** EulerTwistColloFactor is a four-way nonlinear factor between link twist of
- * current and next time steps*/
+/**
+ * EulerTwistColloFactor is a four-way nonlinear factor between link twist of
+ * current and next time steps
+ */
 class EulerTwistColloFactor
     : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, double> {
  private:
-  typedef EulerTwistColloFactor This;
-  typedef gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, double>
-      Base;
+  using This = EulerTwistColloFactor;
+  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                        gtsam::Vector6, double>;
 
  public:
-  EulerTwistColloFactor(gtsam::Key twist_key_i, gtsam::Key twist_key_j,
+  EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                         gtsam::Key accel_key, gtsam::Key dt_key,
                         const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, twist_key_i, twist_key_j, accel_key, dt_key) {}
+      : Base(cost_model, twist_t0_key, twist_t1_key, accel_key, dt_key) {}
 
   virtual ~EulerTwistColloFactor() {}
 
-  /** evaluate link twist errors
-      Keyword argument:
-          twist_i        -- link twist of current step
-          twist_j        -- link twist of next step
-          accel          -- link twist acceleration
-          dt             -- duration of time step
+  /**
+   * Evaluate link twist errors
+
+   * @param twist_t0 link twist of current step
+   * @param twist_t1 link twist of next step
+   * @param accel    link twist acceleration
+   * @param dt       duration of time step
   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
+      const gtsam::Vector6 &twist_t0, const gtsam::Vector6 &twist_t1,
       const gtsam::Vector6 &accel, const double &dt,
-      boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_accel = boost::none,
       boost::optional<gtsam::Matrix &> H_dt = boost::none) const override {
-    gtsam::Vector6 error = twist_i + dt * accel - twist_j;
-    if (H_twist_j) {
-      *H_twist_j = -gtsam::I_6x6;
+    gtsam::Vector6 error = twist_t0 + dt * accel - twist_t1;
+    if (H_twist_t1) {
+      *H_twist_t1 = -gtsam::I_6x6;
     }
-    if (H_twist_i) {
-      *H_twist_i = gtsam::I_6x6;
+    if (H_twist_t0) {
+      *H_twist_t0 = gtsam::I_6x6;
     }
     if (H_accel) {
       *H_accel = gtsam::I_6x6 * dt;
@@ -245,13 +254,13 @@ class EulerTwistColloFactor
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -260,7 +269,7 @@ class EulerTwistColloFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
@@ -269,70 +278,73 @@ class EulerTwistColloFactor
   }
 };
 
-/** TrapezoidalTwistColloFactor is a four-way nonlinear factor between link
- * twist of current and next time steps*/
+/**
+ * TrapezoidalTwistColloFactor is a four-way nonlinear factor between link
+ * twist of current and next time steps
+ */
 class TrapezoidalTwistColloFactor
     : public gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  typedef TrapezoidalTwistColloFactor This;
-  typedef gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
-                                   gtsam::Vector6, gtsam::Vector6, double>
-      Base;
+  using This = TrapezoidalTwistColloFactor;
+  using Base = gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
+                                        gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
   TrapezoidalTwistColloFactor(
-      gtsam::Key twist_key_i, gtsam::Key twist_key_j, gtsam::Key accel_key_i,
-      gtsam::Key accel_key_j, gtsam::Key dt_key,
+      gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
+      gtsam::Key accel_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model)
-      : Base(cost_model, twist_key_i, twist_key_j, accel_key_i, accel_key_j,
+      : Base(cost_model, twist_t0_key, twist_t1_key, accel_t0_key, accel_t1_key,
              dt_key) {}
 
   virtual ~TrapezoidalTwistColloFactor() {}
 
-  /** evaluate link twist errors
-      Keyword argument:
-          twist_i        -- link twist of current step
-          twist_j        -- link twist of next step
-          accel_i        -- link twist acceleration of current step
-          accel_j        -- link twist acceleration of next step
-          dt             -- duration of time step
-  */
+  /**
+   * Evaluate link twist errors
+   *
+   * @param twist_t0 link twist of current step
+   * @param twist_t1 link twist of next step
+   * @param accel_t0 link twist acceleration of current step
+   * @param accel_t1 link twist acceleration of next step
+   * @param dt duration of time step
+   */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist_i, const gtsam::Vector6 &twist_j,
-      const gtsam::Vector6 &accel_i, const gtsam::Vector6 &accel_j,
+      const gtsam::Vector6 &twist_t0, const gtsam::Vector6 &twist_t1,
+      const gtsam::Vector6 &accel_t0, const gtsam::Vector6 &accel_t1,
       const double &dt,
-      boost::optional<gtsam::Matrix &> H_twist_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_accel_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_accel_j = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_twist_t1 = boost::none,
+      boost::optional<gtsam::Matrix &> H_accel_t0 = boost::none,
+      boost::optional<gtsam::Matrix &> H_accel_t1 = boost::none,
       boost::optional<gtsam::Matrix &> H_dt = boost::none) const override {
-    gtsam::Vector6 error = twist_i + 0.5 * dt * (accel_i + accel_j) - twist_j;
-    if (H_twist_j) {
-      *H_twist_j = -gtsam::I_6x6;
+    gtsam::Vector6 error =
+        twist_t0 + 0.5 * dt * (accel_t0 + accel_t1) - twist_t1;
+    if (H_twist_t1) {
+      *H_twist_t1 = -gtsam::I_6x6;
     }
-    if (H_twist_i) {
-      *H_twist_i = gtsam::I_6x6;
+    if (H_twist_t0) {
+      *H_twist_t0 = gtsam::I_6x6;
     }
-    if (H_accel_i) {
-      *H_accel_i = 0.5 * dt * gtsam::I_6x6;
+    if (H_accel_t0) {
+      *H_accel_t0 = 0.5 * dt * gtsam::I_6x6;
     }
-    if (H_accel_j) {
-      *H_accel_j = 0.5 * dt * gtsam::I_6x6;
+    if (H_accel_t1) {
+      *H_accel_t1 = 0.5 * dt * gtsam::I_6x6;
     }
     if (H_dt) {
-      *H_dt = 0.5 * (accel_i + accel_j);
+      *H_dt = 0.5 * (accel_t0 + accel_t1);
     }
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -341,7 +353,7 @@ class TrapezoidalTwistColloFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
@@ -349,4 +361,5 @@ class TrapezoidalTwistColloFactor
         "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
   }
 };
+
 }  // namespace gtdynamics

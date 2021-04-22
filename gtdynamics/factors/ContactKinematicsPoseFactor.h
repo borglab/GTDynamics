@@ -8,49 +8,52 @@
 /**
  * @file  ContactKinematicsPoseFactor.h
  * @brief Factor to enforce zero height at the contact point.
- * @Author: Alejandro Escontrela
+ * @author: Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_FACTORS_CONTACTKINEMATICSPOSEFACTOR_H_
-#define GTDYNAMICS_FACTORS_CONTACTKINEMATICSPOSEFACTOR_H_
+#pragma once
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-
-#include <boost/optional.hpp>
 
 #include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
-/** ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces
- * zero height at the contact point. This factor assumes that the ground is
- * flat and level. */
+/**
+ * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces zero
+ * height at the contact point. This factor assumes that the ground is flat and
+ * level.
+ */
 class ContactKinematicsPoseFactor
     : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  private:
-  typedef ContactKinematicsPoseFactor This;
-  typedef gtsam::NoiseModelFactor1<gtsam::Pose3> Base;
+  using This = ContactKinematicsPoseFactor;
+  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
+
   gtsam::Pose3 cTcom_;
   gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
 
   gtsam::Matrix13 H_err_;
 
  public:
-  /** Contact kinematics factor for link end to remain in contact with the
-     ground. Keyword argument: 
-     pose_key   -- The key corresponding to the link's Com pose. 
-     cost_model -- Noise model associated with this factor.
-     cTcom -- Static transform from link com to link end (where contact is made). 
-     gravity -- Gravity vector in the spatial frame. Used to calculate the "up"
-     direction.
-     ground_plane_height -- Height of the ground plane in the world frame.
+  /**
+   * Contact kinematics factor for link end to remain in contact with the
+   * ground.
+   *
+   * @param pose_key The key corresponding to the link's CoM pose.
+   * @param cost_model Noise model associated with this factor.
+   * @param cTcom Static transform from link CoM to point of contact.
+   * @param gravity Gravity vector in the spatial frame. Used to calculate the
+   * "up" direction.
+   * @param ground_plane_height Height of the ground plane in the world frame.
    */
   ContactKinematicsPoseFactor(
       gtsam::Key pose_key,
@@ -70,10 +73,10 @@ class ContactKinematicsPoseFactor
   virtual ~ContactKinematicsPoseFactor() {}
 
  public:
-  /** Evaluate contact errors.
-      Keyword argument:
-          pose -- This link's COM pose in the spatial frame.
-  */
+  /**
+   * Evaluate contact errors.
+   * @param pose This link's COM pose in the spatial frame.
+   */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
@@ -93,13 +96,13 @@ class ContactKinematicsPoseFactor
     return error;
   }
 
-  // @return a deep copy of this factor
+  //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** print contents */
+  /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
@@ -108,14 +111,13 @@ class ContactKinematicsPoseFactor
   }
 
  private:
-  /** Serialization function */
+  /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) { // NOLINT
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
 };
-}  // namespace gtdynamics
 
-#endif  // GTDYNAMICS_FACTORS_CONTACTKINEMATICSPOSEFACTOR_H_
+}  // namespace gtdynamics

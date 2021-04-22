@@ -8,83 +8,87 @@
 /**
  * @file  Phase.h
  * @brief Utility methods for generating Phase objects.
- * @Author: Disha Das
+ * @author: Disha Das
  */
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
+#include <iosfwd>
 
-using gtdynamics::ContactPoints, gtdynamics::ContactPoint,
-    std::vector, std::string;
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
 
-namespace gtdynamics
-{
+namespace gtdynamics {
+/**
+ * @class Phase class stores information about a robot stance
+ * and its duration.
+ */
+class Phase {
+ protected:
+  Robot robot_;                  ///< Robot configuration of this stance
+  ContactPoints contact_points_; ///< Contact Points
+  int num_time_steps_;           ///< Number of time steps in this phase
+
+ public:
+  /// Constructor
+  Phase(const Robot &robot_configuration, const int &num_time_steps)
+      : robot_(robot_configuration), num_time_steps_(num_time_steps) {}
+
+  /** @fn Adds a contact point in the phase.
+   *
+   * @param[in] link             Name of link in the robot_configuration.
+   * @param[in] point            Point of contact on link.
+   * @param[in] contact_height   Height of contact point from ground.
+   */
+  void addContactPoint(const std::string &link_name, const gtsam::Point3 &point,
+                       double contact_height) {
+    // Check if link exists in the robot
+    robot_.link(link_name);
+    auto ret = contact_points_.emplace(link_name,
+                                       ContactPoint{point, 0, contact_height});
+    if (!ret.second) {
+      throw std::runtime_error("Multiple contact points for link " + link_name);
+    }
+  }
+
   /**
-  * @class Phase class stores information about a robot stance
-  * and its duration.
-  */
-  class Phase
-  {
-  protected:
-    Robot robot_configuration_ ;        ///< Robot configuration of this stance
-    ContactPoints contact_points_;      ///< Contact Points
-    int num_time_steps_;                ///< Number of time steps in this phase
-
-  public:
-    /// Constructor
-    Phase(const Robot& robot_configuration, const int& num_time_steps)
-                            : robot_configuration_(robot_configuration), 
-                              num_time_steps_(num_time_steps) {}
-
-    /** @fn Adds a contact point in the phase.
-     * 
-     * @param[in] link             Name of link in the robot_configuration.
-     * @param[in] point            Point of contact on link.
-     * @param[in] contact_height   Height of contact point from ground.
-     */
-    void addContactPoint(const string& link , const gtsam::Point3& point, const double& contact_height) {
-        // Check if link exists in the robot
-        robot_configuration_.getLinkByName(link);
-
-        auto ret = contact_points_.emplace(link, ContactPoint{point, 0, contact_height});
-        if(!ret.second) throw std::runtime_error("Multiple contact points for link " +link+" !");
+   * @fn Add multiple contact points.
+   *
+   * @param[in] link_names            List of link_names.
+   * @param[in] point            Point of contact on link.
+   * @param[in] contact_height   Height of contact point from ground.
+   */
+  void addContactPoints(const std::vector<std::string> &link_names,
+                        const gtsam::Point3 &point, double contact_height) {
+    for (auto &&link_name : link_names) {
+      addContactPoint(link_name, point, contact_height);
     }
+  }
 
-    /**
-     * @fn Add multiple contact points.
-     * 
-     * @param[in] links            List of links.
-     * @param[in] point            Point of contact on link.
-     * @param[in] contact_height   Height of contact point from ground.
-     */
-    void addContactPoints(const vector<string>& links,
-                          const gtsam::Point3& point,
-                          const double& contact_height) {
-      for (auto&& link : links) {
-        addContactPoint(link, point, contact_height);
-      }
+  /// Returns the robot configuration of the stance
+  const Robot &robot() const { return robot_; }
+
+  /// Returns all the contact points in the stance
+  const ContactPoints &contactPoints() const { return contact_points_; }
+
+  /// Returns the contact point object of link.
+  const ContactPoint &
+  getContactPointAtLink(const std::string &link_name) const {
+    if (contact_points_.find(link_name) == contact_points_.end()) {
+      throw std::runtime_error("Link " + link_name + " has no contact point!");
     }
+    return contact_points_.at(link_name);
+  }
 
-    /// Returns the robot configuration of the stance
-    const Robot getRobotConfiguration() const { return robot_configuration_;}
+  /// Returns the number of time steps in this phase
+  int numTimeSteps() const { return num_time_steps_; }
 
-    /// Returns all the contact points in the stance
-    const ContactPoints getAllContactPoints() const { return contact_points_;}
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const Phase &phase);
 
-    /// Returns the contact point object of link.
-    const ContactPoint getContactPointAtLink(const string& link) {
-      if(contact_points_.find(link) == contact_points_.end())
-        throw std::runtime_error("Link " + link + " has no contact point!");
-      return contact_points_[link];
-    }
-
-    /// Returns the number of time steps in this phase
-    const int numTimeSteps() const { return num_time_steps_;}
-
-  };
-} //namespace gtdynamics
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
+};
+} // namespace gtdynamics

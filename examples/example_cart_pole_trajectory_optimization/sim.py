@@ -18,10 +18,10 @@ quad_id = p.loadURDF("cart_pole.urdf", [0, 0, 0], [0, 0, 0, 1], False,
                      True)
 t = 0
 
+
 def set_joint_angle(joint_id: float, joint_angle: float, joint_vel: float):
     """Actuate to the suppplied joint angles using PD control."""
     p.setJointMotorControl2(quad_id, joint_id, p.VELOCITY_CONTROL, force=500)
-
 
     p.setJointMotorControl2(bodyUniqueId=quad_id,
                             jointIndex=joint_id,
@@ -29,8 +29,8 @@ def set_joint_angle(joint_id: float, joint_angle: float, joint_vel: float):
                             targetPosition=joint_angle,
                             targetVelocity=joint_vel)
 
-while True:
 
+while True:
     p.stepSimulation()
     set_joint_angle(0, np.sin(t), 1 - np.sin(t))
     set_joint_angle(1, np.pi * np.cos(t), np.cos(t))

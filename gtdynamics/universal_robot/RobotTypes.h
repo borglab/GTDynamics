@@ -8,28 +8,15 @@
 /**
  * @file  RobotTypes.h
  * @brief Robot smart pointer types.
- * @Author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#pragma once
 
-#include <memory>
+#include <boost/shared_ptr.hpp>
 
-#define LINK_TYPEDEF_CLASS_POINTER(Class)                     \
-  class Class;                                                \
-  typedef std::shared_ptr<Class> Class##SharedPtr;            \
-  typedef std::shared_ptr<const Class> Class##ConstSharedPtr; \
-  typedef std::weak_ptr<Class> Class##WeakPtr
-
-namespace gtdynamics {
-
-LINK_TYPEDEF_CLASS_POINTER(Link);
-LINK_TYPEDEF_CLASS_POINTER(Joint);
-LINK_TYPEDEF_CLASS_POINTER(ScrewJoint);
-LINK_TYPEDEF_CLASS_POINTER(PrismaticJoint);
-LINK_TYPEDEF_CLASS_POINTER(RevoluteJoint);
-
-}  // namespace gtdynamics.
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_ROBOTTYPES_H_
+#define LINK_TYPEDEF_CLASS_POINTER(Class)                       \
+  class Class;                                                  \
+  typedef boost::shared_ptr<Class> Class##SharedPtr;            \
+  typedef boost::shared_ptr<const Class> Class##ConstSharedPtr; \
+  typedef boost::weak_ptr<Class> Class##WeakPtr

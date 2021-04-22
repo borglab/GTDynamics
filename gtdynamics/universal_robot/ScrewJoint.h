@@ -16,8 +16,7 @@
  * @author Gerry Chen
  */
 
-#ifndef GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
-#define GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_
+#pragma once
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
@@ -30,8 +29,10 @@ namespace gtdynamics {
  */
 class ScrewJoint : public ScrewJointBase {
  protected:
-  /// Returns the screw axis in the joint frame given the joint axis and thread
-  /// pitch
+  /**
+   * Returns the screw axis in the joint frame given the joint axis and thread
+   * pitch.
+   */
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis, double thread_pitch) {
     gtsam::Vector6 screw_axis;
     screw_axis << axis, axis * thread_pitch / 2 / M_PI;
@@ -40,28 +41,27 @@ class ScrewJoint : public ScrewJointBase {
 
  public:
   /**
-   * @brief Create ScrewJoint using Parameters, joint name, joint pose in
+   * @brief Create ScrewJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
+   * @param[in] id            id for keys
    * @param[in] name          Name of the joint
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    Joint::Parameters struct
+   * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
    */
-  ScrewJoint(const std::string &name, const gtsam::Pose3 &wTj,
+  ScrewJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-             const Parameters &parameters, const gtsam::Vector3 &axis,
+             const JointParams &parameters, const gtsam::Vector3 &axis,
              double thread_pitch)
-      : ScrewJointBase(name, wTj, parent_link, child_link, parameters, axis,
+      : ScrewJointBase(id, name, wTj, parent_link, child_link, parameters, axis,
                        getScrewAxis(axis, thread_pitch)) {}
 
-  /// Return joint type for use in reconstructing robot from Parameters.
-  Type type() const { return Type::Screw; }
+  /// Return joint type for use in reconstructing robot from JointParams.
+  Type type() const override { return Type::Screw; }
 };
 
 }  // namespace gtdynamics
-
-#endif  // GTDYNAMICS_UNIVERSAL_ROBOT_SCREWJOINT_H_

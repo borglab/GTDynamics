@@ -6,9 +6,9 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testDynamicsGraph.cpp
- * @brief test forward and inverse dynamics factor graph
- * @Author: Yetong Zhang
+ * @file  testSimulator.cpp
+ * @brief test Simulator class
+ * @author: Yetong Zhang
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -24,38 +24,32 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 TEST(Simulate, simple_urdf) {
   using gtsam::assert_equal;
-  using simple_urdf::my_robot, simple_urdf::gravity, simple_urdf::planar_axis;
+  using simple_urdf::robot, simple_urdf::gravity, simple_urdf::planar_axis;
   using std::vector;
-  Robot::JointValues joint_angles, joint_vels, torques;
-  joint_angles["j1"] = 0;
-  joint_vels["j1"] = 0;
-  torques["j1"] = 1;
-  auto simulator = Simulator(my_robot, joint_angles, joint_vels,
-                                         gravity, planar_axis);
+  gtsam::Values initial_values, torques;
+  robot.print();
+  InsertTorque(&torques, 0, 1.0);
+
+  Simulator simulator(robot, initial_values, gravity, planar_axis);
 
   int num_steps = 1 + 1;
   double dt = 1;
-  vector<Robot::JointValues> torques_seq(num_steps, torques);
+  vector<gtsam::Values> torques_seq(num_steps, torques);
   auto results = simulator.simulate(torques_seq, dt);
 
-  int t = 1;
-  gtsam::Vector qs =
-      DynamicsGraph::jointAngles(my_robot, results, t);
-  gtsam::Vector vs = DynamicsGraph::jointVels(my_robot, results, t);
-  gtsam::Vector as =
-      DynamicsGraph::jointAccels(my_robot, results, t);
+  // GTD_PRINT(results);
 
   double acceleration = 0.0625;
   double expected_qAccel = acceleration;
   double expected_qVel = acceleration * dt;
   double expected_qAngle = acceleration * 0.5 * dt * dt;
-  EXPECT(assert_equal(expected_qAngle, qs[0]));
-  EXPECT(assert_equal(expected_qVel, vs[0]));
-  EXPECT(assert_equal(expected_qAccel, as[0]));
+  EXPECT(assert_equal(expected_qAngle, JointAngle(results, 0)));
+  EXPECT(assert_equal(expected_qVel, JointVel(results, 0)));
+  EXPECT(assert_equal(expected_qAccel, JointAccel(results, 0)));
 }
 
 int main() {

@@ -8,17 +8,14 @@
 /**
  * @file  DynamicsSymbol.cpp
  * @brief Symbols to represent keys in dynamics factor graph.
- * @Author: Yetong Zhang and Stephanie McCormick
+ * @author Yetong Zhang and Stephanie McCormick
  */
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
-
-#define kMax_uchar_ std::numeric_limits<unsigned char>::max()
 
 using gtsam::Key;
 namespace gtdynamics {
@@ -37,7 +34,7 @@ DynamicsSymbol::DynamicsSymbol(const DynamicsSymbol& key)
 
 /* ************************************************************************* */
 DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                     unsigned char joint_idx, std::uint64_t t)
+                               unsigned char joint_idx, std::uint64_t t)
     : link_idx_(link_idx), joint_idx_(joint_idx), t_(t) {
   if (s.length() > 2) {
     throw std::runtime_error(
@@ -80,19 +77,7 @@ DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s,
 }
 
 /* ************************************************************************* */
-DynamicsSymbol::DynamicsSymbol(const Key& key) {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
-  const Key ch1_mask = Key(kMax_uchar_) << (key_bits - ch1_bits);
-  const Key ch2_mask = Key(kMax_uchar_) << (key_bits - ch1_bits - ch2_bits);
-  const Key link_mask = Key(kMax_uchar_) << (time_bits + joint_bits);
-  const Key joint_mask = Key(kMax_uchar_) << time_bits;
-  const Key time_mask = ~(ch1_mask | ch2_mask | link_mask | joint_mask);
+DynamicsSymbol::DynamicsSymbol(const Key& key) {  
   c1_ = (unsigned char)((key & ch1_mask) >> (key_bits - ch1_bits));
   c2_ = (unsigned char)((key & ch2_mask) >> (key_bits - ch1_bits - ch2_bits));
   link_idx_ = (unsigned char)((key & link_mask) >> (time_bits + joint_bits));
@@ -102,13 +87,6 @@ DynamicsSymbol::DynamicsSymbol(const Key& key) {
 
 /* ************************************************************************* */
 DynamicsSymbol::operator Key() const {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
   Key ch1_comp = Key(c1_) << (key_bits - ch1_bits);
   Key ch2_comp = Key(c2_) << (key_bits - ch1_bits - ch2_bits);
   Key link_comp = Key(link_idx_) << (time_bits + joint_bits);
@@ -118,8 +96,23 @@ DynamicsSymbol::operator Key() const {
 }
 
 /* ************************************************************************* */
+std::string DynamicsSymbol::label() const {
+  std::string s = "";
+  if (c1_ != 0) {
+    s += c1_;
+  }
+  if (c2_ != 0) {
+    s += c2_;
+  }
+  return s;
+}
+
+/* ************************************************************************* */
 void DynamicsSymbol::print(const std::string& s) const {
-  std::cout << s << ": " << (std::string)(*this) << std::endl;
+  if (s != "") {
+    std::cout << s << ": ";
+  }
+  std::cout << std::string(*this) << std::endl;
 }
 
 /* ************************************************************************* */
@@ -129,15 +122,14 @@ DynamicsSymbol::operator std::string() const {
     s += "[" + std::to_string((int)(link_idx_)) + "]";
   }
   if (joint_idx_ != kMax_uchar_) {
-    s += "(" + std::to_string((int)(joint_idx_))  + ")";
+    s += "(" + std::to_string((int)(joint_idx_)) + ")";
   }
   s += std::to_string(t_);
   return s;
 }
 
 std::string _GTDKeyFormatter(Key key) {
-  const DynamicsSymbol asDynamicsSymbol(key);
-  return (std::string) asDynamicsSymbol;
+  return std::string(DynamicsSymbol(key));
 }
 
 /* ************************************************************************* */

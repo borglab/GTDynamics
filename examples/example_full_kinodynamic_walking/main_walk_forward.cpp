@@ -35,13 +35,15 @@
 
 #define GROUND_HEIGHT -0.191839
 
-using gtdynamics::PoseKey, gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
-    gtdynamics::JointAngleKey, gtdynamics::JointVelKey, gtsam::Point3,
+using gtsam::Vector6, gtsam::Vector3, gtsam::Vector,
+    gtsam::Point3,
     gtsam::Rot3, gtsam::Pose3, gtsam::Values,
-    gtdynamics::JointAccelKey, gtdynamics::TorqueKey, gtdynamics::ContactPoints,
-    gtdynamics::ContactPoint, gtdynamics::ZeroValues, gtdynamics::PhaseKey,
-    gtdynamics::TwistKey, gtdynamics::TwistAccelKey, gtdynamics::Robot,
+    gtdynamics::ContactPoints,
+    gtdynamics::ContactPoint, gtdynamics::ZeroValues,
+    gtdynamics::Robot,
     std::vector, std::string, gtsam::noiseModel::Isotropic;
+
+using namespace gtdynamics;
 
 int main(int argc, char** argv) {
 
@@ -214,14 +216,14 @@ int main(int argc, char** argv) {
       for (auto&& pcl : phase_contact_links)
         // TODO(aescontrela): Use correct contact point for each link.
         objective_factors.add(gtdynamics::PointGoalFactor(
-          PoseKey(link_map[pcl]->getID(), t), objectives_model_3,
+          internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
           Pose3(Rot3(), c0.contact_point), Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.03)));
 
       double h = GROUND_HEIGHT + 0.05 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
       for (auto&& psl : phase_swing_links)
         objective_factors.add(gtdynamics::PointGoalFactor(
-          PoseKey(link_map[psl]->getID(), t), objectives_model_3,
+          internal::PoseKey(link_map[psl]->id(), t), objectives_model_3,
           Pose3(Rot3(), c0.contact_point), Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
     }
   }
@@ -233,7 +235,7 @@ int main(int argc, char** argv) {
                   sigma_objectives).finished());
   for (int t = 0; t <= t_f; t++)
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-      PoseKey(base_link->getID(), t),
+      internal::PoseKey(base_link->id(), t),
       gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 0.0, 0.13)),
       base_pose_model));
 
@@ -241,42 +243,42 @@ int main(int argc, char** argv) {
   for (auto&& link : vision60.links()) {
     // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        PoseKey(link->getID(), 0), link->wTcom(), dynamics_model_6));
+        internal::PoseKey(link->id(), 0), link->wTcom(), dynamics_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->getID(), 0), Vector6::Zero(), dynamics_model_6));
+        internal::TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
 
     // Final link twists, accelerations.
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistKey(link->getID(), t_f), Vector6::Zero(), objectives_model_6));
+        internal::TwistKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        TwistAccelKey(link->getID(), t_f), Vector6::Zero(),
+        internal::TwistAccelKey(link->id(), t_f), Vector6::Zero(),
         objectives_model_6));
   }
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAngleKey(joint->getID(), 0), 0.0, dynamics_model_1));
+        internal::JointAngleKey(joint->id(), 0), 0.0, dynamics_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), 0), 0.0, dynamics_model_1));
+        internal::JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
 
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointVelKey(joint->getID(), t_f), 0.0, objectives_model_1));
+        internal::JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        JointAccelKey(joint->getID(), t_f), 0.0, objectives_model_1));
+        internal::JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
   }
 
   // Add prior factor constraining all Phase keys to have duration of 1 / 240.
   for (int phase = 0; phase < phase_steps.size(); phase++)
     objective_factors.add(gtsam::PriorFactor<double>(
-        PhaseKey(phase), dt_des,
+        internal::PhaseKey(phase), dt_des,
         gtsam::noiseModel::Isotropic::Sigma(1, 1e-30)));
 
   // Add min torque objectives.
   for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          TorqueKey(joint->getID(), t),
+          internal::TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
@@ -312,18 +314,18 @@ int main(int argc, char** argv) {
       vector<string> vals;
       for (auto&& joint : vision60.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointAngleKey(joint->getID(), t))));
+            std::to_string(results.atDouble(internal::JointAngleKey(joint->id(), t))));
       for (auto&& joint : vision60.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointVelKey(joint->getID(), t))));
+            std::to_string(results.atDouble(internal::JointVelKey(joint->id(), t))));
       for (auto&& joint : vision60.joints())
         vals.push_back(
-            std::to_string(results.atDouble(JointAccelKey(joint->getID(), t))));
+            std::to_string(results.atDouble(internal::JointAccelKey(joint->id(), t))));
       for (auto&& joint : vision60.joints())
         vals.push_back(
-            std::to_string(results.atDouble(TorqueKey(joint->getID(), t))));
+            std::to_string(results.atDouble(internal::TorqueKey(joint->id(), t))));
 
-      vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
+      vals.push_back(std::to_string(results.atDouble(internal::PhaseKey(phase))));
 
       t++;
       string vals_str = boost::algorithm::join(vals, ",");
