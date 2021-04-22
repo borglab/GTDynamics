@@ -4,24 +4,25 @@ project(example_full_kinodynamic_walking C CXX)
 # Build Executables
 
 # Walk forward one meter.
-add_executable(main_walk_forward main_walk_forward.cpp)
-target_link_libraries(main_walk_forward PUBLIC gtdynamics)
-target_include_directories(main_walk_forward
-                           PUBLIC ${CMAKE_PREFIX_PATH}/include)
+set(WALK_FORWARD ${PROJECT_NAME}_walk_forward)
+add_executable(${WALK_FORWARD} main_walk_forward.cpp)
+target_link_libraries(${WALK_FORWARD} PUBLIC gtdynamics)
+target_include_directories(${WALK_FORWARD} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
-  main_walk_forward.run
-  COMMAND ./main_walk_forward
-  DEPENDS main_walk_forward
+  ${WALK_FORWARD}.run
+  COMMAND ./${WALK_FORWARD}
+  DEPENDS ${WALK_FORWARD}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
 
 # Rotate robot 90 degrees.
-add_executable(main_rotate main_rotate.cpp)
-target_link_libraries(main_rotate PUBLIC gtdynamics)
-target_include_directories(main_rotate PUBLIC ${CMAKE_PREFIX_PATH}/include)
+set(ROTATE ${PROJECT_NAME}_rotate)
+add_executable(${ROTATE} main_rotate.cpp)
+target_link_libraries(${ROTATE} PUBLIC gtdynamics)
+target_include_directories(${ROTATE} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
-    main_rotate.run
-  COMMAND ./main_rotate
-  DEPENDS main_rotate
+  ${ROTATE}.run
+  COMMAND ./${ROTATE}
+  DEPENDS ${ROTATE}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
