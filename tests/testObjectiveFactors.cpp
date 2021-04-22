@@ -24,11 +24,11 @@
 
 using namespace gtdynamics;
 
+using gtsam::assert_equal;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Vector3;
-using gtsam::assert_equal;
 using gtsam::noiseModel::Unit;
 
 auto kModel1 = Unit::Create(1);
@@ -97,32 +97,37 @@ TEST(Phase, AddGoals) {
   const gtsam::SharedNoiseModel &cost_model = nullptr;
 
   // Call AddStanceGoals function, creating 10 factors
-  AddStanceGoals(&factors, cost_model, point_com, goal_point, id, num_steps,
+  AddStanceGoals(&factors, num_steps, goal_point, cost_model, point_com, id,
                  k_start);
   EXPECT_LONGS_EQUAL(10, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
 
   // Regression, but realistic, at least in Z: 19.5 cm below body.
-  EXPECT(
-      assert_equal(Point3(0.289324, 0.1575, -0.194667), f->goalPoint(), 1e-5));
+  constexpr double expected_height = 0.194667;
+  Point3 expected(0.289324, 0.1575, -expected_height);
+  EXPECT(assert_equal(expected, f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
   EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
 
-  // Call AddSwingGoals function, creating 10 factors
-  Point3 step(0.10, 0, 0);  // move by 10 centimeters
-  AddSwingGoals(&factors, cost_model, point_com, goal_point, step, id,
-                num_steps, k_start);
-  EXPECT_LONGS_EQUAL(20, factors.size());
+  // Call AddSwingGoals function, creating 3 factors
+  Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps
+  gtsam::NonlinearFactorGraph swing_factors;
+  AddSwingGoals(&swing_factors, goal_point, step, 3, cost_model, point_com, id);
+  EXPECT_LONGS_EQUAL(3, swing_factors.size());
 
-  auto g = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
+  // Last goal point should have moved just in front of goal_point
+  auto g = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.front());
+  EXPECT(assert_equal<Point3>(
+      expected + Point3(0.01, 0, expected_height - 0.159079), g->goalPoint(),
+      1e-5));
 
-  // Last goal point should have moved exactly a step
-  EXPECT(assert_equal(Point3(goal_point + step), g->goalPoint(), 1e-5));
-
-  // Check that prediction error is zero.
-  EXPECT(assert_equal(Vector3(-0.1, 0, 0), g->evaluateError(bTcom)));
+  // Last goal point should have moved just shy of goal_point + step
+  auto h = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.back());
+  EXPECT(assert_equal<Point3>(
+      expected + step + Point3(-0.01, 0, expected_height - 0.139439),
+      h->goalPoint(), 1e-5));
 }
 
 int main() {

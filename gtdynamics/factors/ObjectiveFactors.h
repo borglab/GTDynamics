@@ -168,21 +168,54 @@ void add_joints_at_rest_objectives(
 /**
  * @brief  Add PointGoalFactors for a stance foot.
  * @param factors graph to add to.
+ *
+ * @param num_steps number of time steps
+ * @param goal_point end effector goal, in world coordinates
+ *
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
- * @param goal_point end effector goal, in world coordinates
  * @param i The link id.
- * @param num_steps number of time steps
  * @param k_start starting time index (default 0).
  */
-void AddStanceGoals(gtsam::NonlinearFactorGraph* factors,
+void AddStanceGoals(gtsam::NonlinearFactorGraph* factors, size_t num_steps,
+                    const gtsam::Point3& goal_point,
                     const gtsam::SharedNoiseModel& cost_model,
-                    const gtsam::Point3& point_com,
-                    const gtsam::Point3& goal_point,  //
-                    unsigned char i, size_t num_steps, size_t k_start = 0) {
+                    const gtsam::Point3& point_com, unsigned char i,
+                    size_t k_start = 0) {
   std::vector<gtsam::Point3> goal_trajectory(num_steps, goal_point);
   gtsam::Key key = internal::PoseKey(i, k_start);
   factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
+}
+
+/**
+ * @brief Create simple swing foot trajectory, from start to start + step.
+ *
+ * Swing feet is moved according to a pre-determined height trajectory, and
+ * moved by the 3D vector step.
+ * To see the curve, go to https://www.wolframalpha.com/ and type
+ *    0.2 * pow(t, 1.1) * pow(1 - t, 0.7) for t from 0 to 1
+ * Note the first goal point is *off* the ground and forwards of start.
+ * Likewise the last goal point is off the ground and is not yet at start+step.
+ *
+ * @param start initial end effector goal, in world coordinates
+ * @param step 3D vector to move by
+ * @param num_steps number of time steps
+ */
+std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3& start,
+                                                 const gtsam::Point3& step,
+                                                 size_t num_steps) {
+  std::vector<gtsam::Point3> goal_trajectory;
+  // if num_steps==3 -> 0--|--|--|--1
+  const double dt = 1.0 / (num_steps + 1);
+  const gtsam::Point3 delta_step = step * dt;
+  gtsam::Point3 cp_goal = start + delta_step;
+  for (int k = 0; k < num_steps; k++) {
+    double t = dt * (k + 1);
+    double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
+    goal_trajectory.push_back(cp_goal + gtsam::Point3(0, 0, h));
+    cp_goal = cp_goal + delta_step;
+  }
+  return goal_trajectory;
 }
 
 /**
@@ -194,30 +227,25 @@ void AddStanceGoals(gtsam::NonlinearFactorGraph* factors,
  *    0.2 * pow(t, 1.1) * pow(1 - t, 0.7) for t from 0 to 1
  *
  * @param factors graph to add to.
+ *
+ * @param start initial end effector goal, in world coordinates
+ * @param step 3D vector to move by
+ * @param num_steps number of time steps
+ *
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
- * @param cp_goal initial end effector goal, in world coordinates
- * @param step 3D vector to move by
+ *
  * @param i The link id.
- * @param num_steps number of time steps
  * @param k_start starting time index (default 0).
  */
 void AddSwingGoals(gtsam::NonlinearFactorGraph* factors,
-                   const gtsam::SharedNoiseModel& cost_model,
-                   const gtsam::Point3& point_com,
-                   gtsam::Point3 cp_goal,  // by value
-                   const gtsam::Point3& step, unsigned char i, size_t num_steps,
+                   const gtsam::Point3& start, const gtsam::Point3& step,
+                   size_t num_steps, const gtsam::SharedNoiseModel& cost_model,
+                   const gtsam::Point3& point_com, unsigned char i,
                    size_t k_start = 0) {
-  std::vector<gtsam::Point3> goal_trajectory;
+  std::vector<gtsam::Point3> goal_trajectory =
+      SimpleSwingTrajectory(start, step, num_steps);
   gtsam::Key key = internal::PoseKey(i, k_start);
-  const double dt = 1.0 / (num_steps - 1);
-  const gtsam::Point3 delta_step = step * dt;
-  for (int k = k_start; k < k_start + num_steps; k++) {
-    double t = dt * (k - k_start);
-    double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
-    goal_trajectory.push_back(cp_goal + gtsam::Point3(0, 0, h));
-    cp_goal = cp_goal + delta_step;
-  }
   factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
 }
 
