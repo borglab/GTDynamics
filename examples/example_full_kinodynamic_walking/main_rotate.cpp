@@ -33,6 +33,9 @@
 
 #define GROUND_HEIGHT -0.191839
 
+using std::string;
+using std::vector;
+
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
@@ -47,8 +50,8 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = gtdynamics::CreateRobotFromFile(
-      kUrdfPath + std::string("/vision60.urdf"));
+  auto vision60 =
+      gtdynamics::CreateRobotFromFile(kUrdfPath + string("/vision60.urdf"));
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-4;  // std of additional objectives.
@@ -124,15 +127,15 @@ int main(int argc, char** argv) {
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
-  std::vector<CPs> phase_cps = {p0, p1, p0, p2, p0, p3, p0, p4,
-                                p0, p1, p0, p2, p0, p3, p0, p4};
-  std::vector<CPs> trans_cps = {p1, p1, p2, p2, p3, p3, p4, p4,
-                                p1, p1, p2, p2, p3, p3, p4};
-  std::vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60,
-                                  50, 60, 50, 60, 50, 60, 50, 60};
+  vector<CPs> phase_cps = {p0, p1, p0, p2, p0, p3, p0, p4,
+                           p0, p1, p0, p2, p0, p3, p0, p4};
+  vector<CPs> trans_cps = {p1, p1, p2, p2, p3, p3, p4, p4,
+                           p1, p1, p2, p2, p3, p3, p4};
+  vector<int> phase_steps = {50, 60, 50, 60, 50, 60, 50, 60,
+                             50, 60, 50, 60, 50, 60, 50, 60};
 
   // Define the cumulative phase steps.
-  std::vector<int> cum_phase_steps;
+  vector<int> cum_phase_steps;
   for (int i = 0; i < phase_steps.size(); i++) {
     int cum_val =
         i == 0 ? phase_steps[0] : phase_steps[i] + cum_phase_steps[i - 1];
@@ -143,14 +146,14 @@ int main(int argc, char** argv) {
   double dt_des = 1. / 240.;  // Desired timestep duration.
 
   // Robot model for each phase.
-  std::vector<Robot> robots(phase_cps.size(), vision60);
+  vector<Robot> robots(phase_cps.size(), vision60);
 
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
-  std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
-  std::vector<Values> transition_graph_init;
+  vector<gtsam::NonlinearFactorGraph> transition_graphs;
+  vector<Values> transition_graph_init;
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
@@ -166,8 +169,8 @@ int main(int argc, char** argv) {
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
   auto base_link = vision60.link("body");
-  std::vector<std::string> links = {"lower0", "lower1", "lower2", "lower3"};
-  std::map<std::string, gtdynamics::LinkSharedPtr> link_map;
+  vector<string> links = {"lower0", "lower1", "lower2", "lower3"};
+  std::map<string, gtdynamics::LinkSharedPtr> link_map;
   for (auto&& link : links)
     link_map.insert(std::make_pair(link, vision60.link(link)));
 
@@ -178,8 +181,8 @@ int main(int argc, char** argv) {
         (link_map[link]->wTcom() * Pose3(Rot3(), c0.point)).translation();
   centroid = centroid / 4;
 
-  std::map<std::string, double> centroid_contact_dist;
-  std::map<std::string, double> prev_theta;
+  std::map<string, double> centroid_contact_dist;
+  std::map<string, double> prev_theta;
   for (auto&& link : links) {
     auto cp = (link_map[link]->wTcom() * Pose3(Rot3(), c0.point)).translation();
     auto delta = cp - centroid;
@@ -198,12 +201,12 @@ int main(int argc, char** argv) {
     int t_p_f = cum_phase_steps[p];
 
     // Obtain the contact links and swing links for this phase.
-    std::vector<std::string> phase_contact_links;
+    vector<string> phase_contact_links;
     for (auto&& [name, cp] : phase_cps[p]) {
       phase_contact_links.push_back(name);
     }
 
-    std::vector<std::string> phase_swing_links;
+    vector<string> phase_swing_links;
     for (auto&& l : links) {
       if (std::find(phase_contact_links.begin(), phase_contact_links.end(),
                     l) == phase_contact_links.end())
@@ -318,9 +321,9 @@ int main(int argc, char** argv) {
   gtsam::Values results = optimizer.optimize();
 
   // Log the joint angles, velocities, accels, torques, and current goal pose.
-  std::vector<std::string> jnames;
+  vector<string> jnames;
   for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
-  std::string jnames_str = boost::algorithm::join(jnames, ",");
+  string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques, time.
@@ -330,7 +333,7 @@ int main(int argc, char** argv) {
   int t = 0;
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-      std::vector<std::string> vals;
+      vector<string> vals;
       for (auto&& joint : vision60.joints())
         vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
       for (auto&& joint : vision60.joints())
@@ -343,7 +346,7 @@ int main(int argc, char** argv) {
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
 
       t++;
-      std::string vals_str = boost::algorithm::join(vals, ",");
+      string vals_str = boost::algorithm::join(vals, ",");
       traj_file << vals_str << "\n";
     }
   }

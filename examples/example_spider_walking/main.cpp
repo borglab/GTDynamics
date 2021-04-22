@@ -39,6 +39,9 @@
 
 #define GROUND_HEIGHT -1.75  //-1.75
 
+using std::string;
+using std::vector;
+
 using gtdynamics::ContactPoint;
 using gtdynamics::ContactPoints;
 using gtdynamics::Phase;
@@ -57,8 +60,8 @@ using gtsam::Vector6;
 using gtsam::noiseModel::Isotropic;
 
 // Returns a Trajectory object for a single spider walk cycle.
-gtdynamics::Trajectory getTrajectory(std::vector<std::string> links,
-                                     Robot robot, size_t repeat = 3) {
+gtdynamics::Trajectory getTrajectory(vector<string> links, Robot robot,
+                                     size_t repeat = 3) {
   gtdynamics::Phase stationary(robot, 40);
   stationary.addContactPoints(links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
 
@@ -83,7 +86,7 @@ gtdynamics::Trajectory getTrajectory(std::vector<std::string> links,
 int main(int argc, char **argv) {
   // Load Stephanie's spider robot.
   auto spider = gtdynamics::CreateRobotFromFile(
-      gtdynamics::kSdfPath + std::string("/spider_alt.sdf"), "spider");
+      gtdynamics::kSdfPath + string("/spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -105,22 +108,21 @@ int main(int argc, char **argv) {
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
 
-  std::vector<std::string> links = {"tarsus_1", "tarsus_2", "tarsus_3",
-                                    "tarsus_4", "tarsus_5", "tarsus_6",
-                                    "tarsus_7", "tarsus_8"};
+  vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4",
+                          "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
   auto spider_trajectory = getTrajectory(links, spider);
 
   // Get phase information
-  std::vector<ContactPoints> phase_cps = spider_trajectory.phaseContactPoints();
-  std::vector<int> phase_durations = spider_trajectory.phaseDurations();
-  std::vector<Robot> robots = spider_trajectory.phaseRobotModels();
+  vector<ContactPoints> phase_cps = spider_trajectory.phaseContactPoints();
+  vector<int> phase_durations = spider_trajectory.phaseDurations();
+  vector<Robot> robots = spider_trajectory.phaseRobotModels();
 
   // Define noise to be added to initial values, desired timestep duration,
-  // std::vector of link name strings, robot model for each phase, and
+  // vector of link name strings, robot model for each phase, and
   // phase transition initial values.
   double gaussian_noise = 1e-5;
   double dt_des = 1. / 240;
-  std::vector<gtsam::Values> transition_graph_init =
+  vector<gtsam::Values> transition_graph_init =
       spider_trajectory.transitionPhaseInitialValues(gaussian_noise);
 
   // Get final time step.
@@ -131,7 +133,7 @@ int main(int argc, char **argv) {
   auto collocation = gtdynamics::CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
-  std::vector<gtsam::NonlinearFactorGraph> transition_graphs =
+  vector<gtsam::NonlinearFactorGraph> transition_graphs =
       spider_trajectory.getTransitionGraphs(graph_builder, mu);
 
   // Construct the multi-phase trajectory factor graph.
@@ -144,12 +146,12 @@ int main(int argc, char **argv) {
   gtsam::NonlinearFactorGraph objective_factors;
   auto base_link = spider.link("body");
 
-  std::map<std::string, gtdynamics::LinkSharedPtr> link_map;
+  std::map<string, gtdynamics::LinkSharedPtr> link_map;
   for (auto &&link : links)
     link_map.insert(std::make_pair(link, spider.link(link)));
 
   // Previous contact point goal.
-  std::map<std::string, gtsam::Point3> prev_cp =
+  std::map<string, gtsam::Point3> prev_cp =
       spider_trajectory.initContactPointGoal();
 
   // Distance to move contact point per time step during swing.
@@ -163,10 +165,9 @@ int main(int argc, char **argv) {
     int t_p_f = spider_trajectory.getEndTimeStep(p);
 
     // Obtain the contact links and swing links for this phase.
-    std::vector<std::string> phase_contact_links =
+    vector<string> phase_contact_links =
         spider_trajectory.getPhaseContactLinks(p);
-    std::vector<std::string> phase_swing_links =
-        spider_trajectory.getPhaseSwingLinks(p);
+    vector<string> phase_swing_links = spider_trajectory.getPhaseSwingLinks(p);
 
     for (int t = t_p_i; t <= t_p_f; t++) {
       // Normalized phase progress.
@@ -266,10 +267,10 @@ int main(int argc, char **argv) {
   auto results = optimizer.optimize();
 
   // Write results to traj file
-  std::vector<std::string> jnames;
+  vector<string> jnames;
   for (auto &&joint : spider.joints()) jnames.push_back(joint->name());
   std::cout << jnames.size() << std::endl;
-  std::string jnames_str = boost::algorithm::join(jnames, ",");
+  string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
 
   traj_file.open("forward_traj.csv");

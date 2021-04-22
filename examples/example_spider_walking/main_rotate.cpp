@@ -37,6 +37,9 @@
 
 #define GROUND_HEIGHT -1.75
 
+using std::string;
+using std::vector;
+
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
@@ -51,7 +54,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load Stephanie's spider robot.
   auto spider = gtdynamics::CreateRobotFromFile(
-      kSdfPath + std::string("/spider.sdf"), "spider");
+      kSdfPath + string("/spider.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -107,9 +110,8 @@ int main(int argc, char** argv) {
   auto c7 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front right.
   auto c8 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind right.
 
-  std::vector<std::string> links = {"tarsus_1", "tarsus_2", "tarsus_3",
-                                    "tarsus_4", "tarsus_5", "tarsus_6",
-                                    "tarsus_7", "tarsus_8"};
+  vector<string> links = {"tarsus_1", "tarsus_2", "tarsus_3", "tarsus_4",
+                          "tarsus_5", "tarsus_6", "tarsus_7", "tarsus_8"};
 
   auto cp1 = std::make_pair("tarsus_1", c1);
   auto cp2 = std::make_pair("tarsus_2", c2);
@@ -154,13 +156,12 @@ int main(int argc, char** argv) {
   // Define contact points for each phase, transition contact points,
   // and phase durations.
   // Alternating Tetrapod:
-  std::vector<CPs> phase_cps = {p0, pa, p0, pb, p0, pa, p0, pb, p0, pa,
-                                p0, pb, p0, pa, p0, pb, p0, pa, p0, pb};
-  std::vector<CPs> trans_cps = {t0a, t0a, tb0, tb0, t0a, t0a, tb0,
-                                tb0, t0a, t0a, tb0, tb0, t0a, t0a,
-                                tb0, tb0, t0a, t0a, tb0};
-  std::vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-                                  20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
+  vector<CPs> phase_cps = {p0, pa, p0, pb, p0, pa, p0, pb, p0, pa,
+                           p0, pb, p0, pa, p0, pb, p0, pa, p0, pb};
+  vector<CPs> trans_cps = {t0a, t0a, tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a,
+                           tb0, tb0, t0a, t0a, tb0, tb0, t0a, t0a, tb0};
+  vector<int> phase_steps = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+                             20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
 
   // Define noise to be added to initial values, desired timestep duration,
   // vector of link name strings, robot model for each phase, and
@@ -168,11 +169,11 @@ int main(int argc, char** argv) {
   double gaussian_noise = 1e-5;
 
   double dt_des = 1. / 240;
-  std::vector<Robot> robots(phase_cps.size(), spider);
-  std::vector<Values> transition_graph_init;
+  vector<Robot> robots(phase_cps.size(), spider);
+  vector<Values> transition_graph_init;
 
   // Define the cumulative phase steps.
-  std::vector<int> cum_phase_steps;
+  vector<int> cum_phase_steps;
   for (int i = 0; i < phase_steps.size(); i++) {
     int cum_val =
         i == 0 ? phase_steps[0] : phase_steps[i] + cum_phase_steps[i - 1];
@@ -185,7 +186,7 @@ int main(int argc, char** argv) {
   auto collocation = gtdynamics::CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
-  std::vector<gtsam::NonlinearFactorGraph> transition_graphs;
+  vector<gtsam::NonlinearFactorGraph> transition_graphs;
   for (int p = 1; p < phase_cps.size(); p++) {
     std::cout << "Creating transition graph" << std::endl;
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
@@ -204,12 +205,12 @@ int main(int argc, char** argv) {
   gtsam::NonlinearFactorGraph objective_factors;
   auto base_link = spider.link("body");
 
-  std::map<std::string, gtdynamics::LinkSharedPtr> link_map;
+  std::map<string, gtdynamics::LinkSharedPtr> link_map;
   for (auto&& link : links)
     link_map.insert(std::make_pair(link, spider.link(link)));
 
   // Previous contact point goal.
-  std::map<std::string, Point3> prev_cp;
+  std::map<string, Point3> prev_cp;
   for (auto&& link : links) {
     prev_cp.insert(std::make_pair(
         link,
@@ -220,7 +221,7 @@ int main(int argc, char** argv) {
   auto contact_offset = Point3(0, 0.007, 0);
 
   // Set this to 'right' or 'left' to make the spider rotate in place
-  std::string turn = "right";
+  string turn = "right";
 
   // Add contact point objectives to factor graph.
   for (int p = 0; p < phase_cps.size(); p++) {
@@ -230,9 +231,9 @@ int main(int argc, char** argv) {
     int t_p_f = cum_phase_steps[p];
 
     // Obtain the contact links and swing links for this phase.
-    std::vector<std::string> phase_contact_links;
+    vector<string> phase_contact_links;
     for (auto&& [name, cp] : phase_cps[p]) phase_contact_links.push_back(name);
-    std::vector<std::string> phase_swing_links;
+    vector<string> phase_swing_links;
     for (auto&& l : links) {
       if (std::find(phase_contact_links.begin(), phase_contact_links.end(),
                     l) == phase_contact_links.end()) {
@@ -265,12 +266,12 @@ int main(int argc, char** argv) {
       // Update the goal point for the swing links.
       for (auto&& psl : phase_swing_links) {
         if (turn.compare("right") == 0) {
-          if (psl.find_first_of("1234") != std::string::npos)
+          if (psl.find_first_of("1234") != string::npos)
             prev_cp[psl] = prev_cp[psl] + contact_offset;
           else
             prev_cp[psl] = prev_cp[psl] - contact_offset;
         } else {
-          if (psl.find_first_of("5678") != std::string::npos)
+          if (psl.find_first_of("5678") != string::npos)
             prev_cp[psl] = prev_cp[psl] + contact_offset;
           else
             prev_cp[psl] = prev_cp[psl] - contact_offset;
@@ -363,9 +364,9 @@ int main(int argc, char** argv) {
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   auto results = optimizer.optimize();
 
-  std::vector<std::string> joint_names;
+  vector<string> joint_names;
   for (auto&& joint : spider.joints()) joint_names.push_back(joint->name());
-  std::string joint_names_str = boost::algorithm::join(joint_names, ",");
+  string joint_names_str = boost::algorithm::join(joint_names, ",");
   std::ofstream traj_file;
 
   traj_file.open("rotation_traj.csv");
@@ -376,7 +377,7 @@ int main(int argc, char** argv) {
   int t = 0;
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-      std::vector<std::string> vals;
+      vector<string> vals;
       for (auto&& joint : spider.joints())
         vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
       for (auto&& joint : spider.joints())
@@ -387,7 +388,7 @@ int main(int argc, char** argv) {
         vals.push_back(std::to_string(Torque(results, joint->id(), t)));
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
       t++;
-      std::string vals_str = boost::algorithm::join(vals, ",");
+      string vals_str = boost::algorithm::join(vals, ",");
       traj_file << vals_str << "\n";
     }
   }
