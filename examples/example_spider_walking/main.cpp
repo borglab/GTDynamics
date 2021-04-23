@@ -42,15 +42,15 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single spider walk cycle.
 Trajectory getTrajectory(vector<string> links, Robot robot, size_t repeat) {
-  Phase stationary(robot, 40);
+  Phase stationary(40);
   stationary.addContactPoints(links, Point3(0, 0.19, 0));
 
-  Phase odd(robot, 20);
+  Phase odd(20);
   odd.addContactPoints(
       {{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4", "tarsus_7_R2"}},
       Point3(0, 0.19, 0));
 
-  Phase even(robot, 20);
+  Phase even(20);
   even.addContactPoints(
       {{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3", "tarsus_8_R1"}},
       Point3(0, 0.19, 0));
@@ -61,7 +61,7 @@ Trajectory getTrajectory(vector<string> links, Robot robot, size_t repeat) {
   walk_cycle.addPhase(stationary);
   walk_cycle.addPhase(odd);
 
-  Trajectory trajectory(walk_cycle, repeat);
+  Trajectory trajectory(robot, walk_cycle, repeat);
   return trajectory;
 }
 
@@ -162,12 +162,12 @@ int main(int argc, char **argv) {
             << jnames_str << ",t"
             << "\n";
   for (int phase = 0; phase < trajectory.numPhases(); phase++)
-    trajectory.writePhaseToFile(traj_file, results, phase);
+    trajectory.writePhaseToFile(robot, traj_file, results, phase);
 
   // Write the last 4 phases to disk n times
   for (int i = 0; i < 10; i++) {
     for (int phase = 4; phase < trajectory.numPhases(); phase++)
-      trajectory.writePhaseToFile(traj_file, results, phase);
+      trajectory.writePhaseToFile(robot, traj_file, results, phase);
   }
   traj_file.close();
   return 0;
