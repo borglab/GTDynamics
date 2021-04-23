@@ -228,9 +228,9 @@ class Trajectory {
   std::vector<std::string> getPhaseSwingLinks(int p) const {
     std::vector<std::string> phase_swing_links;
     auto contact_links = getPhaseContactLinks(p);
-    for (auto &&link_name : walk_cycle_.contactLinkNames()) {
-      if (contact_links.count(link_name) == 0)
-        phase_swing_links.push_back(link_name);
+    for (auto &&kv : walk_cycle_.contactPoints()) {
+      if (contact_links.count(kv.first) == 0)
+        phase_swing_links.push_back(kv.first);
     }
     return phase_swing_links;
   }
