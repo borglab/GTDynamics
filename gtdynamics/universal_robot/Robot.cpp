@@ -192,29 +192,27 @@ static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
 
 // Insert a pose/twist into values, but if they already are present, just check
 // if they are consistent. Throw exception otherwise.
-// Returns true if values were inserted.
+// Returns true if either of the values was inserted.
 static bool InsertWithCheck(size_t i, size_t t,
                             const std::pair<Pose3, Vector6> &poseTwist,
                             gtsam::Values *values) {
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
-  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
   auto pose_key = internal::PoseKey(i, t);
   auto twist_key = internal::TwistKey(i, t);
-  const bool exists = values->exists(pose_key);
-  if (!exists) {
-    values->insert(pose_key, pose);
-    values->insert<Vector6>(twist_key, twist);
-  } else {
-    // If already insert, check for consistency.
+  auto pose_insert = values->tryInsert(pose_key, gtsam::GenericValue(pose));
+  auto twist_insert = values->tryInsert(pose_key, gtsam::GenericValue(twist));
+
+  if (pose_insert.second || twist_insert.second) {
+    // If values already exist, check for consistency.
     if (!(pose.equals(values->at<Pose3>(pose_key), 1e-4) &&
           (twist - values->at<Vector6>(twist_key)).norm() < 1e-4)) {
       throw std::runtime_error(
           "Inconsistent joint angles detected in forward kinematics");
     }
   }
-  return !exists;
+  return !pose_insert.second || !twist_insert.second;
 }
 
 gtsam::Values Robot::forwardKinematics(
