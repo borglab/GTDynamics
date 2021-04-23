@@ -7,7 +7,11 @@ project(gtdynamics
         HOMEPAGE_URL "https://github.com/borglab/GTDynamics")
 
 add_compile_options(-faligned-new)
-set (CMAKE_CXX_STANDARD 11)
+
+# Enforce c++11 standards
+add_compile_options(-std=c++11) # CMake 3.1 and earlier
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ##############################################################################
 # Find Dependencies #
