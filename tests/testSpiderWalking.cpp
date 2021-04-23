@@ -40,14 +40,9 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
-  Phase stationary(1);
-  stationary.addContactPoints(links, Point3(0, 0.19, 0));
-
-  Phase odd(2);
-  odd.addContactPoints(odd_links, Point3(0, 0.19, 0));
-
-  Phase even(2);
-  even.addContactPoints(even_links, Point3(0, 0.19, 0));
+  const Point3 contact_in_com(0, 0.19, 0);
+  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
+      even(2, even_links, contact_in_com);
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);

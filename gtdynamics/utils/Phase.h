@@ -34,6 +34,18 @@ class Phase {
   /// Constructor
   Phase(const int &num_time_steps) : num_time_steps_(num_time_steps) {}
 
+  /**
+   * @fbrief Constructor with all contact points.
+   *
+   * @param[in] link_names       List of link_names.
+   * @param[in] point            Point of contact on link.
+   */
+  Phase(const int &num_time_steps, const std::vector<std::string> &link_names,
+        const gtsam::Point3 &point)
+      : num_time_steps_(num_time_steps) {
+    addContactPoints(link_names, point);
+  }
+
   /** @fn Adds a contact point in the phase.
    *
    * @param[in] link             Name of link in the robot_configuration.
