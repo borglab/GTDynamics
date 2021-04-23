@@ -216,7 +216,8 @@ class Trajectory {
    * @param[in]p    Phase number.
    * @return Vector of contact links.
    */
-  ContactPoints getPhaseContactLinks(int p) const {
+  const ContactPoints &getPhaseContactLinks(int p) const {
+    walk_cycle_.print("wc");
     return phase(p).contactPoints();
   }
 
@@ -233,7 +234,8 @@ class Trajectory {
         phase_swing_links.push_back(kv.first);
     }
     return phase_swing_links;
-  }
+    // return walk_cycle_.swingLinks(p);
+}
 
   /**
    * @fn Generates a PointGoalFactor object
