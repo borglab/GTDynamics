@@ -15,8 +15,11 @@
 #include <gtdynamics/utils/Phase.h>
 
 #include <iostream>
-
 namespace gtdynamics {
+
+using gtsam::Point3;
+using std::string;
+
 std::ostream &operator<<(std::ostream &os, const Phase &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {
@@ -26,18 +29,18 @@ std::ostream &operator<<(std::ostream &os, const Phase &phase) {
   return os;
 }
 
-void Phase::print(const std::string &s) const {
+void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
 // /// Add PointGoalFactors for a stance foot, starting at (k_start, cp_goal).
-// void addStanceGoals(gtsam::NonlinearFactorGraph *factors,
-//                     const gtsam::Point3 &cp_goal,
+// void stanceObjectives(gtsam::NonlinearFactorGraph *factors,
+//                     const Point3 &cp_goal,
 //                     const gtsam::SharedNoiseModel &cost_model,
-//                     const double ground_height, std::string &name,
+//                     const double ground_height,  &name,
 //                     size_t k_start = 0) const {
 //   for (int k = k_start; k <= k_start + num_time_steps_; k++) {
-//     gtsam::Point3 goal_point(cp_goal.x(), cp_goal.y(), ground_height -
+//     Point3 goal_point(cp_goal.x(), cp_goal.y(), ground_height -
 //     0.05); factors->add(pointGoalFactor(name, k, cost_model, goal_point));
 //   }
 // }
@@ -47,40 +50,34 @@ void Phase::print(const std::string &s) const {
 //  * Swing feet is moved according to a pre-determined height trajectory, and
 //  * moved by the 3D vector step. Returns cp_goal + step * num_time_steps_;
 //  */
-// gtsam::Point3 addSwingGoals(gtsam::NonlinearFactorGraph *factors,
-//                             gtsam::Point3 cp_goal,  // by value
-//                             const gtsam::Point3 &step,
+// Point3 addSwingGoals(gtsam::NonlinearFactorGraph *factors,
+//                             Point3 cp_goal,  // by value
+//                             const Point3 &step,
 //                             const gtsam::SharedNoiseModel &cost_model,
-//                             const double ground_height, std::string &name,
+//                             const double ground_height,  &name,
 //                             size_t k_start = 0) const {
 //   for (int k = k_start; k <= k_start + num_time_steps_; k++) {
 //     double t = (double)(k - k_start) / (double)num_time_steps_;
 //     double h = ground_height + pow(t, 1.1) * pow(1 - t, 0.7);
-//     gtsam::Point3 goal_point(cp_goal.x(), cp_goal.y(), h);
+//     Point3 goal_point(cp_goal.x(), cp_goal.y(), h);
 //     factors->add(pointGoalFactor(name, k, cost_model, goal_point));
 //     cp_goal = cp_goal + step;  // imperative
 //   }
 //   return cp_goal;
 // }
 
-void Phase::addpointGoalFactors(gtsam::NonlinearFactorGraph *factors,
-                                std::map<std::string, gtsam::Point3> *cp_goals,
-                                const std::set<std::string> &all_feet,
-                                const gtsam::Point3 &step,
-                                const gtsam::SharedNoiseModel &cost_model,
-                                const double ground_height, size_t num_steps,
-                                size_t k) const {
-  // For all feet
-  for (auto &&name : all_feet) {
-    auto &cp_goal = cp_goals->at(name);
-    if (contact_points_.count(name)) {
-      auto cp = contact_points_.at(name);
-      AddPointGoalFactors(factors, cost_model, cp.point,
-                          StanceTrajectory(cp_goal, num_steps), id, k);
-    } else {
-      AddPointGoalFactors(factors, cost_model, point_com,
-                          SimpleSwingTrajectory(cp_goal, step, num_steps), id);
-    }
+gtsam::NonlinearFactorGraph Phase::stanceObjectives(
+    const Robot &robot, std::map<std::string, Point3> cp_goals,
+    const gtsam::SharedNoiseModel &cost_model, size_t k) const {
+  gtsam::NonlinearFactorGraph factors;
+  for (auto &&kv : contact_points_) {
+    const std::string &name = kv.first;
+    const Point3 &cp_goal = cp_goals.at(name);
+    const ContactPoint &cp = kv.second;
+    AddPointGoalFactors(&factors, cost_model, cp.point,
+                        StanceTrajectory(cp_goal, numTimeSteps()),
+                        robot.link(name)->id(), k);
   }
+  return factors;
 }
 }  // namespace gtdynamics

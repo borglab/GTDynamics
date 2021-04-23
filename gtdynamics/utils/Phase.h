@@ -63,7 +63,7 @@ class Phase {
   /**
    * @fn Add multiple contact points.
    *
-   * @param[in] link_names            List of link_names.
+   * @param[in] link_names       List of link_names.
    * @param[in] point            Point of contact on link.
    */
   void addContactPoints(const std::vector<std::string> &link_names,
@@ -76,10 +76,14 @@ class Phase {
   /// Returns all the contact points in the stance
   const ContactPoints &contactPoints() const { return contact_points_; }
 
+  /// Check if phase has a contact for given link.
+  bool hasContact(const std::string &link_name) const {
+    return contact_points_.count(link_name) > 0;
+  }
+
   /// Returns the contact point object of link.
-  const ContactPoint &getContactPointAtLink(
-      const std::string &link_name) const {
-    if (contact_points_.find(link_name) == contact_points_.end()) {
+  const ContactPoint &contactPoint(const std::string &link_name) const {
+    if (!hasContact(link_name)) {
       throw std::runtime_error("Link " + link_name + " has no contact point!");
     }
     return contact_points_.at(link_name);
@@ -96,16 +100,10 @@ class Phase {
 
   /**
    * Add PointGoalFactors for all stance feet as given in cp_goals.
-   * Swing feet are moved according to a pre-determined height trajectory, and
-   * moved by the 3D vector step.
-   * are added starting at k, default 0.
+   * Factors are added at time step k, default 0.
    */
-  void addpointGoalFactors(gtsam::NonlinearFactorGraph *factors,
-                           std::map<std::string, gtsam::Point3> *cp_goals,
-                           const std::set<std::string> &all_feet,
-                           const gtsam::Point3 &step,
-                           const gtsam::SharedNoiseModel &cost_model,
-                           const double ground_height, size_t num_steps,
-                           size_t k = 0) const;
+  gtsam::NonlinearFactorGraph stanceObjectives(
+      const Robot &robot, std::map<std::string, gtsam::Point3> cp_goals,
+      const gtsam::SharedNoiseModel &cost_model, size_t k = 0) const;
 };
 }  // namespace gtdynamics

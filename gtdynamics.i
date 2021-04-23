@@ -679,7 +679,7 @@ class Phase {
                         const gtsam::Point3& point, double contact_height);
   const gtdynamics::Robot& robot() const;
   const gtdynamics::ContactPoints& contactPoints() const;
-  const gtdynamics::ContactPoint& getContactPointAtLink(const string& link) const;
+  const gtdynamics::ContactPoint& contactPoint(const string& link) const;
   int numTimeSteps() const;
   void print(const string &s = "");
 };
