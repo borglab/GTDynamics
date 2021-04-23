@@ -129,8 +129,8 @@ TEST(Trajectory, error) {
   auto cp_goals = walk_cycle.initContactPointGoal(robot);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
-  EXPECT(gtsam::assert_equal(gtsam::Point3(3.18367, 1.06573, -2.99761),
-                             cp_goals["tarsus_2"], 1e-5));
+  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
+                             cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
@@ -139,7 +139,7 @@ TEST(Trajectory, error) {
 
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
-  double sigma_dynamics = 1e-5;  // std of dynamics constraints.
+  double sigma_dynamics = 1e-5;  // std deviation for dynamics constraints.
   auto opt = OptimizerSetting(sigma_dynamics);
   auto graph_builder = DynamicsGraph(opt, gravity);
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
@@ -162,12 +162,13 @@ TEST(Trajectory, error) {
   const double ground_height = 0.0;
   auto contact_link_objectives = trajectory.contactLinkObjectives(
       noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
-  // regression test
-  EXPECT_LONGS_EQUAL(80, contact_link_objectives.size());
+  // steps = 2+3 per walk cycle, 5 legs involved
+  const size_t expected = repeat * ((2 + 3) * 5);
+  EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());
   // regression
   auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
       contact_link_objectives.back());
-  EXPECT(gtsam::assert_equal(gtsam::Point3(3.00478, -1.33761, 0),
+  EXPECT(gtsam::assert_equal(gtsam::Point3(0.19, 2.60015, 0.0553788),
                              last_factor->goalPoint(), 1e-5));
 
   // Test boundary conditions.

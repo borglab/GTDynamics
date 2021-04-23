@@ -79,52 +79,29 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
     const SharedNoiseModel &cost_model, const double ground_height) const {
   NonlinearFactorGraph factors;
 
-  // Previous contact point goal.
+  // Initials contact point goal.
+  // TODO(frank): #179 make sure height is handled correctly.
   map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_);
 
   // Distance to move contact point per time step during swing.
   // TODO(frank): this increases y. That can't be general in any way.
-  auto contact_offset = Point3(0, 0.02, 0);
+  // TODO(frank): figure out step from desired velocity
+  const Point3 step(0, 0.4, 0);
 
   // Add contact point objectives to factor graph.
   for (int p = 0; p < numPhases(); p++) {
-    // if(p <2) contact_offset /=2 ;
-    // Phase start and end timesteps.
     int k_start = getStartTimeStep(p);
-    int k_end = getEndTimeStep(p);
 
-    // Obtain the contact links and swing links for this phase.
-    auto phase_contact_links = getPhaseContactLinks(p);
-    auto phase_swing_links = getPhaseSwingLinks(p);
+    const Phase &phase = this->phase(p);
+    factors.add(phase.stanceObjectives(robot_, cp_goals, cost_model, k_start));
 
-    for (int k = k_start; k <= k_end; k++) {
-      for (auto &&kv : phase_contact_links) {
-        auto name = kv.first;
-        Point3 goal_point(cp_goals[name].x(), cp_goals[name].y(),
-                          ground_height - 0.05);
-        factors.add(
-            pointGoalFactor(name, kv.second, k, cost_model, goal_point));
-      }
+    factors.add(walk_cycle_.swingObjectives(robot_, phaseIndex(p), cp_goals,
+                                            step, cost_model, k_start));
 
-      // Normalized phase progress.
-      double t_normed = (double)(k - k_start) / (double)(k_end - k_start);
-
-      // Swing trajectory height over time.
-      // TODO(frank): Alejandro should document this.
-      double h = ground_height + pow(t_normed, 1.1) * pow(1 - t_normed, 0.7);
-
-      for (auto &&name : phase_swing_links) {
-        Point3 goal_point(cp_goals[name].x(), cp_goals[name].y(), h);
-        // TODO(frank): BROKEN !!
-        // factors.add(
-        //     pointGoalFactor(name, kv.second, k, cost_model, goal_point));
-      }
-
-      // Update the goal point for the swing links.
-      for (auto &&name : phase_swing_links) {
-        cp_goals[name] = cp_goals[name] + contact_offset;
-      }
-    }  // k
+    // Update the goal point for the swing links.
+    for (auto &&name : getPhaseSwingLinks(p)) {
+      cp_goals[name] = cp_goals[name] + step;
+    }
   }
   return factors;
 }
