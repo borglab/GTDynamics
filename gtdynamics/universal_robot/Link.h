@@ -143,7 +143,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
