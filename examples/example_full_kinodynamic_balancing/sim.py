@@ -37,7 +37,7 @@ def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float
                                 targetPosition=v,
                                 targetVelocity=joint_vels[k + '.1'])
 
-
+#TODO(Varun) This should be passed as a cmdline argument
 df = pd.read_csv('traj.csv')
 print(df.columns)
 

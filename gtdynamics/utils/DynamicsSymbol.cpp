@@ -13,7 +13,6 @@
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
@@ -97,8 +96,23 @@ DynamicsSymbol::operator Key() const {
 }
 
 /* ************************************************************************* */
+std::string DynamicsSymbol::label() const {
+  std::string s = "";
+  if (c1_ != 0) {
+    s += c1_;
+  }
+  if (c2_ != 0) {
+    s += c2_;
+  }
+  return s;
+}
+
+/* ************************************************************************* */
 void DynamicsSymbol::print(const std::string& s) const {
-  std::cout << s << ": " << std::string(*this) << std::endl;
+  if (s != "") {
+    std::cout << s << ": ";
+  }
+  std::cout << std::string(*this) << std::endl;
 }
 
 /* ************************************************************************* */

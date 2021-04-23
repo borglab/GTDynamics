@@ -26,19 +26,8 @@ include(GtsamTesting)
 # For unit tests and scripts.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
-# Boost - same requirement as gtsam.
-find_package(Boost 1.58 REQUIRED)
-find_package(
-  Boost
-  COMPONENTS filesystem
-             system
-             thread
-             program_options
-             serialization
-             regex
-             timer
-  REQUIRED)
-
+# Boost is automatically added when we add GTSAM above.
+# This ensures both GTSAM and GTDynamics have the same Boost version.
 include_directories(${Boost_INCLUDE_DIR})
 
 if(NOT (${Boost_VERSION} LESS 105600))
@@ -77,6 +66,11 @@ if(GTDYNAMICS_BUILD_SCRIPTS)
   add_subdirectory(scripts)
 endif()
 
+option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" OFF)
+if(GTDYNAMICS_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+
 message(STATUS "===============================================================")
 message(STATUS "================  Configuration Options  ======================")
 message(STATUS "Project                                     : ${PROJECT_NAME}")
@@ -90,4 +84,5 @@ if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
 endif()
 message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
+message(STATUS "Build Examples                              : ${GTDYNAMICS_BUILD_EXAMPLES}")
 message(STATUS "===============================================================")

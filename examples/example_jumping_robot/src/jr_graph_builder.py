@@ -38,7 +38,7 @@ class JRGraphBuilder:
     def collocation_graph(self, jr: JumpingRobot, step_phases: list):
         """ Create a factor graph containing collocation constraints. """
         graph = self.actuation_graph_builder.collocation_graph(jr, step_phases)
-        graph.add(self.robot_graph_builder.collocation_graph(jr, step_phases))
+        graph.push_back(self.robot_graph_builder.collocation_graph(jr, step_phases))
 
         # add collocation factors for time
         for time_step in range(len(step_phases)):
@@ -47,10 +47,10 @@ class JRGraphBuilder:
             k_curr = time_step+1
             dt_key = gtd.PhaseKey(phase).key()
             time_prev_key = gtd.TimeKey(k_prev).key()
-            time_curr_key = gtd.TImeKey(k_curr).key()
+            time_curr_key = gtd.TimeKey(k_curr).key()
             time_col_cost_model = self.robot_graph_builder.graph_builder.opt().time_cost_model
-            graph.add(gtd.TimeColloFactor(
-                time_prev_key, time_curr_key, dt_key, time_col_cost_model))
+            gtd.AddTimeCollocationFactor(graph, time_prev_key, time_curr_key,
+                                         dt_key, time_col_cost_model)
 
         return graph
 
@@ -61,4 +61,3 @@ class JRGraphBuilder:
         graph = self.actuation_graph_builder.dynamics_graph(jr, k)
         graph.add(self.robot_graph_builder.dynamics_graph(jr, k))
         return graph
-

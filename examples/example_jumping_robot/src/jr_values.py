@@ -267,6 +267,7 @@ class JRValues:
 
         # perform forward kinematics
         link_names = [link.name() for link in jr.robot.links()]
+        # gtd.DynamicsGraph.printValues(values)
         if "ground" not in link_names:
             fk_results = jr.robot.forwardKinematics(values, k, "torso")
         else:

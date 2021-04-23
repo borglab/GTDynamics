@@ -115,6 +115,7 @@ class ActuationGraphBuilder:
 
     def collocation_graph(self, jr: JumpingRobot, step_phases: list) -> NonlinearFactorGraph:
         """ Create a factor graph containing collocation constraints on actuation variables. """
+        collocation = gtd.CollocationScheme.Trapezoidal
         graph = NonlinearFactorGraph()
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
@@ -133,14 +134,15 @@ class ActuationGraphBuilder:
                 mdot_curr_keys.append(mdot_curr_key)
                 m_a_prev_key = Actuator.MassKey(j, k_prev)
                 m_a_curr_key = Actuator.MassKey(j, k_curr)
-                graph.add(gtd.TrapezoidalScalarColloFactor(
-                    m_a_prev_key, m_a_curr_key, mdot_prev_key, mdot_curr_key, dt_key, self.m_col_cost_model))
+                gtd.DynamicsGraph.addMultiPhaseCollocationFactorDouble(
+                    graph, m_a_prev_key, m_a_curr_key, mdot_prev_key,
+                    mdot_curr_key, dt_key, self.m_col_cost_model, collocation)
 
             # collocation on source mass
             m_s_prev_key = Actuator.SourceMassKey(k_prev)
             m_s_curr_key = Actuator.SourceMassKey(k_curr)
-            graph.add(gtd.SourceMassColloFactor(
-                m_s_prev_key, m_s_curr_key, mdot_prev_keys[0], mdot_prev_keys[1], mdot_prev_keys[2], mdot_prev_keys[3],
-                mdot_curr_keys[0], mdot_curr_keys[1], mdot_curr_keys[2], mdot_curr_keys[3], dt_key, self.m_col_cost_model   
-            ))
+            gtd.AddSourceMassCollocationFactor(graph, mdot_prev_keys,
+                                               mdot_curr_keys, m_s_prev_key,
+                                               m_s_curr_key, dt_key,
+                                               False, self.m_col_cost_model)
         return graph

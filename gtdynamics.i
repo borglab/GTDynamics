@@ -7,6 +7,10 @@ virtual class gtsam::Values;
 
 namespace gtdynamics {
 
+#include <gtdynamics/config.h>
+const string URDF_PATH = kUrdfPath;
+const string SDF_PATH = kSdfPath;
+
 /********************** factors **********************/
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
@@ -29,6 +33,7 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           size_t t);
 
   void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  const gtsam::Pose3 measured() const;
 };
 
 #include <gtdynamics/factors/TwistFactor.h>
@@ -296,6 +301,16 @@ class OptimizerSetting {
 
 
 #include<gtdynamics/dynamics/DynamicsGraph.h>
+enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
+
+class ContactPoint {
+  ContactPoint();
+  ContactPoint(const gtsam::Point3& point, int id, double height = 0.0);
+  void print(const string &s = "");
+};
+
+// ContactPoints defined in specializations.h
+
 class DynamicsGraph {
   DynamicsGraph();
   DynamicsGraph(const boost::optional<gtsam::Vector3> &gravity,
@@ -367,7 +382,7 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation,
+      const gtdynamics::CollocationScheme collocation,
       const boost::optional<gtdynamics::ContactPoints> &contact_points,
       const boost::optional<double> &mu) const;
 
@@ -380,15 +395,36 @@ class DynamicsGraph {
       const std::vector<gtdynamics::Robot> &robots,
       const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
+
+  static void addCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const double dt, gtsam::noiseModel::Base* cost_model,
+      const gtdynamics::CollocationScheme collocation);
+
+  static void addMultiPhaseCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const gtsam::Key phase_key,
+      gtsam::noiseModel::Base* cost_model,
+      const gtdynamics::CollocationScheme collocation);
+
+  gtsam::NonlinearFactorGraph jointCollocationFactors(
+      const int j, const int t, const double dt,
+      const gtdynamics::CollocationScheme collocation) const;
+
+  gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
+      const int j, const int t, const int phase,
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph collocationFactors(
       const gtdynamics::Robot &robot, const int t, const double dt,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
       const gtdynamics::Robot &robot, const int t, const int phase,
-      const gtdynamics::DynamicsGraph::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph jointLimitFactors(const gtdynamics::Robot &robot,
                                                 const int t) const;
@@ -460,6 +496,33 @@ class DynamicsGraph {
   const gtdynamics::OptimizerSetting &opt() const;
 };
 
+/********************** Objective Factors **********************/
+#include <gtdynamics/factors/ObjectiveFactors.h>
+class add_link_objectives {
+  add_link_objectives(gtsam::NonlinearFactorGraph @graph, int i, int k = 0);
+
+  add_link_objectives &pose(
+      gtsam::Pose3 pose, const gtsam::SharedNoiseModel &pose_model = nullptr);
+  add_link_objectives &twist(
+      gtsam::Vector6 twist,
+      const gtsam::SharedNoiseModel &twist_model = nullptr);
+  add_link_objectives &twistAccel(
+      gtsam::Vector6 twistAccel,
+      const gtsam::SharedNoiseModel &twistAccel_model = nullptr);
+};
+
+class add_joint_objectives {
+  add_joint_objectives(gtsam::NonlinearFactorGraph @graph, int j, int k = 0);
+
+  add_joint_objectives &angle(
+      double angle, const gtsam::SharedNoiseModel &angle_model = nullptr);
+  add_joint_objectives &velocity(
+      double velocity, const gtsam::SharedNoiseModel &velocity_model = nullptr);
+  add_joint_objectives &acceleration(
+      double acceleration,
+      const gtsam::SharedNoiseModel &acceleration_model = nullptr);
+};
+
 /********************** Value Initialization **********************/
 #include <gtdynamics/utils/initialize_solution_utils.h>
 gtsam::Values ZeroValues(
@@ -475,37 +538,27 @@ gtsam::Values ZeroValuesTrajectory(
 #include <gtdynamics/utils/DynamicsSymbol.h>
 class DynamicsSymbol {
   DynamicsSymbol();
-
+  DynamicsSymbol(const gtsam::Key& key);
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
   static DynamicsSymbol LinkJointSymbol(const string& s,
                                         unsigned char link_idx,
                                         unsigned char joint_idx,
                                         std::uint64_t t);
-
   static DynamicsSymbol JointSymbol(const string& s,
                                     unsigned char joint_idx, std::uint64_t t);
-
   static DynamicsSymbol LinkSymbol(const string& s, unsigned char link_idx,
                                    std::uint64_t t);
-
   static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
 
-  DynamicsSymbol(const gtsam::Key& key);
-
   string label() const;
-
   unsigned char linkIdx() const;
-
   unsigned char jointIdx() const;
-
   size_t time() const;
-
-  void print(const string& s);
-
-  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
-
   gtsam::Key key() const;
+
+  void print(const string& s = "");
+  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
 namespace internal {
@@ -623,6 +676,21 @@ class Simulator {
   gtsam::Values simulate(const std::vector<gtsam::Values> &torques_seq,
                          const double dt);
   const gtsam::Values &getValues() const;
+};
+
+/********************** Trajectory et al  **********************/
+#include <gtdynamics/utils/Phase.h>
+class Phase {
+  Phase(const gtdynamics::Robot& robot_configuration, const int& num_time_steps);
+  void addContactPoint(const string& link, const gtsam::Point3& point,
+                       double contact_height);
+  void addContactPoints(const std::vector<string>& links,
+                        const gtsam::Point3& point, double contact_height);
+  const gtdynamics::Robot& robot() const;
+  const gtdynamics::ContactPoints& contactPoints() const;
+  const gtdynamics::ContactPoint& getContactPointAtLink(const string& link) const;
+  int numTimeSteps() const;
+  void print(const string &s = "");
 };
 
 }  // namespace gtdynamics
