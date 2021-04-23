@@ -87,7 +87,7 @@ class Trajectory {
     ContactPoints phase_1_cps;
     ContactPoints phase_2_cps;
 
-    for (int p = 0; p < walk_cycle_.numPhases(); p++) {
+    for (size_t p = 0; p < walk_cycle_.numPhases(); p++) {
       phase_1_cps = phases[p].contactPoints();
       if (p == walk_cycle_.numPhases() - 1) {
         phase_2_cps = phases[0].contactPoints();
@@ -184,12 +184,24 @@ class Trajectory {
   }
 
   /**
-   * @fn Return phase for given phase number p.
-   * @param[in]p    Phase number.
+   * @fn Return phase index for given phase number p.
+   * @param[in]p    Phase number \in [0..repeat * numPhases()[.
    * @return Phase instance.
    */
-  const Phase &phase(int p) const {
-    return walk_cycle_.phases().at(p % walk_cycle_.numPhases());
+  size_t phaseIndex(size_t p) const {
+    if (p >= numPhases()) {
+      throw std::invalid_argument("Trajectory:phase: no such phase");
+    }
+    return p % walk_cycle_.numPhases();
+  }
+
+  /**
+   * @fn Return phase for given phase number p.
+   * @param[in]p    Phase number \in [0..repeat * numPhases()[.
+   * @return Phase instance.
+   */
+  const Phase &phase(size_t p) const {
+    return walk_cycle_.phase(phaseIndex(p));
   }
 
   /**
@@ -197,7 +209,7 @@ class Trajectory {
    * @param[in]p    Phase number.
    * @return Initial time step.
    */
-  int getStartTimeStep(int p) const {
+  int getStartTimeStep(size_t p) const {
     std::vector<int> final_timesteps = finalTimeSteps();
     int k_start = final_timesteps[p] - phase(p).numTimeSteps();
     if (p != 0) k_start += 1;
@@ -209,15 +221,14 @@ class Trajectory {
    * @param[in]p    Phase number.
    * @return Final time step.
    */
-  int getEndTimeStep(int p) const { return finalTimeSteps()[p]; }
+  int getEndTimeStep(size_t p) const { return finalTimeSteps()[p]; }
 
   /**
    * @fn Returns the contact links for a given phase.
    * @param[in]p    Phase number.
    * @return Vector of contact links.
    */
-  const ContactPoints &getPhaseContactLinks(int p) const {
-    walk_cycle_.print("wc");
+  const ContactPoints &getPhaseContactLinks(size_t p) const {
     return phase(p).contactPoints();
   }
 
@@ -226,16 +237,9 @@ class Trajectory {
    * @param[in]p    Phase number.
    * @return Vector of swing links.
    */
-  std::vector<std::string> getPhaseSwingLinks(int p) const {
-    std::vector<std::string> phase_swing_links;
-    auto contact_links = getPhaseContactLinks(p);
-    for (auto &&kv : walk_cycle_.contactPoints()) {
-      if (contact_links.count(kv.first) == 0)
-        phase_swing_links.push_back(kv.first);
-    }
-    return phase_swing_links;
-    // return walk_cycle_.swingLinks(p);
-}
+  std::vector<std::string> getPhaseSwingLinks(size_t p) const {
+    return walk_cycle_.swingLinks(phaseIndex(p));
+  }
 
   /**
    * @fn Generates a PointGoalFactor object

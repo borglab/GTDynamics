@@ -54,7 +54,7 @@ std::map<std::string, Point3> WalkCycle::initContactPointGoal(
 
 std::vector<std::string> WalkCycle::swingLinks(size_t p) const {
   std::vector<std::string> phase_swing_links;
-  const Phase &phase = phases_[p];
+  const Phase &phase = this->phase(p);
   for (auto &&kv : contact_points_) {
     const std::string &name = kv.first;
     if (!phase.hasContact(name)) {

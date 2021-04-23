@@ -55,11 +55,16 @@ class WalkCycle {
   }
 
   /**
-   * @fn Returns the initial contact point goal for every contact link.
-   * @return Map from link name to goal points.
+   * @fn Return phase for given phase number p.
+   * @param[in]p    Phase number \in [0..numPhases()[.
+   * @return Phase instance.
    */
-  std::map<std::string, gtsam::Point3> initContactPointGoal(
-      const Robot& robot) const;
+  const Phase& phase(int p) const {
+    if (p >= numPhases()) {
+      throw std::invalid_argument("Trajectory:phase: no such phase");
+    }
+    return phases_.at(p);
+  }
 
   /// Returns vector of phases in the walk cycle
   const std::vector<Phase>& phases() const { return phases_; }
@@ -76,6 +81,13 @@ class WalkCycle {
 
   /// GTSAM-style print, works with wrapper.
   void print(const std::string& s) const;
+
+  /**
+   * @fn Returns the initial contact point goal for every contact link.
+   * @return Map from link name to goal points.
+   */
+  std::map<std::string, gtsam::Point3> initContactPointGoal(
+      const Robot& robot) const;
 
   /**
    * @fn Returns the swing links for a given phase.
