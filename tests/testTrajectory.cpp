@@ -46,28 +46,27 @@ TEST(Trajectory, Intersection) {
   Robot robot = gtdynamics::CreateRobotFromFile(
       gtdynamics::kSdfPath + std::string("/spider.sdf"), "spider");
 
-  double contact_height = 5;
   size_t num_time_steps = 1;
 
   // Initialize first phase
   auto phase_1 = Phase(robot, num_time_steps);
-  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
+  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
   auto phase_2 = Phase(robot, num_time_steps);
-  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
+  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
 
   TrajectoryTest traj;
-  ContactPoints intersection = traj.getIntersection(
-      phase_1.contactPoints(), phase_2.contactPoints());
+  ContactPoints intersection =
+      traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
 
-  ContactPoints expected = {{"tarsus_2_L2", {{3., 3., 3.}, 0, contact_height}},
-                            {"tarsus_3_L3", {{3., 3., 3.}, 0, contact_height}}};
+  ContactPoints expected = {{"tarsus_2_L2", {{3., 3., 3.}, 0}},
+                            {"tarsus_3_L3", {{3., 3., 3.}, 0}}};
 
   for (auto const& contact_point : intersection) {
     EXPECT(expected[contact_point.first] == contact_point.second);
@@ -81,18 +80,17 @@ TEST(Trajectory, error) {
   // Initialize first phase
   size_t num_time_steps = 2;
   auto phase_1 = Phase(robot, num_time_steps);
-  double contact_height = 5;
-  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
+  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
   size_t num_time_steps_2 = 3;
   auto phase_2 = Phase(robot, num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.}, contact_height);
+  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
 
   // Initialize walk cycle
   auto walk_cycle = gtdynamics::WalkCycle();

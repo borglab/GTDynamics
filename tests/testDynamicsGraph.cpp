@@ -487,10 +487,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Add some contact points.
   ContactPoints contact_points;
-  contact_points.emplace("lower0",
-                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
-  contact_points.emplace("lower2",
-                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
+  contact_points.emplace("lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
+  contact_points.emplace("lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -568,8 +566,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Add some contact points.
   ContactPoints contact_points;
-  contact_points.emplace("link_0",
-                         ContactPoint{gtsam::Point3(0, 0, -0.1), 0, 0});
+  contact_points.emplace("link_0", ContactPoint{gtsam::Point3(0, 0, -0.1), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

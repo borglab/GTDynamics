@@ -96,10 +96,10 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   // All contacts.
-  auto c0 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Front left.
-  auto c1 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Hind left.
-  auto c2 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Front right.
-  auto c3 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Hind right.
+  auto c0 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front left.
+  auto c1 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind left.
+  auto c2 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front right.
+  auto c3 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind right.
 
   // Contact points for each phase. First move one leg at a time then switch
   // to a more dynamic gait with two legs in swing per phase.

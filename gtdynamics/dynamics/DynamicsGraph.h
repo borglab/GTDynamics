@@ -50,19 +50,16 @@ inline DynamicsSymbol TimeKey(int t) {
  *
  * @param point The location of the contact point relative to the link COM.
  * @param id Each link's contact points must have a unique contact id.
- * @param height Height at which contact is made.
  */
 struct ContactPoint {
   gtsam::Point3 point;
   int id;
-  double height = 0.0;
 
   ContactPoint() {}
-  ContactPoint(const gtsam::Point3 &point, int id, double height = 0.0)
-      : point(point), id(id), height(height) {}
+  ContactPoint(const gtsam::Point3 &point, int id) : point(point), id(id) {}
 
   bool operator==(const ContactPoint &other) {
-    return (point == other.point && id == other.id && height == other.height);
+    return (point == other.point && id == other.id);
   }
   bool operator!=(const ContactPoint &other) { return !(*this == other); }
 

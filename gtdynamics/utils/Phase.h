@@ -40,14 +40,11 @@ class Phase {
    *
    * @param[in] link             Name of link in the robot_configuration.
    * @param[in] point            Point of contact on link.
-   * @param[in] contact_height   Height of contact point from ground.
    */
-  void addContactPoint(const std::string &link_name, const gtsam::Point3 &point,
-                       double contact_height) {
+  void addContactPoint(const std::string &link_name,
+                       const gtsam::Point3 &point) {
     // Check if link exists in the robot
-    robot_.link(link_name);
-    auto ret = contact_points_.emplace(link_name,
-                                       ContactPoint{point, 0, contact_height});
+    auto ret = contact_points_.emplace(link_name, ContactPoint{point, 0});
     if (!ret.second) {
       throw std::runtime_error("Multiple contact points for link " + link_name);
     }
@@ -58,12 +55,11 @@ class Phase {
    *
    * @param[in] link_names            List of link_names.
    * @param[in] point            Point of contact on link.
-   * @param[in] contact_height   Height of contact point from ground.
    */
   void addContactPoints(const std::vector<std::string> &link_names,
-                        const gtsam::Point3 &point, double contact_height) {
+                        const gtsam::Point3 &point) {
     for (auto &&link_name : link_names) {
-      addContactPoint(link_name, point, contact_height);
+      addContactPoint(link_name, point);
     }
   }
 

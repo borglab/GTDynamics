@@ -52,8 +52,7 @@ using gtsam::ExpressionFactor;
 namespace gtdynamics {
 
 std::ostream &operator<<(std::ostream &os, const ContactPoint &cp) {
-  os << "{[" << cp.point.transpose() << "], " << cp.id << ", " << cp.height
-     << "}";
+  os << "{[" << cp.point.transpose() << "], " << cp.id << "}";
   return os;
 }
 
@@ -234,8 +233,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
         ContactKinematicsPoseFactor contact_pose_factor(
             internal::PoseKey(i, t), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity,
-            contact_point.second.height);
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity);
         graph.add(contact_pose_factor);
       }
     }

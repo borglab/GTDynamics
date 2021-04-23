@@ -101,14 +101,14 @@ int main(int argc, char** argv) {
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
 
   // All contacts.
-  auto c1 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front left.
-  auto c2 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind left.
-  auto c3 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front right.
-  auto c4 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind right.
-  auto c5 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front left.
-  auto c6 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind left.
-  auto c7 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Front right.
-  auto c8 = ContactPoint{Point3(0, 0.19, 0), 0, GROUND_HEIGHT};  // Hind right.
+  auto c1 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front left.
+  auto c2 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind left.
+  auto c3 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front right.
+  auto c4 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind right.
+  auto c5 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front left.
+  auto c6 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind left.
+  auto c7 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front right.
+  auto c8 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind right.
 
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t),
             Isotropic::Sigma(3, 1e-7), c1.point,
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
+            Point3(prev_cp[pcl].x(), prev_cp[pcl].y() - 0.05)));
       }
 
       double h =

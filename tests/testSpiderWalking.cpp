@@ -20,8 +20,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#define GROUND_HEIGHT -1.75  //-1.75
-
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::Pose3;
@@ -43,13 +41,13 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   Phase stationary(robot, 1);
-  stationary.addContactPoints(links, Point3(0, 0.19, 0), GROUND_HEIGHT);
+  stationary.addContactPoints(links, Point3(0, 0.19, 0));
 
   Phase odd(robot, 2);
-  odd.addContactPoints(odd_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
+  odd.addContactPoints(odd_links, Point3(0, 0.19, 0));
 
   Phase even(robot, 2);
-  even.addContactPoints(even_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
+  even.addContactPoints(even_links, Point3(0, 0.19, 0));
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -94,7 +92,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Build the objective factors.
   NonlinearFactorGraph objectives = trajectory.contactLinkObjectives(
-      Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
+      Isotropic::Sigma(3, 1e-7));
   // Regression test on objective factors
   EXPECT_LONGS_EQUAL(104, objectives.size());
   EXPECT_LONGS_EQUAL(104, objectives.keys().size());

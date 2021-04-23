@@ -28,11 +28,10 @@ TEST(Phase, error) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   constexpr size_t num_time_steps = 20;
-  gtdynamics::Phase phase(robot, num_time_steps);
-  constexpr double contact_height = 5;
-  phase.addContactPoint("tarsus_1_L1", Point3(1, 1, 1), contact_height);
-  phase.addContactPoint("tarsus_2_L2", Point3(2, 2, 2), contact_height);
-  phase.addContactPoint("tarsus_3_L3", Point3(3, 3, 3), contact_height);
+  gtdynamics::Phase phase(num_time_steps);
+  phase.addContactPoint("tarsus_1_L1", Point3(1, 1, 1));
+  phase.addContactPoint("tarsus_2_L2", Point3(2, 2, 2));
+  phase.addContactPoint("tarsus_3_L3", Point3(3, 3, 3));
   EXPECT_LONGS_EQUAL(33, robot.numLinks());
 
   ContactPoint cp = phase.getContactPointAtLink("tarsus_3_L3");
@@ -60,10 +59,10 @@ TEST(Phase, inverse_kinematics) {
   EXPECT_LONGS_EQUAL(13, phase.robot().numLinks());
 
   // Set contacts to reasonable values
-  phase.addContactPoint("lower1", Point3(0, 0.15, 0), 0);     // LH
-  phase.addContactPoint("lower0", Point3(0.6, 0.15, 0), 0);   // LF
-  phase.addContactPoint("lower2", Point3(0.6, -0.15, 0), 0);  // RF
-  phase.addContactPoint("lower3", Point3(0, -0.15, 0), 0);    // RF
+  phase.addContactPoint("lower1", Point3(0, 0.15, 0));     // LH
+  phase.addContactPoint("lower0", Point3(0.6, 0.15, 0));   // LF
+  phase.addContactPoint("lower2", Point3(0.6, -0.15, 0));  // RF
+  phase.addContactPoint("lower3", Point3(0, -0.15, 0));    // RF
 }
 
 int main() {

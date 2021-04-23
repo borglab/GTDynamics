@@ -63,17 +63,17 @@ using gtsam::noiseModel::Isotropic;
 gtdynamics::Trajectory getTrajectory(vector<string> links, Robot robot,
                                      size_t repeat = 3) {
   gtdynamics::Phase stationary(robot, 40);
-  stationary.addContactPoints(links, gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+  stationary.addContactPoints(links, gtsam::Point3(0, 0.19, 0));
 
   gtdynamics::Phase odd(robot, 20);
   odd.addContactPoints(
       {{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4", "tarsus_7_R2"}},
-      gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+      gtsam::Point3(0, 0.19, 0));
 
   gtdynamics::Phase even(robot, 20);
   even.addContactPoints(
       {{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3", "tarsus_8_R1"}},
-      gtsam::Point3(0, 0.19, 0), GROUND_HEIGHT);
+      gtsam::Point3(0, 0.19, 0));
 
   gtdynamics::WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);

@@ -22,24 +22,23 @@
 using namespace gtdynamics;
 
 TEST(WalkCycle, error) {
-  Robot robot_configuration =
+  Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   // Initialize first phase
   size_t num_time_steps = 20;
-  auto phase_1 = gtdynamics::Phase(robot_configuration, num_time_steps);
-  double contact_height = 5;
-  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
-  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
+  auto phase_1 = gtdynamics::Phase(robot, num_time_steps);
+  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
 
   // Initialize second phase
   size_t num_time_steps_2 = 25;
-  auto phase_2 = gtdynamics::Phase(robot_configuration, num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.}, contact_height);
-  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.}, contact_height);
+  auto phase_2 = gtdynamics::Phase(robot, num_time_steps_2);
+  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
 
   // Initialize walk cycle
   auto walk_cycle = gtdynamics::WalkCycle();
