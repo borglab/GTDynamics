@@ -28,7 +28,7 @@ TEST(Phase, error) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   constexpr size_t num_time_steps = 20;
-  gtdynamics::Phase phase(num_time_steps);
+  gtdynamics::Phase phase(robot, num_time_steps);
   phase.addContactPoint("tarsus_1_L1", Point3(1, 1, 1));
   phase.addContactPoint("tarsus_2_L2", Point3(2, 2, 2));
   phase.addContactPoint("tarsus_3_L3", Point3(3, 3, 3));
@@ -46,8 +46,8 @@ TEST(Phase, error) {
   std::stringstream ss;
   ss << phase;
   EXPECT(
-      "[tarsus_1_L1: {[1 1 1], 0, 5}, tarsus_2_L2: {[2 2 2], 0, 5},"
-      " tarsus_3_L3: {[3 3 3], 0, 5}, ]" == ss.str());
+      "[tarsus_1_L1: {[1 1 1], 0}, tarsus_2_L2: {[2 2 2], 0},"
+      " tarsus_3_L3: {[3 3 3], 0}, ]" == ss.str());
 }
 
 TEST(Phase, inverse_kinematics) {
