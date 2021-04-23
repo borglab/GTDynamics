@@ -27,12 +27,10 @@ using namespace std;
 auto kModel1 = gtsam::noiseModel::Unit::Create(1);
 auto kModel6 = gtsam::noiseModel::Unit::Create(6);
 
-using gtdynamics::ContactPoints;
-using gtdynamics::Phase;
-using gtdynamics::Robot;
+using namespace gtdynamics;
 
 // Class to test protected method
-class TrajectoryTest : public gtdynamics::Trajectory {
+class TrajectoryTest : public Trajectory {
  public:
   TrajectoryTest() : Trajectory(){};
 
@@ -43,30 +41,31 @@ class TrajectoryTest : public gtdynamics::Trajectory {
 };
 
 TEST(Trajectory, Intersection) {
-  Robot robot = gtdynamics::CreateRobotFromFile(
-      gtdynamics::kSdfPath + std::string("/spider.sdf"), "spider");
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   size_t num_time_steps = 1;
 
   // Initialize first phase
   auto phase_1 = Phase(num_time_steps);
-  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
-  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
-  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
+  const Point3 contact_in_com(0, 0.19, 0);
+  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
+  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
+  phase_1.addContactPoint("tarsus_3_L3", contact_in_com);
 
   // Initialize second phase
   auto phase_2 = Phase(num_time_steps);
-  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_3_L3", contact_in_com);
+  phase_2.addContactPoint("tarsus_4_L4", contact_in_com);
+  phase_2.addContactPoint("tarsus_5_R4", contact_in_com);
+  phase_2.addContactPoint("tarsus_2_L2", contact_in_com);
 
   TrajectoryTest traj;
   ContactPoints intersection =
       traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
 
-  ContactPoints expected = {{"tarsus_2_L2", {{3., 3., 3.}, 0}},
-                            {"tarsus_3_L3", {{3., 3., 3.}, 0}}};
+  ContactPoints expected = {{"tarsus_2_L2", {contact_in_com, 0}},
+                            {"tarsus_3_L3", {contact_in_com, 0}}};
 
   for (auto const& contact_point : intersection) {
     EXPECT(expected[contact_point.first] == contact_point.second);
@@ -74,32 +73,40 @@ TEST(Trajectory, Intersection) {
 }
 
 TEST(Trajectory, error) {
-  Robot robot = gtdynamics::CreateRobotFromFile(
-      gtdynamics::kSdfPath + std::string("/spider.sdf"), "spider");
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   // Initialize first phase
   size_t num_time_steps = 2;
   auto phase_1 = Phase(num_time_steps);
-  phase_1.addContactPoint("tarsus_1_L1", {3., 3., 3.});
-  phase_1.addContactPoint("tarsus_2_L2", {3., 3., 3.});
-  phase_1.addContactPoint("tarsus_3_L3", {3., 3., 3.});
+  const Point3 contact_in_com(0, 0.19, 0);
+  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
+  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
+  phase_1.addContactPoint("tarsus_3_L3", contact_in_com);
 
   // Initialize second phase
   size_t num_time_steps_2 = 3;
   auto phase_2 = Phase(num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2_L2", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_3_L3", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_4_L4", {3., 3., 3.});
-  phase_2.addContactPoint("tarsus_5_R4", {3., 3., 3.});
+  phase_2.addContactPoint("tarsus_2_L2", contact_in_com);
+  phase_2.addContactPoint("tarsus_3_L3", contact_in_com);
+  phase_2.addContactPoint("tarsus_4_L4", contact_in_com);
+  phase_2.addContactPoint("tarsus_5_R4", contact_in_com);
 
   // Initialize walk cycle
-  auto walk_cycle = gtdynamics::WalkCycle();
+  auto walk_cycle = WalkCycle();
   walk_cycle.addPhase(phase_1);
   walk_cycle.addPhase(phase_2);
+  EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
 
   // Initialize Trajectory
   size_t repeat = 3;
-  auto trajectory = gtdynamics::Trajectory(robot, walk_cycle, repeat);
+  auto trajectory = Trajectory(robot, walk_cycle, repeat);
+
+  // test phase method
+  EXPECT_LONGS_EQUAL(2, trajectory.phase(0).numTimeSteps());
+  EXPECT_LONGS_EQUAL(3, trajectory.phase(1).numTimeSteps());
+  EXPECT_LONGS_EQUAL(2, trajectory.phase(2).numTimeSteps());
+  EXPECT_LONGS_EQUAL(3, trajectory.phase(3).numTimeSteps());
 
   auto phase_cps = trajectory.phaseContactPoints();
   EXPECT_LONGS_EQUAL(repeat * 2, phase_cps.size());
@@ -133,8 +140,8 @@ TEST(Trajectory, error) {
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
   double sigma_dynamics = 1e-5;  // std of dynamics constraints.
-  auto opt = gtdynamics::OptimizerSetting(sigma_dynamics);
-  auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
+  auto opt = OptimizerSetting(sigma_dynamics);
+  auto graph_builder = DynamicsGraph(opt, gravity);
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
       trajectory.getTransitionGraphs(graph_builder, mu);
   EXPECT_LONGS_EQUAL(repeat * 2 - 1, transition_graphs.size());
@@ -142,8 +149,8 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(205, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
-  auto graph = trajectory.multiPhaseFactorGraph(
-      graph_builder, gtdynamics::CollocationScheme::Euler, mu);
+  auto graph = trajectory.multiPhaseFactorGraph(graph_builder,
+                                                CollocationScheme::Euler, mu);
   // regression test
   EXPECT_LONGS_EQUAL(4330, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
@@ -158,7 +165,7 @@ TEST(Trajectory, error) {
   // regression test
   EXPECT_LONGS_EQUAL(80, contact_link_objectives.size());
   // regression
-  auto last_factor = boost::dynamic_pointer_cast<gtdynamics::PointGoalFactor>(
+  auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
       contact_link_objectives.back());
   EXPECT(gtsam::assert_equal(gtsam::Point3(3.00478, -1.33761, 0),
                              last_factor->goalPoint(), 1e-5));

@@ -36,6 +36,13 @@ class WalkCycle {
   /// Default Constructor
   WalkCycle() {}
 
+  /// Constructor with phases
+  explicit WalkCycle(const std::vector<Phase>& phases) {
+    for (auto&& phase : phases) {
+      addPhase(phase);
+    }
+  }
+
   /**
    * @fn Adds phase in walk cycle
    * @param[in] phase Swing or stance phase in the walk cycle.
