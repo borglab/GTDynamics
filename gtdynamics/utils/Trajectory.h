@@ -248,8 +248,7 @@ class Trajectory {
                                   const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link = robot_.link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
-    auto point_com = cp.point; // TODO(frank): BROKEN ???
-    return PointGoalFactor(pose_key, cost_model, point_com, goal_point);
+    return PointGoalFactor(pose_key, cost_model, cp.point, goal_point);
   }
 
   /**

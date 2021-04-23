@@ -254,7 +254,7 @@ int main(int argc, char** argv) {
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t),
             Isotropic::Sigma(3, 1e-7), c1.point,
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
+            Point3(prev_cp[pcl].x(), prev_cp[pcl].y() - 0.05)));
       }
 
       double h =

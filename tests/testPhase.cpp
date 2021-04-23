@@ -28,7 +28,7 @@ TEST(Phase, error) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   constexpr size_t num_time_steps = 20;
-  gtdynamics::Phase phase(robot, num_time_steps);
+  Phase phase(num_time_steps);
   phase.addContactPoint("tarsus_1_L1", Point3(1, 1, 1));
   phase.addContactPoint("tarsus_2_L2", Point3(2, 2, 2));
   phase.addContactPoint("tarsus_3_L3", Point3(3, 3, 3));
