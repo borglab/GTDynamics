@@ -77,7 +77,7 @@ gtsam::NonlinearFactorGraph WalkCycle::swingObjectives(
       AddPointGoalFactors(
           &factors, cost_model, kv.second.point,
           SimpleSwingTrajectory(cp_goal, step, phase.numTimeSteps()),
-          robot.link(name)->id());
+          robot.link(name)->id(), k);
     }
   }
   return factors;

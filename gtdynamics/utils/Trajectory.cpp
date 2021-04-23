@@ -89,9 +89,8 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
   const Point3 step(0, 0.4, 0);
 
   // Add contact point objectives to factor graph.
+  size_t k_start = 0;
   for (int p = 0; p < numPhases(); p++) {
-    int k_start = getStartTimeStep(p);
-
     const Phase &phase = this->phase(p);
     factors.add(phase.stanceObjectives(robot_, cp_goals, cost_model, k_start));
 
@@ -102,6 +101,8 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
     for (auto &&name : getPhaseSwingLinks(p)) {
       cp_goals[name] = cp_goals[name] + step;
     }
+
+    k_start += phase.numTimeSteps();
   }
   return factors;
 }
