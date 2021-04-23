@@ -8,8 +8,7 @@
 /**
  * @file  utils.h
  * @brief Utility methods.
- * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, Gerry Chen, and
- * Varun Agrawal
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
 #pragma once
@@ -137,13 +136,5 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
  * @param planar_axis The planar axis.
  */
 gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
-
-/**
- * Convenience function for wrapping.
- * It wraps some GTSAM objects so that printing will use DynamicsSymbol key
- * formatting.
- */
-template <typename T>
-std::string GtdFormat(const T &t, const std::string &s = "");
 
 }  // namespace gtdynamics

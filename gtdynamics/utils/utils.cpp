@@ -8,13 +8,10 @@
 /**
  * @file  utils.cpp
  * @brief Utility methods.
- * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, Gerry Chen and Varun
- * Agrawal.
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
 #include "gtdynamics/utils/utils.h"
-
-#include <gtsam/nonlinear/utilities.h>  // for RedirectCout.
 
 #include <stdexcept>
 
@@ -179,13 +176,6 @@ gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {
     H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
   }
   return H_wrench;
-}
-
-template <typename T>
-std::string GtdFormat(const T &t, const std::string &s) {
-  gtsam::RedirectCout redirect;
-  t.print(s, GTDKeyFormatter);
-  return redirect.str();
 }
 
 }  // namespace gtdynamics
