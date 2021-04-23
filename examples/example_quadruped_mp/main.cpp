@@ -145,8 +145,9 @@ TargetFootholds compute_target_footholds(
     std::map<std::string, Pose3> target_footholds_i;
     for (auto &&bTf : bTfs) {
       Pose3 wTf = wTb * bTf.second;
+      // TODO(frank): #179 make sure height is handled correctly.
       Pose3 wTf_gh(wTf.rotation(), Point3(wTf.translation()[0],
-                                          wTf.translation()[1]));
+                                          wTf.translation()[1], GROUND_HEIGHT));
       target_footholds_i.emplace(bTf.first, wTf_gh);
     }
     target_footholds.emplace(i, target_footholds_i);

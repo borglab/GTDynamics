@@ -248,10 +248,11 @@ int main(int argc, char** argv) {
 
       for (auto&& pcl : phase_contact_links) {
         // TODO(aescontrela): Use correct contact point for each link.
+        // TODO(frank): #179 make sure height is handled correctly.
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t),
             Isotropic::Sigma(3, 1e-7), c1.point,
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y() - 0.05)));
+            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
       }
 
       double h =

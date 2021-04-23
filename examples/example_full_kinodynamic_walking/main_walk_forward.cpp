@@ -215,10 +215,11 @@ int main(int argc, char** argv) {
       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
       for (auto&& pcl : phase_contact_links)
         // TODO(aescontrela): Use correct contact point for each link.
+        // TODO(frank): #179 make sure height is handled correctly.
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
             c0.point,
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y() - 0.03)));
+            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.03)));
 
       double h = GROUND_HEIGHT +
                  0.05 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
