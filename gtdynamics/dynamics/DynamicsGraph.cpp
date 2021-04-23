@@ -231,6 +231,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
       for (auto &&contact_point : *contact_points) {
         if (contact_point.first != link->name()) continue;
 
+        // TODO(frank): #179 make sure height is handled correctly.
         ContactKinematicsPoseFactor contact_pose_factor(
             internal::PoseKey(i, t), opt_.cp_cost_model,
             gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity);
