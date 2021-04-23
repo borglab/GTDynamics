@@ -29,8 +29,8 @@ namespace gtdynamics {
  */
 class WalkCycle {
  protected:
-  std::vector<Phase> phases_;            ///< Phases in walk cycle
-  std::set<std::string> contact_links_;  ///< names of all contact links
+  std::vector<Phase> phases_;     ///< Phases in walk cycle
+  ContactPoints contact_points_;  ///< All contact points
 
  public:
   /// Default Constructor
@@ -49,8 +49,7 @@ class WalkCycle {
    */
   void addPhase(const Phase& phase) {
     for (auto&& kv : phase.contactPoints()) {
-      auto link_name = kv.first;
-      contact_links_.insert(link_name);
+      contact_points_.emplace(kv);
     }
     phases_.push_back(phase);
   }
@@ -69,8 +68,32 @@ class WalkCycle {
   int numPhases() const { return phases_.size(); }
 
   /// Return all the contact points.
-  const std::set<std::string>& contactLinkNames() const {
-    return contact_links_;
-  }
+  const ContactPoints& contactPoints() const { return contact_points_; }
+
+  /// Print to stream.
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const WalkCycle& walk_cycle);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string& s) const;
+
+  /**
+   * @fn Returns the swing links for a given phase.
+   * @param[in]p    Phase number.
+   * @return Vector of swing links.
+   */
+  std::vector<std::string> swingLinks(size_t p) const;
+
+  /**
+   * Add PointGoalFactors for all swing feet in phase `p`, starting at cp_goals.
+   * Swing feet are moved according to a pre-determined height trajectory, and
+   * moved by the 3D vector step.
+   * Factors are added at time step k, default 0.
+   */
+  gtsam::NonlinearFactorGraph swingObjectives(
+      const Robot& robot, size_t p,
+      std::map<std::string, gtsam::Point3> cp_goals, const gtsam::Point3& step,
+      const gtsam::SharedNoiseModel& cost_model, double ground_height,
+      size_t k) const;
 };
 }  // namespace gtdynamics
