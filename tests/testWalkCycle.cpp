@@ -76,7 +76,6 @@ TEST(Phase, inverse_kinematics) {
   const size_t p = 1;  // second phase
   const Point3 step(0., 0.1, 0);
   const gtsam::SharedNoiseModel cost_model = nullptr;
-  const double ground_height = 0.3;
   const size_t k = 777;
   gtsam::NonlinearFactorGraph factors =
       walk_cycle.swingObjectives(robot, p,
@@ -84,7 +83,7 @@ TEST(Phase, inverse_kinematics) {
                                   {"lower0", goal_LF},
                                   {"lower2", goal_RF},
                                   {"lower3", goal_RH}},
-                                 step, cost_model, ground_height, k);
+                                 step, cost_model, k);
   EXPECT_LONGS_EQUAL(num_time_steps * 2, factors.size());
 }
 

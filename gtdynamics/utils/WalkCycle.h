@@ -105,7 +105,6 @@ class WalkCycle {
   gtsam::NonlinearFactorGraph swingObjectives(
       const Robot& robot, size_t p,
       std::map<std::string, gtsam::Point3> cp_goals, const gtsam::Point3& step,
-      const gtsam::SharedNoiseModel& cost_model, double ground_height,
-      size_t k) const;
+      const gtsam::SharedNoiseModel& cost_model, size_t k) const;
 };
 }  // namespace gtdynamics

@@ -67,7 +67,7 @@ std::vector<std::string> WalkCycle::swingLinks(size_t p) const {
 gtsam::NonlinearFactorGraph WalkCycle::swingObjectives(
     const Robot &robot, size_t p, std::map<std::string, Point3> cp_goals,
     const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-    double ground_height, size_t k) const {
+    size_t k) const {
   const Phase &phase = phases_[p];
   gtsam::NonlinearFactorGraph factors;
   for (auto &&kv : contact_points_) {
