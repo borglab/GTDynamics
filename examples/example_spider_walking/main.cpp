@@ -42,18 +42,19 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single spider walk cycle.
 Trajectory getTrajectory(vector<string> links, Robot robot, size_t repeat) {
+  const Point3 contact_in_com(0, 0.19, 0);
   Phase stationary(robot, 40);
-  stationary.addContactPoints(links, Point3(0, 0.19, 0));
+  stationary.addContactPoints(links, contact_in_com);
 
   Phase odd(robot, 20);
   odd.addContactPoints(
       {{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4", "tarsus_7_R2"}},
-      Point3(0, 0.19, 0));
+      contact_in_com);
 
   Phase even(robot, 20);
   even.addContactPoints(
       {{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3", "tarsus_8_R1"}},
-      Point3(0, 0.19, 0));
+      contact_in_com);
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -146,6 +147,7 @@ int main(int argc, char **argv) {
   params.setlambdaInitial(1e10);
   params.setlambdaLowerBound(1e-7);
   params.setlambdaUpperBound(1e10);
+  params.setAbsoluteErrorTol(1.0);
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   auto results = optimizer.optimize();
 

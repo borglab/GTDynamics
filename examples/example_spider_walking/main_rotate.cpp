@@ -101,14 +101,15 @@ int main(int argc, char** argv) {
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
 
   // All contacts.
-  auto c1 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front left.
-  auto c2 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind left.
-  auto c3 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front right.
-  auto c4 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind right.
-  auto c5 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front left.
-  auto c6 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind left.
-  auto c7 = ContactPoint{Point3(0, 0.19, 0), 0};  // Front right.
-  auto c8 = ContactPoint{Point3(0, 0.19, 0), 0};  // Hind right.
+  const Point3 contact_in_com(0, 0.19, 0);
+  auto c1 = ContactPoint{contact_in_com, 0};  // Front left.
+  auto c2 = ContactPoint{contact_in_com, 0};  // Hind left.
+  auto c3 = ContactPoint{contact_in_com, 0};  // Front right.
+  auto c4 = ContactPoint{contact_in_com, 0};  // Hind right.
+  auto c5 = ContactPoint{contact_in_com, 0};  // Front left.
+  auto c6 = ContactPoint{contact_in_com, 0};  // Hind left.
+  auto c7 = ContactPoint{contact_in_com, 0};  // Front right.
+  auto c8 = ContactPoint{contact_in_com, 0};  // Hind right.
 
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
