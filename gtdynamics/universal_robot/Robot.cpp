@@ -199,7 +199,6 @@ static bool InsertWithCheck(size_t i, size_t t,
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
-  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
   auto pose_key = internal::PoseKey(i, t);
   auto twist_key = internal::TwistKey(i, t);
   const bool exists = values->exists(pose_key);
