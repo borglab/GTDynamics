@@ -193,8 +193,8 @@ int main(int argc, char** argv) {
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
-    for (auto&& [name, cp] : phase_cps[p]) {
-      phase_contact_links.push_back(name);
+    for (auto&& kv : phase_cps[p]) {
+      phase_contact_links.push_back(kv.first);
     }
 
     vector<string> phase_swing_links;
