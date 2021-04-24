@@ -13,12 +13,12 @@ set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
 
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
                ${PROJECT_BINARY_DIR}/python/setup.py)
-configure_file(${GTDYNAMICS_PYTHON_PATH}/__init__.py
-               ${PROJECT_BINARY_DIR}/python/${PROJECT_NAME}/__init__.py COPYONLY)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
                ${PROJECT_BINARY_DIR}/python/requirements.txt COPYONLY)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
+file(COPY ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}
+     DESTINATION ${PROJECT_BINARY_DIR}/python)
 
 combine_interface_headers(
   ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i
