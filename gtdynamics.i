@@ -314,7 +314,7 @@ enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
 class ContactPoint {
   ContactPoint();
-  ContactPoint(const gtsam::Point3& point, int id, double height = 0.0);
+  ContactPoint(const gtsam::Point3& point, int id);
   void print(const string &s = "");
 };
 
@@ -394,12 +394,12 @@ class DynamicsGraph {
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<gtdynamics::Robot> &robots,
+      const gtdynamics::Robot &robot,
       const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<gtdynamics::Robot> &robots,
+      const gtdynamics::Robot &robot,
       const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const gtdynamics::CollocationScheme collocation) const;
@@ -681,14 +681,12 @@ class Simulator {
 /********************** Trajectory et al  **********************/
 #include <gtdynamics/utils/Phase.h>
 class Phase {
-  Phase(const gtdynamics::Robot& robot_configuration, const int& num_time_steps);
-  void addContactPoint(const string& link, const gtsam::Point3& point,
-                       double contact_height);
-  void addContactPoints(const std::vector<string>& links,
-                        const gtsam::Point3& point, double contact_height);
-  const gtdynamics::Robot& robot() const;
-  const gtdynamics::ContactPoints& contactPoints() const;
-  const gtdynamics::ContactPoint& contactPoint(const string& link) const;
+  Phase(const int &num_time_steps);
+  void addContactPoint(const string &link, const gtsam::Point3 &point);
+  void addContactPoints(const std::vector<string> &links,
+                        const gtsam::Point3 &point);
+  const gtdynamics::ContactPoints &contactPoints() const;
+  const gtdynamics::ContactPoint &contactPoint(const string &link) const;
   int numTimeSteps() const;
   void print(const string &s = "");
 };
