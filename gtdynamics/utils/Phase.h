@@ -16,8 +16,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 
-#include <algorithm>
-#include <boost/algorithm/string/join.hpp>
 #include <iosfwd>
 
 namespace gtdynamics {
@@ -26,11 +24,11 @@ namespace gtdynamics {
  * and its duration.
  */
 class Phase {
- protected:
-  ContactPoints contact_points_;  ///< Contact Points
-  int num_time_steps_;            ///< Number of time steps in this phase
+protected:
+  ContactPoints contact_points_; ///< Contact Points
+  int num_time_steps_;           ///< Number of time steps in this phase
 
- public:
+public:
   /// Constructor
   Phase(const int &num_time_steps) : num_time_steps_(num_time_steps) {}
 
@@ -105,5 +103,10 @@ class Phase {
   gtsam::NonlinearFactorGraph stanceObjectives(
       const Robot &robot, std::map<std::string, gtsam::Point3> cp_goals,
       const gtsam::SharedNoiseModel &cost_model, size_t k = 0) const;
+
+  /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
+  gtsam::Matrix jointValues(const Robot &robot, const gtsam::Values &results,
+                            size_t k = 0,
+                            boost::optional<double> dt = boost::none) const;
 };
-}  // namespace gtdynamics
+} // namespace gtdynamics

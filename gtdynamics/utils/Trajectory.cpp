@@ -17,6 +17,9 @@
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
+#include <algorithm>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,12 +31,13 @@ using gtsam::Values;
 using gtsam::Z_6x1;
 using std::map;
 using std::string;
+using std::to_string;
 using std::vector;
 
 namespace gtdynamics {
 
-vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
-    DynamicsGraph &graph_builder, double mu) const {
+vector<NonlinearFactorGraph>
+Trajectory::getTransitionGraphs(DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<int> final_timesteps = finalTimeSteps();
@@ -44,9 +48,10 @@ vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
   return transition_graphs;
 }
 
-NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
-    DynamicsGraph &graph_builder, const CollocationScheme collocation,
-    double mu) const {
+NonlinearFactorGraph
+Trajectory::multiPhaseFactorGraph(DynamicsGraph &graph_builder,
+                                  const CollocationScheme collocation,
+                                  double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(graph_builder, mu);
   return graph_builder.multiPhaseTrajectoryFG(robot_, phaseDurations(),
@@ -54,8 +59,8 @@ NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
                                               phaseContactPoints(), mu);
 }
 
-vector<Values> Trajectory::transitionPhaseInitialValues(
-    double gaussian_noise) const {
+vector<Values>
+Trajectory::transitionPhaseInitialValues(double gaussian_noise) const {
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
@@ -75,8 +80,9 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
                                         gaussian_noise, phaseContactPoints());
 }
 
-NonlinearFactorGraph Trajectory::contactLinkObjectives(
-    const SharedNoiseModel &cost_model, const double ground_height) const {
+NonlinearFactorGraph
+Trajectory::contactLinkObjectives(const SharedNoiseModel &cost_model,
+                                  const double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Initials contact point goal.
@@ -149,26 +155,19 @@ void Trajectory::addMinimumTorqueFactors(
   }
 }
 
-void Trajectory::writePhaseToFile(std::ofstream &traj_file,
-                                  const gtsam::Values &results,
-                                  int phase) const {
-  int k = getStartTimeStep(phase);
-  auto phase_durations = phaseDurations();
-  for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
-    std::vector<std::string> vals;
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(Torque(results, joint->id(), k)));
-    vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-    k++;
-    std::string vals_str = boost::algorithm::join(vals, ",");
-    traj_file << vals_str << "\n";
-  }
+void Trajectory::writePhaseToFile(std::ofstream &file,
+                                  const gtsam::Values &results, int p) const {
+  using gtsam::Matrix;
+
+  // Extract joimt values.
+  int k = getStartTimeStep(p);
+  Matrix mat =
+      phase(p).jointValues(robot_, results, k, results.atDouble(PhaseKey(p)));
+  
+  // Write to file.
+  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                         Eigen::DontAlignCols, ", ", "\n");
+  file << mat.format(CSVFormat) << std::endl;
 }
 
-}  // namespace gtdynamics
+} // namespace gtdynamics
