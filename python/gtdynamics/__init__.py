@@ -1,5 +1,8 @@
 import gtsam
+
 from gtdynamics.gtdynamics import *
+
+from . import sim
 
 
 class _GtdKeyFormatter(object):
