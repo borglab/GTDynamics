@@ -53,8 +53,8 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load Stephanie's spider robot.
-  auto spider = gtdynamics::CreateRobotFromFile(
-      kSdfPath + string("/spider.sdf"), "spider");
+  auto robot = gtdynamics::CreateRobotFromFile(kSdfPath + string("/spider.sdf"),
+                                               "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
   double gaussian_noise = 1e-5;
 
   double dt_des = 1. / 240;
-  vector<Robot> robots(phase_cps.size(), spider);
+  vector<Robot> robots(phase_cps.size(), robot);
   vector<Values> transition_graph_init;
 
   // Define the cumulative phase steps.
@@ -204,11 +204,11 @@ int main(int argc, char** argv) {
 
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
-  auto base_link = spider.link("body");
+  auto base_link = robot.link("body");
 
   std::map<string, gtdynamics::LinkSharedPtr> link_map;
   for (auto&& link : links)
-    link_map.insert(std::make_pair(link, spider.link(link)));
+    link_map.insert(std::make_pair(link, robot.link(link)));
 
   // Previous contact point goal.
   std::map<string, Point3> prev_cp;
@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
   }
 
   // Add link boundary conditions to FG.
-  for (auto&& link : spider.links()) {
+  for (auto&& link : robot.links()) {
     // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
         internal::PoseKey(link->id(), 0), link->wTcom(), dynamics_model_6));
@@ -310,7 +310,7 @@ int main(int argc, char** argv) {
   }
 
   // Add joint boundary conditions to FG.
-  for (auto&& joint : spider.joints()) {
+  for (auto&& joint : robot.joints()) {
     // Add priors to joint angles
     for (int t = 0; t <= t_f; t++) {
       if (joint->name().find("hip_") == 0) {
@@ -346,7 +346,7 @@ int main(int argc, char** argv) {
 
   // Add min torque objectives.
   for (int t = 0; t <= t_f; t++) {
-    for (auto&& joint : spider.joints())
+    for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
           internal::TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
   auto results = optimizer.optimize();
 
   vector<string> joint_names;
-  for (auto&& joint : spider.joints()) joint_names.push_back(joint->name());
+  for (auto&& joint : robot.joints()) joint_names.push_back(joint->name());
   string joint_names_str = boost::algorithm::join(joint_names, ",");
   std::ofstream traj_file;
 
@@ -382,13 +382,13 @@ int main(int argc, char** argv) {
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
       vector<string> vals;
-      for (auto&& joint : spider.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
-      for (auto&& joint : spider.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointVel(results, joint->id(), t)));
-      for (auto&& joint : spider.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointAccel(results, joint->id(), t)));
-      for (auto&& joint : spider.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(Torque(results, joint->id(), t)));
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
       t++;
