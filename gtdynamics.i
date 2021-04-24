@@ -11,6 +11,9 @@ namespace gtdynamics {
 const string URDF_PATH = kUrdfPath;
 const string SDF_PATH = kSdfPath;
 
+// Global variable for key formatting
+const gtsam::KeyFormatter GTDKeyFormatter;
+
 /********************** factors **********************/
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
@@ -18,8 +21,8 @@ class PoseFactor : gtsam::NonlinearFactor {
              const gtsam::noiseModel::Base* cost_model,
              const gtdynamics::Joint* joint);
 
-  void print(const string &s,
-             const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
@@ -32,7 +35,8 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const gtsam::noiseModel::Base* model,
                           size_t t);
 
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
 };
 
@@ -43,8 +47,8 @@ class TwistFactor : gtsam::NonlinearFactor {
               const gtsam::noiseModel::Base* cost_model,
               const gtdynamics::Joint* joint);
 
-  void print(const string &s,
-             const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
@@ -54,8 +58,8 @@ class TwistAccelFactor : gtsam::NonlinearFactor {
               const gtsam::noiseModel::Base* cost_model,
               const gtdynamics::JointTyped* joint);
 
-  void print(const string &s,
-             const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/TorqueFactor.h>
@@ -64,7 +68,8 @@ class TorqueFactor : gtsam::NonlinearFactor {
                const gtsam::noiseModel::Base *cost_model,
                const gtdynamics::JointTyped *joint);
 
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -72,7 +77,8 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
   MinTorqueFactor(gtsam::Key torque_key,
                const gtsam::noiseModel::Base *cost_model);
 
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/WrenchFactor.h>
@@ -82,7 +88,8 @@ class WrenchFactor : gtsam::NonlinearFactor {
                 gtsam::Key pose_key,
                 const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
                 const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
@@ -91,7 +98,8 @@ class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
                           gtsam::Key q_key,
                           const gtsam::noiseModel::Base *cost_model,
                           gtdynamics::JointTyped *joint);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
@@ -99,7 +107,8 @@ class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(gtsam::Key wrench_key,
                      const gtsam::noiseModel::Base *cost_model,
                      Vector planar_axis);
-  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+  void print(const string &s="",
+             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/CollocationFactors.h>
