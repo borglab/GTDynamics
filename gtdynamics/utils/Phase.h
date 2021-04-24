@@ -8,7 +8,7 @@
 /**
  * @file  Phase.h
  * @brief Utility methods for generating Phase objects.
- * @author: Disha Das
+ * @author: Disha Das, Frank Dellaert
  */
 
 #pragma once
@@ -99,11 +99,17 @@ class Phase {
   void print(const std::string &s) const;
 
   /**
-   * Add PointGoalFactors for all stance feet as given in cp_goals.
-   * Factors are added at time step k, default 0.
+   * Add PointGoalFactors for all feet as given in cp_goals.
+   * @param[in] all_contact_points stance *and* swing feet.
+   * @param[in] step 3D vector to move by
+   * @param[in] cost_model noise model
+   * @param[in] robot needed to get link id and create key
+   * @param[in] k_start Factors are added at this time step
+   * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
-  gtsam::NonlinearFactorGraph stanceObjectives(
-      const Robot &robot, std::map<std::string, gtsam::Point3> cp_goals,
-      const gtsam::SharedNoiseModel &cost_model, size_t k = 0) const;
+  gtsam::NonlinearFactorGraph contactLinkObjectives(
+      const ContactPoints &all_contact_points, const gtsam::Point3 &step,
+      const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
+      size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
 };
 }  // namespace gtdynamics
