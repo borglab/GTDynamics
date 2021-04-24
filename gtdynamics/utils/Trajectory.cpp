@@ -108,8 +108,8 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
 }
 
 void Trajectory::addBoundaryConditions(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
-    const SharedNoiseModel &pose_model, const SharedNoiseModel &twist_model,
+    gtsam::NonlinearFactorGraph *graph, const SharedNoiseModel &pose_model,
+    const SharedNoiseModel &twist_model,
     const SharedNoiseModel &twist_acceleration_model,
     const SharedNoiseModel &joint_velocity_model,
     const SharedNoiseModel &joint_acceleration_model) const {
@@ -117,7 +117,7 @@ void Trajectory::addBoundaryConditions(
   int K = getEndTimeStep(numPhases() - 1);
 
   // Add link boundary conditions to FG.
-  for (auto &&link : robot.links()) {
+  for (auto &&link : robot_.links()) {
     // Initial link pose, twists.
     add_link_objectives(graph, link->id(), 0)
         .pose(link->wTcom(), pose_model)
@@ -130,22 +130,44 @@ void Trajectory::addBoundaryConditions(
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, K);
 }
 
 void Trajectory::addMinimumTorqueFactors(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+    gtsam::NonlinearFactorGraph *graph,
     const SharedNoiseModel &cost_model) const {
   int K = getEndTimeStep(numPhases() - 1);
-  for (auto &&joint : robot.joints()) {
+  for (auto &&joint : robot_.joints()) {
     auto j = joint->id();
     for (int k = 0; k <= K; k++) {
       graph->emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
                                              cost_model);
     }
+  }
+}
+
+void Trajectory::writePhaseToFile(std::ofstream &traj_file,
+                                  const gtsam::Values &results,
+                                  int phase) const {
+  int k = getStartTimeStep(phase);
+  auto phase_durations = phaseDurations();
+  for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
+    std::vector<std::string> vals;
+    for (auto &&joint : robot_.joints())
+      vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
+    for (auto &&joint : robot_.joints())
+      vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
+    for (auto &&joint : robot_.joints())
+      vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
+    for (auto &&joint : robot_.joints())
+      vals.push_back(std::to_string(Torque(results, joint->id(), k)));
+    vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
+    k++;
+    std::string vals_str = boost::algorithm::join(vals, ",");
+    traj_file << vals_str << "\n";
   }
 }
 

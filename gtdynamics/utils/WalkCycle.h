@@ -80,7 +80,7 @@ class WalkCycle {
                                   const WalkCycle& walk_cycle);
 
   /// GTSAM-style print, works with wrapper.
-  void print(const std::string& s) const;
+  void print(const std::string& s = "") const;
 
   /**
    * @fn Returns the initial contact point goal for every contact link.

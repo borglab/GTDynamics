@@ -30,7 +30,7 @@ namespace gtdynamics {
 class Trajectory {
  protected:
   Robot robot_;           ///< Copy of the robot configuration
-  int repeat_;            ///< Number of repetitions of walk cycle
+  size_t repeat_;            ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
   /// Gets the intersection between two ContactPoints objects
@@ -47,7 +47,7 @@ class Trajectory {
 
  public:
   /// Default Constructor (for serialization)
-  Trajectory(){};
+  Trajectory(){}
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait
@@ -56,7 +56,7 @@ class Trajectory {
    * @param walk_cycle The Walk Cycle for the robot.
    * @param repeat The number of repetitions for each phase of the gait.
    */
-  Trajectory(const Robot &robot, const WalkCycle &walk_cycle, int repeat)
+  Trajectory(const Robot &robot, const WalkCycle &walk_cycle, size_t repeat)
       : robot_(robot), repeat_(repeat), walk_cycle_(walk_cycle) {}
 
   /**
@@ -270,7 +270,6 @@ class Trajectory {
    * @return All MinTorqueFactor factors as a NonlinearFactorGraph
    */
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
-                               const Robot &robot,
                                const gtsam::SharedNoiseModel &cost_model) const;
 
   /**
@@ -284,7 +283,7 @@ class Trajectory {
    * @return All factors as a NonlinearFactorGraph
    */
   void addBoundaryConditions(
-      gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+      gtsam::NonlinearFactorGraph *graph,
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,
@@ -311,25 +310,7 @@ class Trajectory {
    * @param[in] results      Results of Optimization.
    * @param[in] phase        Phase number.
    */
-  void writePhaseToFile(const Robot &robot, std::ofstream &traj_file,
-                        const gtsam::Values &results, int phase) const {
-    int k = getStartTimeStep(phase);
-    auto phase_durations = phaseDurations();
-    for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
-      std::vector<std::string> vals;
-      for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
-      for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
-      for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
-      for (auto &&joint : robot.joints())
-        vals.push_back(std::to_string(Torque(results, joint->id(), k)));
-      vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-      k++;
-      std::string vals_str = boost::algorithm::join(vals, ",");
-      traj_file << vals_str << "\n";
-    }
-  }
+  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
+                        int phase) const;
 };
 }  // namespace gtdynamics

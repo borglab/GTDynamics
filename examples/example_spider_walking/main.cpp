@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
@@ -164,12 +164,12 @@ int main(int argc, char **argv) {
             << jnames_str << ",t"
             << "\n";
   for (int phase = 0; phase < trajectory.numPhases(); phase++)
-    trajectory.writePhaseToFile(robot, traj_file, results, phase);
+    trajectory.writePhaseToFile(traj_file, results, phase);
 
   // Write the last 4 phases to disk n times
   for (int i = 0; i < 10; i++) {
     for (int phase = 4; phase < trajectory.numPhases(); phase++)
-      trajectory.writePhaseToFile(robot, traj_file, results, phase);
+      trajectory.writePhaseToFile(traj_file, results, phase);
   }
   traj_file.close();
   return 0;
