@@ -277,7 +277,9 @@ gtdynamics::Robot CreateRobotFromFile(const string& file_path,
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 class OptimizerSetting {
-  OptimizerSetting();
+  OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
+                   double sigma_contact = 0.001, double sigma_joint = 0.001,
+                   double sigma_collocation = 0.001, double sigma_time = 0.001);
   gtsam::noiseModel::SharedNoiseModel bv_cost_model;
   gtsam::noiseModel::SharedNoiseModel ba_cost_model;             // acceleration of fixed link
   gtsam::noiseModel::SharedNoiseModel p_cost_model;              // pose factor
@@ -681,14 +683,82 @@ class Simulator {
 /********************** Trajectory et al  **********************/
 #include <gtdynamics/utils/Phase.h>
 class Phase {
-  Phase(const int& num_time_steps);
+  Phase(const size_t &num_time_steps);
+  Phase(const size_t &num_time_steps, const std::vector<string> &link_names,
+        const gtsam::Point3 &point);
   void addContactPoint(const string& link, const gtsam::Point3& point);
   void addContactPoints(const std::vector<string>& links,
                         const gtsam::Point3& point);
   const gtdynamics::ContactPoints& contactPoints() const;
   const gtdynamics::ContactPoint& contactPoint(const string& link) const;
-  int numTimeSteps() const;
+  size_t numTimeSteps() const;
   void print(const string &s = "");
+};
+
+#include <gtdynamics/utils/WalkCycle.h>
+class WalkCycle {
+  WalkCycle();
+  WalkCycle(const std::vector<gtdynamics::Phase>& phases);
+  void addPhase(const gtdynamics::Phase& phase);
+  const gtdynamics::Phase& phase(size_t p);
+  const std::vector<gtdynamics::Phase>& phases() const;
+  size_t numPhases() const;
+  const ContactPoints& contactPoints() const;
+  void print(const string& s = "") const;
+  // std::map<string, gtsam::Point3> initContactPointGoal(const Robot& robot) const;
+  std::vector<string> swingLinks(size_t p) const;
+  gtsam::NonlinearFactorGraph swingObjectives(
+      const gtdynamics::Robot& robot, size_t p,
+      std::map<string, gtsam::Point3> cp_goals, const gtsam::Point3& step,
+      const gtsam::SharedNoiseModel& cost_model, size_t k) const;
+};
+
+#include <gtdynamics/utils/Trajectory.h>
+class Trajectory {
+  Trajectory();
+  Trajectory(const gtdynamics::Robot &robot,
+             const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
+  std::vector<gtdynamics::ContactPoints> phaseContactPoints() const;
+  std::vector<gtdynamics::ContactPoints> transitionContactPoints() const;
+  std::vector<int> phaseDurations() const;
+  size_t numPhases() const;
+  std::vector<gtsam::NonlinearFactorGraph>
+  getTransitionGraphs(gtdynamics::DynamicsGraph &graph_builder,
+                      double mu) const;
+  gtsam::NonlinearFactorGraph
+  multiPhaseFactorGraph(gtdynamics::DynamicsGraph &graph_builder,
+                        const gtdynamics::CollocationScheme collocation,
+                        double mu) const;
+  std::vector<gtsam::Values>
+  transitionPhaseInitialValues(double gaussian_noise) const;
+  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
+  std::vector<int> finalTimeSteps() const;
+  size_t phaseIndex(size_t p) const;
+  const Phase &phase(size_t p) const;
+  size_t getStartTimeStep(size_t p) const;
+  size_t getEndTimeStep(size_t p) const;
+  const ContactPoints &getPhaseContactLinks(size_t p) const;
+  std::vector<std::string> getPhaseSwingLinks(size_t p) const;
+  PointGoalFactor pointGoalFactor(const std::string &link_name,
+                                  const gtdynamics::ContactPoint &cp, size_t k,
+                                  const gtsam::SharedNoiseModel &cost_model,
+                                  const gtsam::Point3 &goal_point) const;
+  gtsam::NonlinearFactorGraph
+  contactLinkObjectives(const gtsam::SharedNoiseModel &cost_model,
+                        double ground_height = 0.0) const;
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
+                               const gtsam::SharedNoiseModel &cost_model) const;
+  void addBoundaryConditions(
+      gtsam::NonlinearFactorGraph @graph,
+      const gtsam::SharedNoiseModel &pose_model,
+      const gtsam::SharedNoiseModel &twist_model,
+      const gtsam::SharedNoiseModel &twist_acceleration_model,
+      const gtsam::SharedNoiseModel &joint_velocity_model,
+      const gtsam::SharedNoiseModel &joint_acceleration_model) const;
+  void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
+                                 double desired_dt, double sigma = 0) const;
+  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
+                        size_t phase) const;
 };
 
 /********************** Utilities  **********************/
