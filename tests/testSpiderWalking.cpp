@@ -87,13 +87,13 @@ TEST(testSpiderWalking, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
+  const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7));
+      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7), step);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
   EXPECT_LONGS_EQUAL(48 * 2, objectives.keys().size());
-  // GTD_PRINT(objectives);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
