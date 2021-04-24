@@ -705,7 +705,8 @@ class WalkCycle {
   size_t numPhases() const;
   const ContactPoints& contactPoints() const;
   void print(const string& s = "") const;
-  // std::map<string, gtsam::Point3> initContactPointGoal(const Robot& robot) const;
+  std::map<string, gtsam::Point3>
+  initContactPointGoal(const gtdynamics::Robot &robot) const;
   std::vector<string> swingLinks(size_t p) const;
   gtsam::NonlinearFactorGraph swingObjectives(
       const gtdynamics::Robot& robot, size_t p,
@@ -757,8 +758,7 @@ class Trajectory {
       const gtsam::SharedNoiseModel &joint_acceleration_model) const;
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
                                  double desired_dt, double sigma = 0) const;
-  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
-                        size_t phase) const;
+  void writeToFile(const string &name, const gtsam::Values &results) const;
 };
 
 /********************** Utilities  **********************/

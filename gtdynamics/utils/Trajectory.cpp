@@ -163,11 +163,33 @@ void Trajectory::writePhaseToFile(std::ofstream &file,
   int k = getStartTimeStep(p);
   Matrix mat =
       phase(p).jointValues(robot_, results, k, results.atDouble(PhaseKey(p)));
-  
+
   // Write to file.
   const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                          Eigen::DontAlignCols, ", ", "\n");
   file << mat.format(CSVFormat) << std::endl;
 }
 
+// Write results to traj file
+void Trajectory::writeToFile(const std::string &name,
+                             const gtsam::Values &results) const {
+  vector<string> jnames;
+  for (auto &&joint : robot_.joints())
+    jnames.push_back(joint->name());
+  string jnames_str = boost::algorithm::join(jnames, ",");
+
+  std::ofstream file(name);
+
+  // angles, vels, accels, torques, time.
+  file << jnames_str << "," << jnames_str << "," << jnames_str << ","
+       << jnames_str << ",t\n";
+  for (int p = 0; p < numPhases(); p++)
+    writePhaseToFile(file, results, p);
+
+  // Write the last 4 phases to disk n times
+  for (int i = 0; i < 10; i++) {
+    for (int p = 4; p < numPhases(); p++)
+      writePhaseToFile(file, results, p);
+  }
+}
 } // namespace gtdynamics

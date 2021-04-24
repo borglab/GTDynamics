@@ -312,5 +312,12 @@ class Trajectory {
    */
   void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
                         int phase) const;
+
+  /**
+   * @fn Writes the angles, vels, accels, torques and time values to disk.
+   * @param[in] name      Trajectory File name.
+   * @param[in] results   Results of Optimization.
+   */
+  void writeToFile(const std::string &name, const gtsam::Values &results) const;
 };
 }  // namespace gtdynamics
