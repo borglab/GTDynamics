@@ -24,4 +24,13 @@ void ContactPoint::print(const std::string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
+std::ostream &operator<<(std::ostream &os, const PointOnLink &cp) {
+  os << "{" << cp.link->id() << ", [" << cp.point.transpose() << "]}";
+  return os;
+}
+
+void PointOnLink::print(const std::string &s) const {
+  std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
+}
+
 }  // namespace gtdynamics

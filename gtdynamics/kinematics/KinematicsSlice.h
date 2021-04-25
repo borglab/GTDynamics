@@ -23,6 +23,10 @@ struct ContactGoal {
   PointOnLink point_on_link;  ///< In COM.
   gtsam::Point3 goal_point;   ///< In world frame.
 
+  /// Constructor
+  ContactGoal(const PointOnLink& point_on_link, const gtsam::Point3& goal_point)
+      : point_on_link(point_on_link), goal_point(goal_point) {}
+
   /// Return link associated with contact point.
   const LinkSharedPtr& link() const { return point_on_link.link; }
 
