@@ -33,6 +33,12 @@ struct ContactGoal {
   /// Return contact point in link COM frame.
   const gtsam::Point3& contact_in_com() const { return point_on_link.point; }
 
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const ContactGoal &cg);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
+
   /**
    * @fn For given values, predict where point_on_link is in world frame.
    * @param values a GTSAM Values instance that should contain link pose.

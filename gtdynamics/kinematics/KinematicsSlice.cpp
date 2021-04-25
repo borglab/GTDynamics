@@ -26,6 +26,16 @@ using gtsam::Values;
 using std::map;
 using std::string;
 
+std::ostream& operator<<(std::ostream& os, const ContactGoal& cg) {
+  os << "{" << cg.point_on_link << ", ["
+     << cg.goal_point.transpose() << "]}";
+  return os;
+}
+
+void ContactGoal::print(const std::string &s) const {
+  std::cout << (s.empty() ? s : s + " ") << *this;
+}
+
 NonlinearFactorGraph KinematicsSlice(const Robot& robot,
                                      const KinematicsSettings& opt, size_t k) {
   NonlinearFactorGraph graph;
