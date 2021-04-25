@@ -108,13 +108,13 @@ TEST(Trajectory, error) {
       trajectory.getTransitionGraphs(graph_builder, mu);
   EXPECT_LONGS_EQUAL(repeat * 2 - 1, transition_graphs.size());
   // regression test
-  EXPECT_LONGS_EQUAL(205, transition_graphs[0].size());
+  EXPECT_LONGS_EQUAL(203, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder,
                                                 CollocationScheme::Euler, mu);
   // regression test
-  EXPECT_LONGS_EQUAL(4330, graph.size());
+  EXPECT_LONGS_EQUAL(4298, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
 
   Values init_vals = trajectory.multiPhaseInitialValues(1e-5, 1. / 240);
