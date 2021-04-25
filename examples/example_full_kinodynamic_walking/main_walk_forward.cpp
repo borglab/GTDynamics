@@ -145,9 +145,6 @@ int main(int argc, char** argv) {
   int t_f = cum_phase_steps[cum_phase_steps.size() - 1];  // Final timestep.
   double dt_des = 1. / 240.;  // Desired timestep duration.
 
-  // Robot model for each phase.
-  vector<Robot> robots(phase_cps.size(), robot);
-
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
 
@@ -157,14 +154,14 @@ int main(int argc, char** argv) {
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        robots[p], cum_phase_steps[p - 1], trans_cps[p - 1], mu));
+        robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
     transition_graph_init.push_back(ZeroValues(
-        robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
+        robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
   // Construct the multi-phase trajectory factor graph.
   auto graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, collocation, phase_cps, mu);
+      robot, phase_steps, transition_graphs, collocation, phase_cps, mu);
 
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
@@ -290,7 +287,7 @@ int main(int argc, char** argv) {
   // Initialize solution.
   gtsam::Values init_vals;
   init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
-      robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
+      robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
   // Optimize!

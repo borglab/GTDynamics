@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
 
   // Construct the multi-phase trajectory factor graph.
   auto graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, collocation, phase_cps, mu);
+      robot, phase_steps, transition_graphs, collocation, phase_cps, mu);
 
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
   // Initialize solution.
   gtsam::Values init_vals;
   init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
-      robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
+      robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
   // Optimize!

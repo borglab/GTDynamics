@@ -230,7 +230,7 @@ class DynamicsGraph {
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
-   * @param robots               the robot configuration for each phase
+   * @param robot                the robot configuration 
    * @param phase_steps          number of time steps for each phase
    * @param transition_graphs    transition step graphs with guardian factors
    * @param collocation          the collocation scheme
@@ -238,7 +238,7 @@ class DynamicsGraph {
    * @param mu                   optional coefficient of static friction
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+      const Robot &robot, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation = Trapezoidal,
       const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
