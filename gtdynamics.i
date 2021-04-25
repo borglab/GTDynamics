@@ -701,7 +701,7 @@ class Phase {
                         std::map<string, gtsam::Point3> @cp_goals) const;
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
-                            boost::optional<double> dt = boost::none) const;
+                            double dt) const;
 };
 
 #include <gtdynamics/utils/WalkCycle.h>
