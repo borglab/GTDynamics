@@ -157,7 +157,9 @@ void Trajectory::writePhaseToFile(std::ofstream &file,
 void Trajectory::writeToFile(const std::string &name,
                              const gtsam::Values &results) const {
   vector<string> jnames;
-  for (auto &&joint : robot_.joints()) jnames.push_back(joint->name());
+  for (auto &&joint : robot_.joints()) {
+    jnames.push_back(joint->name());
+  }
   string jnames_str = boost::algorithm::join(jnames, ",");
 
   std::ofstream file(name);
