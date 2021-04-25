@@ -19,6 +19,7 @@
 namespace gtdynamics {
 
 using gtsam::Matrix;
+using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
@@ -35,23 +36,28 @@ void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-gtsam::NonlinearFactorGraph
-Phase::stanceObjectives(const Robot &robot, std::map<string, Point3> cp_goals,
-                        const gtsam::SharedNoiseModel &cost_model,
-                        size_t k) const {
-  gtsam::NonlinearFactorGraph factors;
-  for (auto &&kv : contact_points_) {
+NonlinearFactorGraph Phase::contactLinkObjectives(
+    const ContactPoints &all_contact_points, const Point3 &step,
+    const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
+    size_t k_start, std::map<string, Point3> *cp_goals) const {
+  NonlinearFactorGraph factors;
+
+  for (auto &&kv : all_contact_points) {
     const string &name = kv.first;
-    const Point3 &cp_goal = cp_goals.at(name);
-    const ContactPoint &cp = kv.second;
-    AddPointGoalFactors(&factors, cost_model, cp.point,
-                        StanceTrajectory(cp_goal, numTimeSteps()),
-                        robot.link(name)->id(), k);
+    Point3 &cp_goal = cp_goals->at(name);
+    const bool stance = hasContact(name);
+    auto goal_trajectory =
+        stance ? StanceTrajectory(cp_goal, num_time_steps_)
+               : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
+    if (!stance) cp_goal += step;  // Update the goal if swing
+
+    AddPointGoalFactors(&factors, cost_model, kv.second.point, goal_trajectory,
+                        robot.link(name)->id(), k_start);
   }
   return factors;
 }
 
-Matrix Phase::jointValues(const Robot &robot, const gtsam::Values &results,
+Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,
                           size_t k, boost::optional<double> dt) const {
   const auto &joints = robot.joints();
   const size_t J = joints.size();
@@ -74,4 +80,5 @@ Matrix Phase::jointValues(const Robot &robot, const gtsam::Values &results,
   }
   return table;
 }
-} // namespace gtdynamics
+
+}  // namespace gtdynamics

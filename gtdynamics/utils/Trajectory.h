@@ -8,7 +8,7 @@
 /**
  * @file  Trajectory.h
  * @brief Utility methods for generating Trajectory phases.
- * @author: Disha Das, Tarushree Gandhi, Varun Agrawal
+ * @author: Disha Das, Tarushree Gandhi, Varun Agrawal, Frank Dellaert
  */
 
 #pragma once
@@ -30,7 +30,7 @@ namespace gtdynamics {
 class Trajectory {
  protected:
   Robot robot_;           ///< Copy of the robot configuration
-  size_t repeat_;            ///< Number of repetitions of walk cycle
+  size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
   /// Gets the intersection between two ContactPoints objects
@@ -47,7 +47,7 @@ class Trajectory {
 
  public:
   /// Default Constructor (for serialization)
-  Trajectory(){}
+  Trajectory() {}
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait
@@ -263,7 +263,7 @@ class Trajectory {
    */
   gtsam::NonlinearFactorGraph contactLinkObjectives(
       const gtsam::SharedNoiseModel &cost_model,
-      double ground_height = 0.0) const;
+      const gtsam::Point3 &step) const;
 
   /**
    * @fn Add minimum torque objectives.

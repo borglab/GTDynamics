@@ -20,6 +20,7 @@
 #include "gtdynamics/utils/Phase.h"
 #include "gtdynamics/utils/Trajectory.h"
 #include "gtdynamics/utils/WalkCycle.h"
+#include "walkCycleExample.h"
 
 using namespace gtsam;
 using namespace std;
@@ -33,33 +34,14 @@ using namespace gtdynamics;
 class TrajectoryTest : public Trajectory {
  public:
   TrajectoryTest() : Trajectory(){};
-
-  const ContactPoints getIntersection(ContactPoints CPs_1,
-                                      ContactPoints CPs_2) const {
-    return Trajectory::getIntersection(CPs_1, CPs_2);
-  }
+  using Trajectory::getIntersection;
 };
 
 TEST(Trajectory, Intersection) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
-  size_t num_time_steps = 1;
-
-  // Initialize first phase
-  auto phase_1 = Phase(num_time_steps);
-  const Point3 contact_in_com(0, 0.19, 0);
-  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
-  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
-  phase_1.addContactPoint("tarsus_3_L3", contact_in_com);
-
-  // Initialize second phase
-  auto phase_2 = Phase(num_time_steps);
-  phase_2.addContactPoint("tarsus_3_L3", contact_in_com);
-  phase_2.addContactPoint("tarsus_4_L4", contact_in_com);
-  phase_2.addContactPoint("tarsus_5_R4", contact_in_com);
-  phase_2.addContactPoint("tarsus_2_L2", contact_in_com);
-
+  using namespace walk_cycle_example;
   TrajectoryTest traj;
   ContactPoints intersection =
       traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
@@ -73,33 +55,13 @@ TEST(Trajectory, Intersection) {
 }
 
 TEST(Trajectory, error) {
+  using namespace walk_cycle_example;
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
-  // Initialize first phase
-  size_t num_time_steps = 2;
-  auto phase_1 = Phase(num_time_steps);
-  const Point3 contact_in_com(0, 0.19, 0);
-  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
-  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
-  phase_1.addContactPoint("tarsus_3_L3", contact_in_com);
-
-  // Initialize second phase
-  size_t num_time_steps_2 = 3;
-  auto phase_2 = Phase(num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2_L2", contact_in_com);
-  phase_2.addContactPoint("tarsus_3_L3", contact_in_com);
-  phase_2.addContactPoint("tarsus_4_L4", contact_in_com);
-  phase_2.addContactPoint("tarsus_5_R4", contact_in_com);
-
-  // Initialize walk cycle
-  auto walk_cycle = WalkCycle();
-  walk_cycle.addPhase(phase_1);
-  walk_cycle.addPhase(phase_2);
-  EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
-
   // Initialize Trajectory
   size_t repeat = 3;
+  using namespace walk_cycle_example;
   auto trajectory = Trajectory(robot, walk_cycle, repeat);
 
   // test phase method
@@ -159,16 +121,16 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4712, init_vals.size());
 
   // Test objectives for contact links.
-  const double ground_height = 0.0;
+  const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactLinkObjectives(
-      noiseModel::Isotropic::Sigma(3, 1e-7), ground_height);
+      noiseModel::Isotropic::Sigma(3, 1e-7), step);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());
   // regression
   auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
       contact_link_objectives.back());
-  EXPECT(gtsam::assert_equal(gtsam::Point3(0.19, 2.60015, 0.0553788),
+  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151, 0.000151302),
                              last_factor->goalPoint(), 1e-5));
 
   // Test boundary conditions.

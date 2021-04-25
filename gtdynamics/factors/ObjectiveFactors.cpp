@@ -59,7 +59,7 @@ std::vector<Point3> SimpleSwingTrajectory(const Point3& start,
   const double dt = 1.0 / (num_steps + 1);
   const Point3 delta_step = step * dt;
   Point3 cp_goal = start + delta_step;
-  for (int k; k < num_steps; k++) {
+  for (size_t k = 0; k < num_steps; k++) {
     double t = dt * (k + 1);
     double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
     goal_trajectory.push_back(cp_goal + Point3(0, 0, h));
