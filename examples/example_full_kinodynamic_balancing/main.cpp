@@ -31,7 +31,6 @@
 #include <string>
 #include <utility>
 
-#define GROUND_HEIGHT -0.191839
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
@@ -47,13 +46,13 @@ int main(int argc, char** argv) {
   // Contact points at feet.
   ContactPoints contact_points;
   contact_points.emplace(
-      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
+      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
   contact_points.emplace(
-      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1, GROUND_HEIGHT});
+      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1});
   contact_points.emplace(
-      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2, GROUND_HEIGHT});
+      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2});
   contact_points.emplace(
-      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3, GROUND_HEIGHT});
+      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3});
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)
