@@ -36,7 +36,7 @@ void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-NonlinearFactorGraph Phase::contactLinkObjectives(
+NonlinearFactorGraph Phase::contactPointObjectives(
     const ContactPoints &all_contact_points, const Point3 &step,
     const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
     size_t k_start, std::map<string, Point3> *cp_goals) const {

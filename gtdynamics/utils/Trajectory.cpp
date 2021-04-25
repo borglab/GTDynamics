@@ -79,7 +79,7 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
                                         gaussian_noise, phaseContactPoints());
 }
 
-NonlinearFactorGraph Trajectory::contactLinkObjectives(
+NonlinearFactorGraph Trajectory::contactPointObjectives(
     const SharedNoiseModel &cost_model, const Point3 &step) const {
   NonlinearFactorGraph factors;
 
@@ -89,7 +89,7 @@ NonlinearFactorGraph Trajectory::contactLinkObjectives(
 
   size_t k_start = 0;
   for (int w = 0; w < repeat_; w++) {
-    factors.add(walk_cycle_.contactLinkObjectives(step, cost_model, robot_,
+    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, robot_,
                                                   k_start, &cp_goals));
     k_start += walk_cycle_.numTimeSteps();
   }

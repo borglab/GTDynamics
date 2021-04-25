@@ -66,7 +66,7 @@ TEST(Phase, inverse_kinematics) {
                                             {"lower2", goal_RF},
                                             {"lower3", goal_RH}};
   gtsam::NonlinearFactorGraph factors =
-      walk_cycle.contactLinkObjectives(step, cost_model, robot, k, &cp_goals);
+      walk_cycle.contactPointObjectives(step, cost_model, robot, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
 }
 

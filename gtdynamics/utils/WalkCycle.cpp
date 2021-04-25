@@ -65,7 +65,7 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
   return phase_swing_links;
 }
 
-NonlinearFactorGraph WalkCycle::contactLinkObjectives(
+NonlinearFactorGraph WalkCycle::contactPointObjectives(
     const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
     const Robot &robot, size_t k_start,
     std::map<string, Point3> *cp_goals) const {
@@ -73,7 +73,7 @@ NonlinearFactorGraph WalkCycle::contactLinkObjectives(
 
   for (const Phase &phase : phases_) {
     // Ask the Phase instance to anchor the stance legs
-    factors.add(phase.contactLinkObjectives(contact_points_, step, cost_model,
+    factors.add(phase.contactPointObjectives(contact_points_, step, cost_model,
                                             robot, k_start, cp_goals));
 
     // update the start time step for the next phase
