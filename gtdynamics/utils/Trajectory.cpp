@@ -17,6 +17,9 @@
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
+#include <algorithm>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,6 +31,7 @@ using gtsam::Values;
 using gtsam::Z_6x1;
 using std::map;
 using std::string;
+using std::to_string;
 using std::vector;
 
 namespace gtdynamics {
@@ -134,26 +138,40 @@ void Trajectory::addMinimumTorqueFactors(
   }
 }
 
-void Trajectory::writePhaseToFile(std::ofstream &traj_file,
-                                  const gtsam::Values &results,
-                                  int phase) const {
-  int k = getStartTimeStep(phase);
-  auto phase_durations = phaseDurations();
-  for (int time_step = 0; time_step < phase_durations[phase]; time_step++) {
-    std::vector<std::string> vals;
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointAngle(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointVel(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(JointAccel(results, joint->id(), k)));
-    for (auto &&joint : robot_.joints())
-      vals.push_back(std::to_string(Torque(results, joint->id(), k)));
-    vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
-    k++;
-    std::string vals_str = boost::algorithm::join(vals, ",");
-    traj_file << vals_str << "\n";
-  }
+void Trajectory::writePhaseToFile(std::ofstream &file,
+                                  const gtsam::Values &results, int p) const {
+  using gtsam::Matrix;
+
+  // Extract joimt values.
+  int k = getStartTimeStep(p);
+  Matrix mat =
+      phase(p).jointMatrix(robot_, results, k, results.atDouble(PhaseKey(p)));
+
+  // Write to file.
+  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                         Eigen::DontAlignCols, ", ", "\n");
+  file << mat.format(CSVFormat) << std::endl;
 }
 
+// Write results to traj file
+void Trajectory::writeToFile(const std::string &name,
+                             const gtsam::Values &results) const {
+  vector<string> jnames;
+  for (auto &&joint : robot_.joints()) {
+    jnames.push_back(joint->name());
+  }
+  string jnames_str = boost::algorithm::join(jnames, ",");
+
+  std::ofstream file(name);
+
+  // angles, vels, accels, torques, time.
+  file << jnames_str << "," << jnames_str << "," << jnames_str << ","
+       << jnames_str << ",t\n";
+  for (int p = 0; p < numPhases(); p++) writePhaseToFile(file, results, p);
+
+  // Write the last 4 phases to disk n times
+  for (int i = 0; i < 10; i++) {
+    for (int p = 4; p < numPhases(); p++) writePhaseToFile(file, results, p);
+  }
+}
 }  // namespace gtdynamics

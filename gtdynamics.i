@@ -705,12 +705,14 @@ class WalkCycle {
   size_t numPhases() const;
   const ContactPoints& contactPoints() const;
   void print(const string& s = "") const;
-  // std::map<string, gtsam::Point3> initContactPointGoal(const Robot& robot) const;
+  std::map<string, gtsam::Point3>
+  initContactPointGoal(const gtdynamics::Robot &robot) const;
   std::vector<string> swingLinks(size_t p) const;
-  gtsam::NonlinearFactorGraph swingObjectives(
-      const gtdynamics::Robot& robot, size_t p,
-      std::map<string, gtsam::Point3> cp_goals, const gtsam::Point3& step,
-      const gtsam::SharedNoiseModel& cost_model, size_t k) const;
+  gtsam::NonlinearFactorGraph
+  contactPointObjectives(const gtdynamics::Robot &robot,
+                         const gtsam::SharedNoiseModel &cost_model,
+                         const gtsam::Point3 &step, size_t k_start,
+                         std::map<string, gtsam::Point3> @cp_goals) const;
 };
 
 #include <gtdynamics/utils/Trajectory.h>
@@ -744,8 +746,8 @@ class Trajectory {
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
-  contactLinkObjectives(const gtsam::SharedNoiseModel &cost_model,
-                        double ground_height = 0.0) const;
+  contactPointObjectives(const gtsam::SharedNoiseModel &cost_model,
+                         const gtsam::Point3 &step) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
@@ -757,8 +759,7 @@ class Trajectory {
       const gtsam::SharedNoiseModel &joint_acceleration_model) const;
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
                                  double desired_dt, double sigma = 0) const;
-  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
-                        size_t phase) const;
+  void writeToFile(const string &name, const gtsam::Values &results) const;
 };
 
 /********************** Utilities  **********************/

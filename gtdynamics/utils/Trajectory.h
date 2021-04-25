@@ -30,7 +30,7 @@ namespace gtdynamics {
 class Trajectory {
  protected:
   Robot robot_;           ///< Copy of the robot configuration
-  size_t repeat_;            ///< Number of repetitions of walk cycle
+  size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
   /// Gets the intersection between two ContactPoints objects
@@ -47,7 +47,7 @@ class Trajectory {
 
  public:
   /// Default Constructor (for serialization)
-  Trajectory(){}
+  Trajectory() {}
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait
@@ -313,5 +313,12 @@ class Trajectory {
    */
   void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
                         int phase) const;
+
+  /**
+   * @fn Writes the angles, vels, accels, torques and time values to disk.
+   * @param[in] name      Trajectory File name.
+   * @param[in] results   Results of Optimization.
+   */
+  void writeToFile(const std::string &name, const gtsam::Values &results) const;
 };
 }  // namespace gtdynamics
