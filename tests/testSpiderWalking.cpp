@@ -107,7 +107,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -116,7 +116,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);

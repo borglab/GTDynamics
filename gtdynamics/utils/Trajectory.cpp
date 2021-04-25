@@ -17,6 +17,9 @@
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
+#include <algorithm>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,6 +31,7 @@ using gtsam::Values;
 using gtsam::Z_6x1;
 using std::map;
 using std::string;
+using std::to_string;
 using std::vector;
 
 namespace gtdynamics {
@@ -93,8 +97,8 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 }
 
 void Trajectory::addBoundaryConditions(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
-    const SharedNoiseModel &pose_model, const SharedNoiseModel &twist_model,
+    gtsam::NonlinearFactorGraph *graph, const SharedNoiseModel &pose_model,
+    const SharedNoiseModel &twist_model,
     const SharedNoiseModel &twist_acceleration_model,
     const SharedNoiseModel &joint_velocity_model,
     const SharedNoiseModel &joint_acceleration_model) const {
@@ -102,7 +106,7 @@ void Trajectory::addBoundaryConditions(
   int K = getEndTimeStep(numPhases() - 1);
 
   // Add link boundary conditions to FG.
-  for (auto &&link : robot.links()) {
+  for (auto &&link : robot_.links()) {
     // Initial link pose, twists.
     add_link_objectives(graph, link->id(), 0)
         .pose(link->wTcom(), pose_model)
@@ -115,17 +119,17 @@ void Trajectory::addBoundaryConditions(
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, K);
 }
 
 void Trajectory::addMinimumTorqueFactors(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+    gtsam::NonlinearFactorGraph *graph,
     const SharedNoiseModel &cost_model) const {
   int K = getEndTimeStep(numPhases() - 1);
-  for (auto &&joint : robot.joints()) {
+  for (auto &&joint : robot_.joints()) {
     auto j = joint->id();
     for (int k = 0; k <= K; k++) {
       graph->emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
@@ -134,4 +138,40 @@ void Trajectory::addMinimumTorqueFactors(
   }
 }
 
+void Trajectory::writePhaseToFile(std::ofstream &file,
+                                  const gtsam::Values &results, int p) const {
+  using gtsam::Matrix;
+
+  // Extract joimt values.
+  int k = getStartTimeStep(p);
+  Matrix mat =
+      phase(p).jointMatrix(robot_, results, k, results.atDouble(PhaseKey(p)));
+
+  // Write to file.
+  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                         Eigen::DontAlignCols, ", ", "\n");
+  file << mat.format(CSVFormat) << std::endl;
+}
+
+// Write results to traj file
+void Trajectory::writeToFile(const std::string &name,
+                             const gtsam::Values &results) const {
+  vector<string> jnames;
+  for (auto &&joint : robot_.joints()) {
+    jnames.push_back(joint->name());
+  }
+  string jnames_str = boost::algorithm::join(jnames, ",");
+
+  std::ofstream file(name);
+
+  // angles, vels, accels, torques, time.
+  file << jnames_str << "," << jnames_str << "," << jnames_str << ","
+       << jnames_str << ",t\n";
+  for (int p = 0; p < numPhases(); p++) writePhaseToFile(file, results, p);
+
+  // Write the last 4 phases to disk n times
+  for (int i = 0; i < 10; i++) {
+    for (int p = 4; p < numPhases(); p++) writePhaseToFile(file, results, p);
+  }
+}
 }  // namespace gtdynamics

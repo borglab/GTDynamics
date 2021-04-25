@@ -69,9 +69,9 @@ int main(int argc, char **argv) {
   auto robot =
       CreateRobotFromFile(kSdfPath + string("/spider_alt.sdf"), "spider");
 
-  double sigma_dynamics = 1e-5;    // std of dynamics constraints.
-  double sigma_objectives = 1e-6;  // std of additional objectives.
-  double sigma_joints = 1.85e-4;   // 1.85e-4
+  double sigma_dynamics = 1e-5;   // std of dynamics constraints.
+  double sigma_objectives = 1e-6; // std of additional objectives.
+  double sigma_joints = 1.85e-4;  // 1.85e-4
 
   // Noise models.
   auto dynamics_model_6 = Isotropic::Sigma(6, sigma_dynamics),
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
@@ -151,25 +151,7 @@ int main(int argc, char **argv) {
   auto results = optimizer.optimize();
 
   // Write results to traj file
-  vector<string> jnames;
-  for (auto &&joint : robot.joints()) jnames.push_back(joint->name());
-  std::cout << jnames.size() << std::endl;
-  string jnames_str = boost::algorithm::join(jnames, ",");
-  std::ofstream traj_file;
+  trajectory.writeToFile("forward_traj.csv", results);
 
-  traj_file.open("forward_traj.csv");
-  // angles, vels, accels, torques, time.
-  traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
-            << jnames_str << ",t"
-            << "\n";
-  for (int phase = 0; phase < trajectory.numPhases(); phase++)
-    trajectory.writePhaseToFile(robot, traj_file, results, phase);
-
-  // Write the last 4 phases to disk n times
-  for (int i = 0; i < 10; i++) {
-    for (int phase = 4; phase < trajectory.numPhases(); phase++)
-      trajectory.writePhaseToFile(robot, traj_file, results, phase);
-  }
-  traj_file.close();
   return 0;
 }

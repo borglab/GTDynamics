@@ -135,8 +135,8 @@ TEST(Trajectory, error) {
 
   // Test boundary conditions.
   NonlinearFactorGraph boundary_conditions;
-  trajectory.addBoundaryConditions(&boundary_conditions, robot, kModel6,
-                                   kModel6, kModel6, kModel1, kModel1);
+  trajectory.addBoundaryConditions(&boundary_conditions, kModel6, kModel6,
+                                   kModel6, kModel1, kModel1);
   // regression test
   EXPECT_LONGS_EQUAL(260, boundary_conditions.size());
 }

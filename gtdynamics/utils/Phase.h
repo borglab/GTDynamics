@@ -16,8 +16,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 
-#include <algorithm>
-#include <boost/algorithm/string/join.hpp>
 #include <iosfwd>
 
 namespace gtdynamics {
@@ -111,5 +109,10 @@ class Phase {
       const ContactPoints &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
       size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
+
+  /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
+  gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
+                            size_t k = 0,
+                            boost::optional<double> dt = boost::none) const;
 };
 }  // namespace gtdynamics
