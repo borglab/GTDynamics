@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
   gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);

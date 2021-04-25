@@ -122,7 +122,7 @@ TEST(Trajectory, error) {
 
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
-  auto contact_link_objectives = trajectory.contactLinkObjectives(
+  auto contact_link_objectives = trajectory.contactPointObjectives(
       noiseModel::Isotropic::Sigma(3, 1e-7), step);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);

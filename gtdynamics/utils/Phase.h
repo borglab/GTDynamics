@@ -107,7 +107,7 @@ class Phase {
    * @param[in] k_start Factors are added at this time step
    * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
-  gtsam::NonlinearFactorGraph contactLinkObjectives(
+  gtsam::NonlinearFactorGraph contactPointObjectives(
       const ContactPoints &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
       size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;

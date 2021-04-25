@@ -53,8 +53,9 @@ class Trajectory {
    * Construct trajectory from WalkCycle and specified number of gait
    * repetitions.
    *
-   * @param walk_cycle The Walk Cycle for the robot.
-   * @param repeat The number of repetitions for each phase of the gait.
+   * @param robot       Robot configuration.
+   * @param walk_cycle  The Walk Cycle for the robot.
+   * @param repeat      The number of repetitions for each phase of the gait.
    */
   Trajectory(const Robot &robot, const WalkCycle &walk_cycle, int repeat)
       : robot_(robot), repeat_(repeat), walk_cycle_(walk_cycle) {}
@@ -261,7 +262,7 @@ class Trajectory {
    * @fn Create desired stance and swing trajectories for all contact links.
    * @return All objective factors as a NonlinearFactorGraph
    */
-  gtsam::NonlinearFactorGraph contactLinkObjectives(
+  gtsam::NonlinearFactorGraph contactPointObjectives(
       const gtsam::SharedNoiseModel &cost_model,
       const gtsam::Point3 &step) const;
 
