@@ -52,8 +52,7 @@ using gtsam::ExpressionFactor;
 namespace gtdynamics {
 
 std::ostream &operator<<(std::ostream &os, const ContactPoint &cp) {
-  os << "{[" << cp.point.transpose() << "], " << cp.id << ", " << cp.height
-     << "}";
+  os << "{[" << cp.point.transpose() << "], " << cp.id << "}";
   return os;
 }
 
@@ -232,10 +231,10 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
       for (auto &&contact_point : *contact_points) {
         if (contact_point.first != link->name()) continue;
 
+        // TODO(frank): #179 make sure height is handled correctly.
         ContactKinematicsPoseFactor contact_pose_factor(
             internal::PoseKey(i, t), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity,
-            contact_point.second.height);
+            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity);
         graph.add(contact_pose_factor);
       }
     }
@@ -415,13 +414,13 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
-    const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+    const Robot &robot, const std::vector<int> &phase_steps,
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
     const boost::optional<std::vector<ContactPoints>> &phase_contact_points,
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
-  int num_phases = robots.size();
+  int num_phases = phase_steps.size();
 
   // Return either ContactPoints or None if none specified for phase p
   auto contact_points =
@@ -431,18 +430,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   };
 
   // First slice, k==0
-  graph.add(dynamicsFactorGraph(robots[0], 0, contact_points(0), mu));
+  graph.add(dynamicsFactorGraph(robot, 0, contact_points(0), mu));
 
   int k = 0;
   for (int p = 0; p < num_phases; p++) {
     // in-phase
     // add dynamics for each step
     for (int step = 0; step < phase_steps[p] - 1; step++) {
-      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
+      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu));
     }
     if (p == num_phases - 1) {
       // Last slice, k==K-1
-      graph.add(dynamicsFactorGraph(robots[p], ++k, contact_points(p), mu));
+      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu));
     } else {
       // transition
       graph.add(transition_graphs[p]);
@@ -454,7 +453,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   k = 0;
   for (int p = 0; p < num_phases; p++) {
     for (int step = 0; step < phase_steps[p]; step++) {
-      graph.add(multiPhaseCollocationFactors(robots[p], k++, p, collocation));
+      graph.add(multiPhaseCollocationFactors(robot, k++, p, collocation));
     }
   }
   return graph;

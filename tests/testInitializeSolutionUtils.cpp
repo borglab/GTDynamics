@@ -149,7 +149,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
 
   /**
    * The aim of this test is to initialize a trajectory for the simple two-link
@@ -215,7 +215,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
 
   gtsam::Values init_vals = ZeroValues(robot, 0, 0.0, contact_points);
 
@@ -243,7 +243,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
 
   gtsam::Values init_vals =
       ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
@@ -269,13 +269,12 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
 
-  ContactPoint c = ContactPoint{oTc_l1.translation(), 1, 0.0};
+  ContactPoint c = ContactPoint{oTc_l1.translation(), 1};
   ContactPoints p0{{l1->name(), c}};
   ContactPoints p1{};
   ContactPoints p2{{l1->name(), c}};
 
-  std::vector<gtdynamics::ContactPoints> phase_contact_points = {p0, p1, p2};
-  std::vector<gtdynamics::Robot> robots(3, robot);
+  std::vector<ContactPoints> phase_contact_points = {p0, p1, p2};
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;
@@ -293,14 +292,14 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   // Initial values for transition graphs.
   std::vector<gtsam::Values> transition_graph_init;
   transition_graph_init.push_back(
-      gtdynamics::ZeroValues(robots[0], 1 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroValues(robot, 1 * steps_per_phase, kNoiseSigma, p0));
   transition_graph_init.push_back(
-      gtdynamics::ZeroValues(robots[1], 2 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroValues(robot, 2 * steps_per_phase, kNoiseSigma, p0));
 
   double dt = 1.0;
 
   gtsam::Values init_vals = MultiPhaseInverseKinematicsTrajectory(
-      robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
+      robot, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
       dt, kNoiseSigma, phase_contact_points);
 
   Pose3 pose = Pose(init_vals, l2->id());
