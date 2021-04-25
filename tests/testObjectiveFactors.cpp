@@ -37,44 +37,43 @@ auto kModel6 = Unit::Create(6);
 TEST(ObjectiveFactors, PoseAndTwist) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_link_objectives(&graph, id, k).pose(Pose3(), kModel6);
+  graph.add(LinkObjectives(id, k).pose(Pose3(), kModel6));
   EXPECT_LONGS_EQUAL(1, graph.size());
-  add_link_objectives(&graph, id, k)
-      .pose(Pose3(), kModel6)
-      .twist(gtsam::Z_6x1, kModel6);
+  graph.add(LinkObjectives(id, k)
+                .pose(Pose3(), kModel6)
+                .twist(gtsam::Z_6x1, kModel6));
   EXPECT_LONGS_EQUAL(3, graph.size());
 }
 
 TEST(ObjectiveFactors, TwistWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_link_objectives(&graph, id, k)
-      .twist(gtsam::Z_6x1, kModel6)
-      .twistAccel(gtsam::Z_6x1, kModel6);
+  graph.add(LinkObjectives(id, k)
+                .twist(gtsam::Z_6x1, kModel6)
+                .twistAccel(gtsam::Z_6x1, kModel6));
   EXPECT_LONGS_EQUAL(2, graph.size());
 }
 
 TEST(ObjectiveFactors, JointAngleWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_joint_objectives(&graph, id, k).angle(0, kModel1);
+  graph.add(JointObjectives(id, k).angle(0, kModel1));
   EXPECT_LONGS_EQUAL(1, graph.size());
-  add_joint_objectives(&graph, id, k)
-      .velocity(0, kModel1)
-      .acceleration(0, kModel1);
+  graph.add(
+      JointObjectives(id, k).velocity(0, kModel1).acceleration(0, kModel1));
   EXPECT_LONGS_EQUAL(3, graph.size());
-  add_joint_objectives(&graph, id, k)
-      .angle(0, kModel1)
-      .velocity(0, kModel1)
-      .acceleration(0, kModel1);
+  graph.add(JointObjectives(id, k)
+                .angle(0, kModel1)
+                .velocity(0, kModel1)
+                .acceleration(0, kModel1));
   EXPECT_LONGS_EQUAL(6, graph.size());
 }
 
 TEST(ObjectiveFactors, OptionalNoiseModels) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_joint_objectives(&graph, id, k).velocity(0).acceleration(0);
-  add_joint_objectives(&graph, id, k).acceleration(0).angle(0).velocity(0);
+  graph.add(JointObjectives(id, k).velocity(0).acceleration(0));
+  graph.add(JointObjectives(id, k).acceleration(0).angle(0).velocity(0));
   EXPECT_LONGS_EQUAL(5, graph.size());
 }
 

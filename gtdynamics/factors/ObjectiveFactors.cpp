@@ -32,9 +32,9 @@ void add_joints_at_rest_objectives(
     const SharedNoiseModel& joint_velocity_model,
     const SharedNoiseModel& joint_acceleration_model, int k) {
   for (auto&& joint : robot.joints()) {
-    add_joint_objectives(graph, joint->id(), k)
-        .velocity(0, joint_velocity_model)
-        .acceleration(0, joint_acceleration_model);
+    graph->add(JointObjectives(joint->id(), k)
+                   .velocity(0, joint_velocity_model)
+                   .acceleration(0, joint_acceleration_model));
   }
 }
 

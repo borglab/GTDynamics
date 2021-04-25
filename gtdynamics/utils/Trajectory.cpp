@@ -138,14 +138,14 @@ void Trajectory::addBoundaryConditions(
   // Add link boundary conditions to FG.
   for (auto &&link : robot.links()) {
     // Initial link pose, twists.
-    add_link_objectives(graph, link->id(), 0)
-        .pose(link->wTcom(), pose_model)
-        .twist(Z_6x1, twist_model);
+    graph->add(LinkObjectives(link->id(), 0)
+                   .pose(link->wTcom(), pose_model)
+                   .twist(Z_6x1, twist_model));
 
     // Final link twists, accelerations.
-    add_link_objectives(graph, link->id(), K)
-        .twist(Z_6x1, twist_model)
-        .twistAccel(Z_6x1, twist_acceleration_model);
+    graph->add(LinkObjectives(link->id(), K)
+                   .twist(Z_6x1, twist_model)
+                   .twistAccel(Z_6x1, twist_acceleration_model));
   }
 
   // Add joint boundary conditions to FG.

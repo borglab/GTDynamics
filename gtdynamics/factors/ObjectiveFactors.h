@@ -30,24 +30,22 @@ namespace gtdynamics {
  * for keyword argument -like syntax.
  *
  * Example Usage:
- *  add_link_objectives(graph, id, k).pose(Pose3(), noise)
- *                                   .twist(Z_6x1, noise)
- *                                   .twistAccel(Z_6x1, noise);
+ *  LinkObjectives(graph, id, k).pose(Pose3(), noise)
+ *                              .twist(Z_6x1, noise)
+ *                              .twistAccel(Z_6x1, noise);
  */
-class add_link_objectives {
+class LinkObjectives : public gtsam::NonlinearFactorGraph {
  private:
-  gtsam::NonlinearFactorGraph* graph_;
+  using Base = gtsam::NonlinearFactorGraph;
   int i_;  // link id
   int k_;  // time step index
  public:
   /**
    * @brief General arguments:
-   * @param graph to add to.
    * @param i The link id.
    * @param k Time step index (default 0).
    */
-  add_link_objectives(gtsam::NonlinearFactorGraph* graph, int i, int k = 0)
-      : graph_(graph), i_(i), k_(k) {}
+  LinkObjectives(int i, int k = 0) : Base(), i_(i), k_(k) {}
 
   /// @name Optional arguments
   ///@{
@@ -56,11 +54,11 @@ class add_link_objectives {
    * @param pose target pose.
    * @param model noise model used in factor.
    */
-  add_link_objectives& pose(
+  LinkObjectives& pose(
       gtsam::Pose3 pose,  //
       const gtsam::SharedNoiseModel& pose_model = nullptr) {
-    graph_->addPrior<gtsam::Pose3>(internal::PoseKey(i_, k_),  //
-                                   pose, pose_model);
+    addPrior<gtsam::Pose3>(internal::PoseKey(i_, k_),  //
+                           pose, pose_model);
     return *this;
   }
   /**
@@ -68,11 +66,11 @@ class add_link_objectives {
    * @param twist target twist.
    * @param model noise model used in factor.
    */
-  add_link_objectives& twist(
+  LinkObjectives& twist(
       gtsam::Vector6 twist,
       const gtsam::SharedNoiseModel& twist_model = nullptr) {
-    graph_->addPrior<gtsam::Vector6>(internal::TwistKey(i_, k_),  //
-                                     twist, twist_model);
+    addPrior<gtsam::Vector6>(internal::TwistKey(i_, k_),  //
+                             twist, twist_model);
     return *this;
   }
   /**
@@ -80,11 +78,11 @@ class add_link_objectives {
    * @param twistAccel target twist acceleration.
    * @param model noise model used in factor.
    */
-  add_link_objectives& twistAccel(
+  LinkObjectives& twistAccel(
       gtsam::Vector6 twistAccel,
       const gtsam::SharedNoiseModel& twistAccel_model = nullptr) {
-    graph_->addPrior<gtsam::Vector6>(internal::TwistAccelKey(i_, k_),
-                                     twistAccel, twistAccel_model);
+    addPrior<gtsam::Vector6>(internal::TwistAccelKey(i_, k_), twistAccel,
+                             twistAccel_model);
     return *this;
   }
   ///@}
@@ -95,24 +93,22 @@ class add_link_objectives {
  * for keyword argument -like syntax.
  *
  * Example Usage:
- *  add_joint_objectives(graph, id, k).angle(0, noise)
- *                                    .velocity(0, noise)
- *                                    .accel(0, noise);
+ *  JointObjectives(graph, id, k).angle(0, noise)
+ *                               .velocity(0, noise)
+ *                               .accel(0, noise);
  */
-class add_joint_objectives {
+class JointObjectives : public gtsam::NonlinearFactorGraph {
  private:
-  gtsam::NonlinearFactorGraph* graph_;
+  using Base = gtsam::NonlinearFactorGraph;
   int j_;  // joint id
   int k_;  // time step index
  public:
   /**
    * General arguments:
-   * @param graph to add to.
    * @param j The joint id.
    * @param k Time step index (default 0).
    */
-  add_joint_objectives(gtsam::NonlinearFactorGraph* graph, int j, int k = 0)
-      : graph_(graph), j_(j), k_(k) {}
+  JointObjectives(int j, int k = 0) : Base(), j_(j), k_(k) {}
 
   /// @name Optional arguments
   ///@{
@@ -121,11 +117,11 @@ class add_joint_objectives {
    * @param angle target angle.
    * @param model noise model used in factor.
    */
-  add_joint_objectives& angle(  //
+  JointObjectives& angle(  //
       double angle,             //
       const gtsam::SharedNoiseModel& angle_model = nullptr) {
-    graph_->addPrior<double>(internal::JointAngleKey(j_, k_),  //
-                             angle, angle_model);
+    addPrior<double>(internal::JointAngleKey(j_, k_),  //
+                     angle, angle_model);
     return *this;
   }
   /**
@@ -133,11 +129,11 @@ class add_joint_objectives {
    * @param velocity target velocity.
    * @param model noise model used in factor.
    */
-  add_joint_objectives& velocity(
+  JointObjectives& velocity(
       double velocity,
       const gtsam::SharedNoiseModel& velocity_model = nullptr) {
-    graph_->addPrior<double>(internal::JointVelKey(j_, k_),  //
-                             velocity, velocity_model);
+    addPrior<double>(internal::JointVelKey(j_, k_),  //
+                     velocity, velocity_model);
     return *this;
   }
   /**
@@ -145,11 +141,11 @@ class add_joint_objectives {
    * @param acceleration target acceleration.
    * @param model noise model used in factor.
    */
-  add_joint_objectives& acceleration(
+  JointObjectives& acceleration(
       double acceleration,
       const gtsam::SharedNoiseModel& acceleration_model = nullptr) {
-    graph_->addPrior<double>(internal::JointAccelKey(j_, k_),  //
-                             acceleration, acceleration_model);
+    addPrior<double>(internal::JointAccelKey(j_, k_),  //
+                     acceleration, acceleration_model);
     return *this;
   }
 };
