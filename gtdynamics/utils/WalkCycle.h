@@ -18,7 +18,7 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <set>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -59,7 +59,7 @@ class WalkCycle {
    * @param[in]p    Phase number \in [0..numPhases()[.
    * @return Phase instance.
    */
-  const Phase& phase(int p) const {
+  const Phase& phase(size_t p) const {
     if (p >= numPhases()) {
       throw std::invalid_argument("Trajectory:phase: no such phase");
     }
@@ -70,7 +70,14 @@ class WalkCycle {
   const std::vector<Phase>& phases() const { return phases_; }
 
   /// Returns count of phases in the walk cycle
-  int numPhases() const { return phases_.size(); }
+  size_t numPhases() const { return phases_.size(); }
+
+  /// Returns the number of time steps, summing over all phases.
+  size_t numTimeSteps() const {
+    size_t num_time_steps = 0;
+    for (const Phase& p : phases_) num_time_steps += p.numTimeSteps();
+    return num_time_steps;
+  }
 
   /// Return all the contact points.
   const ContactPoints& contactPoints() const { return contact_points_; }
@@ -102,9 +109,9 @@ class WalkCycle {
    * moved by the 3D vector step.
    * Factors are added at time step k, default 0.
    */
-  gtsam::NonlinearFactorGraph swingObjectives(
-      const Robot& robot, size_t p,
-      std::map<std::string, gtsam::Point3> cp_goals, const gtsam::Point3& step,
-      const gtsam::SharedNoiseModel& cost_model, size_t k) const;
+  gtsam::NonlinearFactorGraph contactLinkObjectives(
+      const Robot& robot, const gtsam::SharedNoiseModel& cost_model,
+      const gtsam::Point3& step, size_t k_start,
+      std::map<std::string, gtsam::Point3>* cp_goals) const;
 };
 }  // namespace gtdynamics

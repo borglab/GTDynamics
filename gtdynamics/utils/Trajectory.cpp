@@ -9,7 +9,7 @@
  * @file  Trajectory.cpp
  * @brief Utility methods for generating Trajectory phases.
  * @author: Disha Das, Tarushree Gandhi
- * @author: Frank Dellaert, Gerry Chen
+ * @author: Frank Dellaert, Gerry Chen, Frank Dellaert
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
@@ -76,33 +76,18 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
 }
 
 NonlinearFactorGraph Trajectory::contactLinkObjectives(
-    const SharedNoiseModel &cost_model, const double ground_height) const {
+    const SharedNoiseModel &cost_model, const Point3 &step) const {
   NonlinearFactorGraph factors;
 
   // Initials contact point goal.
   // TODO(frank): #179 make sure height is handled correctly.
   map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_);
 
-  // Distance to move contact point per time step during swing.
-  // TODO(frank): this increases y. That can't be general in any way.
-  // TODO(frank): figure out step from desired velocity
-  const Point3 step(0, 0.4, 0);
-
-  // Add contact point objectives to factor graph.
   size_t k_start = 0;
-  for (int p = 0; p < numPhases(); p++) {
-    const Phase &phase = this->phase(p);
-    factors.add(phase.stanceObjectives(robot_, cp_goals, cost_model, k_start));
-
-    factors.add(walk_cycle_.swingObjectives(robot_, phaseIndex(p), cp_goals,
-                                            step, cost_model, k_start));
-
-    // Update the goal point for the swing links.
-    for (auto &&name : getPhaseSwingLinks(p)) {
-      cp_goals[name] = cp_goals[name] + step;
-    }
-
-    k_start += phase.numTimeSteps();
+  for (int w = 0; w < repeat_; w++) {
+    factors.add(walk_cycle_.contactLinkObjectives(robot_, cost_model, step,
+                                                  k_start, &cp_goals));
+    k_start += walk_cycle_.numTimeSteps();
   }
   return factors;
 }

@@ -16,6 +16,7 @@
 
 namespace gtdynamics {
 
+using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
@@ -32,9 +33,9 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-std::map<std::string, Point3> WalkCycle::initContactPointGoal(
+std::map<string, Point3> WalkCycle::initContactPointGoal(
     const Robot &robot) const {
-  std::map<std::string, Point3> cp_goals;
+  std::map<string, Point3> cp_goals;
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
@@ -52,11 +53,11 @@ std::map<std::string, Point3> WalkCycle::initContactPointGoal(
   return cp_goals;
 }
 
-std::vector<std::string> WalkCycle::swingLinks(size_t p) const {
-  std::vector<std::string> phase_swing_links;
+std::vector<string> WalkCycle::swingLinks(size_t p) const {
+  std::vector<string> phase_swing_links;
   const Phase &phase = this->phase(p);
   for (auto &&kv : contact_points_) {
-    const std::string &name = kv.first;
+    const string &name = kv.first;
     if (!phase.hasContact(name)) {
       phase_swing_links.push_back(name);
     }
@@ -64,22 +65,22 @@ std::vector<std::string> WalkCycle::swingLinks(size_t p) const {
   return phase_swing_links;
 }
 
-gtsam::NonlinearFactorGraph WalkCycle::swingObjectives(
-    const Robot &robot, size_t p, std::map<std::string, Point3> cp_goals,
-    const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-    size_t k) const {
-  const Phase &phase = phases_[p];
-  gtsam::NonlinearFactorGraph factors;
-  for (auto &&kv : contact_points_) {
-    const std::string &name = kv.first;
-    const Point3 &cp_goal = cp_goals.at(name);
-    if (!phase.hasContact(name)) {
-      AddPointGoalFactors(
-          &factors, cost_model, kv.second.point,
-          SimpleSwingTrajectory(cp_goal, step, phase.numTimeSteps()),
-          robot.link(name)->id(), k);
-    }
+NonlinearFactorGraph WalkCycle::contactLinkObjectives(
+    const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
+    const Point3 &step, size_t k_start,
+    std::map<string, Point3> *cp_goals) const {
+  NonlinearFactorGraph factors;
+
+  for (const Phase &phase : phases_) {
+    // Ask the Phase instance to anchor the stance legs
+    factors.add(phase.contactLinkObjectives(contact_points_, step, cost_model,
+                                            robot, k_start, cp_goals));
+
+    // update the start time step for the next phase
+    k_start += phase.numTimeSteps();
   }
+
   return factors;
 }
+
 }  // namespace gtdynamics
