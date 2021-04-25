@@ -694,11 +694,11 @@ class Phase {
   int numTimeSteps() const;
   void print(const string &s = "");
   gtsam::NonlinearFactorGraph
-  contactLinkObjectives(const gtdynamics::ContactPoints &all_contact_points,
-                        const gtsam::Point3 &step,
-                        const gtsam::SharedNoiseModel &cost_model,
-                        const gtdynamics::Robot &robot, size_t k_start,
-                        std::map<string, gtsam::Point3> @cp_goals) const;
+  contactPointObjectives(const gtdynamics::ContactPoints &all_contact_points,
+                         const gtsam::Point3 &step,
+                         const gtsam::SharedNoiseModel &cost_model,
+                         const gtdynamics::Robot &robot, size_t k_start,
+                         std::map<string, gtsam::Point3> @cp_goals) const;
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
                             double dt) const;
@@ -718,10 +718,10 @@ class WalkCycle {
   initContactPointGoal(const gtdynamics::Robot &robot) const;
   std::vector<string> swingLinks(size_t p) const;
   gtsam::NonlinearFactorGraph
-  contactLinkObjectives(const gtsam::Point3 &step,
-                        const gtsam::SharedNoiseModel &cost_model,
-                        const gtdynamics::Robot &robot, size_t k_start,
-                        std::map<string, gtsam::Point3> @cp_goals) const;
+  contactPointObjectives(const gtsam::Point3 &step,
+                         const gtsam::SharedNoiseModel &cost_model,
+                         const gtdynamics::Robot &robot, size_t k_start,
+                         std::map<string, gtsam::Point3> @cp_goals) const;
 };
 
 #include <gtdynamics/utils/Trajectory.h>
@@ -755,8 +755,8 @@ class Trajectory {
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
-  contactLinkObjectives(const gtsam::SharedNoiseModel &cost_model,
-                        const gtsam::Point3 &step) const;
+  contactPointObjectives(const gtsam::SharedNoiseModel &cost_model,
+                         const gtsam::Point3 &step) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(

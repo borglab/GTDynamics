@@ -1,14 +1,14 @@
 """Run kinematic motion planning using GTDynamics outputs."""
-from typing import Dict
-
-import gtdynamics as gtd
 
 import time
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import pybullet as p
 import pybullet_data
-import pandas as pd
-import numpy as np
+
+import gtdynamics as gtd
 
 # pylint: disable=I1101, C0103
 
@@ -32,21 +32,7 @@ for i in range(p.getNumJoints(robot_id)):
     jinfo = p.getJointInfo(robot_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
-
-def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
-    """Actuate to the supplied joint angles using PD control."""
-    for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(robot_id, jid, p.VELOCITY_CONTROL, force=5000)
-
-    for k, v in joint_angles.items():
-        p.setJointMotorControl2(bodyUniqueId=robot_id,
-                                jointIndex=joint_to_jid_map[k],
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=v,
-                                targetVelocity=joint_vels[k + '.1'])
-
-
-# Read walk forward trajectory file
+#Read walk forward trajectory file
 df = pd.read_csv('forward_traj.csv')
 # Read rotation trajectory file
 # df = pd.read_csv('rotation_traj.csv')
@@ -78,7 +64,7 @@ while True:
     if num_traj_replays == max_traj_replays:
         break
 
-    if (i == len(df) - 1):
+    if i == len(df) - 1:
         i = 0
         if num_traj_replays == 0:
             t_f = t
@@ -89,7 +75,12 @@ while True:
     jaccels = df.loc[i][np.arange(64, 96)]
     jtorques = df.loc[i][np.arange(96, 128)]
 
-    set_joint_angles(jangles, jvels)
+    gtd.sim.set_joint_angles(p,
+                             robot_id,
+                             joint_to_jid_map,
+                             jangles,
+                             jvels,
+                             force=5000)
 
     # Update body CoM coordinate frame.
     new_pos, new_orn = p.getBasePositionAndOrientation(robot_id)
