@@ -104,14 +104,16 @@ class WalkCycle {
   std::vector<std::string> swingLinks(size_t p) const;
 
   /**
-   * Add PointGoalFactors for all swing feet in phase `p`, starting at cp_goals.
-   * Swing feet are moved according to a pre-determined height trajectory, and
-   * moved by the 3D vector step.
-   * Factors are added at time step k, default 0.
+   * Add PointGoalFactors for all feet as given in cp_goals.
+   * @param[in] step 3D vector to move by
+   * @param[in] cost_model noise model
+   * @param[in] robot needed to get link id and create key
+   * @param[in] k_start Factors are added at this time step
+   * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
-      const Robot& robot, const gtsam::SharedNoiseModel& cost_model,
-      const gtsam::Point3& step, size_t k_start,
+      const gtsam::Point3& step, const gtsam::SharedNoiseModel& cost_model,
+      const Robot& robot, size_t k_start,
       std::map<std::string, gtsam::Point3>* cp_goals) const;
 };
 }  // namespace gtdynamics

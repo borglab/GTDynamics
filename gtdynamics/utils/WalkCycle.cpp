@@ -66,8 +66,8 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
 }
 
 NonlinearFactorGraph WalkCycle::contactPointObjectives(
-    const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
-    const Point3 &step, size_t k_start,
+    const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
+    const Robot &robot, size_t k_start,
     std::map<string, Point3> *cp_goals) const {
   NonlinearFactorGraph factors;
 

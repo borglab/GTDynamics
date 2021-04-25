@@ -89,7 +89,7 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 
   size_t k_start = 0;
   for (int w = 0; w < repeat_; w++) {
-    factors.add(walk_cycle_.contactPointObjectives(robot_, cost_model, step,
+    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, robot_,
                                                   k_start, &cp_goals));
     k_start += walk_cycle_.numTimeSteps();
   }

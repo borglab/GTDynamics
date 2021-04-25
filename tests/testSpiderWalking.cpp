@@ -83,7 +83,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
-  EXPECT_LONGS_EQUAL(3583, graph.size());
+  EXPECT_LONGS_EQUAL(3557, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
@@ -132,7 +132,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Add objective factors to the graph
   graph.add(objectives);
-  EXPECT_LONGS_EQUAL(3583 + 910, graph.size());
+  EXPECT_LONGS_EQUAL(3557 + 910, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Initialize solution.

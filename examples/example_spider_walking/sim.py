@@ -18,8 +18,9 @@ p.setGravity(0, 0, -9.8)
 p.setRealTimeSimulation(0)
 planeId = p.loadURDF("walls.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-robot = p.loadSDF("spider_alt.sdf")
-robot_id = robot[0] # loadSDF returns a list of objects; the first is the integer ID.
+robot = p.loadSDF(gtd.SDF_PATH + "/spider_alt.sdf")
+# loadSDF returns a list of objects; the first is the integer ID.
+robot_id = robot[0]
 
 # TODO (disha + stephanie): check whether this function is necessary/correct
 #      for initially setting basePosition and baseOrientation
@@ -33,7 +34,7 @@ for i in range(p.getNumJoints(robot_id)):
 
 #Read walk forward trajectory file
 df = pd.read_csv('forward_traj.csv')
-#Read rotation trajectory file
+# Read rotation trajectory file
 # df = pd.read_csv('rotation_traj.csv')
 print(df.columns)
 
@@ -55,10 +56,10 @@ ts = []
 all_pos_sim = []
 
 link_dict = {}
-link_to_num = {3:0 , 7:1 , 11:2 , 15:3 , 19:4 , 23:5 , 27:6 , 31:7 }
-constrained=[]
+link_to_num = {3: 0, 7: 1, 11: 2, 15: 3, 19: 4, 23: 5, 27: 6, 31: 7}
+constrained = []
 
-i=0
+i = 0
 while True:
     if num_traj_replays == max_traj_replays:
         break
@@ -70,7 +71,7 @@ while True:
         num_traj_replays += 1
 
     jangles = df.loc[i][np.arange(32)]
-    jvels = df.loc[i][np.arange(32,64)]
+    jvels = df.loc[i][np.arange(32, 64)]
     jaccels = df.loc[i][np.arange(64, 96)]
     jtorques = df.loc[i][np.arange(96, 128)]
 
@@ -88,36 +89,40 @@ while True:
 
     # print(i)
 
-    #Detect collision points and constrain them.
-    cp = np.asarray(p.getContactPoints(bodyA = planeId, bodyB = robot_id))
-    if cp.shape[0]>1 and i>1:
-        new_cps = set(cp[:,4])
+    # Detect collision points and constrain them.
+    cp = np.asarray(p.getContactPoints(bodyA=planeId, bodyB=robot_id))
+    if cp.shape[0] > 1 and i > 1:
+        new_cps = set(cp[:, 4])
 
-        change = list(df.loc[i][np.arange(16,24)] - df.loc[i-1][np.arange(16,24)])
+        change = list(df.loc[i][np.arange(16, 24)] -
+                      df.loc[i-1][np.arange(16, 24)])
         # Initial collision
-        just_collided = [x for x in new_cps if x not in constrained and x in link_to_num.keys()]
+        just_collided = [
+            x for x in new_cps if x not in constrained and x in link_to_num.keys()]
         for x in just_collided:
-            if (link_to_num[x]<4 and change[link_to_num[x]] >= 0) or (link_to_num[x]>=4 and change[link_to_num[x]] <= 0):
-                link_dict[x] = p.createConstraint(robot_id, x, planeId, -1, p.JOINT_POINT2POINT, [0,0,0], [0,0,0] , p.getLinkState(robot_id, x)[0])
+            if (link_to_num[x] < 4 and change[link_to_num[x]] >= 0) or (link_to_num[x] >= 4 and change[link_to_num[x]] <= 0):
+                link_dict[x] = p.createConstraint(robot_id, x, planeId, -1, p.JOINT_POINT2POINT, [
+                                                  0, 0, 0], [0, 0, 0], p.getLinkState(robot_id, x)[0])
                 constrained.append(x)
 
-        #Wants to lift
+        # Wants to lift
         for x in constrained:
-            if (link_to_num[x]<4 and change[link_to_num[x]] <= 0) or (link_to_num[x]>=4 and change[link_to_num[x]] >= 0) and link_dict.get(x) != None:
+            if (link_to_num[x] < 4 and change[link_to_num[x]] <= 0) or (link_to_num[x] >= 4 and change[link_to_num[x]] >= 0) and link_dict.get(x) != None:
                 numConstraints_before = p.getNumConstraints()
                 p.removeConstraint(link_dict[x])
                 if numConstraints_before != p.getNumConstraints():
                     constrained.remove(x)
-
 
     if (i % debug_iters) == 0:
         # print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
         # i, new_pos, p.getEulerFromQuaternion(new_orn)))
 
         if (num_traj_replays == 0):
-            p.addUserDebugLine(pos, new_pos, lineColorRGB=[1, 0, 1], lineWidth=2.5)
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[
+                               1, 0, 1], lineWidth=2.5)
         else:
-            p.addUserDebugLine(pos, new_pos, lineColorRGB=[0, 1, 1], lineWidth=2.5)
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[
+                               0, 1, 1], lineWidth=2.5)
         pos, orn = new_pos, new_orn
 
         bod_debug_line_x = p.addUserDebugLine(
@@ -139,7 +144,7 @@ while True:
     ts.append(t)
     t += 1. / 240.
     all_pos_sim.append(new_pos)
-    i+=1
+    i += 1
 
 
 pos, orn = p.getBasePositionAndOrientation(robot_id)
