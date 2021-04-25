@@ -274,7 +274,7 @@ gtdynamics::Robot CreateRobotFromFile(const string& file_path,
                                     const string& model_name);
 
 
-/********************** kinematics **********************/
+/********************** utilities **********************/
 #include <gtdynamics/utils/ContactPoint.h>
 
 class ContactPoint {
@@ -302,7 +302,11 @@ class ContactGoal {
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
                  double tol = 1e-9) const;
+  void print(const string &s = "");
 };
+
+gtsam::Values InverseKinematics(const gtdynamics::Robot &robot,
+                                const gtdynamics::ContactGoals &contact_goals);
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
