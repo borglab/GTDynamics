@@ -367,7 +367,6 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test the scenario with dt as a variable
   vector<int> phase_steps{1, 1};
-  vector<Robot> robots(2, robot);
   auto transition_graph = graph_builder.dynamicsFactorGraph(robot, 1);
   vector<NonlinearFactorGraph> transition_graphs{transition_graph};
   double dt0 = 1;
@@ -382,7 +381,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, CollocationScheme::Euler);
+      robot, phase_steps, transition_graphs, CollocationScheme::Euler);
   mp_euler_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
@@ -402,7 +401,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
+      robot, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
   mp_trapezoidal_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph,
                                             mp_euler_result);

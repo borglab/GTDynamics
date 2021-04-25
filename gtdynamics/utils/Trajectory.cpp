@@ -9,7 +9,7 @@
  * @file  Trajectory.cpp
  * @brief Utility methods for generating Trajectory phases.
  * @author: Disha Das, Tarushree Gandhi
- * @author: Frank Dellaert, Gerry Chen
+ * @author: Frank Dellaert, Gerry Chen, Frank Dellaert
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
@@ -17,6 +17,9 @@
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/geometry/Point3.h>
 
+#include <algorithm>
+#include <boost/algorithm/string/join.hpp>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,6 +31,7 @@ using gtsam::Values;
 using gtsam::Z_6x1;
 using std::map;
 using std::string;
+using std::to_string;
 using std::vector;
 
 namespace gtdynamics {
@@ -36,35 +40,32 @@ vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
   vector<ContactPoints> trans_cps = transitionContactPoints();
-  vector<Robot> phase_robots = phaseRobotModels();
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        phase_robots[p], final_timesteps[p - 1], trans_cps[p - 1], mu));
+        robot_, final_timesteps[p - 1], trans_cps[p - 1], mu));
   }
   return transition_graphs;
 }
 
 NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
-    DynamicsGraph &graph_builder,
-    const CollocationScheme collocation, double mu) const {
+    DynamicsGraph &graph_builder, const CollocationScheme collocation,
+    double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(graph_builder, mu);
-  return graph_builder.multiPhaseTrajectoryFG(
-      phaseRobotModels(), phaseDurations(), transition_graphs, collocation,
-      phaseContactPoints(), mu);
+  return graph_builder.multiPhaseTrajectoryFG(robot_, phaseDurations(),
+                                              transition_graphs, collocation,
+                                              phaseContactPoints(), mu);
 }
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
     double gaussian_noise) const {
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
-  vector<Robot> phase_robots = phaseRobotModels();
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
-    transition_graph_init.push_back(
-        ZeroValues(phase_robots[p], final_timesteps[p - 1], gaussian_noise,
-                   trans_cps[p - 1]));
+    transition_graph_init.push_back(ZeroValues(
+        robot_, final_timesteps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
   return transition_graph_init;
 }
@@ -73,62 +74,31 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
                                            double dt) const {
   vector<Values> transition_graph_init =
       transitionPhaseInitialValues(gaussian_noise);
-  return MultiPhaseZeroValuesTrajectory(phaseRobotModels(), phaseDurations(),
+  return MultiPhaseZeroValuesTrajectory(robot_, phaseDurations(),
                                         transition_graph_init, dt,
                                         gaussian_noise, phaseContactPoints());
 }
 
-NonlinearFactorGraph Trajectory::contactLinkObjectives(
-    const SharedNoiseModel &cost_model, const double ground_height) const {
+NonlinearFactorGraph Trajectory::contactPointObjectives(
+    const SharedNoiseModel &cost_model, const Point3 &step) const {
   NonlinearFactorGraph factors;
 
-  // Previous contact point goal.
-  map<string, Point3> prev_cp = initContactPointGoal();
+  // Initials contact point goal.
+  // TODO(frank): #179 make sure height is handled correctly.
+  map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_);
 
-  // Distance to move contact point per time step during swing.
-  auto contact_offset = Point3(0, 0.02, 0);
-
-  // Add contact point objectives to factor graph.
-  for (int p = 0; p < numPhases(); p++) {
-    // if(p <2) contact_offset /=2 ;
-    // Phase start and end timesteps.
-    int t_p_i = getStartTimeStep(p);
-    int t_p_f = getEndTimeStep(p);
-
-    // Obtain the contact links and swing links for this phase.
-    vector<string> phase_contact_links = getPhaseContactLinks(p);
-    vector<string> phase_swing_links = getPhaseSwingLinks(p);
-
-    for (int t = t_p_i; t <= t_p_f; t++) {
-      // Normalized phase progress.
-      double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
-
-      for (auto &&pcl : phase_contact_links) {
-        Point3 goal_point(prev_cp[pcl].x(), prev_cp[pcl].y(),
-                          ground_height - 0.05);
-        factors.add(pointGoalFactor(pcl, t, cost_model, goal_point));
-      }
-
-      // Swing trajectory height over time.
-      // TODO(frank): Alejandro should document this.
-      double h = ground_height + pow(t_normed, 1.1) * pow(1 - t_normed, 0.7);
-
-      for (auto &&psl : phase_swing_links) {
-        Point3 goal_point(prev_cp[psl].x(), prev_cp[psl].y(), h);
-        factors.add(pointGoalFactor(psl, t, cost_model, goal_point));
-      }
-
-      // Update the goal point for the swing links.
-      for (auto &&psl : phase_swing_links)
-        prev_cp[psl] = prev_cp[psl] + contact_offset;
-    }
+  size_t k_start = 0;
+  for (int w = 0; w < repeat_; w++) {
+    factors.add(walk_cycle_.contactPointObjectives(robot_, cost_model, step,
+                                                  k_start, &cp_goals));
+    k_start += walk_cycle_.numTimeSteps();
   }
   return factors;
 }
 
 void Trajectory::addBoundaryConditions(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
-    const SharedNoiseModel &pose_model, const SharedNoiseModel &twist_model,
+    gtsam::NonlinearFactorGraph *graph, const SharedNoiseModel &pose_model,
+    const SharedNoiseModel &twist_model,
     const SharedNoiseModel &twist_acceleration_model,
     const SharedNoiseModel &joint_velocity_model,
     const SharedNoiseModel &joint_acceleration_model) const {
@@ -136,7 +106,7 @@ void Trajectory::addBoundaryConditions(
   int K = getEndTimeStep(numPhases() - 1);
 
   // Add link boundary conditions to FG.
-  for (auto &&link : robot.links()) {
+  for (auto &&link : robot_.links()) {
     // Initial link pose, twists.
     add_link_objectives(graph, link->id(), 0)
         .pose(link->wTcom(), pose_model)
@@ -149,17 +119,17 @@ void Trajectory::addBoundaryConditions(
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
+  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
                                 joint_acceleration_model, K);
 }
 
 void Trajectory::addMinimumTorqueFactors(
-    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
+    gtsam::NonlinearFactorGraph *graph,
     const SharedNoiseModel &cost_model) const {
   int K = getEndTimeStep(numPhases() - 1);
-  for (auto &&joint : robot.joints()) {
+  for (auto &&joint : robot_.joints()) {
     auto j = joint->id();
     for (int k = 0; k <= K; k++) {
       graph->emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
@@ -168,4 +138,40 @@ void Trajectory::addMinimumTorqueFactors(
   }
 }
 
+void Trajectory::writePhaseToFile(std::ofstream &file,
+                                  const gtsam::Values &results, int p) const {
+  using gtsam::Matrix;
+
+  // Extract joimt values.
+  int k = getStartTimeStep(p);
+  Matrix mat =
+      phase(p).jointMatrix(robot_, results, k, results.atDouble(PhaseKey(p)));
+
+  // Write to file.
+  const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                         Eigen::DontAlignCols, ", ", "\n");
+  file << mat.format(CSVFormat) << std::endl;
+}
+
+// Write results to traj file
+void Trajectory::writeToFile(const std::string &name,
+                             const gtsam::Values &results) const {
+  vector<string> jnames;
+  for (auto &&joint : robot_.joints()) {
+    jnames.push_back(joint->name());
+  }
+  string jnames_str = boost::algorithm::join(jnames, ",");
+
+  std::ofstream file(name);
+
+  // angles, vels, accels, torques, time.
+  file << jnames_str << "," << jnames_str << "," << jnames_str << ","
+       << jnames_str << ",t\n";
+  for (int p = 0; p < numPhases(); p++) writePhaseToFile(file, results, p);
+
+  // Write the last 4 phases to disk n times
+  for (int i = 0; i < 10; i++) {
+    for (int p = 4; p < numPhases(); p++) writePhaseToFile(file, results, p);
+  }
+}
 }  // namespace gtdynamics
