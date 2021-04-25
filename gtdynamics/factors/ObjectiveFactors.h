@@ -26,8 +26,8 @@
 namespace gtdynamics {
 
 /**
- * @brief Add objectives to graph for link i at time k using proxy class idiom
- * for keyword argument -like syntax.
+ * @brief Create a graph of objectives for link i at time k using proxy class
+ * idiom for keyword argument -like syntax.
  *
  * Example Usage:
  *  LinkObjectives(graph, id, k).pose(Pose3(), noise)
@@ -89,8 +89,8 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
 };
 
 /**
- * @brief Add objectives to graph for joint j at time k using proxy class idiom
- * for keyword argument -like syntax.
+ * @brief Create a graph of objectives for joint j at time k using proxy class
+ * idiom for keyword argument -like syntax.
  *
  * Example Usage:
  *  JointObjectives(graph, id, k).angle(0, noise)
