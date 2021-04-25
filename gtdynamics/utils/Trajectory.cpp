@@ -149,10 +149,10 @@ void Trajectory::addBoundaryConditions(
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
-                                joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(graph, robot, joint_velocity_model,
-                                joint_acceleration_model, K);
+  graph->add(JointsAtRestObjectives(robot, joint_velocity_model,
+                                    joint_acceleration_model, 0));
+  graph->add(JointsAtRestObjectives(robot, joint_velocity_model,
+                                    joint_acceleration_model, K));
 }
 
 void Trajectory::addMinimumTorqueFactors(

@@ -89,15 +89,15 @@ TEST(Phase, AddGoals) {
   auto bTcom = LF->wTcom();        // world is really body
   Point3 stance_point = bTcom.transformFrom(point_com);
 
-  gtsam::NonlinearFactorGraph factors;
   unsigned char id = LF->id();
   constexpr size_t num_stance_steps = 10;
   constexpr size_t k = 777;
   const gtsam::SharedNoiseModel &cost_model = nullptr;
 
   // Call AddStanceGoals function, creating 10 factors
-  AddPointGoalFactors(&factors, cost_model, point_com,
-                      StanceTrajectory(stance_point, num_stance_steps), id, k);
+  auto factors =
+      PointGoalFactors(cost_model, point_com,
+                       StanceTrajectory(stance_point, num_stance_steps), id, k);
   EXPECT_LONGS_EQUAL(num_stance_steps, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
@@ -109,9 +109,8 @@ TEST(Phase, AddGoals) {
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps
   constexpr size_t num_swing_steps = 3;
-  gtsam::NonlinearFactorGraph swing_factors;
-  AddPointGoalFactors(
-      &swing_factors, cost_model, point_com,
+  auto swing_factors = PointGoalFactors(
+      cost_model, point_com,
       SimpleSwingTrajectory(stance_point, step, num_swing_steps), id);
   EXPECT_LONGS_EQUAL(num_swing_steps, swing_factors.size());
 

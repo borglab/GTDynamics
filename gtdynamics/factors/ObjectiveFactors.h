@@ -150,25 +150,30 @@ class JointObjectives : public gtsam::NonlinearFactorGraph {
   }
 };
 
-void add_joints_at_rest_objectives(
-    gtsam::NonlinearFactorGraph* graph, const Robot& robot,
-    const gtsam::SharedNoiseModel& joint_velocity_model,
+/**
+ * @brief  Create a graph of objectives specifying joints to be at rest (aka 0
+ * velocity and 0 acceleration)
+ * @param robot The robot
+ * @param joint_velocity_model The noise model for the 0 velocity objective
+ * @param joint_acceleration_model The noise model for the 0 velocity objective
+ * @param k starting time index (default 0).
+ */
+gtsam::NonlinearFactorGraph JointsAtRestObjectives(
+    const Robot& robot, const gtsam::SharedNoiseModel& joint_velocity_model,
     const gtsam::SharedNoiseModel& joint_acceleration_model, int k = 0);
 
 /**
- * @brief  Add PointGoalFactors given a trajectory.
- * @param factors graph to add to.
+ * @brief  Create a graph of PointGoalFactors given a trajectory.
  * @param cost_model noise model
  * @param point_com point on link, in COM coordinate frame
  * @param goal_trajectory end effector goal trajectory, in world coordinates
  * @param i The link id.
  * @param k starting time index (default 0).
  */
-void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
-                         const gtsam::SharedNoiseModel& cost_model,
-                         const gtsam::Point3& point_com,
-                         const std::vector<gtsam::Point3>& goal_trajectory,
-                         unsigned char i, size_t k = 0);
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    const gtsam::SharedNoiseModel& cost_model, const gtsam::Point3& point_com,
+    const std::vector<gtsam::Point3>& goal_trajectory, unsigned char i,
+    size_t k = 0);
 
 /**
  * @brief Create stance foot trajectory.
