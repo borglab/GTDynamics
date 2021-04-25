@@ -46,6 +46,16 @@ struct ContactGoal {
   const Point3& contact_in_com() const { return point_on_link.point; }
 
   /**
+   * @fn For given values, predict where point_on_link is in world frame.
+   * @param values a GTSAM Values instance that should contain link pose.
+   * @param k time step to check (default 0).
+   */
+  gtsam::Point3 predict(const gtsam::Values& values, size_t k = 0) const {
+    const gtsam::Pose3 wTcom = Pose(values, link()->id(), k);
+    return wTcom.transformFrom(point_on_link.point);
+  }
+
+  /**
    * @fn Check that the contact goal has been achived for given values.
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
@@ -53,10 +63,7 @@ struct ContactGoal {
    */
   bool satisfied(const gtsam::Values& values, size_t k = 0,
                  double tol = 1e-9) const {
-    // Change point reference frame from com to spatial.
-    const gtsam::Pose3 wTcom = Pose(values, link()->id(), k);
-    const gtsam::Point3 point_w = wTcom.transformFrom(point_on_link.point);
-    return gtsam::distance3(point_w, goal_point) < tol;
+    return gtsam::distance3(predict(values, k), goal_point) < tol;
   }
 };
 
@@ -65,13 +72,14 @@ using ContactGoals = std::vector<ContactGoal>;
 
 struct KinematicsSettings {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
-      g_cost_model,                            // goal point
-      prior_q_cost_model;                      // joint angle prior factor
+  const gtsam::SharedNoiseModel p_cost_model,     // pose factor
+      g_cost_model,                               // goal point
+      prior_q_cost_model;                         // joint angle prior factor
+  gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
 
   KinematicsSettings()
-      : p_cost_model(Isotropic::Sigma(6, 1e-5)),
-        g_cost_model(Isotropic::Sigma(3, 0.1)),
+      : p_cost_model(Isotropic::Sigma(6, 1e-4)),
+        g_cost_model(Isotropic::Sigma(3, 0.01)),
         prior_q_cost_model(Isotropic::Sigma(1, 0.5)) {}
 };
 
@@ -113,11 +121,10 @@ gtsam::NonlinearFactorGraph PointGoalObjectives(
   gtsam::NonlinearFactorGraph graph;
 
   // Add objectives.
-  for (const ContactGoal& contact_goal : contact_goals) {
-    const gtsam::Key pose_key = internal::PoseKey(contact_goal.link()->id(), k);
-    graph.emplace_shared<PointGoalFactor>(pose_key, opt.g_cost_model,
-                                          contact_goal.contact_in_com(),
-                                          contact_goal.goal_point);
+  for (const ContactGoal& goal : contact_goals) {
+    const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), k);
+    graph.emplace_shared<PointGoalFactor>(
+        pose_key, opt.g_cost_model, goal.contact_in_com(), goal.goal_point);
   }
 
   return graph;
@@ -190,29 +197,58 @@ gtsam::Values InverseKinematics(
   // Add objectives.
   graph.add(PointGoalObjectives(robot, contact_goals, opt, k));
   graph.add(MinimumJointAngleSlice(robot, opt, k));
-  // graph.addPrior<Pose3>(internal::PoseKey(0, k), Pose3(), );
+
+  // This should not be needed:
+  // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, k), gtsam::Pose3(),
+  // nullptr);
 
   auto values = KinematicsSliceInitialValues(robot, k);
 
-  gtsam::GaussNewtonOptimizer optimizer(graph, values);
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values,
+                                               opt.lm_parameters);
   gtsam::Values results = optimizer.optimize();
   return results;
 }
 
 TEST(Phase, inverse_kinematics) {
-  Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+
+  const size_t k = 777;  // time step for slice
+
+  // Create initial values
+  auto values = KinematicsSliceInitialValues(robot, k, 0.0);
+  EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // establish contact/goal pairs
   const Point3 contact_in_com(0.14, 0, 0);
   const ContactGoals contact_goals = {
-      {{robot.link("lower1"), contact_in_com}, {0, 0.15, 0}},     // LH
-      {{robot.link("lower0"), contact_in_com}, {0.6, 0.15, 0}},   // LF
-      {{robot.link("lower2"), contact_in_com}, {0.6, -0.15, 0}},  // RF
-      {{robot.link("lower3"), contact_in_com}, {0, -0.15, 0}}};   // RH
+      {{robot.link("lower1"), contact_in_com}, {-0.4, 0.16, -0.2}},    // LH
+      {{robot.link("lower0"), contact_in_com}, {0.3, 0.16, -0.2}},     // LF
+      {{robot.link("lower2"), contact_in_com}, {0.3, -0.16, -0.2}},    // RF
+      {{robot.link("lower3"), contact_in_com}, {-0.4, -0.16, -0.2}}};  // RH
+
+  // Set twists to zero fro FK. TODO(frank): separate kinematics from velocity?
+  for (auto&& link : robot.links()) {
+    InsertTwist(&values, link->id(), k, gtsam::Z_6x1);
+  }
+
+  // Do forward kinematics
+  const std::string root_link_name("body");
+  const auto root_link_id = robot.link(root_link_name)->id();
+  EXPECT(values.exists(internal::PoseKey(root_link_id, k)));
+  auto fk = robot.forwardKinematics(values, k, std::string(root_link_name));
+
+  // Check goals with FK solution
+  for (const ContactGoal& goal : contact_goals) {
+    // EXPECT(assert_equal(goal.goal_point, goal.predict(fk, k)));
+    EXPECT(goal.satisfied(fk, k, 0.05));
+  }
 
   KinematicsSettings opt;
-  const size_t k = 777;  // time step for slice
+  // opt.lm_parameters.setVerbosityLM("SUMMARY");
+  opt.lm_parameters.setlambdaInitial(1e7);
+  opt.lm_parameters.setAbsoluteErrorTol(1e-3);
+
   auto graph = KinematicsSlice(robot, opt, k);
   EXPECT_LONGS_EQUAL(12, graph.size());
 
@@ -222,26 +258,28 @@ TEST(Phase, inverse_kinematics) {
   auto objectives2 = MinimumJointAngleSlice(robot, opt, k);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  auto values = KinematicsSliceInitialValues(robot, k);
-  EXPECT_LONGS_EQUAL(25, values.size());
-  GTD_PRINT(values);
-
   constexpr size_t redundancy = 6;
   EXPECT_LONGS_EQUAL(13 * 6 + redundancy, 12 * 6 + 4 * 3);
 
+  // TODO(frank): consider renaming ContactPoint to PointOnLink
+  auto result = InverseKinematics(robot, contact_goals, opt, k);
+
   // Check that well-determined
-  // graph.add(objectives);
-  // graph.add(objectives2);
-  // auto factor = graph.linearizeToHessianFactor(values);
+  graph.add(objectives);
+  graph.add(objectives2);
+  EXPECT_LONGS_EQUAL(12 + 12 + 4, graph.size());
+  // auto factor = graph.linearizeToHessianFactor(result);
   // GTD_PRINT(*factor);
 
-  // TODO(frank): consider renaming ContactPoint to PointOnLink
-  auto result = InverseKinematics(robot, contact_goals);
-  GTD_PRINT(result);
+  // Check that goals are achieved
+  constexpr double tol = 0.01;
+  for (const ContactGoal& goal : contact_goals) {
+    EXPECT(assert_equal(goal.goal_point, goal.predict(result, k), tol));
+  }
 
   // Check that goals are achieved
-  for (const ContactGoal& contact_goal : contact_goals) {
-    EXPECT(contact_goal.satisfied(result));
+  for (const ContactGoal& goal : contact_goals) {
+    EXPECT(goal.satisfied(result, k, tol));
   }
 }
 
