@@ -683,15 +683,15 @@ class Simulator {
 /********************** Trajectory et al  **********************/
 #include <gtdynamics/utils/Phase.h>
 class Phase {
-  Phase(const size_t &num_time_steps);
+  Phase(const int &num_time_steps);
   Phase(const size_t &num_time_steps, const std::vector<string> &link_names,
         const gtsam::Point3 &point);
-  void addContactPoint(const string& link, const gtsam::Point3& point);
-  void addContactPoints(const std::vector<string>& links,
-                        const gtsam::Point3& point);
-  const gtdynamics::ContactPoints& contactPoints() const;
-  const gtdynamics::ContactPoint& contactPoint(const string& link) const;
-  size_t numTimeSteps() const;
+  void addContactPoint(const string &link, const gtsam::Point3 &point);
+  void addContactPoints(const std::vector<string> &links,
+                        const gtsam::Point3 &point);
+  const gtdynamics::ContactPoints &contactPoints() const;
+  const gtdynamics::ContactPoint &contactPoint(const string &link) const;
+  int numTimeSteps() const;
   void print(const string &s = "");
 };
 

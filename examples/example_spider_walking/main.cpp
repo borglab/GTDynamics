@@ -26,8 +26,6 @@
 #include <iostream>
 #include <utility>
 
-#define GROUND_HEIGHT -1.75
-
 using std::string;
 using std::vector;
 
@@ -102,8 +100,9 @@ int main(int argc, char **argv) {
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
 
   // Build the objective factors.
-  gtsam::NonlinearFactorGraph objectives = trajectory.contactLinkObjectives(
-      Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
+  const Point3 step(0, 0.4, 0);
+  gtsam::NonlinearFactorGraph objectives =
+      trajectory.contactLinkObjectives(Isotropic::Sigma(3, 1e-7), step);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);

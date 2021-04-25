@@ -8,7 +8,7 @@
 /**
  * @file  Trajectory.h
  * @brief Utility methods for generating Trajectory phases.
- * @author: Disha Das, Tarushree Gandhi, Varun Agrawal
+ * @author: Disha Das, Tarushree Gandhi, Varun Agrawal, Frank Dellaert
  */
 
 #pragma once
@@ -263,7 +263,7 @@ class Trajectory {
    */
   gtsam::NonlinearFactorGraph contactLinkObjectives(
       const gtsam::SharedNoiseModel &cost_model,
-      double ground_height = 0.0) const;
+      const gtsam::Point3 &step) const;
 
   /**
    * @fn Add minimum torque objectives.
