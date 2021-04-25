@@ -530,6 +530,23 @@ class JointObjectives : gtsam::NonlinearFactorGraph {
       const gtsam::SharedNoiseModel &acceleration_model = nullptr);
 };
 
+gtsam::NonlinearFactorGraph JointsAtRestObjectives(
+    const gtdynamics::Robot &robot,
+    const gtsam::SharedNoiseModel &joint_velocity_model,
+    const gtsam::SharedNoiseModel &joint_acceleration_model, int k = 0);
+
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
+    const std::vector<gtsam::Point3> &goal_trajectory, unsigned char i,
+    size_t k = 0);
+
+std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
+                                            size_t num_steps);
+
+std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3 &start,
+                                                 const gtsam::Point3 &step,
+                                                 size_t num_steps);
+
 /********************** Value Initialization **********************/
 #include <gtdynamics/utils/initialize_solution_utils.h>
 gtsam::Values ZeroValues(
