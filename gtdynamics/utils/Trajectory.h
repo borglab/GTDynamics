@@ -30,7 +30,7 @@ namespace gtdynamics {
 class Trajectory {
  protected:
   Robot robot_;           ///< Copy of the robot configuration
-  size_t repeat_;            ///< Number of repetitions of walk cycle
+  size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
   /// Gets the intersection between two ContactPoints objects
@@ -47,7 +47,7 @@ class Trajectory {
 
  public:
   /// Default Constructor (for serialization)
-  Trajectory(){}
+  Trajectory() {}
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait

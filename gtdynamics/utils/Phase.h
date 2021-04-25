@@ -24,11 +24,11 @@ namespace gtdynamics {
  * and its duration.
  */
 class Phase {
-protected:
-  ContactPoints contact_points_; ///< Contact Points
-  int num_time_steps_;           ///< Number of time steps in this phase
+ protected:
+  ContactPoints contact_points_;  ///< Contact Points
+  int num_time_steps_;            ///< Number of time steps in this phase
 
-public:
+ public:
   /// Constructor
   Phase(const int &num_time_steps) : num_time_steps_(num_time_steps) {}
 
@@ -111,7 +111,7 @@ public:
       size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
 
   /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
-  gtsam::Matrix jointValues(const Robot &robot, const gtsam::Values &results,
+  gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
                             size_t k = 0,
                             boost::optional<double> dt = boost::none) const;
 };

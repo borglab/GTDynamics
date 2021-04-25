@@ -36,8 +36,8 @@ using std::vector;
 
 namespace gtdynamics {
 
-vector<NonlinearFactorGraph>
-Trajectory::getTransitionGraphs(DynamicsGraph &graph_builder, double mu) const {
+vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
+    DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<int> final_timesteps = finalTimeSteps();
@@ -48,10 +48,9 @@ Trajectory::getTransitionGraphs(DynamicsGraph &graph_builder, double mu) const {
   return transition_graphs;
 }
 
-NonlinearFactorGraph
-Trajectory::multiPhaseFactorGraph(DynamicsGraph &graph_builder,
-                                  const CollocationScheme collocation,
-                                  double mu) const {
+NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
+    DynamicsGraph &graph_builder, const CollocationScheme collocation,
+    double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(graph_builder, mu);
   return graph_builder.multiPhaseTrajectoryFG(robot_, phaseDurations(),
@@ -59,8 +58,8 @@ Trajectory::multiPhaseFactorGraph(DynamicsGraph &graph_builder,
                                               phaseContactPoints(), mu);
 }
 
-vector<Values>
-Trajectory::transitionPhaseInitialValues(double gaussian_noise) const {
+vector<Values> Trajectory::transitionPhaseInitialValues(
+    double gaussian_noise) const {
   vector<ContactPoints> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
@@ -146,7 +145,7 @@ void Trajectory::writePhaseToFile(std::ofstream &file,
   // Extract joimt values.
   int k = getStartTimeStep(p);
   Matrix mat =
-      phase(p).jointValues(robot_, results, k, results.atDouble(PhaseKey(p)));
+      phase(p).jointMatrix(robot_, results, k, results.atDouble(PhaseKey(p)));
 
   // Write to file.
   const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
@@ -158,8 +157,7 @@ void Trajectory::writePhaseToFile(std::ofstream &file,
 void Trajectory::writeToFile(const std::string &name,
                              const gtsam::Values &results) const {
   vector<string> jnames;
-  for (auto &&joint : robot_.joints())
-    jnames.push_back(joint->name());
+  for (auto &&joint : robot_.joints()) jnames.push_back(joint->name());
   string jnames_str = boost::algorithm::join(jnames, ",");
 
   std::ofstream file(name);
@@ -167,13 +165,11 @@ void Trajectory::writeToFile(const std::string &name,
   // angles, vels, accels, torques, time.
   file << jnames_str << "," << jnames_str << "," << jnames_str << ","
        << jnames_str << ",t\n";
-  for (int p = 0; p < numPhases(); p++)
-    writePhaseToFile(file, results, p);
+  for (int p = 0; p < numPhases(); p++) writePhaseToFile(file, results, p);
 
   // Write the last 4 phases to disk n times
   for (int i = 0; i < 10; i++) {
-    for (int p = 4; p < numPhases(); p++)
-      writePhaseToFile(file, results, p);
+    for (int p = 4; p < numPhases(); p++) writePhaseToFile(file, results, p);
   }
 }
-} // namespace gtdynamics
+}  // namespace gtdynamics
