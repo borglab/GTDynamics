@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/geometry/Point3.h>
 
 #include <map>
@@ -47,5 +48,34 @@ struct ContactPoint {
 
 ///< Map of link name to ContactPoint
 using ContactPoints = std::map<std::string, ContactPoint>;
+
+/**
+ * PointOnLink is a potential contact point on a particular link.
+ *
+ * @param link  The link on which this contact point lies.
+ * @param point The location of the contact point relative to the link COM.
+ */
+struct PointOnLink {
+  LinkSharedPtr link;
+  gtsam::Point3 point;
+
+  PointOnLink() {}
+  PointOnLink(const LinkSharedPtr &link, const gtsam::Point3 &point)
+      : link(link), point(point) {}
+
+  bool operator==(const PointOnLink &other) {
+    return (point == other.point && link == other.link);
+  }
+  bool operator!=(const PointOnLink &other) { return !(*this == other); }
+
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const PointOnLink &cp);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
+};
+
+///< Map of link name to PointOnLink
+using PointOnLinks = std::vector<PointOnLink>;
 
 }  // namespace gtdynamics
