@@ -151,13 +151,7 @@ int main(int argc, char **argv) {
   auto results = optimizer.optimize();
 
   // Write results to traj file
-  vector<string> jnames;
-  for (auto &&joint : robot.joints())
-    jnames.push_back(joint->name());
-  std::cout << jnames.size() << std::endl;
-  string jnames_str = boost::algorithm::join(jnames, ",");
-  std::ofstream traj_file;
-
   trajectory.writeToFile("forward_traj.csv", results);
+
   return 0;
 }
