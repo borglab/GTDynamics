@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testKinematicsSlice.cpp
+ * @file  testKinematicsSliceInitialValues.cpp
  * @brief Test Kinematics in single time slice.
  * @author: Frank Dellaert
  */
@@ -14,13 +14,14 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/utils/ContactPoint.h>
 
-// #includ<">gtdynamics/kinematics/KinematicsSlice.h>
+// #includ<">gtdynamics/kinematics/KinematicsSliceInitialValues.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/Values.h>
@@ -75,17 +76,16 @@ struct KinematicsSettings {
 };
 
 /**
- * @fn Inverse kinematics given a set of contact goals.
+ * @fn Slice with kinematics constraints.
  * @param robot robot configuration
  * @param opt KinematicsSettings
- * @param k time step to check (default 0).
- * @returns values with poses and joint angles.
+ * @param k time step (default 0).
+ * @returns factor graph..
  */
-gtsam::Values InverseKinematics(
-    const Robot& robot, const ContactGoals& contact_goals,
-    const KinematicsSettings& opt = KinematicsSettings(), size_t k = 0) {
+gtsam::NonlinearFactorGraph KinematicsSlice(
+    const Robot& robot, const KinematicsSettings& opt = KinematicsSettings(),
+    size_t k = 0) {
   gtsam::NonlinearFactorGraph graph;
-  gtsam::Values values;
 
   // Constrain kinematics at joints.
   for (auto&& joint : robot.joints()) {
@@ -96,6 +96,22 @@ gtsam::Values InverseKinematics(
         internal::JointAngleKey(j, k), opt.p_cost_model, joint);
   }
 
+  return graph;
+}
+
+/**
+ * @fn Create point goal objectives.
+ * @param robot robot configuration
+ * @param contact_goals goals for contact points
+ * @param opt KinematicsSettings
+ * @param k time step to check (default 0).
+ * @returns graph with point goal factors.
+ */
+gtsam::NonlinearFactorGraph PointGoalObjectives(
+    const Robot& robot, const ContactGoals& contact_goals,
+    const KinematicsSettings& opt = KinematicsSettings(), size_t k = 0) {
+  gtsam::NonlinearFactorGraph graph;
+
   // Add objectives.
   for (const ContactGoal& contact_goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(contact_goal.link()->id(), k);
@@ -104,21 +120,79 @@ gtsam::Values InverseKinematics(
                                           contact_goal.goal_point);
   }
 
+  return graph;
+}
+
+/**
+ * @fn Factors that minimize joint angles.
+ * @param robot robot configuration
+ * @param opt KinematicsSettings
+ * @param k time step to check (default 0).
+ * @returns graph with prior factors on joint angles.
+ */
+gtsam::NonlinearFactorGraph MinimumJointAngleSlice(
+    const Robot& robot, const KinematicsSettings& opt = KinematicsSettings(),
+    size_t k = 0) {
+  gtsam::NonlinearFactorGraph graph;
+
   // Minimize the joint angles.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = internal::JointAngleKey(joint->id(), k);
     graph.addPrior<double>(key, 0.0, opt.prior_q_cost_model);
   }
 
+  return graph;
+}
+/**
+ * @fn Initialize kinematics.
+ *
+ * Use wTcom for poses and zero-mean noise for joint angles.
+ *
+ * @param robot robot configuration
+ * @param k time step to check (default 0).
+ * @param gaussian_noise time step to check (default 0.1).
+ * @returns values with identity poses and zero joint angles.
+ */
+gtsam::Values KinematicsSliceInitialValues(const Robot& robot, size_t k = 0,
+                                           double gaussian_noise = 0.1) {
+  gtsam::Values values;
+
+  auto sampler_noise_model =
+      gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
+  gtsam::Sampler sampler(sampler_noise_model);
+
   // Initialize all joint angles.
   for (auto&& joint : robot.joints()) {
-    InsertJointAngle(&values, joint->id(), k, 0.0);
+    InsertJointAngle(&values, joint->id(), k, sampler.sample()[0]);
   }
 
   // Initialize all poses.
   for (auto&& link : robot.links()) {
-    InsertPose(&values, link->id(), gtsam::Pose3());
+    InsertPose(&values, link->id(), k, link->wTcom());
   }
+
+  return values;
+}
+
+/**
+ * @fn Inverse kinematics given a set of contact goals.
+ * @param robot robot configuration
+ * @param contact_goals goals for contact points
+ * @param opt KinematicsSettings
+ * @param k time step to check (default 0).
+ * @returns values with poses and joint angles.
+ */
+gtsam::Values InverseKinematics(
+    const Robot& robot, const ContactGoals& contact_goals,
+    const KinematicsSettings& opt = KinematicsSettings(), size_t k = 0) {
+  auto graph = KinematicsSlice(robot, opt, k);
+
+  // Add objectives.
+  graph.add(PointGoalObjectives(robot, contact_goals, opt, k));
+  graph.add(MinimumJointAngleSlice(robot, opt, k));
+  // graph.addPrior<Pose3>(internal::PoseKey(0, k), Pose3(), );
+
+  auto values = KinematicsSliceInitialValues(robot, k);
 
   gtsam::GaussNewtonOptimizer optimizer(graph, values);
   gtsam::Values results = optimizer.optimize();
@@ -136,6 +210,30 @@ TEST(Phase, inverse_kinematics) {
       {{robot.link("lower0"), contact_in_com}, {0.6, 0.15, 0}},   // LF
       {{robot.link("lower2"), contact_in_com}, {0.6, -0.15, 0}},  // RF
       {{robot.link("lower3"), contact_in_com}, {0, -0.15, 0}}};   // RH
+
+  KinematicsSettings opt;
+  const size_t k = 777;  // time step for slice
+  auto graph = KinematicsSlice(robot, opt, k);
+  EXPECT_LONGS_EQUAL(12, graph.size());
+
+  auto objectives = PointGoalObjectives(robot, contact_goals, opt, k);
+  EXPECT_LONGS_EQUAL(4, objectives.size());
+
+  auto objectives2 = MinimumJointAngleSlice(robot, opt, k);
+  EXPECT_LONGS_EQUAL(12, objectives2.size());
+
+  auto values = KinematicsSliceInitialValues(robot, k);
+  EXPECT_LONGS_EQUAL(25, values.size());
+  GTD_PRINT(values);
+
+  constexpr size_t redundancy = 6;
+  EXPECT_LONGS_EQUAL(13 * 6 + redundancy, 12 * 6 + 4 * 3);
+
+  // Check that well-determined
+  // graph.add(objectives);
+  // graph.add(objectives2);
+  // auto factor = graph.linearizeToHessianFactor(values);
+  // GTD_PRINT(*factor);
 
   // TODO(frank): consider renaming ContactPoint to PointOnLink
   auto result = InverseKinematics(robot, contact_goals);
