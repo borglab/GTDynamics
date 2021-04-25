@@ -109,7 +109,7 @@ class WalkCycle {
    * moved by the 3D vector step.
    * Factors are added at time step k, default 0.
    */
-  gtsam::NonlinearFactorGraph contactLinkObjectives(
+  gtsam::NonlinearFactorGraph contactPointObjectives(
       const Robot& robot, const gtsam::SharedNoiseModel& cost_model,
       const gtsam::Point3& step, size_t k_start,
       std::map<std::string, gtsam::Point3>* cp_goals) const;

@@ -52,7 +52,7 @@ TEST(Phase, All) {
   EXPECT(!phase_1.hasContact("tarsus_4_L4"));
   EXPECT(!phase_1.hasContact("tarsus_5_R4"));
 
-  // contactLinkObjectives
+  // contactPointObjectives
   const Point3 step(0, 0.4, 0);
   const gtsam::SharedNoiseModel cost_model = nullptr;
   Point3 goal(1, 2, 3);
@@ -62,7 +62,7 @@ TEST(Phase, All) {
                                             {"tarsus_3_L3", goal},
                                             {"tarsus_4_L4", goal},
                                             {"tarsus_5_R4", goal}};
-  gtsam::NonlinearFactorGraph factors = phase_1.contactLinkObjectives(
+  gtsam::NonlinearFactorGraph factors = phase_1.contactPointObjectives(
       walk_cycle.contactPoints(), step, cost_model, robot, k_start, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
   EXPECT(assert_equal(goal, cp_goals["tarsus_2_L2"]));
