@@ -135,6 +135,9 @@ int main(int argc, char **argv) {
         add_joint_objectives(&objectives, joint->id(), k)
             .angle(2.5, prior_model);
 
+  // Add objectives to factor graph.
+  graph.add(objectives);
+
   // Initialize solution.
   double gaussian_noise = 1e-5;
   gtsam::Values init_vals =
