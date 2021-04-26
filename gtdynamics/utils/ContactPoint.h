@@ -8,7 +8,7 @@
 /**
  * @file ContactPoint.h
  * @brief A point on a link that can be in contact with something.
- * @author Yetong Zhang, Alejandro Escontrela, Frank dellaert
+ * @author Yetong Zhang, Alejandro Escontrela, Frank Dellaert
  */
 
 #pragma once
@@ -67,6 +67,16 @@ struct PointOnLink {
     return (point == other.point && link == other.link);
   }
   bool operator!=(const PointOnLink &other) { return !(*this == other); }
+
+  /**
+   * @fn For given values, predict where point on link is in world frame.
+   * @param values a GTSAM Values instance that should contain link pose.
+   * @param k time step to check (default 0).
+   */
+  gtsam::Point3 predict(const gtsam::Values& values, size_t k = 0) const {
+    const gtsam::Pose3 wTcom = Pose(values, link->id(), k);
+    return wTcom.transformFrom(point);
+  }
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os, const PointOnLink &cp);

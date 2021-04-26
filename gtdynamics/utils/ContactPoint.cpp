@@ -8,7 +8,7 @@
 /**
  * @file ContactPoint.h
  * @brief A point on a link that can be in contact with something.
- * @author Yetong Zhang, Alejandro Escontrela, Frank dellaert
+ * @author Yetong Zhang, Alejandro Escontrela, Frank Dellaert
  */
 
 #include <gtdynamics/utils/ContactPoint.h>
