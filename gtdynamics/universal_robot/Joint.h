@@ -105,8 +105,14 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   Pose3 jTpcom_;
   /// Rest transform to child link CoM frame from joint frame.
   Pose3 jTccom_;
-  /// Rest transform to parent link com frame from child link com frame at rest.
+  /// Transform to parent link com frame from child link com frame at rest.
   Pose3 pMccom_;
+  /// Rest transform to parent link frame from joint frame.
+  Pose3 jTp_;
+  /// Rest transform to child link frame from joint frame.
+  Pose3 jTc_;
+  /// Transform to parent link frame from child link frame at rest.
+  Pose3 pMc_;
 
   using LinkSharedPtr = boost::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
