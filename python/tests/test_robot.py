@@ -26,9 +26,7 @@ class TestRobot(GtsamTestCase):
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                             "urdfs")
-        self.ROBOT_MODEL = osp.join(URDF_PATH, "a1.urdf")
+        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
 
     def test_forward_kinematics(self):
         """Test if forward kinematics are correct via comparison to a 3rd party library."""
@@ -52,11 +50,8 @@ class TestRobot(GtsamTestCase):
             "RL_upper_joint", "RL_lower_joint"
         ]
 
-        # joint_angles = np.zeros(12)
-        joint_angles = np.array([
-            0., 0.924, -1.833, 0., 0.923, -1.834, 0., 0.878, -1.852, 0., 0.878,
-            -1.853
-        ])
+        joint_angles = np.array(
+            [0., 0.9, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
 
         joint_angles_values = gtd.Values()
 
@@ -66,9 +61,12 @@ class TestRobot(GtsamTestCase):
                                        robot.joint(joint).id(),
                                        joint_angles[idx])
 
-        # print(joint_angles_values)
+        # Forward kinematics via GTDynamics.
         fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")
 
+        # Forward kinematics via kinpy.
+        # ret is a dict from link name to poses,
+        # in kinpy this would be a pose whose origin coincides with the joint.
         ret = robot_kp.forward_kinematics(th, world=pose_to_transform(wTb))
 
         for link in robot.links():
