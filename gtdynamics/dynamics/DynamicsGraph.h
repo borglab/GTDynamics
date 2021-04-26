@@ -25,6 +25,7 @@
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/utils/ContactPoint.h"
 
 namespace gtdynamics {
 
@@ -44,34 +45,6 @@ inline DynamicsSymbol PhaseKey(int k) {
 inline DynamicsSymbol TimeKey(int k) {
   return DynamicsSymbol::SimpleSymbol("t", k);
 }
-
-/**
- * ContactPoint defines a single contact point at a link.
- *
- * @param point The location of the contact point relative to the link COM.
- * @param id Each link's contact points must have a unique contact id.
- */
-struct ContactPoint {
-  gtsam::Point3 point;
-  int id;
-
-  ContactPoint() {}
-  ContactPoint(const gtsam::Point3 &point, int id) : point(point), id(id) {}
-
-  bool operator==(const ContactPoint &other) {
-    return (point == other.point && id == other.id);
-  }
-  bool operator!=(const ContactPoint &other) { return !(*this == other); }
-
-  /// Print to stream.
-  friend std::ostream &operator<<(std::ostream &os, const ContactPoint &cp);
-
-  /// GTSAM-style print, works with wrapper.
-  void print(const std::string &s) const;
-};
-
-///< Map of link name to ContactPoint
-using ContactPoints = std::map<std::string, ContactPoint>;
 
 /** Collocation methods. */
 enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
@@ -230,7 +203,7 @@ class DynamicsGraph {
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
-   * @param robot                the robot configuration 
+   * @param robot                the robot configuration
    * @param phase_steps          number of time steps for each phase
    * @param transition_graphs    transition step graphs with guardian factors
    * @param collocation          the collocation scheme

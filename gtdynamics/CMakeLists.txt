@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS dynamics factors universal_robot utils)
+set(SOURCE_SUBDIRS kinematics dynamics factors universal_robot utils)
 
 # Include cable robot stuff
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)

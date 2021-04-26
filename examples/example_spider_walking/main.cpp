@@ -110,9 +110,10 @@ int main(int argc, char **argv) {
   // Add base goal objectives to the factor graph.
   auto base_link = robot.link("body");
   for (int k = 0; k <= K; k++) {
-    add_link_objectives(&objectives, base_link->id(), k)
-        .pose(Pose3(Rot3(), Point3(0, 0.0, 0.5)), Isotropic::Sigma(6, 5e-5))
-        .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5));
+    objectives.add(
+        LinkObjectives(base_link->id(), k)
+            .pose(Pose3(Rot3(), Point3(0, 0.0, 0.5)), Isotropic::Sigma(6, 5e-5))
+            .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5)));
   }
 
   // Add link and joint boundary conditions to FG.
@@ -132,8 +133,7 @@ int main(int argc, char **argv) {
   for (auto &&joint : robot.joints())
     if (joint->name().find("hip2") == 0)
       for (int k = 0; k <= K; k++)
-        add_joint_objectives(&objectives, joint->id(), k)
-            .angle(2.5, prior_model);
+        objectives.add(JointObjectives(joint->id(), k).angle(2.5, prior_model));
 
   // Add objectives to factor graph.
   graph.add(objectives);

@@ -108,21 +108,21 @@ void Trajectory::addBoundaryConditions(
   // Add link boundary conditions to FG.
   for (auto &&link : robot_.links()) {
     // Initial link pose, twists.
-    add_link_objectives(graph, link->id(), 0)
-        .pose(link->wTcom(), pose_model)
-        .twist(Z_6x1, twist_model);
+    graph->add(LinkObjectives(link->id(), 0)
+                   .pose(link->wTcom(), pose_model)
+                   .twist(Z_6x1, twist_model));
 
     // Final link twists, accelerations.
-    add_link_objectives(graph, link->id(), K)
-        .twist(Z_6x1, twist_model)
-        .twistAccel(Z_6x1, twist_acceleration_model);
+    graph->add(LinkObjectives(link->id(), K)
+                   .twist(Z_6x1, twist_model)
+                   .twistAccel(Z_6x1, twist_acceleration_model));
   }
 
   // Add joint boundary conditions to FG.
-  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
-                                joint_acceleration_model, 0);
-  add_joints_at_rest_objectives(graph, robot_, joint_velocity_model,
-                                joint_acceleration_model, K);
+  graph->add(JointsAtRestObjectives(robot_, joint_velocity_model,
+                                    joint_acceleration_model, 0));
+  graph->add(JointsAtRestObjectives(robot_, joint_velocity_model,
+                                    joint_acceleration_model, K));
 }
 
 void Trajectory::addMinimumTorqueFactors(
