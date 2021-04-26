@@ -305,10 +305,11 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
-template <CONTEXT={gtdynamics::Slice}> 
+template <CONTEXT={gtdynamics::Slice, gtdynamics::Phase}> 
 class Kinematics {
-  Kinematics(const gtdynamics::Robot &robot, const CONTEXT& context);
-  gtsam::Values inverse(const gtdynamics::ContactGoals &contact_goals);
+  Kinematics(const gtdynamics::Robot &robot);
+  gtsam::Values inverse(const CONTEXT &context,
+                        const gtdynamics::ContactGoals &contact_goals);
 };
 
 /********************** dynamics graph **********************/

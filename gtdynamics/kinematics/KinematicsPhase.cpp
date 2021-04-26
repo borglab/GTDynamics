@@ -37,13 +37,13 @@ vector<Slice> slices(const Phase& phase) {
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Phase>::graph() {
+NonlinearFactorGraph Kinematics<Phase>::graph(const Phase& phase) {
   NonlinearFactorGraph graph;
 
-  for (const Slice& slice : slices(context_)) {
-    // TODO(frank): shared parameter for parameters instead?
-    Kinematics<Slice> kinematics_slice(robot_, slice, p_);
-    graph.add(kinematics_slice.graph());
+  // TODO(frank): shared parameter for robot/parameters instead?
+  Kinematics<Slice> kinematics_slice(robot_, p_);
+  for (const Slice& slice : slices(phase)) {
+    graph.add(kinematics_slice.graph(slice));
   }
 
   return graph;
@@ -57,7 +57,7 @@ NonlinearFactorGraph Kinematics<Phase>::graph() {
 //   // Add objectives.
 //   for (const ContactGoal& goal : contact_goals) {
 //     const gtsam::Key pose_key =
-//         internal::PoseKey(goal.link()->id(), context_.k());
+//         internal::PoseKey(goal.link()->id(), phase.k());
 //     graph.emplace_shared<PointGoalFactor>(
 //         pose_key, p_.g_cost_model, goal.contact_in_com(), goal.goal_point);
 //   }
@@ -72,7 +72,7 @@ NonlinearFactorGraph Kinematics<Phase>::graph() {
 //   // Minimize the joint angles.
 //   for (auto&& joint : robot_.joints()) {
 //     const gtsam::Key key = internal::JointAngleKey(joint->id(),
-//     context_.k()); graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
+//     phase.k()); graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
 //   }
 
 //   return graph;
@@ -88,13 +88,13 @@ NonlinearFactorGraph Kinematics<Phase>::graph() {
 
 //   // Initialize all joint angles.
 //   for (auto&& joint : robot_.joints()) {
-//     InsertJointAngle(&values, joint->id(), context_.k(),
+//     InsertJointAngle(&values, joint->id(), phase.k(),
 //     sampler.sample()[0]);
 //   }
 
 //   // Initialize all poses.
 //   for (auto&& link : robot_.links()) {
-//     InsertPose(&values, link->id(), context_.k(), link->wTcom());
+//     InsertPose(&values, link->id(), phase.k(), link->wTcom());
 //   }
 
 //   return values;
@@ -109,7 +109,7 @@ NonlinearFactorGraph Kinematics<Phase>::graph() {
 //   graph.add(jointAngleObjectives());
 
 //   // TODO(frank): allo pose prior as well.
-//   // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, context_.k()),
+//   // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, phase.k()),
 //   // gtsam::Pose3(), nullptr);
 
 //   auto values = initialValues();

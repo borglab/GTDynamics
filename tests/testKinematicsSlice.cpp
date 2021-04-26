@@ -34,10 +34,10 @@ TEST(Phase, inverse_kinematics) {
   // parameters.lm_parameters.setVerbosityLM("SUMMARY");
   parameters.lm_parameters.setlambdaInitial(1e7);
   parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
-  Kinematics<Slice> kinematics(robot, slice, parameters);
+  Kinematics<Slice> kinematics(robot, parameters);
 
   // Create initial values
-  auto values = kinematics.initialValues(0.0);
+  auto values = kinematics.initialValues(slice, 0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // establish contact/goal pairs
@@ -65,20 +65,20 @@ TEST(Phase, inverse_kinematics) {
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
-  auto graph = kinematics.graph();
+  auto graph = kinematics.graph(slice);
   EXPECT_LONGS_EQUAL(12, graph.size());
 
-  auto objectives = kinematics.pointGoalObjectives(contact_goals);
+  auto objectives = kinematics.pointGoalObjectives(slice, contact_goals);
   EXPECT_LONGS_EQUAL(4, objectives.size());
 
-  auto objectives2 = kinematics.jointAngleObjectives();
+  auto objectives2 = kinematics.jointAngleObjectives(slice);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
   constexpr size_t redundancy = 6;
   EXPECT_LONGS_EQUAL(13 * 6 + redundancy, 12 * 6 + 4 * 3);
 
   // TODO(frank): consider renaming ContactPoint to PointOnLink
-  auto result = kinematics.inverse(contact_goals);
+  auto result = kinematics.inverse(slice, contact_goals);
 
   // Check that well-determined
   graph.add(objectives);

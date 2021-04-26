@@ -34,9 +34,9 @@ TEST(Phase, inverse_kinematics) {
   parameters.lm_parameters.setVerbosityLM("SUMMARY");
   parameters.lm_parameters.setlambdaInitial(1e7);
   parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
-  Kinematics<Phase> kinematics(robot, phase, parameters);
+  Kinematics<Phase> kinematics(robot, parameters);
 
-  auto graph = kinematics.graph();
+  auto graph = kinematics.graph(phase);
   EXPECT_LONGS_EQUAL(12 * num_time_steps, graph.size());
 }
 

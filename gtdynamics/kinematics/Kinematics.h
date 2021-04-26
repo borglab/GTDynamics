@@ -81,7 +81,6 @@ struct KinematicsParameters {
 template <class CONTEXT>
 class Kinematics {
   Robot robot_;
-  CONTEXT context_;
   KinematicsParameters p_;
 
  public:
@@ -89,15 +88,15 @@ class Kinematics {
    * @fn Constructor.
    * @param context e.g., a Slice, Phase, WalkCycle, or Trajectory instance
    */
-  Kinematics(const Robot& robot, const CONTEXT& context,
+  Kinematics(const Robot& robot,
              const KinematicsParameters& parameters = KinematicsParameters())
-      : robot_(robot), context_(context), p_(parameters) {}
+      : robot_(robot), p_(parameters) {}
 
   /**
    * @fn Slice with kinematics constraints.
    * @returns factor graph..
    */
-  gtsam::NonlinearFactorGraph graph();
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context);
 
   /**
    * @fn Create point goal objectives.
@@ -105,13 +104,13 @@ class Kinematics {
    * @returns graph with point goal factors.
    */
   gtsam::NonlinearFactorGraph pointGoalObjectives(
-      const ContactGoals& contact_goals);
+      const CONTEXT& context, const ContactGoals& contact_goals);
 
   /**
    * @fn Factors that minimize joint angles.
    * @returns graph with prior factors on joint angles.
    */
-  gtsam::NonlinearFactorGraph jointAngleObjectives();
+  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context);
 
   /**
    * @fn Initialize kinematics.
@@ -121,13 +120,15 @@ class Kinematics {
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
-  gtsam::Values initialValues(double gaussian_noise = 0.1);
+  gtsam::Values initialValues(const CONTEXT& context,
+                              double gaussian_noise = 0.1);
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
    * @param contact_goals goals for contact points
    * @returns values with poses and joint angles.
    */
-  gtsam::Values inverse(const ContactGoals& contact_goals);
+  gtsam::Values inverse(const CONTEXT& context,
+                        const ContactGoals& contact_goals);
 };
 }  // namespace gtdynamics
