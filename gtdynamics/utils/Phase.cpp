@@ -51,8 +51,9 @@ NonlinearFactorGraph Phase::contactPointObjectives(
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
     if (!stance) cp_goal += step;  // Update the goal if swing
 
-    AddPointGoalFactors(&factors, cost_model, kv.second.point, goal_trajectory,
-                        robot.link(name)->id(), k_start);
+    factors.push_back(PointGoalFactors(cost_model, kv.second.point,
+                                       goal_trajectory, robot.link(name)->id(),
+                                       k_start));
   }
   return factors;
 }
