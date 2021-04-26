@@ -7,7 +7,7 @@
 
 /**
  * @file  testKinematicsInterval.cpp
- * @brief Test moving for a trajectory consisting of multiple phases.
+ * @brief Test Kinematics methods defined on intervals.
  * @author: Frank Dellaert, Yetong Zhang
  */
 
@@ -26,28 +26,41 @@ using std::string;
 
 #include "contactGoalsExample.h"
 
-/**
- * Interpolate using inverse kinematics: the goals are linearly interpolated.
- * All results are return in values.
- */
-gtsam::Values Kinematics::interpolate(
-    const Interval& interval, const ContactGoals& contact_goals1,
-    const ContactGoals& contact_goals2) const {
-  gtsam::Values result;
-  const double dt = 1.0 / (interval.k_start - interval.k_end);  // 5 6 7 8 9 [10
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    const double t = dt * (k - interval.k_start);
-    ContactGoals goals;
-    transform(contact_goals1.begin(), contact_goals1.end(),
-              contact_goals2.begin(), std::back_inserter(goals),
-              [t](const ContactGoal& goal1, const ContactGoal& goal2) {
-                return ContactGoal{
-                    goal1.point_on_link,
-                    (1.0 - t) * goal1.goal_point + t * goal2.goal_point};
-              });
-    result.insert(inverse(Slice(k), goals));
+TEST(Interval, inverse_kinematics) {
+  // Load robot and establish contact/goal pairs
+  // TODO(frank): the goals for contact will differ for a Interval vs Slice.
+  using namespace contact_goals_example;
+
+  // Create a interval.
+  const size_t num_time_steps = 5;
+  const Interval interval(0, num_time_steps - 1);
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  //   parameters.lm_parameters.setVerbosityLM("SUMMARY");
+  parameters.lm_parameters.setlambdaInitial(1e7);
+  parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
+  Kinematics kinematics(robot, parameters);
+
+  auto graph = kinematics.graph(interval);
+  EXPECT_LONGS_EQUAL(12 * num_time_steps, graph.size());
+
+  auto objectives = kinematics.pointGoalObjectives(interval, contact_goals);
+  EXPECT_LONGS_EQUAL(4 * num_time_steps, objectives.size());
+
+  auto objectives2 = kinematics.jointAngleObjectives(interval);
+  EXPECT_LONGS_EQUAL(12 * num_time_steps, objectives2.size());
+
+  // TODO(frank): consider renaming ContactPoint to PointOnLink
+  auto result = kinematics.inverse(interval, contact_goals);
+
+  // Check that goals are achieved
+  constexpr double tol = 0.01;
+  for (const ContactGoal& goal : contact_goals) {
+    for (size_t k = 0; k < num_time_steps; k++) {
+      EXPECT(goal.satisfied(result, k, tol));
+    }
   }
-  return result;
 }
 
 TEST(Interval, Interpolate) {
