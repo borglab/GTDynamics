@@ -19,7 +19,7 @@ from gtsam import Pose3, Rot3
 from cdpr_planar import Cdpr, CdprParams
 from cdpr_controller_ilqr import CdprControllerIlqr
 from cdpr_planar_sim import CdprSimulator
-from paint_parse import ParseFile
+from paint_parse import ParseFile, writeControls
 from draw_cdpr import plot_trajectory
 from draw_controller import draw_controller_anim
 
@@ -133,6 +133,9 @@ def main(fname='data/iros_logo_2.h',
 def plot(cdpr, controller, result, N, dt, des_T):
     """Plots the results"""
     plot_trajectory(cdpr, result, dt*N, dt, N, des_T, step=1)
+
+def save_controller(fname, controller):
+    writeControls(fname, controller.gains_ff)
 
 if __name__ == '__main__':
     cProfile.run('results = main(N=100)', sort=SortKey.TIME)

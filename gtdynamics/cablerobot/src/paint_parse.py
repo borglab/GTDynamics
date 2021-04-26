@@ -55,3 +55,28 @@ def ParseFile(fname):
         except StopIteration:
             return paintons, colorinds, colors, traj
         assert False, 'End of file expected'
+
+def writeControls(fname, gains_ff):
+    with open(fname, 'w') as f:
+        Ks, uffs, vffs, xffs = zip(*gains_ff)
+        f.write('// u = K * ([v;x]-[vff;xff]) + uff\n')
+        f.write('float xffs[][2] = {\n')
+        for xff in xffs:
+            f.write('\t{{{:f}, {:f}}},\n'.format(*xff.translation()[[0, 2]]))
+        f.write('};\n')
+        f.write('float vffs[][2] = {\n')
+        for vff in vffs:
+            f.write('\t{{{:f}, {:f}}},\n'.format(*vff[[3, 5]]))
+        f.write('};\n')
+        f.write('float uffs[][4] = {\n')
+        for uff in uffs:
+            f.write('\t{{{:f}, {:f}, {:f}, {:f}}},\n'.format(*uff))
+        f.write('};\n')
+        f.write('// vx, vy, x, y\n')
+        f.write('float Ks[][4][4] = {\n\t')
+        for K in Ks:
+            f.write('{\n')
+            for Krow in K:
+                f.write('\t {{{:f}, {:f}, {:f}, {:f}}},\n'.format(*Krow[[3,5,9,11]]))
+            f.write('\t},')
+        f.write('\n};\n')
