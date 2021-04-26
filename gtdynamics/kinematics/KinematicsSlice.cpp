@@ -35,29 +35,29 @@ void ContactGoal::print(const std::string& s) const {
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Slice>::graph(const Slice& slice) {
+NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice) const {
   NonlinearFactorGraph graph;
 
   // Constrain kinematics at joints.
   for (auto&& joint : robot_.joints()) {
     const auto j = joint->id();
     graph.emplace_shared<PoseFactor>(
-        internal::PoseKey(joint->parent()->id(), slice.k()),
-        internal::PoseKey(joint->child()->id(), slice.k()),
-        internal::JointAngleKey(j, slice.k()), p_.p_cost_model, joint);
+        internal::PoseKey(joint->parent()->id(), slice.k),
+        internal::PoseKey(joint->child()->id(), slice.k),
+        internal::JointAngleKey(j, slice.k), p_.p_cost_model, joint);
   }
 
   return graph;
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Slice>::pointGoalObjectives(
-    const Slice& slice, const ContactGoals& contact_goals) {
+NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
+    const Slice& slice, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
 
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
-    const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k());
+    const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
     graph.emplace_shared<PointGoalFactor>(
         pose_key, p_.g_cost_model, goal.contact_in_com(), goal.goal_point);
   }
@@ -66,13 +66,13 @@ NonlinearFactorGraph Kinematics<Slice>::pointGoalObjectives(
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Slice>::jointAngleObjectives(
-    const Slice& slice) {
+NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
+    const Slice& slice) const {
   NonlinearFactorGraph graph;
 
   // Minimize the joint angles.
   for (auto&& joint : robot_.joints()) {
-    const gtsam::Key key = internal::JointAngleKey(joint->id(), slice.k());
+    const gtsam::Key key = internal::JointAngleKey(joint->id(), slice.k);
     graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
   }
 
@@ -80,8 +80,8 @@ NonlinearFactorGraph Kinematics<Slice>::jointAngleObjectives(
 }
 
 template <>
-Values Kinematics<Slice>::initialValues(const Slice& slice,
-                                        double gaussian_noise) {
+Values Kinematics::initialValues<Slice>(const Slice& slice,
+                                        double gaussian_noise) const {
   Values values;
 
   auto sampler_noise_model =
@@ -90,20 +90,20 @@ Values Kinematics<Slice>::initialValues(const Slice& slice,
 
   // Initialize all joint angles.
   for (auto&& joint : robot_.joints()) {
-    InsertJointAngle(&values, joint->id(), slice.k(), sampler.sample()[0]);
+    InsertJointAngle(&values, joint->id(), slice.k, sampler.sample()[0]);
   }
 
   // Initialize all poses.
   for (auto&& link : robot_.links()) {
-    InsertPose(&values, link->id(), slice.k(), link->wTcom());
+    InsertPose(&values, link->id(), slice.k, link->wTcom());
   }
 
   return values;
 }
 
 template <>
-Values Kinematics<Slice>::inverse(const Slice& slice,
-                                  const ContactGoals& contact_goals) {
+Values Kinematics::inverse<Slice>(const Slice& slice,
+                                  const ContactGoals& contact_goals) const {
   auto graph = this->graph(slice);
 
   // Add objectives.
@@ -111,7 +111,7 @@ Values Kinematics<Slice>::inverse(const Slice& slice,
   graph.add(jointAngleObjectives(slice));
 
   // TODO(frank): allo pose prior as well.
-  // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, slice.k()),
+  // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
 
   auto values = initialValues(slice);

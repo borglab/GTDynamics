@@ -22,10 +22,13 @@ const Robot robot =
     CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
 
 const gtsam::Point3 contact_in_com(0.14, 0, 0);
+const LinkSharedPtr LH = robot.link("lower1"), LF = robot.link("lower0"),
+                    RF = robot.link("lower2"), RH = robot.link("lower3");
 const ContactGoals contact_goals = {
-    {{robot.link("lower1"), contact_in_com}, {-0.4, 0.16, -0.2}},    // LH
-    {{robot.link("lower0"), contact_in_com}, {0.3, 0.16, -0.2}},     // LF
-    {{robot.link("lower2"), contact_in_com}, {0.3, -0.16, -0.2}},    // RF
-    {{robot.link("lower3"), contact_in_com}, {-0.4, -0.16, -0.2}}};  // RH
+    {{LH, contact_in_com}, {-0.4, 0.16, -0.2}},
+    {{LF, contact_in_com}, {0.3, 0.16, -0.2}},
+    {{RF, contact_in_com}, {0.3, -0.16, -0.2}},
+    {{RH, contact_in_com}, {-0.4, -0.16, -0.2}}};
+
 }  // namespace contact_goals_example
 }  // namespace gtdynamics

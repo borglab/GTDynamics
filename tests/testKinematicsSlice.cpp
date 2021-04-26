@@ -36,7 +36,7 @@ TEST(Phase, inverse_kinematics) {
   // parameters.lm_parameters.setVerbosityLM("SUMMARY");
   parameters.lm_parameters.setlambdaInitial(1e7);
   parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
-  Kinematics<Slice> kinematics(robot, parameters);
+  Kinematics kinematics(robot, parameters);
 
   // Create initial values
   auto values = kinematics.initialValues(slice, 0.0);

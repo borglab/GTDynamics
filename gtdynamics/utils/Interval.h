@@ -6,20 +6,21 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  Slice.h
- * @brief A single discrete time slice.
+ * @file  Interval.h
+ * @brief An interval from k_start to k_end.
  * @author: Frank Dellaert
  */
 
 namespace gtdynamics {
 
-/// A single discrete time slice.
-struct Slice {
-  size_t k;  // time index
+/// An interval from k_start to k_end.
+struct Interval {
+  size_t k_start, k_end;
 
  public:
-  /// Construct from time index.
-  explicit Slice(size_t k = 0) : k(k) {}
+  /// Constructor.
+  explicit Interval(size_t k_start = 0, size_t k_end = 1)
+      : k_start(k_start), k_end(k_end) {}
 };
 
 }  // namespace gtdynamics

@@ -25,7 +25,6 @@ using std::string;
 using std::vector;
 
 // TODO(frank): store slices in Phase?
-// TODO(frank): can a templated class store context-dependent data?
 vector<Slice> slices(const Phase& phase) {
   vector<Slice> slices;
   // TODO(frank): make k_start part of the phase
@@ -37,74 +36,51 @@ vector<Slice> slices(const Phase& phase) {
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Phase>::graph(const Phase& phase) {
+NonlinearFactorGraph Kinematics::graph<Phase>(const Phase& phase) const {
   NonlinearFactorGraph graph;
-
-  // TODO(frank): shared parameter for robot/parameters instead?
-  Kinematics<Slice> kinematics_slice(robot_, p_);
   for (const Slice& slice : slices(phase)) {
-    graph.add(kinematics_slice.graph(slice));
+    graph.add(this->graph(slice));
   }
-
   return graph;
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Phase>::pointGoalObjectives(
-    const Phase& phase, const ContactGoals& contact_goals) {
+NonlinearFactorGraph Kinematics::pointGoalObjectives<Phase>(
+    const Phase& phase, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
-
-  Kinematics<Slice> kinematics_slice(robot_, p_);
   for (const Slice& slice : slices(phase)) {
-    graph.add(kinematics_slice.pointGoalObjectives(slice, contact_goals));
+    graph.add(pointGoalObjectives(slice, contact_goals));
   }
-
   return graph;
 }
 
 template <>
-NonlinearFactorGraph Kinematics<Phase>::jointAngleObjectives(
-    const Phase& phase) {
+NonlinearFactorGraph Kinematics::jointAngleObjectives<Phase>(
+    const Phase& phase) const {
   NonlinearFactorGraph graph;
-
-  Kinematics<Slice> kinematics_slice(robot_, p_);
   for (const Slice& slice : slices(phase)) {
-    graph.add(kinematics_slice.jointAngleObjectives(slice));
+    graph.add(jointAngleObjectives(slice));
   }
-
   return graph;
 }
 
 template <>
-Values Kinematics<Phase>::initialValues(const Phase& phase,
-                                        double gaussian_noise) {
+Values Kinematics::initialValues<Phase>(const Phase& phase,
+                                        double gaussian_noise) const {
   Values values;
-
-  Kinematics<Slice> kinematics_slice(robot_, p_);
   for (const Slice& slice : slices(phase)) {
-    values.insert(kinematics_slice.initialValues(slice, gaussian_noise));
+    values.insert(initialValues(slice, gaussian_noise));
   }
-
   return values;
 }
 
 template <>
-Values Kinematics<Phase>::inverse(const Phase& phase,
-                                  const ContactGoals& contact_goals) {
-  auto graph = this->graph(phase);
-
-  // Add objectives.
-  graph.add(pointGoalObjectives(phase, contact_goals));
-  graph.add(jointAngleObjectives(phase));
-
-  // TODO(frank): allo pose prior as well.
-  // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, phase.k()),
-  // gtsam::Pose3(), nullptr);
-
-  auto values = initialValues(phase);
-
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
-  Values results = optimizer.optimize();
+Values Kinematics::inverse<Phase>(const Phase& phase,
+                                  const ContactGoals& contact_goals) const {
+  Values results;
+  for (const Slice& slice : slices(phase)) {
+    results.insert(inverse(slice, contact_goals));
+  }
   return results;
 }
 }  // namespace gtdynamics

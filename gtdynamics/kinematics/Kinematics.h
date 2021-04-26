@@ -15,6 +15,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ContactPoint.h>
+#include <gtdynamics/utils/Interval.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -70,7 +71,6 @@ struct KinematicsParameters {
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
-template <class CONTEXT>
 class Kinematics {
   Robot robot_;
   KinematicsParameters p_;
@@ -88,21 +88,25 @@ class Kinematics {
    * @fn Slice with kinematics constraints.
    * @returns factor graph..
    */
-  gtsam::NonlinearFactorGraph graph(const CONTEXT& context);
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context) const;
 
   /**
    * @fn Create point goal objectives.
    * @param contact_goals goals for contact points
    * @returns graph with point goal factors.
    */
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph pointGoalObjectives(
-      const CONTEXT& context, const ContactGoals& contact_goals);
+      const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
    * @fn Factors that minimize joint angles.
    * @returns graph with prior factors on joint angles.
    */
-  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context);
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph jointAngleObjectives(
+      const CONTEXT& context) const;
 
   /**
    * @fn Initialize kinematics.
@@ -112,15 +116,25 @@ class Kinematics {
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
+  template <class CONTEXT>
   gtsam::Values initialValues(const CONTEXT& context,
-                              double gaussian_noise = 0.1);
+                              double gaussian_noise = 0.1) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
    * @param contact_goals goals for contact points
    * @returns values with poses and joint angles.
    */
+  template <class CONTEXT>
   gtsam::Values inverse(const CONTEXT& context,
-                        const ContactGoals& contact_goals);
+                        const ContactGoals& contact_goals) const;
+
+  /**
+   * Interpolate using inverse kinematics: the goals are linearly interpolated.
+   * All results are return in values.
+   */
+  gtsam::Values interpolate(const Interval& interval,
+                            const ContactGoals& contact_goals1,
+                            const ContactGoals& contact_goals2) const;
 };
 }  // namespace gtdynamics
