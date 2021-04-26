@@ -162,7 +162,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   gtsam::Key key() const { return gtsam::Key(id()); }
 
   /// Return joint name.
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   /// Return the connected link other than the one provided.
   LinkSharedPtr otherLink(const LinkSharedPtr &link) const {

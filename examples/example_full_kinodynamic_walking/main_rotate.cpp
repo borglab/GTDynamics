@@ -50,7 +50,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 =
+  auto robot =
       gtdynamics::CreateRobotFromFile(kUrdfPath + string("/vision60.urdf"));
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
@@ -96,10 +96,10 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   // All contacts.
-  auto c0 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Front left.
-  auto c1 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Hind left.
-  auto c2 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Front right.
-  auto c3 = ContactPoint{Point3(0.14, 0, 0), 0, GROUND_HEIGHT};  // Hind right.
+  auto c0 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front left.
+  auto c1 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind left.
+  auto c2 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front right.
+  auto c3 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind right.
 
   // Contact points for each phase. First move one leg at a time then switch
   // to a more dynamic gait with two legs in swing per phase.
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
   double dt_des = 1. / 240.;  // Desired timestep duration.
 
   // Robot model for each phase.
-  vector<Robot> robots(phase_cps.size(), vision60);
+  vector<Robot> robots(phase_cps.size(), robot);
 
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
@@ -157,22 +157,22 @@ int main(int argc, char** argv) {
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        robots[p], cum_phase_steps[p - 1], trans_cps[p - 1], mu));
+        robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
     transition_graph_init.push_back(ZeroValues(
-        robots[p], cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
+        robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
   // Construct the multi-phase trajectory factor graph.
   auto graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, collocation, phase_cps, mu);
+      robot, phase_steps, transition_graphs, collocation, phase_cps, mu);
 
   // Build the objective factors.
   gtsam::NonlinearFactorGraph objective_factors;
-  auto base_link = vision60.link("body");
+  auto base_link = robot.link("body");
   vector<string> links = {"lower0", "lower1", "lower2", "lower3"};
   std::map<string, gtdynamics::LinkSharedPtr> link_map;
   for (auto&& link : links)
-    link_map.insert(std::make_pair(link, vision60.link(link)));
+    link_map.insert(std::make_pair(link, robot.link(link)));
 
   // Compute the centroid of the contacts.
   auto centroid = Point3(0, 0, 0);
@@ -262,7 +262,7 @@ int main(int argc, char** argv) {
                                base_pose_goal, base_pose_model);
 
   // Add link boundary conditions to FG.
-  for (auto&& link : vision60.links()) {
+  for (auto&& link : robot.links()) {
     // Initial link pose, twists.
     objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->wTcom(),
                                dynamics_model_6);
@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
   }
 
   // Add joint boundary conditions to FG.
-  for (auto&& joint : vision60.joints()) {
+  for (auto&& joint : robot.joints()) {
     objective_factors.addPrior(internal::JointAngleKey(joint->id(), 0), 0.0,
                                dynamics_model_1);
     objective_factors.addPrior(internal::JointVelKey(joint->id(), 0), 0.0,
@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
 
   // Add min torque objectives.
   for (int t = 0; t <= t_f; t++) {
-    for (auto&& joint : vision60.joints())
+    for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
           internal::TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
   // Initialize solution.
   gtsam::Values init_vals;
   init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
-      robots, phase_steps, transition_graph_init, dt_des, gaussian_noise,
+      robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
   // Optimize!
@@ -322,7 +322,7 @@ int main(int argc, char** argv) {
 
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   vector<string> jnames;
-  for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
+  for (auto&& joint : robot.joints()) jnames.push_back(joint->name());
   string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
   traj_file.open("traj.csv");
@@ -334,13 +334,13 @@ int main(int argc, char** argv) {
   for (int phase = 0; phase < phase_steps.size(); phase++) {
     for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
       vector<string> vals;
-      for (auto&& joint : vision60.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointAngle(results, joint->id(), t)));
-      for (auto&& joint : vision60.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointVel(results, joint->id(), t)));
-      for (auto&& joint : vision60.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(JointAccel(results, joint->id(), t)));
-      for (auto&& joint : vision60.joints())
+      for (auto&& joint : robot.joints())
         vals.push_back(std::to_string(Torque(results, joint->id(), t)));
 
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));

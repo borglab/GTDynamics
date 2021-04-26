@@ -1,13 +1,13 @@
 """Run kinematic motion planning using GTDynamics outputs."""
-from typing import Dict
-
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import pybullet as p
 import pybullet_data
-import pandas as pd
-import numpy as np
+
+import gtdynamics as gtd
 
 # pylint: disable=I1101, C0103
 
@@ -24,17 +24,6 @@ for i in range(p.getNumJoints(quad_id)):
     jinfo = p.getJointInfo(quad_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
-def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
-    """Actuate to the suppplied joint angles using PD control."""
-    for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=5000)
-
-    for k, v in joint_angles.items():
-        p.setJointMotorControl2(bodyUniqueId=quad_id,
-                                jointIndex=joint_to_jid_map[k],
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=v,
-                                targetVelocity=joint_vels[k + '.1'])
 
 df = pd.read_csv('traj.csv')
 print(df.columns)
@@ -73,7 +62,7 @@ while True:
     jaccels = df.loc[i][[str(i) + '.2' for i in range(12)]]
     jtorques = df.loc[i][[str(i) + '.3' for i in range(12)]]
 
-    set_joint_angles(jangles, jvels)
+    gtd.sim.set_joint_angles(p, quad_id, joint_to_jid_map, jangles, jvels)
 
     # Update body CoM coordinate frame.
     new_pos, new_orn = p.getBasePositionAndOrientation(quad_id)
@@ -134,9 +123,5 @@ axs[2].set_ylabel('z (m.)')
 plt.xlabel("time (s.)")
 
 plt.show()
-
-while True:
-    p.stepSimulation()
-    time.sleep(1. / 240)
 
 p.disconnect()

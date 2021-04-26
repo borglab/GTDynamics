@@ -20,8 +20,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#define GROUND_HEIGHT -1.75  //-1.75
-
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::Pose3;
@@ -37,19 +35,16 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot &robot, size_t repeat) {
-  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4", "tarsus_7_R2"};
-  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3", "tarsus_8_R1"};
+  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
+                           "tarsus_7_R2"};
+  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
+                            "tarsus_8_R1"};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
-  Phase stationary(robot, 1);
-  stationary.addContactPoints(links, Point3(0, 0.19, 0), GROUND_HEIGHT);
-
-  Phase odd(robot, 2);
-  odd.addContactPoints(odd_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
-
-  Phase even(robot, 2);
-  even.addContactPoints(even_links, Point3(0, 0.19, 0), GROUND_HEIGHT);
+  const Point3 contact_in_com(0, 0.19, 0);
+  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
+      even(2, even_links, contact_in_com);
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -57,14 +52,13 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   walk_cycle.addPhase(stationary);
   walk_cycle.addPhase(odd);
 
-  Trajectory trajectory(walk_cycle, repeat);
-  return trajectory;
+  return Trajectory(robot, walk_cycle, repeat);
 }
 
 TEST(testSpiderWalking, WholeEnchilada) {
   // Load Stephanie's robot robot (alt version, created by Tarushree/Disha).
-  Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/spider_alt.sdf"), "spider");
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -89,15 +83,17 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
-  EXPECT_LONGS_EQUAL(3583, graph.size());
+  EXPECT_LONGS_EQUAL(3557, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
-  NonlinearFactorGraph objectives = trajectory.contactLinkObjectives(
-      Isotropic::Sigma(3, 1e-7), GROUND_HEIGHT);
-  // Regression test on objective factors
-  EXPECT_LONGS_EQUAL(104, objectives.size());
-  EXPECT_LONGS_EQUAL(104, objectives.keys().size());
+  const Point3 step(0, 0.4, 0);
+  NonlinearFactorGraph objectives =
+      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
+  // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
+  // 2 repeats, hence:
+  EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
+  EXPECT_LONGS_EQUAL(48 * 2, objectives.keys().size());
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -112,7 +108,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -121,7 +117,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
@@ -131,12 +127,12 @@ TEST(testSpiderWalking, WholeEnchilada) {
         objectives.add(JointObjectives(joint->id(), k).angle(2.5, prior_model));
 
   // Regression test on objective factors
-  EXPECT_LONGS_EQUAL(918, objectives.size());
-  EXPECT_LONGS_EQUAL(907, objectives.keys().size());
+  EXPECT_LONGS_EQUAL(910, objectives.size());
+  EXPECT_LONGS_EQUAL(899, objectives.keys().size());
 
   // Add objective factors to the graph
   graph.add(objectives);
-  EXPECT_LONGS_EQUAL(3583 + 918, graph.size());
+  EXPECT_LONGS_EQUAL(3557 + 910, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Initialize solution.
