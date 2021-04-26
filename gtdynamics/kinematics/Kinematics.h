@@ -34,10 +34,10 @@ struct ContactGoal {
   const gtsam::Point3& contact_in_com() const { return point_on_link.point; }
 
   /// Print to stream.
-  friend std::ostream &operator<<(std::ostream &os, const ContactGoal &cg);
+  friend std::ostream& operator<<(std::ostream& os, const ContactGoal& cg);
 
   /// GTSAM-style print, works with wrapper.
-  void print(const std::string &s) const;
+  void print(const std::string& s) const;
 
   /**
    * @fn For given values, predict where point_on_link is in world frame.
@@ -64,76 +64,70 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-struct KinematicsSettings {
+struct KinematicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
   const gtsam::SharedNoiseModel p_cost_model,     // pose factor
       g_cost_model,                               // goal point
       prior_q_cost_model;                         // joint angle prior factor
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
 
-  KinematicsSettings()
+  KinematicsParameters()
       : p_cost_model(Isotropic::Sigma(6, 1e-4)),
         g_cost_model(Isotropic::Sigma(3, 0.01)),
         prior_q_cost_model(Isotropic::Sigma(1, 0.5)) {}
 };
 
-/**
- * @fn Slice with kinematics constraints.
- * @param robot robot configuration
- * @param opt KinematicsSettings
- * @param k time step (default 0).
- * @returns factor graph..
- */
-gtsam::NonlinearFactorGraph KinematicsSlice(
-    const Robot& robot, const KinematicsSettings& opt = KinematicsSettings(),
-    size_t k = 0);
+/// All things kinematics, zero velocities/twists, and no forces.
+template <class CONTEXT>
+class Kinematics {
+  Robot robot_;
+  CONTEXT context_;
+  KinematicsParameters p_;
 
-/**
- * @fn Create point goal objectives.
- * @param robot robot configuration
- * @param contact_goals goals for contact points
- * @param opt KinematicsSettings
- * @param k time step to check (default 0).
- * @returns graph with point goal factors.
- */
-gtsam::NonlinearFactorGraph PointGoalObjectives(
-    const Robot& robot, const ContactGoals& contact_goals,
-    const KinematicsSettings& opt = KinematicsSettings(), size_t k = 0);
+ public:
+  /**
+   * @fn Constructor.
+   * @param context e.g., a Slice, Phase, WalkCycle, or Trajectory instance
+   */
+  Kinematics(const Robot& robot, const CONTEXT& context,
+             const KinematicsParameters& parameters = KinematicsParameters())
+      : robot_(robot), context_(context), p_(parameters) {}
 
-/**
- * @fn Factors that minimize joint angles.
- * @param robot robot configuration
- * @param opt KinematicsSettings
- * @param k time step to check (default 0).
- * @returns graph with prior factors on joint angles.
- */
-gtsam::NonlinearFactorGraph MinimumJointAngleSlice(
-    const Robot& robot, const KinematicsSettings& opt = KinematicsSettings(),
-    size_t k = 0);
+  /**
+   * @fn Slice with kinematics constraints.
+   * @returns factor graph..
+   */
+  gtsam::NonlinearFactorGraph graph();
 
-/**
- * @fn Initialize kinematics.
- *
- * Use wTcom for poses and zero-mean noise for joint angles.
- *
- * @param robot robot configuration
- * @param k time step to check (default 0).
- * @param gaussian_noise time step to check (default 0.1).
- * @returns values with identity poses and zero joint angles.
- */
-gtsam::Values KinematicsSliceInitialValues(const Robot& robot, size_t k = 0,
-                                           double gaussian_noise = 0.1);
+  /**
+   * @fn Create point goal objectives.
+   * @param contact_goals goals for contact points
+   * @returns graph with point goal factors.
+   */
+  gtsam::NonlinearFactorGraph pointGoalObjectives(
+      const ContactGoals& contact_goals);
 
-/**
- * @fn Inverse kinematics given a set of contact goals.
- * @param robot robot configuration
- * @param contact_goals goals for contact points
- * @param opt KinematicsSettings
- * @param k time step to check (default 0).
- * @returns values with poses and joint angles.
- */
-gtsam::Values InverseKinematics(
-    const Robot& robot, const ContactGoals& contact_goals,
-    const KinematicsSettings& opt = KinematicsSettings(), size_t k = 0);
+  /**
+   * @fn Factors that minimize joint angles.
+   * @returns graph with prior factors on joint angles.
+   */
+  gtsam::NonlinearFactorGraph jointAngleObjectives();
 
+  /**
+   * @fn Initialize kinematics.
+   *
+   * Use wTcom for poses and zero-mean noise for joint angles.
+   *
+   * @param gaussian_noise time step to check (default 0.1).
+   * @returns values with identity poses and zero joint angles.
+   */
+  gtsam::Values initialValues(double gaussian_noise = 0.1);
+
+  /**
+   * @fn Inverse kinematics given a set of contact goals.
+   * @param contact_goals goals for contact points
+   * @returns values with poses and joint angles.
+   */
+  gtsam::Values inverse(const ContactGoals& contact_goals);
+};
 }  // namespace gtdynamics

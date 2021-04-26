@@ -12,8 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/kinematics/KinematicsSlice.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/Slice.h>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -24,10 +25,19 @@ using std::string;
 TEST(Phase, inverse_kinematics) {
   Robot robot = CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
 
-  const size_t k = 777;  // time step for slice
+  // Create a slice.
+  const size_t k = 777;
+  const Slice slice(k);
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  // parameters.lm_parameters.setVerbosityLM("SUMMARY");
+  parameters.lm_parameters.setlambdaInitial(1e7);
+  parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
+  Kinematics<Slice> kinematics(robot, slice, parameters);
 
   // Create initial values
-  auto values = KinematicsSliceInitialValues(robot, k, 0.0);
+  auto values = kinematics.initialValues(0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // establish contact/goal pairs
@@ -38,7 +48,7 @@ TEST(Phase, inverse_kinematics) {
       {{robot.link("lower2"), contact_in_com}, {0.3, -0.16, -0.2}},    // RF
       {{robot.link("lower3"), contact_in_com}, {-0.4, -0.16, -0.2}}};  // RH
 
-  // Set twists to zero fro FK. TODO(frank): separate kinematics from velocity?
+  // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
   for (auto&& link : robot.links()) {
     InsertTwist(&values, link->id(), k, gtsam::Z_6x1);
   }
@@ -55,25 +65,20 @@ TEST(Phase, inverse_kinematics) {
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
-  KinematicsSettings opt;
-  // opt.lm_parameters.setVerbosityLM("SUMMARY");
-  opt.lm_parameters.setlambdaInitial(1e7);
-  opt.lm_parameters.setAbsoluteErrorTol(1e-3);
-
-  auto graph = KinematicsSlice(robot, opt, k);
+  auto graph = kinematics.graph();
   EXPECT_LONGS_EQUAL(12, graph.size());
 
-  auto objectives = PointGoalObjectives(robot, contact_goals, opt, k);
+  auto objectives = kinematics.pointGoalObjectives(contact_goals);
   EXPECT_LONGS_EQUAL(4, objectives.size());
 
-  auto objectives2 = MinimumJointAngleSlice(robot, opt, k);
+  auto objectives2 = kinematics.jointAngleObjectives();
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
   constexpr size_t redundancy = 6;
   EXPECT_LONGS_EQUAL(13 * 6 + redundancy, 12 * 6 + 4 * 3);
 
   // TODO(frank): consider renaming ContactPoint to PointOnLink
-  auto result = InverseKinematics(robot, contact_goals, opt, k);
+  auto result = kinematics.inverse(contact_goals);
 
   // Check that well-determined
   graph.add(objectives);
