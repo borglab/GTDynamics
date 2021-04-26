@@ -11,6 +11,8 @@
  * @author: Frank Dellaert
  */
 
+#pragma once
+
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ContactPoint.h>
 #include <gtsam/geometry/Point3.h>
@@ -40,16 +42,6 @@ struct ContactGoal {
   void print(const std::string &s) const;
 
   /**
-   * @fn For given values, predict where point_on_link is in world frame.
-   * @param values a GTSAM Values instance that should contain link pose.
-   * @param k time step to check (default 0).
-   */
-  gtsam::Point3 predict(const gtsam::Values& values, size_t k = 0) const {
-    const gtsam::Pose3 wTcom = Pose(values, link()->id(), k);
-    return wTcom.transformFrom(point_on_link.point);
-  }
-
-  /**
    * @fn Check that the contact goal has been achived for given values.
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
@@ -57,7 +49,7 @@ struct ContactGoal {
    */
   bool satisfied(const gtsam::Values& values, size_t k = 0,
                  double tol = 1e-9) const {
-    return gtsam::distance3(predict(values, k), goal_point) < tol;
+    return gtsam::distance3(point_on_link.predict(values, k), goal_point) < tol;
   }
 };
 
@@ -106,6 +98,7 @@ gtsam::NonlinearFactorGraph PointGoalObjectives(
  * @param opt KinematicsSettings
  * @param k time step to check (default 0).
  * @returns graph with prior factors on joint angles.
+ * TODO(frank): allow for a non-zero "rest" configuration.
  */
 gtsam::NonlinearFactorGraph MinimumJointAngleSlice(
     const Robot& robot, const KinematicsSettings& opt = KinematicsSettings(),
@@ -118,7 +111,7 @@ gtsam::NonlinearFactorGraph MinimumJointAngleSlice(
  *
  * @param robot robot configuration
  * @param k time step to check (default 0).
- * @param gaussian_noise time step to check (default 0.1).
+ * @param gaussian_noise stddev of noise to add to joint angles (default 0.1).
  * @returns values with identity poses and zero joint angles.
  */
 gtsam::Values KinematicsSliceInitialValues(const Robot& robot, size_t k = 0,

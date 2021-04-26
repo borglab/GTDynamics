@@ -288,6 +288,7 @@ class ContactPoint {
 class PointOnLink {
   PointOnLink();
   PointOnLink(const gtdynamics::Link* link, const gtsam::Point3 &point);
+  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   void print(const string &s = "");
 };
 
@@ -299,7 +300,6 @@ class ContactGoal {
               const gtsam::Point3 &goal_point);
   gtdynamics::Link *link() const;
   gtsam::Point3 &contact_in_com() const;
-  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
                  double tol = 1e-9) const;
   void print(const string &s = "");
