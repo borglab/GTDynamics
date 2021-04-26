@@ -11,6 +11,8 @@
  * @author: Frank Dellaert
  */
 
+#pragma once
+
 namespace gtdynamics {
 
 /// A single discrete time slice.

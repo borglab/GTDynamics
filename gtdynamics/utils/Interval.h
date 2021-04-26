@@ -11,6 +11,7 @@
  * @author: Frank Dellaert
  */
 
+#pragma once
 namespace gtdynamics {
 
 /// An interval from k_start to k_end.
