@@ -57,8 +57,6 @@ class TestDynamicsGraph(unittest.TestCase):
         self.assertEqual(graph.size(), 6)
         self.assertEqual(graph.keys().size(), 5)
         # optional time index and noise model
-        # TODO(gerry): bug in wrap doesn't handle optional args in constructors.  Fix this.
-        return
         graph.push_back(gtd.JointObjectives(2)\
             .acceleration(0.)\
             .angle(0.))
