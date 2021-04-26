@@ -13,8 +13,9 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/Kinematics.h>
-#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Slice.h>
+
+#include "contactGoalsExample.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -23,7 +24,8 @@ using std::map;
 using std::string;
 
 TEST(Phase, inverse_kinematics) {
-  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+  // Load robot and establish contact/goal pairs
+  using namespace contact_goals_example;
 
   // Create a slice.
   const size_t k = 777;
@@ -39,14 +41,6 @@ TEST(Phase, inverse_kinematics) {
   // Create initial values
   auto values = kinematics.initialValues(slice, 0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
-
-  // establish contact/goal pairs
-  const Point3 contact_in_com(0.14, 0, 0);
-  const ContactGoals contact_goals = {
-      {{robot.link("lower1"), contact_in_com}, {-0.4, 0.16, -0.2}},    // LH
-      {{robot.link("lower0"), contact_in_com}, {0.3, 0.16, -0.2}},     // LF
-      {{robot.link("lower2"), contact_in_com}, {0.3, -0.16, -0.2}},    // RF
-      {{robot.link("lower3"), contact_in_com}, {-0.4, -0.16, -0.2}}};  // RH
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
   for (auto&& link : robot.links()) {

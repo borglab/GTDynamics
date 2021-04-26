@@ -22,8 +22,12 @@ using gtsam::Point3;
 using std::map;
 using std::string;
 
+#include "contactGoalsExample.h"
+
 TEST(Phase, inverse_kinematics) {
-  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+  // Load robot and establish contact/goal pairs
+  // TODO(frank): the goals for contact will differ for a Phase vs Slice.
+  using namespace contact_goals_example;
 
   // Create a phase.
   const size_t num_time_steps = 5;
@@ -38,15 +42,6 @@ TEST(Phase, inverse_kinematics) {
 
   auto graph = kinematics.graph(phase);
   EXPECT_LONGS_EQUAL(12 * num_time_steps, graph.size());
-
-  // establish contact/goal pairs
-  // TODO(frank): the goals for contact will differ for a Phase vs Slice.
-  const Point3 contact_in_com(0.14, 0, 0);
-  const ContactGoals contact_goals = {
-      {{robot.link("lower1"), contact_in_com}, {-0.4, 0.16, -0.2}},    // LH
-      {{robot.link("lower0"), contact_in_com}, {0.3, 0.16, -0.2}},     // LF
-      {{robot.link("lower2"), contact_in_com}, {0.3, -0.16, -0.2}},    // RF
-      {{robot.link("lower3"), contact_in_com}, {-0.4, -0.16, -0.2}}};  // RH
 
   auto objectives = kinematics.pointGoalObjectives(phase, contact_goals);
   EXPECT_LONGS_EQUAL(4 * num_time_steps, objectives.size());
