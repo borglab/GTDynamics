@@ -35,7 +35,7 @@ class Print(unittest.TestCase):
         torqueKey = gtd.internal.TorqueKey(0, 0).key()
         factor = gtd.MinTorqueFactor(torqueKey, gtsam.noiseModel.Unit.Create(1))
         with patch('sys.stdout', new = StringIO()) as fake_out:
-            factor.print_('factor: ', gtd.GetKeyFormatter())
+            factor.print_('factor: ', gtd.GTDKeyFormatter)
             self.assertTrue('factor: min torque factor' in fake_out.getvalue())
             self.assertTrue('keys = { T(0)0 }' in fake_out.getvalue())
         def myKeyFormatter(key):

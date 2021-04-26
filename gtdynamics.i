@@ -311,6 +311,7 @@ gtsam::Values InverseKinematics(const gtdynamics::Robot &robot,
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 class OptimizerSetting {
+  OptimizerSetting();
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
                    double sigma_collocation = 0.001, double sigma_time = 0.001);
@@ -533,30 +534,47 @@ class DynamicsGraph {
 
 /********************** Objective Factors **********************/
 #include <gtdynamics/factors/ObjectiveFactors.h>
-class add_link_objectives {
-  add_link_objectives(gtsam::NonlinearFactorGraph @graph, int i, int k = 0);
+class LinkObjectives : gtsam::NonlinearFactorGraph {
+  LinkObjectives(int i, int k = 0);
 
-  add_link_objectives &pose(
+  LinkObjectives &pose(
       gtsam::Pose3 pose, const gtsam::SharedNoiseModel &pose_model = nullptr);
-  add_link_objectives &twist(
+  LinkObjectives &twist(
       gtsam::Vector6 twist,
       const gtsam::SharedNoiseModel &twist_model = nullptr);
-  add_link_objectives &twistAccel(
+  LinkObjectives &twistAccel(
       gtsam::Vector6 twistAccel,
       const gtsam::SharedNoiseModel &twistAccel_model = nullptr);
 };
 
-class add_joint_objectives {
-  add_joint_objectives(gtsam::NonlinearFactorGraph @graph, int j, int k = 0);
+class JointObjectives : gtsam::NonlinearFactorGraph {
+  JointObjectives(int j, int k = 0);
 
-  add_joint_objectives &angle(
+  JointObjectives &angle(
       double angle, const gtsam::SharedNoiseModel &angle_model = nullptr);
-  add_joint_objectives &velocity(
+  JointObjectives &velocity(
       double velocity, const gtsam::SharedNoiseModel &velocity_model = nullptr);
-  add_joint_objectives &acceleration(
+  JointObjectives &acceleration(
       double acceleration,
       const gtsam::SharedNoiseModel &acceleration_model = nullptr);
 };
+
+gtsam::NonlinearFactorGraph JointsAtRestObjectives(
+    const gtdynamics::Robot &robot,
+    const gtsam::SharedNoiseModel &joint_velocity_model,
+    const gtsam::SharedNoiseModel &joint_acceleration_model, int k = 0);
+
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
+    const std::vector<gtsam::Point3> &goal_trajectory, unsigned char i,
+    size_t k = 0);
+
+std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
+                                            size_t num_steps);
+
+std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3 &start,
+                                                 const gtsam::Point3 &step,
+                                                 size_t num_steps);
 
 /********************** Value Initialization **********************/
 #include <gtdynamics/utils/initialize_solution_utils.h>

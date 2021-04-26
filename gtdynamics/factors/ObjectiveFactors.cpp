@@ -27,24 +27,23 @@ namespace gtdynamics {
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 
-void add_joints_at_rest_objectives(
-    gtsam::NonlinearFactorGraph* graph, const Robot& robot,
-    const SharedNoiseModel& joint_velocity_model,
+gtsam::NonlinearFactorGraph JointsAtRestObjectives(
+    const Robot& robot, const SharedNoiseModel& joint_velocity_model,
     const SharedNoiseModel& joint_acceleration_model, int k) {
+  gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    add_joint_objectives(graph, joint->id(), k)
-        .velocity(0, joint_velocity_model)
-        .acceleration(0, joint_acceleration_model);
+    graph.add(JointObjectives(joint->id(), k)
+                  .velocity(0, joint_velocity_model)
+                  .acceleration(0, joint_acceleration_model));
   }
+  return graph;
 }
 
-void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
-                         const SharedNoiseModel& cost_model,
-                         const Point3& point_com,
-                         const std::vector<Point3>& goal_trajectory,
-                         unsigned char i, size_t k) {
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    const SharedNoiseModel& cost_model, const Point3& point_com,
+    const std::vector<Point3>& goal_trajectory, unsigned char i, size_t k) {
   gtsam::Key key = internal::PoseKey(i, k);
-  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
+  return PointGoalFactors(key, cost_model, point_com, goal_trajectory);
 }
 
 std::vector<Point3> StanceTrajectory(const Point3& stance_point,
