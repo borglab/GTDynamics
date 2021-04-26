@@ -292,7 +292,7 @@ class PointOnLink {
 };
 
 /********************** kinematics **********************/
-#include <gtdynamics/kinematics/KinematicsSlice.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 
 class ContactGoal {
   ContactGoal(const gtdynamics::PointOnLink &point_on_link,
@@ -305,8 +305,11 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
-gtsam::Values InverseKinematics(const gtdynamics::Robot &robot,
-                                const gtdynamics::ContactGoals &contact_goals);
+template <CONTEXT={gtdynamics::Slice}> 
+class Kinematics {
+  Kinematics(const gtdynamics::Robot &robot, const CONTEXT& context);
+  gtsam::Values inverse(const gtdynamics::ContactGoals &contact_goals);
+};
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
@@ -725,6 +728,13 @@ class Simulator {
 };
 
 /********************** Trajectory et al  **********************/
+#include <gtdynamics/utils/Slice.h>
+class Slice {
+  Slice();
+  Slice(size_t k);
+  size_t k() const;
+};
+
 #include <gtdynamics/utils/Phase.h>
 class Phase {
   Phase(const int &num_time_steps);
