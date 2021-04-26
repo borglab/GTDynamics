@@ -3,9 +3,8 @@ enable_testing()
 project(gtdynamics
         LANGUAGES CXX C
         VERSION 1.0.0
-        DESCRIPTION "Full kinodynamics constraints for arbitrary robot configurations with factor graphs."
-        HOMEPAGE_URL "https://github.com/borglab/GTDynamics")
-
+        DESCRIPTION "Full kinodynamics constraints for arbitrary robot configurations with factor graphs.")
+message(STATUS ${CMAKE_VERSION})
 add_compile_options(-faligned-new)
 
 # Enforce c++11 standards
