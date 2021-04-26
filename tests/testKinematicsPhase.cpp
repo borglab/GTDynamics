@@ -61,13 +61,6 @@ TEST(Phase, inverse_kinematics) {
   constexpr double tol = 0.01;
   for (const ContactGoal& goal : contact_goals) {
     for (size_t k = 0; k < num_time_steps; k++) {
-      EXPECT(assert_equal(goal.goal_point, goal.predict(result, k), tol));
-    }
-  }
-
-  // Check that goals are achieved
-  for (const ContactGoal& goal : contact_goals) {
-    for (size_t k = 0; k < num_time_steps; k++) {
       EXPECT(goal.satisfied(result, k, tol));
     }
   }

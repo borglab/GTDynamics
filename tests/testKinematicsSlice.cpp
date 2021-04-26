@@ -74,9 +74,6 @@ TEST(Phase, inverse_kinematics) {
   auto objectives2 = kinematics.jointAngleObjectives(slice);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  constexpr size_t redundancy = 6;
-  EXPECT_LONGS_EQUAL(13 * 6 + redundancy, 12 * 6 + 4 * 3);
-
   // TODO(frank): consider renaming ContactPoint to PointOnLink
   auto result = kinematics.inverse(slice, contact_goals);
 
@@ -89,11 +86,6 @@ TEST(Phase, inverse_kinematics) {
 
   // Check that goals are achieved
   constexpr double tol = 0.01;
-  for (const ContactGoal& goal : contact_goals) {
-    EXPECT(assert_equal(goal.goal_point, goal.predict(result, k), tol));
-  }
-
-  // Check that goals are achieved
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));
   }
