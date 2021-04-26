@@ -13,6 +13,7 @@
 import os.path as osp
 import unittest
 
+import kinpy as kp
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
@@ -68,6 +69,54 @@ class TestLink(GtsamTestCase):
 
         self.assertEqual(len(l0.joints()), 1)
         self.assertEqual(len(l1.joints()), 2)
+
+    def test_link_poses(self):
+        def transform_to_pose(transform):
+            return Pose3(Rot3.Quaternion(*transform.rot), transform.pos)
+
+        def pose_to_transform(pose: Pose3):
+            return kp.Transform(pose.rotation().quaternion(),
+                                pose.translation())
+
+        URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
+                             "urdfs")
+        ROBOT_MODEL = osp.join(URDF_PATH, "a1.urdf")
+
+        robot = gtd.CreateRobotFromFile(ROBOT_MODEL)
+        robot_kp = kp.build_chain_from_urdf(open(ROBOT_MODEL).read())
+
+        wTb = Pose3()
+
+        th = {}
+        joints = [
+            "FR_hip_joint", "FR_upper_joint", "FR_lower_joint", "FL_hip_joint",
+            "FL_upper_joint", "FL_lower_joint", "RR_hip_joint",
+            "RR_upper_joint", "RR_lower_joint", "RL_hip_joint",
+            "RL_upper_joint", "RL_lower_joint"
+        ]
+
+        # joint_angles = np.zeros(12)
+        joint_angles = np.array([
+            0., 0.924, -1.833, 0., 0.923, -1.834, 0., 0.878, -1.852, 0., 0.878,
+            -1.853
+        ])
+
+        joint_angles_values = gtd.Values()
+
+        for idx, joint in enumerate(joints):
+            th[joint] = joint_angles[idx]
+            gtd.InsertJointAngleDouble(joint_angles_values,
+                                       robot.joint(joint).id(),
+                                       joint_angles[idx])
+
+        # print(joint_angles_values)
+        fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")
+
+        ret = robot_kp.forward_kinematics(th, world=pose_to_transform(wTb))
+
+        for link in robot.links():
+            self.gtsamAssertEquals(transform_to_pose(ret[link.name()]),
+                                   gtd.Pose(fk, link.id(), 0))
 
 
 if __name__ == "__main__":
