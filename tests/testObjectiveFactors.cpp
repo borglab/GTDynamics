@@ -37,44 +37,43 @@ auto kModel6 = Unit::Create(6);
 TEST(ObjectiveFactors, PoseAndTwist) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_link_objectives(&graph, id, k).pose(Pose3(), kModel6);
+  graph.add(LinkObjectives(id, k).pose(Pose3(), kModel6));
   EXPECT_LONGS_EQUAL(1, graph.size());
-  add_link_objectives(&graph, id, k)
-      .pose(Pose3(), kModel6)
-      .twist(gtsam::Z_6x1, kModel6);
+  graph.add(LinkObjectives(id, k)
+                .pose(Pose3(), kModel6)
+                .twist(gtsam::Z_6x1, kModel6));
   EXPECT_LONGS_EQUAL(3, graph.size());
 }
 
 TEST(ObjectiveFactors, TwistWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_link_objectives(&graph, id, k)
-      .twist(gtsam::Z_6x1, kModel6)
-      .twistAccel(gtsam::Z_6x1, kModel6);
+  graph.add(LinkObjectives(id, k)
+                .twist(gtsam::Z_6x1, kModel6)
+                .twistAccel(gtsam::Z_6x1, kModel6));
   EXPECT_LONGS_EQUAL(2, graph.size());
 }
 
 TEST(ObjectiveFactors, JointAngleWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_joint_objectives(&graph, id, k).angle(0, kModel1);
+  graph.add(JointObjectives(id, k).angle(0, kModel1));
   EXPECT_LONGS_EQUAL(1, graph.size());
-  add_joint_objectives(&graph, id, k)
-      .velocity(0, kModel1)
-      .acceleration(0, kModel1);
+  graph.add(
+      JointObjectives(id, k).velocity(0, kModel1).acceleration(0, kModel1));
   EXPECT_LONGS_EQUAL(3, graph.size());
-  add_joint_objectives(&graph, id, k)
-      .angle(0, kModel1)
-      .velocity(0, kModel1)
-      .acceleration(0, kModel1);
+  graph.add(JointObjectives(id, k)
+                .angle(0, kModel1)
+                .velocity(0, kModel1)
+                .acceleration(0, kModel1));
   EXPECT_LONGS_EQUAL(6, graph.size());
 }
 
 TEST(ObjectiveFactors, OptionalNoiseModels) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
-  add_joint_objectives(&graph, id, k).velocity(0).acceleration(0);
-  add_joint_objectives(&graph, id, k).acceleration(0).angle(0).velocity(0);
+  graph.add(JointObjectives(id, k).velocity(0).acceleration(0));
+  graph.add(JointObjectives(id, k).acceleration(0).angle(0).velocity(0));
   EXPECT_LONGS_EQUAL(5, graph.size());
 }
 
@@ -90,15 +89,15 @@ TEST(Phase, AddGoals) {
   auto bTcom = LF->wTcom();        // world is really body
   Point3 stance_point = bTcom.transformFrom(point_com);
 
-  gtsam::NonlinearFactorGraph factors;
   unsigned char id = LF->id();
   constexpr size_t num_stance_steps = 10;
   constexpr size_t k = 777;
   const gtsam::SharedNoiseModel &cost_model = nullptr;
 
   // Call AddStanceGoals function, creating 10 factors
-  AddPointGoalFactors(&factors, cost_model, point_com,
-                      StanceTrajectory(stance_point, num_stance_steps), id, k);
+  auto factors =
+      PointGoalFactors(cost_model, point_com,
+                       StanceTrajectory(stance_point, num_stance_steps), id, k);
   EXPECT_LONGS_EQUAL(num_stance_steps, factors.size());
 
   auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
@@ -110,9 +109,8 @@ TEST(Phase, AddGoals) {
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps
   constexpr size_t num_swing_steps = 3;
-  gtsam::NonlinearFactorGraph swing_factors;
-  AddPointGoalFactors(
-      &swing_factors, cost_model, point_com,
+  auto swing_factors = PointGoalFactors(
+      cost_model, point_com,
       SimpleSwingTrajectory(stance_point, step, num_swing_steps), id);
   EXPECT_LONGS_EQUAL(num_swing_steps, swing_factors.size());
 
