@@ -68,7 +68,7 @@ class Trajectory {
   std::vector<ContactPoints> phaseContactPoints() const {
     std::vector<ContactPoints> phase_cps;
     const auto &phases = walk_cycle_.phases();
-    for (int i = 0; i < repeat_; i++) {
+    for (size_t i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
         phase_cps.push_back(phase.contactPoints());
       }
@@ -103,7 +103,7 @@ class Trajectory {
     // Copy the original transition contact point sequence
     // `repeat_` number of times.
     std::vector<ContactPoints> trans_cps(trans_cps_orig);
-    for (int i = 0; i < repeat_ - 1; i++) {
+    for (size_t i = 0; i < repeat_ - 1; i++) {
       trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),
                        trans_cps_orig.end());
     }
@@ -120,7 +120,7 @@ class Trajectory {
   std::vector<int> phaseDurations() const {
     std::vector<int> phase_durations;
     const auto &phases = walk_cycle_.phases();
-    for (int i = 0; i < repeat_; i++) {
+    for (size_t i = 0; i < repeat_; i++) {
       for (auto &&phase : phases)
         phase_durations.push_back(phase.numTimeSteps());
     }
@@ -131,7 +131,7 @@ class Trajectory {
    * @fn Returns the number of phases.
    * @return Number of phases.
    */
-  int numPhases() const { return walk_cycle_.numPhases() * repeat_; }
+  size_t numPhases() const { return walk_cycle_.numPhases() * repeat_; }
 
   /**
    * @fn Builds vector of Transition Graphs.
@@ -176,7 +176,7 @@ class Trajectory {
     int final_timestep = 0;
     std::vector<int> final_timesteps;
     auto phases = walk_cycle_.phases();
-    for (int i = 0; i < numPhases(); i++) {
+    for (size_t i = 0; i < numPhases(); i++) {
       int phase_timestep = phases[i % walk_cycle_.numPhases()].numTimeSteps();
       final_timestep += phase_timestep;
       final_timesteps.push_back(final_timestep);
@@ -300,7 +300,7 @@ class Trajectory {
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph *graph,
                                  double desired_dt, double sigma = 0) const {
     auto model = gtsam::noiseModel::Isotropic::Sigma(1, sigma);
-    for (int phase = 0; phase < numPhases(); phase++)
+    for (size_t phase = 0; phase < numPhases(); phase++)
       graph->addPrior<double>(PhaseKey(phase), desired_dt, model);
   }
 
