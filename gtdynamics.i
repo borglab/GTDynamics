@@ -274,6 +274,40 @@ gtdynamics::Robot CreateRobotFromFile(const string& file_path,
                                     const string& model_name);
 
 
+/********************** utilities **********************/
+#include <gtdynamics/utils/ContactPoint.h>
+
+class ContactPoint {
+  ContactPoint();
+  ContactPoint(const gtsam::Point3& point, int id);
+  void print(const string &s = "");
+};
+
+// ContactPoints defined in specializations.h
+
+class PointOnLink {
+  PointOnLink();
+  PointOnLink(const gtdynamics::Link* link, const gtsam::Point3 &point);
+  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
+  void print(const string &s = "");
+};
+
+/********************** kinematics **********************/
+#include <gtdynamics/kinematics/KinematicsSlice.h>
+
+class ContactGoal {
+  ContactGoal(const gtdynamics::PointOnLink &point_on_link,
+              const gtsam::Point3 &goal_point);
+  gtdynamics::Link *link() const;
+  gtsam::Point3 &contact_in_com() const;
+  bool satisfied(const gtsam::Values &values, size_t k = 0,
+                 double tol = 1e-9) const;
+  void print(const string &s = "");
+};
+
+gtsam::Values InverseKinematics(const gtdynamics::Robot &robot,
+                                const gtdynamics::ContactGoals &contact_goals);
+
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 class OptimizerSetting {
@@ -314,14 +348,6 @@ class OptimizerSetting {
 
 #include<gtdynamics/dynamics/DynamicsGraph.h>
 enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
-
-class ContactPoint {
-  ContactPoint();
-  ContactPoint(const gtsam::Point3& point, int id);
-  void print(const string &s = "");
-};
-
-// ContactPoints defined in specializations.h
 
 class DynamicsGraph {
   DynamicsGraph();

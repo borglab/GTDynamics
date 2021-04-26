@@ -72,28 +72,6 @@ TEST(Phase, All) {
   EXPECT(assert_equal(Point3(goal + step), cp_goals["tarsus_5_R4"]));
 }
 
-TEST(Phase, inverse_kinematics) {
-  Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
-  EXPECT_LONGS_EQUAL(13, robot.numLinks());
-
-  constexpr size_t num_time_steps = 5;
-  gtdynamics::Phase phase(num_time_steps);
-  const Point3 contact_in_com(0.14, 0, 0);
-  phase.addContactPoint("lower1", contact_in_com);  // LH
-  phase.addContactPoint("lower0", contact_in_com);  // LF
-  phase.addContactPoint("lower2", contact_in_com);  // RF
-  phase.addContactPoint("lower3", contact_in_com);  // RH
-
-  // Set goal points to reasonable values
-  Point3 goal_LH(0, 0.15, 0);     // LH
-  Point3 goal_LF(0.6, 0.15, 0);   // LF
-  Point3 goal_RF(0.6, -0.15, 0);  // RF
-  Point3 goal_RH(0, -0.15, 0);    // RH
-
-  // WIP
-}
-
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
