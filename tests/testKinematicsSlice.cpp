@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testKinematicsSliceInitialValues.cpp
+ * @file  testKinematicsSlice.cpp
  * @brief Test Kinematics in single time slice.
  * @author: Frank Dellaert
  */

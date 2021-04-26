@@ -22,9 +22,7 @@
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
-using gtsam::Point3;
 using gtsam::Values;
-using std::map;
 using std::string;
 
 std::ostream& operator<<(std::ostream& os, const ContactGoal& cg) {
