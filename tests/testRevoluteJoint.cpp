@@ -151,38 +151,19 @@ TEST(Joint, params_constructor) {
                       j1.parameters().scalar_limits.value_limit_threshold));
 }
 
-/**
- * Test parentTchild method at rest configuration.
- */
+// Test parentTchild method at rest configuration.
 TEST(RevoluteJoint, ParentTchild) {
   using simple_urdf::robot;
   auto j1 = robot.joint("j1");
 
   Values joint_angles;
-  InsertJointAngle(&joint_angles, j1->id(), M_PI_4);
+  InsertJointAngle(&joint_angles, j1->id(), M_PI_2);
 
   auto pTc = j1->parentTchild(joint_angles);
-  Pose3 expected_pTc(
-      Rot3::Rx(M_PI_4),
-      Point3(0, -0.707107, 1.70711));
+  // Rotate around the x axis for arm point up.
+  // This means the second link bends to the right.
+  Pose3 expected_pTc(Rot3::Rx(M_PI_2), Point3(0, -1, 1));
   EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
-}
-
-/**
- * Test forward kinematics to verify position of child link.
- */
-TEST(RevoluteJoint, ForwardKinematics) {
-  using simple_urdf::robot;
-  auto j1 = robot.joint("j1");
-  auto l2 = robot.link("l2");
-
-  Values joint_angles;
-  InsertJointAngle(&joint_angles, j1->id(), 0.0);
-
-  auto fk = robot.forwardKinematics(joint_angles, 0, std::string("l1"));
-
-  Pose3 expected_T2_com(Rot3(), Point3(0, 0, 3));
-  EXPECT(assert_equal(expected_T2_com, Pose(fk, l2->id())));
 }
 
 int main() {
