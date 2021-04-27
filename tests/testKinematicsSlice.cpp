@@ -34,8 +34,6 @@ TEST(Phase, InverseKinematics) {
   // Instantiate kinematics algorithms
   KinematicsParameters parameters;
   // parameters.lm_parameters.setVerbosityLM("SUMMARY");
-  parameters.lm_parameters.setlambdaInitial(1e7);
-  parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
   Kinematics kinematics(robot, parameters);
 
   // Create initial values
