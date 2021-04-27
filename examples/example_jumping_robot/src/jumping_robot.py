@@ -340,6 +340,54 @@ class JumpingRobot:
         return inertia
 
     @staticmethod
-    def icra_jr():
-        yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
-        
+    def icra_init_config():
+        """ initial configuraiton used in ICRA paper. """
+        q_knee = np.radians(161.7)
+        q_hip = np.radians(-59.1)
+        q_foot = np.radians(-12.6)
+
+        q1 = -q_hip
+        q2 = q1 + np.pi - q_knee
+        foot_dist = 2 * 0.55 * (0.5 + np.cos(q1) - np.cos(q2))
+        torso_height = 0.55 * (np.sin(q2) - np.sin(q1))
+        torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, torso_height))
+        torso_twist = np.zeros(6)
+
+        init_vels = np.zeros(6)
+
+        angle_offset = np.arcsin((foot_dist-0.55)/2 / 1.1)
+        rest_angles = [q_foot - angle_offset,
+                    q_knee,
+                    q_hip - np.pi/2 + angle_offset,
+                    q_hip - np.pi/2 + angle_offset,
+                    q_knee,
+                    q_foot - angle_offset]
+        init_angles = rest_angles
+
+        P_s_0 = 65 * 6894.76/1000
+        init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
+                                                    rest_angles, init_angles,
+                                                    init_vels, P_s_0, foot_dist)
+        return init_config
+
+    @staticmethod
+    def icra_yaml():
+        """ yaml file path specifying parameters used in ICRA. """
+        return "examples/example_jumping_robot/yaml/robot_config.yaml"
+
+    @staticmethod
+    def simple_init_config():
+        """ A simple initial configuration: knees are bent to 60 degrees. """
+        theta = np.pi/3
+        rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
+        init_angles = rest_angles
+        init_vels = [0, 0, 0, 0, 0, 0]
+        torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
+        torso_twist = np.zeros(6)
+        P_s_0 = 65 * 6894.76/1000
+        foot_dist = 0.55
+        init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
+                                                    rest_angles, init_angles,
+                                                    init_vels, P_s_0, foot_dist)
+        return init_config
+

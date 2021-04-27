@@ -26,22 +26,37 @@ from jumping_robot import Actuator, JumpingRobot
 class ActuationGraphBuilder:
     """ Class that constructs actuation graph for the jumping robot. """
     def __init__(self):
+        # ratio = 1e-3
+        # self.pressure_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e2)
+        # self.force_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e2)
+        # self.balance_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e2)
+        # self.torque_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e0)
+        # self.prior_pressure_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e2)
+        # self.prior_q_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e0)
+        # self.prior_time_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e-1)
+        # self.prior_v_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e0)
+
+        # self.gas_law_model = noiseModel.Isotropic.Sigma(1, ratio * 1e1)
+        # self.mass_rate_model = noiseModel.Isotropic.Sigma(1, ratio * 1e-3)
+        # self.volume_model = noiseModel.Isotropic.Sigma(1, ratio * 1e-4)
+        # self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e-3)
+        # self.m_col_cost_model = noiseModel.Isotropic.Sigma(1, ratio * 1e-3)
+
         self.pressure_cost_model = noiseModel.Isotropic.Sigma(1, 0.1)
         self.force_cost_model = noiseModel.Isotropic.Sigma(1, 0.01)
         self.balance_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)
         self.torque_cost_model = noiseModel.Isotropic.Sigma(1, 0.01)
         self.prior_pressure_cost_model = noiseModel.Isotropic.Sigma(1, 0.01)
-        self.prior_valve_t_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
         self.prior_q_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)
         self.prior_time_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
-        self.prior_v_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)  
+        self.prior_v_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)
 
-        self.gas_law_model = noiseModel.Isotropic.Sigma(1, 1.0)  
-        self.mass_rate_model = noiseModel.Isotropic.Sigma(1, 1e-3)  
-        self.volume_model = noiseModel.Isotropic.Sigma(1, 1e-5)  
-        self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, 1e-6)  
-        self.m_col_cost_model = noiseModel.Isotropic.Sigma(1, 1e-6)  
-        self.mass_rate_obj_model = noiseModel.Isotropic.Sigma(1, 1.0)
+        self.gas_law_model = noiseModel.Isotropic.Sigma(1, 0.0001)
+        self.mass_rate_model = noiseModel.Isotropic.Sigma(1, 1e-5)
+        self.volume_model = noiseModel.Isotropic.Sigma(1, 1e-7)
+        self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, 1e-7)
+        self.m_col_cost_model = noiseModel.Isotropic.Sigma(1, 1e-7)
+
 
     def source_dynamics_graph(self, jr: JumpingRobot, k: int) -> NonlinearFactorGraph:
         """ Create a factor graph containing source dynamics constraints at step k. """

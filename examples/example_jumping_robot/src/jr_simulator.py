@@ -195,7 +195,9 @@ class JRSimulator:
             TODO(yetong): check why each optimizer does not converge for cases
         """
         # optimize
-        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
+        params = gtsam.LevenbergMarquardtParams()
+        # params.setLinearSolverType("SEQUENTIAL_QR")
+        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
         results = optimizer.optimize()
 
         # Check if optimization converges.
@@ -254,7 +256,7 @@ class JRSimulator:
 
     def node_dynamics(self, k, values):
         print(k)
-        q3_key = gtd.internal.JointAngleKey(3, k).key()
+        # q3_key = gtd.internal.JointAngleKey(3, k).key()
         # print("q3 after integration", values.atDouble(q3_key))
 
         self.step_robot_kinematics(k, values)
@@ -348,17 +350,8 @@ class JRSimulator:
 
 def example_simulate():
     """ Show an example robot jumping trajectory """
-    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
-
-    theta = np.pi/3
-    rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
-    init_angles = rest_angles
-    init_vels = [0, 0, 0, 0, 0, 0]
-    torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
-    torso_twist = np.zeros(6)
-    P_s_0 = 65 * 6894.76/1000
-    init_config = JumpingRobot.create_init_config(
-        torso_pose, torso_twist, rest_angles, init_angles, init_vels, P_s_0)
+    init_config = JumpingRobot.simple_init_config()
+    yaml_file_path = JumpingRobot.icra_yaml()
 
     num_steps = 100
     dt = 0.005
@@ -367,8 +360,8 @@ def example_simulate():
     Tos = [0, 0, 0, 0]
     Tcs = [1, 1, 1, 1]
     controls = JumpingRobot.create_controls(Tos, Tcs)
-    values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
 
+    values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
     # torques_seq = [[0, -5, 5, 5, -5, 0]] * 300
     # values, step_phases = jr_simulator.simulate_with_torque_seq(
     #     num_steps, dt, torques_seq)
@@ -377,44 +370,11 @@ def example_simulate():
     visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
 
 
-def degree_to_rad(angle):
-    """ unit change from degree to radiance """
-    return np.pi / 180 * angle
-
-
 def example_simulate_ICRA():
     """ Simulate one jumping trajectory in ICRA. """
-    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+    init_config = JumpingRobot.icra_init_config()
+    yaml_file_path = JumpingRobot.icra_yaml()
 
-    q_knee = degree_to_rad(161.7)
-    q_hip = degree_to_rad(-59.1)
-    q_foot = degree_to_rad(-12.6)
-
-    q1 = -q_hip
-    q2 = q1 + np.pi - q_knee
-
-    foot_dist = 2 * 0.55 * (0.5 + np.cos(q1) - np.cos(q2))
-
-    torso_height = 0.55 * (np.sin(q2) - np.sin(q1))
-    # torso_height = np.sqrt(1.1 ** 2 - ((foot_dist-0.55)/2) ** 2)
-    torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, torso_height))
-    torso_twist = np.zeros(6)
-
-    init_vels = np.zeros(6)
-
-    angle_offset = np.arcsin((foot_dist-0.55)/2 / 1.1)
-    rest_angles = [q_foot - angle_offset,
-                   q_knee,
-                   q_hip - np.pi/2 + angle_offset,
-                   q_hip - np.pi/2 + angle_offset,
-                   q_knee,
-                   q_foot - angle_offset]
-    init_angles = rest_angles
-
-    P_s_0 = 65 * 6894.76/1000
-    init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
-                                                  rest_angles, init_angles,
-                                                  init_vels, P_s_0, foot_dist)
     num_steps = 100
     dt = 0.005
     jr_simulator = JRSimulator(yaml_file_path, init_config)
@@ -430,3 +390,4 @@ def example_simulate_ICRA():
 
 if __name__ == "__main__":
     example_simulate_ICRA()
+    # example_simulate()

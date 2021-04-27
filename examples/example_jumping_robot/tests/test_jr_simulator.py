@@ -31,14 +31,9 @@ from src.jr_simulator import JRSimulator
 class TestJRSimulator(unittest.TestCase):
     def setUp(self):
         """ Set up the simulator. """
-        self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
-        P_s_0 = 65 * 6894.76 / 1e3
-        theta = np.pi/3
-        qs = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
-        vs = [0., 0., 0., 0., 0., 0.]
-        torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
-        torso_twist = np.zeros(6)
-        self.init_config = JumpingRobot.create_init_config(torso_pose, torso_twist, qs, qs, vs, P_s_0)
+        self.yaml_file_path = JumpingRobot.icra_yaml()
+        self.init_config = JumpingRobot.icra_init_config()
+
         self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
         Tos = [0, 0, 0, 0]
         Tcs = [1, 1, 1, 1]
@@ -73,7 +68,11 @@ class TestJRSimulator(unittest.TestCase):
         """ Run Levenburg-Marquardt optimization. """
         init_values = gtd.ExtractValues(values, graph.keys())
         params = gtsam.LevenbergMarquardtParams()
+        params.setlambdaLowerBound(1e-20)
+        params.setlambdaUpperBound(1e20)
         params.setVerbosityLM("SUMMARY")
+        # params.setLinearSolverType("MULTIFRONTAL_QR")
+        # params.setLinearSolverType("SEQUENTIAL_QR")
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
         results = optimizer.optimize()
         return results
@@ -95,34 +94,27 @@ class TestJRSimulator(unittest.TestCase):
     def test_robot_forward_dynamics(self):
         """ Test forward dynamics of robot frame: specify the angles,
             joint vels and torques, check the joint accelerations. """
-        # specify joint angles, joint vels, torques
-        theta = np.pi/3
+
+        # forward kinematics
+        init_config = JumpingRobot.simple_init_config()
+        jr_simulator = JRSimulator(self.yaml_file_path, init_config)
+        jr = jr_simulator.jr
+        values = JRValues.init_config_values(jr)
+        jr_simulator.step_robot_kinematics(0, values)
+        
+        # forward dynamics
         torque_hip = 0
         torque_knee = 0
-        qs = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
-        vs = [0., 0., 0., 0., 0., 0.]
         torques = [0., torque_knee, torque_hip, torque_hip, torque_knee, 0.]
-
-        # construct known values
-        values = gtsam.Values()
-        k = 0
-        for joint in self.robot().joints():
+        for joint in jr.robot.joints():
             j = joint.id()
-            gtd.InsertTorqueDouble(values, j, k, torques[j])
-            gtd.InsertJointAngleDouble(values, j, k, qs[j])
-            gtd.InsertJointVelDouble(values, j, k, vs[j])
-        torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
-        torso_i = self.robot().link("torso").id()
-        gtd.InsertPose(values, torso_i, k, torso_pose)
-        gtd.InsertTwist(values, torso_i, k, np.zeros(6))
-
-        # step forward dynamics
-        self.jr_simulator.step_robot_kinematics(k, values)
-        self.jr_simulator.step_robot_dynamics(k, values)
+            gtd.InsertTorqueDouble(values, j, 0, torques[j])
+        jr_simulator.step_robot_dynamics(0, values)
 
         # check joint accelerations
         q_accels = gtd.DynamicsGraph.jointAccelsMap(self.robot(),
-                                                    values, k)
+                                                    values, 0)
+        theta = np.pi/3
         expected_q_accels = self.cal_jr_accels(theta, torque_hip, torque_knee)
         for joint in self.robot().joints():
             name = joint.name()
@@ -172,24 +164,24 @@ class TestJRSimulator(unittest.TestCase):
         graph.add(gtd.PriorFactorDouble(q_key, init_config_values.atDouble(q_key), actuation_graph_builder.prior_q_cost_model))
         graph.add(gtd.PriorFactorDouble(v_key, init_config_values.atDouble(v_key), actuation_graph_builder.prior_v_cost_model))
 
-        self.gn_optimize(graph, sim_values)
+        self.lm_optimize(graph, sim_values)
         
 
-    def test_solving_actuation(self):
-        """ Create dynamics graph of one step, with init values from simulation, and solve it. """
-        sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
-        actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
-        init_config_values = JRValues.init_config_values(self.jr)
+    # def test_solving_actuation(self):
+    #     """ Create dynamics graph of one step, with init values from simulation, and solve it. """
+    #     sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
+    #     actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+    #     init_config_values = JRValues.init_config_values(self.jr)
 
-        graph = actuation_graph_builder.dynamics_graph(self.jr, 0)
-        graph.push_back(actuation_graph_builder.prior_graph(self.jr, init_config_values, 0))
-        graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-        graph.push_back(self.jr_graph_builder.time_prior())
-        for actuator in self.jr.actuators:
-            j = actuator.j
-            graph.push_back(actuation_graph_builder.prior_graph_joint(init_config_values, j, 0))
+    #     graph = actuation_graph_builder.dynamics_graph(self.jr, 0)
+    #     graph.push_back(actuation_graph_builder.prior_graph(self.jr, init_config_values, 0))
+    #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
+    #     graph.push_back(self.jr_graph_builder.time_prior())
+    #     for actuator in self.jr.actuators:
+    #         j = actuator.j
+    #         graph.push_back(actuation_graph_builder.prior_graph_joint(init_config_values, j, 0))
 
-        self.gn_optimize(graph, sim_values)
+    #     self.lm_optimize(graph, sim_values)
 
 
 
@@ -219,34 +211,29 @@ class TestJRSimulator(unittest.TestCase):
 
         self.gn_optimize(graph, sim_values)
 
-        # print(graph.size())
-        # print(init_values.size())
 
-        # linear_graph = graph.linearize(init_values)
-        # print(linear_graph)
+    def test_solving_onse_step_collocation(self):
+        """ Create trajectory of one step, and solve it. """
+        dt = 0.005
+        sim_values, phase_steps = self.jr_simulator.simulate(1, dt, self.controls)
+        actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+        phase0_key = gtd.PhaseKey(0).key()
+        sim_values.insertDouble(phase0_key, dt)
 
-    # def test_solving_onse_step_collocation(self):
-    #     """ Create trajectory of one step, and solve it. """
-    #     dt = 0.005
-    #     phase0_key = gtd.PhaseKey(0).key()
-    #     sim_values, phase_steps = self.jr_simulator.simulate(1, dt, self.controls)
-    #     actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
-    #     sim_values.insertDouble(phase0_key, dt)
+        collocation = gtd.CollocationScheme.Trapezoidal
+        graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
+        graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
+        graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
 
-    #     collocation = gtd.CollocationScheme.Trapezoidal
-    #     graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
-    #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-    #     graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
-
-    #     results = self.lm_optimize(graph, sim_values)
-    #     self.assertAlmostEqual(graph.error(results), 0, places=5)
+        results = self.lm_optimize(graph, sim_values)
+        self.assertAlmostEqual(graph.error(results), 0, places=5)
 
     def test_solving_single_phase_collocation(self):
         """ Create trajectory of one step, and solve it. """
         dt = 0.005
-        phase0_key = gtd.PhaseKey(0).key()
-        sim_values, phase_steps = self.jr_simulator.simulate(5, dt, self.controls)
+        sim_values, phase_steps = self.jr_simulator.simulate(30, dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+        phase0_key = gtd.PhaseKey(0).key()
         sim_values.insertDouble(phase0_key, dt)
 
         collocation = gtd.CollocationScheme.Trapezoidal
