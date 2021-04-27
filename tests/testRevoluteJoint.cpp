@@ -151,7 +151,7 @@ TEST(Joint, params_constructor) {
                       j1.parameters().scalar_limits.value_limit_threshold));
 }
 
-/** 
+/**
  * Test parentTchild method at rest configuration.
  */
 TEST(RevoluteJoint, ParentTchild) {
@@ -159,10 +159,13 @@ TEST(RevoluteJoint, ParentTchild) {
   auto j1 = robot.joint("j1");
 
   Values joint_angles;
-  InsertJointAngle(&joint_angles, j1->id(), 0.0);
+  InsertJointAngle(&joint_angles, j1->id(), M_PI_4);
 
   auto pTc = j1->parentTchild(joint_angles);
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), pTc));
+  Pose3 expected_pTc(
+      Rot3::Rx(M_PI_4),
+      Point3(0, -0.707107, 1.70711));
+  EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
 
 /**
@@ -171,12 +174,13 @@ TEST(RevoluteJoint, ParentTchild) {
 TEST(RevoluteJoint, ForwardKinematics) {
   using simple_urdf::robot;
   auto j1 = robot.joint("j1");
+  auto l2 = robot.link("l2");
 
   Values joint_angles;
   InsertJointAngle(&joint_angles, j1->id(), 0.0);
 
   auto fk = robot.forwardKinematics(joint_angles, 0, std::string("l1"));
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), Pose(fk, j1->id())));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), Pose(fk, l2->id())));
 }
 
 int main() {
