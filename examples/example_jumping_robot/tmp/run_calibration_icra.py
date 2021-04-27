@@ -24,14 +24,12 @@ from src.jumping_robot import Actuator, JumpingRobot
 
 import matplotlib.pyplot as plt
 
-
 # paths
-path_data = '/home/cs3630/Documents/system-id-data'
-prefix_data = '0p00_0p12_hipknee-80source 2021-04-05 11-43-47'
+path_data = '/home/cs3630/Documents/icra-data'
+prefix_data = '1p5-jump 3'
 
 # camera
-# dim_camera = [720, 1280] # iPhone is 720 x 1280 (oriented vertically)
-dim_camera = [1920, 1080]    # GoPro is 1920 x 1080 (oriented horizontally)
+dim_camera = [720, 1280] # iPhone is 720 x 1280 (oriented vertically)
 
 # noise model for measurements TODO: change noise models?
 model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01) # (m) 0.01
@@ -39,7 +37,6 @@ model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4) # (pixels) maybe incre
 model_cam_pose_prior = gtsam.noiseModel.Isotropic.Sigma(6, 0.05) # (rad, m)
 model_calib = gtsam.noiseModel.Isotropic.Sigma(3, 1) # (pix) focal length & offsets 100
 model_kinematics = gtsam.noiseModel.Diagonal.Sigmas([0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001]) # (rad, m) this should be small,since it's like hard constraint 0.001
-
 
 def LinkPoseKey(link_idx, k):
     return gtdynamics.DynamicsSymbol.LinkSymbol('p',link_idx,k).key()
@@ -51,7 +48,7 @@ def MarkerKey (link_idx, marker_idx, k):
     return gtdynamics.DynamicsSymbol.LinkJointSymbol('m', link_idx, marker_idx, k).key()
 
 def CalibrationKey():
-    return gtdynamics.DynamicsSymbol.SimpleSymbol('K', 0).key()
+    return gtdynamics.DynamicsSymbol.SimpleSymbol('k', 0).key()
 
 def CameraPoseKey():
     return gtdynamics.DynamicsSymbol.SimpleSymbol('c', 0).key()
@@ -59,10 +56,18 @@ def CameraPoseKey():
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
+# class TestCalibration(GtsamTestCase):
 class TestCalibration():
     def __init__(self, path_data, prefix_data):
         self.path_data = path_data
         self.prefix_data = prefix_data
+
+
+    # def load_robot(self, file_name):
+    #     file_type = file_name.split(".")[-1]
+    #     current_folder = os.path.dirname(os.path.abspath(__file__))
+    #     robot_file = os.path.join(current_folder, "../../../" + file_type + "s/test/" + file_name)
+    #     return gtdynamics.CreateRobotFromFile(robot_file, "robot")
 
 
     def load_robot(self):
@@ -74,11 +79,11 @@ class TestCalibration():
 
     def get_marker_locations(self):
         ''' Get (relative) marker locations from link poses '''
-        locations = [[[-0.071,  -0.1,    0], [-0.071,    0.1,    0]], # switched y/z
-                     [[-0.038,  -0.1,    0], [-0.038,    0.1,    0]], # switched y/z
-                     [[     0,  0.15,    0], [     0,  -0.15,    0]], # updated for 30-cm hip marker spacing
-                     [[-0.038,   0.1,    0], [-0.038,   -0.1,    0]], # switched y/z
-                     [[-0.071,   0.1,    0], [-0.071,   -0.1,    0]]] # switched y/z
+        locations = [[[-0.071, -0.1,     0], [-0.071,   0.1,     0]],
+                     [[-0.038, -0.1,     0], [-0.038,   0.1,     0]],
+                     [[     0,  0.1,     0], [     0,  -0.1,     0]],
+                     [[-0.038,  0.1,     0], [-0.038,  -0.1,     0]],
+                     [[-0.071,  0.1,     0], [-0.071,  -0.1,     0]]]
         return locations
 
 
@@ -98,20 +103,15 @@ class TestCalibration():
 
 
     def get_calibration(self):
-        ''' Set up initial camera calibration '''
-        mtx = [[930.61550934,   0.,             957.52437616], # from OpenCV checkerboard cal
-               [0,              932.40029846,   552.74942762],
-               [0,              0,              1           ]] 
-        dist = [-0.271825734,  0.0864954022, -0.000255924635,  0.000889888021, -0.0136882404]
+        # marker_torso_left = [322.43, 1043] # iPhone setup
+        marker_torso_left = [900, 839]  # GoPro setup
 
-        fy = mtx[0][0] # switched x- and y- axes
-        fx = mtx[1][1] # switched x- and y- axes
+        fx = ((dim_camera[1] - marker_torso_left[1]) - dim_camera[1]/2)*(2.5019/-1.00522) # data from left torso marker
+        fy = (marker_torso_left[0]- dim_camera[0]/2)*(2.5019/-0.1254) # data from left torso marker 
+
         f = (fx+fy)/2 # (pixels) focal length
-        k1 = dist[0] # first radial distortion coefficient (quadratic)
-        k2 = dist[1] # second radial distortion coefficient (quartic)
-        p1 = dist[2] # first tangential distortion coefficient
-        p2 = dist[3] # second tangential distortion coefficient
-        k3 = dist[4] # third radial distortion coefficient
+        k1 = 0 # first radial distortion coefficient (quadratic)
+        k2 = 0 # second radial distortion coefficient (quartic)
         u0 = dim_camera[1]/2 # (pixels) principal point
         v0 = dim_camera[0]/2 # (pixels) principal point
         calibration = gtsam.Cal3Bundler(f, k1, k2, u0, v0)
@@ -120,11 +120,14 @@ class TestCalibration():
 
     def get_robot_config(self):
         ''' Load robot pose data from preprocessed results '''
+        # file_pose = os.path.join(self.path_data, 'pose_pre.txt')
+        # pose_pre = np.loadtxt(file_pose, dtype='float', comments='#', delimiter=',')
         file_pose = os.path.join(self.path_data, self.prefix_data, (self.prefix_data + ' pose_pre.txt'))
         pose_pre = np.loadtxt(file_pose, dtype='float', comments='#', delimiter=',')
 
         n_frames = int(np.shape(pose_pre)[0]/5)
         pose_pre = np.reshape(pose_pre, (5,n_frames,4,4)) # unflatten
+
         link_poses = [None]*n_frames
         for k in range(n_frames): # loop over frames
             pose = []
@@ -133,23 +136,56 @@ class TestCalibration():
                 p[1,3] = p[1,3] - 0.0254 # shift to world frame
                 p[2,3] = p[2,3] - 1.07315 # shift to world frame
                 p_old = gtsam.Pose3(p)
-                if j == 2: # keep torso pose the same
+                if j in [0,1]:
+                    T_old_new = gtsam.Pose3(gtsam.Rot3.Rx(np.pi/2), gtsam.Point3(0, 0, 0))
+                elif j == 2:
                     T_old_new = gtsam.Pose3()
-                else: # rotate other link poses by 90
+                else:
                     T_old_new = gtsam.Pose3(gtsam.Rot3.Rx(np.pi/2), gtsam.Point3(0, 0, 0))
                 p_new = p_old.compose(T_old_new)
                 pose.append(p_new)
+                # print(pose)
+
             link_poses[k] = pose
 
+        # file_angle = os.path.join(self.path_data, 'angle_pre.txt')
+        # joint_angles = np.loadtxt(file_angle, dtype='float', comments='#', delimiter=',') # (rad)
         file_angle = os.path.join(self.path_data, self.prefix_data, (self.prefix_data + ' angle_pre.txt'))
         joint_angles = np.loadtxt(file_angle, dtype='float', comments='#', delimiter=',')
+
         return link_poses, joint_angles
+
+
+    # def get_robot_config(self):
+    #     ''' Load robot pose data from simplified image processing '''
+    #     file_link_angles = os.path.join(self.path_data, 'link_angle.txt')
+    #     file_link_locations = os.path.join(self.path_data, 'link_location.txt')
+    #     file_joint_angles = os.path.join(self.path_data, 'angle_pre_old.txt')
+    #     link_angles = np.loadtxt(file_link_angles, dtype='float', comments='#', delimiter=',') # (rad)
+    #     link_locations = np.loadtxt(file_link_locations, dtype='float', comments='#', delimiter=',')/100 # (cm to m)
+    #     joint_angles = np.loadtxt(file_joint_angles, dtype='float', comments='#', delimiter=',') # (rad)
+
+    #     link_poses = [None]*len(link_locations)
+    #     for k in range(len(link_locations)): # loop over frames
+    #         pose = []
+    #         for j in range(5): # loop over links
+    #             theta = link_angles[k,j]
+    #             y = link_locations[k,j*2] - 0.0254 # shift to world frame
+    #             z = link_locations[k,j*2+1] - 1.07315 # shift to world frame
+    #             pose.append(gtsam.Pose3(gtsam.Rot3.Rx(theta), gtsam.Point3(0,y,z)))
+    #         link_poses[k] = pose
+
+    #     joint_angles = joint_angles[:,1:] # remove angle between link 1 and ground
+    #     joint_angles[:,1:3] = joint_angles[:,1:3] - np.pi/2 # offset hip angles: 90 deg from thigh = 0 angle 
+    #     return link_poses, joint_angles
 
 
     def test_calibration(self):
         ################################################
         ############ set initial parameters ############
         ################################################
+        # my_robot = self.load_robot("jumping_robot.sdf") # load jumping robot
+        # my_robot.removeLink(my_robot.link("l0")) # remove ground link
         my_robot = self.load_robot()  # load jumping robot
 
         # fiducial markers
@@ -177,7 +213,7 @@ class TestCalibration():
                 key = JointAngleKey(j, k)
                 initial_estimate.insertDouble(key, joint_angles[k][j-1])
 
-            for i in range(1, my_robot.numLinks()+1): # loop over markers
+            for i in range(1, my_robot.numLinks()+1):
                 markers_i = marker_locations[i-1]
                 for idx_marker in range(len(markers_i)):
                     marker_location_local = np.array(markers_i[idx_marker])
@@ -191,7 +227,6 @@ class TestCalibration():
 
         cam_pose_key = CameraPoseKey()
         initial_estimate.insert(cam_pose_key, cam_pose)
-
 
         ################################################
         ############ construct factor graph ############
@@ -219,7 +254,8 @@ class TestCalibration():
                         pixel_meas, model_projection, cam_pose_key, marker_key, cal_key)) 
 
         # prior factor for the camera pose
-        graph.add(gtsam.PriorFactorPose3(cam_pose_key, cam_pose, model_cam_pose_prior))        
+        graph.add(gtsam.PriorFactorPose3(cam_pose_key, cam_pose, model_cam_pose_prior))
+        # graph.add(gtdynamics.PriorFactorCal3Bundler(cal_key, calibration, model_calib))
         gtdynamics.addPriorFactorCal3Bundler(graph, cal_key, calibration, model_calib)
 
 
@@ -233,7 +269,6 @@ class TestCalibration():
         result = optimizer.optimize()
         
         print("result error: ", graph.error(result))
-
 
         ##########################################
         ############ print results ###############
@@ -262,7 +297,7 @@ class TestCalibration():
         #             print(marker)
             
         print(result.atPose3(cam_pose_key))
-        print(result.atCal3Bundler(cal_key))
+        # print(result.atCal3Bundler(cal_key))
 
 
         # export pose data
@@ -273,10 +308,10 @@ class TestCalibration():
                 pose = result.atPose3(key)
                 pose_data[i-1,k,:] = pose.matrix().flatten()
         pose_data = np.reshape(pose_data, [num_frames*my_robot.numLinks(), 16]) # all pose 1, then all pose 2, etc
-         
-        # file_pose = os.path.join(self.path_data, self.prefix_data, 
-        #     (self.prefix_data + ' pose_gtsam.txt'))
-        # np.savetxt(file_pose, pose_data, fmt='%.6e', delimiter=',')
+
+        # file_export = 'pose_gtsam.txt'
+        # np.savetxt(os.path.join(self.path_data, file_export), pose_data,
+        #     fmt='%.6e', delimiter=',')
 
 
         # export angle data
@@ -286,11 +321,10 @@ class TestCalibration():
                 key = JointAngleKey(j, k)
                 angle_data[k,j-1] = result.atDouble(key)
                 
-        # file_angle = os.path.join(self.path_data, self.prefix_data, 
-        #     (self.prefix_data + ' angle_gtsam.txt'))
-        # np.savetxt(file_angle, angle_data, fmt='%.6e', delimiter=',')
+        # file_export = 'angle_gtsam.txt'
+        # np.savetxt(os.path.join(self.path_data, file_export), angle_data,
+        #     fmt='%.6e', delimiter=',')
 
-        # plot 
         x_vec = np.arange(0, np.shape(angle_data)[0])
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1)
@@ -304,7 +338,7 @@ class TestCalibration():
         ax.plot(x_vec, np.rad2deg(joint_angles[:,3]), 'k--')
         plt.grid()
         plt.show()
-        
+
 
 
 if __name__ == "__main__":
