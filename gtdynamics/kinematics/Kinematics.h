@@ -64,12 +64,20 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-struct KinematicsParameters {
-  using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,     // pose factor
-      g_cost_model,                               // goal point
-      prior_q_cost_model;                         // joint angle prior factor
+/// Optimization parameters shared between all solvers
+struct OptimizationParameters {
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
+  OptimizationParameters() {
+    lm_parameters.setlambdaInitial(1e7);
+    lm_parameters.setAbsoluteErrorTol(1e-3);
+  }
+};
+/// Noise models etc specific to Kinematics class
+struct KinematicsParameters : public OptimizationParameters {
+  using Isotropic = gtsam::noiseModel::Isotropic;
+  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
+      g_cost_model,                            // goal point
+      prior_q_cost_model;                      // joint angle prior factor
 
   KinematicsParameters()
       : p_cost_model(Isotropic::Sigma(6, 1e-4)),
@@ -85,14 +93,14 @@ class Kinematics {
  public:
   /**
    * @fn Constructor.
-   * @param context e.g., a Slice, Phase, WalkCycle, or Trajectory instance
    */
   Kinematics(const Robot& robot,
              const KinematicsParameters& parameters = KinematicsParameters())
       : robot_(robot), p_(parameters) {}
 
   /**
-   * @fn Slice with kinematics constraints.
+   * @fn Create graph with kinematics constraints.
+   * @param context Slice or Interval instance
    * @returns factor graph..
    */
   template <class CONTEXT>
@@ -100,6 +108,7 @@ class Kinematics {
 
   /**
    * @fn Create point goal objectives.
+   * @param context Slice or Interval instance
    * @param contact_goals goals for contact points
    * @returns graph with point goal factors.
    */
@@ -109,6 +118,7 @@ class Kinematics {
 
   /**
    * @fn Factors that minimize joint angles.
+   * @param context Slice or Interval instance
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -120,6 +130,7 @@ class Kinematics {
    *
    * Use wTcom for poses and zero-mean noise for joint angles.
    *
+   * @param context Slice or Interval instance
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
@@ -129,6 +140,7 @@ class Kinematics {
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
+   * @param context Slice or Interval instance
    * @param contact_goals goals for contact points
    * @returns values with poses and joint angles.
    */
@@ -138,6 +150,9 @@ class Kinematics {
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
+   * @param interval Interval instance
+   * @param contact_goals1 goals for contact points for interval.k_start
+   * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.
    */
   gtsam::Values interpolate(const Interval& interval,

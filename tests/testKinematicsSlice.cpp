@@ -55,7 +55,6 @@ TEST(Phase, InverseKinematics) {
 
   // Check goals with FK solution
   for (const ContactGoal& goal : contact_goals) {
-    // EXPECT(assert_equal(goal.goal_point, goal.predict(fk, k)));
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
@@ -68,7 +67,6 @@ TEST(Phase, InverseKinematics) {
   auto objectives2 = kinematics.jointAngleObjectives(slice);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  // TODO(frank): consider renaming ContactPoint to PointOnLink
   auto result = kinematics.inverse(slice, contact_goals);
 
   // Check that well-determined
