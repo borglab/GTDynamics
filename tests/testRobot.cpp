@@ -117,8 +117,9 @@ TEST(Robot, ForwardKinematics) {
 
   Values results2 = robot.forwardKinematics(values2);
 
-  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));   // link1 stays put
-  Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));  // link2
+  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));  // link1 stays put
+  // link2 is rotated by 90 degrees and now points along -Y axis.
+  Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
   Vector6 V_l1_move, V_l2_move;
   V_l1_move << 0, 0, 0, 0, 0, 0;
   V_l2_move << 1, 0, 0, 0, -1, 0;
