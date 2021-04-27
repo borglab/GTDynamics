@@ -114,4 +114,29 @@ void AddJumpGuardFactor(
   gtsam::NonlinearFactorGraph @graph, gtsam::Key wrench_key,
   const gtsam::noiseModel::Base *cost_model);
 
+#include <gtdynamics/jumpingrobot/factors/PneumaticActuator.h>
+
+class PriorValues {
+  double q;
+  double v;
+  double Ps;
+  double m;
+  double t;
+  double to;
+  double tc;
+};
+
+class PneumaticActuator {
+  PneumaticActuator();
+
+  gtsam::NonlinearFactorGraph actuatorFactorGraph(const int t) const;
+
+  gtsam::NonlinearFactorGraph actuatorPriorGraph(const int t,  const gtdynamics::PriorValues& prior_values) const;
+
+  gtsam::Values actuatorInitValues(const int t, const gtdynamics::PriorValues& prior_values) const;
+
+  gtdynamics::PriorValues priorValues();
+
+};
+
 }  // namespace gtdynamics
