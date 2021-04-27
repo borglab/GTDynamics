@@ -367,12 +367,10 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(T_12com_pi_4, j2->relativePoseOf(l2, M_PI / 4.0), 1e-3));
 }
 
-/**
- * Test parsing of Revolute joint limit values from various robots.
- */
+// Test parsing of Revolute joint limit values from various robots.
 TEST(Joint, limit_params) {
   // Check revolute joint limits parsed correctly for first test robot.
-  auto model = GetSdf(kSdfPath + std::string("/test/four_bar_linkage.sdf"));
+  auto model = GetSdf(kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *model.LinkByName("l2"));
   auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
