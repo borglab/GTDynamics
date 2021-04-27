@@ -117,6 +117,13 @@ class TestJRGraphBuilder(unittest.TestCase):
         graph_control_prior = self.jr_graph_builder.control_priors(self.jr, self.controls)
         self.assertEqual(graph_control_prior.size(), 8)
 
+    def test_sys_id_graph_size(self):
+        """ Test system id graph size of 1 time step. """
+        graph = self.jr_graph_builder.sys_id_graph(self.jr, 0)
+
+        # markers: 10
+        # pressures: 5
+        self.assertEqual(graph.size(), 15)
 
 if __name__ == "__main__":
     unittest.main()

@@ -147,3 +147,8 @@ class JRGraphBuilder:
         graph.push_back(graph_collo)
 
         return graph
+
+
+    def sys_id_graph(self, jr, k):
+        """ Creates system id graph for the kth step. """
+        
