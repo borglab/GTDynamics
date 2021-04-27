@@ -23,7 +23,7 @@ from helpers import mergeValues
 from jumping_robot import Actuator, JumpingRobot
 from jr_graph_builder import JRGraphBuilder
 from jr_values import JRValues
-from jr_visualizer import visualize_jr_trajectory, make_plot
+from jr_visualizer import visualize_jr_trajectory, make_plot, visualize_jr
 
 
 class JRSimulator:
@@ -276,9 +276,13 @@ class JRSimulator:
             (gtsam.Values, list): (values for all steps, list of phases for
                                    each step)
         """
+<<<<<<< HEAD
 
         # initial setting
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
+=======
+        self.jr = JumpingRobot(self.yaml_file_path, self.init_config, phase=0)
+>>>>>>> feature/jr_calibration
         phase = 0
         step_phases = []
         values = JRValues.init_config_values(self.jr)
@@ -377,7 +381,64 @@ def example_simulate():
 
     # make_plot(values, jr_simulator.jr, num_steps)
     visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
+<<<<<<< HEAD
+=======
+
+
+def degree_to_rad(angle):
+    """ unit change from degree to radiance """
+    return np.pi / 180 * angle
+
+
+def example_simulate_ICRA():
+    """ Simulate one jumping trajectory in ICRA. """
+    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+
+    q_knee = degree_to_rad(161.7)
+    q_hip = degree_to_rad(-59.1)
+    q_foot = degree_to_rad(-12.6)
+
+    q1 = -q_hip
+    q2 = q1 + np.pi - q_knee
+
+    foot_dist = 2 * 0.55 * (0.5 + np.cos(q1) - np.cos(q2))
+
+    torso_height = 0.55 * (np.sin(q2) - np.sin(q1))
+    # torso_height = np.sqrt(1.1 ** 2 - ((foot_dist-0.55)/2) ** 2)
+    torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, torso_height))
+    torso_twist = np.zeros(6)
+
+    init_vels = np.zeros(6)
+
+    angle_offset = np.arcsin((foot_dist-0.55)/2 / 1.1)
+    rest_angles = [q_foot - angle_offset,
+                   q_knee,
+                   q_hip - np.pi/2 + angle_offset,
+                   q_hip - np.pi/2 + angle_offset,
+                   q_knee,
+                   q_foot - angle_offset]
+    # rest_angles = np.zeros(6)
+    init_angles = rest_angles
+
+    print(init_angles)
+
+    init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
+                                                  rest_angles, init_angles,
+                                                  init_vels, foot_dist)
+    num_steps = 100
+    dt = 0.005
+    jr_simulator = JRSimulator(yaml_file_path, init_config)
+
+    Tos = [0, 0, 0, 0]
+    Tcs = [1, 1, 1, 1]
+    P_s_0 = 65 * 6894.76/1000
+    controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
+
+    values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
+    visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=2)
+    # visualize_jr(values, jr_simulator.jr, 3)
+>>>>>>> feature/jr_calibration
 
 
 if __name__ == "__main__":
-    example_simulate()
+    example_simulate_ICRA()

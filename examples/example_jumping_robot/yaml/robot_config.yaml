@@ -34,7 +34,6 @@ morphology: # robot morphology [shank_r, thigh_r, torso, thigh_l, shank_l]
   l: [0.55, 0.55, 0.55, 0.55, 0.55] # (m) link lengths
   m: [0.285, 0.428, 0.883, 0.428, 0.285] # (kg) robot link masses: tethered robot
   r_cyl: 0.02 # (m) cylinder radius of each link for inertial calcs
-  foot_dist: 0.55
   # J: 1/12*m*(3*r_cyl^2 + l^2); # (kg/m^2) # cylinder inertia formula
 
 state0: # initial robot state

@@ -36,7 +36,6 @@ def update_jr_frame(ax, values, jr, k):
         link = jr.robot.link(name)
         i = link.id()
         pose = gtd.Pose(values, i, k)
-
         y = pose.y()
         z = pose.z()
         theta = pose.rotation().roll()
@@ -66,6 +65,7 @@ def update_jr_frame(ax, values, jr, k):
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 2)
+    ax.set_title(str(k))
 
 
 def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
@@ -169,4 +169,9 @@ if __name__ == "__main__":
         i = link.id()
         pose = link.wTcom()
         gtd.InsertPose(values, i, k, pose)
-    visualize_jr(values, jr, k)
+    k = 1
+    for link in jr.robot.links():
+        i = link.id()
+        pose = link.wTcom()
+        gtd.InsertPose(values, i, k, pose)
+    visualize_jr_trajectory(values, jr, 2)
