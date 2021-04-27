@@ -95,6 +95,7 @@ class JumpingRobot:
                 - 2: right on ground 
                 - 3: in air
         """
+        self.yaml_file_path = yaml_file_path
         self.params = self.load_file(yaml_file_path)
         self.init_config = init_config
         self.robot = self.create_robot(self.params, phase)
@@ -106,6 +107,10 @@ class JumpingRobot:
         Rs = self.params["pneumatic"]["Rs"]
         temperature = self.params["pneumatic"]["T"]
         self.gas_constant = Rs * temperature
+
+    def jr_with_phase(self, phase):
+        """ Create the robot with same params but of different phase. """
+        return JumpingRobot(self.yaml_file_path, self.init_config, phase)
 
     @staticmethod
     def load_file(yaml_file_path: str):
@@ -119,7 +124,8 @@ class JumpingRobot:
                            torso_twist = np.zeros(6),
                            rest_angles=[0, 0, 0, 0, 0, 0],
                            init_angles=[0, 0, 0, 0, 0, 0],
-                           init_vels=[0, 0, 0, 0, 0, 0]):
+                           init_vels=[0, 0, 0, 0, 0, 0],
+                           P_s_0=0.0):
         """ Create initial configuration specification.
 
         Args:
@@ -128,6 +134,7 @@ class JumpingRobot:
             rest_angles (list, optional): joint angles at rest.
             init_angles (list, optional): initial joint angles.
             init_vels (list, optional): initial joint velocities.
+            P_s_0 (float, optional): initial tank pressure.
 
         Returns:
             Dict: specifiction of initial configuration
@@ -137,6 +144,7 @@ class JumpingRobot:
         init_config = {}
         init_config["torso_pose"] = torso_pose
         init_config["torso_twist"] = torso_twist
+        init_config["P_s_0"] = P_s_0
         init_config["qs"] = {}
         init_config["vs"] = {}
         init_config["qs_rest"] = {}
@@ -149,13 +157,12 @@ class JumpingRobot:
         return init_config
 
     @staticmethod
-    def create_controls(Tos=[0, 0, 0, 0], Tcs=[0, 0, 0, 0], P_s_0=0.0):
+    def create_controls(Tos=[0, 0, 0, 0], Tcs=[0, 0, 0, 0]):
         """ Create control specficiation for jumping robot.
 
         Args:
             Tos (list, optional): valve open times. 
             Tcs (list, optional): valve close times. 
-            P_s_0 (float, optional): initial tank pressure.
 
         Returns:
             Dict: specification of controls
@@ -164,7 +171,6 @@ class JumpingRobot:
         controls = {}
         controls["Tos"] = {}
         controls["Tcs"] = {}
-        controls["P_s_0"] = P_s_0
         for actuator_name, To in zip(actuator_names, Tos):
             controls["Tos"][actuator_name] = To
         for actuator_name, Tc in zip(actuator_names, Tcs):
@@ -329,3 +335,8 @@ class JumpingRobot:
         Izz = Ixx
         inertia = np.diag([Ixx, Iyy, Izz])
         return inertia
+
+    @staticmethod
+    def icra_jr():
+        yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        

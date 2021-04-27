@@ -77,11 +77,30 @@ void AddTimeCollocationFactor(
     gtsam::NonlinearFactorGraph* graph, gtsam::Key t_prev_key,
     gtsam::Key t_curr_key, gtsam::Key dt_key,
     const gtsam::noiseModel::Base::shared_ptr& cost_model) {
-  gtsam::Double_ t_curr_expr(t_curr_key);
   gtsam::Double_ t_prev_expr(t_prev_key);
+  gtsam::Double_ t_curr_expr(t_curr_key);
   gtsam::Double_ dt_expr(dt_key);
-  gtsam::Double_ expr = t_curr_expr + dt_expr - t_prev_expr;
+  gtsam::Double_ expr = t_prev_expr + dt_expr - t_curr_expr;
   graph->add(gtsam::ExpressionFactor(cost_model, 0.0, expr));
 }
+
+double getFz(const gtsam::Vector6 &wrench,
+             gtsam::OptionalJacobian<1, 6> H_wrench)
+{
+    gtsam::Vector6 H_Fz;
+    H_Fz << 0, 0, 0, 0, 0, 1;
+    if (H_wrench)
+        *H_wrench = H_Fz.transpose();
+    return wrench(5);
+}
+
+void AddJumpGuardFactor(
+  gtsam::NonlinearFactorGraph* graph, gtsam::Key wrench_key,
+  const gtsam::noiseModel::Base::shared_ptr& cost_model) {
+    gtsam::Vector6_ wrench_expr(wrench_key);
+    gtsam::Double_ expr(getFz, wrench_expr);
+    graph->add(gtsam::ExpressionFactor(cost_model, 0., expr));
+}
+
 
 }  // namespace gtdynamics

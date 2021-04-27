@@ -180,11 +180,19 @@ class MassFlowRateFactor
 /** Sigmoid function, 1/(1+e^-x), used to model the change of mass flow 
  * rate when valve is open/closed. */
 double sigmoid(double x, boost::optional<gtsam::Matrix &> H_x = boost::none) {
-  double neg_exp = exp(-x);
-  if (H_x) {
-    H_x->setConstant(1, 1, neg_exp / pow(1.0 + neg_exp, 2));
+  if (x >= 0) {
+    double neg_exp = exp(-x);
+    if (H_x) {
+      H_x->setConstant(1, 1, neg_exp / pow(1.0 + neg_exp, 2));
+    }
+    return 1.0 / (1.0 + neg_exp);
+  } else {
+    double exp_x = exp(x);
+    if (H_x) {
+      H_x->setConstant(1, 1, exp_x / pow(1.0 + exp_x, 2));
+    }
+    return exp_x / (1.0 + exp_x);
   }
-  return 1.0 / (1.0 + neg_exp);
 }
 
 /** ValveControlFactor: compute true mdot based on valve open/close time. */

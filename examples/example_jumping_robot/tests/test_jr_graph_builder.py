@@ -23,6 +23,7 @@ from src.jumping_robot import Actuator, JumpingRobot
 from src.robot_graph_builder import RobotGraphBuilder
 from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
+from src.jr_values import JRValues
 
 
 class TestJRGraphBuilder(unittest.TestCase):
@@ -31,30 +32,90 @@ class TestJRGraphBuilder(unittest.TestCase):
         """ Set up the graph builder and jumping robot. """
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
+        self.controls = JumpingRobot.create_controls()
+        self.jr = JumpingRobot(self.yaml_file_path, self.init_config, 0)
+        self.jr_ground = self.jr.jr_with_phase(0)
+        self.jr_air = self.jr.jr_with_phase(3)
         self.jr_graph_builder = JRGraphBuilder()
+        self.robot_graph_builder = self.jr_graph_builder.robot_graph_builder
+        self.actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+        self.collocation = gtd.CollocationScheme.Trapezoidal
+
 
     def test_collocation_graph_size(self):
-        """ Test graph sizes. """
+        """ Test collocation graph sizes. """
         step_phases = [0, 0, 3, 3]
 
         # collocation on mass: (4 + 1) * 4
-        actuator_graph_builder = self.jr_graph_builder.actuation_graph_builder
-        graph_actuation_col = actuator_graph_builder.collocation_graph(
-            self.jr, step_phases)
+        graph_actuation_col = self.actuation_graph_builder.collocation_graph(
+            self.jr, step_phases, self.collocation)
         self.assertEqual(graph_actuation_col.size(), 20)
 
         # collocation on joints: 4 * 2 * 2
         # collocation on torso: 2 * 4
-        robot_graph_builder = self.jr_graph_builder.robot_graph_builder
-        graph_robot_col = robot_graph_builder.collocation_graph(
-            self.jr, step_phases)
+        graph_robot_col = self.robot_graph_builder.collocation_graph(
+            self.jr, step_phases, self.collocation)
         self.assertEqual(graph_robot_col.size(), 24)
 
         # collocation on time: 4
         graph_col = self.jr_graph_builder.collocation_graph(
-            self.jr, step_phases)
+            self.jr, step_phases, self.collocation)
         self.assertEqual(graph_col.size(), 48)
+
+    def test_actuation_dynamics_graph_size(self):
+        """ Test actuation dynamics graph size. """
+
+        # actuator dynamics: 4 * 5
+        # actuator mass flow: 4 * 2
+        # source dynamics: 1
+        graph_actuation_dynamics = self.actuation_graph_builder.dynamics_graph(self.jr, 0)
+        self.assertEqual(graph_actuation_dynamics.size(), 29)
+    
+    def test_robot_dynamics_graph_size(self):
+        """ Test robot frame dynamics graph size. """
+        # q-level: 6 + 1
+        # v-level: 6 + 1
+        # a-level: 6 + 1
+        # wrench-eq: 6
+        # torque: 6
+        # wrench: 5
+        # wrench planar: 6
+        # torque prior: 2
+        graph_robot_dynamics_ground = self.robot_graph_builder.dynamics_graph(self.jr_ground, 0)
+        self.assertEqual(graph_robot_dynamics_ground.size(), 46)
+
+        # q-level: 4
+        # v-level: 4
+        # a-level: 4
+        # wrench-eq: 4
+        # torque: 4
+        # wrench: 5
+        # wrench planar: 4
+        graph_robot_dynamics_air = self.robot_graph_builder.dynamics_graph(self.jr_air, 0)
+        self.assertEqual(graph_robot_dynamics_air.size(), 29)
+
+        # dynamics ground: 46
+        # guard: 2
+        k = 10
+        graph_robot_dynamics_transition = self.robot_graph_builder.transition_dynamics_graph(self.jr_ground, self.jr_air, k)
+        self.assertEqual(graph_robot_dynamics_transition.size(), 48)
+
+    def test_prior_graph_size(self):
+        """ Test prior graph size. """
+        init_config_values = JRValues.init_config_values(self.jr)
+
+        # torso pose and twist: 2
+        graph_robot_prior = self.robot_graph_builder.prior_graph(self.jr, init_config_values, 0)
+        self.assertEqual(graph_robot_prior.size(), 2)
+
+        # m: 4 + 1
+        # Vs: 1
+        graph_actuation_prior = self.actuation_graph_builder.prior_graph(self.jr, init_config_values, 0)
+        self.assertEqual(graph_actuation_prior.size(), 6)
+
+        # Tc, To: 8
+        graph_control_prior = self.jr_graph_builder.control_priors(self.jr, self.controls)
+        self.assertEqual(graph_control_prior.size(), 8)
 
 
 if __name__ == "__main__":

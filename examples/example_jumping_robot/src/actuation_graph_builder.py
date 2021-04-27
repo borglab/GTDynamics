@@ -36,11 +36,11 @@ class ActuationGraphBuilder:
         self.prior_time_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
         self.prior_v_cost_model = noiseModel.Isotropic.Sigma(1, 0.001)  
 
-        self.gas_law_model = noiseModel.Isotropic.Sigma(1, 0.0001)  
-        self.mass_rate_model = noiseModel.Isotropic.Sigma(1, 1e-5)  
-        self.volume_model = noiseModel.Isotropic.Sigma(1, 1e-7)  
-        self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, 1e-7)  
-        self.m_col_cost_model = noiseModel.Isotropic.Sigma(1, 1e-7)  
+        self.gas_law_model = noiseModel.Isotropic.Sigma(1, 1.0)  
+        self.mass_rate_model = noiseModel.Isotropic.Sigma(1, 1e-3)  
+        self.volume_model = noiseModel.Isotropic.Sigma(1, 1e-5)  
+        self.prior_m_cost_model = noiseModel.Isotropic.Sigma(1, 1e-6)  
+        self.m_col_cost_model = noiseModel.Isotropic.Sigma(1, 1e-6)  
         self.mass_rate_obj_model = noiseModel.Isotropic.Sigma(1, 1.0)
 
     def source_dynamics_graph(self, jr: JumpingRobot, k: int) -> NonlinearFactorGraph:
@@ -49,7 +49,7 @@ class ActuationGraphBuilder:
         P_s_key = Actuator.SourcePressureKey(k)
         V_s_key = Actuator.SourceVolumeKey()
         graph = NonlinearFactorGraph()
-        graph.add(gtd.GasLawFactor(P_s_key, V_s_key, m_s_key, jr.gas_constant))
+        graph.add(gtd.GasLawFactor(P_s_key, V_s_key, m_s_key, self.gas_law_model, jr.gas_constant))
         return graph
     
     def actuator_dynamics_graph(self, jr: JumpingRobot, actuator: Actuator, k: int) -> NonlinearFactorGraph:
@@ -110,12 +110,46 @@ class ActuationGraphBuilder:
         """ Create a factor graph containing all actuation dynamics constraints at step k. """
         graph = self.source_dynamics_graph(jr, k)
         for actuator in jr.actuators:
-            graph.add(self.actuator_dynamics_graph(jr, actuator, k))
+            graph.push_back(self.actuator_dynamics_graph(jr, actuator, k))
+            graph.push_back(self.mass_flow_graph(jr, actuator, k))
         return graph
 
-    def collocation_graph(self, jr: JumpingRobot, step_phases: list) -> NonlinearFactorGraph:
+    def prior_graph_actuator(self, jr, actuator, values, k):
+        graph = NonlinearFactorGraph()
+        j = actuator.j
+        m_a_key = Actuator.MassKey(j, k)
+        m_a = values.atDouble(m_a_key)
+        graph.add(gtd.PriorFactorDouble(m_a_key, m_a, self.prior_m_cost_model))
+        return graph
+
+    def prior_graph_source(self, values, k):
+        graph = NonlinearFactorGraph()
+        m_s_key = Actuator.SourceMassKey(k)
+        m_s = values.atDouble(m_s_key)
+        graph.add(gtd.PriorFactorDouble(m_s_key, m_s, self.prior_m_cost_model))
+        V_s_key = Actuator.SourceVolumeKey()
+        V_s = values.atDouble(V_s_key)
+        graph.add(gtd.PriorFactorDouble(V_s_key, V_s, self.volume_model))
+        return graph
+
+    def prior_graph(self, jr, values, k):
+        """ Priors for actuation part. (m_a, m_s, V_s) """
+        graph = NonlinearFactorGraph()
+        for actuator in jr.actuators:
+            graph.push_back(self.prior_graph_actuator(jr, actuator, values, k))
+        graph.push_back(self.prior_graph_source(values, k))
+        return graph
+
+    def prior_graph_joint(self, values, j, k):
+        graph = NonlinearFactorGraph()
+        q_key = gtd.internal.JointAngleKey(j, k).key()
+        v_key = gtd.internal.JointVelKey(j, k).key()
+        graph.add(gtd.PriorFactorDouble(q_key, values.atDouble(q_key), self.prior_q_cost_model))
+        graph.add(gtd.PriorFactorDouble(v_key, values.atDouble(v_key), self.prior_v_cost_model))
+        return graph
+
+    def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation) -> NonlinearFactorGraph:
         """ Create a factor graph containing collocation constraints on actuation variables. """
-        collocation = gtd.CollocationScheme.Trapezoidal
         graph = NonlinearFactorGraph()
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
@@ -141,8 +175,9 @@ class ActuationGraphBuilder:
             # collocation on source mass
             m_s_prev_key = Actuator.SourceMassKey(k_prev)
             m_s_curr_key = Actuator.SourceMassKey(k_curr)
+            is_euler = collocation == gtd.CollocationScheme.Euler
             gtd.AddSourceMassCollocationFactor(graph, mdot_prev_keys,
                                                mdot_curr_keys, m_s_prev_key,
                                                m_s_curr_key, dt_key,
-                                               False, self.m_col_cost_model)
+                                               is_euler, self.m_col_cost_model)
         return graph

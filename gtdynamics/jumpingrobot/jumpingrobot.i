@@ -87,4 +87,8 @@ void AddTimeCollocationFactor(
   gtsam::Key t_prev_key, gtsam::Key t_curr_key, gtsam::Key dt_key,
   const gtsam::noiseModel::Base *cost_model);
 
+void AddJumpGuardFactor(
+  gtsam::NonlinearFactorGraph @graph, gtsam::Key wrench_key,
+  const gtsam::noiseModel::Base *cost_model);
+
 }  // namespace gtdynamics

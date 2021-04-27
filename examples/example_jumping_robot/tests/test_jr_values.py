@@ -31,6 +31,23 @@ class TestJRValues(unittest.TestCase):
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
+        self.controls = JumpingRobot.create_controls()
+
+    def test_init_config_values(self):
+        """ Test values size of initial config. """
+        # m_a: 4
+        # m_s, V_s, P_s: 3
+        # torso pose, twist: 2
+        # q: 6
+        # v: 6
+        # time: 1
+        values = JRValues.init_config_values(self.jr)
+        self.assertEqual(values.size(), 22)
+
+    def test_control_values(self):
+        """ Test values size of controls. """
+        values = JRValues.control_values(self.jr, self.controls)
+        self.assertEqual(values.size(), 8)
 
     def test_compute_mass_flow_convergence(self):
         """ Test computation of air mass flow, which should converge. """

@@ -10,6 +10,7 @@
 """
 
 import gtdynamics as gtd
+import gtsam
 from gtsam import noiseModel, NonlinearFactorGraph
 import numpy as np
 
@@ -27,6 +28,7 @@ class RobotGraphBuilder:
 
     def __init__(self):
         self.graph_builder = self.construct_graph_builder()
+        self.force_cost_model = noiseModel.Isotropic.Sigma(1, 1)
 
     @staticmethod
     def construct_graph_builder() -> gtd.DynamicsGraph:
@@ -76,7 +78,36 @@ class RobotGraphBuilder:
                                                 self.graph_builder.opt().t_cost_model))
         return graph
 
-    def collocation_graph(self, jr: JumpingRobot, step_phases: list):
+    def transition_dynamics_graph(self, prev_jr, new_jr, k):
+        """ dynamics graph on transition node. """
+        graph = self.dynamics_graph(prev_jr, k)
+
+        # enforce ground force to be 0
+        i = prev_jr.robot.link("ground").id()
+        j_l = prev_jr.robot.joint("foot_l").id()
+        j_r = prev_jr.robot.joint("foot_r").id()
+        ground_wrench_key_l = gtd.internal.WrenchKey(i, j_l, k).key()
+        ground_wrench_key_r = gtd.internal.WrenchKey(i, j_r, k).key()
+        gtd.AddJumpGuardFactor(graph, ground_wrench_key_l, self.force_cost_model)
+        gtd.AddJumpGuardFactor(graph, ground_wrench_key_r, self.force_cost_model)
+        return graph
+
+    def prior_graph(self, jr, values, k):
+        """ Add priors specifying initial configuration of robot frame. """
+        torso_i = jr.robot.link("torso").id()
+        torso_pose_key = gtd.internal.PoseKey(torso_i, k).key()
+        torso_twist_key = gtd.internal.TwistKey(torso_i, k).key()
+        torso_pose = gtd.Pose(values, torso_i, k)
+        torso_twist = gtd.Twist(values, torso_i, k)
+
+        graph = NonlinearFactorGraph()
+        graph.add(gtsam.PriorFactorPose3(torso_pose_key, torso_pose,
+                                         self.graph_builder.opt().p_cost_model))
+        graph.add(gtd.PriorFactorVector6(torso_twist_key,
+                                         torso_twist, self.graph_builder.opt().bv_cost_model))
+        return graph
+
+    def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation):
         """ Create a factor graph containing collocation constraints.
             - For ground phase, only collocation on the torso link, which is
                 enough to determine the constraints for the next step.
@@ -85,7 +116,6 @@ class RobotGraphBuilder:
             - TODO(yetong): For single leg contact, collocation on all joints
         """
         graph = NonlinearFactorGraph()
-        collocation = gtd.CollocationScheme.Trapezoidal
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
             k_prev = time_step
@@ -101,7 +131,7 @@ class RobotGraphBuilder:
                     q_col_cost_model = self.graph_builder.opt().q_col_cost_model
                     v_col_cost_model = self.graph_builder.opt().v_col_cost_model
                     graph.push_back(self.graph_builder.jointMultiPhaseCollocationFactors(
-                        j, k_curr, phase, collocation))
+                        j, k_prev, phase, collocation))
 
             # collocation on torso link
             link = jr.robot.link("torso")
@@ -114,12 +144,20 @@ class RobotGraphBuilder:
             twistaccel_curr_key = gtd.internal.TwistAccelKey(i, k_curr).key()
 
             pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
-            graph.add(gtd.TrapezoidalPoseColloFactor(
-                pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
-                dt_key, pose_col_cost_model))
             twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
-            graph.add(gtd.TrapezoidalPoseColloFactor(
-                twist_prev_key, twist_curr_key, twistaccel_prev_key,
-                twistaccel_curr_key, dt_key, twist_col_cost_model))
+            if collocation == gtd.CollocationScheme.Trapezoidal:
+                graph.add(gtd.TrapezoidalPoseColloFactor(
+                    pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
+                    dt_key, pose_col_cost_model))
+                graph.add(gtd.TrapezoidalTwistColloFactor(
+                    twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                    twistaccel_curr_key, dt_key, twist_col_cost_model))
+            else:
+                graph.add(gtd.EulerPoseColloFactor(
+                    pose_prev_key, pose_curr_key, twist_prev_key,
+                    dt_key, pose_col_cost_model))
+                graph.add(gtd.EulerTwistColloFactor(
+                    twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                    dt_key, twist_col_cost_model))
 
         return graph

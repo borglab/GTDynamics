@@ -147,6 +147,35 @@ TEST(ValveControlFactor, Factor) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
 }
 
+
+TEST(ValveControlFactor, Fail) {
+  double t = 0.0;
+  double to = 0.0;
+  double tc = 1.0;
+  double mdot = 0.005350;
+  double true_mdot = 0.002675;
+  double ct = 1.0e-3;
+
+  ValveControlFactor factor(example::t_key, example::to_key, example::tc_key, example::mdot_key, example::true_mdot_key,
+                            example::cost_model, ct);
+
+  Vector1 actual_errors, expected_errors;
+
+  actual_errors = factor.evaluateError(t, to, tc, mdot, true_mdot);
+  expected_errors << -0.0;
+
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
+  // Make sure linearization is correct
+  Values values;
+  values.insert(example::t_key, t);
+  values.insert(example::to_key, to);
+  values.insert(example::tc_key, tc);
+  values.insert(example::true_mdot_key, true_mdot);
+  values.insert(example::mdot_key, mdot);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
+}
+
 /* main function */
 int main() {
   TestResult tr;

@@ -91,7 +91,7 @@ def visualize_jr_trajectory(values, jr, num_steps, step=1):
     def animate(i):
         update_jr_frame(ax, values, jr, i)
     frames = np.arange(0, num_steps, step)
-    FuncAnimation(fig, animate, frames=frames, interval=10)
+    ani = FuncAnimation(fig, animate, frames=frames, interval=10)
     plt.show()
 
 
