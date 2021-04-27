@@ -44,11 +44,11 @@ Pose3 ScrewJointBase::parentTchild(
     gtsam::Matrix6 exp_H_Sq;
     Vector6 Sq = cScrewAxis_ * q;
     Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
-    Pose3 pMc = pMc_.compose(exp);  // derivative in exp is identity!
+    Pose3 pMc = pMccom_.compose(exp);  // derivative in exp is identity!
     *pMc_H_q = exp_H_Sq * cScrewAxis_;
     return pMc;
   } else {
-    return pMc_ * Pose3::Expmap(cScrewAxis_ * q);
+    return pMccom_ * Pose3::Expmap(cScrewAxis_ * q);
   }
 }
 

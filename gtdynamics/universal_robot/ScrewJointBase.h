@@ -77,8 +77,8 @@ class ScrewJointBase : public JointTyped {
                  const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
       : JointTyped(id, name, wTj, parent_link, child_link, parameters),
         axis_(axis),
-        pScrewAxis_(-jTp_.inverse().AdjointMap() * jScrewAxis),
-        cScrewAxis_(jTc_.inverse().AdjointMap() * jScrewAxis) {}
+        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
+        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::ScrewAxis; }
