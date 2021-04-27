@@ -307,8 +307,9 @@ class ContactGoal {
 
 class Kinematics {
   Kinematics(const gtdynamics::Robot &robot);
-  template <CONTEXT={gtdynamics::Slice, gtdynamics::Interval}> 
-  gtsam::Values inverse(const CONTEXT &context,
+  gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values inverse(const gtdynamics::Interval interval,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
