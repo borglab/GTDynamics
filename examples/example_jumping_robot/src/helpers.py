@@ -10,6 +10,7 @@
 """
 
 import gtsam
+import numpy as np
 
 def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False):
     """ insert values, skip duplicate keys
@@ -27,3 +28,11 @@ def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False)
             else:
                 new_values.erase(key)
     values.insert(new_values)
+
+
+# def interpolate_pressures(times: np.array) -> np.array:
+#     [0, 0.1, 0.2]
+#     k x 5 [[100, 10, 10, 10, 10], [], ]
+
+
+#     [k, 5, 2, 2]

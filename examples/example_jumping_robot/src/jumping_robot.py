@@ -113,6 +113,10 @@ class JumpingRobot:
         return JumpingRobot(self.yaml_file_path, self.init_config, phase)
 
     @staticmethod
+    def MarkerKey (link_idx, marker_idx, k):
+        return gtd.DynamicsSymbol.LinkJointSymbol('m', link_idx, marker_idx, k).key()
+
+    @staticmethod
     def load_file(yaml_file_path: str):
         """ Load jumping robot params from yaml file. """
         with open(yaml_file_path) as file:
@@ -391,3 +395,20 @@ class JumpingRobot:
                                                     init_vels, P_s_0, foot_dist)
         return init_config
 
+    @staticmethod
+    def marker_locations():
+        ''' Get (relative) marker locations from link poses '''
+        locations = [[[-0.071,  -0.1,    0], [-0.071,    0.1,    0]], # switched y/z
+                     [[-0.038,  -0.1,    0], [-0.038,    0.1,    0]], # switched y/z
+                     [[     0,  0.15,    0], [     0,  -0.15,    0]], # updated for 30-cm hip marker spacing
+                     [[-0.038,   0.1,    0], [-0.038,   -0.1,    0]], # switched y/z
+                     [[-0.071,   0.1,    0], [-0.071,   -0.1,    0]]] # switched y/z
+        return locations
+
+    @staticmethod
+    def CalibrationKey():
+        return gtd.DynamicsSymbol.SimpleSymbol('K', 0).key()
+
+    @staticmethod
+    def CameraPoseKey():
+        return gtd.DynamicsSymbol.SimpleSymbol('c', 0).key()

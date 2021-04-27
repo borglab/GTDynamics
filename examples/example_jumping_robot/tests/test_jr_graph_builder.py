@@ -119,11 +119,15 @@ class TestJRGraphBuilder(unittest.TestCase):
 
     def test_sys_id_graph_size(self):
         """ Test system id graph size of 1 time step. """
-        graph = self.jr_graph_builder.sys_id_graph(self.jr, 0)
+        marker_locations = JumpingRobot.marker_locations()
+        pixels_all_frames = np.zeros((1, 5, 2, 2))
+        pressure_measures_all_frames = [[0, 0, 0, 0, 0]]
 
-        # markers: 10
+        graph = self.jr_graph_builder.sys_id_graph(self.jr, marker_locations, pixels_all_frames, pressure_measures_all_frames)
+
+        # markers: 20
         # pressures: 5
-        self.assertEqual(graph.size(), 15)
+        self.assertEqual(graph.size(), 25)
 
 if __name__ == "__main__":
     unittest.main()

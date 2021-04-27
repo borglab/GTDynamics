@@ -35,6 +35,9 @@ class JRGraphBuilder:
         """Initialize the graph builder, specify all noise models."""
         self.robot_graph_builder = RobotGraphBuilder()
         self.actuation_graph_builder = ActuationGraphBuilder()
+        self.model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01) # (m) 0.01
+        self.model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4) # (pixels) maybe increase
+        self.pressure_meas_model = gtsam.noiseModel.Isotropic.Sigma(1, 10)
 
     def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation):
         """ Create a factor graph containing collocation constraints. """
@@ -149,6 +152,57 @@ class JRGraphBuilder:
         return graph
 
 
-    def sys_id_graph(self, jr, k):
-        """ Creates system id graph for the kth step. """
+
+    def step_pixel_meas_graph(self, jr, k, marker_locations, pixel_frame):
+        """ Creates pixel measurement graph for the kth step. """
+        graph = NonlinearFactorGraph()
+
+        for link in jr.robot.links():
+            if link.name() == "ground":
+                continue
+            i = link.id()
+            markers_i = marker_locations[i-1]
+            link_pose_key = gtd.internal.PoseKey(i, k).key()
+           
+            for idx_marker in range(len(markers_i)):
+                marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
+                marker_location = np.array(markers_i[idx_marker])
+                graph.push_back(gtd.PosePointFactor(
+                    link_pose_key, marker_key, self.model_marker, marker_location))
+
+                cam_pose_key = JumpingRobot.CameraPoseKey()
+                cal_key = JumpingRobot.CalibrationKey()
+                pixel_meas = pixel_frame[i-1][idx_marker]
+                graph.push_back(gtd.CustomProjectionFactor(
+                    pixel_meas, self.model_projection, cam_pose_key, marker_key, cal_key)) 
+        return graph
+
+
+    def step_pressure_meas_graph(self, jr, k, step_pressure_measures):
+        """ Create pressure measurement factors of a time step. """
+        graph = NonlinearFactorGraph()
+
+        for actuator in jr.actuators:
+            j = actuator.j
+            pressure_key = Actuator.PressureKey(j, k)
+            pressure = step_pressure_measures[j]
+            graph.add(gtd.PriorFactorDouble(pressure_key, pressure, self.pressure_meas_model))
         
+        source_pressure_key = Actuator.SourcePressureKey(k)
+        source_pressure = step_pressure_measures[0]
+        graph.add(gtd.PriorFactorDouble(source_pressure_key, source_pressure, self.pressure_meas_model))
+        return graph
+
+
+    def sys_id_graph(self, jr, marker_locations, pixels_all_frames, pressure_measures_all_frames):
+        """ System identification factors for the trajectory. """
+        graph = NonlinearFactorGraph()
+
+        for k in range(len(pressure_measures_all_frames)):
+            pixel_meas = pixels_all_frames[k]
+            pressure_measures = pressure_measures_all_frames[k]
+            graph.push_back(self.step_pixel_meas_graph(jr, k, marker_locations, pixel_meas))
+            print(graph.size())
+            graph.push_back(self.step_pressure_meas_graph(jr, k, pressure_measures))
+            print(graph.size())
+        return graph
