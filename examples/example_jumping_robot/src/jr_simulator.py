@@ -199,7 +199,7 @@ class JRSimulator:
         results = optimizer.optimize()
 
         # Check if optimization converges.
-        if (graph.error(results) > 1e-5):
+        if (graph.error(results) > 1e-4):
             for f_idx in range(graph.size()):
                 factor = graph.at(f_idx)
                 print()
@@ -409,22 +409,19 @@ def example_simulate_ICRA():
                    q_hip - np.pi/2 + angle_offset,
                    q_knee,
                    q_foot - angle_offset]
-    # rest_angles = np.zeros(6)
     init_angles = rest_angles
 
-    print(init_angles)
-
+    P_s_0 = 65 * 6894.76/1000
     init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
                                                   rest_angles, init_angles,
-                                                  init_vels, foot_dist)
+                                                  init_vels, P_s_0, foot_dist)
     num_steps = 100
     dt = 0.005
     jr_simulator = JRSimulator(yaml_file_path, init_config)
 
     Tos = [0, 0, 0, 0]
     Tcs = [1, 1, 1, 1]
-    P_s_0 = 65 * 6894.76/1000
-    controls = JumpingRobot.create_controls(Tos, Tcs, P_s_0)
+    controls = JumpingRobot.create_controls(Tos, Tcs)
 
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
     visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=2)
