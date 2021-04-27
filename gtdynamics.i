@@ -305,11 +305,15 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
-template <CONTEXT={gtdynamics::Slice, gtdynamics::Phase}> 
 class Kinematics {
   Kinematics(const gtdynamics::Robot &robot);
+  template <CONTEXT={gtdynamics::Slice, gtdynamics::Interval}> 
   gtsam::Values inverse(const CONTEXT &context,
                         const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values
+  interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::ContactGoals &contact_goals1,
+              const gtdynamics::ContactGoals &contact_goals2) const;
 };
 
 /********************** dynamics graph **********************/
@@ -733,7 +737,15 @@ class Simulator {
 class Slice {
   Slice();
   Slice(size_t k);
-  size_t k() const;
+  size_t k;
+};
+
+#include <gtdynamics/utils/Interval.h>
+class Interval {
+  Interval();
+  Interval(size_t k_start, size_t k_end);
+  size_t k_start;
+  size_t k_end;
 };
 
 #include <gtdynamics/utils/Phase.h>
