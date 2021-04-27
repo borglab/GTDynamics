@@ -32,8 +32,8 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model,
-                          size_t t);
+                          const gtsam::noiseModel::Base* model, size_t t = 0,
+                          const gtsam::Pose3 &l2Tp = gtsam::Pose3());
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);

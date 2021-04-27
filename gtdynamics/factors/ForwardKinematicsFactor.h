@@ -53,16 +53,19 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
    * @param joint_angles    gtsam::Values with joint angles for relevant joints.
    * @param model           The noise model for this factor.
    * @param t               The integer time index
+   * @param lTp             Optional transform for a point on the link in the
+   * link's reference frame at which to compute FK.
    */
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
                           const Robot &robot,
                           const std::string &start_link_name,
                           const std::string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::SharedNoiseModel &model, size_t t = 0)
+                          const gtsam::SharedNoiseModel &model, size_t t = 0,
+                          const gtsam::Pose3 &lTp = gtsam::Pose3())
       : Base(bTl1_key, bTl2_key,
              forwardKinematics(robot, joint_angles, start_link_name,
-                               end_link_name, t),
+                               end_link_name, t, lTp),
              model) {}
 
   virtual ~ForwardKinematicsFactor() {}
@@ -76,12 +79,15 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
    * @param start_link_name String for the start link in the kinematic chain.
    * @param end_link_name String for the end link in the kinematic chain.
    * @param t The time index at which to compute the forward kinematics.
+   * @param lTp Transform from end link reference frame to point at which the
+   * forward kinematics should be enforced.
    * @return relative pose of the end link in the start link's frame.
    */
   gtsam::Pose3 forwardKinematics(const Robot &robot,
                                  const gtsam::Values &known_values,
                                  const std::string &start_link_name,
-                                 const std::string &end_link_name, size_t t) {
+                                 const std::string &end_link_name, size_t t,
+                                 const gtsam::Pose3 &l2Tp) {
     gtsam::Values values = known_values;
     for (auto &&joint : robot.joints()) {
       InsertJointVel(&values, joint->id(), 0.0);
@@ -92,7 +98,8 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
     auto end_link = robot.link(end_link_name);
     gtsam::Pose3 bTl1 = Pose(result, start_link->id(), t);
     gtsam::Pose3 bTl2 = Pose(result, end_link->id(), t);
-    return bTl1.between(bTl2);
+    gtsam::Pose3 bTp = bTl2 * l2Tp;
+    return bTl1.between(bTp);
   }
 
   /// print contents
