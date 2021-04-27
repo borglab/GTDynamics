@@ -138,6 +138,40 @@ TEST(ForwardKinematicsFactor, ArbitraryTime) {
   EXPECT(assert_equal(expected, actual));
 }
 
+TEST(ForwardKinematicsFactor, ContactPoint) {
+  Values values;
+
+  // Lay the robot arm flat
+  InsertJointAngle(&values, 1, M_PI_2);
+  Values values_for_jacobians;
+
+  auto base_link = robot.links()[0]->name();
+  auto end_link = robot.links()[2]->name();
+
+  Pose3 lTp(gtsam::Rot3(), gtsam::Point3(0, 0, 0.75));
+
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link, values,
+                                 kModel, 0, lTp);
+
+  Pose3 bTl1(Rot3(), Point3(0, 0, 0.1));
+  // We rotated the last link by 90 degrees
+  // Since the joint is originally at 0.8, the CoM of link_2 will have z=0.8,
+  // and the extra 0.3 moves to the x-axis.
+  Pose3 bTl2(Rot3(0, 0, 1,  //
+                  0, 1, 0,  //
+                  -1, 0, 0),
+             Point3(0.3+0.75, 0, 0.8));
+  Vector actual_error = factor.evaluateError(bTl1, bTl2);
+  Vector6 expected_error = Z_6x1;
+  // Check end pose error
+  EXPECT(assert_equal(expected_error, actual_error, 1e-9));
+
+  // Check Jacobians
+  InsertPose(&values_for_jacobians, i1, bTl1);
+  InsertPose(&values_for_jacobians, i2, bTl2);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values_for_jacobians, 1e-7, 1e-5);
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
