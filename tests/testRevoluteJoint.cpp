@@ -180,7 +180,9 @@ TEST(RevoluteJoint, ForwardKinematics) {
   InsertJointAngle(&joint_angles, j1->id(), 0.0);
 
   auto fk = robot.forwardKinematics(joint_angles, 0, std::string("l1"));
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), Pose(fk, l2->id())));
+
+  Pose3 expected_T2_com(Rot3(), Point3(0, 0, 3));
+  EXPECT(assert_equal(expected_T2_com, Pose(fk, l2->id())));
 }
 
 int main() {
