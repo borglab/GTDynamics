@@ -276,13 +276,7 @@ class JRSimulator:
             (gtsam.Values, list): (values for all steps, list of phases for
                                    each step)
         """
-<<<<<<< HEAD
-
-        # initial setting
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
-=======
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config, phase=0)
->>>>>>> feature/jr_calibration
         phase = 0
         step_phases = []
         values = JRValues.init_config_values(self.jr)
@@ -381,8 +375,6 @@ def example_simulate():
 
     # make_plot(values, jr_simulator.jr, num_steps)
     visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
-<<<<<<< HEAD
-=======
 
 
 def degree_to_rad(angle):
@@ -437,7 +429,6 @@ def example_simulate_ICRA():
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
     visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=2)
     # visualize_jr(values, jr_simulator.jr, 3)
->>>>>>> feature/jr_calibration
 
 
 if __name__ == "__main__":
