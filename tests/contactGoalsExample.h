@@ -8,7 +8,7 @@
 /**
  * @file  contactGoalsExample.h
  * @brief Examples for contact goals for Vision60 robot.
- * @author: Frank Dellaert, Yetong Zhang
+ * @author Frank Dellaert, Yetong Zhang
  */
 
 #pragma once

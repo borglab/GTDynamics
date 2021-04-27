@@ -22,6 +22,13 @@
 
 namespace gtdynamics {
 
+/**
+ * Desired world position for a given point on some link.
+ * 
+ * This simple struct stores a `point_on_link`, which specifies a 3D
+ * point in the link's CoM frame, and a `goal_point` in world coordinate frames.
+ * The goal is satisfied iff `point_on_link.predict(values, k) == goal_point`.
+ */
 struct ContactGoal {
   PointOnLink point_on_link;  ///< In COM.
   gtsam::Point3 goal_point;   ///< In world frame.
@@ -43,7 +50,7 @@ struct ContactGoal {
   void print(const std::string& s) const;
 
   /**
-   * @fn Check that the contact goal has been achived for given values.
+   * @fn Check that the contact goal has been achieved for given values.
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
    * @param tol tolerance in 3D (default 1e-9).

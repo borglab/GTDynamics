@@ -24,7 +24,7 @@ using std::string;
 
 #include "contactGoalsExample.h"
 
-TEST(Phase, inverse_kinematics) {
+TEST(Phase, InverseKinematics) {
   // TODO(frank): create test for Phase, derived from interval?
 }
 

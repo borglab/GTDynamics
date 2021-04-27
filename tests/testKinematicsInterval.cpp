@@ -26,12 +26,12 @@ using std::string;
 
 #include "contactGoalsExample.h"
 
-TEST(Interval, inverse_kinematics) {
+TEST(Interval, InverseKinematics) {
   // Load robot and establish contact/goal pairs
   // TODO(frank): the goals for contact will differ for a Interval vs Slice.
   using namespace contact_goals_example;
 
-  // Create a interval.
+  // Create an interval.
   const size_t num_time_steps = 5;
   const Interval interval(0, num_time_steps - 1);
 

@@ -23,7 +23,7 @@ using gtsam::Point3;
 using std::map;
 using std::string;
 
-TEST(Phase, inverse_kinematics) {
+TEST(Phase, InverseKinematics) {
   // Load robot and establish contact/goal pairs
   using namespace contact_goals_example;
 
