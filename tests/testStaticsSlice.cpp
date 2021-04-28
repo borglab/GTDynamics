@@ -14,6 +14,7 @@
 #include <CppUnitLite/TestHarness.h>
 // #include <gtdynamics/statics/Statics.h>
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/statics/StaticWrenchFactor.h>
 #include <gtdynamics/utils/Slice.h>
 
 #include "contactGoalsExample.h"
@@ -26,14 +27,21 @@ using std::string;
 
 /// Noise models etc specific to Statics class
 struct StaticsParameters : public KinematicsParameters {
+  boost::optional<gtsam::Vector3> gravity;
+
   using Isotropic = gtsam::noiseModel::Isotropic;
-  StaticsParameters() {}
+  const gtsam::SharedNoiseModel fs_cost_model;  // statics cost model
+
+  /// Constructor with default arguments
+  StaticsParameters(
+      const boost::optional<gtsam::Vector3>& gravity = boost::none)
+      : gravity(gravity), fs_cost_model(Isotropic::Sigma(6, 1e-4)) {}
 };
 
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
 class Statics : public Kinematics {
-  Robot robot_;
-  StaticsParameters p_;
+ protected:
+  StaticsParameters p_;  // TODO(frank): stored twice w different type?
 
  public:
   /**
@@ -41,13 +49,45 @@ class Statics : public Kinematics {
    */
   Statics(const Robot& robot,
           const StaticsParameters& parameters = StaticsParameters())
-      : Kinematics(robot, parameters) {}
+      : Kinematics(robot, parameters), p_(parameters) {}
+
+  /**
+   * Create graph with only static balance factors.
+   * TODO(frank): if we inherit, should we have *everything below us?
+   * @param slice Slice instance.
+   */
+  gtsam::NonlinearFactorGraph graph(const Slice& slice) {
+    gtsam::NonlinearFactorGraph graph;
+    const auto k = slice.k;
+
+    for (auto&& link : robot_.links()) {
+      int i = link->id();
+      if (!link->isFixed()) {
+        const auto& connected_joints = link->joints();
+        std::vector<DynamicsSymbol> wrench_keys;
+
+        // Add wrench keys for joints.
+        for (auto&& joint : connected_joints)
+          wrench_keys.push_back(internal::WrenchKey(i, joint->id(), k));
+
+        // add wrench factor for link
+        graph.emplace_shared<StaticWrenchFactor>(
+            wrench_keys, internal::PoseKey(link->id(), k), p_.fs_cost_model,
+            link->mass(), p_.gravity);
+      }
+    }
+
+    return graph;
+  }
 
   /**
    * Solve for wrenches given kinematics configuration.
+   * @param slice Slice instance.
+   * @param configuration A known kinematics configuration.
    */
   gtsam::Values solve(const Slice& slice, const gtsam::Values& configuration) {
     gtsam::Values result;
+
     return result;
   }
 };

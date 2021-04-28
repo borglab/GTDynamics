@@ -24,7 +24,7 @@ namespace gtdynamics {
 
 /**
  * Desired world position for a given point on some link.
- * 
+ *
  * This simple struct stores a `point_on_link`, which specifies a 3D
  * point in the link's CoM frame, and a `goal_point` in world coordinate frames.
  * The goal is satisfied iff `point_on_link.predict(values, k) == goal_point`.
@@ -87,6 +87,7 @@ struct KinematicsParameters : public OptimizationParameters {
 
 /// All things kinematics, zero velocities/twists, and no forces.
 class Kinematics {
+ protected:
   Robot robot_;
   KinematicsParameters p_;
 
