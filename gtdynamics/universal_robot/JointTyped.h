@@ -59,12 +59,12 @@ public:
   ///@{
 
   /**
-   * Abstract method. Return the pose of the child link in the parent link
-   * frame, given the joint coordinate.
+   * Abstract method. Return the pose of the child link CoM in the parent link
+   * CoM frame, given the joint coordinate.
    */
-  virtual Pose3
-  parentTchild(JointCoordinate q,
-               gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+  virtual Pose3 parentTchild(
+      JointCoordinate q,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /**
    * Abstract method. Return the pose of the parent link in the child link
@@ -155,8 +155,8 @@ public:
   ///@{
 
   /**
-   * Return the pose of the child link in the parent link frame, given a Values
-   * object containing the joint coordinate.
+   * Return the pose of the child link CoM in the parent link CoM frame, given a
+   * Values object containing the joint coordinate.
    */
   Pose3 parentTchild(
       const gtsam::Values &q, size_t t = 0,

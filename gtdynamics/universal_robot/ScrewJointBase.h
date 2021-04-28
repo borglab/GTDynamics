@@ -46,17 +46,17 @@ class ScrewJointBase : public JointTyped {
  protected:
   gtsam::Vector3 axis_;
 
-  // Screw axis in parent and child COM frames.
+  // Screw axis in parent and child CoM frames.
   Vector6 pScrewAxis_;
   Vector6 cScrewAxis_;
 
  public:
-  /// Return transform of child link com frame w.r.t parent link com frame
+  /// Return transform of child link CoM frame w.r.t parent link CoM frame
   Pose3 parentTchild(double q, gtsam::OptionalJacobian<6, 1> pMc_H_q =
                                    boost::none) const override;
 
  protected:
-  /// Return transform of parent link com frame w.r.t child link com frame
+  /// Return transform of parent link CoM frame w.r.t child link CoM frame
   Pose3 childTparent(double q, gtsam::OptionalJacobian<6, 1> cMp_H_q =
                                    boost::none) const override;
 

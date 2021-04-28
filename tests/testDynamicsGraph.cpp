@@ -132,9 +132,9 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
 // ========================== OLD_STYLE BELOW ===============================
 
 // Test forward dynamics with gravity of a four-bar linkage
-TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
+TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   // Load the robot from urdf file
-  using four_bar_linkage::robot;
+  using four_bar_linkage_pure::robot;
 
   Values known_values = zero_values(robot, 0);
   gtsam::Vector torques = (gtsam::Vector(4) << 1, 0, 1, 0).finished();
@@ -144,8 +144,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   }
 
   // build the dynamics factor graph
-  DynamicsGraph graph_builder(four_bar_linkage::gravity,
-                              four_bar_linkage::planar_axis);
+  DynamicsGraph graph_builder(four_bar_linkage_pure::gravity,
+                              four_bar_linkage_pure::planar_axis);
 
   gtsam::NonlinearFactorGraph prior_factors =
       graph_builder.forwardDynamicsPriors(robot, 0, known_values);
