@@ -7,7 +7,7 @@
 
 /**
  * @file  StaticWrenchFactor.cpp
- * @brief Wrench balance factor, common between forward and inverse dynamics.
+ * @brief Wrench balance factor for a stationary link.
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 

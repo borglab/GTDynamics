@@ -7,7 +7,7 @@
 
 /**
  * @file  StaticWrenchFactor.h
- * @brief Wrench balance factor, common between forward and inverse dynamics.
+ * @brief Wrench balance factor for a stationary link.
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
@@ -30,8 +30,9 @@
 namespace gtdynamics {
 
 /**
- * StaticWrenchFactor is an n-way nonlinear factor which enforces relation
- * between wrenches on this link
+ * StaticWrenchFactor is an n-way nonlinear factor which enforces that the sum
+ * of the gravity wrench and the external wrenches should be zero for a
+ * stationary link.
  */
 class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   using This = StaticWrenchFactor;
@@ -42,8 +43,11 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
  public:
   /**
    * Static wrench balance factor.
-   * @param mass Mass for this link
-   * @param gravity (optional) Create gravity wrench in link COM frame.
+   * @param wrench_keys Keys for unknown external wrenches.
+   * @param pose_key Key for link CoM pose.
+   * @param cost_model Cost model to regulate constraint.
+   * @param mass Mass for this link.
+   * @param gravity (optional) Gravity vector in world frame.
    */
   StaticWrenchFactor(
       const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
@@ -52,9 +56,9 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
 
  public:
   /**
-   * Evaluate wrench balance errors
+   * Evaluate TotalExternalWrench, which should be zero and is factor error.
    * @param values contains the pose and wrenches acting on the link.
-   * @param H Jacobians, in the order: pose, *wrenches
+   * @param H Jacobians, in the order: *wrenches, pose
    */
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
@@ -70,7 +74,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "wrench factor" << std::endl;
+    std::cout << s << "static wrench factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
