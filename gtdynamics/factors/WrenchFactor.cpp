@@ -43,21 +43,7 @@ Vector WrenchFactor::unwhitenedError(
     return Vector::Zero(this->dim());
   }
 
-  // transform gravity from base frame to link COM frame,
-  // to use unrotate function, have to convert gravity vector to a point
-  Vector6 gravity_wrench;
-  if (gravity_) {
-    const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
-    Matrix6 H_wTcom;
-    gravity_wrench =
-        GravityWrench(*gravity_, inertia_(3, 3), wTcom, H ? &H_wTcom : nullptr);
-    if (H) (*H)[2] = H_wTcom;
-  } else {
-    gravity_wrench = gtsam::Z_6x1;
-    if (H) (*H)[2] = gtsam::Z_6x6;
-  }
-
-  // Calculate resultant wrench, i.e. L&P Equation 8.48 (F = ma)
+  // Collect wrenches to implement L&P Equation 8.48 (F = ma)
   std::vector<Vector6> wrenches;
 
   // Coriolis forces.
