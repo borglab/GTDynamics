@@ -30,7 +30,7 @@ const Robot robot = gtdynamics::CreateRobotFromFile(
 Vector3 gravity(0, 0, -g);
 }  // namespace example
 
-TEST(WrenchFactor, Case1) {
+TEST(Statics, GravityWrench1) {
   using namespace example;
   const Pose3 wTcom(Rot3(), Point3(1, 0, 0));
   const double mass = robot.link("l1")->mass();
@@ -42,7 +42,7 @@ TEST(WrenchFactor, Case1) {
   EXPECT(assert_equal(numericalH, actualH, 1e-6));
 }
 
-TEST(WrenchFactor, Case2) {
+TEST(Statics, GravityWrench2) {
   using namespace example;
   const Pose3 wTcom(Rot3::Rx(M_PI_2), Point3(1, 0, 0));
   const double mass = robot.link("l2")->mass();
@@ -52,6 +52,19 @@ TEST(WrenchFactor, Case2) {
   Matrix6 numericalH = numericalDerivative11<Vector6, Pose3>(
       boost::bind(&GravityWrench, gravity, mass, _1, boost::none), wTcom);
   EXPECT(assert_equal(numericalH, actualH, 1e-6));
+}
+
+TEST(Statics, ResultantWrench) {
+  std::vector<Vector6> wrenches(2);
+  wrenches[0] << 1, 2, 3, 4, 5, 6;
+  wrenches[1] << 6, 5, 4, 3, 2, 1;
+  std::vector<Matrix> actualH(2);
+  EXPECT(assert_equal((Vector(6) << 7, 7, 7, 7, 7, 7).finished(),
+                      ResultantWrench(wrenches, actualH), 1e-6));
+  Matrix expected(6, 6);
+  expected.setIdentity();
+  EXPECT(assert_equal(expected, actualH[0], 1e-6));
+  EXPECT(assert_equal(expected, actualH[1], 1e-6));
 }
 
 int main() {

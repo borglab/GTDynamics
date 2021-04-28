@@ -31,4 +31,9 @@ gtsam::Vector6 GravityWrench(
     const gtsam::Vector3 &gravity, double mass, const gtsam::Pose3 &wTcom,
     gtsam::OptionalJacobian<6, 6> H_wTcom = boost::none);
 
+/// Calculate sum of wrenches with optional Jacobians (all identity!)
+gtsam::Vector6 ResultantWrench(
+    std::vector<gtsam::Vector6> wrenches,
+    boost::optional<std::vector<gtsam::Matrix> &> H = boost::none);
+
 }  // namespace gtdynamics

@@ -17,16 +17,18 @@
 
 namespace gtdynamics {
 
-gtsam::Vector6 GravityWrench(
-    const gtsam::Vector3 &gravity, double mass, const gtsam::Pose3 &wTcom,
-    gtsam::OptionalJacobian<6, 6> H_wTcom = boost::none) {
+using gtsam::Vector6;
+
+Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
+                      const gtsam::Pose3 &wTcom,
+                      gtsam::OptionalJacobian<6, 6> H_wTcom = boost::none) {
   // Transform gravity from base frame to link COM frame.
   gtsam::Matrix33 H_unrotate;
   const gtsam::Rot3 wRcom = wTcom.rotation();
   auto gravity_com = wRcom.unrotate(gravity, H_wTcom ? &H_unrotate : nullptr);
 
   // Compose wrench.
-  gtsam::Vector6 wrench;
+  Vector6 wrench;
   wrench << 0, 0, 0, mass * gravity_com;
 
   // Calculate derivatives if asked.
@@ -36,6 +38,18 @@ gtsam::Vector6 GravityWrench(
   }
 
   return wrench;
+}
+
+Vector6 ResultantWrench(std::vector<Vector6> wrenches,
+                        boost::optional<std::vector<gtsam::Matrix> &> H) {
+  Vector6 sum = gtsam::Z_6x1;
+  for (size_t i = 0; i < wrenches.size(); i++) {
+    sum += wrenches[i];
+    if (H) {
+      H->at(i) = gtsam::I_6x6;
+    }
+  }
+  return sum;
 }
 
 }  // namespace gtdynamics
