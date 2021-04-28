@@ -11,9 +11,9 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
-#include "gtdynamics/universal_robot/sdf_internal.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
+#include <fstream>
 #include <sdf/parser_urdf.hh>
 #include <sdf/sdf.hh>
 
@@ -22,8 +22,7 @@
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
-
-#include <fstream>
+#include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
 
@@ -53,7 +52,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose) {
+gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose) {
   const auto &rot = ignition_pose.Rot();
   const auto &pos = ignition_pose.Pos();
   return gtsam::Pose3(
@@ -142,7 +141,7 @@ JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
-                                "] not yet supported");
+                               "] not yet supported");
   }
   return joint;
 }

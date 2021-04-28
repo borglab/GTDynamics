@@ -34,7 +34,7 @@ DynamicsSymbol::DynamicsSymbol(const DynamicsSymbol& key)
 
 /* ************************************************************************* */
 DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                               unsigned char joint_idx, std::uint64_t t)
+                               unsigned char joint_idx, uint64_t t)
     : link_idx_(link_idx), joint_idx_(joint_idx), t_(t) {
   if (s.length() > 2) {
     throw std::runtime_error(
@@ -55,29 +55,27 @@ DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
 DynamicsSymbol DynamicsSymbol::LinkJointSymbol(const std::string& s,
                                                unsigned char link_idx,
                                                unsigned char joint_idx,
-                                               std::uint64_t t) {
+                                               uint64_t t) {
   return DynamicsSymbol(s, link_idx, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::JointSymbol(const std::string& s,
                                            unsigned char joint_idx,
-                                           std::uint64_t t) {
+                                           uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::LinkSymbol(const std::string& s,
-                                          unsigned char link_idx,
-                                          std::uint64_t t) {
+                                          unsigned char link_idx, uint64_t t) {
   return DynamicsSymbol(s, link_idx, kMax_uchar_, t);
 }
 
-DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s,
-                                            std::uint64_t t) {
+DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s, uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, kMax_uchar_, t);
 }
 
 /* ************************************************************************* */
-DynamicsSymbol::DynamicsSymbol(const Key& key) {  
+DynamicsSymbol::DynamicsSymbol(const Key& key) {
   c1_ = (unsigned char)((key & ch1_mask) >> (key_bits - ch1_bits));
   c2_ = (unsigned char)((key & ch2_mask) >> (key_bits - ch1_bits - ch2_bits));
   link_idx_ = (unsigned char)((key & link_mask) >> (time_bits + joint_bits));

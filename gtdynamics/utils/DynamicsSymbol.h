@@ -21,7 +21,7 @@ namespace gtdynamics {
 class DynamicsSymbol {
  protected:
   unsigned char c1_, c2_, link_idx_, joint_idx_;
-  std::uint64_t t_;
+  uint64_t t_;
 
  private:
   /**
@@ -33,7 +33,7 @@ class DynamicsSymbol {
    * @param[in] t         time step
    */
   DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                 unsigned char joint_idx, std::uint64_t t);
+                 unsigned char joint_idx, uint64_t t);
 
  public:
   /** Default constructor */
@@ -48,8 +48,7 @@ class DynamicsSymbol {
    */
   static DynamicsSymbol LinkJointSymbol(const std::string& s,
                                         unsigned char link_idx,
-                                        unsigned char joint_idx,
-                                        std::uint64_t t);
+                                        unsigned char joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only joint (e.g. joint angle).
@@ -59,7 +58,7 @@ class DynamicsSymbol {
    * @param[in] t         time step
    */
   static DynamicsSymbol JointSymbol(const std::string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
+                                    unsigned char joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only link (e.g. link pose).
@@ -69,7 +68,7 @@ class DynamicsSymbol {
    * @param[in] t         time step
    */
   static DynamicsSymbol LinkSymbol(const std::string& s, unsigned char link_idx,
-                                   std::uint64_t t);
+                                   uint64_t t);
 
   /**
    * Constructor for symbol related to neither joint or link (e.g. time).
@@ -77,7 +76,7 @@ class DynamicsSymbol {
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] t         time step
    */
-  static DynamicsSymbol SimpleSymbol(const std::string& s, std::uint64_t t);
+  static DynamicsSymbol SimpleSymbol(const std::string& s, uint64_t t);
 
   /**
    * Constructor that decodes an integer gtsam::Key
@@ -97,7 +96,7 @@ class DynamicsSymbol {
   inline unsigned char jointIdx() const { return joint_idx_; }
 
   /// Retrieve key index.
-  inline size_t time() const { return t_; }
+  inline uint64_t time() const { return t_; }
 
   /// Print.
   void print(const std::string& s = "") const;

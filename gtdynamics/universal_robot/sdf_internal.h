@@ -15,7 +15,6 @@
 
 #include <ignition/math/Pose3.hh>
 #include <sdf/sdf.hh>
-
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
@@ -47,7 +46,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link);
  * @param[in] name          name of the specified link
  * @param[in] sdf_file_path path to sdf file
  * @param[in] model_name    name of the robot
- * @return LinkSharedPtr 
+ * @return LinkSharedPtr
  */
 LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &name,
                           const std::string &sdf_file_path,
@@ -101,4 +100,4 @@ gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
  */
 gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint);
 
-} // namespace gtdynamics
+}  // namespace gtdynamics
