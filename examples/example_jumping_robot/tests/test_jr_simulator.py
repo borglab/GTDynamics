@@ -67,14 +67,17 @@ class TestJRSimulator(unittest.TestCase):
     def lm_optimize(self, graph, values):
         """ Run Levenberg-Marquardt optimization. """
         init_values = gtd.ExtractValues(values, graph.keys())
-        params = gtsam.LevenbergMarquardtParams()
-        params.setlambdaLowerBound(1e-20)
-        params.setlambdaUpperBound(1e20)
-        params.setVerbosityLM("SUMMARY")
-        params.setLinearSolverType("MULTIFRONTAL_QR")
+        # params = gtsam.LevenbergMarquardtParams()
+        # params.setlambdaLowerBound(1e-20)
+        # params.setlambdaUpperBound(1e20)
+        # params.setVerbosityLM("SUMMARY")
+        # # params.setLinearSolverType("MULTIFRONTAL_QR")
         # params.setLinearSolverType("SEQUENTIAL_QR")
-        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-        results = optimizer.optimize()
+        # optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
+        # results = optimizer.optimize()
+
+        results = gtd.optimize_LMQR(graph, init_values)
+
         return results
     
     def gn_optimize(self, graph, values):
@@ -153,25 +156,25 @@ class TestJRSimulator(unittest.TestCase):
     #     self.lm_optimize(graph, values)
 
 
-    def test_solving_actuator_cpp(self):
-        actuator = gtd.PneumaticActuator()
-        k = 0
-        prior_values = actuator.priorValues()
-        graph = gtsam.NonlinearFactorGraph()
-        graph.push_back(actuator.actuatorFactorGraph(k))
-        graph.push_back(actuator.actuatorPriorGraph(k, prior_values))
+    # def test_solving_actuator_cpp(self):
+    #     actuator = gtd.PneumaticActuator()
+    #     k = 0
+    #     prior_values = actuator.priorValues()
+    #     graph = gtsam.NonlinearFactorGraph()
+    #     graph.push_back(actuator.actuatorFactorGraph(k))
+    #     graph.push_back(actuator.actuatorPriorGraph(k, prior_values))
   
-        init_values = gtsam.Values()
-        init_values.insert(actuator.actuatorInitValues(k, prior_values))
+    #     init_values = gtsam.Values()
+    #     init_values.insert(actuator.actuatorInitValues(k, prior_values))
 
-        params = gtsam.LevenbergMarquardtParams()
-        # params.setlambdaLowerBound(1e-20)
-        # params.setlambdaUpperBound(1e20)
-        params.setVerbosityLM("SUMMARY")
-        # params.setLinearSolverType("MULTIFRONTAL_QR")
-        # params.setLinearSolverType("SEQUENTIAL_QR")
-        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-        results = optimizer.optimize()
+    #     params = gtsam.LevenbergMarquardtParams()
+    #     # params.setlambdaLowerBound(1e-20)
+    #     # params.setlambdaUpperBound(1e20)
+    #     params.setVerbosityLM("SUMMARY")
+    #     # params.setLinearSolverType("MULTIFRONTAL_QR")
+    #     # params.setLinearSolverType("SEQUENTIAL_QR")
+    #     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
+    #     results = optimizer.optimize()
 
     # def test_solving_actuator(self):
     #     """ Test solving dynamics factor graph for an actuator at a step. """
@@ -218,21 +221,22 @@ class TestJRSimulator(unittest.TestCase):
 
 
 
-    # def test_solving_robot_dynamics(self):
-    #     """ Create robot dynamics graph of one step, and solve it. """
-    #     sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
-    #     robot_graph_builder = self.jr_graph_builder.robot_graph_builder
-    #     init_config_values = JRValues.init_config_values(self.jr)
+    def test_solving_robot_dynamics(self):
+        """ Create robot dynamics graph of one step, and solve it. """
+        sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
+        robot_graph_builder = self.jr_graph_builder.robot_graph_builder
+        init_config_values = JRValues.init_config_values(self.jr)
 
-    #     graph = robot_graph_builder.dynamics_graph(self.jr, 0)
-    #     graph.push_back(robot_graph_builder.prior_graph(self.jr, init_config_values, 0))
-    #     prior_t_cost_model = robot_graph_builder.graph_builder.opt().prior_t_cost_model
-    #     for actuator in self.jr.actuators:
-    #         j = actuator.j
-    #         torque_key = gtd.internal.TorqueKey(j, 0).key()
-    #         graph.push_back(gtd.PriorFactorDouble(torque_key, 0, prior_t_cost_model))
+        graph = robot_graph_builder.dynamics_graph(self.jr, 0)
+        graph.push_back(robot_graph_builder.prior_graph(self.jr, init_config_values, 0))
+        prior_t_cost_model = robot_graph_builder.graph_builder.opt().prior_t_cost_model
+        for actuator in self.jr.actuators:
+            j = actuator.j
+            torque_key = gtd.internal.TorqueKey(j, 0).key()
+            graph.push_back(gtd.PriorFactorDouble(torque_key, 0, prior_t_cost_model))
         
-    #     self.gn_optimize(graph, sim_values)
+        gtd.DynamicsGraph.printGraph(graph)
+        self.lm_optimize(graph, sim_values)
 
     # def test_solving_step(self):
     #     """ Create dynamics graph of a single step, and solve it. """
@@ -242,7 +246,9 @@ class TestJRSimulator(unittest.TestCase):
     #     graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps)
     #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
 
-    #     self.gn_optimize(graph, sim_values)
+    #     gtd.DynamicsGraph.printGraph(graph)
+
+    #     self.lm_optimize(graph, sim_values)
 
 
     # def test_solving_onse_step_collocation(self):

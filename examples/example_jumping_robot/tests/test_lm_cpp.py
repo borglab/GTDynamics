@@ -27,14 +27,33 @@ class TestJRGraphBuilder(unittest.TestCase):
         init_values = gtsam.Values()
         init_values.insert(actuator.actuatorInitValues(k, prior_values))
 
-        params = gtsam.LevenbergMarquardtParams()
-        params.setVerbosityLM("SUMMARY")
-        params.setLinearSolverType("MULTIFRONTAL_QR")
-        # params.setLinearSolverType("SEQUENTIAL_QR")
-        optimizer = gtsam.LevenbergMarquardtOptimizer(
-            graph, init_values, params)
-        results = optimizer.optimize()
+        results = gtd.optimize_LMQR(graph, init_values)
 
+        # params = gtsam.LevenbergMarquardtParams()
+        # params.setVerbosityLM("SUMMARY")
+        # params.setLinearSolverType("MULTIFRONTAL_QR")
+        # # params.setLinearSolverType("SEQUENTIAL_QR")
+        # optimizer = gtsam.LevenbergMarquardtOptimizer(
+        #     graph, init_values, params)
+        # results = optimizer.optimize()
+
+    # def test_solve_simple(self):
+    #     graph = gtsam.NonlinearFactorGraph()
+    #     values = gtsam.Values()
+    #     model = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+
+    #     graph.add(gtd.PriorFactorDouble(1, 0.1, model))
+    #     graph.add(gtd.PriorFactorDouble(2, 0.1, model))
+    #     values.insertDouble(1, 0.1)
+    #     values.insertDouble(2, 0.1)
+
+    #     params = gtsam.LevenbergMarquardtParams()
+    #     params.setVerbosityLM("SUMMARY")
+    #     params.setLinearSolverType("MULTIFRONTAL_QR")
+    #     # params.setLinearSolverType("SEQUENTIAL_QR")
+    #     optimizer = gtsam.LevenbergMarquardtOptimizer(
+    #         graph, values, params)
+    #     results = optimizer.optimize()
 
 if __name__ == "__main__":
     unittest.main()
