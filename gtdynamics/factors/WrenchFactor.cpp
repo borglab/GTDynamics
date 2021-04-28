@@ -73,10 +73,10 @@ Vector WrenchFactor::unwhitenedError(
 
   // Calculate resultant wrench, fills up H with identity matrices if asked,
   // except the last H contains the pose derivative or zero if no gravity.
-  const Vector6 error = TotalExternalWrench(
-      wrenches, inertia_(3, 3), x.at<Pose3>(keys_.back()), gravity_, H);
+  const Vector6 error = ResultantWrench(wrenches, inertia_(3, 3),
+                                        x.at<Pose3>(keys_.back()), gravity_, H);
 
-  // If asked, update Jacobians not yet calculated by TotalExternalWrench.
+  // If asked, update Jacobians not yet calculated by ResultantWrench.
   if (H) {
     (*H)[0] = H_twist;    // Coriolis depends in twist (key 0)
     (*H)[1] = -inertia_;  // Derivative with respect to twist acceleration

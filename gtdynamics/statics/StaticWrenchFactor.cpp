@@ -53,8 +53,8 @@ Vector StaticWrenchFactor::unwhitenedError(
   }
 
   // H->back() will contain Jacobian with respect to pose.
-  return TotalExternalWrench(external_wrenches, mass_,
-                             x.at<Pose3>(keys_.back()), gravity_, H);
+  return ResultantWrench(external_wrenches, mass_, x.at<Pose3>(keys_.back()),
+                         gravity_, H);
 }
 
 }  // namespace gtdynamics

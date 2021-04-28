@@ -53,10 +53,10 @@ Vector6 ResultantWrench(const std::vector<gtsam::Vector6> &wrenches,
   return sum;
 }
 
-Vector6 TotalExternalWrench(const std::vector<Vector6> &wrenches, double mass,
-                            const gtsam::Pose3 &wTcom,
-                            boost::optional<gtsam::Vector3> gravity,
-                            boost::optional<std::vector<gtsam::Matrix> &> H) {
+Vector6 ResultantWrench(const std::vector<Vector6> &wrenches, double mass,
+                        const gtsam::Pose3 &wTcom,
+                        boost::optional<gtsam::Vector3> gravity,
+                        boost::optional<std::vector<gtsam::Matrix> &> H) {
   // Calculate resultant wrench, fills up H with identity matrices if asked.
   const Vector6 external_wrench = ResultantWrench(wrenches, H);
 

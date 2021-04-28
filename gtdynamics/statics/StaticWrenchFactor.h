@@ -56,7 +56,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
 
  public:
   /**
-   * Evaluate TotalExternalWrench, which should be zero and is factor error.
+   * Evaluate ResultantWrench, which should be zero and is factor error.
    * @param values contains the pose and wrenches acting on the link.
    * @param H Jacobians, in the order: *wrenches, pose
    */
