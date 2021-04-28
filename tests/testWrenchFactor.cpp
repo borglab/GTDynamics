@@ -40,7 +40,7 @@ namespace example {
 using simple_urdf_zero_inertia::robot;
 
 auto inertia = robot.links()[0]->inertiaMatrix();
-Vector3 gravity = (Vector3() << 0, -9.8, 0).finished();
+Vector3 gravity(0, -9.8, 0);
 
 noiseModel::Gaussian::shared_ptr cost_model =
     noiseModel::Gaussian::Covariance(I_6x6);

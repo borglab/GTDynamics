@@ -76,7 +76,7 @@ Vector WrenchFactor::unwhitenedError(
   if (gravity_) {
     Matrix6 H_wTcom;
     gravity_wrench =
-        GravityWrench(*gravity_, inertia_, wTcom, H ? &H_wTcom : nullptr);
+        GravityWrench(*gravity_, inertia_(3, 3), wTcom, H ? &H_wTcom : nullptr);
     if (H) (*H)[2] = -H_wTcom;
   } else {
     gravity_wrench = gtsam::Z_6x1;

@@ -33,24 +33,24 @@ Vector3 gravity(0, 0, -g);
 TEST(WrenchFactor, Case1) {
   using namespace example;
   const Pose3 wTcom(Rot3(), Point3(1, 0, 0));
-  const Matrix6 inertia = robot.link("l1")->inertiaMatrix();
+  const double mass = robot.link("l1")->mass();
   Matrix6 actualH;
   EXPECT(assert_equal((Vector(6) << 0, 0, 0, 0, 0, -100 * g).finished(),
-                      GravityWrench(gravity, inertia, wTcom, actualH), 1e-6));
+                      GravityWrench(gravity, mass, wTcom, actualH), 1e-6));
   Matrix6 numericalH = numericalDerivative11<Vector6, Pose3>(
-      boost::bind(&GravityWrench, gravity, inertia, _1, boost::none), wTcom);
+      boost::bind(&GravityWrench, gravity, mass, _1, boost::none), wTcom);
   EXPECT(assert_equal(numericalH, actualH, 1e-6));
 }
 
 TEST(WrenchFactor, Case2) {
   using namespace example;
   const Pose3 wTcom(Rot3::Rx(M_PI_2), Point3(1, 0, 0));
-  const Matrix6 inertia = robot.link("l2")->inertiaMatrix();
+  const double mass = robot.link("l2")->mass();
   Matrix6 actualH;
   EXPECT(assert_equal((Vector(6) << 0, 0, 0, 0, -15 * g, 0).finished(),
-                      GravityWrench(gravity, inertia, wTcom, actualH), 1e-6));
+                      GravityWrench(gravity, mass, wTcom, actualH), 1e-6));
   Matrix6 numericalH = numericalDerivative11<Vector6, Pose3>(
-      boost::bind(&GravityWrench, gravity, inertia, _1, boost::none), wTcom);
+      boost::bind(&GravityWrench, gravity, mass, _1, boost::none), wTcom);
   EXPECT(assert_equal(numericalH, actualH, 1e-6));
 }
 
