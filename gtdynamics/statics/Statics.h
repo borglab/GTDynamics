@@ -33,7 +33,20 @@ gtsam::Vector6 GravityWrench(
 
 /// Calculate sum of wrenches with optional Jacobians (all identity!)
 gtsam::Vector6 ResultantWrench(
-    std::vector<gtsam::Vector6> wrenches,
+    const std::vector<gtsam::Vector6> &wrenches,
     boost::optional<std::vector<gtsam::Matrix> &> H = boost::none);
+
+/**
+ * @fn Calculate sum of external wrenches and gravity wrench on a body.
+ * @param wrenches external wrenches
+ * @param wTcom mass of the body
+ * @param wTcom pose of body center of mass frame
+ * @param H_wTcom optional gravity vector
+ * @param H optional Jacobians, back H corresponds to wTcom.
+ */
+gtsam::Vector6 TotalExternalWrench(
+    const std::vector<gtsam::Vector6> &wrenches, double mass,
+    const gtsam::Pose3 &wTcom, boost::optional<gtsam::Vector3> gravity,
+    boost::optional<std::vector<gtsam::Matrix> &> H);
 
 }  // namespace gtdynamics
