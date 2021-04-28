@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  WrenchFactor.h
- * @brief Wrench balance factor, common between forward and inverse dynamics.
+ * @file  StaticWrenchFactor.h
+ * @brief Wrench balance factor for a stationary link.
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
@@ -30,37 +30,35 @@
 namespace gtdynamics {
 
 /**
- * WrenchFactor is an n-way nonlinear factor which enforces relation
- * between wrenches on this link
+ * StaticWrenchFactor is an n-way nonlinear factor which enforces that the sum
+ * of the gravity wrench and the external wrenches should be zero for a
+ * stationary link.
  */
-class WrenchFactor : public gtsam::NoiseModelFactor {
-  using This = WrenchFactor;
+class StaticWrenchFactor : public gtsam::NoiseModelFactor {
+  using This = StaticWrenchFactor;
   using Base = gtsam::NoiseModelFactor;
-  gtsam::Matrix6 inertia_;
+  double mass_;
   boost::optional<gtsam::Vector3> gravity_;
 
  public:
   /**
-   * Wrench balance factor, common between forward and inverse dynamics.
-   * Will create factor corresponding to Lynch & Park book:
-   *  wrench balance, Equation 8.48, page 293
-   * @param inertia Moment of inertia and mass for this link
-   * @param gravity (optional) Create gravity wrench in link COM frame.
+   * Static wrench balance factor.
+   * @param wrench_keys Keys for unknown external wrenches.
+   * @param pose_key Key for link CoM pose.
+   * @param cost_model Cost model to regulate constraint.
+   * @param mass Mass for this link.
+   * @param gravity (optional) Gravity vector in world frame.
    */
-  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-               const std::vector<DynamicsSymbol> &wrench_keys,
-               gtsam::Key pose_key,
-               const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const gtsam::Matrix6 &inertia,
-               const boost::optional<gtsam::Vector3> &gravity = boost::none);
+  StaticWrenchFactor(
+      const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model, double mass,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none);
 
  public:
   /**
-   * Evaluate wrench balance errors
-   * @param values contains the twist of the link, twistAccel of the link, pose
-   * of the link, and wrenches acting on the link.
-   * @param H Jacobians, in the order: twist, twistAccel, pose, *wrenches twist
-   * twist of this link
+   * Evaluate ResultantWrench, which should be zero and is factor error.
+   * @param values contains the pose and wrenches acting on the link.
+   * @param H Jacobians, in the order: *wrenches, pose
    */
   gtsam::Vector unwhitenedError(const gtsam::Values &x,
                                 boost::optional<std::vector<gtsam::Matrix> &>
@@ -76,7 +74,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "wrench factor" << std::endl;
+    std::cout << s << "static wrench factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
