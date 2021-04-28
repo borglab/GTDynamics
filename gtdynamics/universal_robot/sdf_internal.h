@@ -38,7 +38,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
  * @param[in] sdf_link
  * @return LinkSharedPtr
  */
-LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link);
+LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link);
 
 /**
  * @fn Construct a Link from sdf file
@@ -48,7 +48,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link);
  * @param[in] model_name    name of the robot
  * @return LinkSharedPtr
  */
-LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &name,
+LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &name,
                           const std::string &sdf_file_path,
                           const std::string &model_name = "");
 
@@ -59,7 +59,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &name,
  * @param[in] sdf_joint
  * @return LinkSharedPtr
  */
-JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint);
 

@@ -48,7 +48,7 @@ LINK_TYPEDEF_CLASS_POINTER(Joint);
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
-  unsigned char id_;
+  uint8_t id_;
   std::string name_;
 
   /// Inertial elements.
@@ -75,7 +75,7 @@ class Link : public boost::enable_shared_from_this<Link> {
    *
    * @param params LinkParams object containing link information.
    */
-  Link(unsigned char id, const std::string &name, const double mass,
+  Link(uint8_t id, const std::string &name, const double mass,
        const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
        const gtsam::Pose3 &lTcom, bool is_fixed = false)
       : id_(id),
@@ -110,7 +110,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// return ID of the link
-  unsigned char id() const { return id_; }
+  uint8_t id() const { return id_; }
 
   /// add joint to the link
   void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }

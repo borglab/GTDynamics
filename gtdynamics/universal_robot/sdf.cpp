@@ -101,7 +101,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
+LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   gtsam::Matrix3 inertia;
   const auto &I = sdf_link.Inertial().Moi();
   inertia << I(0, 0), I(0, 1), I(0, 2), I(1, 0), I(1, 1), I(1, 2), I(2, 0),
@@ -113,7 +113,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
                                   inertia, wTl, lTcom);
 }
 
-JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
@@ -146,7 +146,7 @@ JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
   return joint;
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &link_name,
+LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
                           const std::string &sdf_file_path,
                           const std::string &model_name) {
   auto model = GetSdf(sdf_file_path, model_name);

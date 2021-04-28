@@ -167,7 +167,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
  */
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel& cost_model, const gtsam::Point3& point_com,
-    const std::vector<gtsam::Point3>& goal_trajectory, unsigned char i, size_t k = 0);
+    const std::vector<gtsam::Point3>& goal_trajectory, uint8_t i, size_t k = 0);
 
 /**
  * @brief Create stance foot trajectory.

@@ -97,7 +97,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   std::string name_;
 
   /// ID reference to DynamicsSymbol.
-  unsigned char id_;
+  uint8_t id_;
 
   /// Joint frame defined in world frame.
   Pose3 wTj_;
@@ -131,7 +131,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    */
-  Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
+  Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
         const JointParams &parameters);
 
@@ -147,7 +147,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   JointConstSharedPtr shared() const { return shared_from_this(); }
 
   /// Get the joint's ID.
-  unsigned char id() const { return id_; }
+  uint8_t id() const { return id_; }
 
   /// Transform from the world frame to the joint frame.
   const Pose3 &wTj() const { return wTj_; }

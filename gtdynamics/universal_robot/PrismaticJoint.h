@@ -49,7 +49,7 @@ class PrismaticJoint : public ScrewJointBase {
    * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    */
-  PrismaticJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
+  PrismaticJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis)

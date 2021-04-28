@@ -70,7 +70,7 @@ class ScrewJointBase : public JointTyped {
    * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(unsigned char id, const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
