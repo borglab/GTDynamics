@@ -35,41 +35,28 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
+StaticWrenchFactor::StaticWrenchFactor(
+    const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model, double mass,
+    const boost::optional<gtsam::Vector3> &gravity)
+    : Base(cost_model, wrench_keys), mass_(mass), gravity_(gravity) {
+  keys_.push_back(pose_key);
+}
+
 Vector StaticWrenchFactor::unwhitenedError(
     const Values &x, boost::optional<std::vector<Matrix> &> H) const {
   if (!this->active(x)) {
     return Vector::Zero(this->dim());
   }
 
-  // Collect wrenches to implement L&P Equation 8.48 (F = ma)
-  std::vector<Vector6> wrenches;
-
-  // Gravity wrench.
-  Matrix6 H_wTcom;
-  if (gravity_) {
-    const Pose3 wTcom = x.at<Pose3>(keys_.at(0));
-    wrenches.push_back(
-        GravityWrench(*gravity_, mass_, wTcom, H ? &H_wTcom : nullptr));
-  } else {
-    wrenches.push_back(gtsam::Z_6x1);
+  // Collect external wrenches.
+  std::vector<Vector6> external_wrenches;
+  for (size_t j = 0; j < keys_.size() - 1; j++) {
+    external_wrenches.push_back(x.at<Vector6>(keys_[j]));
   }
 
-  // External wrenches.
-  for (auto key = keys_.cbegin() + 1; key != keys_.cend(); ++key) {
-    wrenches.push_back(x.at<Vector6>(*key));
-  }
-
-  // Calculate resultant wrench, fills up H with identity matrices if asked.
-  Vector6 error = ResultantWrench(wrenches, H);
-  if (H) {
-    if (gravity_) {
-      (*H)[0] = H_wTcom;
-    } else {
-      (*H)[0] = gtsam::Z_6x6;
-    }
-  }
-
-  return error;
+  return TotalExternalWrench(external_wrenches, mass_,
+                             x.at<Pose3>(keys_.back()), gravity_, H);
 }
 
 }  // namespace gtdynamics
