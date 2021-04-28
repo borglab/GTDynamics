@@ -293,20 +293,29 @@ class PointOnLink {
 };
 
 /********************** kinematics **********************/
-#include <gtdynamics/kinematics/KinematicsSlice.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 
 class ContactGoal {
   ContactGoal(const gtdynamics::PointOnLink &point_on_link,
               const gtsam::Point3 &goal_point);
   gtdynamics::Link *link() const;
-  gtsam::Point3 &contact_in_com() const;
+  gtsam::Point3 &contactInCoM() const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
                  double tol = 1e-9) const;
   void print(const string &s = "");
 };
 
-gtsam::Values InverseKinematics(const gtdynamics::Robot &robot,
-                                const gtdynamics::ContactGoals &contact_goals);
+class Kinematics {
+  Kinematics(const gtdynamics::Robot &robot);
+  gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values
+  interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::ContactGoals &contact_goals1,
+              const gtdynamics::ContactGoals &contact_goals2) const;
+};
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
@@ -725,6 +734,21 @@ class Simulator {
 };
 
 /********************** Trajectory et al  **********************/
+#include <gtdynamics/utils/Slice.h>
+class Slice {
+  Slice();
+  Slice(size_t k);
+  size_t k;
+};
+
+#include <gtdynamics/utils/Interval.h>
+class Interval {
+  Interval();
+  Interval(size_t k_start, size_t k_end);
+  size_t k_start;
+  size_t k_end;
+};
+
 #include <gtdynamics/utils/Phase.h>
 class Phase {
   Phase(const int &num_time_steps);
