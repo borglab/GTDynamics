@@ -20,8 +20,10 @@
 #include <gtsam/nonlinear/Values.h>
 
 #include <boost/optional.hpp>
+#include <iostream>
 #include <vector>
 
+#include "gtdynamics/dynamics/Dynamics.h"
 #include "gtdynamics/statics/Statics.h"
 
 using gtsam::Matrix;
@@ -35,62 +37,63 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
-/// calculate Coriolis term and jacobian w.r.t. joint coordinate twist
-// TODO(gerry): replace with gtsam adjoint Jacobian
-static Vector6 Coriolis(const Matrix6 &inertia, const Vector6 &twist,
-                        gtsam::OptionalJacobian<-1, -1> H_twist = boost::none) {
-  if (H_twist) {
-    auto g1 = inertia(0, 0), g2 = inertia(1, 1), g3 = inertia(2, 2),
-         m = inertia(3, 3);
-    auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
-         v2 = twist(4), v3 = twist(5);
-    *H_twist = -(Matrix6() << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
-                 (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,               //
-                 (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,               //
-                 0, -m * v3, m * v2, 0, m * w3, -m * w2,                   //
-                 m * v3, 0, -m * v1, -m * w3, 0, m * w1,                   //
-                 -m * v2, m * v1, 0, m * w2, -m * w1, 0)
-                    .finished();
-  }
-  return -Pose3::adjointMap(twist).transpose() * inertia * twist;
-}
-
 Vector WrenchFactor::unwhitenedError(
     const Values &x, boost::optional<std::vector<Matrix> &> H) const {
   if (!this->active(x)) {
     return Vector::Zero(this->dim());
   }
 
-  // `keys_` order: twist, twistAccel, pose, *wrenches
-  const Vector6 twist = x.at<Vector6>(keys_.at(0));
-  const Vector6 twistAccel = x.at<Vector6>(keys_.at(1));
-  const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
-  Vector6 wrenchSum = gtsam::Z_6x1;
-  for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
-    wrenchSum += x.at<Vector6>(*key);
-  }
-
   // transform gravity from base frame to link COM frame,
   // to use unrotate function, have to convert gravity vector to a point
   Vector6 gravity_wrench;
   if (gravity_) {
+    const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
     Matrix6 H_wTcom;
     gravity_wrench =
         GravityWrench(*gravity_, inertia_(3, 3), wTcom, H ? &H_wTcom : nullptr);
-    if (H) (*H)[2] = -H_wTcom;
+    if (H) (*H)[2] = H_wTcom;
   } else {
     gravity_wrench = gtsam::Z_6x1;
     if (H) (*H)[2] = gtsam::Z_6x6;
   }
 
-  // Equation 8.48 (F = ma)
-  Vector6 error = (inertia_ * twistAccel) +
-                  Coriolis(inertia_, twist, H ? &(*H)[0] : 0)  //
-                  - wrenchSum - gravity_wrench;
+  // Calculate resultant wrench, i.e. L&P Equation 8.48 (F = ma)
+  std::vector<Vector6> wrenches;
 
+  // Coriolis forces.
+  const Vector6 twist = x.at<Vector6>(keys_.at(0));
+  Matrix6 H_twist;
+  wrenches.push_back(Coriolis(inertia_, twist, H ? &H_twist : 0));
+
+  // Change in generalized momentum.
+  const Vector6 twistAccel = x.at<Vector6>(keys_.at(1));
+  wrenches.push_back(-inertia_ * twistAccel);
+
+  // Gravity wrench.
+  Matrix6 H_wTcom;
+  if (gravity_) {
+    const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
+    wrenches.push_back(GravityWrench(*gravity_, inertia_(3, 3), wTcom,
+                                     H ? &H_wTcom : nullptr));
+  } else {
+    wrenches.push_back(gtsam::Z_6x1);
+  }
+
+  // External wrenches.
+  for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
+    wrenches.push_back(x.at<Vector6>(*key));
+  }
+
+  // Calculate resultant wrench, fills up H with identity matrices if asked.
+  Vector6 error = ResultantWrench(wrenches, H);
   if (H) {
-    (*H)[1] = inertia_;
-    std::fill(H->begin() + 3, H->end(), -gtsam::I_6x6);
+    (*H)[0] = H_twist;
+    (*H)[1] = -inertia_;
+    if (gravity_) {
+      (*H)[2] = H_wTcom;
+    } else {
+      (*H)[2] = gtsam::Z_6x6;
+    }
   }
 
   return error;

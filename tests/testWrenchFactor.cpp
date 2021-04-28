@@ -47,7 +47,8 @@ noiseModel::Gaussian::shared_ptr cost_model =
 
 }  // namespace example
 
-constexpr double diffDelta = 1e-3;
+constexpr double diffDelta = 1e-4;
+constexpr double tol = 1e-5;
 
 // Test wrench factor for non-stationary case
 TEST(WrenchFactor, Case1) {
@@ -69,7 +70,7 @@ TEST(WrenchFactor, Case1) {
   Vector6 expected_errors = Z_6x1;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, tol);
 }
 
 // Test wrench factor compensating exactly for gravity
@@ -93,7 +94,7 @@ TEST(WrenchFactor, Case2) {
   Vector6 expected_errors = Z_6x1;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, tol);
 }
 
 // Test wrench factor for non-zero twist case, zero joint angle
@@ -117,7 +118,7 @@ TEST(WrenchFactor, NonzeroTwistCase) {
   Vector6 expected_errors = Z_6x1;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, tol);
 }
 
 int main() {
