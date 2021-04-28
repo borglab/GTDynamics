@@ -14,29 +14,31 @@
 #include "gtdynamics/factors/WrenchFactor.h"
 
 #include <gtsam/base/Matrix.h>
-#include <gtsam/base/Vector.h>
 #include <gtsam/base/OptionalJacobian.h>
+#include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/Values.h>
 
 #include <boost/optional.hpp>
 #include <vector>
 
-using gtsam::Values;
+#include "gtdynamics/statics/Statics.h"
+
 using gtsam::Matrix;
-using gtsam::Matrix63;
 using gtsam::Matrix6;
+using gtsam::Matrix63;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
-using gtsam::Pose3;
-using gtsam::Point3;
 
 namespace gtdynamics {
 
-/// calculate coriolis term and jacobian w.r.t. joint coordinate twist
+/// calculate Coriolis term and jacobian w.r.t. joint coordinate twist
 // TODO(gerry): replace with gtsam adjoint Jacobian
-Vector6 coriolis(const Matrix6 &inertia, const Vector6 &twist,
-                 gtsam::OptionalJacobian<-1, -1> H_twist = boost::none) {
+static Vector6 Coriolis(const Matrix6 &inertia, const Vector6 &twist,
+                        gtsam::OptionalJacobian<-1, -1> H_twist = boost::none) {
   if (H_twist) {
     auto g1 = inertia(0, 0), g2 = inertia(1, 1), g3 = inertia(2, 2),
          m = inertia(3, 3);
@@ -54,8 +56,7 @@ Vector6 coriolis(const Matrix6 &inertia, const Vector6 &twist,
 }
 
 Vector WrenchFactor::unwhitenedError(
-    const Values &x,
-    boost::optional<std::vector<Matrix> &> H) const {
+    const Values &x, boost::optional<std::vector<Matrix> &> H) const {
   if (!this->active(x)) {
     return Vector::Zero(this->dim());
   }
@@ -63,7 +64,7 @@ Vector WrenchFactor::unwhitenedError(
   // `keys_` order: twist, twistAccel, pose, *wrenches
   const Vector6 twist = x.at<Vector6>(keys_.at(0));
   const Vector6 twistAccel = x.at<Vector6>(keys_.at(1));
-  const Pose3 pose = x.at<Pose3>(keys_.at(2));
+  const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
   Vector6 wrenchSum = gtsam::Z_6x1;
   for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
     wrenchSum += x.at<Vector6>(*key);
@@ -72,14 +73,11 @@ Vector WrenchFactor::unwhitenedError(
   // transform gravity from base frame to link COM frame,
   // to use unrotate function, have to convert gravity vector to a point
   Vector6 gravity_wrench;
-  Matrix H_rotation, H_unrotate;
-  Matrix63 intermediateMatrix;
   if (gravity_) {
-    auto gravity =
-        pose.rotation(H_rotation).unrotate(*gravity_, H_unrotate);
-    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-    gravity_wrench = inertia_ * intermediateMatrix * gravity;
-    if (H) (*H)[2] = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
+    Matrix6 H_wTcom;
+    gravity_wrench =
+        GravityWrench(*gravity_, inertia_, wTcom, H ? &H_wTcom : nullptr);
+    if (H) (*H)[2] = -H_wTcom;
   } else {
     gravity_wrench = gtsam::Z_6x1;
     if (H) (*H)[2] = gtsam::Z_6x6;
@@ -87,12 +85,12 @@ Vector WrenchFactor::unwhitenedError(
 
   // Equation 8.48 (F = ma)
   Vector6 error = (inertia_ * twistAccel) +
-                  coriolis(inertia_, twist, H ? &(*H)[0] : 0)  //
+                  Coriolis(inertia_, twist, H ? &(*H)[0] : 0)  //
                   - wrenchSum - gravity_wrench;
 
   if (H) {
     (*H)[1] = inertia_;
-    std::fill(H->begin()+3, H->end(), -gtsam::I_6x6);
+    std::fill(H->begin() + 3, H->end(), -gtsam::I_6x6);
   }
 
   return error;
