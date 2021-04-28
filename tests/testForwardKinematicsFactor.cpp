@@ -50,18 +50,20 @@ gtsam::Values zeroValues() {
 TEST(ForwardKinematicsFactor, Constructor) {
   gtsam::Values joint_angles = zeroValues();
 
-  ForwardKinematicsFactor(key1, key2, robot, "link_0", "link_2", joint_angles,
+  PointOnLink link_2{robot.link("link_2"), Point3(0, 0, 0)};
+  ForwardKinematicsFactor(key1, key2, robot, "link_0", link_2, joint_angles,
                           kModel);
 }
 
 TEST(ForwardKinematicsFactor, Error) {
   gtsam::Values joint_angles = zeroValues();
 
-  auto base_link = robot.links()[0]->name();
-  auto end_link = robot.links()[2]->name();
+  auto base_link = robot.links()[0];
+  auto end_link = robot.links()[2];
+  PointOnLink end_point{end_link, Point3(0, 0, 0)};
 
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
-                                 joint_angles, kModel);
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link->name(),
+                                 end_point, joint_angles, kModel);
 
   // Hand computed value from SDF file
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1)), bTl2(Rot3(), Point3(0, 0, 1.1));
@@ -73,13 +75,14 @@ TEST(ForwardKinematicsFactor, Error) {
 TEST(ForwardKinematicsFactor, Jacobians) {
   gtsam::Values joint_angles = zeroValues();
 
-  auto base_link = robot.links()[0]->name();
-  auto end_link = robot.links()[2]->name();
+  auto base_link = robot.links()[0];
+  auto end_link = robot.links()[2];
+  PointOnLink end_point{end_link, Point3(0, 0, 0)};
 
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
-                                 joint_angles, kModel);
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link->name(),
+                                 end_point, joint_angles, kModel);
 
-  Pose3 bTl1(Rot3(), Point3(0, 0, 0.1)), bTl2(Rot3(), Point3(0, 0, 1.1));
+  Pose3 bTl1(Rot3(), Point3(0, 0, 1)), bTl2(Rot3(), Point3(0, 0, 2));
 
   Values values;
   InsertPose(&values, i1, bTl1);
@@ -96,10 +99,12 @@ TEST(ForwardKinematicsFactor, Movement) {
   InsertJointAngle(&values, 1, M_PI_2);
   Values values_for_jacobians;
 
-  auto base_link = robot.links()[0]->name();
-  auto end_link = robot.links()[2]->name();
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link, values,
-                                 kModel);
+  auto base_link = robot.links()[0];
+  auto end_link = robot.links()[2];
+  PointOnLink end_point{end_link, Point3(0, 0, 0)};
+
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link->name(),
+                                 end_point, values, kModel);
 
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1));
   // We rotated the last link by 90 degrees
@@ -122,12 +127,15 @@ TEST(ForwardKinematicsFactor, Movement) {
 TEST(ForwardKinematicsFactor, ArbitraryTime) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
-  std::string base_link = "l1", end_link = "l2";
+  std::string base_link = "l1";
+  auto end_link = robot.link("l2");
+  PointOnLink end_point{end_link, Point3(0, 0, 0)};
+
   size_t t = 81;
   Values joint_angles;
   InsertJointAngle(&joint_angles, robot.joint("j1")->id(), t, M_PI_2);
 
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link,
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_point,
                                  joint_angles, kModel, t);
 
   Pose3 actual = factor.measured();
@@ -145,13 +153,12 @@ TEST(ForwardKinematicsFactor, ContactPoint) {
   InsertJointAngle(&values, 1, M_PI_2);
   Values values_for_jacobians;
 
-  auto base_link = robot.links()[0]->name();
-  auto end_link = robot.links()[2]->name();
+  auto base_link = robot.links()[0];
+  auto end_link = robot.links()[2];
+  PointOnLink end_point{end_link, Point3(0, 0, 0.75)};
 
-  Pose3 lTp(gtsam::Rot3(), gtsam::Point3(0, 0, 0.75));
-
-  ForwardKinematicsFactor factor(key1, key2, robot, base_link, end_link, values,
-                                 kModel, 0, lTp);
+  ForwardKinematicsFactor factor(key1, key2, robot, base_link->name(),
+                                 end_point, values, kModel, 0);
 
   Pose3 bTl1(Rot3(), Point3(0, 0, 0.1));
   // We rotated the last link by 90 degrees
@@ -160,7 +167,7 @@ TEST(ForwardKinematicsFactor, ContactPoint) {
   Pose3 bTl2(Rot3(0, 0, 1,  //
                   0, 1, 0,  //
                   -1, 0, 0),
-             Point3(0.3+0.75, 0, 0.8));
+             Point3(0.3 + 0.75, 0, 0.8));
   Vector actual_error = factor.evaluateError(bTl1, bTl2);
   Vector6 expected_error = Z_6x1;
   // Check end pose error
