@@ -76,8 +76,9 @@ TEST(Interval, Interpolate) {
   auto result1 = kinematics.inverse(Slice(5), contact_goals);
   auto result2 = kinematics.inverse(Slice(9), contact_goals);
 
-  // Create a kinematic trajectory that interpolates between two configurations.
-  gtsam::Values result =
+  // Create a kinematic trajectory over timesteps 5, 6, 7, 8, 9 that
+  // interpolates between goal configurations at timesteps 5 and 9 gtsam::Values
+  result =
       kinematics.interpolate(Interval(5, 9), contact_goals, contact_goals2);
   EXPECT(result.exists(internal::PoseKey(0, 5)));
   EXPECT(result.exists(internal::PoseKey(0, 9)));
