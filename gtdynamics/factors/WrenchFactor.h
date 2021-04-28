@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -26,6 +23,9 @@
 #include <boost/serialization/base_object.hpp>
 #include <string>
 #include <vector>
+
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -52,14 +52,7 @@ class WrenchFactor : public gtsam::NoiseModelFactor {
                gtsam::Key pose_key,
                const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const gtsam::Matrix6 &inertia,
-               const boost::optional<gtsam::Vector3> &gravity = boost::none)
-      : Base(cost_model), inertia_(inertia), gravity_(gravity) {
-    keys_.reserve(wrench_keys.size() + 3);
-    keys_.push_back(twist_key);
-    keys_.push_back(twistAccel_key);
-    keys_.push_back(pose_key);
-    keys_.insert(keys_.end(), wrench_keys.cbegin(), wrench_keys.cend());
-  }
+               const boost::optional<gtsam::Vector3> &gravity = boost::none);
 
  public:
   /**

@@ -25,9 +25,6 @@
 #include "gtdynamics/statics/Statics.h"
 
 using gtsam::Matrix;
-using gtsam::Matrix6;
-using gtsam::Matrix63;
-using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Values;
 using gtsam::Vector;
@@ -51,10 +48,11 @@ Vector StaticWrenchFactor::unwhitenedError(
 
   // Collect external wrenches.
   std::vector<Vector6> external_wrenches;
-  for (size_t j = 0; j < keys_.size() - 1; j++) {
-    external_wrenches.push_back(x.at<Vector6>(keys_[j]));
+  for (auto key = keys_.cbegin(); key != keys_.cend() - 1; ++key) {
+    external_wrenches.push_back(x.at<Vector6>(*key));
   }
 
+  // H->back() will contain Jacobian with respect to pose.
   return TotalExternalWrench(external_wrenches, mass_,
                              x.at<Pose3>(keys_.back()), gravity_, H);
 }
