@@ -7,7 +7,7 @@
 
 /**
  * @file  KinematicsSlice.cpp
- * @brief Kinematics in single time slice.
+ * @brief Kinematics in a single time slice.
  * @author: Frank Dellaert
  */
 

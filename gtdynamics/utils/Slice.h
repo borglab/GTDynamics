@@ -8,7 +8,7 @@
 /**
  * @file  Slice.h
  * @brief A single discrete time slice.
- * @author: Frank Dellaert
+ * @author Frank Dellaert
  */
 
 #pragma once

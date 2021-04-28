@@ -7,7 +7,7 @@
 
 /**
  * @file  KinematicsInterval.cpp
- * @brief Kinematics for a interval with fixed contacts.
+ * @brief Kinematics for an interval with fixed contacts.
  * @author: Frank Dellaert
  */
 
