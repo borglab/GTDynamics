@@ -59,7 +59,7 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
     graph.emplace_shared<PointGoalFactor>(
-        pose_key, p_.g_cost_model, goal.contact_in_com(), goal.goal_point);
+        pose_key, p_.g_cost_model, goal.contactInCoM(), goal.goal_point);
   }
 
   return graph;

@@ -41,7 +41,7 @@ struct ContactGoal {
   const LinkSharedPtr& link() const { return point_on_link.link; }
 
   /// Return contact point in link COM frame.
-  const gtsam::Point3& contact_in_com() const { return point_on_link.point; }
+  const gtsam::Point3& contactInCoM() const { return point_on_link.point; }
 
   /// Print to stream.
   friend std::ostream& operator<<(std::ostream& os, const ContactGoal& cg);
