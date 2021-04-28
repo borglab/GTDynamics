@@ -5,7 +5,7 @@
  * @author Gerry Chen
  */
 
-#include "factors/CableTensionFactor.h"
+#include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 
 #include <gtdynamics/utils/values.h>
 

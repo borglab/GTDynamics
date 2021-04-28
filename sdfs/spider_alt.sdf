@@ -4,10 +4,10 @@
 	<model name="spider">
 
 		<!-- Prevents the robot from falling through the world when visualized in Gazebo. -->	
-		<joint name="body2world" type="fixed">
+		<!-- <joint name="body2world" type="fixed">
 			<parent>world</parent>
 			<child>body</child>
-		</joint>
+		</joint> -->
 
 		<!-- Floating base link -->
 		
@@ -303,7 +303,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_1">
+		<link name="tarsus_1_L1">
 			<pose>-0.95 1.14 0 0 0 0.79</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -393,7 +393,7 @@
 		
 		<joint name="ankle_1" type="revolute">
 			<parent>tibia_1</parent>
-			<child>tarsus_1</child>
+			<child>tarsus_1_L1</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -522,7 +522,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_2">
+		<link name="tarsus_2_L2">
 			<pose>-1.29 0.590 0 0 0 1.28</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -611,7 +611,7 @@
 		
 		<joint name="ankle_2" type="revolute">
 			<parent>tibia_2</parent>
-			<child>tarsus_2</child>
+			<child>tarsus_2_L2</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -741,7 +741,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_3">
+		<link name="tarsus_3_L3">
 			<pose>-1.30 -0.07 0 0 0 1.78</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -830,7 +830,7 @@
 		
 		<joint name="ankle_3" type="revolute">
 			<parent>tibia_3</parent>
-			<child>tarsus_3</child>
+			<child>tarsus_3_L3</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -960,7 +960,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_4">
+		<link name="tarsus_4_L4">
 			<pose>-1.08 -0.51 0 0 0 2.147</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -1049,7 +1049,7 @@
 		
 		<joint name="ankle_4" type="revolute">
 			<parent>tibia_4</parent>
-			<child>tarsus_4</child>
+			<child>tarsus_4_L4</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -1179,7 +1179,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_5">
+		<link name="tarsus_5_R4">
 			<pose>1.1 -0.49 0 0 0 4.14</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -1268,7 +1268,7 @@
 		
 		<joint name="ankle_5" type="revolute">
 			<parent>tibia_5</parent>
-			<child>tarsus_5</child>
+			<child>tarsus_5_R4</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -1398,7 +1398,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_6">
+		<link name="tarsus_6_R3">
 			<pose>1.33 -0.08 0 0 0 4.5</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -1487,7 +1487,7 @@
 		
 		<joint name="ankle_6" type="revolute">
 			<parent>tibia_6</parent>
-			<child>tarsus_6</child>
+			<child>tarsus_6_R3</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -1616,7 +1616,7 @@
 			</visual>
 		</link>
 		
-		<link name="tarsus_7">
+		<link name="tarsus_7_R2">
 			<pose>1.25 0.61 0 0 0 5</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -1705,7 +1705,7 @@
 		
 		<joint name="ankle_7" type="revolute">
 			<parent>tibia_7</parent>
-			<child>tarsus_7</child>
+			<child>tarsus_7_R2</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>
@@ -1836,7 +1836,7 @@
 		</link>
 		
 		
-		<link name="tarsus_8">
+		<link name="tarsus_8_R1">
 			<pose>0.93 1.13 0 0 0 5.497</pose>
 			<inertial>
 				<pose>0 0.19 0 1.57 1.57 0</pose>
@@ -1927,7 +1927,7 @@
 		
 		<joint name="ankle_8" type="revolute">
 			<parent>tibia_8</parent>
-			<child>tarsus_8</child>
+			<child>tarsus_8_R1</child>
 			<axis>
 				<!-- gazebo expects x-axis, pybullet expects y-axis -->
 				<xyz>1 0 0</xyz>

@@ -132,9 +132,9 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
 // ========================== OLD_STYLE BELOW ===============================
 
 // Test forward dynamics with gravity of a four-bar linkage
-TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
+TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   // Load the robot from urdf file
-  using four_bar_linkage::robot;
+  using four_bar_linkage_pure::robot;
 
   Values known_values = zero_values(robot, 0);
   gtsam::Vector torques = (gtsam::Vector(4) << 1, 0, 1, 0).finished();
@@ -144,8 +144,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage) {
   }
 
   // build the dynamics factor graph
-  DynamicsGraph graph_builder(four_bar_linkage::gravity,
-                              four_bar_linkage::planar_axis);
+  DynamicsGraph graph_builder(four_bar_linkage_pure::gravity,
+                              four_bar_linkage_pure::planar_axis);
 
   gtsam::NonlinearFactorGraph prior_factors =
       graph_builder.forwardDynamicsPriors(robot, 0, known_values);
@@ -367,7 +367,6 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test the scenario with dt as a variable
   vector<int> phase_steps{1, 1};
-  vector<Robot> robots(2, robot);
   auto transition_graph = graph_builder.dynamicsFactorGraph(robot, 1);
   vector<NonlinearFactorGraph> transition_graphs{transition_graph};
   double dt0 = 1;
@@ -382,7 +381,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, CollocationScheme::Euler);
+      robot, phase_steps, transition_graphs, CollocationScheme::Euler);
   mp_euler_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
@@ -402,7 +401,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
-      robots, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
+      robot, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
   mp_trapezoidal_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph,
                                             mp_euler_result);
@@ -487,10 +486,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Add some contact points.
   ContactPoints contact_points;
-  contact_points.emplace("lower0",
-                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
-  contact_points.emplace("lower2",
-                         ContactPoint{gtsam::Point3(0.14, 0, 0), 0, -0.54});
+  contact_points.emplace("lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
+  contact_points.emplace("lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -568,8 +565,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
 
   // Add some contact points.
   ContactPoints contact_points;
-  contact_points.emplace("link_0",
-                         ContactPoint{gtsam::Point3(0, 0, -0.1), 0, 0});
+  contact_points.emplace("link_0", ContactPoint{gtsam::Point3(0, 0, -0.1), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

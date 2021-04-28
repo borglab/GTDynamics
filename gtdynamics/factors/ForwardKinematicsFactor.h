@@ -81,8 +81,7 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
   gtsam::Pose3 forwardKinematics(const Robot &robot,
                                  const gtsam::Values &known_values,
                                  const std::string &start_link_name,
-                                 const std::string &end_link_name,
-                                 size_t t) {
+                                 const std::string &end_link_name, size_t t) {
     gtsam::Values values = known_values;
     for (auto &&joint : robot.joints()) {
       InsertJointVel(&values, joint->id(), 0.0);
@@ -100,8 +99,10 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "ForwardKinematicsFactor" << std::endl;
-    Base::print("", keyFormatter);
+    std::cout << s << "ForwardKinematicsFactor(" << keyFormatter(this->key1())
+              << "," << keyFormatter(this->key2()) << ")\n";
+    gtsam::traits<T>::Print(measured(), "  measured: ");
+    this->noiseModel_->print("  noise model: ");
   }
 };
 

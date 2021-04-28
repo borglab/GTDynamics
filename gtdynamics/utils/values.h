@@ -19,9 +19,9 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Values.h>
 
-namespace gtdynamics {
+#define GTD_PRINT(x) ((x).print(#x, gtdynamics::_GTDKeyFormatter))
 
-#define GTD_PRINT(x) ((x).print(#x, _GTDKeyFormatter))
+namespace gtdynamics {
 
 /// Custom exception that properly formats dynamics keys.
 class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {

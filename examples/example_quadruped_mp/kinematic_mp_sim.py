@@ -4,13 +4,13 @@ Author: Alejandro Escontrela
 """
 
 import time
-from typing import Dict
 
 import matplotlib.pyplot as plt
-
 import pandas as pd
 import pybullet as p
 import pybullet_data
+
+import gtdynamics as gtd
 
 # pylint: disable=I1101, C0103
 
@@ -26,18 +26,6 @@ joint_to_jid_map = {}
 for i in range(p.getNumJoints(quad_id)):
     jinfo = p.getJointInfo(quad_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
-
-
-def set_joint_angles(joint_angles: Dict[str, float]):
-    """Actuate to the suppplied joint angles using PD control."""
-    for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=500)
-
-    for k, v in joint_angles.items():
-        p.setJointMotorControl2(bodyUniqueId=quad_id,
-                                jointIndex=joint_to_jid_map[k],
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=v)
 
 
 df = pd.read_csv('traj.csv')
@@ -59,7 +47,8 @@ all_pos_des = []
 
 debug_iters = 100
 for i in range(len(df)):
-    set_joint_angles(df.loc[i][[str(i) for i in range(12)]])
+    joint_angles = df.loc[i][[str(i) for i in range(12)]]
+    gtd.sim.set_joint_angles(p, quad_id, joint_to_jid_map, joint_angles, {})
 
     new_pos_des = df.loc[i][['bodyx', 'bodyy', 'bodyz']].tolist()
     new_pos_des[2] = new_pos_des[2] + 0.2
@@ -104,9 +93,5 @@ axs[2].set_ylabel('z (m.)')
 plt.xlabel("time (s.)")
 
 plt.show()
-
-while True:
-    p.stepSimulation()
-    time.sleep(1. / 240)
 
 p.disconnect()

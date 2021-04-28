@@ -8,11 +8,12 @@
 /**
  * @file  utils.h
  * @brief Utility methods.
- * @author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
 #pragma once
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>

@@ -42,27 +42,27 @@ class TestDynamicsGraph(unittest.TestCase):
         noise1 = gtsam.noiseModel.Unit.Create(1)
         noise6 = gtsam.noiseModel.Unit.Create(6)
         graph = gtsam.NonlinearFactorGraph()
-        gtd.add_link_objectives(graph, 1, k=777)\
+        graph.push_back(gtd.LinkObjectives(1, k=777)\
             .pose(gtsam.Pose3(), noise1)\
-            .twistAccel(np.zeros(6), noise6)
+            .twistAccel(np.zeros(6), noise6))
         self.assertEqual(graph.size(), 2)
-        gtd.add_joint_objectives(graph, 2, 777)\
+        graph.push_back(gtd.JointObjectives(2, 777)\
             .angle(0., noise1)\
-            .velocity(0., noise1)
+            .velocity(0., noise1))
         self.assertEqual(graph.size(), 4)
         self.assertEqual(graph.keys().size(), 4)
-        gtd.add_joint_objectives(graph, 2, 777)\
+        graph.push_back(gtd.JointObjectives(2, 777)\
             .acceleration(0., noise1)\
-            .angle(0., noise1)  # duplicate angle
+            .angle(0., noise1))  # duplicate angle
         self.assertEqual(graph.size(), 6)
         self.assertEqual(graph.keys().size(), 5)
         # optional time index and noise model
-        gtd.add_joint_objectives(graph, 2)\
+        graph.push_back(gtd.JointObjectives(2)\
             .acceleration(0.)\
-            .angle(0.)
-        gtd.add_link_objectives(graph, 1)\
+            .angle(0.))
+        graph.push_back(gtd.LinkObjectives(1)\
             .pose(gtsam.Pose3())\
-            .twistAccel(np.zeros(6))
+            .twistAccel(np.zeros(6)))
         self.assertEqual(graph.size(), 10)
         self.assertEqual(graph.keys().size(), 9)
 

@@ -1,5 +1,7 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS dynamics factors universal_robot utils)
+set(SOURCE_SUBDIRS universal_robot utils factors kinematics statics dynamics)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Include cable robot stuff
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)

@@ -118,7 +118,7 @@ TEST(File, parameters_from_file) {
 
   // Test for reading parameters (joint limits) from spider.sdf.
   auto spider_sdf =
-      GetSdf(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      GetSdf(kSdfPath + std::string("/spider.sdf"), "spider");
   auto knee_1_parameters =
       ParametersFromSdfJoint(*spider_sdf.JointByName("knee_1"));
 
@@ -159,7 +159,7 @@ TEST(File, create_robot_from_file) {
   // Test for reading parameters (joint limits) from a robot created via
   // spider.sdf.
   auto spider_robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
   auto spider_knee1 = spider_robot.joint("knee_1");
 
   EXPECT(assert_equal(
@@ -367,9 +367,7 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(T_12com_pi_4, j2->relativePoseOf(l2, M_PI / 4.0), 1e-3));
 }
 
-/**
- * Test parsing of Revolute joint limit values from various robots.
- */
+// Test parsing of Revolute joint limit values from various robots.
 TEST(Joint, limit_params) {
   // Check revolute joint limits parsed correctly for first test robot.
   auto model = GetSdf(kSdfPath + std::string("/test/four_bar_linkage.sdf"));

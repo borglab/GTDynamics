@@ -25,7 +25,7 @@
 using gtdynamics::kSdfPath;
 using gtdynamics::kUrdfPath;
 
-namespace four_bar_linkage {
+namespace four_bar_linkage_pure {
 gtdynamics::Robot getFourBar() {
   gtdynamics::Robot four_bar = gtdynamics::CreateRobotFromFile(
       kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
@@ -36,7 +36,7 @@ gtdynamics::Robot robot = getFourBar();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace four_bar_linkage
+}  // namespace four_bar_linkage_pure
 
 namespace simple_urdf {
 gtdynamics::Robot getSimpleUrdf() {
