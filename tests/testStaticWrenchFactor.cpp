@@ -39,7 +39,7 @@ namespace example {
 // R link example
 using simple_urdf::robot;
 
-const Matrix6 inertia = robot.links()[0]->inertiaMatrix();
+const double mass = robot.links()[0]->mass();
 const Vector3 gravity(0, -9.8, 0);
 
 noiseModel::Gaussian::shared_ptr cost_model =
@@ -54,10 +54,10 @@ constexpr double tol = 1e-5;
 TEST(StaticWrenchFactor, GravityCompensation) {
   // Create all factors
   int id = 0;
-  const double M = example::inertia(3, 3);
+  const double M = example::mass;
   StaticWrenchFactor factor(
       {WrenchKey(id, 1), WrenchKey(id, 2), WrenchKey(id, 3)}, PoseKey(id),
-      example::cost_model, example::inertia, example::gravity);
+      example::cost_model, M, example::gravity);
   Values x;
   InsertWrench(&x, id, 1, (Vector(6) << 0, 0, 0, 0, M * 1, 0).finished());
   InsertWrench(&x, id, 2, (Vector(6) << 0, 0, 0, 0, M * 2, 0).finished());

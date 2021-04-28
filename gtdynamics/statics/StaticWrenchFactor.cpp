@@ -48,8 +48,8 @@ Vector StaticWrenchFactor::unwhitenedError(
   Matrix6 H_wTcom;
   if (gravity_) {
     const Pose3 wTcom = x.at<Pose3>(keys_.at(0));
-    wrenches.push_back(GravityWrench(*gravity_, inertia_(3, 3), wTcom,
-                                     H ? &H_wTcom : nullptr));
+    wrenches.push_back(
+        GravityWrench(*gravity_, mass_, wTcom, H ? &H_wTcom : nullptr));
   } else {
     wrenches.push_back(gtsam::Z_6x1);
   }

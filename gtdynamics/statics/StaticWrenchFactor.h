@@ -36,7 +36,7 @@ namespace gtdynamics {
 class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   using This = StaticWrenchFactor;
   using Base = gtsam::NoiseModelFactor;
-  gtsam::Matrix6 inertia_;
+  double mass_;
   boost::optional<gtsam::Vector3> gravity_;
 
  public:
@@ -44,15 +44,14 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
    * Wrench balance factor, common between forward and inverse dynamics.
    * Will create factor corresponding to Lynch & Park book:
    *  wrench balance, Equation 8.48, page 293
-   * @param inertia Moment of inertia and mass for this link
+   * @param mass Mass for this link
    * @param gravity (optional) Create gravity wrench in link COM frame.
    */
   StaticWrenchFactor(
       const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
-      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Matrix6 &inertia,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model, const double &mass,
       const boost::optional<gtsam::Vector3> &gravity = boost::none)
-      : Base(cost_model), inertia_(inertia), gravity_(gravity) {
+      : Base(cost_model), mass_(mass), gravity_(gravity) {
     keys_.reserve(wrench_keys.size() + 1);
     keys_.push_back(pose_key);
     keys_.insert(keys_.end(), wrench_keys.cbegin(), wrench_keys.cend());
