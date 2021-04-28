@@ -27,24 +27,23 @@ namespace gtdynamics {
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 
-void add_joints_at_rest_objectives(
-    gtsam::NonlinearFactorGraph* graph, const Robot& robot,
-    const SharedNoiseModel& joint_velocity_model,
+gtsam::NonlinearFactorGraph JointsAtRestObjectives(
+    const Robot& robot, const SharedNoiseModel& joint_velocity_model,
     const SharedNoiseModel& joint_acceleration_model, int k) {
+  gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    add_joint_objectives(graph, joint->id(), k)
-        .velocity(0, joint_velocity_model)
-        .acceleration(0, joint_acceleration_model);
+    graph.add(JointObjectives(joint->id(), k)
+                  .velocity(0, joint_velocity_model)
+                  .acceleration(0, joint_acceleration_model));
   }
+  return graph;
 }
 
-void AddPointGoalFactors(gtsam::NonlinearFactorGraph* factors,
-                         const SharedNoiseModel& cost_model,
-                         const Point3& point_com,
-                         const std::vector<Point3>& goal_trajectory,
-                         unsigned char i, size_t k) {
+gtsam::NonlinearFactorGraph PointGoalFactors(
+    const SharedNoiseModel& cost_model, const Point3& point_com,
+    const std::vector<Point3>& goal_trajectory, unsigned char i, size_t k) {
   gtsam::Key key = internal::PoseKey(i, k);
-  factors->add(PointGoalFactors(key, cost_model, point_com, goal_trajectory));
+  return PointGoalFactors(key, cost_model, point_com, goal_trajectory);
 }
 
 std::vector<Point3> StanceTrajectory(const Point3& stance_point,
@@ -59,7 +58,7 @@ std::vector<Point3> SimpleSwingTrajectory(const Point3& start,
   const double dt = 1.0 / (num_steps + 1);
   const Point3 delta_step = step * dt;
   Point3 cp_goal = start + delta_step;
-  for (int k; k < num_steps; k++) {
+  for (size_t k = 0; k < num_steps; k++) {
     double t = dt * (k + 1);
     double h = 0.2 * pow(t, 1.1) * pow(1 - t, 0.7);  // reaches 6 cm height
     goal_trajectory.push_back(cp_goal + Point3(0, 0, h));

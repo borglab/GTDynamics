@@ -104,11 +104,13 @@ class Robot {
    * If the root link pose and twist are not provided in `known_values`,
    * default Pose3() and Vector6::Zeros() are used respectively.
    *
+   * *Important* Forward kinematics is done with CoM frames.
+   *
    * @param[in] t integer time index
    * @param[in] known_values Values with joint angles, joint velocities, and
    * (optionally) root link pose and twist.
    * @param[in] prior_link_name name of link with known pose & twist
-   * @return poses and twists of all links, as a new Values instance
+   * @return CoM poses and twists of all links, as a new Values instance
    */
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
