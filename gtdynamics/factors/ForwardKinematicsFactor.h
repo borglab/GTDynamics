@@ -50,7 +50,7 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
    * @param bTl2_key        Key for pose of end link in the kinematic chain.
    * @param robot           The Robot model to perform forward kinematics.
    * @param start_link_name The name of the root link for FK.
-   * @param end_link_name   The name of the end link whose pose to compute via FK.
+   * @param end_link_name   The end link name whose pose to compute via FK.
    * @param joint_angles    gtsam::Values with joint angles for relevant joints.
    * @param model           The noise model for this factor.
    * @param k               The integer time index
@@ -82,7 +82,8 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
   gtsam::Pose3 forwardKinematics(const Robot &robot,
                                  const std::string &start_link_name,
                                  const std::string &end_link_name,
-                                 const gtsam::Values &known_values, size_t k) {
+                                 const gtsam::Values &known_values,
+                                 size_t k) const {
     gtsam::Values values = known_values;
     auto start_link = robot.link(start_link_name);
     auto end_link = robot.link(end_link_name);
@@ -100,7 +101,7 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "ForwardKinematicsFactor(" << keyFormatter(this->key1())
               << "," << keyFormatter(this->key2()) << ")\n";
-    gtsam::traits<T>::Print(measured(), "  measured: ");
+    gtsam::traits<gtsam::Pose3>::Print(measured(), "  measured: ");
     this->noiseModel_->print("  noise model: ");
   }
 };

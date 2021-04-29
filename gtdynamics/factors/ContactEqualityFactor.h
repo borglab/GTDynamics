@@ -7,14 +7,13 @@
 
 /**
  * @file  ContactEqualityFactor.h
- * @brief Factor to constrain contact point to be equal.
+ * @brief Factor to constrain contact points to be equal.
  * @author Varun Agrawal
  */
 
 #pragma once
 
 #include <gtsam/base/Matrix.h>
-#include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
@@ -49,7 +48,7 @@ class ContactEqualityFactor
    * @param k1              First time index.
    * @param k2              Next time index.
    */
-  ContactEqualityFactor(PointOnLink point_on_link,
+  ContactEqualityFactor(const PointOnLink &point_on_link,
                         const gtsam::SharedNoiseModel &model, size_t k1,
                         size_t k2)
       : Base(model, internal::PoseKey(point_on_link.link->id(), k1),
@@ -58,6 +57,7 @@ class ContactEqualityFactor
 
   virtual ~ContactEqualityFactor() {}
 
+  /// Generic method to compute difference between contact points and provide jacobians.
   gtsam::Vector3 constrainPointOnLink(
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,
