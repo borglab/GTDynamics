@@ -96,6 +96,16 @@ struct PriorValues {
   double tc;
 };
 
+gtsam::Values optimize_LMQR(const gtsam::NonlinearFactorGraph& graph, const gtsam::Values& init_values) {
+  gtsam::LevenbergMarquardtParams lm_params;
+  lm_params.setVerbosityLM("SUMMARY");
+  lm_params.setLinearSolverType("MULTIFRONTAL_QR");
+  lm_params.setOrderingType("COLAMD");
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, lm_params);
+  gtsam::Values result = optimizer.optimize();
+  return result;
+}
+
 /// Pneumatic actuator used in jumping robot
 class PneumaticActuator {
  public:
@@ -228,6 +238,7 @@ class PneumaticActuator {
     prior_values.tc = 1.0;
     return prior_values;
   }
+
 
   // /// calculate torque given joint angle
   // double calculateTorque(const double angle, const PriorValues prior_values,

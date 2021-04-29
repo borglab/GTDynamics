@@ -139,4 +139,6 @@ class PneumaticActuator {
 
 };
 
+gtsam::Values optimize_LMQR(const gtsam::NonlinearFactorGraph& graph, const gtsam::Values& init_values);
+
 }  // namespace gtdynamics
