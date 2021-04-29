@@ -32,13 +32,23 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model, size_t t = 0,
-                          const gtsam::Pose3 &l2Tp = gtsam::Pose3());
+                          const gtsam::noiseModel::Base* model, size_t k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
 };
+
+#include <gtdynamics/factors/ContactEqualityFactor.h>
+class ContactEqualityFactor : gtsam::NoiseModelFactor {
+  ContactEqualityFactor(const gtdynamics::PointOnLink &point_on_link,
+                        const gtsam::noiseModel::Base *model, size_t k1,
+                        size_t k2);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 
 #include <gtdynamics/factors/TwistFactor.h>
 class TwistFactor : gtsam::NonlinearFactor {
