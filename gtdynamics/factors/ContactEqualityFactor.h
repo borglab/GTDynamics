@@ -58,7 +58,7 @@ class ContactEqualityFactor
   virtual ~ContactEqualityFactor() {}
 
   /// Generic method to compute difference between contact points and provide jacobians.
-  gtsam::Vector3 constrainPointOnLink(
+  gtsam::Vector3 contactPointsDifference(
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,
       boost::optional<gtsam::Matrix &> H2 = boost::none) const {
@@ -73,7 +73,7 @@ class ContactEqualityFactor
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,
       boost::optional<gtsam::Matrix &> H2 = boost::none) const override {
-    return constrainPointOnLink(wT1, wT2, H1, H2);
+    return contactPointsDifference(wT1, wT2, H1, H2);
   }
 
   /// print contents
