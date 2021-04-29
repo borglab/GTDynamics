@@ -66,6 +66,27 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
                                joint_angles, k),
              model) {}
 
+  /**
+   * Construct which conveniently generates keys from the link names.
+   *
+   * @param robot           The Robot model to perform forward kinematics.
+   * @param start_link_name The name of the root link for FK.
+   * @param end_link_name   The end link name whose pose to compute via FK.
+   * @param joint_angles    gtsam::Values with joint angles for relevant joints.
+   * @param model           The noise model for this factor.
+   * @param k               The integer time index
+   */
+  ForwardKinematicsFactor(const Robot &robot,
+                          const std::string &start_link_name,
+                          const std::string &end_link_name,
+                          const gtsam::Values &joint_angles,
+                          const gtsam::SharedNoiseModel &model, size_t k = 0)
+      : Base(internal::PoseKey(robot.link(start_link_name)->id(), k),
+             internal::PoseKey(robot.link(end_link_name)->id(), k),
+             forwardKinematics(robot, start_link_name, end_link_name,
+                               joint_angles, k),
+             model) {}
+
   virtual ~ForwardKinematicsFactor() {}
 
   /**
