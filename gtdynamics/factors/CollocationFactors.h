@@ -47,24 +47,24 @@ gtsam::Pose3 predictPose(
 }
 
 /**
- * EulerPoseColloFactor is a four-way nonlinear factor between link pose of
+ * EulerPoseCollocationFactor is a four-way nonlinear factor between link pose of
  * current and next time steps
  */
-class EulerPoseColloFactor
+class EulerPoseCollocationFactor
     : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, double> {
  private:
-  using This = EulerPoseColloFactor;
+  using This = EulerPoseCollocationFactor;
   using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, double>;
 
  public:
-  EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
+  EulerPoseCollocationFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                        gtsam::Key twist_key, gtsam::Key dt_key,
                        const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, pose_t0_key, pose_t1_key, twist_key, dt_key) {}
 
-  virtual ~EulerPoseColloFactor() {}
+  virtual ~EulerPoseCollocationFactor() {}
 
   /**
    * Evaluate link pose errors
@@ -121,26 +121,26 @@ class EulerPoseColloFactor
 };
 
 /**
- * TrapezoidalPoseColloFactor is a five-way nonlinear factor between link pose
+ * TrapezoidalPoseCollocationFactor is a five-way nonlinear factor between link pose
  * of current and next time steps
  */
-class TrapezoidalPoseColloFactor
+class TrapezoidalPoseCollocationFactor
     : public gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  using This = TrapezoidalPoseColloFactor;
+  using This = TrapezoidalPoseCollocationFactor;
   using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
-  TrapezoidalPoseColloFactor(
+  TrapezoidalPoseCollocationFactor(
       gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
       gtsam::Key twist_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, pose_t0_key, pose_t1_key, twist_t0_key, twist_t1_key,
              dt_key) {}
 
-  virtual ~TrapezoidalPoseColloFactor() {}
+  virtual ~TrapezoidalPoseCollocationFactor() {}
 
   /**
    * Evaluate link pose errors
@@ -204,24 +204,24 @@ class TrapezoidalPoseColloFactor
 };
 
 /**
- * EulerTwistColloFactor is a four-way nonlinear factor between link twist of
+ * EulerTwistCollocationFactor is a four-way nonlinear factor between link twist of
  * current and next time steps
  */
-class EulerTwistColloFactor
+class EulerTwistCollocationFactor
     : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, double> {
  private:
-  using This = EulerTwistColloFactor;
+  using This = EulerTwistCollocationFactor;
   using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, double>;
 
  public:
-  EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
+  EulerTwistCollocationFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                         gtsam::Key accel_key, gtsam::Key dt_key,
                         const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, twist_t0_key, twist_t1_key, accel_key, dt_key) {}
 
-  virtual ~EulerTwistColloFactor() {}
+  virtual ~EulerTwistCollocationFactor() {}
 
   /**
    * Evaluate link twist errors
@@ -279,26 +279,26 @@ class EulerTwistColloFactor
 };
 
 /**
- * TrapezoidalTwistColloFactor is a four-way nonlinear factor between link
+ * TrapezoidalTwistCollocationFactor is a four-way nonlinear factor between link
  * twist of current and next time steps
  */
-class TrapezoidalTwistColloFactor
+class TrapezoidalTwistCollocationFactor
     : public gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  using This = TrapezoidalTwistColloFactor;
+  using This = TrapezoidalTwistCollocationFactor;
   using Base = gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
-  TrapezoidalTwistColloFactor(
+  TrapezoidalTwistCollocationFactor(
       gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
       gtsam::Key accel_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, twist_t0_key, twist_t1_key, accel_t0_key, accel_t1_key,
              dt_key) {}
 
-  virtual ~TrapezoidalTwistColloFactor() {}
+  virtual ~TrapezoidalTwistCollocationFactor() {}
 
   /**
    * Evaluate link twist errors

@@ -49,7 +49,7 @@ TEST(PoseTwistFunctor, error) {
   EXPECT(assert_equal(pose_c, predictPose(pose_p, twistdt), 1e-6));
 
   // Create factor
-  EulerPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+  EulerPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
                               example::twist_p_key, example::dt_key,
                               example::cost_model);
 
@@ -82,7 +82,7 @@ TEST(RandomData, EulerPose) {
   EXPECT(assert_equal(pose_c, predictPose(pose_p, twistdt), 1e-6));
 
   // Create factor
-  EulerPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+  EulerPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
                               example::twist_p_key, example::dt_key,
                               example::cost_model);
 
@@ -114,7 +114,7 @@ TEST(RandomData, TrapezoidalPose) {
   Pose3 pose_c = pose_p * Pose3::Expmap(twistdt);
 
   // Create factor
-  TrapezoidalPoseColloFactor factor(example::pose_p_key, example::pose_c_key,
+  TrapezoidalPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
                                     example::twist_p_key, example::twist_c_key,
                                     example::dt_key, example::cost_model);
 
@@ -146,7 +146,7 @@ TEST(RandomData, EulerTwist) {
   double dt = 0.1;
 
   // Create factor
-  EulerTwistColloFactor factor(example::twist_p_key, example::twist_c_key,
+  EulerTwistCollocationFactor factor(example::twist_p_key, example::twist_c_key,
                                example::accel_p_key, example::dt_key,
                                example::cost_model);
 
@@ -177,7 +177,7 @@ TEST(RandomData, TrapezoidalTwist) {
   double dt = 0.1;
 
   // Create factor
-  TrapezoidalTwistColloFactor factor(example::twist_p_key, example::twist_c_key,
+  TrapezoidalTwistCollocationFactor factor(example::twist_p_key, example::twist_c_key,
                                      example::accel_p_key, example::accel_c_key,
                                      example::dt_key, example::cost_model);
 

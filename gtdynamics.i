@@ -112,27 +112,27 @@ class WrenchPlanarFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/CollocationFactors.h>
-class EulerPoseColloFactor : gtsam::NonlinearFactor {
-  EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
+class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
+  EulerPoseCollocationFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                        gtsam::Key twist_key, gtsam::Key dt_key,
                        const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalPoseColloFactor : gtsam::NonlinearFactor {
-  TrapezoidalPoseColloFactor(
+class TrapezoidalPoseCollocationFactor : gtsam::NonlinearFactor {
+  TrapezoidalPoseCollocationFactor(
       gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
       gtsam::Key twist_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base *cost_model);
 };
 
-class EulerTwistColloFactor : gtsam::NonlinearFactor {
-  EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
+class EulerTwistCollocationFactor : gtsam::NonlinearFactor {
+  EulerTwistCollocationFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                         gtsam::Key accel_key, gtsam::Key dt_key,
                         const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalTwistColloFactor : gtsam::NonlinearFactor {
-  TrapezoidalTwistColloFactor(
+class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
+  TrapezoidalTwistCollocationFactor(
       gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
       gtsam::Key accel_t1_key, gtsam::Key dt_key,
       const gtsam::noiseModel::Base *cost_model);

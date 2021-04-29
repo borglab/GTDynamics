@@ -114,11 +114,11 @@ class RobotGraphBuilder:
             twistaccel_curr_key = gtd.internal.TwistAccelKey(i, k_curr).key()
 
             pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
-            graph.add(gtd.TrapezoidalPoseColloFactor(
+            graph.add(gtd.TrapezoidalPoseCollocationFactor(
                 pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
                 dt_key, pose_col_cost_model))
             twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
-            graph.add(gtd.TrapezoidalPoseColloFactor(
+            graph.add(gtd.TrapezoidalPoseCollocationFactor(
                 twist_prev_key, twist_curr_key, twistaccel_prev_key,
                 twistaccel_curr_key, dt_key, twist_col_cost_model))
 
