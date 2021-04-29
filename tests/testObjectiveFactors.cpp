@@ -89,7 +89,7 @@ TEST(Phase, AddGoals) {
   auto bTcom = LF->wTcom();        // world is really body
   Point3 stance_point = bTcom.transformFrom(point_com);
 
-  unsigned char id = LF->id();
+  uint8_t id = LF->id();
   constexpr size_t num_stance_steps = 10;
   constexpr size_t k = 777;
   const gtsam::SharedNoiseModel &cost_model = nullptr;

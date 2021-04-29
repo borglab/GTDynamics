@@ -189,7 +189,7 @@ class JointParams {
 };
 
 virtual class Joint {
-  unsigned char id() const;
+  uint8_t id() const;
   const gtsam::Pose3 &wTj() const;
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;
@@ -575,7 +575,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
 
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
-    const std::vector<gtsam::Point3> &goal_trajectory, unsigned char i,
+    const std::vector<gtsam::Point3> &goal_trajectory, uint8_t i,
     size_t k = 0);
 
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
@@ -604,18 +604,18 @@ class DynamicsSymbol {
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
   static DynamicsSymbol LinkJointSymbol(const string& s,
-                                        unsigned char link_idx,
-                                        unsigned char joint_idx,
+                                        uint8_t link_idx,
+                                        uint8_t joint_idx,
                                         std::uint64_t t);
   static DynamicsSymbol JointSymbol(const string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
-  static DynamicsSymbol LinkSymbol(const string& s, unsigned char link_idx,
+                                    uint8_t joint_idx, std::uint64_t t);
+  static DynamicsSymbol LinkSymbol(const string& s, uint8_t link_idx,
                                    std::uint64_t t);
   static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
 
   string label() const;
-  unsigned char linkIdx() const;
-  unsigned char jointIdx() const;
+  uint8_t linkIdx() const;
+  uint8_t jointIdx() const;
   size_t time() const;
   gtsam::Key key() const;
 
