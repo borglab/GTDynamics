@@ -47,7 +47,7 @@ TEST(PneumaticActuator, computeResult) {
 
   PneumaticActuator actuator = PneumaticActuator();
 
-  PneumaticActuator::PriorValues prior_values = actuator.priorValues();
+  PriorValues prior_values = actuator.priorValues();
   // prior_values.q = 0.0;
   // prior_values.m = 7.873172488131229e-05;
   // prior_values.v = 0.0;

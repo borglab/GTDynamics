@@ -364,7 +364,7 @@ class JumpingRobot:
                     q_foot - angle_offset]
         init_angles = rest_angles
 
-        P_s_0 = 65 * 6894.76/1000
+        P_s_0 = 65.0 * 6.89476 + 101.325
         init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
                                                     rest_angles, init_angles,
                                                     init_vels, P_s_0, foot_dist)
