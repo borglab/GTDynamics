@@ -303,6 +303,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
   return graph;
 }
 
+// TODO(frank): migrate to Dynamics::graph<Slice>
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int t,
     const boost::optional<ContactPoints> &contact_points,
@@ -333,6 +334,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
         wrenches.push_back(internal::WrenchKey(i, joint->id(), t));
 
       // Add wrench keys for contact points.
+      // TODO: use Dynamics::wrenchEquivalenceFactors<Slice> etc...
       if (contact_points) {
         for (auto &&contact_point : *contact_points) {
           if (contact_point.first != link->name()) continue;
@@ -359,19 +361,17 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     }
   }
 
+  // TODO(frank): use Statics<Slice> calls
+  // TODO(frank): sort out const shared ptr mess
   for (auto &&joint : robot.joints()) {
     auto j = joint->id(), child_id = joint->child()->id();
-    graph.emplace_shared<WrenchEquivalenceFactor>(
-        internal::WrenchKey(joint->parent()->id(), j, t),
-        internal::WrenchKey(child_id, j, t), internal::JointAngleKey(j, t),
-        opt_.f_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
-    graph.emplace_shared<TorqueFactor>(
-        internal::WrenchKey(child_id, j, t), internal::TorqueKey(j, t),
-        opt_.t_cost_model, boost::static_pointer_cast<const JointTyped>(joint));
+    auto const_joint = boost::static_pointer_cast<const JointTyped>(joint);
+    graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
+                                                  const_joint, t);
+    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, t);
     if (planar_axis_)
-      graph.emplace_shared<WrenchPlanarFactor>(
-          internal::WrenchKey(child_id, j, t), opt_.planar_cost_model,
-          *planar_axis_);
+      graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
+                                               *planar_axis_, const_joint, t);
   }
   return graph;
 }
