@@ -326,7 +326,6 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   else
     mu_ = 1.0;
 
-  // TODO(frank): migrate to Dynamics::graph<Slice>
   for (auto &&link : robot.links()) {
     int i = link->id();
     if (!link->isFixed()) {
@@ -371,11 +370,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     auto j = joint->id(), child_id = joint->child()->id();
     auto const_joint = boost::static_pointer_cast<const JointTyped>(joint);
     graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
-                                                  const_joint, t);
-    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, t);
+                                                  const_joint, k);
+    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, k);
     if (planar_axis_)
       graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
-                                               *planar_axis_, const_joint, t);
+                                               *planar_axis_, const_joint, k);
   }
   return graph;
 }
