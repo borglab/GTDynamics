@@ -125,7 +125,7 @@ class ScrewJointBase : public JointTyped {
   // TODO(frank): document and possibly eliminate
   gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
                                               double q) const override {
-    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), q),
+    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), 0),
                                screwAxis(link));
   }
 
