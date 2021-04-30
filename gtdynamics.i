@@ -81,7 +81,7 @@ class TwistAccelFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/TorqueFactor.h>
 class TorqueFactor : gtsam::NonlinearFactor {
   TorqueFactor(const gtsam::noiseModel::Base *cost_model,
-               const gtdynamics::JointTyped *joint, k=0);
+               const gtdynamics::JointTyped *joint, size_t k=0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -110,7 +110,7 @@ class WrenchFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base *cost_model,
-                          gtdynamics::JointTyped *joint, k=0);
+                          gtdynamics::JointTyped *joint, size_t k=0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
@@ -118,7 +118,7 @@ class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
 class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis, k=0);
+                     Vector planar_axis, gtdynamics::JointTyped *joint, size_t k=0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
