@@ -37,10 +37,12 @@ namespace example {
 // Noise model.
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+const DynamicsSymbol wrench_j_key = internal::WrenchKey(1, 1, 777),
+                     wrench_k_key = internal::WrenchKey(2, 1, 777),
+                     qKey = internal::JointAngleKey(1, 777);
+
 gtsam::Key twist_key = gtsam::Symbol('V', 1),
            twist_accel_key = gtsam::Symbol('T', 1),
-           wrench_j_key = gtsam::Symbol('W', 1),
-           wrench_k_key = gtsam::Symbol('W', 2), qKey = gtsam::Symbol('q', 1),
            pKey = gtsam::Symbol('p', 1);
 }  // namespace example
 
@@ -120,18 +122,19 @@ TEST(WrenchEquivalenceFactor, error_3) {
 
   auto joint = make_joint(kMj, screw_axis);
 
-  WrenchEquivalenceFactor factor(example::wrench_j_key, example::wrench_k_key,
-                                 example::qKey, example::cost_model, joint);
+  WrenchEquivalenceFactor factor(example::cost_model, joint, 777);
+
+  // Check evaluateError.
   double q = 0;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
   wrench_k = (Vector(6) << -1, 0, 0, 0, 0, 0).finished();
-  Vector6 actual_errors, expected_errors;
-
-  actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
+  Vector6 actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
+  Vector6 expected_errors;
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  // Make sure linearization is correct
+
+  // Make sure linearization is correct.
   gtsam::Values values;
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);

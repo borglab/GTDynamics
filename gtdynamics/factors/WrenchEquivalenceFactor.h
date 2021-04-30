@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
@@ -46,7 +47,8 @@ class WrenchEquivalenceFactor
   /// Private constructor with arbitrary keys
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                           gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                          gtsam::Key q_key, const JointTypedConstSharedPtr &joint)
+                          gtsam::Key q_key,
+                          const JointTypedConstSharedPtr &joint)
       : Base(cost_model, wrench_key_1, wrench_key_2, q_key), joint_(joint) {}
 
  public:
