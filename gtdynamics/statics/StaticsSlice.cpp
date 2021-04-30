@@ -64,12 +64,9 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice) const {
   gtsam::NonlinearFactorGraph graph;
   const auto k = slice.k;
 
-  std::map<uint8_t, LinkSharedPtr> sorted;
-  for (auto&& link : robot_.links()) sorted.emplace(link->id(), link);
-
-  for (auto&& kv : sorted) {
-    int i = kv.first;
-    auto link = kv.second;
+  // Add static wrench factors for all links
+  for (auto&& link : robot_.links()) {
+    int i = link->id();
     if (link->isFixed()) continue;
     const auto& connected_joints = link->joints();
     std::vector<DynamicsSymbol> wrench_keys;
@@ -84,6 +81,15 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice) const {
         link->mass(), p_.gravity);
   }
 
+  /// Add a WrenchEquivalenceFactor for each joint.
+  graph.add(wrenchEquivalenceFactors(slice));
+
+  /// Add a TorqueFactor for each joint.
+  graph.add(torqueFactors(slice));
+
+  /// Add a WrenchPlanarFactor for each joint.
+  graph.add(wrenchPlanarFactors(slice));
+
   return graph;
 }
 
@@ -95,13 +101,6 @@ gtsam::Values Statics::initialValues(const Slice& slice,
   auto sampler_noise_model =
       gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   gtsam::Sampler sampler(sampler_noise_model);
-
-  // Initialize link poses.
-  for (auto&& link : robot_.links()) {
-    int i = link->id();
-    const gtsam::Vector6 xi = sampler.sample();
-    InsertPose(&values, i, k, link->wTcom().expmap(xi));
-  }
 
   // Initialize wrenches and torques to 0.
   for (auto&& joint : robot_.joints()) {
@@ -118,10 +117,20 @@ gtsam::Values Statics::solve(const Slice& slice,
                              const gtsam::Values& configuration) const {
   auto graph = this->graph(slice);
 
-  auto values = initialValues(slice);
+  auto values = configuration;
+  values.insert(initialValues(slice));
 
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
   return optimizer.optimize();
 }
 
+gtsam::Values Statics::minimizeTorques(const Slice& slice) const {
+  auto graph = this->graph(slice);
+
+  auto values = Kinematics::initialValues(slice);
+  values.insert(initialValues(slice));
+
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
+  return optimizer.optimize();
+}
 }  // namespace gtdynamics

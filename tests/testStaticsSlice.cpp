@@ -31,15 +31,33 @@ TEST(Phase, Statics) {
   const Slice slice(k);
 
   // Instantiate statics algorithms
-  StaticsParameters parameters;
+  const gtsam::Vector3 gravity(0, 0, -10);
+  constexpr double sigma_dynamics = 1e-5;
+  StaticsParameters parameters(sigma_dynamics, gravity);
   Statics statics(robot, parameters);
 
   // Get an inverse kinematics solution
   auto ik_solution = statics.Kinematics::inverse(slice, contact_goals);
 
-  // Now, solve for wrenches
+  // Test graph generation
+  auto graph = statics.graph(slice);
+  EXPECT_LONGS_EQUAL(37, graph.size());
+  // GTD_PRINT(graph);
+
+  // Test initialization
+  auto values = statics.initialValues(slice);
+  EXPECT_LONGS_EQUAL(36, values.size());
+
+  // Solve for wrenches, with known kinematics
   auto result = statics.solve(slice, ik_solution);
+  EXPECT_LONGS_EQUAL(61, result.size());
   GTD_PRINT(result);
+  EXPECT_DOUBLES_EQUAL(0, Torque(result, 0, k), 1e-5);
+
+  // Optimize kinematics while minimizing torque
+  auto minimal = statics.minimizeTorques(slice);
+  EXPECT_LONGS_EQUAL(61, minimal.size());
+  // GTD_PRINT(minimal);
 }
 
 int main() {

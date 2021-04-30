@@ -124,5 +124,11 @@ class Statics : public Kinematics {
    */
   gtsam::Values solve(const Slice& slice,
                       const gtsam::Values& configuration) const;
+
+  /**
+   * Solve for wrenches and kinematics configuration.
+   * @param slice Slice instance.
+   */
+  gtsam::Values minimizeTorques(const Slice& slice) const;
 };
 }  // namespace gtdynamics
