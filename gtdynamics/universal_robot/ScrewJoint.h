@@ -53,7 +53,7 @@ class ScrewJoint : public ScrewJointBase {
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
    */
-  ScrewJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
+  ScrewJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &wTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const JointParams &parameters, const gtsam::Vector3 &axis,
              double thread_pitch)

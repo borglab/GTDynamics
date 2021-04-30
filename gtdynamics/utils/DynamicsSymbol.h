@@ -20,8 +20,8 @@ namespace gtdynamics {
 
 class DynamicsSymbol {
  protected:
-  unsigned char c1_, c2_, link_idx_, joint_idx_;
-  std::uint64_t t_;
+  uint8_t c1_, c2_, link_idx_, joint_idx_;
+  uint64_t t_;
 
  private:
   /**
@@ -32,8 +32,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                 unsigned char joint_idx, std::uint64_t t);
+  DynamicsSymbol(const std::string& s, uint8_t link_idx,
+                 uint8_t joint_idx, uint64_t t);
 
  public:
   /** Default constructor */
@@ -47,9 +47,8 @@ class DynamicsSymbol {
    *  See private constructor
    */
   static DynamicsSymbol LinkJointSymbol(const std::string& s,
-                                        unsigned char link_idx,
-                                        unsigned char joint_idx,
-                                        std::uint64_t t);
+                                        uint8_t link_idx,
+                                        uint8_t joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only joint (e.g. joint angle).
@@ -59,7 +58,7 @@ class DynamicsSymbol {
    * @param[in] t         time step
    */
   static DynamicsSymbol JointSymbol(const std::string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
+                                    uint8_t joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only link (e.g. link pose).
@@ -68,8 +67,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  static DynamicsSymbol LinkSymbol(const std::string& s, unsigned char link_idx,
-                                   std::uint64_t t);
+  static DynamicsSymbol LinkSymbol(const std::string& s, uint8_t link_idx,
+                                   uint64_t t);
 
   /**
    * Constructor for symbol related to neither joint or link (e.g. time).
@@ -77,7 +76,7 @@ class DynamicsSymbol {
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] t         time step
    */
-  static DynamicsSymbol SimpleSymbol(const std::string& s, std::uint64_t t);
+  static DynamicsSymbol SimpleSymbol(const std::string& s, uint64_t t);
 
   /**
    * Constructor that decodes an integer gtsam::Key
@@ -91,13 +90,13 @@ class DynamicsSymbol {
   std::string label() const;
 
   /// Return link id.
-  inline unsigned char linkIdx() const { return link_idx_; }
+  inline uint8_t linkIdx() const { return link_idx_; }
 
   /// Return joint id.
-  inline unsigned char jointIdx() const { return joint_idx_; }
+  inline uint8_t jointIdx() const { return joint_idx_; }
 
   /// Retrieve key index.
-  inline size_t time() const { return t_; }
+  inline uint64_t time() const { return t_; }
 
   /// Print.
   void print(const std::string& s = "") const;
@@ -130,13 +129,13 @@ class DynamicsSymbol {
    * @{
    */
   static constexpr size_t kMax_uchar_ =
-      std::numeric_limits<unsigned char>::max();
+      std::numeric_limits<uint8_t>::max();
   // bit counts
   static constexpr size_t key_bits = sizeof(gtsam::Key) * 8;
-  static constexpr size_t ch1_bits = sizeof(unsigned char) * 8;
-  static constexpr size_t ch2_bits = sizeof(unsigned char) * 8;
-  static constexpr size_t link_bits = sizeof(unsigned char) * 8;
-  static constexpr size_t joint_bits = sizeof(unsigned char) * 8;
+  static constexpr size_t ch1_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t ch2_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t link_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t joint_bits = sizeof(uint8_t) * 8;
   static constexpr size_t time_bits =
       key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
   // masks

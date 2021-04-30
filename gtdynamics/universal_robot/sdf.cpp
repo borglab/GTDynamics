@@ -11,9 +11,9 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
-#include "gtdynamics/universal_robot/sdf_internal.h"
 #include "gtdynamics/universal_robot/sdf.h"
 
+#include <fstream>
 #include <sdf/parser_urdf.hh>
 #include <sdf/sdf.hh>
 
@@ -22,8 +22,7 @@
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
-
-#include <fstream>
+#include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
 
@@ -53,7 +52,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d& ignition_pose) {
+gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose) {
   const auto &rot = ignition_pose.Rot();
   const auto &pos = ignition_pose.Pos();
   return gtsam::Pose3(
@@ -102,7 +101,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
+LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   gtsam::Matrix3 inertia;
   const auto &I = sdf_link.Inertial().Moi();
   inertia << I(0, 0), I(0, 1), I(0, 2), I(1, 0), I(1, 1), I(1, 2), I(2, 0),
@@ -114,7 +113,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
                                   inertia, wTl, lTcom);
 }
 
-JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
@@ -142,12 +141,12 @@ JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
-                                "] not yet supported");
+                               "] not yet supported");
   }
   return joint;
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &link_name,
+LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
                           const std::string &sdf_file_path,
                           const std::string &model_name) {
   auto model = GetSdf(sdf_file_path, model_name);

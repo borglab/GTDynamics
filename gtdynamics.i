@@ -32,13 +32,29 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model,
-                          size_t t);
+                          const gtsam::noiseModel::Base* model, size_t k = 0);
+
+  ForwardKinematicsFactor(const gtdynamics::Robot &robot,
+                          const string &start_link_name,
+                          const string &end_link_name,
+                          const gtsam::Values &joint_angles,
+                          const gtsam::noiseModel::Base* model, size_t k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
 };
+
+#include <gtdynamics/factors/ContactEqualityFactor.h>
+class ContactEqualityFactor : gtsam::NoiseModelFactor {
+  ContactEqualityFactor(const gtdynamics::PointOnLink &point_on_link,
+                        const gtsam::noiseModel::Base *model, size_t k1,
+                        size_t k2);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 
 #include <gtdynamics/factors/TwistFactor.h>
 class TwistFactor : gtsam::NonlinearFactor {
@@ -185,7 +201,7 @@ class JointParams {
 };
 
 virtual class Joint {
-  unsigned char id() const;
+  uint8_t id() const;
   const gtsam::Pose3 &wTj() const;
   const gtsam::Pose3 &jTpcom() const;
   const Pose3 &jTccom() const;
@@ -571,7 +587,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
 
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
-    const std::vector<gtsam::Point3> &goal_trajectory, unsigned char i,
+    const std::vector<gtsam::Point3> &goal_trajectory, uint8_t i,
     size_t k = 0);
 
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
@@ -600,18 +616,18 @@ class DynamicsSymbol {
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
   static DynamicsSymbol LinkJointSymbol(const string& s,
-                                        unsigned char link_idx,
-                                        unsigned char joint_idx,
+                                        uint8_t link_idx,
+                                        uint8_t joint_idx,
                                         std::uint64_t t);
   static DynamicsSymbol JointSymbol(const string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
-  static DynamicsSymbol LinkSymbol(const string& s, unsigned char link_idx,
+                                    uint8_t joint_idx, std::uint64_t t);
+  static DynamicsSymbol LinkSymbol(const string& s, uint8_t link_idx,
                                    std::uint64_t t);
   static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
 
   string label() const;
-  unsigned char linkIdx() const;
-  unsigned char jointIdx() const;
+  uint8_t linkIdx() const;
+  uint8_t jointIdx() const;
   size_t time() const;
   gtsam::Key key() const;
 
