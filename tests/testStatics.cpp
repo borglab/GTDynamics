@@ -18,7 +18,6 @@
 #include <cmath>
 
 #include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
@@ -67,36 +66,6 @@ TEST(Statics, ResultantWrench) {
   expected.setIdentity();
   EXPECT(assert_equal(expected, actualH[0], kTol));
   EXPECT(assert_equal(expected, actualH[1], kTol));
-}
-
-TEST(Statics, SecondExampleFromWrenchesColab) {
-  constexpr double g = 10, mass = 1;  // for nice round numbers.
-  const Vector3 gravity(0, -g, 0);
-  const Pose3 wTcom(Rot3::Rz(M_PI / 3), Point3(0, 0, 0));
-  const Vector6 Fg_B = GravityWrench(gravity, mass, wTcom);
-  EXPECT(assert_equal((Vector(6) << 0, 0, 0, -8.66025404, -5, 0).finished(),
-                      Fg_B, kTol));
-
-  // Create base and link
-  // TODO(frank): #207 should not have to provide wTl to Link constructor
-  const gtsam::Pose3 wTl;  // we don't care!
-  constexpr double L = 2;  // meters
-  const gtsam::Pose3 lTcom(Rot3(), Point3(L / 2, 0, 0));
-  const auto I3 = Matrix3::Identity();  // inertia
-  auto base = boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3());
-  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, wTl, lTcom);
-
-  // Create joint
-  constexpr unsigned char id = 1;
-  // TODO(frank): #206 should not have to provide wTj to the joint constructor.
-  const Pose3 wTj;
-  // TODO(frank): #205 make JointParams last argument and provide default
-  const JointParams parameters;
-  const gtsam::Vector3 axis(0, 0, 1);
-  RevoluteJoint joint(id, "joint1", wTj, base, link, parameters, axis);
-  Vector6 screw_axis = joint.screwAxis(link);
-  const double tau = screw_axis.dot(-Fg_B);
-  EXPECT_DOUBLES_EQUAL(5, tau, kTol);
 }
 
 int main() {

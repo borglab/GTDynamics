@@ -14,6 +14,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearEquality.h>
 
 #include "gtdynamics/factors/TorqueFactor.h"             // TODO: move
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"  // TODO: move
@@ -24,6 +25,7 @@
 namespace gtdynamics {
 using gtsam::assert_equal;
 using gtsam::Point3;
+using gtsam::Pose3;
 using std::map;
 using std::string;
 
@@ -116,9 +118,27 @@ gtsam::Values Statics::initialValues(const Slice& slice,
 gtsam::Values Statics::solve(const Slice& slice,
                              const gtsam::Values& configuration) const {
   auto graph = this->graph(slice);
-
-  auto values = configuration;
+  gtsam::Values values;
   values.insert(initialValues(slice));
+
+  // In this function we assume the kinematics is given, and we add priors to
+  // the graph to enforce this. Would be much nicer with constant expressions.
+
+  // Add constraints for poses and initialize them.
+  for (auto&& link : robot_.links()) {
+    auto key = internal::PoseKey(link->id(), slice.k);
+    auto pose = configuration.at<Pose3>(key);
+    graph.emplace_shared<gtsam::NonlinearEquality1<Pose3>>(pose, key);
+    values.insert(key, pose);
+  }
+
+  // Add constriants for joint angles and initialize them.
+  for (auto&& joint : robot_.joints()) {
+    auto key = internal::JointAngleKey(joint->id(), slice.k);
+    auto q = configuration.at<double>(key);
+    graph.emplace_shared<gtsam::NonlinearEquality1<double>>(q, key);
+    values.insert(key, q);
+  }
 
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
   return optimizer.optimize();
@@ -130,6 +150,7 @@ gtsam::Values Statics::minimizeTorques(const Slice& slice) const {
   auto values = Kinematics::initialValues(slice);
   values.insert(initialValues(slice));
 
+  // TODO(frank): make IPOPT optimizer base class.
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
   return optimizer.optimize();
 }
