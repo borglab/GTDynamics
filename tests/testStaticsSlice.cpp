@@ -81,30 +81,25 @@ TEST(Statics, OneMovingLink) {
   const Slice slice(k);
   Values values;
   InsertJointAngle(&values, joint->id(), k, theta);
-  try {
-    // Do forward kinematics and check this agrees with example.
-    Values fk_solution = robot.forwardKinematics(values, k);
-    EXPECT(assert_equal(wTcom, Pose(fk_solution, link->id(), k), kTol));
 
-    // Now solve for wrenches/torques.
-    auto result = statics.solve(slice, fk_solution);
+  // Do forward kinematics and check this agrees with example.
+  Values fk_solution = robot.forwardKinematics(values, k);
+  EXPECT(assert_equal(wTcom, Pose(fk_solution, link->id(), k), kTol));
 
-    // Check that the actual wrench on the link is the negative gravity wrench.
-    const Vector6 actualWrench =
-        Wrench(result, joint->child()->id(), joint->id(), k);
-    Vector expectedWrench = -Fg_B;
-    EXPECT(assert_equal(expectedWrench, actualWrench, kTol));
+  // Now solve for wrenches/torques.
+  auto result = statics.solve(slice, fk_solution);
 
-    // Check the resulting torque, 5 Nm in counterclockwise, in two different
-    // ways: once from the wrench, and once from the optimization:
-    EXPECT_DOUBLES_EQUAL(
-        5, joint->transformWrenchToTorque(joint->child(), actualWrench), kTol);
-    EXPECT_DOUBLES_EQUAL(expected_tau, Torque(result, joint->id(), k), 1e-5);
-  } catch (const gtsam::ValuesKeyAlreadyExists &e) {
-    DynamicsSymbol(e.key()).print("exists ");
-  } catch (const gtsam::ValuesKeyDoesNotExist &e) {
-    DynamicsSymbol(e.key()).print("not there ");
-  }
+  // Check that the actual wrench on the link is the negative gravity wrench.
+  const Vector6 actualWrench =
+      Wrench(result, joint->child()->id(), joint->id(), k);
+  Vector expectedWrench = -Fg_B;
+  EXPECT(assert_equal(expectedWrench, actualWrench, kTol));
+
+  // Check the resulting torque, 5 Nm in counterclockwise, in two different
+  // ways: once from the wrench, and once from the optimization:
+  EXPECT_DOUBLES_EQUAL(
+      5, joint->transformWrenchToTorque(joint->child(), actualWrench), kTol);
+  EXPECT_DOUBLES_EQUAL(expected_tau, Torque(result, joint->id(), k), 1e-5);
 }
 
 // Do test with Quadruped and desired contact goals.
