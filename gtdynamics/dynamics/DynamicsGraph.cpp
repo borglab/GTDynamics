@@ -97,6 +97,8 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
   OptimizerSetting opt_;
   for (auto &&joint : robot.joints()) {
     graph += joint->linearAFactors(t, known_values, opt_, planar_axis_);
+  }
+  for (auto &&joint : robot.joints()) {
     graph += joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_);
   }
 
@@ -130,6 +132,9 @@ Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
   graph += priors;
+
+  // graph.print("", GTDKeyFormatter);
+
   gtsam::VectorValues results = graph.optimize();
 
   // arrange values

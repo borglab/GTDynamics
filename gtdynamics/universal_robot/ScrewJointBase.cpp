@@ -174,7 +174,7 @@ gtsam::GaussianFactorGraph ScrewJointBase::linearAFactors(
   const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
   const Vector6 V_i2 = Twist(known_values, child()->id(), t);
   const Vector6 S_i2_j = screwAxis(child_link_);
-  const double v_j = JointAngle(known_values, id(), t);
+  const double v_j = JointVel(known_values, id(), t);
 
   // twist acceleration factor
   // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
@@ -184,6 +184,12 @@ gtsam::GaussianFactorGraph ScrewJointBase::linearAFactors(
             internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
             gtsam::noiseModel::Constrained::All(6));
 
+  // if (t==1) {
+  //   graph.print("", GTDKeyFormatter);
+  //   std::cout << "V_i2:\t" << V_i2.transpose() << "\n";
+  //   std::cout << "S_i2_j:\t" << S_i2_j.transpose() << "\n";
+  //   std::cout << "v_j\t" << v_j << "\n";
+  // }
   return graph;
 }
 

@@ -86,16 +86,28 @@ inline DynamicsSymbol ValveCloseTimeKey(int j) {
   return DynamicsSymbol::JointSymbol("tc", j, 0);
 }
 
+struct PriorValues {
+  double q;
+  double v;
+  double Ps;
+  double m;
+  double t;
+  double to;
+  double tc;
+};
+
+gtsam::Values optimize_LMQR(const gtsam::NonlinearFactorGraph& graph, const gtsam::Values& init_values);
+
 /// Pneumatic actuator used in jumping robot
 class PneumaticActuator {
  public:
   struct Params {
     std::string joint_name;         // joint name
     int j;                          // joint index
-    std::vector<double> x0_coeffs;
-    std::vector<double> f0_coeffs;
-    std::vector<double> k_coeffs;
-    std::vector<double> p_coeffs;   // coefficients for PressureFactor
+    // std::vector<double> x0_coeffs;
+    // std::vector<double> f0_coeffs;
+    // std::vector<double> k_coeffs;
+    // std::vector<double> p_coeffs;   // coefficients for PressureFactor
     double kt;                      // spring coefficient for tendon spring
     double ka;                      // spring coefficient for antagonistic spring
     double q_rest;                  // nominal angle without contraction
@@ -111,16 +123,6 @@ class PneumaticActuator {
     double mu;
     double epsilon;
     double ct;
-  };
-
-  struct PriorValues {
-    double q;
-    double v;
-    double Ps;
-    double m;
-    double t;
-    double to;
-    double tc;
   };
 
  private:
@@ -163,6 +165,29 @@ class PneumaticActuator {
   /**
    * Construct pneumatic actuator
    */
+
+  PneumaticActuator() {
+    Params params;
+    params.joint_name = "j1";
+    params.j = 1;                          // joint index
+    params.kt = 8200;                      // spring coefficient for tendon spring
+    params.ka = 2.0;                      // spring coefficient for antagonistic spring
+    params.q_rest = 0;                  // nominal angle without contraction
+    params.q_anta_limit =0;            // joint limit to activate antagonistic spring
+    params.r = 0.04;                       // radius of pulley r
+    params.b = 0.05;                       // damping coefficient
+    params.positive = false;                  // actuator configuration
+
+    params.Rs = 287.0550;
+    params.T = 296.15;
+    params.D = 0.1575 * 0.0254;
+    params.L = 74 * 0.0254;
+    params.mu = 1.8377e-5;
+    params.epsilon = 1e-5;
+    params.ct = 1e-3;
+    params_ = params;    
+  }
+
   PneumaticActuator(Params& params)
       : params_(params) {}
 
@@ -173,21 +198,39 @@ class PneumaticActuator {
    */
   gtsam::NonlinearFactorGraph actuatorFactorGraph(const int t) const;
 
-  // gtsam::Values computeResult(const int t, const double angle, const double vel,
-  //                             const double start_time,
-  //                             const double current_time,
-  //                             const double init_pressure) const;
+  gtsam::NonlinearFactorGraph actuatorPriorGraph(const int t,  const PriorValues& prior_values) const;
 
   gtsam::Values computeResult(const int t, const PriorValues& prior_values,
         const gtsam::Values& previous_values) const;
 
   gtsam::NonlinearFactorGraph sourceFactorGraph(const int t) const;
 
+  gtsam::NonlinearFactorGraph sourcePriorGraph(const int t, const double ms, const double vs) const;
+
+  gtsam::Values actuatorInitValues(const int t, const PriorValues& prior_values) const;
+
+  gtsam::Values sourceInitValues(const int t,  const double ms, const double vs) const;
+
   gtsam::Values computeSourceResult(const int t, const double ms, const double vs) const;
 
   int j() const { return params_.j; }
 
   std::string name() const { return params_.joint_name; }
+
+  const Params& params() const {return params_; }
+
+  PriorValues priorValues() const{
+    PriorValues prior_values;
+    prior_values.q = 0.0;
+    prior_values.m = 7.873172488131229e-05;
+    prior_values.v = 0.0;
+    prior_values.Ps = 65.0 * 6.89476;
+    prior_values.t = 0.0;
+    prior_values.to = 0.0;
+    prior_values.tc = 1.0;
+    return prior_values;
+  }
+
 
   // /// calculate torque given joint angle
   // double calculateTorque(const double angle, const PriorValues prior_values,
