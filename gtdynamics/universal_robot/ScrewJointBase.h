@@ -20,12 +20,11 @@
 
 #pragma once
 
+#include <gtsam/geometry/Pose3.h>
+
 #include <cmath>
 #include <map>
 #include <string>
-
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Pose3.h>
 
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/universal_robot/JointTyped.h"
@@ -46,17 +45,17 @@ class ScrewJointBase : public JointTyped {
  protected:
   gtsam::Vector3 axis_;
 
-  // Screw axis in parent and child COM frames.
+  // Screw axis in parent and child CoM frames.
   Vector6 pScrewAxis_;
   Vector6 cScrewAxis_;
 
  public:
-  /// Return transform of child link com frame w.r.t parent link com frame
+  /// Return transform of child link CoM frame w.r.t parent link CoM frame
   Pose3 parentTchild(double q, gtsam::OptionalJacobian<6, 1> pMc_H_q =
                                    boost::none) const override;
 
  protected:
-  /// Return transform of parent link com frame w.r.t child link com frame
+  /// Return transform of parent link CoM frame w.r.t child link CoM frame
   Pose3 childTparent(double q, gtsam::OptionalJacobian<6, 1> cMp_H_q =
                                    boost::none) const override;
 
@@ -71,7 +70,7 @@ class ScrewJointBase : public JointTyped {
    * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(unsigned char id, const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
@@ -126,7 +125,7 @@ class ScrewJointBase : public JointTyped {
   // TODO(frank): document and possibly eliminate
   gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
                                               double q) const override {
-    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), q),
+    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), 0),
                                screwAxis(link));
   }
 
@@ -144,7 +143,6 @@ class ScrewJointBase : public JointTyped {
   gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const override;
-
 
   /// Return joint limit factors.
   gtsam::NonlinearFactorGraph jointLimitFactors(

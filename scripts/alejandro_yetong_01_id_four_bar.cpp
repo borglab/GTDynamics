@@ -25,8 +25,8 @@
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  using four_bar_linkage::planar_axis;
-  using four_bar_linkage::robot;
+  using four_bar_linkage_pure::planar_axis;
+  using four_bar_linkage_pure::robot;
 
   gtsam::Values joint_angles_vels_accels;
 

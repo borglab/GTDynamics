@@ -8,7 +8,7 @@
 /**
  * @file  testWalkCycle.cpp
  * @brief Test WalkCycle class.
- * @Author: Frank Dellaert, Tarushree Gandhi, Disha Das
+ * @author: Frank Dellaert, Tarushree Gandhi, Disha Das
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -18,39 +18,56 @@
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/Phase.h"
 #include "gtdynamics/utils/WalkCycle.h"
+#include "walkCycleExample.h"
 
 using namespace gtdynamics;
 
+using gtsam::Point3;
+
 TEST(WalkCycle, error) {
-  Robot robot_configuration =
-      CreateRobotFromFile(kSdfPath + std::string("/test/spider.sdf"), "spider");
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
-  // Initialize first phase
-  size_t num_time_steps = 20;
-  auto phase_1 = gtdynamics::Phase(robot_configuration, num_time_steps);
-  double contact_height = 5;
-  phase_1.addContactPoint("tarsus_1", gtsam::Point3(3, 3, 3), contact_height);
-  phase_1.addContactPoint("tarsus_2", gtsam::Point3(3, 3, 3), contact_height);
-  phase_1.addContactPoint("tarsus_3", gtsam::Point3(3, 3, 3), contact_height);
-
-  // Initialize second phase
-  size_t num_time_steps_2 = 25;
-  auto phase_2 = gtdynamics::Phase(robot_configuration, num_time_steps_2);
-  phase_2.addContactPoint("tarsus_2", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_3", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_4", gtsam::Point3(3, 3, 3), contact_height);
-  phase_2.addContactPoint("tarsus_5", gtsam::Point3(3, 3, 3), contact_height);
-
-  // Initialize walk cycle
-  auto walk_cycle = gtdynamics::WalkCycle();
-  walk_cycle.addPhase(phase_1);
-  walk_cycle.addPhase(phase_2);
-
+  using namespace walk_cycle_example;
   auto walk_cycle_phases = walk_cycle.phases();
-  EXPECT(walk_cycle_phases[0].contactPoints().size() == 3);
-  EXPECT(walk_cycle_phases[1].contactPoints().size() == 4);
-  EXPECT(walk_cycle.numPhases() == 2);
-  EXPECT(walk_cycle.allContactPoints().size() == 5);
+  EXPECT_LONGS_EQUAL(3, walk_cycle_phases[0].contactPoints().size());
+  EXPECT_LONGS_EQUAL(4, walk_cycle_phases[1].contactPoints().size());
+  EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
+  EXPECT_LONGS_EQUAL(num_time_steps + num_time_steps_2,
+                     walk_cycle.numTimeSteps());
+  EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
+}
+
+TEST(Phase, inverse_kinematics) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+  EXPECT_LONGS_EQUAL(13, robot.numLinks());
+
+  constexpr size_t num_time_steps = 5;
+  const Point3 contact_in_com(0.14, 0, 0);
+  Phase phase0(num_time_steps), phase1(num_time_steps);
+  phase0.addContactPoint("lower1", contact_in_com);  // LH
+  phase1.addContactPoint("lower0", contact_in_com);  // LF
+  phase0.addContactPoint("lower2", contact_in_com);  // RF
+  phase1.addContactPoint("lower3", contact_in_com);  // RH
+  auto walk_cycle = WalkCycle({phase0, phase1});
+
+  // Set goal points to reasonable values
+  Point3 goal_LH(0, 0.15, 0);     // LH
+  Point3 goal_LF(0.6, 0.15, 0);   // LF
+  Point3 goal_RF(0.6, -0.15, 0);  // RF
+  Point3 goal_RH(0, -0.15, 0);    // RH
+
+  const Point3 step(0, 0.4, 0);
+  const gtsam::SharedNoiseModel cost_model = nullptr;
+  const size_t k = 777;
+  std::map<std::string, Point3> cp_goals = {{"lower1", goal_LH},
+                                            {"lower0", goal_LF},
+                                            {"lower2", goal_RF},
+                                            {"lower3", goal_RH}};
+  gtsam::NonlinearFactorGraph factors =
+      walk_cycle.contactPointObjectives(step, cost_model, robot, k, &cp_goals);
+  EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
 }
 
 int main() {

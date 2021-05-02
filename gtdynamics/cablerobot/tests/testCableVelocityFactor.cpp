@@ -5,7 +5,7 @@
  * @author Gerry Chen
  */
 
-#include "factors/CableVelocityFactor.h"
+#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
 
 #include <gtdynamics/utils/values.h>
 

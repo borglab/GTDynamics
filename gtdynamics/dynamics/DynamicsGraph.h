@@ -25,14 +25,15 @@
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/utils/ContactPoint.h"
 
 namespace gtdynamics {
 
 using JointValueMap = std::map<std::string, double>;
 
-/* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
-inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
-  return DynamicsSymbol::LinkJointSymbol("C", i, k, t);
+/// Shorthand for C_i_c_k, for contact wrench c on i-th link at time step k.
+inline DynamicsSymbol ContactWrenchKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
@@ -40,41 +41,10 @@ inline DynamicsSymbol PhaseKey(int k) {
   return DynamicsSymbol::SimpleSymbol("dt", k);
 }
 
-/* Shorthand for t_t, time at time step t. */
-inline DynamicsSymbol TimeKey(int t) {
-  return DynamicsSymbol::SimpleSymbol("t", t);
+/* Shorthand for t_k, time at time step k. */
+inline DynamicsSymbol TimeKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("t", k);
 }
-
-/**
- * ContactPoint defines a single contact point at a link.
- *
- * @param point The location of the contact point relative to the link COM.
- * @param id Each link's contact points must have a unique contact id.
- * @param height Height at which contact is made.
- */
-struct ContactPoint {
-  gtsam::Point3 point;
-  int id;
-  double height = 0.0;
-
-  ContactPoint() {}
-  ContactPoint(const gtsam::Point3 &point, int id, double height = 0.0)
-      : point(point), id(id), height(height) {}
-
-  bool operator==(const ContactPoint &other) {
-    return (point == other.point && id == other.id && height == other.height);
-  }
-  bool operator!=(const ContactPoint &other) { return !(*this == other); }
-
-  /// Print to stream.
-  friend std::ostream &operator<<(std::ostream &os, const ContactPoint &cp);
-
-  /// GTSAM-style print, works with wrapper.
-  void print(const std::string &s) const;
-};
-
-///< Map of link name to ContactPoint
-using ContactPoints = std::map<std::string, ContactPoint>;
 
 /** Collocation methods. */
 enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
@@ -233,13 +203,15 @@ class DynamicsGraph {
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
-   * @param robots            the robot configuration for each phase
-   * @param phase_steps       number of time steps for each phase
-   * @param transition_graphs transition step graphs with guardian factors
-   * @param collocation       the collocation scheme
+   * @param robot                the robot configuration
+   * @param phase_steps          number of time steps for each phase
+   * @param transition_graphs    transition step graphs with guardian factors
+   * @param collocation          the collocation scheme
+   * @param phase_contact_points contact points at each phase
+   * @param mu                   optional coefficient of static friction
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+      const Robot &robot, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation = Trapezoidal,
       const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
@@ -261,12 +233,23 @@ class DynamicsGraph {
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const CollocationScheme collocation = Trapezoidal);
 
-  /** return collocation factors for the specified joint. */
+  /**
+   * Return collocation factors for the specified joint.
+   * @param j           joint index
+   * @param t           time step
+   * @param dt          time delta
+   * @param collocation the collocation scheme
+   */
   gtsam::NonlinearFactorGraph jointCollocationFactors(
       const int j, const int t, const double dt,
       const CollocationScheme collocation = Trapezoidal) const;
 
-  /** return collocation factors for the specified joint, with dt as a variable.
+  /**
+   * Return collocation factors for the specified joint, with dt as a variable.
+   * @param j           joint index
+   * @param t           time step
+   * @param phase       the phase of the timestamp
+   * @param collocation the collocation scheme
    */
   gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
       const int j, const int t, const int phase,
