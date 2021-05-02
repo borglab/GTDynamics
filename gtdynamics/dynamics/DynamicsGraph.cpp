@@ -337,7 +337,6 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
         wrench_keys.push_back(internal::WrenchKey(i, joint->id(), k));
 
       // Add wrench keys for contact points.
-      // TODO: use Dynamics::wrenchEquivalenceFactors<Slice> etc...
       if (contact_points) {
         for (auto &&contact_point : *contact_points) {
           if (contact_point.first != link->name()) continue;
