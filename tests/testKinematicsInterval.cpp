@@ -38,8 +38,6 @@ TEST(Interval, InverseKinematics) {
   // Instantiate kinematics algorithms
   KinematicsParameters parameters;
   //   parameters.lm_parameters.setVerbosityLM("SUMMARY");
-  parameters.lm_parameters.setlambdaInitial(1e7);
-  parameters.lm_parameters.setAbsoluteErrorTol(1e-3);
   Kinematics kinematics(robot, parameters);
 
   auto graph = kinematics.graph(interval);
