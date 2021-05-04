@@ -140,17 +140,17 @@ const Robot &JumpingRobot::getRobot(const Phase phase) const
 
 vector<PneumaticActuator> JumpingRobot::constructActuators(const JointValueMap &rest_angles)
 {
-    const double c1 = -12.05020559, c2 = 8.88481485, c3 = -85.56821655, t0 = 0.224;
-    const vector<double> pressure_coeffs{t0, c1, c2, c3};
+    // const double c1 = -12.05020559, c2 = 8.88481485, c3 = -85.56821655, t0 = 0.224;
+    // const vector<double> pressure_coeffs{t0, c1, c2, c3};
 
-    // coefficients for pneumatic actuator factor
-    // const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
-    //              p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
-    //              p12 = 0.0001081, p03 = -7.703e-07;
-    // const vector<double> pneumatic_coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
-    const vector<double> x0_coeffs {3.05583930e+00, 7.58361626e-02, -4.91579771e-04, 1.42792618e-06, -1.54817477e-09};
-    const vector<double> f0_coeffs {0, 1.966409};
-    const vector<double> k_coeffs {0, 0.35541599};
+    // // coefficients for pneumatic actuator factor
+    // // const double p00 = -17.39, p10 = 1.11, p01 = 2.22, p20 = -0.9486,
+    // //              p11 = -0.4481, p02 = -0.0003159, p30 = 0.1745, p21 = 0.01601,
+    // //              p12 = 0.0001081, p03 = -7.703e-07;
+    // // const vector<double> pneumatic_coeffs{p00, p10, p01, p20, p11, p02, p30, p21, p12, p03};
+    // const vector<double> x0_coeffs {3.05583930e+00, 7.58361626e-02, -4.91579771e-04, 1.42792618e-06, -1.54817477e-09};
+    // const vector<double> f0_coeffs {0, 1.966409};
+    // const vector<double> k_coeffs {0, 0.35541599};
 
     const double r = 0.04; // pully radius
 
@@ -180,10 +180,10 @@ vector<PneumaticActuator> JumpingRobot::constructActuators(const JointValueMap &
         std::string name = actuator_names[idx];
         actuator_params.joint_name = name;
         actuator_params.j = robot_ground.joint(name)->id();
-        actuator_params.x0_coeffs = x0_coeffs;
-        actuator_params.f0_coeffs = f0_coeffs;
-        actuator_params.k_coeffs = k_coeffs;
-        actuator_params.p_coeffs = pressure_coeffs;
+        // actuator_params.x0_coeffs = x0_coeffs;
+        // actuator_params.f0_coeffs = f0_coeffs;
+        // actuator_params.k_coeffs = k_coeffs;
+        // actuator_params.p_coeffs = pressure_coeffs;
 
         actuator_params.kt = kt_list[idx];
         actuator_params.ka = ka_list[idx];
@@ -255,7 +255,7 @@ Values JumpingRobot::runActuators(const int t, const double time,
 
     auto &actuator = actuators_[actuator_idx];
     std::string name = actuators_[actuator_idx].name();
-    PneumaticActuator::PriorValues prior_values;
+    PriorValues prior_values;
     prior_values.q = qs.at(name);
     prior_values.v = vs.at(name);
     prior_values.Ps = source_pressure;
