@@ -67,16 +67,16 @@ class TestJRSimulator(unittest.TestCase):
     def lm_optimize(self, graph, values):
         """ Run Levenberg-Marquardt optimization. """
         init_values = gtd.ExtractValues(values, graph.keys())
-        # params = gtsam.LevenbergMarquardtParams()
-        # params.setlambdaLowerBound(1e-20)
-        # params.setlambdaUpperBound(1e20)
-        # params.setVerbosityLM("SUMMARY")
-        # # params.setLinearSolverType("MULTIFRONTAL_QR")
-        # params.setLinearSolverType("SEQUENTIAL_QR")
-        # optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-        # results = optimizer.optimize()
+        params = gtsam.LevenbergMarquardtParams()
+        params.setlambdaLowerBound(1e-20)
+        params.setlambdaUpperBound(1e20)
+        params.setVerbosityLM("SUMMARY")
+        # params.setLinearSolverType("MULTIFRONTAL_QR")
+        params.setLinearSolverType("SEQUENTIAL_QR")
+        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
+        results = optimizer.optimize()
 
-        results = gtd.optimize_LMQR(graph, init_values)
+        # results = gtd.optimize_LMQR(graph, init_values)
 
         return results
     
@@ -238,52 +238,52 @@ class TestJRSimulator(unittest.TestCase):
         gtd.DynamicsGraph.printGraph(graph)
         self.lm_optimize(graph, sim_values)
 
-    # def test_solving_step(self):
-    #     """ Create dynamics graph of a single step, and solve it. """
-    #     sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
-    #     actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+    def test_solving_step(self):
+        """ Create dynamics graph of a single step, and solve it. """
+        sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
+        actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
 
-    #     graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps)
-    #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
+        graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps)
+        graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
 
-    #     gtd.DynamicsGraph.printGraph(graph)
+        gtd.DynamicsGraph.printGraph(graph)
 
-    #     self.lm_optimize(graph, sim_values)
+        self.lm_optimize(graph, sim_values)
 
 
-    # def test_solving_onse_step_collocation(self):
-    #     """ Create trajectory of one step, and solve it. """
-    #     dt = 0.005
-    #     sim_values, phase_steps = self.jr_simulator.simulate(1, dt, self.controls)
-    #     actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
-    #     phase0_key = gtd.PhaseKey(0).key()
-    #     sim_values.insertDouble(phase0_key, dt)
+    def test_solving_onse_step_collocation(self):
+        """ Create trajectory of one step, and solve it. """
+        dt = 0.005
+        sim_values, phase_steps = self.jr_simulator.simulate(1, dt, self.controls)
+        actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+        phase0_key = gtd.PhaseKey(0).key()
+        sim_values.insertDouble(phase0_key, dt)
 
-    #     collocation = gtd.CollocationScheme.Trapezoidal
-    #     graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
-    #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-    #     graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
+        collocation = gtd.CollocationScheme.Trapezoidal
+        graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
+        graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
+        graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
 
-    #     results = self.lm_optimize(graph, sim_values)
-    #     self.assertAlmostEqual(graph.error(results), 0, places=5)
+        results = self.lm_optimize(graph, sim_values)
+        self.assertAlmostEqual(graph.error(results), 0, places=5)
 
-    # def test_solving_single_phase_collocation(self):
-    #     """ Create trajectory of one step, and solve it. """
-    #     dt = 0.005
-    #     sim_values, phase_steps = self.jr_simulator.simulate(30, dt, self.controls)
-    #     actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
-    #     phase0_key = gtd.PhaseKey(0).key()
-    #     sim_values.insertDouble(phase0_key, dt)
+    def test_solving_single_phase_collocation(self):
+        """ Create trajectory of one step, and solve it. """
+        dt = 0.005
+        sim_values, phase_steps = self.jr_simulator.simulate(10, dt, self.controls)
+        actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
+        phase0_key = gtd.PhaseKey(0).key()
+        sim_values.insertDouble(phase0_key, dt)
 
-    #     collocation = gtd.CollocationScheme.Trapezoidal
-    #     graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
-    #     graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-    #     graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
+        collocation = gtd.CollocationScheme.Trapezoidal
+        graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
+        graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
+        graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
         
-    #     init_values = gtd.ExtractValues(sim_values, graph.keys())
+        init_values = gtd.ExtractValues(sim_values, graph.keys())
 
-    #     results = self.lm_optimize(graph, sim_values)
-    #     self.assertAlmostEqual(graph.error(results), 0, places=5)
+        results = self.lm_optimize(graph, sim_values)
+        self.assertAlmostEqual(graph.error(results), 0, places=5)
 
     # def test_solving_vertical_jump_collocation(self):
     #     """ Create trajectory vertical jump, and solve it. """
@@ -312,4 +312,8 @@ class TestJRSimulator(unittest.TestCase):
     #     # self.lm_optimize(graph, sim_values)
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    suite = unittest.TestSuite()
+    suite.addTest(TestJRSimulator("test_solving_single_phase_collocation"))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
