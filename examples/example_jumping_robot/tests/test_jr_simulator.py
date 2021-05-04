@@ -239,7 +239,7 @@ class TestJRSimulator(unittest.TestCase):
     def test_solving_single_phase_collocation(self):
         """ Create trajectory of one step, and solve it. """
         dt = 0.005
-        sim_values, phase_steps = self.jr_simulator.simulate(10, dt, self.controls)
+        sim_values, phase_steps = self.jr_simulator.simulate(20, dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
         phase0_key = gtd.PhaseKey(0).key()
         sim_values.insertDouble(phase0_key, dt)
@@ -247,7 +247,7 @@ class TestJRSimulator(unittest.TestCase):
         collocation = gtd.CollocationScheme.Trapezoidal
         graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
         graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-        graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
+        graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
         
         init_values = gtd.ExtractValues(sim_values, graph.keys())
 
@@ -259,8 +259,8 @@ class TestJRSimulator(unittest.TestCase):
         dt = 0.01
         phase0_key = gtd.PhaseKey(0).key()
         phase3_key = gtd.PhaseKey(3).key()
-        # sim_values, phase_steps = self.jr_simulator.simulate_to_high(dt, self.controls)
-        sim_values, phase_steps = self.jr_simulator.simulate(55, dt, self.controls)
+        sim_values, phase_steps = self.jr_simulator.simulate_to_high(dt, self.controls)
+        # sim_values, phase_steps = self.jr_simulator.simulate(55, dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
         sim_values.insertDouble(phase0_key, dt)
         sim_values.insertDouble(phase3_key, dt)
