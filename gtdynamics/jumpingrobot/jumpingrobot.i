@@ -81,14 +81,40 @@ class CustomProjectionFactor: gtsam::NonlinearFactor{
                          gtsam::Key calibKey);
 };
 
-// class PriorFactorCal3Bundler : gtsam::NoiseModelFactor {
-//   PriorFactorCal3Bundler(gtsam::Key key, const gtsam::Cal3Bundler& prior, 
-//                          const gtsam::noiseModel::Base* noiseModel);
-// };
-
 void addPriorFactorCal3Bundler(gtsam::NonlinearFactorGraph& graph, gtsam::Key key,
                             const gtsam::Cal3Bundler& prior,
                             const gtsam::noiseModel::Base *model);
+
+#include <gtdynamics/jumpingrobot/factors/SystemIdentificationFactors.h>
+class ForceBalanceFactorId: gtsam::NonlinearFactor{
+  ForceBalanceFactorId(gtsam::Key delta_x_key, gtsam::Key q_key, gtsam::Key f_key,
+                       gtsam::Key k_key,
+                     const gtsam::noiseModel::Base *cost_model,
+                     const double r, const double q_rest,
+                     const bool contract = false);
+};
+
+class JointTorqueFactorId: gtsam::NonlinearFactor{
+  JointTorqueFactorId(gtsam::Key q_key, gtsam::Key v_key, gtsam::Key f_key,
+                    gtsam::Key torque_key, gtsam::Key b_key,
+                    const gtsam::noiseModel::Base *cost_model,
+                    const double q_limit, const double ka, const double r,
+                const bool positive = false);
+};
+
+class ActuatorVolumeFactorId: gtsam::NonlinearFactor{
+  ActuatorVolumeFactorId(gtsam::Key v_key, gtsam::Key l_key, gtsam::Key d_tube_key,
+                       const gtsam::noiseModel::Base *cost_model,
+                       const double l_tube);
+};
+
+class MassFlowRateFactorId: gtsam::NonlinearFactor{
+  MassFlowRateFactorId(gtsam::Key pm_key, gtsam::Key ps_key, gtsam::Key mdot_key,
+                     gtsam::Key d_tube_key,
+                     const gtsam::noiseModel::Base *cost_model,
+                     const double D, const double L, const double mu,
+                     const double epsilon, const double k);
+};
 
 #include <gtdynamics/jumpingrobot/factors/ValueUtils.h>
 gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector& keys);
