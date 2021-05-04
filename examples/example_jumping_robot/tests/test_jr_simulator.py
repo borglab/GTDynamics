@@ -20,7 +20,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 from src.jumping_robot import Actuator, JumpingRobot
-from src.jr_visualizer import visualize_jr, visualize_jr_trajectory
+from src.jr_visualizer import visualize_jr
 from src.robot_graph_builder import RobotGraphBuilder
 from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
@@ -36,7 +36,7 @@ class TestJRSimulator(unittest.TestCase):
 
         self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
         Tos = [0, 0, 0, 0]
-        Tcs = [0.098, 0.098, 0.098, 0.098]
+        Tcs = [1, 1, 1, 1]
         self.controls = JumpingRobot.create_controls(Tos, Tcs)
         self.jr_graph_builder = self.jr_simulator.jr_graph_builder
         self.jr = self.jr_simulator.jr
@@ -68,14 +68,11 @@ class TestJRSimulator(unittest.TestCase):
         """ Run Levenberg-Marquardt optimization. """
         init_values = gtd.ExtractValues(values, graph.keys())
         params = gtsam.LevenbergMarquardtParams()
-        # params.SetCeresDefaults
-        # params = gtsam.LevenbergMarquardtParams.CeresDefaults()
         params.setlambdaLowerBound(1e-20)
         params.setlambdaUpperBound(1e20)
         params.setVerbosityLM("SUMMARY")
-        params.setLinearSolverType("MULTIFRONTAL_QR")
-        # params.setLinearSolverType("SEQUENTIAL_QR")
-        params.setMaxIterations(20)
+        # params.setLinearSolverType("MULTIFRONTAL_QR")
+        params.setLinearSolverType("SEQUENTIAL_QR")
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
         results = optimizer.optimize()
 
@@ -147,38 +144,6 @@ class TestJRSimulator(unittest.TestCase):
             self.assertAlmostEqual(torque, 0, places=7)
         # TODO(yetong): check torques, pressures, etc
 
-
-    def test_solve_simple(self):
-        graph = gtsam.NonlinearFactorGraph()
-        values = gtsam.Values()
-        key = 1
-        value = 0.1
-        model = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
-        graph.add(gtd.PriorFactorDouble(key, value, model))
-        values.insertDouble(key, value)
-        self.lm_optimize(graph, values)
-
-
-    # def test_solving_actuator_cpp(self):
-    #     actuator = gtd.PneumaticActuator()
-    #     k = 0
-    #     prior_values = actuator.priorValues()
-    #     graph = gtsam.NonlinearFactorGraph()
-    #     graph.push_back(actuator.actuatorFactorGraph(k))
-    #     graph.push_back(actuator.actuatorPriorGraph(k, prior_values))
-  
-    #     init_values = gtsam.Values()
-    #     init_values.insert(actuator.actuatorInitValues(k, prior_values))
-
-    #     params = gtsam.LevenbergMarquardtParams()
-    #     # params.setlambdaLowerBound(1e-20)
-    #     # params.setlambdaUpperBound(1e20)
-    #     params.setVerbosityLM("SUMMARY")
-    #     # params.setLinearSolverType("MULTIFRONTAL_QR")
-    #     # params.setLinearSolverType("SEQUENTIAL_QR")
-    #     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-    #     results = optimizer.optimize()
-
     def test_solving_actuator(self):
         """ Test solving dynamics factor graph for an actuator at a step. """
         sim_values, phase_steps = self.jr_simulator.simulate(0, 0.1, self.controls)
@@ -238,7 +203,7 @@ class TestJRSimulator(unittest.TestCase):
             torque_key = gtd.internal.TorqueKey(j, 0).key()
             graph.push_back(gtd.PriorFactorDouble(torque_key, 0, prior_t_cost_model))
         
-        # gtd.DynamicsGraph.printGraph(graph)
+        gtd.DynamicsGraph.printGraph(graph)
         self.lm_optimize(graph, sim_values)
 
     def test_solving_step(self):
@@ -249,7 +214,7 @@ class TestJRSimulator(unittest.TestCase):
         graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps)
         graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
 
-        # gtd.DynamicsGraph.printGraph(graph)
+        gtd.DynamicsGraph.printGraph(graph)
 
         self.lm_optimize(graph, sim_values)
 
@@ -272,9 +237,8 @@ class TestJRSimulator(unittest.TestCase):
 
     def test_solving_single_phase_collocation(self):
         """ Create trajectory of one step, and solve it. """
-        dt = 0.002
-        num_steps = 50
-        sim_values, phase_steps = self.jr_simulator.simulate(num_steps, dt, self.controls)
+        dt = 0.005
+        sim_values, phase_steps = self.jr_simulator.simulate(10, dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
         phase0_key = gtd.PhaseKey(0).key()
         sim_values.insertDouble(phase0_key, dt)
@@ -287,33 +251,18 @@ class TestJRSimulator(unittest.TestCase):
         init_values = gtd.ExtractValues(sim_values, graph.keys())
 
         results = self.lm_optimize(graph, sim_values)
-
-        print("initial error: ", graph.error(init_values))
-        print("resulting error: ", graph.error(results))
-
-        # for factor_idx in range(graph.size()):
-        #     factor = graph.at(factor_idx)
-        #     error = factor.error(results)
-        #     if error>1e-5:
-        #         graph_tmp = gtsam.NonlinearFactorGraph()
-        #         graph_tmp.add(factor)
-        #         gtd.DynamicsGraph.printGraph(graph_tmp)
-        #         print("error: ", error, "\n")
-
-        visualize_jr_trajectory(results, self.jr, num_steps, step=1)
-
-        # self.assertAlmostEqual(graph.error(results), 0, places=5)
+        self.assertAlmostEqual(graph.error(results), 0, places=5)
 
     def test_solving_vertical_jump_collocation(self):
         """ Create trajectory vertical jump, and solve it. """
-        dt = 0.002
+        dt = 0.01
         phase0_key = gtd.PhaseKey(0).key()
         sim_values, phase_steps = self.jr_simulator.simulate_to_high(dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
         sim_values.insertDouble(phase0_key, dt)
         sim_values.insertDouble(gtd.PhaseKey(3).key(), dt)
 
-        collocation = gtd.CollocationScheme.Euler
+        collocation = gtd.CollocationScheme.Trapezoidal
         graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
         graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
         # graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
@@ -324,9 +273,7 @@ class TestJRSimulator(unittest.TestCase):
         results = self.lm_optimize(graph, sim_values)
         print("result error:", graph.error(results))
 
-        visualize_jr_trajectory(results, self.jr, num_steps, step=1)
-
-        # self.assertAlmostEqual(graph.error(results), 0, places=5)
+        self.assertAlmostEqual(graph.error(results), 0, places=5)
 
         # init_values = gtd.ExtractValues(sim_values, graph.keys())
 
@@ -335,6 +282,6 @@ class TestJRSimulator(unittest.TestCase):
 if __name__ == "__main__":
     # unittest.main()
     suite = unittest.TestSuite()
-    suite.addTest(TestJRSimulator("test_solving_single_phase_collocation"))
+    suite.addTest(TestJRSimulator("test_solving_vertical_jump_collocation"))
     runner = unittest.TextTestRunner()
     runner.run(suite)

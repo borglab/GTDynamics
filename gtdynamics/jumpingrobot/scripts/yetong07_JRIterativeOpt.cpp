@@ -19,11 +19,13 @@
 #include <ctime>
 
 #include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/jumpingrobot/factorsJumpingRobot.h"
+#include "gtdynamics/jumpingrobot/factors/JumpingRobot.h"
 
 using namespace std;
 using namespace gtdynamics;
 using namespace gtsam;
+
+using gtdynamics::internal::PoseKey, gtdynamics::internal::TwistKey;
 
 JumpingRobot buildJr() {
   JointValueMap rest_angles, init_angles, init_vels, init_masses;
