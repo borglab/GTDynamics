@@ -20,12 +20,11 @@
 
 #pragma once
 
+#include <gtsam/geometry/Pose3.h>
+
 #include <cmath>
 #include <map>
 #include <string>
-
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Pose3.h>
 
 #include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/universal_robot/JointTyped.h"
@@ -71,7 +70,7 @@ class ScrewJointBase : public JointTyped {
    * Constructor using JointParams, joint name, wTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(unsigned char id, const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &wTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const JointParams &parameters,
                  const gtsam::Vector3 &axis, const Vector6 &jScrewAxis)
@@ -144,7 +143,6 @@ class ScrewJointBase : public JointTyped {
   gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
       const boost::optional<gtsam::Vector3> &planar_axis) const override;
-
 
   /// Return joint limit factors.
   gtsam::NonlinearFactorGraph jointLimitFactors(

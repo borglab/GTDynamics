@@ -40,7 +40,7 @@ Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
   return wrench;
 }
 
-Vector6 ResultantWrench(std::vector<Vector6> wrenches,
+Vector6 ResultantWrench(const std::vector<gtsam::Vector6> &wrenches,
                         boost::optional<std::vector<gtsam::Matrix> &> H) {
   Vector6 sum = gtsam::Z_6x1;
   const size_t n = wrenches.size();
@@ -51,6 +51,30 @@ Vector6 ResultantWrench(std::vector<Vector6> wrenches,
     std::fill(H->begin(), H->begin() + n, gtsam::I_6x6);
   }
   return sum;
+}
+
+Vector6 ResultantWrench(const std::vector<Vector6> &wrenches, double mass,
+                        const gtsam::Pose3 &wTcom,
+                        boost::optional<gtsam::Vector3> gravity,
+                        boost::optional<std::vector<gtsam::Matrix> &> H) {
+  // Calculate resultant wrench, fills up H with identity matrices if asked.
+  const Vector6 external_wrench = ResultantWrench(wrenches, H);
+
+  // Potentiall add gravity wrench.
+  if (gravity) {
+    gtsam::Matrix6 H_wTcom;
+    auto gravity_wrench =
+        GravityWrench(*gravity, mass, wTcom, H ? &H_wTcom : nullptr);
+    if (H) {
+      H->back() = H_wTcom;
+    }
+    return external_wrench + gravity_wrench;
+  } else {
+    if (H) {
+      H->back() = gtsam::Z_6x6;
+    }
+    return external_wrench;
+  }
 }
 
 }  // namespace gtdynamics

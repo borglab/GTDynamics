@@ -54,11 +54,9 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
    * @param pose target pose.
    * @param model noise model used in factor.
    */
-  LinkObjectives& pose(
-      gtsam::Pose3 pose,  //
-      const gtsam::SharedNoiseModel& pose_model = nullptr) {
-    addPrior<gtsam::Pose3>(internal::PoseKey(i_, k_),  //
-                           pose, pose_model);
+  LinkObjectives& pose(gtsam::Pose3 pose,
+                       const gtsam::SharedNoiseModel& pose_model = nullptr) {
+    addPrior<gtsam::Pose3>(internal::PoseKey(i_, k_), pose, pose_model);
     return *this;
   }
   /**
@@ -66,11 +64,9 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
    * @param twist target twist.
    * @param model noise model used in factor.
    */
-  LinkObjectives& twist(
-      gtsam::Vector6 twist,
-      const gtsam::SharedNoiseModel& twist_model = nullptr) {
-    addPrior<gtsam::Vector6>(internal::TwistKey(i_, k_),  //
-                             twist, twist_model);
+  LinkObjectives& twist(gtsam::Vector6 twist,
+                        const gtsam::SharedNoiseModel& twist_model = nullptr) {
+    addPrior<gtsam::Vector6>(internal::TwistKey(i_, k_), twist, twist_model);
     return *this;
   }
   /**
@@ -117,9 +113,8 @@ class JointObjectives : public gtsam::NonlinearFactorGraph {
    * @param angle target angle.
    * @param model noise model used in factor.
    */
-  JointObjectives& angle(  //
-      double angle,             //
-      const gtsam::SharedNoiseModel& angle_model = nullptr) {
+  JointObjectives& angle(double angle,
+                         const gtsam::SharedNoiseModel& angle_model = nullptr) {
     addPrior<double>(internal::JointAngleKey(j_, k_),  //
                      angle, angle_model);
     return *this;
@@ -172,8 +167,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
  */
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel& cost_model, const gtsam::Point3& point_com,
-    const std::vector<gtsam::Point3>& goal_trajectory, unsigned char i,
-    size_t k = 0);
+    const std::vector<gtsam::Point3>& goal_trajectory, uint8_t i, size_t k = 0);
 
 /**
  * @brief Create stance foot trajectory.

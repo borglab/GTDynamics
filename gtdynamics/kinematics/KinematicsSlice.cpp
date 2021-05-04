@@ -58,8 +58,8 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
-    graph.emplace_shared<PointGoalFactor>(
-        pose_key, p_.g_cost_model, goal.contactInCoM(), goal.goal_point);
+    graph.emplace_shared<PointGoalFactor>(pose_key, p_.g_cost_model,
+                                          goal.contactInCoM(), goal.goal_point);
   }
 
   return graph;
@@ -95,7 +95,8 @@ Values Kinematics::initialValues<Slice>(const Slice& slice,
 
   // Initialize all poses.
   for (auto&& link : robot_.links()) {
-    InsertPose(&values, link->id(), slice.k, link->wTcom());
+    const gtsam::Vector6 xi = sampler.sample();
+    InsertPose(&values, link->id(), slice.k, link->wTcom().expmap(xi));
   }
 
   return values;

@@ -28,14 +28,25 @@
 
 using gtsam::Matrix;
 using gtsam::Matrix6;
-using gtsam::Matrix63;
-using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
 
 namespace gtdynamics {
+
+WrenchFactor::WrenchFactor(
+    gtsam::Key twist_key, gtsam::Key twistAccel_key,
+    const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const Matrix6 &inertia, const boost::optional<gtsam::Vector3> &gravity)
+    : Base(cost_model), inertia_(inertia), gravity_(gravity) {
+  keys_.reserve(wrench_keys.size() + 3);
+  keys_.push_back(twist_key);
+  keys_.push_back(twistAccel_key);
+  keys_.insert(keys_.end(), wrench_keys.cbegin(), wrench_keys.cend());
+  keys_.push_back(pose_key);
+}
 
 Vector WrenchFactor::unwhitenedError(
     const Values &x, boost::optional<std::vector<Matrix> &> H) const {
@@ -55,31 +66,20 @@ Vector WrenchFactor::unwhitenedError(
   const Vector6 twistAccel = x.at<Vector6>(keys_.at(1));
   wrenches.push_back(-inertia_ * twistAccel);
 
-  // Gravity wrench.
-  Matrix6 H_wTcom;
-  if (gravity_) {
-    const Pose3 wTcom = x.at<Pose3>(keys_.at(2));
-    wrenches.push_back(GravityWrench(*gravity_, inertia_(3, 3), wTcom,
-                                     H ? &H_wTcom : nullptr));
-  } else {
-    wrenches.push_back(gtsam::Z_6x1);
-  }
-
   // External wrenches.
-  for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
+  for (auto key = keys_.cbegin() + 2; key != keys_.cend() - 1; ++key) {
     wrenches.push_back(x.at<Vector6>(*key));
   }
 
-  // Calculate resultant wrench, fills up H with identity matrices if asked.
-  Vector6 error = ResultantWrench(wrenches, H);
+  // Calculate resultant wrench, fills up H with identity matrices if asked,
+  // except the last H contains the pose derivative or zero if no gravity.
+  const Vector6 error = ResultantWrench(wrenches, inertia_(3, 3),
+                                        x.at<Pose3>(keys_.back()), gravity_, H);
+
+  // If asked, update Jacobians not yet calculated by ResultantWrench.
   if (H) {
-    (*H)[0] = H_twist;
-    (*H)[1] = -inertia_;
-    if (gravity_) {
-      (*H)[2] = H_wTcom;
-    } else {
-      (*H)[2] = gtsam::Z_6x6;
-    }
+    (*H)[0] = H_twist;    // Coriolis depends in twist (key 0)
+    (*H)[1] = -inertia_;  // Derivative with respect to twist acceleration
   }
 
   return error;
