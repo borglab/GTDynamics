@@ -108,7 +108,7 @@ int main()
   // start_time, init_pressure
   graph.add(jr.controlPriors(source_pressure, open_times, close_times));
   // prior of dt for second phase
-  auto second_phase = PhaseKey(1);
+  auto second_phase = PhaseKey(JumpingRobot::Phase::Air);
   graph.add(gtsam::PriorFactor<double>(second_phase, results_sim.atDouble(second_phase), graph_builder.opt().time_cost_model));
 
   std::cout << graph.keys().size() << "\n";
@@ -136,8 +136,6 @@ int main()
     variable_dim += factor->getDim(factor->find(key));
   }
   std::cout << graph_dim << ", " << variable_dim << "\n";
-
-  linear_graph.at(114)->print("", GTDKeyFormatter);
 
   // auto grad = linear_graph.gradientAtZero();
   // grad.print("", GTDKeyFormatter);

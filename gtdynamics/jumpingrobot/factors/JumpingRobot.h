@@ -43,10 +43,10 @@ class JumpingRobot
 public:
     enum Phase
     {
-        Ground,
-        Air,
-        Left,
-        Right
+        Ground=0,
+        Air=3,
+        Left=1,
+        Right=2
     };
 
     struct Params {
@@ -310,6 +310,7 @@ public:
 
     NonlinearFactorGraph multiPhaseTrajectoryFG_old(
         const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+        const std::vector<Phase> &phase_seq,
         const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
         const CollocationScheme collocation,
         const std::vector<std::vector<std::string>> &phase_joint_names) const;

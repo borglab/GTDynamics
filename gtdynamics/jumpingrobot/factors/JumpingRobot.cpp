@@ -629,7 +629,7 @@ Values JumpingRobot::linearInterpolation(const double dt_in,
 
         //// dt variables
         // std::cout << "interpolate for phase " << phase_idx << " as " << dt_out << "\n";
-        values.insert(PhaseKey(phase_idx), dt_out);
+        values.insert(PhaseKey(phase), dt_out);
     }
 
     if (!specify_torque)
@@ -770,16 +770,16 @@ NonlinearFactorGraph JumpingRobot::airCollocationFactors(const vector<Phase> &ph
                 if (collocation == CollocationScheme::Euler)
                 {
                     graph.add(EulerPoseColloFactor(PoseKey(body_i_, t), PoseKey(body_i_, t + 1),
-                                                   TwistKey(body_i_, t), PhaseKey(phase_idx), graph_builder_.opt().pose_col_cost_model));
+                                                   TwistKey(body_i_, t), PhaseKey(phase_seq[phase_idx]), graph_builder_.opt().pose_col_cost_model));
                     graph.add(EulerTwistColloFactor(TwistKey(body_i_, t), TwistKey(body_i_, t + 1),
-                                                    TwistAccelKey(body_i_, t), PhaseKey(phase_idx), graph_builder_.opt().twist_col_cost_model));
+                                                    TwistAccelKey(body_i_, t), PhaseKey(phase_seq[phase_idx]), graph_builder_.opt().twist_col_cost_model));
                 }
                 else if (collocation == CollocationScheme::Trapezoidal)
                 {
                     graph.add(TrapezoidalPoseColloFactor(PoseKey(body_i_, t), PoseKey(body_i_, t + 1),
-                                                         TwistKey(body_i_, t), TwistKey(body_i_, t + 1), PhaseKey(phase_idx), graph_builder_.opt().pose_col_cost_model));
+                                                         TwistKey(body_i_, t), TwistKey(body_i_, t + 1), PhaseKey(phase_seq[phase_idx]), graph_builder_.opt().pose_col_cost_model));
                     graph.add(TrapezoidalTwistColloFactor(TwistKey(body_i_, t), TwistKey(body_i_, t + 1),
-                                                          TwistAccelKey(body_i_, t), TwistAccelKey(body_i_, t + 1), PhaseKey(phase_idx), graph_builder_.opt().twist_col_cost_model));
+                                                          TwistAccelKey(body_i_, t), TwistAccelKey(body_i_, t + 1), PhaseKey(phase_seq[phase_idx]), graph_builder_.opt().twist_col_cost_model));
                 }
             }
         }
@@ -836,7 +836,7 @@ NonlinearFactorGraph JumpingRobot::massCollocationFactors(const vector<Phase> &p
   NonlinearFactorGraph graph;
   int t=0;
   for (int phase_idx = 0; phase_idx < phase_seq.size(); phase_idx++) {
-    Key dt_key = PhaseKey(phase_idx);
+    Key dt_key = PhaseKey(phase_seq[phase_idx]);
     for (int ta = 0; ta<phase_steps[phase_idx]; ta++) {
 
       std::vector<Double_> mdot1_vec;
@@ -905,7 +905,8 @@ NonlinearFactorGraph JumpingRobot::symmetricFactors(const vector<Phase> &phase_s
 
 
 NonlinearFactorGraph JumpingRobot::multiPhaseTrajectoryFG_old(
-    const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+    const std::vector<Robot> &robots, 
+    const std::vector<int> &phase_steps, const vector<Phase> &phase_seq,
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
     const std::vector<std::vector<std::string>> &phase_joint_names) const {
@@ -916,32 +917,33 @@ NonlinearFactorGraph JumpingRobot::multiPhaseTrajectoryFG_old(
   int t = 0;
   graph.add(graph_builder_.dynamicsFactorGraph(robots[0], t));
 
-  for (int phase = 0; phase < num_phases; phase++) {
+  for (int phase_idx = 0; phase_idx < num_phases; phase_idx++) {
     // in-phase
-    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
+    for (int phase_step = 0; phase_step < phase_steps[phase_idx] - 1;
          phase_step++) {
-      graph.add(graph_builder_.dynamicsFactorGraph(robots[phase], ++t));
+      graph.add(graph_builder_.dynamicsFactorGraph(robots[phase_idx], ++t));
     }
     // transition
-    if (phase == num_phases - 1) {
-      graph.add(graph_builder_.dynamicsFactorGraph(robots[phase], ++t));
+    if (phase_idx == num_phases - 1) {
+      graph.add(graph_builder_.dynamicsFactorGraph(robots[phase_idx], ++t));
     } else {
       t++;
-      graph.add(transition_graphs[phase]);
+      graph.add(transition_graphs[phase_idx]);
     }
   }
 
   // add collocation factors
   t = 0;
-  for (int phase = 0; phase < num_phases; phase++) {
-    for (int phase_step = 0; phase_step < phase_steps[phase]; phase_step++) {
-        for (const auto& joint_name : phase_joint_names[phase]) {
-            int j = robots[phase].joint(joint_name)->id();
+  for (int phase_idx = 0; phase_idx < num_phases; phase_idx++) {
+    auto phase = phase_seq[phase_idx];
+    for (int phase_step = 0; phase_step < phase_steps[phase_idx]; phase_step++) {
+        for (const auto& joint_name : phase_joint_names[phase_idx]) {
+            int j = robots[phase_idx].joint(joint_name)->id();
             graph.add(graph_builder_.jointMultiPhaseCollocationFactors(j, t, phase, collocation));
         }
         t++;
     //   graph.add(
-    //       graph_builder_.multiPhaseCollocationFactors(robots[phase], phase_joint_names[phase], t++, phase, collocation));
+    //       graph_builder_.multiPhaseCollocationFactors(robots[phase_idx], phase_joint_names[phase_idx], t++, phase_idx, collocation));
     }
   }
   return graph;
@@ -981,7 +983,7 @@ NonlinearFactorGraph JumpingRobot::multiPhaseTrajectoryFG(const vector<Phase> &p
         }
     }
 
-    NonlinearFactorGraph graph = multiPhaseTrajectoryFG_old(robots, phase_steps, transition_graphs, collocation, phase_joint_names);
+    NonlinearFactorGraph graph = multiPhaseTrajectoryFG_old(robots, phase_steps, phase_seq, transition_graphs, collocation, phase_joint_names);
 
     // integrate base pose, twist for in-air phase
     graph.add(airCollocationFactors(phase_seq, phase_steps, collocation));
@@ -1018,7 +1020,7 @@ NonlinearFactorGraph JumpingRobot::timeFactors(const std::vector<Phase> &phase_s
     int t = 0;
     for (int phase_idx = 0; phase_idx < phase_seq.size(); phase_idx++)
     {
-        gtsam::Double_ dt_expr(PhaseKey(phase_idx));
+        gtsam::Double_ dt_expr(PhaseKey(phase_seq[phase_idx]));
         for (int step = 0; step < phase_steps[phase_idx]; step++)
         {
             int next_t = t + 1;
