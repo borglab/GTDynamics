@@ -36,7 +36,7 @@ class TestJRSimulator(unittest.TestCase):
 
         self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
         Tos = [0, 0, 0, 0]
-        Tcs = [1, 1, 1, 1]
+        Tcs = [0.098, 0.098, 0.098, 0.098]
         self.controls = JumpingRobot.create_controls(Tos, Tcs)
         self.jr_graph_builder = self.jr_simulator.jr_graph_builder
         self.jr = self.jr_simulator.jr
@@ -70,6 +70,7 @@ class TestJRSimulator(unittest.TestCase):
         params = gtsam.LevenbergMarquardtParams()
         params.setlambdaLowerBound(1e-20)
         params.setlambdaUpperBound(1e20)
+        params.setMaxIterations(20)
         params.setVerbosityLM("SUMMARY")
         # params.setLinearSolverType("MULTIFRONTAL_QR")
         params.setLinearSolverType("SEQUENTIAL_QR")
@@ -258,7 +259,8 @@ class TestJRSimulator(unittest.TestCase):
         dt = 0.01
         phase0_key = gtd.PhaseKey(0).key()
         phase3_key = gtd.PhaseKey(3).key()
-        sim_values, phase_steps = self.jr_simulator.simulate_to_high(dt, self.controls)
+        # sim_values, phase_steps = self.jr_simulator.simulate_to_high(dt, self.controls)
+        sim_values, phase_steps = self.jr_simulator.simulate(55, dt, self.controls)
         actuation_graph_builder = self.jr_graph_builder.actuation_graph_builder
         sim_values.insertDouble(phase0_key, dt)
         sim_values.insertDouble(phase3_key, dt)
@@ -267,14 +269,16 @@ class TestJRSimulator(unittest.TestCase):
         # phase_steps = [0, 3]
         graph = self.jr_graph_builder.trajectory_graph(self.jr, phase_steps, collocation)
         graph.push_back(self.jr_graph_builder.control_priors(self.jr, self.controls))
-        graph.add(gtd.PriorFactorDouble(phase3_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
+        # graph.add(gtd.PriorFactorDouble(phase3_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.01)))
+        time_cost_model = self.jr_graph_builder.robot_graph_builder.graph_builder.opt().time_cost_model
+        graph.add(gtd.PriorFactorDouble(phase3_key, dt, time_cost_model))
         num_steps = len(phase_steps)
         # graph.push_back(self.jr_graph_builder.vertical_jump_goal_factors(self.jr, num_steps))
 
-        print("graph size: ", graph.size())
-        print("values size: ", sim_values.size())
+        # print("graph size: ", graph.size())
+        # print("values size: ", sim_values.size())
 
-        # gtd.DynamicsGraph.printGraph(graph)
+        # # gtd.DynamicsGraph.printGraph(graph)
 
         print("init error:", graph.error(sim_values))
         results = self.lm_optimize(graph, sim_values)
@@ -285,6 +289,35 @@ class TestJRSimulator(unittest.TestCase):
         # init_values = gtd.ExtractValues(sim_values, graph.keys())
 
         # self.lm_optimize(graph, sim_values)
+
+        # graph_cpp = gtsam.NonlinearFactorGraph()
+        # sim_values_cpp = gtd.getExampleGraphValues(graph_cpp)
+
+        # print("graph size: ", graph.size(), "\tgraph_cpp size: ", graph_cpp.size())
+        # print("values size: ", sim_values.size(), "\tvalues_cpp size: ", sim_values_cpp.size())
+
+        # print("graph")
+        # print_error_factors(graph, sim_values, 1e5)
+        # print("graph_cpp")
+        # print_error_factors(graph_cpp, sim_values, 1e5)
+
+        # results = self.lm_optimize(graph_cpp, sim_values)
+        # print(graph.error(results))
+        # print_error_factors(graph, results)
+
+
+
+def print_error_factors(graph, results, threshold=1):
+    for factor_idx in range(graph.size()):
+        factor = graph.at(factor_idx)
+        if factor.error(results) > threshold:
+            # print(factor)
+            # factor.print("", gtd.GTDKeyFormatter)
+            graph_tmp = gtsam.NonlinearFactorGraph()
+            graph_tmp.add(factor)
+            gtd.DynamicsGraph.printGraph(graph_tmp)
+            # print(factor)
+            print("error: ", factor.error(results))
 
 if __name__ == "__main__":
     # unittest.main()

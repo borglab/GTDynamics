@@ -32,7 +32,7 @@ inline DynamicsSymbol StartTimeKey(int j) {
 
 /* Shorthand for P_j_t, pressure for joint j at step t. */
 inline DynamicsSymbol PressureKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("P", j, t);
+  return DynamicsSymbol::JointSymbol("Pa", j, t);
 }
 
 /* Shorthand for P_j_t, pressure for joint j at step t. */
@@ -51,11 +51,11 @@ inline DynamicsSymbol ContractionKey(int j, int t) {
 
 /* Shorthand for f_j_t, contraction for joint j at step t. */
 inline DynamicsSymbol ForceKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("fr", j, t);
+  return DynamicsSymbol::JointSymbol("fa", j, t);
 }
 
 inline DynamicsSymbol MassKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("m", j, t);
+  return DynamicsSymbol::JointSymbol("ma", j, t);
 }
 
 inline DynamicsSymbol SourceMassKey(int t) {
@@ -71,19 +71,19 @@ inline DynamicsSymbol MassRateActualKey(int j, int t) {
 }
 
 inline DynamicsSymbol VolumeKey(int j, int t) {
-  return DynamicsSymbol::JointSymbol("vo", j, t);
+  return DynamicsSymbol::JointSymbol("Va", j, t);
 }
 
 inline DynamicsSymbol SourceVolumeKey() {
-  return DynamicsSymbol::SimpleSymbol("vs", 0);
+  return DynamicsSymbol::SimpleSymbol("Vs", 0);
 }
 
 inline DynamicsSymbol ValveOpenTimeKey(int j) {
-  return DynamicsSymbol::JointSymbol("to", j, 0);
+  return DynamicsSymbol::JointSymbol("To", j, 0);
 }
 
 inline DynamicsSymbol ValveCloseTimeKey(int j) {
-  return DynamicsSymbol::JointSymbol("tc", j, 0);
+  return DynamicsSymbol::JointSymbol("Tc", j, 0);
 }
 
 struct PriorValues {

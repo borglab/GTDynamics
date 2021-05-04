@@ -28,7 +28,7 @@ class RobotGraphBuilder:
 
     def __init__(self):
         self.graph_builder = self.construct_graph_builder()
-        self.force_cost_model = noiseModel.Isotropic.Sigma(1, 1)
+        self.force_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
 
     @staticmethod
     def construct_graph_builder() -> gtd.DynamicsGraph:
