@@ -126,8 +126,8 @@ int main()
   //        start_time, init_pressure,
   //        time calculation factors
 
-  auto first_phase = PhaseKey(0);
-  auto second_phase = PhaseKey(1);
+  auto first_phase = PhaseKey(JumpingRobot::Phase::Ground);
+  auto second_phase = PhaseKey(JumpingRobot::Phase::Air);
   // graph.add(gtsam::PriorFactor<double>(first_phase, results_interp.atDouble(first_phase), graph_builder.opt().time_cost_model));
   // graph.add(gtsam::PriorFactor<double>(second_phase, results_interp.atDouble(second_phase), graph_builder.opt().time_cost_model));
 
