@@ -763,7 +763,7 @@ NonlinearFactorGraph JumpingRobot::airCollocationFactors(const vector<Phase> &ph
     for (int phase_idx = 0; phase_idx < phase_seq.size(); phase_idx++)
     {
         int first_t = std::accumulate(phase_steps.begin(), phase_steps.begin() + phase_idx, 0);
-        if (phase_seq[phase_idx] == Phase::Air)
+        if (true)
         {
             for (int t = first_t; t < first_t + phase_steps[phase_idx]; t++)
             {
@@ -970,7 +970,8 @@ NonlinearFactorGraph JumpingRobot::multiPhaseTrajectoryFG(const vector<Phase> &p
     vector<vector<std::string>> phase_joint_names;
     for (int phase_idx = 0; phase_idx < phase_seq.size(); phase_idx++) {
         if (phase_seq[phase_idx] == Phase::Ground) {
-            phase_joint_names.push_back(vector<std::string>{"j2", "j3"});
+            // phase_joint_names.push_back(vector<std::string>{"j2", "j3"});
+            phase_joint_names.push_back(vector<std::string>{});
         }
         else if (phase_seq[phase_idx] == Phase::Air) {
             phase_joint_names.push_back(vector<std::string>{"j1", "j2", "j3", "j4"});
@@ -985,7 +986,7 @@ NonlinearFactorGraph JumpingRobot::multiPhaseTrajectoryFG(const vector<Phase> &p
     // integrate base pose, twist for in-air phase
     graph.add(airCollocationFactors(phase_seq, phase_steps, collocation));
 
-    graph.add(symmetricFactors(phase_seq, phase_steps));
+    // graph.add(symmetricFactors(phase_seq, phase_steps));
     // graph.add(angleCollocationFactors(phase_seq, phase_steps, collocation));
 
     graph.add(massCollocationFactors(phase_seq, phase_steps, collocation));
