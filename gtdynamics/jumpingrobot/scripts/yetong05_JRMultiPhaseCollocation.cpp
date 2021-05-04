@@ -102,6 +102,8 @@ int main()
   //        time calculation factors
 
   // dynamics for each step (guardains), collocation factors, actuator graphs
+  // phase_steps[0] = 1;
+  // phase_steps[1] = 1;
   auto graph = jr.multiPhaseTrajectoryFG(phase_seq, phase_steps, CollocationScheme::Trapezoidal);
   // initial_state priors
   graph.add(jr.initialStatePriors());
@@ -122,20 +124,20 @@ int main()
 
   jr.exportData(num_steps, results_sim);
 
-  GaussianFactorGraph linear_graph = *graph.linearize(results_sim);
-  size_t graph_dim = 0;
-  for (auto factor:linear_graph) {
-    graph_dim += factor->jacobian().second.size();
-    // graph_dim += H.rows();
-  }
-  size_t variable_dim = 0;
-  VariableIndex vi(linear_graph);
-  for (Key key:results_sim.keys()) {
-    auto factor_idx = vi[key][0];
-    auto& factor = linear_graph.at(factor_idx);
-    variable_dim += factor->getDim(factor->find(key));
-  }
-  std::cout << graph_dim << ", " << variable_dim << "\n";
+  // GaussianFactorGraph linear_graph = *graph.linearize(results_sim);
+  // size_t graph_dim = 0;
+  // for (auto factor:linear_graph) {
+  //   graph_dim += factor->jacobian().second.size();
+  //   // graph_dim += H.rows();
+  // }
+  // size_t variable_dim = 0;
+  // VariableIndex vi(linear_graph);
+  // for (Key key:results_sim.keys()) {
+  //   auto factor_idx = vi[key][0];
+  //   auto& factor = linear_graph.at(factor_idx);
+  //   variable_dim += factor->getDim(factor->find(key));
+  // }
+  // std::cout << graph_dim << ", " << variable_dim << "\n";
 
   // auto grad = linear_graph.gradientAtZero();
   // grad.print("", GTDKeyFormatter);
@@ -178,6 +180,8 @@ int main()
   params.setMaxIterations(30);
 
   std::cout << "graph size: " << graph.size() << "\tvalues size: " << results_sim.size() << "\n";
+
+  // DynamicsGraph::printGraph(graph);
 
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, results_sim, params);
   // gtsam::DoglegOptimizer optimizer(graph, results_sim);
