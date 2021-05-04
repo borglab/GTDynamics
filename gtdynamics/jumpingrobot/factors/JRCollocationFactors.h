@@ -63,8 +63,8 @@ void AddSourceMassCollocationFactor(
   } else {
     graph->add(gtsam::ExpressionFactor(
         cost_model, 0.0,
-        expr0 - 0.5 * mdot1dt_vec[0] - 0.5 * mdot1dt_vec[1] -
-            0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] - 0.5 * mdot1dt_vec[0] -
+        expr0 - 0.5 * mdot0dt_vec[0] - 0.5 * mdot0dt_vec[1] -
+            0.5 * mdot0dt_vec[2] - 0.5 * mdot0dt_vec[3] - 0.5 * mdot1dt_vec[0] -
             0.5 * mdot1dt_vec[1] - 0.5 * mdot1dt_vec[2] - 0.5 * mdot1dt_vec[3] -
             expr1));
   }

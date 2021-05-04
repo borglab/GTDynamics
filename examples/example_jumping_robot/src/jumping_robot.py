@@ -270,9 +270,9 @@ class JumpingRobot:
         p1 = values.atPose2(1)
         p2 = values.atPose2(2)
         p3 = values.atPose2(3)
-        rot_r = Rot3.Rx(np.arctan2(p1.y() - p0.y(), p1.x() - p0.x()))
+        rot_r = Rot3.Rx(np.arctan2(p1.y() - p0.y(), p1.x() - p0.x()) - np.pi/2)
         rot_m = Rot3.Rx(np.arctan2(p1.y() - p2.y(), p1.x() - p2.x()))
-        rot_l = Rot3.Rx(np.arctan2(p2.y() - p3.y(), p2.x() - p3.x()))
+        rot_l = Rot3.Rx(np.arctan2(p2.y() - p3.y(), p2.x() - p3.x()) - np.pi/2)
 
         # use the optimization result of 4 points to initialize the poses
         # of links and joints
@@ -326,7 +326,10 @@ class JumpingRobot:
     @staticmethod
     def construct_link(link_id: int, link_name: str, mass: float, length: float, radius: float, pose: Pose3):
         """ Construct a link. """
-        lTcom = Pose3(Rot3(), Point3(0, length/2, 0))
+        if link_name == "torso":
+            lTcom = Pose3(Rot3(), Point3(0, length/2, 0))
+        else:
+            lTcom = Pose3(Rot3(), Point3(0, 0, length/2))
         inertia = JumpingRobot.compute_link_inertia(mass, length, radius)
         return gtd.Link(link_id, link_name, mass, inertia, pose, lTcom, False)
 
@@ -364,7 +367,7 @@ class JumpingRobot:
                     q_foot - angle_offset]
         init_angles = rest_angles
 
-        P_s_0 = 65 * 6894.76/1000
+        P_s_0 = 65.0 * 6.89476 + 101.325
         init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
                                                     rest_angles, init_angles,
                                                     init_vels, P_s_0, foot_dist)

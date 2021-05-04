@@ -19,7 +19,7 @@ hip: # hip joint parameters
   theta_range: [-90, 90]
   k_tendon: 8200 # NOTE: not currently used; nonlinear mesh stiffness used instead
   k_anta: 2.5
-  q_anta_limit: 0
+  q_anta_limit: -0.20082449502810373
   b: 0.03
 
 model: # overall robot model parameters

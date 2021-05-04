@@ -10,6 +10,16 @@ using namespace gtsam;
 
 namespace gtdynamics {
 
+gtsam::Values optimize_LMQR(const gtsam::NonlinearFactorGraph& graph, const gtsam::Values& init_values) {
+  gtsam::LevenbergMarquardtParams lm_params;
+  lm_params.setVerbosityLM("SUMMARY");
+  lm_params.setLinearSolverType("MULTIFRONTAL_QR");
+  lm_params.setOrderingType("COLAMD");
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, lm_params);
+  gtsam::Values result = optimizer.optimize();
+  return result;
+}
+
 gtsam::NonlinearFactorGraph PneumaticActuator::actuatorFactorGraph(
     const int t) const {
   gtsam::Key Ps_key = SourcePressureKey(t);
@@ -30,29 +40,6 @@ gtsam::NonlinearFactorGraph PneumaticActuator::actuatorFactorGraph(
   gtsam::NonlinearFactorGraph graph;
 
   graph.add(SmoothActuatorFactor(x_key, P_key, f_key, force_cost_model));
-
-  // joint balance factor
-  // double cm_to_m = 0.01;
-
-  // gtsam::Double_ f_expr(f_key);
-  // gtsam::Double_ q_expr(q_key);
-  // gtsam::Double_ x_expr(x_key);
-  // gtsam::Double_ torque_expr(torque_key);
-
-  // double rhs = -params_.kt * params_.q_rest * params_.r;
-  // if (params_.positive) {
-  //   gtsam::ExpressionFactor<double> balance_factor(
-  //       balance_cost_model, rhs,
-  //       params_.kt * cm_to_m * x_expr - f_expr - params_.kt * params_.r *
-  //       q_expr);
-  //   graph.add(balance_factor);
-  // } else {
-  //   gtsam::ExpressionFactor<double> balance_factor(
-  //       balance_cost_model, -rhs,
-  //       params_.kt * cm_to_m * x_expr - f_expr + params_.kt * params_.r *
-  //       q_expr);
-  //   graph.add(balance_factor);
-  // }
 
   graph.add(ForceBalanceFactor(x_key, q_key, f_key, balance_cost_model,
                                params_.kt, params_.r, params_.q_rest,
@@ -269,7 +256,7 @@ gtsam::Values PneumaticActuator::computeResult(
   }
 
   gtsam::LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
+  // params.setVerbosityLM("SUMMARY");
   params.setLinearSolverType("MULTIFRONTAL_QR");
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
   gtsam::Values result = optimizer.optimize();
@@ -323,162 +310,5 @@ gtsam::Values PneumaticActuator::computeResult(
 
   return result;
 }
-
-// gtsam::NonlinearFactorGraph PneumaticActuator::actuatorFactorGraph(const int
-// t) const {
-//   gtsam::Key t_i_key = StartTimeKey(params_.j);     // time of opening the
-//   valve gtsam::Key t_key = TimeKey(t);           // current time gtsam::Key
-//   P_i_key = InitPressureKey(params_.j);  // initial pressure gtsam::Key P_key
-//   = PressureKey(params_.j, t);   // current pressure gtsam::Key x_key =
-//   ContractionKey(params_.j, t);  // contraction length gtsam::Key f_key =
-//   ForceKey(params_.j, t);        // force gtsam::Key q_key =
-//   JointAngleKey(params_.j, t);   // joint angle gtsam::Key v_key =
-//   JointVelKey(params_.j, t);     // joint velocity gtsam::Key torque_key =
-//   TorqueKey(params_.j, t);  // torque
-
-//   gtsam::NonlinearFactorGraph graph;
-//   graph.add(PressureFactor(t_i_key, t_key, P_i_key, P_key,
-//                             pressure_cost_model, params_.p_coeffs));
-
-//   // graph.add(PneumaticActuatorFactor(x_key, P_key, f_key, force_cost_model,
-//   //                                   pneumatic_coeffs_));
-
-//   graph.add(SmoothActuatorFactor(x_key, P_key, f_key, force_cost_model,
-//                                   params_.x0_coeffs, params_.k_coeffs,
-//                                   params_.f0_coeffs));
-
-//   // graph.add(JointBalanceFactor(x_key, q_key, f_key,
-//   //                              balance_cost_model,
-//   //                              kt_, r_, q_rest_, positive_));
-
-//   // joint balance factor
-//   double cm_to_m = 0.01;
-
-//   gtsam::Double_ f_expr(f_key);
-//   gtsam::Double_ q_expr(q_key);
-//   gtsam::Double_ x_expr(x_key);
-//   gtsam::Double_ torque_expr(torque_key);
-
-//   double rhs = -params_.kt * params_.q_rest * params_.r;
-//   if (params_.positive) {
-//     gtsam::ExpressionFactor<double> balance_factor(
-//         balance_cost_model, rhs,
-//         params_.kt * cm_to_m * x_expr - f_expr - params_.kt * params_.r *
-//         q_expr);
-//     graph.add(balance_factor);
-//   } else {
-//     gtsam::ExpressionFactor<double> balance_factor(
-//         balance_cost_model, -rhs,
-//         params_.kt * cm_to_m * x_expr - f_expr + params_.kt * params_.r *
-//         q_expr);
-//     graph.add(balance_factor);
-//   }
-
-//   graph.add(JointTorqueFactor(q_key, v_key, f_key, torque_key,
-//                               torque_cost_model, params_.q_anta_limit,
-//                               params_.ka, params_.r, params_.b,
-//                               params_.positive));
-//   // if (positive_) {
-//   //   gtsam::ExpressionFactor<double> torque_factor(
-//   //       torque_cost_model, double(0), r_ *f_expr - torque_expr);
-//   //   graph.add(torque_factor);
-//   // } else {
-//   //   gtsam::ExpressionFactor<double> torque_factor(
-//   //       torque_cost_model, double(0), -r_ *f_expr - torque_expr);
-//   //   graph.add(torque_factor);
-//   // }
-//   return graph;
-// }
-
-// gtsam::Values PneumaticActuator::computeResult(const int t, const double
-// angle, const double vel,
-//                             const double start_time,
-//                             const double current_time,
-//                             const double init_pressure) const {
-//   // construct a factor graph
-//   auto graph = actuatorFactorGraph(t);
-//   gtsam::Key t_i_key = StartTimeKey(params_.j);     // time of opening the
-//   valve gtsam::Key t_key = TimeKey(t);           // current time gtsam::Key
-//   P_i_key = InitPressureKey(params_.j);  // initial pressure gtsam::Key P_key
-//   = PressureKey(params_.j, t);   // current pressure gtsam::Key x_key =
-//   ContractionKey(params_.j, t);  // contraction length gtsam::Key f_key =
-//   ForceKey(params_.j, t);        // force gtsam::Key q_key =
-//   JointAngleKey(params_.j, t);   // joint angle gtsam::Key v_key =
-//   JointVelKey(params_.j, t);     // joint velocity gtsam::Key torque_key =
-//   TorqueKey(params_.j, t);  // torque
-
-//   graph.add(gtsam::PriorFactor<double>(P_i_key, init_pressure,
-//                                         prior_pressure_cost_model));
-//   graph.add(gtsam::PriorFactor<double>(t_i_key, start_time,
-//                                         prior_start_t_cost_model));
-//   graph.add(gtsam::PriorFactor<double>(q_key, angle, prior_q_cost_model));
-//   graph.add(gtsam::PriorFactor<double>(t_key, current_time,
-//                                         prior_time_cost_model));
-//   graph.add(gtsam::PriorFactor<double>(v_key, vel,
-//                                         prior_v_cost_model));
-
-//   PressureFactor pressure_factor(t_i_key, t_key, P_i_key, P_key,
-//                                   pressure_cost_model, params_.p_coeffs);
-//   double current_pressure = pressure_factor.evaluateError(
-//       start_time, current_time, init_pressure, 0)[0];
-
-//   // solve the factor graph
-//   gtsam::Values init_values;
-//   init_values.insert(P_i_key, init_pressure);
-//   init_values.insert(t_i_key, start_time);
-//   init_values.insert(q_key, angle);
-//   init_values.insert(v_key, vel);
-//   init_values.insert(x_key, double(2));
-//   init_values.insert(f_key, double(0));
-//   init_values.insert(P_key, current_pressure);
-//   init_values.insert(t_key, current_time);
-//   init_values.insert(torque_key, double(0));
-
-//   gtsam::LevenbergMarquardtParams params;
-//   // params.setVerbosityLM("SUMMARY");
-//   params.setLinearSolverType("MULTIFRONTAL_QR");
-//   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
-//   gtsam::Values result = optimizer.optimize();
-
-//   if (graph.error(result) > 0.1) {
-//     std::cout << "error:\t" << graph.error(result) << "\n";
-//     // // gtsam::DoglegParams dl_params;
-//     // // dl_params.setLinearSolverType("MULTIFRONTAL_QR");
-//     // // gtsam::DoglegOptimizer dl_optimizer(graph, init_values, dl_params);
-//     // // result = dl_optimizer.optimize();
-//     params.setVerbosityLM("SUMMARY");
-//     gtsam::LevenbergMarquardtOptimizer optimizer1(graph, init_values,
-//     params); optimizer1.optimize();
-
-//     gtsam::NonlinearOptimizerParams param;
-//     param.verbosity = gtsam::NonlinearOptimizerParams::ERROR;
-//     param.maxIterations = 5000;
-//     gtsam::NonlinearConjugateGradientOptimizer optimizer_gd(
-//         graph, init_values, param);
-//     result = optimizer_gd.optimize();
-
-//     std::cout << "error:\t" << graph.error(result) << "\n";
-//     std::cout << "current time:\t" << result.atDouble(t_key) << "\n";
-//     std::cout << "current pressure:\t" << result.atDouble(P_key) << "\n";
-//     std::cout << "current contraction:\t" << result.atDouble(x_key) << "\n";
-//     std::cout << "current force:\t" << result.atDouble(f_key) << "\n";
-//     std::cout << "start time:\t" << start_time << "\n";
-//     std::cout << "init_pressure:\t" << init_pressure << "\n";
-//     std::cout << "angle:\t" << angle << "\n";
-//     std::cout << "contract:\t" << params_.positive << "\n";
-//     std::cout << "spring constant:\t" << params_.kt << "\n";
-//     std::cout << "pulley radius:\t" << params_.r << "\n";
-//     std::cout << "rest angle:\t" << params_.q_rest << "\n";
-//     std::ofstream json_file;
-//     json_file.open("../../visualization/factor_graph.json");
-//     JsonSaver::SaveFactorGraph(graph, json_file, result);
-//     json_file.close();
-
-//     throw std::runtime_error("optimizing for pneumatic actuator graph
-//     fails");
-//   }
-
-//   return result;
-// }
 
 }  // namespace gtdynamics

@@ -1,4 +1,4 @@
 import gtdynamics as gtd
 
-symb = gtd.DynamicsSymbol(7886928843137613832)
+symb = gtd.DynamicsSymbol(22798377896902656)
 print(symb)

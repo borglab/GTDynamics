@@ -28,7 +28,7 @@ class RobotGraphBuilder:
 
     def __init__(self):
         self.graph_builder = self.construct_graph_builder()
-        self.force_cost_model = noiseModel.Isotropic.Sigma(1, 1)
+        self.force_cost_model = noiseModel.Isotropic.Sigma(1, 0.0001)
 
     @staticmethod
     def construct_graph_builder() -> gtd.DynamicsGraph:
@@ -107,6 +107,37 @@ class RobotGraphBuilder:
                                          torso_twist, self.graph_builder.opt().bv_cost_model))
         return graph
 
+    def torso_collocation_graph(self, jr, k, phase, collocation):
+        """ Collocation factors on torso link. """
+        graph = NonlinearFactorGraph()
+        link = jr.robot.link("torso")
+        i = link.id()
+        pose_prev_key = gtd.internal.PoseKey(i, k).key()
+        pose_curr_key = gtd.internal.PoseKey(i, k+1).key()
+        twist_prev_key = gtd.internal.TwistKey(i, k).key()
+        twist_curr_key = gtd.internal.TwistKey(i, k+1).key()
+        twistaccel_prev_key = gtd.internal.TwistAccelKey(i, k).key()
+        twistaccel_curr_key = gtd.internal.TwistAccelKey(i, k+1).key()
+        dt_key = gtd.PhaseKey(phase).key()
+
+        pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
+        twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
+        if collocation == gtd.CollocationScheme.Trapezoidal:
+            graph.add(gtd.TrapezoidalPoseColloFactor(
+                pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
+                dt_key, pose_col_cost_model))
+            graph.add(gtd.TrapezoidalTwistColloFactor(
+                twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                twistaccel_curr_key, dt_key, twist_col_cost_model))
+        else:
+            graph.add(gtd.EulerPoseColloFactor(
+                pose_prev_key, pose_curr_key, twist_prev_key,
+                dt_key, pose_col_cost_model))
+            graph.add(gtd.EulerTwistColloFactor(
+                twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                dt_key, twist_col_cost_model))
+        return graph
+
     def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation):
         """ Create a factor graph containing collocation constraints.
             - For ground phase, only collocation on the torso link, which is
@@ -134,30 +165,6 @@ class RobotGraphBuilder:
                         j, k_prev, phase, collocation))
 
             # collocation on torso link
-            link = jr.robot.link("torso")
-            i = link.id()
-            pose_prev_key = gtd.internal.PoseKey(i, k_prev).key()
-            pose_curr_key = gtd.internal.PoseKey(i, k_curr).key()
-            twist_prev_key = gtd.internal.TwistKey(i, k_prev).key()
-            twist_curr_key = gtd.internal.TwistKey(i, k_curr).key()
-            twistaccel_prev_key = gtd.internal.TwistAccelKey(i, k_prev).key()
-            twistaccel_curr_key = gtd.internal.TwistAccelKey(i, k_curr).key()
-
-            pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
-            twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
-            if collocation == gtd.CollocationScheme.Trapezoidal:
-                graph.add(gtd.TrapezoidalPoseColloFactor(
-                    pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
-                    dt_key, pose_col_cost_model))
-                graph.add(gtd.TrapezoidalTwistColloFactor(
-                    twist_prev_key, twist_curr_key, twistaccel_prev_key,
-                    twistaccel_curr_key, dt_key, twist_col_cost_model))
-            else:
-                graph.add(gtd.EulerPoseColloFactor(
-                    pose_prev_key, pose_curr_key, twist_prev_key,
-                    dt_key, pose_col_cost_model))
-                graph.add(gtd.EulerTwistColloFactor(
-                    twist_prev_key, twist_curr_key, twistaccel_prev_key,
-                    dt_key, twist_col_cost_model))
+            graph.push_back(self.torso_collocation_graph(jr, k_prev, phase, collocation))
 
         return graph

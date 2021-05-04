@@ -184,6 +184,12 @@ gtsam::GaussianFactorGraph ScrewJointBase::linearAFactors(
             internal::JointAccelKey(id(), t), -S_i2_j, rhs_tw,
             gtsam::noiseModel::Constrained::All(6));
 
+  // if (t==1) {
+  //   graph.print("", GTDKeyFormatter);
+  //   std::cout << "V_i2:\t" << V_i2.transpose() << "\n";
+  //   std::cout << "S_i2_j:\t" << S_i2_j.transpose() << "\n";
+  //   std::cout << "v_j\t" << v_j << "\n";
+  // }
   return graph;
 }
 
