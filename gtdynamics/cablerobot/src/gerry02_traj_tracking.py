@@ -83,6 +83,7 @@ def main(fname='data/iros_logo_2.h',
     aw, ah = 2.92, 2.32
     bw, bh = 0.15, 0.30
     params = CdprParams()
+    params.mass = 0.5
     params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
     params.b_locs = np.array([[bw, 0., -bh], [bw, 0., bh], [-bw, 0., bh], [-bw, 0, -bh]]) / 2
     params.b_locs = params.b_locs - [0, 0, bh * 0.4]
@@ -96,7 +97,7 @@ def main(fname='data/iros_logo_2.h',
     dt = 0.01 * dN # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
     N = int(N/dN)  # scale time by dN
     N0 = int(N0/dN)
-    traj = (traj - [aw/2, ah/2]) * 0.8 + [aw/2, ah/2]  # rescale trajectory to be smaller
+    traj = (traj - [aw/2, ah/2]) * 0.85 + [aw/2, ah/2]  # rescale trajectory to be smaller
     traj = traj[::dN, :]
     if debug:
         print_data(isPaints, colorinds, colorpalette, traj, N=100)
