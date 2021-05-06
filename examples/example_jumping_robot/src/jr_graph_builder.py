@@ -28,6 +28,7 @@ from robot_graph_builder import RobotGraphBuilder
 from jr_values import JRValues
 
 
+
 class JRGraphBuilder:
     """ Class that constructs factor graphs for a jumping robot. """
 
@@ -37,6 +38,8 @@ class JRGraphBuilder:
         self.actuation_graph_builder = ActuationGraphBuilder()
         self.model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01) # (m) 0.01
         self.model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4) # (pixels) maybe increase
+        self.model_cam_pose_prior = gtsam.noiseModel.Isotropic.Sigma(6, 0.05) # (rad, m)
+        self.model_calib = gtsam.noiseModel.Isotropic.Sigma(3, 1) # (pix) focal length & offsets 100
         self.pressure_meas_model = gtsam.noiseModel.Isotropic.Sigma(1, 10)
 
     def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation):
@@ -194,15 +197,104 @@ class JRGraphBuilder:
         return graph
 
 
-    def sys_id_graph(self, jr, marker_locations, pixels_all_frames, pressure_measures_all_frames):
-        """ System identification factors for the trajectory. """
+    def get_camera_calibration(self, cam_params):
+        ''' Set up initial camera calibration '''
+        mtx = cam_params['matrix']
+        dist = cam_params['dist']
+        dim = cam_params['dimension']
+
+        fy = mtx[0][0] # switched x- and y- axes
+        fx = mtx[1][1] # switched x- and y- axes
+        f = (fx+fy)/2 # (pixels) focal length
+        k1 = dist[0] # first radial distortion coefficient (quadratic)
+        k2 = dist[1] # second radial distortion coefficient (quartic)
+        p1 = dist[2] # first tangential distortion coefficient
+        p2 = dist[3] # second tangential distortion coefficient
+        k3 = dist[4] # third radial distortion coefficient
+        u0 = dim[1]/2 # (pixels) principal point
+        v0 = dim[0]/2 # (pixels) principal point
+        calibration = gtsam.Cal3Bundler(f, k1, k2, u0, v0)
+        return calibration 
+
+
+    def camera_priors(self, cam_params):
+        ''' Set up camera factors '''
         graph = NonlinearFactorGraph()
 
-        for k in range(len(pressure_measures_all_frames)):
+        cam_pose_key = JumpingRobot.CameraPoseKey()
+        cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
+            gtsam.Point3(cam_params['point'][0], cam_params['point'][1], cam_params['point'][2])) # camera pose in world frame
+        graph.add(gtsam.PriorFactorPose3(cam_pose_key, cam_pose, self.model_cam_pose_prior))  
+
+        cal_key = JumpingRobot.CalibrationKey()
+        calibration = self.get_camera_calibration(cam_params)
+        gtdynamics.addPriorFactorCal3Bundler(graph, cal_key, calibration, self.model_calib)
+        return graph
+
+
+
+
+    def sys_id_graph(self, jr, marker_locations, pixels_all_frames, pressures_all_frames):
+        """ System identification factors for the trajectory. """
+        # set up camera prior factors
+        graph = self.camera_priors(path_cam_params)
+
+        # build graph
+        for k in range(len(pressures_all_frames)):
             pixel_meas = pixels_all_frames[k]
-            pressure_measures = pressure_measures_all_frames[k]
+            pressure_meas = pressures_all_frames[k]
             graph.push_back(self.step_pixel_meas_graph(jr, k, marker_locations, pixel_meas))
             print(graph.size())
-            graph.push_back(self.step_pressure_meas_graph(jr, k, pressure_measures))
+            graph.push_back(self.step_pressure_meas_graph(jr, k, pressure_meas))
             print(graph.size())
         return graph
+
+
+
+    def sys_id_estimates(self, jr, initial_estimate, marker_locations, 
+        pixels_all_frames, pressures_all_frames, cam_params):
+        ''' Set initial estimates for system ID '''
+        for k in range(num_frames):
+            pixel_meas = pixels_all_frames[k]
+            pressure_meas = pressures_all_frames[k]
+
+            # add pressures
+            for actuator in jr.actuators: 
+                j = actuator.j # TODO: is this indexed at 1?
+                pressure_key = Actuator.PressureKey(j, k)
+                pressure = pressure_meas[j]
+                initial_estimate.insert(pressure_key, pressure)
+
+            source_pressure_key = Actuator.SourcePressureKey(k)
+            source_pressure = pressure_meas[0]
+            initial_estimate.insert(source_pressure_key, source_pressure)
+
+
+            # add markers
+            for link in jr.robot.links():
+                if link.name() == "ground":
+                    continue
+                i = link.id()
+                markers_i = marker_locations[i-1]
+                for idx_marker in range(len(markers_i)):
+                    marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
+                    marker_location = np.array(markers_i[idx_marker])
+                    initial_estimate.insert(marker_key, marker_location)
+
+        # add camera calibration
+        cal_key = CalibrationKey()
+        calibration = self.get_camera_calibration(cam_params)
+        initial_estimate.insert(cal_key, calibration) 
+
+        # add camera pose
+        cam_pose_key = CameraPoseKey()
+        cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
+            gtsam.Point3(cam_params['point'][0], cam_params['point'][1], cam_params['point'][2])) 
+        initial_estimate.insert(cam_pose_key, cam_pose)
+
+        return initial_estimate
+    
+            
+
+
+
