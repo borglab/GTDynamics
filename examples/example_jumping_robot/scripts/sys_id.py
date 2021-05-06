@@ -16,7 +16,8 @@ from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_values import JRValues
 from src.jr_simulator import JRSimulator
-from src.helpers import read_pressure, read_marker_pix, interp_pressure, interp_marker_pix
+from src.helpers import read_t_musc, read_pressure, \
+    read_marker_pix, interp_pressure, interp_marker_pix
 
 
 def vertical_jump_simulation(jr, num_steps, dt, controls):
@@ -28,7 +29,7 @@ def vertical_jump_simulation(jr, num_steps, dt, controls):
     return values, step_phases
 
 
-def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp):
+def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp_data, path_cam_params):
     """ Collocation optimization for vertical jump. """
     jr_graph_builder = JRGraphBuilder()
 
@@ -40,15 +41,21 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp):
     graph.push_back(jr_graph_builder.control_priors(jr, controls))
 
     # system id factors
-    dim_camera = [1920, 1080] # GoPro is 1920 x 1080 (oriented horizontally)
-    time_sens, pressure_sens = read_pressure(path_exp)
-    time_vid, pix_vid = read_marker_pix(path_exp, dim_camera)
-    time_interp = np.arange(0, dt*len(step_phases), dt) #TODO: check
-    pressure_interp = interp_pressure(time_exp, pressure_exp, time_interp)
-    pix_interp = interp_marker_pix(time_vid, pix_vid, time_interp)
-    marker_locations = JumpingRobot.marker_locations()()
+    time_mcu, pressures_mcu = read_pressure(path_exp_data)
+    time_vid, pixels_vid = read_marker_pix(path_exp_data, dim_camera)
+    pressures_interp = interp_pressure(time_mcu, pressures_mcu, time_interp)
+    pixels_interp = interp_marker_pix(time_vid, pixels_vid, time_interp)
+    marker_locations = JumpingRobot.marker_locations() #TODO: maybe put marker locations in text file
     graph.push_back(jr_graph_builder.sys_id_graph(jr, marker_locations, 
-        pix_interp, pressure_interp))
+        pixels_interp, pressures_interp))
+
+    with open(path_cam_params) as file:
+        cam_params = yaml.load(file, Loader=yaml.FullLoader)
+    graph.push_back(jr_graph_builder.camera_priors(cam_params))
+
+    # add initial system id estimates
+    init_values = JRGraphBuilder.sys_id_estimates(jr, init_values, marker_locations,
+        pixels_interp, pressures_interp, cam_params)
 
 
     # # goal factors
@@ -57,23 +64,26 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp):
     # graph.add(gtd.PriorFactorDouble(phase0_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
     # # graph.push_back(self.jr_graph_builder.vertical_jump_goal_factors(self.jr, num_steps))
 
-    
-    for f_idx in range(graph.size()):
-        factor = graph.at(f_idx)
-        if factor.error(init_values) > 1:
-            graph_tmp = gtsam.NonlinearFactorGraph()
-            graph_tmp.add(factor)
-            gtd.DynamicsGraph.printGraph(graph_tmp)
-            print("error", factor.error(init_values))
+    # debug
+    # for f_idx in range(graph.size()):
+    #     factor = graph.at(f_idx)
+    #     if factor.error(init_values) > 1:
+    #         graph_tmp = gtsam.NonlinearFactorGraph()
+    #         graph_tmp.add(factor)
+    #         gtd.DynamicsGraph.printGraph(graph_tmp)
+    #         print("error", factor.error(init_values))
 
     # optimization
-    # params = gtsam.LevenbergMarquardtParams()
-    # params.setVerbosityLM("SUMMARY")
-    # optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-
     print("init error: ", graph.error(init_values))
-    optimizer = gtsam.GaussNewtonOptimizer(graph, init_values)
+    params = gtsam.LevenbergMarquardtParams()
+    params.setVerbosityLM("SUMMARY")
+    optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
     results = optimizer.optimize()
+    print("result error: ", graph.error(results))
+
+
+    # optimizer = gtsam.GaussNewtonOptimizer(graph, init_values)
+    # results = optimizer.optimize()
 
     return results
 
@@ -81,33 +91,42 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp):
 
 def main():
     """ Main file. """
-    # create jumping robot
+    # parameters
     yaml_file_path = "examples/example_jumping_robot/yaml/robot_config_2021-04-05.yaml"
-    theta = np.pi/3
-    rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
-    init_angles = rest_angles
-    init_vels = [0, 0, 0, 0, 0, 0]
-    torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
-    torso_twist = np.zeros(6)
-    P_s_0 = 65 * 6894.76/1000
-    init_config = JumpingRobot.create_init_config(
-        torso_pose, torso_twist, rest_angles, init_angles, init_vels, P_s_0)
+    path_exp_data = '/home/cs3630/Documents/system-id-data/0p00_0p12_hipknee-80source 2021-04-05 11-43-47'
+    path_cam_params = '/home/cs3630/Documents/system-id-data/camera_param.yaml'
+    P_s_0 = 80 # (psi) source tank initial pressure
+    t_sim = 0.2
+    dt = 0.005
+
+    # create jumping robot
+    # theta = np.pi/3
+    # rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
+    # init_angles = rest_angles
+    # init_vels = [0, 0, 0, 0, 0, 0]
+    # torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
+    # torso_twist = np.zeros(6)
+    # P_s_0 = P_s_0 * 6894.76/1000 # (psi to kPa) TODO: check that atm pressure is added in later version
+    # init_config = JumpingRobot.create_init_config(
+    #     torso_pose, torso_twist, rest_angles, init_angles, init_vels, P_s_0)
+
+    init_config = JumpingRobot.icra_init_config()
+    # TODO: modify P_s_0 in dict
     jr = JumpingRobot(yaml_file_path, init_config)
 
-    # create controls TODO: set to experimental controls
-    Tos = [0, 0, 0, 0]
-    Tcs = [0.1, 0.1, 0.1, 0.1]
-    controls = JumpingRobot.create_controls(Tos, Tcs)
+    # create controls from experimental valve times
+    t_valve = read_t_valve(path_exp_data)
+    controls = JumpingRobot.create_controls(t_valve[0,:], t_valve[1,:])
 
     # simulate
-    num_steps = 1
-    dt = 0.005
+    num_steps = int(t_sim/dt)
     sim_values, step_phases = vertical_jump_simulation(jr, num_steps, dt, controls)
     print("step_phases", step_phases)
 
     # system id
-    path_exp = '/home/cs3630/Documents/system-id-data/0p00_0p12_hipknee-80source 2021-04-05 11-43-47'
-    sysid_values = vertical_jump_sysid(jr, controls, sim_values, step_phases, path_exp)
+    time_interp = np.arange(0, dt*len(step_phases), dt)
+    sysid_values = vertical_jump_sysid(jr, controls, sim_values, step_phases, 
+        path_exp_data, path_cam_params, time_interp)
 
 
     # visualize TODO
