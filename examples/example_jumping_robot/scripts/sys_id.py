@@ -16,7 +16,7 @@ from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_values import JRValues
 from src.jr_simulator import JRSimulator
-from src.helpers import read_t_musc, read_pressure, \
+from src.helpers import read_t_valve, read_pressure, \
     read_marker_pix, interp_pressure, interp_marker_pix
 
 
@@ -29,7 +29,8 @@ def vertical_jump_simulation(jr, num_steps, dt, controls):
     return values, step_phases
 
 
-def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp_data, path_cam_params):
+def vertical_jump_sysid(jr, controls, init_values, step_phases, path_exp_data, 
+    path_cam_params, time_interp):
     """ Collocation optimization for vertical jump. """
     jr_graph_builder = JRGraphBuilder()
 
@@ -95,7 +96,7 @@ def main():
     yaml_file_path = "examples/example_jumping_robot/yaml/robot_config_2021-04-05.yaml"
     path_exp_data = '/home/cs3630/Documents/system-id-data/0p00_0p12_hipknee-80source 2021-04-05 11-43-47'
     path_cam_params = '/home/cs3630/Documents/system-id-data/camera_param.yaml'
-    P_s_0 = 80 # (psi) source tank initial pressure
+    P_s_0 = 80 # (psig) source tank initial pressure
     t_sim = 0.2
     dt = 0.005
 
@@ -111,7 +112,7 @@ def main():
     #     torso_pose, torso_twist, rest_angles, init_angles, init_vels, P_s_0)
 
     init_config = JumpingRobot.icra_init_config()
-    # TODO: modify P_s_0 in dict
+    init_config['P_s_0'] = P_s_0 * 6894.76/1000 + 101.325 # (psig to kPa)
     jr = JumpingRobot(yaml_file_path, init_config)
 
     # create controls from experimental valve times
