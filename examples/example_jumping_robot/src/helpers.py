@@ -32,6 +32,14 @@ def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False)
     values.insert(new_values)
 
 
+def read_t_valve(path_data: str) -> np.array:
+    ''' Import valve open/close times '''
+    prefix_data = os.path.basename(os.path.normpath(path_data))
+    file_t_musc = os.path.join(path_data, (prefix_data + ' t_valve.txt'))
+    t_valve = np.loadtxt(file_t_musc, dtype='float', comments='#', delimiter=',')
+    return t_valve
+
+
 def read_pressure(path_data: str) -> (np.array, np.array):
     ''' Import experimental pressure data '''
     prefix_data = os.path.basename(os.path.normpath(path_data))
