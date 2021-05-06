@@ -9,12 +9,14 @@
  * @author Frank Dellaert, Varun Agrawal, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
 """
 
-import numpy as np
 import os.path as osp
 import unittest
 
-import gtdynamics as gtd
 import gtsam
+import numpy as np
+
+import gtdynamics as gtd
+
 
 class TestDynamicsGraph(unittest.TestCase):
     """Unit tests for DynamicsGraph."""

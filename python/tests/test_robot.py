@@ -38,7 +38,8 @@ class TestRobot(GtsamTestCase):
                                 pose.translation())
 
         robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
-        robot_kp = kp.build_chain_from_urdf(open(self.ROBOT_MODEL).read())
+        with open(self.ROBOT_MODEL) as f:
+            robot_kp = kp.build_chain_from_urdf(f.read())
 
         th = {}
         joints = [
