@@ -368,7 +368,7 @@ class JumpingRobot:
                     q_foot - angle_offset]
         init_angles = rest_angles
 
-        P_s_0 = 65 * 6894.76/1000
+        P_s_0 = 65 * 6894.76/1000 + 101.325
         init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
                                                     rest_angles, init_angles,
                                                     init_vels, P_s_0, foot_dist)
@@ -388,7 +388,7 @@ class JumpingRobot:
         init_vels = [0, 0, 0, 0, 0, 0]
         torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
         torso_twist = np.zeros(6)
-        P_s_0 = 65 * 6894.76/1000
+        P_s_0 = 65 * 6894.76/1000 + 101.325
         foot_dist = 0.55
         init_config = JumpingRobot.create_init_config(torso_pose, torso_twist,
                                                     rest_angles, init_angles,
