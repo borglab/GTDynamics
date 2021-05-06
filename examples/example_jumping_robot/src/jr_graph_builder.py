@@ -232,8 +232,6 @@ class JRGraphBuilder:
         return graph
 
 
-
-
     def sys_id_graph(self, jr, marker_locations, pixels_all_frames, pressures_all_frames):
         """ System identification factors for the trajectory. """
         # set up camera prior factors
@@ -248,7 +246,6 @@ class JRGraphBuilder:
             graph.push_back(self.step_pressure_meas_graph(jr, k, pressure_meas))
             print(graph.size())
         return graph
-
 
 
     def sys_id_estimates(self, jr, initial_estimate, marker_locations, 
