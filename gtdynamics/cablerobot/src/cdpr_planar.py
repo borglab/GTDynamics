@@ -188,13 +188,13 @@ class Cdpr:
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             dfg.push_back(
-                gtd.EulerPoseColloFactor(
+                gtd.EulerPoseCollocationFactor(
                     gtd.internal.PoseKey(self.ee_id(), k).key(),
                     gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
                     gtd.internal.TwistKey(self.ee_id(), k).key(), 0,
                     self.costmodel_posecollo))
             dfg.push_back(
-                gtd.EulerTwistColloFactor(
+                gtd.EulerTwistCollocationFactor(
                     gtd.internal.TwistKey(self.ee_id(), k).key(),
                     gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
                     gtd.internal.TwistAccelKey(self.ee_id(), k).key(), 0,
