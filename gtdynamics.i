@@ -114,28 +114,30 @@ class WrenchPlanarFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/CollocationFactors.h>
 class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
   EulerPoseCollocationFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
-                       gtsam::Key twist_key, gtsam::Key dt_key,
-                       const gtsam::noiseModel::Base *cost_model);
+                             gtsam::Key twist_key, gtsam::Key dt_key,
+                             const gtsam::noiseModel::Base *cost_model);
 };
 
 class TrapezoidalPoseCollocationFactor : gtsam::NonlinearFactor {
-  TrapezoidalPoseCollocationFactor(
-      gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
-      gtsam::Key twist_t1_key, gtsam::Key dt_key,
-      const gtsam::noiseModel::Base *cost_model);
+  TrapezoidalPoseCollocationFactor(gtsam::Key pose_t0_key,
+                                   gtsam::Key pose_t1_key,
+                                   gtsam::Key twist_t0_key,
+                                   gtsam::Key twist_t1_key, gtsam::Key dt_key,
+                                   const gtsam::noiseModel::Base *cost_model);
 };
 
 class EulerTwistCollocationFactor : gtsam::NonlinearFactor {
   EulerTwistCollocationFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
-                        gtsam::Key accel_key, gtsam::Key dt_key,
-                        const gtsam::noiseModel::Base *cost_model);
+                              gtsam::Key accel_key, gtsam::Key dt_key,
+                              const gtsam::noiseModel::Base *cost_model);
 };
 
 class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
-  TrapezoidalTwistCollocationFactor(
-      gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
-      gtsam::Key accel_t1_key, gtsam::Key dt_key,
-      const gtsam::noiseModel::Base *cost_model);
+  TrapezoidalTwistCollocationFactor(gtsam::Key twist_t0_key,
+                                    gtsam::Key twist_t1_key,
+                                    gtsam::Key accel_t0_key,
+                                    gtsam::Key accel_t1_key, gtsam::Key dt_key,
+                                    const gtsam::noiseModel::Base *cost_model);
 };
 
 /********************** link **********************/
