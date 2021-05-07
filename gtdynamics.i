@@ -302,6 +302,10 @@ class ContactPoint {
 class PointOnLink {
   PointOnLink();
   PointOnLink(const gtdynamics::Link* link, const gtsam::Point3 &point);
+
+  gtdynamics::LinkSharedPtr link;
+  gtsam::Point3 point;
+
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   void print(const string &s = "");
 };
