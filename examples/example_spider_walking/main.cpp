@@ -100,10 +100,9 @@ int main(int argc, char **argv) {
   auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
 
   // Build the objective factors.
-  const double ground_height = -1.8;
   const Point3 step(0, 0.4, 0);
   gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step, ground_height);
+      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);

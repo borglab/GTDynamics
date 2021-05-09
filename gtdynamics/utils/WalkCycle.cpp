@@ -34,7 +34,7 @@ void WalkCycle::print(const string &s) const {
 }
 
 std::map<string, Point3> WalkCycle::initContactPointGoal(
-    const Robot &robot, const double &ground_height) const {
+    const Robot &robot) const {
   std::map<string, Point3> cp_goals;
 
   // Go over all phases, and all contact points
@@ -44,7 +44,7 @@ std::map<string, Point3> WalkCycle::initContactPointGoal(
       // If no goal set yet, add it here
       if (cp_goals.count(link_name) == 0) {
         LinkSharedPtr link = robot.link(link_name);
-        auto foot_w = link->wTcom().transformFrom(kv.second.point) + Point3(0,0,-ground_height);
+        auto foot_w = link->wTcom().transformFrom(kv.second.point);
         cp_goals.emplace(link_name, foot_w);
       }
     }
