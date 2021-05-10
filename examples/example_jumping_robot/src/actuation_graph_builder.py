@@ -67,7 +67,7 @@ class ActuationGraphBuilder:
         graph.add(gtd.GasLawFactor(P_s_key, V_s_key, m_s_key, self.gas_law_model, jr.gas_constant))
         return graph
     
-    def actuator_dynamics_graph(self, jr: JumpingRobot, actuator: Actuator, k: int) -> NonlinearFactorGraph:
+    def actuator_dynamics_graph(self, jr: JumpingRobot, actuator: Actuator, k: int, sysid = False) -> NonlinearFactorGraph:
         """ Create a factor graph containing actuator dynamics constraints at step k. """
         d_tube = jr.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
         l_tube = jr.params["pneumatic"]["l_tube_valve_musc"] * 0.0254
@@ -90,13 +90,28 @@ class ActuationGraphBuilder:
 
         graph = NonlinearFactorGraph()
         graph.add(gtd.GasLawFactor(P_a_key, V_a_key, m_a_key, self.gas_law_model, jr.gas_constant))
-        graph.add(gtd.ActuatorVolumeFactor(V_a_key, delta_x_key, self.volume_model, d_tube, l_tube))
         graph.add(gtd.SmoothActuatorFactor(delta_x_key, P_a_key, f_a_key, self.force_cost_model))
-        graph.add(gtd.ForceBalanceFactor(delta_x_key, q_key, f_a_key, self.balance_cost_model, kt, radius, q_rest, actuator.positive))
-        graph.add(gtd.JointTorqueFactor(q_key, v_key, f_a_key, torque_key, self.torque_cost_model, q_anta_limit, ka, radius, b, actuator.positive))
+
+        if sysid:
+            d_tube_key = Actuator.TubeDiameterKey()
+            k_key = Actuator.TendonStiffnessKey(j)
+            b_key = Actuator.DampingKey()
+            graph.add(gtd.ActuatorVolumeFactorId(
+                V_a_key, delta_x_key, d_tube_key, self.volume_model, l_tube))
+            graph.add(gtd.ForceBalanceFactorId(delta_x_key, q_key, f_a_key, k_key,
+                      self.balance_cost_model, radius, q_rest, actuator.positive))
+            graph.add(gtd.JointTorqueFactorId(q_key, v_key, f_a_key, torque_key, b_key,
+                      self.torque_cost_model, q_anta_limit, ka, radius, actuator.positive))
+        else:
+            graph.add(gtd.ForceBalanceFactor(delta_x_key, q_key, f_a_key,
+                      self.balance_cost_model, kt, radius, q_rest, actuator.positive))
+            graph.add(gtd.JointTorqueFactor(q_key, v_key, f_a_key, torque_key,
+                      self.torque_cost_model, q_anta_limit, ka, radius, b, actuator.positive))
+            graph.add(gtd.ActuatorVolumeFactor(
+                V_a_key, delta_x_key, self.volume_model, d_tube, l_tube))
         return graph
 
-    def mass_flow_graph(self, jr, actuator, k):
+    def mass_flow_graph(self, jr, actuator, k, sysid=False):
         """ Create a factor graph containing mass flow dynamics constraints at step k. """
         d_tube = jr.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
         l_tube = jr.params["pneumatic"]["l_tube_valve_musc"] * 0.0254
@@ -117,16 +132,20 @@ class ActuationGraphBuilder:
         t_key = gtd.TimeKey(k).key()
 
         graph = gtsam.NonlinearFactorGraph()
-        graph.add(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k_const))
+        if sysid:
+            d_tube_key = Actuator.TubeDiameterKey()
+            graph.add(gtd.MassFlowRateFactorId(P_a_key, P_s_key, mdot_key, d_tube_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k_const))
+        else:
+            graph.add(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k_const))
         graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
         return graph
 
-    def dynamics_graph(self, jr: JumpingRobot, k: int) -> NonlinearFactorGraph:
+    def dynamics_graph(self, jr: JumpingRobot, k: int, sysid=False) -> NonlinearFactorGraph:
         """ Create a factor graph containing all actuation dynamics constraints at step k. """
         graph = self.source_dynamics_graph(jr, k)
         for actuator in jr.actuators:
-            graph.push_back(self.actuator_dynamics_graph(jr, actuator, k))
-            graph.push_back(self.mass_flow_graph(jr, actuator, k))
+            graph.push_back(self.actuator_dynamics_graph(jr, actuator, k, sysid))
+            graph.push_back(self.mass_flow_graph(jr, actuator, k, sysid))
         return graph
 
     def prior_graph_actuator(self, jr, actuator, values, k):

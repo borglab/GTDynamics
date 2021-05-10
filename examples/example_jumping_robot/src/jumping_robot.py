@@ -78,6 +78,23 @@ class Actuator:
     def ValveCloseTimeKey(j):
         return gtd.DynamicsSymbol.JointSymbol("Tc", j, 0).key()
 
+    @staticmethod
+    def DampingKey():
+        return gtd.DynamicsSymbol.SimpleSymbol('c', 0).key()
+    
+    @staticmethod
+    def TendonStiffnessKey(j):
+        if j==1 or j==4:
+            return gtd.DynamicsSymbol.JointSymbol("kt", 1, 0).key()
+        elif j==2 or j==3:
+            return gtd.DynamicsSymbol.JointSymbol("kt", 2, 0).key()
+        else:
+            raise Exception("not a joint with actuator")
+    
+    @staticmethod
+    def TubeDiameterKey():
+        return gtd.DynamicsSymbol.SimpleSymbol("Dt", 0).key()
+
 
 class JumpingRobot:
     """ Class that stores a GTDynamics robot class and all parameters for 
@@ -103,6 +120,7 @@ class JumpingRobot:
                           Actuator("hip_r", self.robot, self.params["hip"], True),
                           Actuator("hip_l", self.robot, self.params["hip"], True),
                           Actuator("knee_l", self.robot, self.params["knee"], False)]
+        self.marker_locations = JumpingRobot.get_marker_locations()
 
         Rs = self.params["pneumatic"]["Rs"]
         temperature = self.params["pneumatic"]["T"]
@@ -394,3 +412,51 @@ class JumpingRobot:
                                                     init_vels, P_s_0, foot_dist)
         return init_config
 
+    @staticmethod
+    def get_camera_calibration(cam_params):
+        ''' Set up initial camera calibration '''
+        mtx = cam_params['matrix']
+        dist = cam_params['dist']
+        dim = cam_params['dimension']
+
+        fy = mtx[0][0] # switched x- and y- axes
+        fx = mtx[1][1] # switched x- and y- axes
+        f = (fx+fy)/2 # (pixels) focal length
+        k1 = dist[0] # first radial distortion coefficient (quadratic)
+        k2 = dist[1] # second radial distortion coefficient (quartic)
+        p1 = dist[2] # first tangential distortion coefficient
+        p2 = dist[3] # second tangential distortion coefficient
+        k3 = dist[4] # third radial distortion coefficient
+        u0 = dim[1]/2 # (pixels) principal point
+        v0 = dim[0]/2 # (pixels) principal point
+        calibration = gtsam.Cal3Bundler(f, k1, k2, u0, v0)
+        return calibration 
+
+    @staticmethod
+    def get_cam_params(path_cam_params):
+        """ Read camera parameter file. """
+        with open(path_cam_params) as file:
+            cam_params = yaml.load(file, Loader=yaml.FullLoader)
+        return cam_params
+
+    @staticmethod
+    def get_marker_locations():
+        ''' Get (relative) marker locations from link poses '''
+        locations = [[[-0.071,  -0.1,    0], [-0.071,    0.1,    0]], # switched y/z
+                     [[-0.038,  -0.1,    0], [-0.038,    0.1,    0]], # switched y/z
+                     [[     0,  0.15,    0], [     0,  -0.15,    0]], # updated for 30-cm hip marker spacing
+                     [[-0.038,   0.1,    0], [-0.038,   -0.1,    0]], # switched y/z
+                     [[-0.071,   0.1,    0], [-0.071,   -0.1,    0]]] # switched y/z
+        return locations
+
+    @staticmethod
+    def CalibrationKey():
+        return gtd.DynamicsSymbol.SimpleSymbol('K', 0).key()
+
+    @staticmethod
+    def CameraPoseKey():
+        return gtd.DynamicsSymbol.SimpleSymbol('c', 0).key()
+    
+    @staticmethod
+    def MarkerKey (link_idx, marker_idx, k):
+        return gtd.DynamicsSymbol.LinkJointSymbol('mk', link_idx, marker_idx, k).key()

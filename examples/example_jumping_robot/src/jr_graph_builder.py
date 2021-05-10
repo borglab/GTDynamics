@@ -25,6 +25,7 @@ import numpy as np
 from jumping_robot import Actuator, JumpingRobot
 from actuation_graph_builder import ActuationGraphBuilder
 from robot_graph_builder import RobotGraphBuilder
+from measurement_graph_builder import MeasurementGraphBuilder
 from jr_values import JRValues
 
 
@@ -35,6 +36,7 @@ class JRGraphBuilder:
         """Initialize the graph builder, specify all noise models."""
         self.robot_graph_builder = RobotGraphBuilder()
         self.actuation_graph_builder = ActuationGraphBuilder()
+        self.measurement_graph_builder = MeasurementGraphBuilder()
 
     def collocation_graph(self, jr: JumpingRobot, step_phases: list, collocation):
         """ Create a factor graph containing collocation constraints. """
@@ -55,17 +57,17 @@ class JRGraphBuilder:
 
         return graph
 
-    def dynamics_graph(self, jr: JumpingRobot, k: int) -> NonlinearFactorGraph:
+    def dynamics_graph(self, jr: JumpingRobot, k: int, sysid=False) -> NonlinearFactorGraph:
         """ Create a factor graph containing dynamcis constraints for 
             the robot, actuators and source tank at a certain time step.
         """
-        graph = self.actuation_graph_builder.dynamics_graph(jr, k)
+        graph = self.actuation_graph_builder.dynamics_graph(jr, k, sysid)
         graph.push_back(self.robot_graph_builder.dynamics_graph(jr, k))
         return graph
 
-    def transition_dynamics_graph(self, prev_jr, new_jr, k):
+    def transition_dynamics_graph(self, prev_jr, new_jr, k, sysid=False):
         """ Dynamics graph for transition node. """
-        graph = self.actuation_graph_builder.dynamics_graph(prev_jr, k)
+        graph = self.actuation_graph_builder.dynamics_graph(prev_jr, k, sysid)
         graph.push_back(self.robot_graph_builder.transition_dynamics_graph(prev_jr, new_jr, k))
         return graph
 
@@ -146,4 +148,30 @@ class JRGraphBuilder:
         graph_collo = self.collocation_graph(jr, step_phases, collocation)
         graph.push_back(graph_collo)
 
+        return graph
+
+    def sysid_graph(self, jr, controls, step_phases, pixels_all_frames, pressures_all_frames):
+        """ Graph for system identification. """ 
+        # prior factors for init configuration, control and time
+        graph = self.trajectory_priors(jr)
+        graph.push_back(self.control_priors(jr, controls))
+
+        # dynamics graph at each step
+        jr = jr.jr_with_phase(step_phases[0])
+        for k in range(len(step_phases)+1):
+            prev_phase = step_phases[k-1] if k!=0 else step_phases[0]
+            next_phase = step_phases[k] if k!=len(step_phases) else step_phases[-1]
+            if next_phase == prev_phase:
+                # print(k, prev_phase)
+                graph_dynamics = self.dynamics_graph(jr, k, sysid=True)
+            else:
+                # print(k, prev_phase, '->', next_phase)
+                new_jr = jr.jr_with_phase(next_phase)
+                graph_dynamics = self.transition_dynamics_graph(jr, new_jr, k, sysid=True)
+                jr = new_jr
+            graph.push_back(graph_dynamics)
+        
+        # measurements
+        graph.push_back(self.measurement_graph_builder.camera_priors(jr))
+        graph.push_back(self.measurement_graph_builder.measurement_graph(jr, pixels_all_frames, pressures_all_frames))
         return graph

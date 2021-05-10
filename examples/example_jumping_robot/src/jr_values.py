@@ -425,3 +425,46 @@ class JRValues:
         wrench_w = T_wb.inverse().AdjointMap().transpose().dot(wrench_b)
         print(side + " force: ", wrench_w[3], wrench_w[4], wrench_w[5])
         return wrench_w[5]
+
+    @staticmethod
+    def sys_id_estimates(self, jr, initial_estimate, marker_locations, 
+        pixels_all_frames, pressures_all_frames, cam_params):
+        ''' Set initial estimates for system ID '''
+        for k in range(num_frames):
+            pixel_meas = pixels_all_frames[k]
+            pressure_meas = pressures_all_frames[k]
+
+            # add pressures
+            for actuator in jr.actuators: 
+                j = actuator.j # TODO: is this indexed at 1?
+                pressure_key = Actuator.PressureKey(j, k)
+                pressure = pressure_meas[j]
+                initial_estimate.insert(pressure_key, pressure)
+
+            source_pressure_key = Actuator.SourcePressureKey(k)
+            source_pressure = pressure_meas[0]
+            initial_estimate.insert(source_pressure_key, source_pressure)
+
+            # add markers
+            for link in jr.robot.links():
+                if link.name() == "ground":
+                    continue
+                i = link.id()
+                markers_i = marker_locations[i-1]
+                for idx_marker in range(len(markers_i)):
+                    marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
+                    marker_location = np.array(markers_i[idx_marker])
+                    initial_estimate.insert(marker_key, marker_location)
+
+        # add camera calibration
+        cal_key = CalibrationKey()
+        calibration = self.get_camera_calibration(cam_params)
+        initial_estimate.insert(cal_key, calibration) 
+
+        # add camera pose
+        cam_pose_key = CameraPoseKey()
+        cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
+            gtsam.Point3(cam_params['point'][0], cam_params['point'][1], cam_params['point'][2])) 
+        initial_estimate.insert(cam_pose_key, cam_pose)
+
+        return initial_estimate

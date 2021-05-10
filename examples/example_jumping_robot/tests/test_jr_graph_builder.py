@@ -117,6 +117,34 @@ class TestJRGraphBuilder(unittest.TestCase):
         graph_control_prior = self.jr_graph_builder.control_priors(self.jr, self.controls)
         self.assertEqual(graph_control_prior.size(), 8)
 
+    def test_measurement_graph_size(self):
+        """ Test measurement graph size of 1 frame. """
+        pixels_all_frames = np.zeros((1, 5, 2, 2))
+        pressures_all_frames = [[0, 0, 0, 0, 0]]
+
+        graph = self.jr_graph_builder.measurement_graph_builder.measurement_graph(
+            self.jr, pixels_all_frames, pressures_all_frames)
+
+        # markers: 20
+        # pressures: 5
+        self.assertEqual(graph.size(), 25)
+
+    def test_sys_id_graph(self):
+        """ Test system identification graph size of 1 step. """
+        pixels_all_frames = np.zeros((2, 5, 2, 2))
+        pressures_all_frames = np.zeros((2, 5))
+        step_phases = [0]
+
+        graph = self.jr_graph_builder.sysid_graph(
+            self.jr, self.controls, step_phases, pixels_all_frames, pressures_all_frames)
+
+        # trajectory priors: 2 + 5 + 1 + 1
+        # control priros: 8
+        # robot dynamics: 46
+        # actuation dynamics: 29 * 2
+        # measurement: 25 * 2
+        # collocation: 48
+        self.assertEqual(graph.size(), 219)
 
 if __name__ == "__main__":
     unittest.main()
