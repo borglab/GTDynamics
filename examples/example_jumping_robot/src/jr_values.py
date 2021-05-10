@@ -427,44 +427,46 @@ class JRValues:
         return wrench_w[5]
 
     @staticmethod
-    def sys_id_estimates(self, jr, initial_estimate, marker_locations, 
-        pixels_all_frames, pressures_all_frames, cam_params):
-        ''' Set initial estimates for system ID '''
+    def sys_id_estimates(jr, pixels_all_frames, pressures_all_frames):
+        ''' Initial estimates for system ID values. '''
+
+        values = gtsam.Values()
+        num_frames = len(pressures_all_frames)
         for k in range(num_frames):
             pixel_meas = pixels_all_frames[k]
             pressure_meas = pressures_all_frames[k]
 
-            # add pressures
-            for actuator in jr.actuators: 
-                j = actuator.j # TODO: is this indexed at 1?
-                pressure_key = Actuator.PressureKey(j, k)
-                pressure = pressure_meas[j]
-                initial_estimate.insert(pressure_key, pressure)
+            # # add pressures
+            # for actuator in jr.actuators: 
+            #     j = actuator.j # TODO: is this indexed at 1?
+            #     pressure_key = Actuator.PressureKey(j, k)
+            #     pressure = pressure_meas[j]
+            #     values.insertDouble(pressure_key, pressure)
 
-            source_pressure_key = Actuator.SourcePressureKey(k)
-            source_pressure = pressure_meas[0]
-            initial_estimate.insert(source_pressure_key, source_pressure)
+            # source_pressure_key = Actuator.SourcePressureKey(k)
+            # source_pressure = pressure_meas[0]
+            # values.insertDouble(source_pressure_key, source_pressure)
 
             # add markers
             for link in jr.robot.links():
                 if link.name() == "ground":
                     continue
                 i = link.id()
-                markers_i = marker_locations[i-1]
+                markers_i = jr.marker_locations[i-1]
                 for idx_marker in range(len(markers_i)):
                     marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
                     marker_location = np.array(markers_i[idx_marker])
-                    initial_estimate.insert(marker_key, marker_location)
+                    values.insert(marker_key, marker_location)
 
         # add camera calibration
-        cal_key = CalibrationKey()
-        calibration = self.get_camera_calibration(cam_params)
-        initial_estimate.insert(cal_key, calibration) 
+        cal_key = JumpingRobot.CalibrationKey()
+        values.insert(cal_key, jr.calibration) 
 
         # add camera pose
-        cam_pose_key = CameraPoseKey()
+        cam_pose_key = JumpingRobot.CameraPoseKey()
+        cam_params = jr.params['cam_params']
         cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
-            gtsam.Point3(cam_params['point'][0], cam_params['point'][1], cam_params['point'][2])) 
-        initial_estimate.insert(cam_pose_key, cam_pose)
+            np.array(cam_params['pose']['point']))
+        values.insert(cam_pose_key, cam_pose)
 
-        return initial_estimate
+        return values

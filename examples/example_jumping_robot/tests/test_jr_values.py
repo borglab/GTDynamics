@@ -66,6 +66,14 @@ class TestJRValues(unittest.TestCase):
 
         mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
 
+    def test_sys_id_estimates(self):
+        values = gtsam.Values()
+        pixels_all_frames = np.zeros((2, 5, 2, 2))
+        pressures_all_frames = np.zeros((2, 5))
+        values = JRValues.sys_id_estimates(self.jr, pixels_all_frames, pressures_all_frames)
+
+        # 10 * 2 + 2
+        self.assertEqual(values.size(), 22)
 
 if __name__ == "__main__":
     unittest.main()

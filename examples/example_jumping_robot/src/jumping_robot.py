@@ -121,6 +121,7 @@ class JumpingRobot:
                           Actuator("hip_l", self.robot, self.params["hip"], True),
                           Actuator("knee_l", self.robot, self.params["knee"], False)]
         self.marker_locations = JumpingRobot.get_marker_locations()
+        self.calibration = JumpingRobot.get_camera_calibration(self.params['cam_params'])
 
         Rs = self.params["pneumatic"]["Rs"]
         temperature = self.params["pneumatic"]["T"]
