@@ -8,27 +8,23 @@ knee: # knee joint parameters
   rad0: 0.045 # (m) cam radius at zero degrees
   slope: 0 # (cm/rad) cam profile radius slope
   theta_range: [180, 0] # (deg) joint angle theta range over which to map cam angle beta from 0 to 180  
-  k_tendon: 8200 # (N/m) tendon stiffness # NOTE: not currently used; nonlinear mesh stiffness used instead
-  k_anta: 2.1
-  q_anta_limit: 0
-  b: 0.03
+  k_tendon: 8200 # (N/m) tendon stiffness (in series with muscle)
+  k_anta: 2.1 # (Nm/rad) antagonistic spring stiffness (142.8x24.0 mm nylon strip)
+  q_anta_limit: 0 # antagonistic spring engagement angle
+  b: 0.03 # (N-m/rad/s) joint damping
 
 hip: # hip joint parameters
   rad0: 0.045
   slope: 0
   theta_range: [-90, 90]
-  k_tendon: 8200 # NOTE: not currently used; nonlinear mesh stiffness used instead
-  k_anta: 2.5
-  q_anta_limit: 0
+  k_tendon: 8200
+  k_anta: 2.5 # 160x25 mm rubber strips at hips
+  q_anta_limit: 0.14824150497 # -0.20082449502810373 rad + 20 deg
   b: 0.03
 
 model: # overall robot model parameters
-  joint_order: [knee_right, hip_right, hip_left, knee_left] # order of joints corresponding to below parameters
-  # joint_damp: [0.03, 0.03, 0.03, 0.03] # (N-m/rad/s) joint damping TODO: how to determine?
-  # joint_damp_lims: [180, -90, -90, 180] # joint damping over entire joint range
-  # joint_stiff: [2.1, 2.5, 2.5, 2.1] # (Nm/rad) stiffness of antagonistic springs: 142.8x24.0 mm nylon strips at knees; 160x25 mm rubber strips at hips
-  # joint_stiff_lims:  [0, 70, 70, 0] # (deg) spring engagement starting angle
-  mu: 0.9 # Coulomb foot friction coefficient TODO: how to determine?
+  joint_order: [knee_right, hip_right, hip_left, knee_left] # order of joints
+  mu: 0.9 # Coulomb foot friction coefficient (unused)
 
 morphology: # robot morphology [shank_r, thigh_r, torso, thigh_l, shank_l]
   l: [0.55, 0.55, 0.55, 0.55, 0.55] # (m) link lengths
@@ -59,11 +55,11 @@ pneumatic: # pneumatic system parameters
 cam_params:
   dimension: [1920, 1080] # (pix) camera dimension
   pose: # camera pose in world frame
-      point: [2.5019, 0, 0]
-      Ry: -1.5708
+    point: [2.5019, 0, 0]
+    Ry: -1.5708
   # from OpenCV checkerboard cal:
   matrix:
-      [[930.61550934,   0.,             957.52437616], 
-      [0,              932.40029846,   552.74942762],
-      [0,              0,              1           ]] 
+    [[930.61550934,  0.,             957.52437616], 
+    [0,              932.40029846,   552.74942762],
+    [0,              0,              1           ]] 
   dist: [-0.271825734,  0.0864954022, -0.000255924635,  0.000889888021, -0.0136882404]
