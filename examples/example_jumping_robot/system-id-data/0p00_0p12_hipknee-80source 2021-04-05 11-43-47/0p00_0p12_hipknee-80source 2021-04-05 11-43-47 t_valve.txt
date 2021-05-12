@@ -1,0 +1,3 @@
+# knee_right, hip_right, hip_left, knee_left (seconds)
+0.00, 0.00, 0.00, 0.00
+0.12, 0.12, 0.12, 0.12

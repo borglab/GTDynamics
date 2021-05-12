@@ -80,7 +80,7 @@ class Actuator:
 
     @staticmethod
     def DampingKey():
-        return gtd.DynamicsSymbol.SimpleSymbol('c', 0).key()
+        return gtd.DynamicsSymbol.SimpleSymbol('bd', 0).key()
     
     @staticmethod
     def TendonStiffnessKey(j):
@@ -456,7 +456,7 @@ class JumpingRobot:
 
     @staticmethod
     def CameraPoseKey():
-        return gtd.DynamicsSymbol.SimpleSymbol('c', 0).key()
+        return gtd.DynamicsSymbol.SimpleSymbol('ca', 0).key()
     
     @staticmethod
     def MarkerKey (link_idx, marker_idx, k):

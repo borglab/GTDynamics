@@ -32,7 +32,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-
+28147493376098304
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -116,3 +116,7 @@ visualization/*.json
 # gerry00 visualization data
 scripts/gerry00_rpr_viz.gif
 traj.csv
+
+# jumping robot
+*.mp4
+*.png

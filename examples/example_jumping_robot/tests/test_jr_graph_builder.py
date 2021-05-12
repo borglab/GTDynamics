@@ -19,9 +19,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from src.jumping_robot import Actuator, JumpingRobot
-from src.robot_graph_builder import RobotGraphBuilder
-from src.actuation_graph_builder import ActuationGraphBuilder
+from src.jumping_robot import JumpingRobot
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_values import JRValues
 
@@ -135,15 +133,14 @@ class TestJRGraphBuilder(unittest.TestCase):
         pressures_all_frames = np.zeros((2, 5))
         step_phases = [0]
 
-        graph = self.jr_graph_builder.sysid_graph(
-            self.jr, self.controls, step_phases, pixels_all_frames, pressures_all_frames)
+        graph = self.jr_graph_builder.sys_id_graph(
+            self.jr, step_phases, pixels_all_frames, pressures_all_frames)
 
         # trajectory priors: 2 + 5 + 1 + 1
-        # control priros: 8
-        # robot dynamics: 46
+        # robot dynamics: 46 * 2
         # actuation dynamics: 29 * 2
-        # measurement: 25 * 2
-        # collocation: 48
+        # collocation: 2 + 5 + 1
+        # measurement: 25 * 2 + 2
         self.assertEqual(graph.size(), 219)
 
 if __name__ == "__main__":

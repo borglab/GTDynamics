@@ -427,26 +427,11 @@ class JRValues:
         return wrench_w[5]
 
     @staticmethod
-    def sys_id_estimates(jr, pixels_all_frames, pressures_all_frames):
+    def sys_id_estimates(jr, num_frames, known_values):
         ''' Initial estimates for system ID values. '''
 
         values = gtsam.Values()
-        num_frames = len(pressures_all_frames)
         for k in range(num_frames):
-            pixel_meas = pixels_all_frames[k]
-            pressure_meas = pressures_all_frames[k]
-
-            # # add pressures
-            # for actuator in jr.actuators: 
-            #     j = actuator.j # TODO: is this indexed at 1?
-            #     pressure_key = Actuator.PressureKey(j, k)
-            #     pressure = pressure_meas[j]
-            #     values.insertDouble(pressure_key, pressure)
-
-            # source_pressure_key = Actuator.SourcePressureKey(k)
-            # source_pressure = pressure_meas[0]
-            # values.insertDouble(source_pressure_key, source_pressure)
-
             # add markers
             for link in jr.robot.links():
                 if link.name() == "ground":
@@ -455,6 +440,7 @@ class JRValues:
                 markers_i = jr.marker_locations[i-1]
                 for idx_marker in range(len(markers_i)):
                     marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
+                    # TODO: this is wrong
                     marker_location = np.array(markers_i[idx_marker])
                     values.insert(marker_key, marker_location)
 
@@ -468,5 +454,23 @@ class JRValues:
         cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
             np.array(cam_params['pose']['point']))
         values.insert(cam_pose_key, cam_pose)
+
+        # add tube diameter
+        diameter_key = Actuator.TubeDiameterKey()
+        diameter = jr.params["pneumatic"]["d_tube_valve_musc"] * 0.0254
+        values.insertDouble(diameter_key, diameter)
+
+        # add damping
+        damping_key = Actuator.DampingKey()
+        damping = jr.params["knee"]["b"]
+        values.insertDouble(damping_key, damping)
+
+        # add tendon spring coefficient
+        kt_hip = jr.params["hip"]["k_tendon"]
+        kt_knee = jr.params["knee"]["k_tendon"]
+        kt_hip_key = Actuator.TendonStiffnessKey(2)
+        kt_knee_key = Actuator.TendonStiffnessKey(1)
+        values.insertDouble(kt_hip_key, kt_hip)
+        values.insertDouble(kt_knee_key, kt_knee)
 
         return values

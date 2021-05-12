@@ -1,0 +1,11 @@
+dimension: [1920, 1080] # (pix) camera dimension
+pose: # camera pose in world frame
+    point: [2.5019, 0, 0]
+    Ry: -1.5708
+# from OpenCV checkerboard cal:
+matrix:
+    [[930.61550934,   0.,             957.52437616], 
+     [0,              932.40029846,   552.74942762],
+     [0,              0,              1           ]] 
+dist: [-0.271825734,  0.0864954022, -0.000255924635,  0.000889888021, -0.0136882404]
+
