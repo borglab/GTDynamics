@@ -80,12 +80,12 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
 }
 
 NonlinearFactorGraph Trajectory::contactPointObjectives(
-    const SharedNoiseModel &cost_model, const Point3 &step) const {
+    const SharedNoiseModel &cost_model, const Point3 &step, double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Initials contact point goal.
   // TODO(frank): #179 make sure height is handled correctly.
-  map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_);
+  map<string, Point3> cp_goals = walk_cycle_.initContactPointGoal(robot_, ground_height);
 
   size_t k_start = 0;
   for (int w = 0; w < repeat_; w++) {
