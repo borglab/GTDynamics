@@ -265,7 +265,7 @@ class Trajectory {
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const gtsam::SharedNoiseModel &cost_model,
       const gtsam::Point3 &step,
-      double ground_height) const;
+      double ground_height = 0) const;
 
   /**
    * @fn Add minimum torque objectives.
