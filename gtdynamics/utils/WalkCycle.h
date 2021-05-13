@@ -95,7 +95,7 @@ class WalkCycle {
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal(
       const Robot& robot,
-      const double& ground_height) const;
+      double ground_height) const;
 
   /**
    * @fn Returns the swing links for a given phase.

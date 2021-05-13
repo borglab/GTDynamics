@@ -80,7 +80,7 @@ Values Trajectory::multiPhaseInitialValues(double gaussian_noise,
 }
 
 NonlinearFactorGraph Trajectory::contactPointObjectives(
-    const SharedNoiseModel &cost_model, const Point3 &step, const double &ground_height) const {
+    const SharedNoiseModel &cost_model, const Point3 &step, double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Initials contact point goal.
