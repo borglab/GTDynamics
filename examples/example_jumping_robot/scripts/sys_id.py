@@ -34,7 +34,7 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
     jr_graph_builder = JRGraphBuilder()
 
     # trajectory graph
-    collocation = gtd.CollocationScheme.Trapezoidal
+    collocation = gtd.CollocationScheme.Euler
     graph = jr_graph_builder.sys_id_graph(jr, step_phases, 
         pixels_all_frames, pressures_all_frames, collocation)
     graph.push_back(jr_graph_builder.control_priors(jr, controls))
@@ -48,21 +48,23 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
 
 
     # debug
-    # for f_idx in range(graph.size()):
-    #     factor = graph.at(f_idx)
-    #     if factor.error(init_values) > 1:
-    #         graph_tmp = gtsam.NonlinearFactorGraph()
-    #         graph_tmp.add(factor)
-    #         gtd.DynamicsGraph.printGraph(graph_tmp)
-    #         print("error", factor.error(init_values))
+    for f_idx in range(graph.size()):
+        factor = graph.at(f_idx)
+        if factor.error(init_values) > 1:
+            graph_tmp = gtsam.NonlinearFactorGraph()
+            graph_tmp.add(factor)
+            gtd.DynamicsGraph.printGraph(graph_tmp)
+            print("error", factor.error(init_values))
 
-    values_keys = init_values.keys()
-    for key in gtd.KeySetToKeyVector(graph.keys()):
-        if not key in values_keys:
-            print(gtd.DynamicsSymbol(key))
+    # values_keys = init_values.keys()
+    # for key in gtd.KeySetToKeyVector(graph.keys()):
+    #     if not key in values_keys:
+    #         print(gtd.DynamicsSymbol(key))
 
     # optimization
     print("init error: ", graph.error(init_values))
+
+
     # params = gtsam.LevenbergMarquardtParams()
     # params.setVerbosityLM("SUMMARY")
     # optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
@@ -98,7 +100,8 @@ def main():
     controls = JumpingRobot.create_controls(t_valve[0,:], t_valve[1,:])
 
     # simulate
-    num_steps = int(t_sim/dt)
+    # num_steps = int(t_sim/dt)
+    num_steps = 3
     sim_values, step_phases = vertical_jump_simulation(jr, num_steps, dt, controls)
     print("step_phases", step_phases)
 

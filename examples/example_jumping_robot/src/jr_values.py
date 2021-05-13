@@ -438,11 +438,12 @@ class JRValues:
                     continue
                 i = link.id()
                 markers_i = jr.marker_locations[i-1]
+                link_pose = gtd.Pose(known_values, i, k)
                 for idx_marker in range(len(markers_i)):
                     marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
-                    # TODO: this is wrong
-                    marker_location = np.array(markers_i[idx_marker])
-                    values.insert(marker_key, marker_location)
+                    marker_location_local = np.array(markers_i[idx_marker])
+                    marker_location_global = link_pose.transformFrom(marker_location_local)
+                    values.insert(marker_key, marker_location_global)
 
         # add camera calibration
         cal_key = JumpingRobot.CalibrationKey()

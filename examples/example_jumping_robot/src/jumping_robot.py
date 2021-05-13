@@ -456,7 +456,7 @@ class JumpingRobot:
 
     @staticmethod
     def CameraPoseKey():
-        return gtd.DynamicsSymbol.SimpleSymbol('ca', 0).key()
+        return gtd.DynamicsSymbol.SimpleSymbol('cp', 0).key()
     
     @staticmethod
     def MarkerKey (link_idx, marker_idx, k):
