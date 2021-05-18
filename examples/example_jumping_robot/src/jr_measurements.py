@@ -10,6 +10,7 @@
 """
 
 
+from typing import Tuple
 import numpy as np
 import os
 
@@ -21,7 +22,7 @@ def read_t_valve(path_data: str) -> np.array:
     return t_valve
 
 
-def read_pressure(path_data: str) -> (np.array, np.array):
+def read_pressure(path_data: str) -> Tuple[np.array, np.array]:
     ''' Import experimental pressure data. '''
     prefix_data = os.path.basename(os.path.normpath(path_data))
     file_pressures = os.path.join(path_data, (prefix_data + ' pres_filt.txt'))
@@ -31,7 +32,7 @@ def read_pressure(path_data: str) -> (np.array, np.array):
     return time, pressure
 
 
-def read_marker_pix(path_data: str, dim_camera) -> (np.array, np.array):
+def read_marker_pix(path_data: str, dim_camera) -> Tuple[np.array, np.array]:
     ''' Import marker pixel location measurements ''' 
     prefix_data = os.path.basename(os.path.normpath(path_data))
     file_vid_time = os.path.join(path_data, (prefix_data + ' vid_time.txt'))
