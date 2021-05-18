@@ -55,12 +55,10 @@ class Phase {
   void addContactPoint(const std::string &link_name,
                        const gtsam::Point3 &point) {
     // Check if link exists in the robot
-    // auto ret = contact_points_.push_back(PointOnLink{robot_.link(link_name), point});
-    contact_points_.push_back(PointOnLink(robot_.link(link_name), point));
-    //NOTE DISHA: Do something about this
-    // if (!ret.second) {
-    //   throw std::runtime_error("Multiple contact points for link " + link_name);
-    // }
+    if(!hasContact(robot_.link(link_name)))
+      contact_points_.push_back(PointOnLink(robot_.link(link_name), point));
+    else
+      throw std::runtime_error("Multiple contact points for link " + link_name);
   }
 
   /**
@@ -91,9 +89,6 @@ class Phase {
 
   /// Returns the contact point object of link.
   const gtsam::Point3 &contactPoint(const std::string &link_name) const {
-    // if (!hasContact(robot_.link(link_name))) {
-    //   throw std::runtime_error("Link " + link_name + " has no contact point!");
-    // }
     auto it = std::find_if(
         contact_points_.begin(), contact_points_.end(),
         [&](const PointOnLink &contact_point){
@@ -103,7 +98,6 @@ class Phase {
       throw std::runtime_error("Link " + link_name + " has no contact point!");
     else
       return (*it).point;
-    // return contact_points_.at(link_name);
   }
 
   /// Returns the number of time steps in this phase
@@ -128,11 +122,11 @@ class Phase {
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
-      const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
+      const gtsam::SharedNoiseModel &cost_model,
       size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
 
   /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
-  gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
+  gtsam::Matrix jointMatrix(const gtsam::Values &results,
                             size_t k = 0,
                             boost::optional<double> dt = boost::none) const;
 };

@@ -38,6 +38,7 @@ class WalkCycle {
 
   /// Constructor with phases
   explicit WalkCycle(const std::vector<Phase>& phases) {
+    //NOTE DISHA: Add code to check if robot model is consistent
     for (auto&& phase : phases) {
       addPhase(phase);
     }
@@ -48,6 +49,7 @@ class WalkCycle {
    * @param[in] phase Swing or stance phase in the walk cycle.
    */
   void addPhase(const Phase& phase) {
+    // Add unique PointOnLink objects to contact_points_
     for (auto&& kv : phase.contactPoints()) {
       int link_count = std::count_if(
         contact_points_.begin(), contact_points_.end(),
@@ -115,13 +117,11 @@ class WalkCycle {
    * Add PointGoalFactors for all feet as given in cp_goals.
    * @param[in] step 3D vector to move by
    * @param[in] cost_model noise model
-   * @param[in] robot needed to get link id and create key
    * @param[in] k_start Factors are added at this time step
    * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
-      const gtsam::Point3& step, const gtsam::SharedNoiseModel& cost_model,
-      const Robot& robot, size_t k_start,
-      std::map<std::string, gtsam::Point3>* cp_goals) const;
+      const gtsam::Point3 &step, const gtsam::SharedNoiseModel &cost_model,
+      size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
 };
 }  // namespace gtdynamics

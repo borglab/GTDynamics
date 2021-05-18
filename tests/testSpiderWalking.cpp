@@ -52,7 +52,7 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   walk_cycle.addPhase(stationary);
   walk_cycle.addPhase(odd);
 
-  return Trajectory(robot, walk_cycle, repeat);
+  return Trajectory(walk_cycle, repeat);
 }
 
 TEST(testSpiderWalking, WholeEnchilada) {

@@ -38,8 +38,7 @@ void Phase::print(const string &s) const {
 
 NonlinearFactorGraph Phase::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
-    const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
-    size_t k_start, std::map<string, Point3> *cp_goals) const {
+    const gtsam::SharedNoiseModel &cost_model, size_t k_start, std::map<string, Point3> *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (auto &&kv : all_contact_points) {
@@ -58,9 +57,9 @@ NonlinearFactorGraph Phase::contactPointObjectives(
   return factors;
 }
 
-Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,
+Matrix Phase::jointMatrix(const gtsam::Values &results,
                           size_t k, boost::optional<double> dt) const {
-  const auto &joints = robot.joints();
+  const auto &joints = robot_.joints();
   const size_t J = joints.size();
   const int m = numTimeSteps(), n = 4 * J + (dt ? 1 : 0);
   Matrix table(m, n);

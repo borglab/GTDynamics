@@ -89,7 +89,7 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 
   size_t k_start = 0;
   for (int w = 0; w < repeat_; w++) {
-    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, robot_,
+    factors.add(walk_cycle_.contactPointObjectives(step, cost_model,
                                                   k_start, &cp_goals));
     k_start += walk_cycle_.numTimeSteps();
   }
@@ -145,7 +145,7 @@ void Trajectory::writePhaseToFile(std::ofstream &file,
   // Extract joimt values.
   int k = getStartTimeStep(p);
   Matrix mat =
-      phase(p).jointMatrix(robot_, results, k, results.atDouble(PhaseKey(p)));
+      phase(p).jointMatrix(results, k, results.atDouble(PhaseKey(p)));
 
   // Write to file.
   const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,

@@ -62,7 +62,7 @@ TEST(Phase, All) {
                                             {"tarsus_4_L4", goal},
                                             {"tarsus_5_R4", goal}};
   gtsam::NonlinearFactorGraph factors = phase_1.contactPointObjectives(
-      walk_cycle.contactPoints(), step, cost_model, robot, k_start, &cp_goals);
+      walk_cycle.contactPoints(), step, cost_model, k_start, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
   EXPECT(assert_equal(goal, cp_goals["tarsus_2_L2"]));
   EXPECT(assert_equal(goal, cp_goals["tarsus_1_L1"]));

@@ -63,7 +63,7 @@ TEST(Trajectory, error) {
   // Initialize Trajectory
   size_t repeat = 3;
   using namespace walk_cycle_example;
-  auto trajectory = Trajectory(robot, walk_cycle, repeat);
+  auto trajectory = Trajectory(walk_cycle, repeat);
 
   // test phase method
   EXPECT_LONGS_EQUAL(2, trajectory.phase(0).numTimeSteps());

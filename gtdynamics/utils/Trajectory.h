@@ -53,12 +53,13 @@ class Trajectory {
    * Construct trajectory from WalkCycle and specified number of gait
    * repetitions.
    *
-   * @param robot       Robot configuration.
    * @param walk_cycle  The Walk Cycle for the robot.
    * @param repeat      The number of repetitions for each phase of the gait.
    */
-  Trajectory(const Robot &robot, const WalkCycle &walk_cycle, size_t repeat)
-      : robot_(robot), repeat_(repeat), walk_cycle_(walk_cycle) {}
+  Trajectory(const WalkCycle &walk_cycle, size_t repeat)
+      : repeat_(repeat), walk_cycle_(walk_cycle) {
+        robot_ = walk_cycle.phase(0).robotModel();
+      }
 
   
   ContactPoints toContactPointsObject(const PointOnLinks &contact_points) const{
