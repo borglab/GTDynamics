@@ -45,7 +45,7 @@ TEST(Phase, inverse_kinematics) {
 
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
-  Phase phase0(num_time_steps), phase1(num_time_steps);
+  Phase phase0(robot, num_time_steps), phase1(robot, num_time_steps);
   phase0.addContactPoint("lower1", contact_in_com);  // LH
   phase1.addContactPoint("lower0", contact_in_com);  // LF
   phase0.addContactPoint("lower2", contact_in_com);  // RF

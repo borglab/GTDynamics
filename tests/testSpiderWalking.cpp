@@ -43,8 +43,8 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
-      even(2, even_links, contact_in_com);
+  Phase stationary(robot, 1, links, contact_in_com), odd(robot, 2, odd_links, contact_in_com),
+      even(robot, 2, even_links, contact_in_com);
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -87,9 +87,10 @@ TEST(testSpiderWalking, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
+  double ground_height = 1.0;
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step, ground_height);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());

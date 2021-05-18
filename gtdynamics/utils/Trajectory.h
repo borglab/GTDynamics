@@ -60,8 +60,17 @@ class Trajectory {
   Trajectory(const Robot &robot, const WalkCycle &walk_cycle, size_t repeat)
       : robot_(robot), repeat_(repeat), walk_cycle_(walk_cycle) {}
 
+  
+  ContactPoints toContactPointsObject(const PointOnLinks &contact_points) const{
+    ContactPoints cps;
+    for(auto&& cp : contact_points){
+      cps.emplace(cp.link->name(), ContactPoint{cp.point, 0});
+    }
+    return cps;
+  }
+
   /**
-   * @fn Returns a vector of ContactPoints objects for all phases after
+   * @fn Returns a vector of PointOnLinks objects for all phases after
    * applying repetition on the walk cycle.
    * @return Phase CPs.
    */
@@ -70,7 +79,7 @@ class Trajectory {
     const auto &phases = walk_cycle_.phases();
     for (size_t i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
-        phase_cps.push_back(phase.contactPoints());
+        phase_cps.push_back(toContactPointsObject(phase.contactPoints()));
       }
     }
     return phase_cps;
@@ -89,11 +98,11 @@ class Trajectory {
     ContactPoints phase_2_cps;
 
     for (size_t p = 0; p < walk_cycle_.numPhases(); p++) {
-      phase_1_cps = phases[p].contactPoints();
+      phase_1_cps = toContactPointsObject(phases[p].contactPoints());
       if (p == walk_cycle_.numPhases() - 1) {
-        phase_2_cps = phases[0].contactPoints();
+        phase_2_cps = toContactPointsObject(phases[0].contactPoints());
       } else {
-        phase_2_cps = phases[p + 1].contactPoints();
+        phase_2_cps = toContactPointsObject(phases[p + 1].contactPoints());
       }
 
       ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
@@ -229,7 +238,7 @@ class Trajectory {
    * @param[in]p    Phase number.
    * @return Vector of contact links.
    */
-  const ContactPoints &getPhaseContactLinks(size_t p) const {
+  const PointOnLinks &getPhaseContactLinks(size_t p) const {
     return phase(p).contactPoints();
   }
 

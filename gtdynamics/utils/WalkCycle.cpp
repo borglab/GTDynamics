@@ -33,19 +33,17 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-std::map<string, Point3> WalkCycle::initContactPointGoal(
-    const Robot &robot, double ground_height) const {
+std::map<string, Point3> WalkCycle::initContactPointGoal(double ground_height) const {
   std::map<string, Point3> cp_goals;
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
     for (auto &&kv : phase.contactPoints()) {
-      auto link_name = kv.first;
+      auto link_name = kv.link->name();
       // If no goal set yet, add it here
       if (cp_goals.count(link_name) == 0) {
-        LinkSharedPtr link = robot.link(link_name);
-        auto foot_w = link->wTcom().transformFrom(kv.second.point) +
-                      robot.link("body")->wTcom().transformFrom(
+        auto foot_w = kv.link->wTcom().transformFrom(kv.point) +
+                      phase.robotModel().link("body")->wTcom().transformFrom(
                           Point3(0, 0, -ground_height));
         cp_goals.emplace(link_name, foot_w);
       }
@@ -59,9 +57,8 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
   std::vector<string> phase_swing_links;
   const Phase &phase = this->phase(p);
   for (auto &&kv : contact_points_) {
-    const string &name = kv.first;
-    if (!phase.hasContact(name)) {
-      phase_swing_links.push_back(name);
+    if (!phase.hasContact(kv.link)) {
+      phase_swing_links.push_back(kv.link->name());
     }
   }
   return phase_swing_links;

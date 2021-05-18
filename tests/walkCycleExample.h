@@ -18,16 +18,19 @@
 namespace gtdynamics {
 namespace walk_cycle_example {
 
+Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+
 // First phase
 constexpr size_t num_time_steps = 2;
 const gtsam::Point3 contact_in_com(0, 0.19, 0);
-const Phase phase_1(num_time_steps,
+const Phase phase_1(robot, num_time_steps,
                     {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3"},
                     contact_in_com);
 
 // Second phase
 constexpr size_t num_time_steps_2 = 3;
-const Phase phase_2(num_time_steps_2,
+const Phase phase_2(robot, num_time_steps_2,
                     {"tarsus_2_L2", "tarsus_3_L3", "tarsus_4_L4",
                      "tarsus_5_R4"},
                     contact_in_com);

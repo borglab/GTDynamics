@@ -44,7 +44,8 @@ TEST(Trajectory, Intersection) {
   using namespace walk_cycle_example;
   TrajectoryTest traj;
   ContactPoints intersection =
-      traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
+      traj.getIntersection(traj.toContactPointsObject(phase_1.contactPoints()),
+                           traj.toContactPointsObject(phase_2.contactPoints()));
 
   ContactPoints expected = {{"tarsus_2_L2", {contact_in_com, 0}},
                             {"tarsus_3_L3", {contact_in_com, 0}}};
@@ -88,7 +89,8 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = walk_cycle.initContactPointGoal(robot);
+  double ground_height = 0;
+  auto cp_goals = walk_cycle.initContactPointGoal();
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
@@ -123,7 +125,7 @@ TEST(Trajectory, error) {
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      noiseModel::Isotropic::Sigma(3, 1e-7), step);
+      noiseModel::Isotropic::Sigma(3, 1e-7), step, ground_height);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());

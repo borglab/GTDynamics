@@ -30,7 +30,7 @@ namespace gtdynamics {
 class WalkCycle {
  protected:
   std::vector<Phase> phases_;     ///< Phases in walk cycle
-  ContactPoints contact_points_;  ///< All contact points
+  PointOnLinks contact_points_;  ///< All contact points
 
  public:
   /// Default Constructor
@@ -49,7 +49,13 @@ class WalkCycle {
    */
   void addPhase(const Phase& phase) {
     for (auto&& kv : phase.contactPoints()) {
-      contact_points_.emplace(kv);
+      int link_count = std::count_if(
+        contact_points_.begin(), contact_points_.end(),
+        [&](const PointOnLink &contact_point) {
+          return contact_point.point == kv.point && contact_point.link == kv.link;
+        });
+      if( link_count == 0)
+        contact_points_.push_back(kv);
     }
     phases_.push_back(phase);
   }
@@ -80,7 +86,7 @@ class WalkCycle {
   }
 
   /// Return all the contact points.
-  const ContactPoints& contactPoints() const { return contact_points_; }
+  const PointOnLinks& contactPoints() const { return contact_points_; }
 
   /// Print to stream.
   friend std::ostream& operator<<(std::ostream& os,
@@ -94,7 +100,6 @@ class WalkCycle {
    * @return Map from link name to goal points.
    */
   std::map<std::string, gtsam::Point3> initContactPointGoal(
-      const Robot& robot,
       double ground_height = 0) const;
 
   /**
@@ -104,6 +109,8 @@ class WalkCycle {
    */
   std::vector<std::string> swingLinks(size_t p) const;
 
+
+  //NOTE DISHA: Remove Robot
   /**
    * Add PointGoalFactors for all feet as given in cp_goals.
    * @param[in] step 3D vector to move by

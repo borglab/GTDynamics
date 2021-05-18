@@ -25,24 +25,27 @@ namespace gtdynamics {
  */
 class Phase {
  protected:
-  ContactPoints contact_points_;  ///< Contact Points
+  // ContactPoints contact_points_;  ///< Contact Points
+  PointOnLinks contact_points_;   ///< Contact Points
   size_t num_time_steps_;         ///< Number of time steps in this phase
+  Robot robot_;                   ///< Robot model
 
  public:
   /// Constructor
-  Phase(size_t num_time_steps) : num_time_steps_(num_time_steps) {}
+   Phase(const Robot &robot, size_t num_time_steps)
+       : robot_(robot), num_time_steps_(num_time_steps) {}
 
-  /**
-   * @fbrief Constructor with all contact points.
-   *
-   * @param[in] link_names       List of link_names.
-   * @param[in] point            Point of contact on link.
-   */
-  Phase(size_t num_time_steps, const std::vector<std::string> &link_names,
-        const gtsam::Point3 &point)
-      : num_time_steps_(num_time_steps) {
-    addContactPoints(link_names, point);
-  }
+   /**
+    * @fbrief Constructor with all contact points.
+    *
+    * @param[in] link_names       List of link_names.
+    * @param[in] point            Point of contact on link.
+    */
+   Phase(const Robot &robot, size_t num_time_steps,
+         const std::vector<std::string> &link_names, const gtsam::Point3 &point)
+       : robot_(robot), num_time_steps_(num_time_steps) {
+     addContactPoints(link_names, point);
+   }
 
   /** @fn Adds a contact point in the phase.
    *
@@ -52,10 +55,12 @@ class Phase {
   void addContactPoint(const std::string &link_name,
                        const gtsam::Point3 &point) {
     // Check if link exists in the robot
-    auto ret = contact_points_.emplace(link_name, ContactPoint{point, 0});
-    if (!ret.second) {
-      throw std::runtime_error("Multiple contact points for link " + link_name);
-    }
+    // auto ret = contact_points_.push_back(PointOnLink{robot_.link(link_name), point});
+    contact_points_.push_back(PointOnLink(robot_.link(link_name), point));
+    //NOTE DISHA: Do something about this
+    // if (!ret.second) {
+    //   throw std::runtime_error("Multiple contact points for link " + link_name);
+    // }
   }
 
   /**
@@ -72,19 +77,33 @@ class Phase {
   }
 
   /// Returns all the contact points in the stance
-  const ContactPoints &contactPoints() const { return contact_points_; }
+  const PointOnLinks &contactPoints() const { return contact_points_; }
 
   /// Check if phase has a contact for given link.
-  bool hasContact(const std::string &link_name) const {
-    return contact_points_.count(link_name) > 0;
+  bool hasContact(const LinkSharedPtr &link) const {
+    int link_count = std::count_if(
+        contact_points_.begin(), contact_points_.end(),
+        [&](const PointOnLink &contact_point){
+          return contact_point.link->name() == link->name();
+        });
+    return link_count > 0;
   }
 
   /// Returns the contact point object of link.
-  const ContactPoint &contactPoint(const std::string &link_name) const {
-    if (!hasContact(link_name)) {
+  const gtsam::Point3 &contactPoint(const std::string &link_name) const {
+    // if (!hasContact(robot_.link(link_name))) {
+    //   throw std::runtime_error("Link " + link_name + " has no contact point!");
+    // }
+    auto it = std::find_if(
+        contact_points_.begin(), contact_points_.end(),
+        [&](const PointOnLink &contact_point){
+          return contact_point.link->name() == link_name;
+        });
+    if(it == contact_points_.end())
       throw std::runtime_error("Link " + link_name + " has no contact point!");
-    }
-    return contact_points_.at(link_name);
+    else
+      return (*it).point;
+    // return contact_points_.at(link_name);
   }
 
   /// Returns the number of time steps in this phase
@@ -96,6 +115,8 @@ class Phase {
   /// GTSAM-style print, works with wrapper.
   void print(const std::string &s) const;
 
+  Robot robotModel() const {return robot_; }
+
   /**
    * Add PointGoalFactors for all feet as given in cp_goals.
    * @param[in] all_contact_points stance *and* swing feet.
@@ -106,7 +127,7 @@ class Phase {
    * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
-      const ContactPoints &all_contact_points, const gtsam::Point3 &step,
+      const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
       size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
 
