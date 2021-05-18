@@ -26,18 +26,18 @@ import numpy as np
 class TestJumpingRobot(unittest.TestCase):
     """ Tests for jumping robot. """
 
-    def setUp(self)):
+    def setUp(self):
         """ Set up the jumping robot. """
         self.yaml_file_path="examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config=JumpingRobot.create_init_config()
         self.jr=JumpingRobot(self.yaml_file_path, self.init_config)
 
-        def test_links_joints(self):
+    def test_links_joints(self):
         """ Test number of links and joints. """
         self.assertEqual(self.jr.robot.numLinks(), 6)
         self.assertEqual(self.jr.robot.numJoints(), 6)
 
-        def test_forward_kinematics(self):
+    def test_forward_kinematics(self):
         """ Test forward kinematics of jumping robot. """
         values=gtsam.Values()
         k=0
