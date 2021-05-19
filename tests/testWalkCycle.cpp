@@ -21,7 +21,6 @@
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
-
 using gtsam::Point3;
 
 TEST(WalkCycle, error) {
@@ -36,6 +35,33 @@ TEST(WalkCycle, error) {
   EXPECT_LONGS_EQUAL(num_time_steps + num_time_steps_2,
                      walk_cycle.numTimeSteps());
   EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
+}
+
+TEST(WalkCycle, robotModel) {
+
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+
+  // First phase
+  constexpr size_t num_time_steps = 2;
+  gtsam::Point3 contact_in_com(0, 0.19, 0);
+  Phase phase_1(robot, num_time_steps);
+  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
+  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
+
+  // Second phase
+  auto robot_2 = gtdynamics::CreateRobotFromFile(
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
+  Phase phase_2(robot_2, num_time_steps);
+  phase_2.addContactPoint("link_0", contact_in_com);
+  phase_2.addContactPoint("link_1", contact_in_com);
+
+  try {
+    auto walk_cycle = WalkCycle({phase_1, phase_2});
+  } catch (const std::runtime_error &error) {
+    EXPECT(error.what() ==
+           std::string("This phase belongs to a different Robot model!"));
+  }
 }
 
 TEST(Phase, inverse_kinematics) {

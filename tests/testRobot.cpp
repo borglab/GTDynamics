@@ -72,6 +72,21 @@ TEST(Robot, simple_rr_sdf) {
   EXPECT(assert_equal("joint_2", robot.joint("joint_2")->name()));
 }
 
+TEST(Robot, isSimilar) {
+  // Initialize Robot instance from a file.
+  using simple_rr::robot;
+
+  //Initialize second robot
+  auto robot_2 = gtdynamics::CreateRobotFromFile(
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
+  Robot robot_3 =
+      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
+
+  //Check that the robots are identical
+  EXPECT(robot.isIdentical(robot_2));
+  EXPECT(!robot.isIdentical(robot_3));
+}
+
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
   using four_bar_linkage_pure::robot;

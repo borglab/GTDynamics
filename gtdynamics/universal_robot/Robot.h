@@ -73,6 +73,9 @@ class Robot {
   /// Return this robot's joints.
   std::vector<JointSharedPtr> joints() const;
 
+  /// Check if this Robot is the same as the other Robot
+  bool isIdentical(const Robot &other) const;
+
   /// remove specified link from the robot
   void removeLink(const LinkSharedPtr &link);
 

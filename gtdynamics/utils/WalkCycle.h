@@ -48,18 +48,25 @@ class WalkCycle {
    * @fn Adds phase in walk cycle
    * @param[in] phase Swing or stance phase in the walk cycle.
    */
-  void addPhase(const Phase& phase) {
+  void addPhase(const Phase &phase) {
     // Add unique PointOnLink objects to contact_points_
-    for (auto&& kv : phase.contactPoints()) {
-      int link_count = std::count_if(
-        contact_points_.begin(), contact_points_.end(),
-        [&](const PointOnLink &contact_point) {
-          return contact_point.point == kv.point && contact_point.link == kv.link;
-        });
-      if( link_count == 0)
+    for (auto &&kv : phase.contactPoints()) {
+      int link_count =
+          std::count_if(contact_points_.begin(), contact_points_.end(),
+                        [&](const PointOnLink &contact_point) {
+                          return contact_point.point == kv.point &&
+                                 contact_point.link == kv.link;
+                        });
+      if (link_count == 0)
         contact_points_.push_back(kv);
     }
+    
     phases_.push_back(phase);
+    if (phases_.size() > 0) {
+      if (!phases_[0].robotModel().isIdentical(phase.robotModel()))
+        throw std::runtime_error(
+            "This phase belongs to a different Robot model!");
+    }
   }
 
   /**

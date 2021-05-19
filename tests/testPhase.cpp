@@ -41,8 +41,8 @@ TEST(Phase, All) {
   // Check printing
   std::stringstream ss;
   ss << phase_1;
-  EXPECT(
-      "[tarsus_1_L1: [   0 0.19    0], tarsus_2_L2: [   0 0.19    0], tarsus_3_L3: [   0 0.19    0], ]" == ss.str());
+  EXPECT(std::string("[tarsus_1_L1: [   0 0.19    0], tarsus_2_L2: [   0 0.19  "
+                     "  0], tarsus_3_L3: [   0 0.19    0], ]") == ss.str());
 
   // Test hasContact.
   EXPECT(phase_1.hasContact(robot.link("tarsus_1_L1")));
