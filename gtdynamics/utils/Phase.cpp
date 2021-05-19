@@ -36,14 +36,24 @@ void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
+//Searches a contact_link from ContactGoals object and returns the corresponding goal_point
+gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
+                         const PointOnLink contact_point) {
+  for (auto it = cp_goals->begin(); it != cp_goals->end(); ++it) {
+    if ((*it).point_on_link.link->name() == contact_point.link->name() &&
+        (*it).point_on_link.point == contact_point.point)
+      return (*it).goal_point;
+  }
+  throw std::runtime_error("Contact Point was not found.");
+}
+
 NonlinearFactorGraph Phase::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
-    const gtsam::SharedNoiseModel &cost_model, size_t k_start, std::map<string, Point3> *cp_goals) const {
+    const gtsam::SharedNoiseModel &cost_model, size_t k_start, ContactGoals *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (auto &&kv : all_contact_points) {
-    const string &name = kv.link->name();
-    Point3 &cp_goal = cp_goals->at(name);
+    Point3 &cp_goal = pointGoal(cp_goals, kv);
     const bool stance = hasContact(kv.link);
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)

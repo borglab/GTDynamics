@@ -15,6 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 
 #include <iosfwd>
 
@@ -58,7 +59,7 @@ class Phase {
     if(!hasContact(robot_.link(link_name)))
       contact_points_.push_back(PointOnLink(robot_.link(link_name), point));
     else
-      throw std::runtime_error("Multiple contact points for link " + link_name);
+      throw std::runtime_error(link_name + "link does not exist.");
   }
 
   /**
@@ -87,6 +88,7 @@ class Phase {
     return link_count > 0;
   }
 
+  //NOTE DISHA: Can modify this function to return multiple contact points on a single link
   /// Returns the contact point object of link.
   const gtsam::Point3 &contactPoint(const std::string &link_name) const {
     auto it = std::find_if(
@@ -116,14 +118,13 @@ class Phase {
    * @param[in] all_contact_points stance *and* swing feet.
    * @param[in] step 3D vector to move by
    * @param[in] cost_model noise model
-   * @param[in] robot needed to get link id and create key
    * @param[in] k_start Factors are added at this time step
    * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model,
-      size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
+      size_t k_start, ContactGoals *cp_goals) const;
 
   /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
   gtsam::Matrix jointMatrix(const gtsam::Values &results,

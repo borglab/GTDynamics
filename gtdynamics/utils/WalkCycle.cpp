@@ -33,20 +33,35 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-std::map<string, Point3> WalkCycle::initContactPointGoal(double ground_height) const {
-  std::map<string, Point3> cp_goals;
+bool hasPoint(const ContactGoals& cp_goals, const PointOnLink &contact_point) {
+    auto it = std::find_if(
+        cp_goals.begin(), cp_goals.end(),
+        [&](const ContactGoal &cp_goal){
+          return cp_goal.point_on_link.link->name() == contact_point.link->name();
+        });
+    return !(it == cp_goals.end());
+}
+
+ContactGoals WalkCycle::initContactPointGoal(double ground_height) const {
+  ContactGoals cp_goals;
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
     for (auto &&kv : phase.contactPoints()) {
       auto link_name = kv.link->name();
       // If no goal set yet, add it here
-      if (cp_goals.count(link_name) == 0) {
+      if(!hasPoint(cp_goals, kv)){
         auto foot_w = kv.link->wTcom().transformFrom(kv.point) +
                       phase.robotModel().link("body")->wTcom().transformFrom(
                           Point3(0, 0, -ground_height));
-        cp_goals.emplace(link_name, foot_w);
+        cp_goals.push_back(ContactGoal(kv, foot_w));
       }
+      // if (cp_goals.count(link_name) == 0) {
+      //   auto foot_w = kv.link->wTcom().transformFrom(kv.point) +
+      //                 phase.robotModel().link("body")->wTcom().transformFrom(
+      //                     Point3(0, 0, -ground_height));
+      //   cp_goals.emplace(link_name, foot_w);
+      // }
     }
   }
 
@@ -66,7 +81,7 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
 
 NonlinearFactorGraph WalkCycle::contactPointObjectives(
     const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-    size_t k_start, std::map<string, Point3> *cp_goals) const {
+    size_t k_start, ContactGoals *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (const Phase &phase : phases_) {

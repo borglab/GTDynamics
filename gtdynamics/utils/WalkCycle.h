@@ -101,7 +101,7 @@ class WalkCycle {
    * @fn Returns the initial contact point goal for every contact link.
    * @return Map from link name to goal points.
    */
-  std::map<std::string, gtsam::Point3> initContactPointGoal(
+  ContactGoals initContactPointGoal(
       double ground_height = 0) const;
 
   /**
@@ -122,6 +122,6 @@ class WalkCycle {
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const gtsam::Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-      size_t k_start, std::map<std::string, gtsam::Point3> *cp_goals) const;
+      size_t k_start, ContactGoals *cp_goals) const;
 };
 }  // namespace gtdynamics

@@ -61,10 +61,11 @@ TEST(Phase, inverse_kinematics) {
   const Point3 step(0, 0.4, 0);
   const gtsam::SharedNoiseModel cost_model = nullptr;
   const size_t k = 777;
-  std::map<std::string, Point3> cp_goals = {{"lower1", goal_LH},
-                                            {"lower0", goal_LF},
-                                            {"lower2", goal_RF},
-                                            {"lower3", goal_RH}};
+  ContactGoals cp_goals = {
+      ContactGoal(PointOnLink(robot.link("lower1"), contact_in_com), goal_LH),
+      ContactGoal(PointOnLink(robot.link("lower0"), contact_in_com), goal_LF),
+      ContactGoal(PointOnLink(robot.link("lower2"), contact_in_com), goal_RF),
+      ContactGoal(PointOnLink(robot.link("lower3"), contact_in_com), goal_RH)};
   gtsam::NonlinearFactorGraph factors =
       walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
