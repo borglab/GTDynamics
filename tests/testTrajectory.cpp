@@ -89,7 +89,6 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  double ground_height = 0;
   auto cp_goals = walk_cycle.initContactPointGoal();
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
@@ -125,7 +124,7 @@ TEST(Trajectory, error) {
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      noiseModel::Isotropic::Sigma(3, 1e-7), step, ground_height);
+      noiseModel::Isotropic::Sigma(3, 1e-7), step);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());

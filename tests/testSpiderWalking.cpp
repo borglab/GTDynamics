@@ -87,10 +87,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
-  double ground_height = 1.0;
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step, ground_height);
+      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());

@@ -42,17 +42,22 @@ bool hasPoint(const ContactGoals& cp_goals, const PointOnLink &contact_point) {
     return !(it == cp_goals.end());
 }
 
-ContactGoals WalkCycle::initContactPointGoal(double ground_height) const {
+ContactGoals WalkCycle::initContactPointGoal(const ContactAdjustments &contact_adjustments) const {
   ContactGoals cp_goals;
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
     for (auto &&kv : phase.contactPoints()) {
       // If no goal set yet, add it here
-      if(!hasPoint(cp_goals, kv)){
-        auto foot_w = kv.link->wTcom().transformFrom(kv.point) +
-                      phase.robotModel().link("body")->wTcom().transformFrom(
-                          Point3(0, 0, -ground_height));
+      if (!hasPoint(cp_goals, kv)) {
+        auto foot_w = kv.link->wTcom().transformFrom(kv.point);
+
+        for (auto &&contact_adjustment : contact_adjustments) {
+          foot_w += phase.robotModel()
+                        .link(contact_adjustment.link_name)
+                        ->wTcom()
+                        .transformFrom(contact_adjustment.adjustment);
+        }
         cp_goals.push_back(ContactGoal(kv, foot_w));
       }
     }

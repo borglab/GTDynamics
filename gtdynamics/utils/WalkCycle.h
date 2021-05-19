@@ -23,6 +23,24 @@
 #include <vector>
 
 namespace gtdynamics {
+
+/**
+ * ContactAdjustment is the adjustment made to all the contact points in relation to a given link in the robot.
+ *
+ * @param link_name  The link in relation to which adjustment is to be made.
+ * @param adjustment The adjustment made to the contact points relative to the link COM.
+ */
+struct ContactAdjustment{
+  std::string link_name;
+  gtsam::Point3 adjustment;
+
+  ContactAdjustment(const std::string& link_name, const gtsam::Point3 &adjustment)
+      : link_name(link_name), adjustment(adjustment) {}
+};
+
+using ContactAdjustments = std::vector<ContactAdjustment>;
+
+
 /**
  * @class WalkCycle class stores the sequence of phases
  * in a walk cycle.
@@ -38,7 +56,6 @@ class WalkCycle {
 
   /// Constructor with phases
   explicit WalkCycle(const std::vector<Phase>& phases) {
-    //NOTE DISHA: Add code to check if robot model is consistent
     for (auto&& phase : phases) {
       addPhase(phase);
     }
@@ -109,7 +126,7 @@ class WalkCycle {
    * @return Map from link name to goal points.
    */
   ContactGoals initContactPointGoal(
-      double ground_height = 0) const;
+      const ContactAdjustments &contact_adjustments = {}) const;
 
   /**
    * @fn Returns the swing links for a given phase.

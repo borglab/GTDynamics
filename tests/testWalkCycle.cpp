@@ -55,13 +55,7 @@ TEST(WalkCycle, robotModel) {
   Phase phase_2(robot_2, num_time_steps);
   phase_2.addContactPoint("link_0", contact_in_com);
   phase_2.addContactPoint("link_1", contact_in_com);
-
-  try {
-    auto walk_cycle = WalkCycle({phase_1, phase_2});
-  } catch (const std::runtime_error &error) {
-    EXPECT(error.what() ==
-           std::string("This phase belongs to a different Robot model!"));
-  }
+  THROWS_EXCEPTION(WalkCycle({phase_1, phase_2}));
 }
 
 TEST(Phase, inverse_kinematics) {
@@ -95,6 +89,14 @@ TEST(Phase, inverse_kinematics) {
   gtsam::NonlinearFactorGraph factors =
       walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
+}
+
+TEST(WalkCycle, ContactAdjustment) {
+  gtdynamics::ContactAdjustment cf_1("body", gtsam::Point3(0, 0, -1.0));
+  gtdynamics::ContactAdjustment cf_2("link_0", gtsam::Point3(1, 0, -1.0));
+  gtdynamics::ContactAdjustments cfs{cf_1, cf_2};
+  EXPECT(cfs[0].link_name == "body");
+  EXPECT(cfs[1].adjustment == gtsam::Point3(1, 0, -1.0));
 }
 
 int main() {
