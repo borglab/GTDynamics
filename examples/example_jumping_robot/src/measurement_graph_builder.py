@@ -26,11 +26,12 @@ from jumping_robot import Actuator, JumpingRobot
 class MeasurementGraphBuilder:
     """ Class that constructs measurement graph for system identification. """
     def __init__(self):
+        ratio = 0.5
         self.model_cam_pose_prior = gtsam.noiseModel.Isotropic.Sigma(6, 0.05) # (rad, m)
         self.model_calib = gtsam.noiseModel.Isotropic.Sigma(3, 1) # (pix) focal length & offsets 100
-        self.model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01) # (m) 0.01
-        self.model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4) # (pixels) maybe increase
-        self.pressure_meas_model = gtsam.noiseModel.Isotropic.Sigma(1, 10)
+        self.model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01 * ratio) # (m) 0.01
+        self.model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4 * ratio) # (pixels) maybe increase
+        self.pressure_meas_model = gtsam.noiseModel.Isotropic.Sigma(1, 10 * ratio)
 
 
     def step_pixel_meas_graph(self, jr, k, pixel_frame):
