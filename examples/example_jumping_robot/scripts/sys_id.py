@@ -34,7 +34,7 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
     jr_graph_builder = JRGraphBuilder()
 
     # trajectory graph
-    collocation = gtd.CollocationScheme.Euler
+    collocation = gtd.CollocationScheme.Trapezoidal
     graph = jr_graph_builder.sys_id_graph(jr, step_phases, 
         pixels_all_frames, pressures_all_frames, collocation)
     graph.push_back(jr_graph_builder.control_priors(jr, controls))
@@ -72,6 +72,8 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
     # optimization
     params = gtsam.LevenbergMarquardtParams()
     params.setVerbosityLM("SUMMARY")
+    params.setLinearSolverType("MULTIFRONTAL_QR")
+    params.setMaxIterations(20)
     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
     results = optimizer.optimize()
     print("\nresult error: ", graph.error(results))
