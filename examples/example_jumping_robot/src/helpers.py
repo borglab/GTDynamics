@@ -10,6 +10,7 @@
 """
 
 import gtsam
+import gtdynamics as gtd
 
 def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False):
     """ insert values, skip duplicate keys
@@ -27,3 +28,21 @@ def mergeValues(values: gtsam.Values, values_add: gtsam.Values, overwrite=False)
             else:
                 new_values.erase(key)
     values.insert(new_values)
+
+
+def rekeyGraph(graph, offset, skip_keys=[]):
+    """ Change the keys of a graph with some offset. """
+
+    replaced_keys = []
+    replacement_keys = []
+    for key in graph.keys():
+        if not key in skip_keys:
+            replaced_keys.append(key)
+            replacement_keys.append(key + offset)
+    return gtd.RekeyNonlinearGraph(graph, replaced_keys, replacement_keys)
+
+
+def rekeyValues(values, offset, skip_keys=[]):
+    """ Change the keys of values with some offset. """
+    return gtd.RekeyValues(values, offset, skip_keys)
+    

@@ -39,4 +39,29 @@ gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys) {
     return gtsam::KeyVector(keys.begin(), keys.end());
 }
 
+gtsam::NonlinearFactorGraph RekeyNonlinearGraph(const gtsam::NonlinearFactorGraph& graph, 
+                                                const gtsam::KeyVector& replaced_keys, 
+                                                const gtsam::KeyVector& replacement_keys) {
+    std::map<gtsam::Key, gtsam::Key> rekey_mapping;
+    for (size_t i=0; i<replaced_keys.size(); i++) {
+        rekey_mapping.insert(std::make_pair(replaced_keys[i], replacement_keys[i]));
+    }
+    return graph.rekey(rekey_mapping);
+}
+
+gtsam::Values RekeyValues(const gtsam::Values& values, const int offset, 
+                          const gtsam::KeyVector& skip_keys) {
+    gtsam::KeySet skip_keyset(skip_keys.begin(), skip_keys.end());
+    gtsam::Values new_values;
+    for (gtsam::Key key: values.keys()) {
+        if (skip_keyset.exists(key)) {
+            new_values.insert(key, values.at(key));
+        }
+        else {
+            new_values.insert(key + offset, values.at(key));
+        }
+    }
+    return new_values;
+}
+
 }

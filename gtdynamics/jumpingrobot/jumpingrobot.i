@@ -121,6 +121,11 @@ gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeyVector&
 gtsam::Values ExtractValues(const gtsam::Values& values, const gtsam::KeySet& keys);
 gtsam::KeyVector KeySetToKeyVector(const gtsam::KeySet& keys);
 
+gtsam::NonlinearFactorGraph RekeyNonlinearGraph(const gtsam::NonlinearFactorGraph& graph, 
+                                                const gtsam::KeyVector& replaced_keys, 
+                                                const gtsam::KeyVector& replacement_keys);
+gtsam::Values RekeyValues(const gtsam::Values& values, const int offset, 
+                          const gtsam::KeyVector& skip_keys);
 
 #include <gtdynamics/jumpingrobot/factors/JRCollocationFactors.h>
 void AddSourceMassCollocationFactor(
