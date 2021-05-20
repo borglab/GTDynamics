@@ -443,11 +443,16 @@ class JumpingRobot:
     @staticmethod
     def get_marker_locations():
         ''' Get (relative) marker locations from link poses '''
-        locations = [[[-0.071,  -0.1,    0], [-0.071,    0.1,    0]], # switched y/z
-                     [[-0.038,  -0.1,    0], [-0.038,    0.1,    0]], # switched y/z
-                     [[     0,  0.15,    0], [     0,  -0.15,    0]], # updated for 30-cm hip marker spacing
-                     [[-0.038,   0.1,    0], [-0.038,   -0.1,    0]], # switched y/z
-                     [[-0.071,   0.1,    0], [-0.071,   -0.1,    0]]] # switched y/z
+        # locations = [[[-0.071,  -0.1,    0], [-0.071,    0.1,    0]], # switched y/z
+        #              [[-0.038,  -0.1,    0], [-0.038,    0.1,    0]], # switched y/z
+        #              [[     0,  0.15,    0], [     0,  -0.15,    0]], # updated for 30-cm hip marker spacing
+        #              [[-0.038,   0.1,    0], [-0.038,   -0.1,    0]], # switched y/z
+        #              [[-0.071,   0.1,    0], [-0.071,   -0.1,    0]]] # switched y/z
+        locations = [[[-0.071,   0, -0.1], [-0.071,   0,   0.1]],
+                     [[-0.038,   0, -0.1], [-0.038,   0,   0.1]],
+                     [[     0, 0.15,   0], [     0, -0.15,   0]],
+                     [[-0.038,   0,  0.1], [-0.038,    0, -0.1]],
+                     [[-0.071,   0,  0.1], [-0.071,    0, -0.1]]]
         return locations
 
     @staticmethod

@@ -72,16 +72,6 @@ class TestCalibration():
         return jr.robot
 
 
-    def get_marker_locations(self):
-        ''' Get (relative) marker locations from link poses '''
-        locations = [[[-0.071,   0, -0.1], [-0.071,   0,   0.1]],
-                     [[-0.038,   0, -0.1], [-0.038,   0,   0.1]],
-                     [[     0, 0.15,    0], [     0, -0.15,    0]],
-                     [[-0.038,   0,  0.1], [-0.038,    0, -0.1]],
-                     [[-0.071,   0,  0.1], [-0.071,    0, -0.1]]]
-        return locations
-
-
     def get_pixel_measurement(self): 
         ''' Import marker pixel location measurements ''' 
         file_marker_pix = os.path.join(self.path_data, self.prefix_data, (self.prefix_data + ' marker_pix.txt'))
@@ -153,7 +143,7 @@ class TestCalibration():
         my_robot = self.load_robot()  # load jumping robot
 
         # fiducial markers
-        marker_locations = self.get_marker_locations() # marker locations
+        marker_locations = JumpingRobot.get_marker_locations() # marker locations
         pixels_all_frames = self.get_pixel_measurement() # marker pixel measurments
         num_frames = len(pixels_all_frames)
 
