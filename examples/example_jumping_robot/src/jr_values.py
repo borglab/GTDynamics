@@ -423,7 +423,7 @@ class JRValues:
         wrench_b = gtd.Wrench(values, i, j, k)
         T_wb = gtd.Pose(values, i, k)
         wrench_w = T_wb.inverse().AdjointMap().transpose().dot(wrench_b)
-        print(side + " force: ", wrench_w[3], wrench_w[4], wrench_w[5])
+        # print(side + " force: ", wrench_w[3], wrench_w[4], wrench_w[5])
         return wrench_w[5]
 
     @staticmethod
@@ -452,8 +452,8 @@ class JRValues:
         # add camera pose
         cam_pose_key = JumpingRobot.CameraPoseKey()
         cam_params = jr.params['cam_params']
-        cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
-            np.array(cam_params['pose']['point']))
+        cam_pose = gtsam.Pose3(gtsam.Rot3(cam_params['pose']['R']), 
+            np.array(cam_params['pose']['t'])) 
         values.insert(cam_pose_key, cam_pose)
 
         # add tube diameter
