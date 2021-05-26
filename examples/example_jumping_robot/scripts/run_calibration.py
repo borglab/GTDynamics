@@ -66,7 +66,7 @@ class TestCalibration():
 
 
     def load_robot(self):
-        yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        yaml_file_path = "examples/example_jumping_robot/yaml/robot_config_2021-04-05.yaml"
         init_config = JumpingRobot.create_init_config()
         jr = JumpingRobot(yaml_file_path, init_config, phase=3)
         return jr.robot
@@ -75,7 +75,7 @@ class TestCalibration():
     def get_pixel_measurement(self): 
         ''' Import marker pixel location measurements ''' 
         file_marker_pix = os.path.join(self.path_data, self.prefix_data, (self.prefix_data + ' marker_pix.txt'))
-        marker_pix = np.loadtxt(file_marker_pix, dtype='float', comments='#', delimiter=',', skiprows=1)
+        marker_pix = np.loadtxt(file_marker_pix, dtype='float', comments='#', delimiter=',')
         marker_pix[:,10:] = dim_camera[1] - marker_pix[:,10:] # flip y-axis
         marker_pix = np.fliplr(marker_pix) # swap x & y axes, reverse marker numbering
 
@@ -149,6 +149,8 @@ class TestCalibration():
 
         # camera pose & calibration
         cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(-np.pi/2), gtsam.Point3(2.5019, 0, 0)) # camera pose in world frame
+        # cam_pose = gtsam.Pose3(gtsam.Rot3(cam_params['pose']['R']), 
+        #     np.array(cam_params['pose']['t'])) # camera pose in world frame
         calibration = self.get_calibration()
         link_poses, joint_angles = self.get_robot_config()
 
