@@ -255,7 +255,7 @@ class JRSimulator:
         return new_phase
 
     def node_dynamics(self, k, values):
-        print(k)
+        # print(k)
         # q3_key = gtd.internal.JointAngleKey(3, k).key()
         # print("q3 after integration", values.atDouble(q3_key))
 
@@ -290,7 +290,7 @@ class JRSimulator:
         # solve each step
         for k in range(num_steps):
             phase = self.step_phase_change(k, phase, values)
-            print("step", k, "phase", phase)
+            # print("step", k, "phase", phase)
             step_phases.append(phase)
             self.step_integration(k+1, dt, values)
             self.node_dynamics(k+1, values)
@@ -312,7 +312,7 @@ class JRSimulator:
         k=0
         while(True):
             phase = self.step_phase_change(k, phase, values)
-            print("step", k, "phase", phase)
+            # print("step", k, "phase", phase)
             step_phases.append(phase)
             self.step_integration(k+1, dt, values)
             self.node_dynamics(k+1, values)
@@ -335,7 +335,7 @@ class JRSimulator:
         values = JRValues.init_config_values(self.jr)
         values.insert(JRValues.control_values(self.jr, controls))
         for k in range(num_steps+1):
-            print("step", k, "phase", phase)
+            # print("step", k, "phase", phase)
             step_phases.append(phase)
             if k != 0:
                 self.step_integration(k, dt, values, False)
