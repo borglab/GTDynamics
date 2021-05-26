@@ -26,9 +26,9 @@ from jumping_robot import Actuator, JumpingRobot
 class MeasurementGraphBuilder:
     """ Class that constructs measurement graph for system identification. """
     def __init__(self):
-        ratio = 0.5
-        self.model_cam_pose_prior = gtsam.noiseModel.Isotropic.Sigma(6, 0.05) # (rad, m)
-        self.model_calib = gtsam.noiseModel.Isotropic.Sigma(3, 1) # (pix) focal length & offsets 100
+        ratio = 2
+        self.model_cam_pose_prior = gtsam.noiseModel.Isotropic.Sigma(6, 0.05) # (rad, m) 0.05
+        self.model_calib = gtsam.noiseModel.Isotropic.Sigma(3, 1) # (pix) focal length & offsets 1
         self.model_marker = gtsam.noiseModel.Isotropic.Sigma(3, 0.01 * ratio) # (m) 0.01
         self.model_projection = gtsam.noiseModel.Isotropic.Sigma(2, 4 * ratio) # (pixels) maybe increase
         self.pressure_meas_model = gtsam.noiseModel.Isotropic.Sigma(1, 10 * ratio)
@@ -81,8 +81,10 @@ class MeasurementGraphBuilder:
 
         cam_params = jr.params['cam_params']
         cam_pose_key = JumpingRobot.CameraPoseKey()
-        cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
-            np.array(cam_params['pose']['point'])) # camera pose in world frame
+        # cam_pose = gtsam.Pose3(gtsam.Rot3.Ry(cam_params['pose']['Ry']), 
+        #     np.array(cam_params['pose']['point'])) # camera pose in world frame
+        cam_pose = gtsam.Pose3(gtsam.Rot3(cam_params['pose']['R']), 
+            np.array(cam_params['pose']['t'])) # camera pose in world frame
         graph.add(gtsam.PriorFactorPose3(cam_pose_key, cam_pose, self.model_cam_pose_prior))  
 
         cal_key = JumpingRobot.CalibrationKey()
