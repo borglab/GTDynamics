@@ -8,7 +8,7 @@ knee: # knee joint parameters
   rad0: 0.045 # (m) cam radius at zero degrees
   slope: 0 # (cm/rad) cam profile radius slope
   theta_range: [180, 0] # (deg) joint angle theta range over which to map cam angle beta from 0 to 180  
-  k_tendon: 8200 # (N/m) tendon stiffness (in series with muscle)
+  k_tendon: 4000 #8200 # (N/m) tendon stiffness (in series with muscle)
   k_anta: 2.1 # (Nm/rad) antagonistic spring stiffness (142.8x24.0 mm nylon strip)
   q_anta_limit: 0 # antagonistic spring engagement angle
   b: 0.03 # (N-m/rad/s) joint damping
@@ -17,7 +17,7 @@ hip: # hip joint parameters
   rad0: 0.045
   slope: 0
   theta_range: [-90, 90]
-  k_tendon: 8200
+  k_tendon: 4000 #8200
   k_anta: 2.5 # 160x25 mm rubber strips at hips
   q_anta_limit: 0.14824150497 # -0.20082449502810373 rad + 20 deg
   b: 0.03
@@ -52,14 +52,29 @@ pneumatic: # pneumatic system parameters
   time_constant_valve: 1.0e-3
   init_mass: 7.873172488131229e-05
 
+# cam_params:
+#   dimension: [1920, 1080] # (pix) camera dimension
+#   pose: # camera pose in world frame
+#     point: [2.5019, 0, 0]
+#     Ry: -1.5708
+#   # from OpenCV checkerboard cal:
+#   matrix:
+#     [[930.61550934,  0.,             957.52437616], 
+#     [0,              932.40029846,   552.74942762],
+#     [0,              0,              1           ]] 
+#   dist: [-0.271825734,  0.0864954022, -0.000255924635,  0.000889888021, -0.0136882404]
+
 cam_params:
   dimension: [1920, 1080] # (pix) camera dimension
   pose: # camera pose in world frame
-    point: [2.5019, 0, 0]
-    Ry: -1.5708
+    t: [2.5019, 1.77339e-06, 2.37614e-07]
+    R: 
+     [[6.08827e-07, 4.61826e-06, -1],
+      [-1.02331e-06, 1, 4.61826e-06],
+      [1, 1.02331e-06, 6.08832e-07]]
   # from OpenCV checkerboard cal:
   matrix:
     [[930.61550934,  0.,             957.52437616], 
     [0,              932.40029846,   552.74942762],
     [0,              0,              1           ]] 
-  dist: [-0.271825734,  0.0864954022, -0.000255924635,  0.000889888021, -0.0136882404]
+  dist: [-0.381909203, 0.264206621, 0,  0, 0]
