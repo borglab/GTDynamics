@@ -25,12 +25,13 @@ from matplotlib.animation import FuncAnimation
 from jumping_robot import JumpingRobot, Actuator
 
 
-def update_jr_frame(ax, values, jr, k):
+def update_jr_frame(ax, values, jr, k, dt):
     """ Update the jr animation frame. """
     link_names = ["shank_r", "thigh_r", "torso", "thigh_l", "shank_l"]
     colors = ["red", "orange", "black", "green", "blue"]
 
     ax.clear()
+    plt.grid()
 
     for name, color in zip(link_names, colors):
         link = jr.robot.link(name)
@@ -38,12 +39,16 @@ def update_jr_frame(ax, values, jr, k):
         pose = gtd.Pose(values, i, k)
         y = pose.y()
         z = pose.z()
-        theta = pose.rotation().roll()
+        theta = -pose.rotation().roll()
         l = 0.55
-        start_y = y - l/2 * np.cos(theta)
-        start_z = z - l/2 * np.sin(theta)
-        end_y = y + l/2 * np.cos(theta)
-        end_z = z + l/2 * np.sin(theta)
+
+        if name == "torso":
+            theta = theta - np.pi/2
+
+        start_y = y - l/2 * np.sin(theta)
+        start_z = z - l/2 * np.cos(theta)
+        end_y = y + l/2 * np.sin(theta)
+        end_z = z + l/2 * np.cos(theta)
 
         ax.plot([start_y, end_y], [start_z, end_z], color=color)
 
@@ -65,7 +70,7 @@ def update_jr_frame(ax, values, jr, k):
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 2)
-    ax.set_title(str(k))
+    ax.set_title((str(k) + " frame, " "{:0.3f}" + " s").format(k*dt))
 
 
 def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
@@ -83,15 +88,40 @@ def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):
     plt.show()
 
 
-def visualize_jr_trajectory(values, jr, num_steps, step=1):
+def visualize_jr_trajectory(values, jr, num_steps, dt, step=1):
     """ Visualize the jumping robot trajectory as animation. """
     fig = plt.figure(figsize=(10, 10), dpi=80)
     ax = fig.add_subplot(1, 1, 1)
 
     def animate(i):
-        update_jr_frame(ax, values, jr, i)
+        update_jr_frame(ax, values, jr, i, dt)
     frames = np.arange(0, num_steps, step)
     ani = FuncAnimation(fig, animate, frames=frames, interval=10)
+    plt.show()
+
+
+def plot_torso_height(values_list: list, jr, num_steps):
+    """ Plot torso height trajectories for one/multiple jumps """
+    n_jumps = len(values_list)
+    fig = plt.figure(figsize=(10, 10), dpi=80)
+    ax = fig.add_subplot(1, 1, 1)
+    plt.grid()
+    
+    time_dict = {}
+    torso_h_dict = {}
+    for j in range(n_jumps):
+        values = values_list[j]
+        time_list = []
+        torso_h_list = []
+        for k in range(num_steps):
+            time_list.append(values.atDouble(gtd.TimeKey(k).key()))
+            pose = values.atPose3(gtd.internal.PoseKey(jr.robot.link("torso").id(), k).key())
+            torso_h_list.append(pose.translation()[2])
+        time_dict[j] = time_list
+        torso_h_dict[j] = torso_h_list
+
+        ax.plot(time_list, torso_h_list)
+        ax.set_xlabel("time (s)")
     plt.show()
 
 
