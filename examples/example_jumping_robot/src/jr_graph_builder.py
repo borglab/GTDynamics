@@ -110,6 +110,16 @@ class JRGraphBuilder:
             torso_twist_key, target_twist, bv_cost_model))
         return graph
 
+    def target_pose_goal_factor(self, jr, k, pose):
+        """ Add goal factor for torso height at step k """
+        graph = NonlinearFactorGraph()
+        torso_i = jr.robot.link("torso").id()
+        torso_pose_key = gtd.internal.PoseKey(torso_i, k).key()
+        p_cost_model = self.robot_graph_builder.graph_builder.opt().p_cost_model
+        graph.add(gtsam.PriorFactorPose3(
+            torso_pose_key, pose, p_cost_model))
+        return graph
+
     def time_prior(self):
         graph = NonlinearFactorGraph()
         t0_key = gtd.TimeKey(0).key()
