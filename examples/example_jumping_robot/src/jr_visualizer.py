@@ -67,10 +67,16 @@ def update_jr_frame(ax, values, jr, k, dt):
 
     #     ax.plot([start_y, end_y], [start_z, end_z], color='k', alpha=0.2)
 
+    time_key = gtd.TimeKey(k).key()
+    if values.exists(time_key):
+        time = values.atDouble(time_key)
+    else:
+        time = k*dt
+
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 2)
-    ax.set_title((str(k) + " frame, " "{:0.3f}" + " s").format(k*dt))
+    ax.set_title((str(k) + " frame, " "{:0.3f}" + " s").format(time))
 
 
 def visualize_jr(values: gtsam.Values, jr: JumpingRobot, k: int):

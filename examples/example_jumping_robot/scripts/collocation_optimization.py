@@ -23,6 +23,7 @@ from src.jumping_robot import Actuator, JumpingRobot
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_simulator import JRSimulator
 from src.helpers import OptimizeLM
+from src.jr_visualizer import visualize_jr_trajectory
 
 
 def vertical_jump_simulation(jr, controls):
@@ -81,6 +82,7 @@ def main():
     collo_values = vertical_jump_collocation(jr, controls, sim_values, step_phases)
 
     # visualize
+    visualize_jr_trajectory(collo_values, jr, len(step_phases), 0.01)
 
 if __name__ == "__main__":
     main()
