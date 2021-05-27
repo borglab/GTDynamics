@@ -45,4 +45,15 @@ def rekeyGraph(graph, offset, skip_keys=[]):
 def rekeyValues(values, offset, skip_keys=[]):
     """ Change the keys of values with some offset. """
     return gtd.RekeyValues(values, offset, skip_keys)
-    
+
+
+def OptimizeLM(graph, init_values, verbose=True):
+    params = gtsam.LevenbergMarquardtParams()
+    params.setlambdaLowerBound(1e-20)
+    params.setlambdaUpperBound(1e20)
+    params.setMaxIterations(20)
+    if verbose:
+        params.setVerbosityLM("SUMMARY")
+    params.setLinearSolverType("MULTIFRONTAL_QR")
+    optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
+    return optimizer.optimize()
