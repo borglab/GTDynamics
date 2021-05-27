@@ -48,6 +48,7 @@ def rekeyValues(values, offset, skip_keys=[]):
 
 
 def OptimizeLM(graph, init_values, verbose=True):
+    """ Run Levenberg-Marquardt optimization with proper setting. """
     params = gtsam.LevenbergMarquardtParams()
     params.setlambdaLowerBound(1e-20)
     params.setlambdaUpperBound(1e20)

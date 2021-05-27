@@ -26,6 +26,7 @@ from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_values import JRValues
 from src.jr_simulator import JRSimulator
+from src.helpers import OptimizeLM
 
 
 class TestJRSimulator(unittest.TestCase):
@@ -67,18 +68,7 @@ class TestJRSimulator(unittest.TestCase):
     def lm_optimize(self, graph, values):
         """ Run Levenberg-Marquardt optimization. """
         init_values = gtd.ExtractValues(values, graph.keys())
-        params = gtsam.LevenbergMarquardtParams()
-        params.setlambdaLowerBound(1e-20)
-        params.setlambdaUpperBound(1e20)
-        params.setMaxIterations(20)
-        params.setVerbosityLM("SUMMARY")
-        # params.setLinearSolverType("MULTIFRONTAL_QR")
-        params.setLinearSolverType("SEQUENTIAL_QR")
-        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
-        results = optimizer.optimize()
-
-        # results = gtd.optimize_LMQR(graph, init_values)
-
+        results = OptimizeLM(graph, init_values)
         return results
     
     def gn_optimize(self, graph, values):
