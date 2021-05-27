@@ -263,7 +263,7 @@ class TestJRSimulator(unittest.TestCase):
         time_cost_model = self.jr_graph_builder.robot_graph_builder.graph_builder.opt().time_cost_model
         graph.add(gtd.PriorFactorDouble(phase3_key, dt, time_cost_model))
         num_steps = len(phase_steps)
-        # graph.push_back(self.jr_graph_builder.vertical_jump_goal_factors(self.jr, num_steps))
+        # graph.push_back(self.jr_graph_builder.vertical_jump_max_height_factors(self.jr, num_steps))
 
         # print("graph size: ", graph.size())
         # print("values size: ", sim_values.size())

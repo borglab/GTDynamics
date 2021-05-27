@@ -97,7 +97,7 @@ class JRGraphBuilder:
                 jr, actuator, controls))
         return graph
 
-    def vertical_jump_goal_factors(self, jr, k):
+    def vertical_jump_max_height_factors(self, jr, k):
         """ Add goal factor for vertical jumps, at step k. 
             The twist of torso reduces to 0.
         """

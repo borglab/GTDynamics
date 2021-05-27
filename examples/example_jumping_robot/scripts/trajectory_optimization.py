@@ -64,7 +64,7 @@ def vertical_jump_trajopt(jr, controls, init_values, step_phases, dt):
         phase3_key = gtd.PhaseKey(3).key()
         graph.add(gtd.PriorFactorDouble(phase0_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
         graph.add(gtd.PriorFactorDouble(phase3_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
-        graph.push_back(jr_graph_builder.vertical_jump_goal_factors(jr, num_steps))
+        graph.push_back(jr_graph_builder.vertical_jump_max_height_factors(jr, num_steps))
         torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.1+jump_height))
         graph.push_back(jr_graph_builder.target_pose_goal_factor(jr, num_steps, torso_pose))
 
