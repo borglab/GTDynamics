@@ -55,22 +55,9 @@ def vertical_jump_optimization(jr, controls, sim_values, step_phases):
 
     # symmetry factor for control
     graph.push_back(jr_graph_builder.control_symmetry_factors(jr))
-    
-
-    # for f_idx in range(graph.size()):
-    #     factor = graph.at(f_idx)
-    #     if factor.error(init_values) > 1:
-    #         graph_tmp = gtsam.NonlinearFactorGraph()
-    #         graph_tmp.add(factor)
-    #         gtd.DynamicsGraph.printGraph(graph_tmp)
-    #         print("error", factor.error(init_values))
-
-    # graph1 = gtsam.NonlinearFactorGraph(graph)
-    # graph1.push_back(jr_graph_builder.control_priors(jr, controls))
-    # results1 = OptimizeLM(graph1, sim_values)
-    # results = OptimizeLM(graph, results1)
 
     results = OptimizeLM(graph, sim_values)
+    print("final error: ", graph.error(results))
 
     return results
 
