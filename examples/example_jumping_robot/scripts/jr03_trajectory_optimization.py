@@ -25,7 +25,7 @@ from src.jr_simulator import JRSimulator
 from src.helpers import OptimizeLM
 from src.jr_visualizer import visualize_jr_trajectory
 
-dt = 1e-3
+dt = 2e-3
 
 def vertical_jump_simulation(jr, controls):
     """ Simulate vertical jump trajectory. """
@@ -50,7 +50,7 @@ def vertical_jump_optimization(jr, controls, sim_values, step_phases):
     num_steps = len(step_phases)
     graph.push_back(jr_graph_builder.vertical_jump_max_height_factors(jr, num_steps))
 
-    goal_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.52))
+    goal_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.40))
     graph.push_back(jr_graph_builder.target_pose_goal_factor(jr, num_steps, goal_pose))
 
     # symmetry factor for control
