@@ -108,8 +108,8 @@ JumpingRobot::JumpingRobot(const JointValueMap &rest_angles,
         opt_.prior_t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.001);
         opt_.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.001);
         opt_.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.001);
-        opt_.pose_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.001);
-        opt_.twist_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.001);
+        opt_.pose_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.0001);
+        opt_.twist_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.0001);
         opt_.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.0001);
         opt_.jl_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.001);
         graph_builder_ = DynamicsGraph(opt_, gravity_, planar_axis_);
