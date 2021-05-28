@@ -97,6 +97,23 @@ class JRGraphBuilder:
                 jr, actuator, controls))
         return graph
 
+    def control_symmetry_factors(self, jr):
+        """ Graph to specify symmetry of control times. """
+        graph = gtsam.NonlinearFactorGraph()
+        time_cost_model = self.actuation_graph_builder.prior_time_cost_model
+
+        for part in ["knee", "hip"]:
+            l_id = jr.robot.joint(part+"_l").id()
+            r_id = jr.robot.joint(part+"_r").id()
+            To_key_l = Actuator.ValveOpenTimeKey(l_id)
+            To_key_r = Actuator.ValveOpenTimeKey(r_id)
+            Tc_key_l = Actuator.ValveCloseTimeKey(l_id)
+            Tc_key_r = Actuator.ValveCloseTimeKey(r_id)
+            graph.add(gtd.BetweenFactorDouble(To_key_l, To_key_r, 0.0, time_cost_model))
+            graph.add(gtd.BetweenFactorDouble(Tc_key_l, Tc_key_r, 0.0, time_cost_model))
+
+        return graph
+
     def vertical_jump_max_height_factors(self, jr, k):
         """ Add goal factor for vertical jumps, at step k. 
             The twist of torso reduces to 0.

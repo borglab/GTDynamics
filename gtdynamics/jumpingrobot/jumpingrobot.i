@@ -177,4 +177,18 @@ gtsam::Values optimize_LMQR(const gtsam::NonlinearFactorGraph& graph, const gtsa
 
 #include <gtdynamics/jumpingrobot/factors/CollocationExample.h>
 gtsam::Values getExampleGraphValues(gtsam::NonlinearFactorGraph& graph);
+
+
+
+// need to borrow this from GTSAM since GTSAM doesn't have fixed-size vector versions
+#include <gtdynamics/jumpingrobot/factors/BetweenFactor.h>
+template<T = {double, gtsam::Vector2, gtsam::Vector3, gtsam::Vector4, gtsam::Vector5, gtsam::Vector6}>
+class BetweenFactor : gtsam::NonlinearFactor {
+  BetweenFactor(size_t key1, size_t key2, const T& measured, const gtsam::noiseModel::Base* model);
+  // T prior() const;
+
+  void print(const string &s,
+             const gtsam::KeyFormatter &keyFormatter);
+};
+
 }  // namespace gtdynamics
