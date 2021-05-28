@@ -82,6 +82,19 @@ def get_final_torso_pose(jr, values, step_phases):
     return torso_pose
 
 
+def print_controls(jr, values):
+    Tos = []
+    Tcs = []
+    for actuator in jr.actuators:
+        j = actuator.j
+        To = values.atDouble(Actuator.ValveOpenTimeKey(j))
+        Tc = values.atDouble(Actuator.ValveCloseTimeKey(j))
+        Tos.append(To)
+        Tcs.append(Tc)
+    print("valve open time: ", Tos)
+    print("valve close time: ", Tcs)
+
+
 def main():
     """ Main file. """
     # create jumping robot
@@ -96,13 +109,17 @@ def main():
 
     # simulation
     sim_values, step_phases = vertical_jump_simulation(jr, controls)
-    print("final torso pose:\n", get_final_torso_pose(jr, sim_values, step_phases))
+    print("simulation final torso pose:\n", get_final_torso_pose(jr, sim_values, step_phases))
 
     # collocation optimization
-    collo_values = vertical_jump_optimization(jr, controls, sim_values, step_phases)
+    results = vertical_jump_optimization(jr, controls, sim_values, step_phases)
+    print("optimized final torso pose:\n", get_final_torso_pose(jr, results, step_phases))
+
+    # resulting controls
+    print_controls(jr, results)
 
     # visualize
-    visualize_jr_trajectory(collo_values, jr, len(step_phases), dt)
+    visualize_jr_trajectory(results, jr, len(step_phases), dt)
 
 if __name__ == "__main__":
     main()
