@@ -22,7 +22,7 @@ from src.jr_measurements import read_t_valve, read_pressure, \
 
 def vertical_jump_simulation(jr, num_steps, dt, controls):
     """ Simulate vertical jump trajectory. """
-    jr_simulator = JRSimulator(jr.yaml_file_path, jr.init_config)
+    jr_simulator = JRSimulator(jr)
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
     values.insertDouble(gtd.PhaseKey(0).key(), dt)
     values.insertDouble(gtd.PhaseKey(3).key(), dt)
@@ -115,14 +115,17 @@ def main():
     # create init config
     init_config = JumpingRobot.icra_init_config()
     init_config['P_s_0'] = P_s_0 * 6894.76/1000 + 101.325 # (psig to kPa)
-    jr = JumpingRobot(yaml_file_path, init_config)
+    jr = JumpingRobot.from_yaml(yaml_file_path, init_config)
 
     # create controls from experimental valve times
     t_valve = read_t_valve(path_exp_data)
     controls = JumpingRobot.create_controls(t_valve[0,:], t_valve[1,:])
 
+    knee_stiffness_list = []
+    hip_stiffness_list = []
+
     # iterative loop
-    for i in range(5):
+    for i in range(40):
         # simulate
         sim_values, step_phases = vertical_jump_simulation(jr, num_steps, dt, controls)
         print("step_phases", step_phases)
@@ -133,13 +136,23 @@ def main():
 
         # update ID params for next iteration
         jr.params["pneumatic"]["d_tube_valve_musc"] = sysid_results.atDouble(Actuator.TubeDiameterKey())*39.3701 # (m to in)
-        for j in range(3):
-            jr.actuators[j].config['b'] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
-            if j == 0 or j == 3:
-                jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(1))
-            else:
-                jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(2))
+        jr.params["knee"]["b"] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
+        jr.params["hip"]["b"] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
+        jr.params["knee"]["k_tendon"] = sysid_results.atDouble(Actuator.TendonStiffnessKey(1))
+        jr.params["hip"]["k_tendon"] = sysid_results.atDouble(Actuator.TendonStiffnessKey(2))
 
+        knee_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(1)))
+        hip_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(2)))
+
+        # for j in range(3):
+        #     jr.actuators[j].config['b'] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
+        #     if j == 0 or j == 3:
+        #         jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(1))
+        #     else:
+        #         jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(2))
+
+    print(knee_stiffness_list)
+    print(hip_stiffness_list)
 
     # visualize
     make_plot(sysid_results, jr, num_steps)

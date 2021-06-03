@@ -29,7 +29,7 @@ from src.jr_visualizer import visualize_jr_trajectory
 def vertical_jump_simulation(jr, controls):
     """ Simulate vertical jump trajectory. """
     dt = 0.01
-    jr_simulator = JRSimulator(jr.yaml_file_path, jr.init_config)
+    jr_simulator = JRSimulator(jr)
     sim_values, step_phases = jr_simulator.simulate_to_high(dt, controls)
     phase0_key = gtd.PhaseKey(0).key()
     phase3_key = gtd.PhaseKey(3).key()
@@ -66,7 +66,7 @@ def main():
     # create jumping robot
     yaml_file_path = JumpingRobot.icra_yaml()
     init_config = JumpingRobot.icra_init_config()
-    jr = JumpingRobot(yaml_file_path, init_config)
+    jr = JumpingRobot.from_yaml(yaml_file_path, init_config)
 
     # create controls
     Tos = [0, 0, 0, 0]

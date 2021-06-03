@@ -30,7 +30,7 @@ class TestJRValues(unittest.TestCase):
         """ Set up the jumping robot. """
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
+        self.jr = JumpingRobot.from_yaml(self.yaml_file_path, self.init_config)
         self.controls = JumpingRobot.create_controls()
 
     def test_init_config_values(self):
@@ -66,14 +66,12 @@ class TestJRValues(unittest.TestCase):
 
         mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
 
-    def test_sys_id_estimates(self):
-        values = gtsam.Values()
-        pixels_all_frames = np.zeros((2, 5, 2, 2))
-        pressures_all_frames = np.zeros((2, 5))
-        values = JRValues.sys_id_estimates(self.jr, pixels_all_frames, pressures_all_frames)
+    # def test_sys_id_estimates(self):
+    #     known_values = gtsam.Values()
+    #     values = JRValues.sys_id_estimates(self.jr, 2, known_values)
 
-        # 10 * 2 + 2
-        self.assertEqual(values.size(), 22)
+    #     # 10 * 2 + 2
+    #     self.assertEqual(values.size(), 22)
 
 if __name__ == "__main__":
     unittest.main()

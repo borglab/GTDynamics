@@ -32,12 +32,12 @@ class JRSimulator:
     # pneumatics/actuator specific.
     """ Class for jumping robot simulation.
         Refer to `example_simulate` on setup and use. """
-    def __init__(self, yaml_file_path, init_config):
+    def __init__(self, jr):
         """ Constructor, creates init_config and jr. """
-        self.yaml_file_path = yaml_file_path
         self.jr_graph_builder = JRGraphBuilder()
-        self.init_config = init_config
-        self.jr = JumpingRobot(yaml_file_path, init_config)
+        self.init_config = jr.init_config
+        self.jr_params = jr.params
+        self.jr = JumpingRobot(jr.params, jr.init_config)
 
     def step_integration(self, k, dt, values, include_actuation=True):
         """ Perform integration, and add results to values.
@@ -278,7 +278,7 @@ class JRSimulator:
             (gtsam.Values, list): (values for all steps, list of phases for
                                    each step)
         """
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config, phase=0)
+        self.jr = JumpingRobot(self.jr_params, self.init_config, phase=0)
         phase = 0
         step_phases = []
         values = JRValues.init_config_values(self.jr)
@@ -299,7 +299,7 @@ class JRSimulator:
 
 
     def simulate_to_high(self, dt, controls):
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
+        self.jr = JumpingRobot(self.jr_params, self.init_config)
         phase = 0
         step_phases = []
         values = JRValues.init_config_values(self.jr)
@@ -325,27 +325,27 @@ class JRSimulator:
             
         return values, step_phases
 
-    def simulate_with_torque_seq(self, num_steps, dt, torques_seq):
-        """ Run simulation with specified torque sequence. """
-        controls = JumpingRobot.create_controls()
-        self.jr = JumpingRobot(self.yaml_file_path, controls)
-        phase = 0
-        step_phases = []
+    # def simulate_with_torque_seq(self, num_steps, dt, torques_seq):
+    #     """ Run simulation with specified torque sequence. """
+    #     controls = JumpingRobot.create_controls()
+    #     self.jr = JumpingRobot(self.yaml_file_path, controls)
+    #     phase = 0
+    #     step_phases = []
 
-        values = JRValues.init_config_values(self.jr)
-        values.insert(JRValues.control_values(self.jr, controls))
-        for k in range(num_steps+1):
-            # print("step", k, "phase", phase)
-            step_phases.append(phase)
-            if k != 0:
-                self.step_integration(k, dt, values, False)
-            for joint in self.jr.robot.joints():
-                j = joint.id()
-                gtd.InsertTorqueDouble(values, j, k, torques_seq[k][j])
-            self.step_robot_dynamics_by_layer(k, values)
-            phase = self.step_phase_change(k, phase, values)
+    #     values = JRValues.init_config_values(self.jr)
+    #     values.insert(JRValues.control_values(self.jr, controls))
+    #     for k in range(num_steps+1):
+    #         # print("step", k, "phase", phase)
+    #         step_phases.append(phase)
+    #         if k != 0:
+    #             self.step_integration(k, dt, values, False)
+    #         for joint in self.jr.robot.joints():
+    #             j = joint.id()
+    #             gtd.InsertTorqueDouble(values, j, k, torques_seq[k][j])
+    #         self.step_robot_dynamics_by_layer(k, values)
+    #         phase = self.step_phase_change(k, phase, values)
             
-        return values, step_phases
+    #     return values, step_phases
 
 
 def example_simulate():
@@ -355,7 +355,8 @@ def example_simulate():
 
     num_steps = 100
     dt = 0.005
-    jr_simulator = JRSimulator(yaml_file_path, init_config)
+    jr = JumpingRobot.from_yaml(yaml_file_path, init_config)
+    jr_simulator = JRSimulator(jr)
 
     Tos = [0, 0, 0, 0]
     Tcs = [1, 1, 1, 1]
@@ -377,14 +378,15 @@ def example_simulate_ICRA():
 
     num_steps = 100
     dt = 0.005
-    jr_simulator = JRSimulator(yaml_file_path, init_config)
+    jr = JumpingRobot.from_yaml(yaml_file_path, init_config)
+    jr_simulator = JRSimulator(jr)
 
     Tos = [0, 0, 0, 0]
     Tcs = [1, 1, 1, 1]
     controls = JumpingRobot.create_controls(Tos, Tcs)
 
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
-    visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=2)
+    visualize_jr_trajectory(values, jr_simulator.jr, num_steps, dt, step=2)
     # visualize_jr(values, jr_simulator.jr, 3)
 
 

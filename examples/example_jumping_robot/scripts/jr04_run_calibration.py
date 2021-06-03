@@ -68,7 +68,7 @@ class TestCalibration():
     def load_robot(self):
         yaml_file_path = "examples/example_jumping_robot/yaml/robot_config_2021-04-05.yaml"
         init_config = JumpingRobot.create_init_config()
-        jr = JumpingRobot(yaml_file_path, init_config, phase=3)
+        jr = JumpingRobot.from_yaml(yaml_file_path, init_config, phase=3)
         return jr.robot
 
 

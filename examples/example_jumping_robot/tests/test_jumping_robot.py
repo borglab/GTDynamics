@@ -30,7 +30,7 @@ class TestJumpingRobot(unittest.TestCase):
         """ Set up the jumping robot. """
         self.yaml_file_path="examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config=JumpingRobot.create_init_config()
-        self.jr=JumpingRobot(self.yaml_file_path, self.init_config)
+        self.jr=JumpingRobot.from_yaml(self.yaml_file_path, self.init_config)
 
     def test_links_joints(self):
         """ Test number of links and joints. """

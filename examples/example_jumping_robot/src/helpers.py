@@ -52,7 +52,7 @@ def OptimizeLM(graph, init_values, verbose=True):
     params = gtsam.LevenbergMarquardtParams()
     params.setlambdaLowerBound(1e-20)
     params.setlambdaUpperBound(1e20)
-    params.setMaxIterations(20)
+    params.setMaxIterations(10)
     if verbose:
         params.setVerbosityLM("SUMMARY")
     params.setLinearSolverType("MULTIFRONTAL_QR")

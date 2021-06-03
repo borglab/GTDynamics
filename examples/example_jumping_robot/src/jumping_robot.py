@@ -100,11 +100,11 @@ class JumpingRobot:
     """ Class that stores a GTDynamics robot class and all parameters for 
         a jumping robot. """
 
-    def __init__(self, yaml_file_path, init_config, phase=0):
+    def __init__(self, params, init_config, phase=0):
         """ Constructor
 
         Args:
-            yaml_file_path (str): path for yaml file that specifies jr parameters
+            params (dict): parameters for jumping robot
             init_config (dict): initial configuration
             phase (int, optional): phase Defaults to 0
                 - 0: ground
@@ -112,8 +112,7 @@ class JumpingRobot:
                 - 2: right on ground
                 - 3: in air
         """
-        self.yaml_file_path = yaml_file_path
-        self.params = self.load_file(yaml_file_path)
+        self.params = params
         self.init_config = init_config
         self.robot = self.create_robot(self.params, init_config, phase)
         self.actuators = [Actuator("knee_r", self.robot, self.params["knee"], False),
@@ -127,9 +126,15 @@ class JumpingRobot:
         temperature = self.params["pneumatic"]["T"]
         self.gas_constant = Rs * temperature
 
+    @staticmethod
+    def from_yaml(yaml_file_path, init_config, phase=0):
+        """ Create jumping robot from yaml file. """
+        params = JumpingRobot.load_file(yaml_file_path)
+        return JumpingRobot(params, init_config, phase)
+
     def jr_with_phase(self, phase):
         """ Create the robot with same params but of different phase. """
-        return JumpingRobot(self.yaml_file_path, self.init_config, phase)
+        return JumpingRobot(self.params, self.init_config, phase)
 
     @staticmethod
     def load_file(yaml_file_path: str):

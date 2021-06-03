@@ -31,7 +31,7 @@ class TestJRGraphBuilder(unittest.TestCase):
         self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
         self.init_config = JumpingRobot.create_init_config()
         self.controls = JumpingRobot.create_controls()
-        self.jr = JumpingRobot(self.yaml_file_path, self.init_config, 0)
+        self.jr = JumpingRobot.from_yaml(self.yaml_file_path, self.init_config, 0)
         self.jr_ground = self.jr.jr_with_phase(0)
         self.jr_air = self.jr.jr_with_phase(3)
         self.jr_graph_builder = JRGraphBuilder()
