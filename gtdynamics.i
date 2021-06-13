@@ -224,6 +224,7 @@ virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
                 const gtdynamics::Link* parent_link,
                 const gtdynamics::Link* child_link,
                 const gtdynamics::JointParams &parameters, const Vector &axis);
+  void print() const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
@@ -231,6 +232,7 @@ virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
                  const gtdynamics::Link* parent_link,
                  const gtdynamics::Link* child_link,
                  const gtdynamics::JointParams &parameters, const Vector &axis);
+  void print() const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
@@ -239,6 +241,7 @@ virtual class ScrewJoint : gtdynamics::ScrewJointBase {
              const gtdynamics::Link* child_link,
              const gtdynamics::JointParams &parameters, const Vector &axis,
              double thread_pitch);
+  void print() const;
 };
 
 /********************** robot **********************/
