@@ -120,6 +120,6 @@ class Robot {
   /// Find root link for forward kinematics
   LinkSharedPtr findRootLink(
       const gtsam::Values &values,
-      const boost::optional<std::string> &prior_link_name, size_t t = 0) const;
+      const boost::optional<std::string> &prior_link_name) const;
 };
 }  // namespace gtdynamics
