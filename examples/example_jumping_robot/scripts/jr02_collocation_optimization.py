@@ -24,18 +24,7 @@ from src.jr_graph_builder import JRGraphBuilder
 from src.jr_simulator import JRSimulator
 from src.helpers import OptimizeLM
 from src.jr_visualizer import visualize_jr_trajectory
-
-
-def vertical_jump_simulation(jr, controls):
-    """ Simulate vertical jump trajectory. """
-    dt = 0.01
-    jr_simulator = JRSimulator(jr)
-    sim_values, step_phases = jr_simulator.simulate_to_high(dt, controls)
-    phase0_key = gtd.PhaseKey(0).key()
-    phase3_key = gtd.PhaseKey(3).key()
-    sim_values.insertDouble(phase0_key, dt)
-    sim_values.insertDouble(phase3_key, dt)
-    return sim_values, step_phases
+from scripts.jr01_simulation import vertical_jump_simulation
 
 def vertical_jump_collocation(jr, controls, sim_values, step_phases):
     """ Collocation optimization for vertical jump. """
@@ -47,15 +36,6 @@ def vertical_jump_collocation(jr, controls, sim_values, step_phases):
     # goal factors
     num_steps = len(step_phases)
     graph.push_back(jr_graph_builder.vertical_jump_max_height_factors(jr, num_steps))
-
-    
-    # for f_idx in range(graph.size()):
-    #     factor = graph.at(f_idx)
-    #     if factor.error(init_values) > 1:
-    #         graph_tmp = gtsam.NonlinearFactorGraph()
-    #         graph_tmp.add(factor)
-    #         gtd.DynamicsGraph.printGraph(graph_tmp)
-    #         print("error", factor.error(init_values))
 
     results = OptimizeLM(graph, sim_values)
 
@@ -74,7 +54,8 @@ def main():
     controls = JumpingRobot.create_controls(Tos, Tcs)
 
     # simulation
-    sim_values, step_phases = vertical_jump_simulation(jr, controls)
+    dt = 0.01
+    sim_values, step_phases = vertical_jump_simulation(jr, controls, dt)
 
     print("step_phases", step_phases)
 
@@ -82,7 +63,7 @@ def main():
     collo_values = vertical_jump_collocation(jr, controls, sim_values, step_phases)
 
     # visualize
-    visualize_jr_trajectory(collo_values, jr, len(step_phases), 0.01)
+    visualize_jr_trajectory(collo_values, jr, len(step_phases), dt)
 
 if __name__ == "__main__":
     main()

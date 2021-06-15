@@ -24,19 +24,7 @@ from src.jr_graph_builder import JRGraphBuilder
 from src.jr_simulator import JRSimulator
 from src.helpers import OptimizeLM
 from src.jr_visualizer import visualize_jr_trajectory
-
-dt = 2e-3
-
-def vertical_jump_simulation(jr, controls):
-    """ Simulate vertical jump trajectory. """
-    jr_simulator = JRSimulator(jr)
-    sim_values, step_phases = jr_simulator.simulate_to_high(dt, controls)
-    phase0_key = gtd.PhaseKey(0).key()
-    phase3_key = gtd.PhaseKey(3).key()
-    sim_values.insertDouble(phase0_key, dt)
-    sim_values.insertDouble(phase3_key, dt)
-    return sim_values, step_phases
-
+from scripts.jr01_simulation import vertical_jump_simulation
 
 
 def vertical_jump_optimization(jr, controls, sim_values, step_phases):
@@ -95,7 +83,8 @@ def main():
     controls = JumpingRobot.create_controls(Tos, Tcs)
 
     # simulation
-    sim_values, step_phases = vertical_jump_simulation(jr, controls)
+    dt = 2e-3
+    sim_values, step_phases = vertical_jump_simulation(jr, controls, dt)
     print("simulation final torso pose:\n", get_final_torso_pose(jr, sim_values, step_phases))
 
     # collocation optimization

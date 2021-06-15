@@ -1,10 +1,12 @@
 """
-GTSAM Copyright 2010-2019, Georgia Tech Research Corporation,
-Atlanta, Georgia 30332-0415
-All Rights Reserved
-See LICENSE for the license information
-Tests to develop the calibration of the jumping robot.
-Author: Yetong Zhang
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ *
+ * @file  run_calibration.py
+ * @brief Calibrate the camera and extract link poses.
+ * @author Lucas Tziani, Yetong Zhang
 """
 
 import numpy as np
