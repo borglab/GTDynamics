@@ -18,15 +18,29 @@ from src.jr_values import JRValues
 from src.jr_simulator import JRSimulator
 from src.jr_measurements import read_t_valve, read_pressure, \
     read_marker_pix, interp_pressure, interp_marker_pix
+from src.helpers import OptimizeLM
 
+import matplotlib.pyplot as plt
 
 def vertical_jump_simulation(jr, num_steps, dt, controls):
     """ Simulate vertical jump trajectory. """
     jr_simulator = JRSimulator(jr)
     values, step_phases = jr_simulator.simulate(num_steps, dt, controls)
     values.insertDouble(gtd.PhaseKey(0).key(), dt)
-    values.insertDouble(gtd.PhaseKey(3).key(), dt)
+    # values.insertDouble(gtd.PhaseKey(3).key(), dt)
     return values, step_phases
+
+def vertical_jump_collocation(jr, controls, sim_values, step_phases):
+    """ Collocation optimization for vertical jump. """
+    jr_graph_builder = JRGraphBuilder()
+    collocation = gtd.CollocationScheme.Trapezoidal
+    graph = jr_graph_builder.trajectory_graph(jr, step_phases, collocation)
+    graph.push_back(jr_graph_builder.control_priors(jr, controls))
+    phase0_key = gtd.PhaseKey(0).key()
+    dt = sim_values.atDouble(phase0_key)
+    graph.add(gtd.PriorFactorDouble(phase0_key, dt, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
+    results = OptimizeLM(graph, sim_values)
+    return results
 
 
 def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frames,
@@ -40,9 +54,9 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
         pixels_all_frames, pressures_all_frames, collocation)
     graph.push_back(jr_graph_builder.control_priors(jr, controls))
     phase0_key = gtd.PhaseKey(0).key()
-    phase3_key = gtd.PhaseKey(3).key()
+    # phase3_key = gtd.PhaseKey(3).key()
     graph.add(gtd.PriorFactorDouble(phase0_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
-    graph.add(gtd.PriorFactorDouble(phase3_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
+    # graph.add(gtd.PriorFactorDouble(phase3_key, 0.005, gtsam.noiseModel.Isotropic.Sigma(1, 0.0001)))
 
     # add values for system identification
     num_frames = len(pixels_all_frames)
@@ -92,6 +106,36 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
     return results
 
 
+def update_sysid_params(jr, results):
+    """ Update the parameters from sys id result. """
+    jr.params["pneumatic"]["d_tube_valve_musc"] = results.atDouble(Actuator.TubeDiameterKey())*39.3701 # (m to in)
+    jr.params["knee"]["b"] = max(0, results.atDouble(Actuator.DampingKey()))
+    jr.params["hip"]["b"] = max(0, results.atDouble(Actuator.DampingKey()))
+    jr.params["knee"]["k_tendon"] = results.atDouble(Actuator.TendonStiffnessKey(1))
+    jr.params["hip"]["k_tendon"] = results.atDouble(Actuator.TendonStiffnessKey(2))
+
+
+def plot_diff(results, jr, num_steps, time_interp, pressures_interp):
+    plt.figure(figsize=(10, 10), dpi=80)
+    for i in range(5):
+        plt.plot(time_interp, pressures_interp[:, i])
+    
+
+    for actuator in jr.actuators:
+        j = actuator.j
+        pressures = []
+        for k in range(num_steps):
+            pressure_key = Actuator.PressureKey(j, k)
+            pressure = results.atDouble(pressure_key)
+            pressures.append(pressure)
+        plt.plot(time_interp, pressures, '--')
+
+    pressures = []
+    for k in range(num_steps):
+        pressure_key = Actuator.SourcePressureKey(k)
+        pressure = results.atDouble(pressure_key)
+        pressures.append(pressure)
+    plt.plot(time_interp, pressures, '--')
 
 def main():
     """ Main file. """
@@ -100,11 +144,12 @@ def main():
     yaml_file_path = jr_folder + "/yaml/robot_config_2021-04-05.yaml"
     path_exp_data = jr_folder + "system-id-data/0p00_0p09_hipknee-65source 2021-04-05 11-17-40"
     P_s_0 = 65 # (psig) source tank initial pressure
-    t_sim = 0.45 # sim up to before feet collide
+    t_sim = 0.3 # sim up to before feet collide
     dt = 0.005
 
     # read experiment and measurement data
     num_steps = int(t_sim/dt)
+    # num_steps = 75
     time_interp = np.arange(num_steps) * dt
     dim_camera = [1920, 1080]
     time_mcu, pressures_mcu = read_pressure(path_exp_data)
@@ -125,31 +170,25 @@ def main():
     hip_stiffness_list = []
 
     # iterative loop
-    for i in range(40):
+    for i in range(10):
         # simulate
         sim_values, step_phases = vertical_jump_simulation(jr, num_steps, dt, controls)
         print("step_phases", step_phases)
+        collo_values = vertical_jump_collocation(jr, controls, sim_values, step_phases)
+
+        plot_diff(collo_values, jr, num_steps, time_interp, pressures_interp)
 
         # system id
         sysid_results = vertical_jump_sysid(jr, controls, sim_values, step_phases, 
             pixels_interp, pressures_interp)
 
         # update ID params for next iteration
-        jr.params["pneumatic"]["d_tube_valve_musc"] = sysid_results.atDouble(Actuator.TubeDiameterKey())*39.3701 # (m to in)
-        jr.params["knee"]["b"] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
-        jr.params["hip"]["b"] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
-        jr.params["knee"]["k_tendon"] = sysid_results.atDouble(Actuator.TendonStiffnessKey(1))
-        jr.params["hip"]["k_tendon"] = sysid_results.atDouble(Actuator.TendonStiffnessKey(2))
+        update_sysid_params(jr, sysid_results)
 
         knee_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(1)))
         hip_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(2)))
 
-        # for j in range(3):
-        #     jr.actuators[j].config['b'] = max(0, sysid_results.atDouble(Actuator.DampingKey()))
-        #     if j == 0 or j == 3:
-        #         jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(1))
-        #     else:
-        #         jr.actuators[j].config['k_tendon'] = sysid_results.atDouble(Actuator.TendonStiffnessKey(2))
+    plt.show()
 
     print(knee_stiffness_list)
     print(hip_stiffness_list)
