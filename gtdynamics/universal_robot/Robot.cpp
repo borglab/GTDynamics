@@ -31,7 +31,8 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
-template <typename K, typename V> std::vector<V> getValues(std::map<K, V> m) {
+template <typename K, typename V>
+std::vector<V> getValues(std::map<K, V> m) {
   std::vector<V> vec;
   vec.reserve(m.size());
   std::transform(m.begin(), m.end(), back_inserter(vec),
@@ -143,7 +144,7 @@ void Robot::print() const {
 
 LinkSharedPtr Robot::findRootLink(
     const gtsam::Values &values,
-    const boost::optional<std::string> &prior_link_name, size_t t) const {
+    const boost::optional<std::string> &prior_link_name) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
@@ -222,7 +223,7 @@ gtsam::Values Robot::forwardKinematics(
   gtsam::Values values = known_values;
 
   // Set root link.
-  const auto root_link = findRootLink(values, prior_link_name, t);
+  const auto root_link = findRootLink(values, prior_link_name);
   InsertFixedLinks(links(), t, &values);
 
   if (!values.exists(internal::PoseKey(root_link->id(), t))) {
@@ -259,4 +260,4 @@ gtsam::Values Robot::forwardKinematics(
   return values;
 }
 
-} // namespace gtdynamics.
+}  // namespace gtdynamics.

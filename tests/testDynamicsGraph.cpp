@@ -490,7 +490,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   contact_points.emplace("lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
 
   // Build the dynamics FG.
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.81).finished();
   DynamicsGraph graph_builder(gravity);
   auto graph = graph_builder.dynamicsFactorGraph(biped, 0, contact_points, 1.0);
 
@@ -524,8 +524,6 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values results = optimizer.optimize();
 
-  //   std::cout << "Error: " << graph.error(results) << std::endl;
-
   double normal_force = 0;
   for (auto&& contact_point : contact_points) {
     LinkSharedPtr l = biped.link("lower0");
@@ -541,8 +539,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   }
 
   // Assert that the normal forces at the contacts sum up to the robot's weight.
-  // TODO(Varun) Check this test, total weight should be 187.8615
-  EXPECT(assert_equal(187.67, normal_force, 1e-2));
+  EXPECT(assert_equal(187.8615, normal_force, 1e-2));
 }
 
 // check joint limit factors
