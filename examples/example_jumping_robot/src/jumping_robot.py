@@ -79,9 +79,25 @@ class Actuator:
         return gtd.DynamicsSymbol.JointSymbol("Tc", j, 0).key()
 
     @staticmethod
+    def ActualValveOpenTimeKey(j):
+        return gtd.DynamicsSymbol.JointSymbol("Ao", j, 0).key()
+
+    @staticmethod
+    def ActualValveCloseTimeKey(j):
+        return gtd.DynamicsSymbol.JointSymbol("Ac", j, 0).key()
+
+    @staticmethod
     def DampingKey():
         return gtd.DynamicsSymbol.SimpleSymbol('bd', 0).key()
     
+    @staticmethod
+    def ValveOpenLagKey():
+        return gtd.DynamicsSymbol.SimpleSymbol("Lo", 0).key()
+    
+    @staticmethod
+    def ValveCloseLagKey():
+        return gtd.DynamicsSymbol.SimpleSymbol("Lc", 0).key()
+
     @staticmethod
     def TendonStiffnessKey(j):
         if j==1 or j==4:

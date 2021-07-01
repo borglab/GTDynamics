@@ -99,7 +99,7 @@ class MeasurementGraphBuilder:
         for k in range(len(pressures_all_frames)):
             pixel_meas = pixels_all_frames[k]
             pressure_meas = pressures_all_frames[k]
-            graph.push_back(self.step_pixel_meas_graph(jr, k, pixel_meas))
+            # graph.push_back(self.step_pixel_meas_graph(jr, k, pixel_meas))
             graph.push_back(self.step_pressure_meas_graph(jr, k, pressure_meas))
         return graph
 

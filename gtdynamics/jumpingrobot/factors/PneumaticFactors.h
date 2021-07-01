@@ -283,4 +283,60 @@ class ValveControlFactor
   }
 };
 
+
+/** TimeLagFactor: compute true mdot based on valve open/close time. */
+class TimeLagFactor
+    : public gtsam::NoiseModelFactor3<double, double, double> {
+ private:
+  typedef TimeLagFactor This;
+  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+
+ public:
+  TimeLagFactor(gtsam::Key t_nominal_key, gtsam::Key lag_key, gtsam::Key t_actual_key,
+                     const gtsam::noiseModel::Base::shared_ptr &cost_model)
+      : Base(cost_model, t_nominal_key, lag_key, t_actual_key) {}
+  virtual ~TimeLagFactor() {}
+
+  gtsam::Vector evaluateError(
+      const double &t_nominal, const double &lag, const double &t_actual,
+      boost::optional<gtsam::Matrix &> H_t_nominal = boost::none,
+      boost::optional<gtsam::Matrix &> H_lag = boost::none,
+      boost::optional<gtsam::Matrix &> H_t_actual = boost::none) const override {
+    if (H_t_nominal) {
+      H_t_nominal->setConstant(1, 1, 1);
+    }
+    if (H_lag) {
+      H_lag->setConstant(1, 1, 1);
+    }
+    if (H_t_actual) {
+      H_t_actual->setConstant(1, 1, -1);
+    }
+    return gtsam::Vector1(t_nominal+lag-t_actual);
+  }
+
+  // @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /** print contents */
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "time lag factor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {
+    ar &boost::serialization::make_nvp(
+        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+  }
+};
+
+
 }  // namespace gtdynamics

@@ -216,7 +216,7 @@ class JRGraphBuilder:
         graph.push_back(graph_collo)
 
         # measurements
-        graph.push_back(self.measurement_graph_builder.camera_priors(jr))
+        # graph.push_back(self.measurement_graph_builder.camera_priors(jr))
         graph.push_back(self.measurement_graph_builder.measurement_graph(
             jr, pixels_all_frames, pressures_all_frames))
 

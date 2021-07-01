@@ -127,8 +127,8 @@ class ActuationGraphBuilder:
         P_a_key = Actuator.PressureKey(j, k)
         mdot_key = Actuator.MassRateOpenKey(j, k)
         mdot_sigma_key = Actuator.MassRateActualKey(j, k)
-        To_a_key = Actuator.ValveOpenTimeKey(j)
-        Tc_a_key = Actuator.ValveCloseTimeKey(j)
+        To_key = Actuator.ValveOpenTimeKey(j)
+        Tc_key = Actuator.ValveCloseTimeKey(j)
         t_key = gtd.TimeKey(k).key()
 
         graph = gtsam.NonlinearFactorGraph()
@@ -137,7 +137,17 @@ class ActuationGraphBuilder:
             graph.add(gtd.MassFlowRateFactorId(P_a_key, P_s_key, mdot_key, d_tube_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k_const))
         else:
             graph.add(gtd.MassFlowRateFactor(P_a_key, P_s_key, mdot_key, self.mass_rate_model, d_tube, l_tube, mu, epsilon, k_const))
-        graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
+        
+        if sysid:
+            Lo_key = Actuator.ValveOpenLagKey()
+            Lc_key = Actuator.ValveCloseLagKey()
+            To_a_key = Actuator.ActualValveOpenTimeKey(j)
+            Tc_a_key = Actuator.ActualValveCloseTimeKey(j)
+            graph.add(gtd.TimeLagFactor(To_key, Lo_key, To_a_key, self.prior_time_cost_model))
+            graph.add(gtd.TimeLagFactor(Tc_key, Lc_key, Tc_a_key, self.prior_time_cost_model))
+            graph.add(gtd.ValveControlFactor(t_key, To_a_key, Tc_a_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
+        else:
+            graph.add(gtd.ValveControlFactor(t_key, To_key, Tc_key, mdot_key, mdot_sigma_key, self.mass_rate_model, ct))
         return graph
 
     def dynamics_graph(self, jr: JumpingRobot, k: int, sysid=False) -> NonlinearFactorGraph:

@@ -60,8 +60,17 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
 
     # add values for system identification
     num_frames = len(pixels_all_frames)
-    init_values_measurements = JRValues.sys_id_estimates(jr, num_frames, init_values)
-    init_values.insert(init_values_measurements)
+    init_values_sysid = JRValues.sys_id_estimates(jr, num_frames, init_values)
+    init_values.insert(init_values_sysid)
+    for actuator in jr.actuators:
+        j = actuator.j
+        Lo = jr.params["open_lag"]
+        Lc = jr.params["close_lag"]
+        To = init_values.atDouble(Actuator.ValveOpenTimeKey(j))
+        Tc = init_values.atDouble(Actuator.ValveCloseTimeKey(j))
+        init_values.insertDouble(Actuator.ActualValveOpenTimeKey(j), To + Lo)
+        init_values.insertDouble(Actuator.ActualValveCloseTimeKey(j), Tc + Lc)
+
 
     # debug
     # for f_idx in range(graph.size()):
@@ -85,23 +94,23 @@ def vertical_jump_sysid(jr, controls, init_values, step_phases, pixels_all_frame
     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values, params)
     results = optimizer.optimize()
 
-    # initial values
-    print("init error: ", graph.error(init_values))
-    print("Tube Diam:", init_values.atDouble(Actuator.TubeDiameterKey())*39.37, "in")
-    print("Knee Stiffness:", init_values.atDouble(Actuator.TendonStiffnessKey(1)), "N/m")
-    print("Hip Stiffness:", init_values.atDouble(Actuator.TendonStiffnessKey(2)), "N/m")
-    print("Joint Damping:", init_values.atDouble(Actuator.DampingKey()), "Nm/rad/s")
-    print("Cam pose:", init_values.atPose3(JumpingRobot.CameraPoseKey()))
-    print("Cam cal:", init_values.atCal3Bundler(JumpingRobot.CalibrationKey()))
+    # # initial values
+    # print("init error: ", graph.error(init_values))
+    # print("Tube Diam:", init_values.atDouble(Actuator.TubeDiameterKey())*39.37, "in")
+    # print("Knee Stiffness:", init_values.atDouble(Actuator.TendonStiffnessKey(1)), "N/m")
+    # print("Hip Stiffness:", init_values.atDouble(Actuator.TendonStiffnessKey(2)), "N/m")
+    # print("Joint Damping:", init_values.atDouble(Actuator.DampingKey()), "Nm/rad/s")
+    # print("Cam pose:", init_values.atPose3(JumpingRobot.CameraPoseKey()))
+    # print("Cam cal:", init_values.atCal3Bundler(JumpingRobot.CalibrationKey()))
 
-    # results
-    print("\nresult error: ", graph.error(results))
-    print("Tube Diam:", results.atDouble(Actuator.TubeDiameterKey())*39.37, "in")
-    print("Knee Stiffness:", results.atDouble(Actuator.TendonStiffnessKey(1)), "N/m")
-    print("Hip Stiffness:", results.atDouble(Actuator.TendonStiffnessKey(2)), "N/m")
-    print("Joint Damping:", results.atDouble(Actuator.DampingKey()), "Nm/rad/s")
-    print("Cam pose:", results.atPose3(JumpingRobot.CameraPoseKey()))
-    print("Cam cal:", results.atCal3Bundler(JumpingRobot.CalibrationKey()))
+    # # results
+    # print("\nresult error: ", graph.error(results))
+    # print("Tube Diam:", results.atDouble(Actuator.TubeDiameterKey())*39.37, "in")
+    # print("Knee Stiffness:", results.atDouble(Actuator.TendonStiffnessKey(1)), "N/m")
+    # print("Hip Stiffness:", results.atDouble(Actuator.TendonStiffnessKey(2)), "N/m")
+    # print("Joint Damping:", results.atDouble(Actuator.DampingKey()), "Nm/rad/s")
+    # print("Cam pose:", results.atPose3(JumpingRobot.CameraPoseKey()))
+    # print("Cam cal:", results.atCal3Bundler(JumpingRobot.CalibrationKey()))
 
     return results
 
@@ -113,6 +122,8 @@ def update_sysid_params(jr, results):
     jr.params["hip"]["b"] = max(0, results.atDouble(Actuator.DampingKey()))
     jr.params["knee"]["k_tendon"] = results.atDouble(Actuator.TendonStiffnessKey(1))
     jr.params["hip"]["k_tendon"] = results.atDouble(Actuator.TendonStiffnessKey(2))
+    jr.params["open_lag"] = results.atDouble(Actuator.ValveOpenLagKey())
+    jr.params["close_lag"] = results.atDouble(Actuator.ValveCloseLagKey())
 
 
 def plot_diff(results, jr, num_steps, time_interp, pressures_interp):
@@ -164,14 +175,24 @@ def main():
 
     # create controls from experimental valve times
     t_valve = read_t_valve(path_exp_data)
-    controls = JumpingRobot.create_controls(t_valve[0,:], t_valve[1,:])
+    open_times = t_valve[0,:]
+    close_times = t_valve[1,:]
+    jr.params["open_lag"] = 0
+    jr.params["close_lag"] = 0
 
     knee_stiffness_list = []
     hip_stiffness_list = []
+    joint_damping_list = []
+    tube_diameter_list = []
+    open_lag_list = []
+    close_lag_list = []
 
     # iterative loop
     for i in range(10):
         # simulate
+        actual_open_times = open_times + jr.params["open_lag"]
+        actual_close_times = close_times + jr.params["close_lag"]
+        controls = JumpingRobot.create_controls(actual_open_times, actual_close_times)
         sim_values, step_phases = vertical_jump_simulation(jr, num_steps, dt, controls)
         print("step_phases", step_phases)
         collo_values = vertical_jump_collocation(jr, controls, sim_values, step_phases)
@@ -187,11 +208,19 @@ def main():
 
         knee_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(1)))
         hip_stiffness_list.append(sysid_results.atDouble(Actuator.TendonStiffnessKey(2)))
+        joint_damping_list.append(sysid_results.atDouble(Actuator.DampingKey()))
+        tube_diameter_list.append(sysid_results.atDouble(Actuator.TubeDiameterKey())*39.3701)
+        open_lag_list.append(sysid_results.atDouble(Actuator.ValveOpenLagKey()))
+        close_lag_list.append(sysid_results.atDouble(Actuator.ValveCloseLagKey()))
 
     plt.show()
 
-    print(knee_stiffness_list)
-    print(hip_stiffness_list)
+    print("knee stiffness", knee_stiffness_list)
+    print("hip stiffness", hip_stiffness_list)
+    print("joint_damping", joint_damping_list)
+    print("tube diameter", tube_diameter_list)
+    print("open lag", open_lag_list)
+    print("close lag", close_lag_list)
 
     # visualize
     make_plot(sysid_results, jr, num_steps)

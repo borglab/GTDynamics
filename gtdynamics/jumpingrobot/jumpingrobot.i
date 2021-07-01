@@ -31,6 +31,11 @@ class ValveControlFactor: gtsam::NonlinearFactor{
       const double &t, const double &to, const double &tc, const double &mdot);
 };
 
+class TimeLagFactor: gtsam::NonlinearFactor{
+  TimeLagFactor(gtsam::Key t_nominal_key, gtsam::Key lag_key, gtsam::Key t_actual_key,
+                const gtsam::noiseModel::Base *cost_model);
+};
+
 class ActuatorVolumeFactor: gtsam::NonlinearFactor{
   ActuatorVolumeFactor(gtsam::Key v_key, gtsam::Key l_key,
                  const gtsam::noiseModel::Base *cost_model,

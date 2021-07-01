@@ -431,30 +431,30 @@ class JRValues:
         ''' Initial estimates for system ID values. '''
 
         values = gtsam.Values()
-        for k in range(num_frames):
-            # add markers
-            for link in jr.robot.links():
-                if link.name() == "ground":
-                    continue
-                i = link.id()
-                markers_i = jr.marker_locations[i-1]
-                link_pose = gtd.Pose(known_values, i, k)
-                for idx_marker in range(len(markers_i)):
-                    marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
-                    marker_location_local = np.array(markers_i[idx_marker])
-                    marker_location_global = link_pose.transformFrom(marker_location_local)
-                    values.insert(marker_key, marker_location_global)
+        # for k in range(num_frames):
+        #     # add markers
+        #     for link in jr.robot.links():
+        #         if link.name() == "ground":
+        #             continue
+        #         i = link.id()
+        #         markers_i = jr.marker_locations[i-1]
+        #         link_pose = gtd.Pose(known_values, i, k)
+        #         for idx_marker in range(len(markers_i)):
+        #             marker_key = JumpingRobot.MarkerKey(i, idx_marker, k)
+        #             marker_location_local = np.array(markers_i[idx_marker])
+        #             marker_location_global = link_pose.transformFrom(marker_location_local)
+        #             values.insert(marker_key, marker_location_global)
 
-        # add camera calibration
-        cal_key = JumpingRobot.CalibrationKey()
-        values.insert(cal_key, jr.calibration) 
+        # # add camera calibration
+        # cal_key = JumpingRobot.CalibrationKey()
+        # values.insert(cal_key, jr.calibration) 
 
-        # add camera pose
-        cam_pose_key = JumpingRobot.CameraPoseKey()
-        cam_params = jr.params['cam_params']
-        cam_pose = gtsam.Pose3(gtsam.Rot3(cam_params['pose']['R']), 
-            np.array(cam_params['pose']['t'])) 
-        values.insert(cam_pose_key, cam_pose)
+        # # add camera pose
+        # cam_pose_key = JumpingRobot.CameraPoseKey()
+        # cam_params = jr.params['cam_params']
+        # cam_pose = gtsam.Pose3(gtsam.Rot3(cam_params['pose']['R']), 
+        #     np.array(cam_params['pose']['t'])) 
+        # values.insert(cam_pose_key, cam_pose)
 
         # add tube diameter
         diameter_key = Actuator.TubeDiameterKey()
@@ -473,5 +473,13 @@ class JRValues:
         kt_knee_key = Actuator.TendonStiffnessKey(1)
         values.insertDouble(kt_hip_key, kt_hip)
         values.insertDouble(kt_knee_key, kt_knee)
+
+        # add valve lag values
+        open_lag_key = Actuator.ValveOpenLagKey()
+        close_lag_key = Actuator.ValveCloseLagKey()
+        Lo = jr.params["open_lag"]
+        Lc = jr.params["close_lag"]
+        values.insertDouble(open_lag_key, Lo)
+        values.insertDouble(close_lag_key, Lc)
 
         return values
