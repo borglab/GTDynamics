@@ -224,7 +224,7 @@ virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
                 const gtdynamics::Link* parent_link,
                 const gtdynamics::Link* child_link,
                 const gtdynamics::JointParams &parameters, const Vector &axis);
-  void print() const;
+  void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
@@ -232,7 +232,7 @@ virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
                  const gtdynamics::Link* parent_link,
                  const gtdynamics::Link* child_link,
                  const gtdynamics::JointParams &parameters, const Vector &axis);
-  void print() const;
+  void print(const string &s = "") const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
@@ -241,7 +241,7 @@ virtual class ScrewJoint : gtdynamics::ScrewJointBase {
              const gtdynamics::Link* child_link,
              const gtdynamics::JointParams &parameters, const Vector &axis,
              double thread_pitch);
-  void print() const;
+  void print(const string &s = "") const;
 };
 
 /********************** robot **********************/
@@ -271,7 +271,7 @@ class Robot {
 
   int numJoints() const;
 
-  void print() const;
+  void print(const string &s = "") const;
 
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values) const;
@@ -640,7 +640,7 @@ class DynamicsSymbol {
   size_t time() const;
   gtsam::Key key() const;
 
-  void print(const string& s = "");
+  void print(const string &s = "");
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
@@ -802,7 +802,7 @@ class WalkCycle {
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
   const ContactPoints& contactPoints() const;
-  void print(const string& s = "") const;
+  void print(const string &s = "") const;
   std::map<string, gtsam::Point3>
   initContactPointGoal(const gtdynamics::Robot &robot) const;
   std::vector<string> swingLinks(size_t p) const;
