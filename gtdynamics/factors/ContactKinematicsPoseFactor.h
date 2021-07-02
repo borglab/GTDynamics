@@ -61,12 +61,7 @@ class ContactKinematicsPoseFactor
       const gtsam::Pose3 &comTc, const gtsam::Vector3 &gravity,
       const double &ground_plane_height = 0.0)
       : Base(cost_model, pose_key), comTc_(comTc) {
-    if (gravity[0] != 0)
-      H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
-    else if (gravity[1] != 0)
-      H_err_ = (gtsam::Matrix13() << 0, 1, 0).finished();  // y.
-    else
-      H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
+    H_err_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
 
     h_ = gtsam::Vector1(ground_plane_height);
   }
