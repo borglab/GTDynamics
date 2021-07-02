@@ -28,9 +28,9 @@
 namespace gtdynamics {
 
 /**
- * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces zero
- * height at the contact point. This factor assumes that the ground is flat and
- * level.
+ * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces a
+ * known ground plane height for the contact point. This factor assumes that the
+ * ground is flat and level.
  */
 class ContactKinematicsPoseFactor
     : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
@@ -68,27 +68,28 @@ class ContactKinematicsPoseFactor
     else
       H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
 
-    h_ = (gtsam::Vector(1) << ground_plane_height).finished();
+    h_ = gtsam::Vector1(ground_plane_height);
   }
+
   virtual ~ContactKinematicsPoseFactor() {}
 
  public:
   /**
    * Evaluate contact errors.
-   * @param pose This link's COM pose in the spatial frame.
+   * @param sTl This link's COM pose in the spatial frame.
    */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose,
+      const gtsam::Pose3 &sTl,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
     // Change contact reference frame from com to spatial.
-    gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
+    gtsam::Pose3 sTc = sTl.transformPoseFrom(cTcom_.inverse());
 
     // Obtain translation component and corresponding jacobian.
     gtsam::Matrix36 H_trans;
-    gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
+    gtsam::Vector3 sTc_p = sTc.translation(H_trans);
 
     // Compute the error.
-    gtsam::Vector sTc_p_h = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
+    gtsam::Vector sTc_p_h = gtsam::Vector1(H_err_.dot(sTc_p));
     gtsam::Vector error = sTc_p_h - h_;
 
     if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
@@ -106,7 +107,8 @@ class ContactKinematicsPoseFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "Contact kinematics pose factor" << std::endl;
+    std::cout << (s.empty() ? "" : s + " ") << "Contact kinematics pose factor"
+              << std::endl;
     Base::print("", keyFormatter);
   }
 
