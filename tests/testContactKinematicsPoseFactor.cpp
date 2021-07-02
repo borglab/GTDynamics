@@ -40,9 +40,9 @@ TEST(ContactKinematicsPoseFactor, error) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
+  gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
   ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
+      pose_key, cost_model, comTc, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
       0);
 
   // Leg oriented upwards with contact away from the ground.
@@ -94,11 +94,11 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
+  gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
 
   // Create a factor that establishes a ground plane at z = -1.0.
   ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
+      pose_key, cost_model, comTc, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
       -1.0);
 
   // Leg oriented upwards with contact away from the ground.
@@ -151,9 +151,9 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
+  gtsam::Pose3 comTc = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 1));
   ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished());
+      pose_key, cost_model, comTc, (gtsam::Vector(3) << 0, 0, -9.8).finished());
 
   // Initial link pose.
   gtsam::Pose3 link_pose_init = gtsam::Pose3(

@@ -38,7 +38,7 @@ class ContactKinematicsPoseFactor
   using This = ContactKinematicsPoseFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
-  gtsam::Pose3 cTcom_;
+  gtsam::Pose3 comTc_;
   gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
 
   gtsam::Matrix13 H_err_;
@@ -50,7 +50,7 @@ class ContactKinematicsPoseFactor
    *
    * @param pose_key The key corresponding to the link's CoM pose.
    * @param cost_model Noise model associated with this factor.
-   * @param cTcom Static transform from link CoM to point of contact.
+   * @param comTc Static transform from point of contact to link CoM.
    * @param gravity Gravity vector in the spatial frame. Used to calculate the
    * "up" direction.
    * @param ground_plane_height Height of the ground plane in the world frame.
@@ -58,9 +58,9 @@ class ContactKinematicsPoseFactor
   ContactKinematicsPoseFactor(
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
+      const gtsam::Pose3 &comTc, const gtsam::Vector3 &gravity,
       const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), cTcom_(cTcom) {
+      : Base(cost_model, pose_key), comTc_(comTc) {
     if (gravity[0] != 0)
       H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
     else if (gravity[1] != 0)
@@ -81,8 +81,9 @@ class ContactKinematicsPoseFactor
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &sTl,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change contact reference frame from com to spatial.
-    gtsam::Pose3 sTc = sTl.transformPoseFrom(cTcom_.inverse());
+    // Change contact reference frame from CoM to spatial.
+    gtsam::Matrix6 H_sTl;
+    gtsam::Pose3 sTc = sTl.transformPoseFrom(comTc_, H_sTl);
 
     // Obtain translation component and corresponding jacobian.
     gtsam::Matrix36 H_trans;
@@ -92,7 +93,7 @@ class ContactKinematicsPoseFactor
     gtsam::Vector sTc_p_h = gtsam::Vector1(H_err_.dot(sTc_p));
     gtsam::Vector error = sTc_p_h - h_;
 
-    if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+    if (H_pose) *H_pose = H_err_ * H_trans * H_sTl;
 
     return error;
   }
