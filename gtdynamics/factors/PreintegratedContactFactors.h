@@ -88,47 +88,6 @@ class PreintegratedPointContactMeasurements {
 };
 
 /**
- * Class to perform preintegration of contact measurements for rigid foot model.
- */
-class PreintegratedRigidContactMeasurements {
-  gtsam::Matrix6 preintMeasCov_;
-  gtsam::Matrix3 wCov_, vCov_;
-  double deltaT_;
-
- public:
-  PreintegratedRigidContactMeasurements() {}
-
-  /**
-   * @brief Construct a new Preintegrated Point Contact Measurements object.
-   *
-   * @param discreteVelocityCovariance The covariance matrix for the discrete
-   * velocity of the contact frame.
-   */
-  PreintegratedRigidContactMeasurements(const gtsam::Matrix3 &angularVelocityCovariance,
-      const gtsam::Matrix3 &linearVelocityCovariance) {
-    preintMeasCov_.setZero();
-    wCov_ = angularVelocityCovariance;
-    vCov_ = linearVelocityCovariance;
-  }
-
-  /// Virtual destructor for serialization
-  ~PreintegratedRigidContactMeasurements() {}
-
-  /**
-   * @brief Integrate a new measurement.
-   * 
-   * @param dt Time interval between this and the last IMU measurement.
-   */
-  void integrateMeasurement(double dt) {
-    preintMeasCov_ << wCov_, gtsam::Z_3x3, gtsam::Z_3x3, vCov_;
-    deltaT_ += dt;
-    preintMeasCov_ *= deltaT_;
-  }
-
-  gtsam::Matrix6 preintMeasCov() const { return preintMeasCov_; }
-};
-
-/**
  * The Preintegrated Contact Factor for point foot measurements as defined in
  * Hartley18icra.
  */
@@ -144,11 +103,15 @@ class PreintegratedPointContactFactor
   /**
    * Constructor
    *
-   * @param wTbi_key Key for base link pose in world frame at previous step.
-   * @param wTci_key Key for contact pose in world frame at previous step.
-   * @param wTbi_key Key for base link pose in world frame at current step.
-   * @param wTci_key Key for contact pose in world frame at current step.
-   * @param pcm Preintegrated contact measurements which captures the
+   * @param wTbi_key Key for base link pose in world frame at initial time of
+   contact.
+   * @param wTci_key Key for contact pose in world frame at initial time of
+   contact.
+   * @param wTbi_key Key for base link pose in world frame at final time of
+   contact.
+   * @param wTci_key Key for contact pose in world frame at final time of
+   contact.
+   * @param pcm Preintegrated point contact measurements which captures the
    measurement covariance for the point foot model.
    *
    */
@@ -158,34 +121,15 @@ class PreintegratedPointContactFactor
       : Base(gtsam::noiseModel::Gaussian::Covariance(pcm.preintMeasCov()),
              wTbi_key, wTci_key, wTbj_key, wTcj_key) {}
 
-  /**
-   * Convenience constructor using links.
-   *
-   * @param base_link_i Base link at previous step.
-   * @param contact_link_i Link in contact at previous step.
-   * @param base_link_j Base link at current step.
-   * @param contact_link_j Link in contact at current step.
-   * @param pcm Preintegrated contact measurements which captures the
-   measurement covariance for the point foot model.
-   */
-  PreintegratedPointContactFactor(
-      const LinkSharedPtr &base_link_i, const LinkSharedPtr &contact_link_i,
-      const LinkSharedPtr &base_link_j, const LinkSharedPtr &contact_link_j,
-      const PreintegratedPointContactMeasurements &pcm, size_t time)
-      : PreintegratedPointContactFactor(
-            internal::PoseKey(base_link_i->id(), time),
-            internal::PoseKey(contact_link_i->id(), time),
-            internal::PoseKey(base_link_j->id(), time),
-            internal::PoseKey(contact_link_j->id(), time), pcm) {}
-
   virtual ~PreintegratedPointContactFactor() {}
 
   /**
    * @brief
    *
-   * @param wTp previous (parent) link CoM pose
-   * @param wTc this (child) link CoM pose
-   * @param q joint angle
+   * @param wTb_i current body link CoM pose
+   * @param wTc_i current contact pose
+   * @param wTb_j next body link CoM pose
+   * @param wTc_i next contact pose
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTb_i, const gtsam::Pose3 &wTc_i,
@@ -246,6 +190,103 @@ class PreintegratedPointContactFactor
   }
 };
 
-// TODO(Varun) PreintegratedRigidContactFactor
+/**
+ * Class to perform preintegration of contact measurements for rigid foot model.
+ */
+class PreintegratedRigidContactMeasurements {
+  gtsam::Matrix6 preintMeasCov_;
+  gtsam::Matrix3 wCov_, vCov_;
+  double deltaT_;
+
+ public:
+  PreintegratedRigidContactMeasurements() {}
+
+  /**
+   * @brief Construct a new Preintegrated Point Contact Measurements object.
+   *
+   * @param discreteVelocityCovariance The covariance matrix for the discrete
+   * velocity of the contact frame.
+   */
+  PreintegratedRigidContactMeasurements(
+      const gtsam::Matrix3 &angularVelocityCovariance,
+      const gtsam::Matrix3 &linearVelocityCovariance) {
+    preintMeasCov_.setZero();
+    wCov_ = angularVelocityCovariance;
+    vCov_ = linearVelocityCovariance;
+  }
+
+  /// Virtual destructor for serialization
+  ~PreintegratedRigidContactMeasurements() {}
+
+  /**
+   * @brief Integrate a new measurement.
+   *
+   * @param dt Time interval between this and the last IMU measurement.
+   */
+  void integrateMeasurement(double dt) {
+    preintMeasCov_ << wCov_, gtsam::Z_3x3, gtsam::Z_3x3, vCov_;
+    deltaT_ += dt;
+    preintMeasCov_ *= deltaT_;
+  }
+
+  gtsam::Matrix6 preintMeasCov() const { return preintMeasCov_; }
+};
+
+/**
+ * The Preintegrated Contact Factor for rigid foot measurements as defined in
+ * Hartley18icra.
+ */
+class PreintegratedRigidContactFactor
+    : public gtsam::BetweenFactor<gtsam::Pose3> {
+ private:
+  using This = PreintegratedRigidContactFactor;
+  using Base = gtsam::BetweenFactor<gtsam::Pose3>;
+
+ public:
+  /**
+   * Constructor
+   *
+   * @param wTci_key Key for contact pose in world frame at initial time of
+   contact.
+   * @param wTci_key Key for contact pose in world frame at final time of
+   contact.
+   * @param pcm Preintegrated rigid contact measurements object which captures
+   the measurement covariance for the rigid foot model.
+   *
+   */
+  PreintegratedRigidContactFactor(
+      gtsam::Key wTci_key, gtsam::Key wTcj_key,
+      const PreintegratedRigidContactMeasurements &pcm)
+      : Base(gtsam::noiseModel::Gaussian::Covariance(pcm.preintMeasCov()),
+             wTbi_key, wTci_key, wTbj_key, wTcj_key) {}
+
+  virtual ~PreintegratedRigidContactFactor() {}
+
+  //// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  //TODO(Varun) Verify jacobians as per supplementary material.
+
+  /// print contents
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << (s.empty() ? s : s + " ")
+              << "Preintegrated Rigid Contact Factor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
+    ar &boost::serialization::make_nvp(
+        "BetweenFactor", boost::serialization::base_object<Base>(*this));
+  }
+};
 
 }  // namespace gtdynamics
