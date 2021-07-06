@@ -199,7 +199,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
                                   const JointSharedPtr &j);
 
   /// Helper print function
-  void print() const { std::cout << *this; }
+  void print(const std::string &s = "") const {
+    std::cout << (s.empty() ? s : s + " ") << *this;
+  }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
