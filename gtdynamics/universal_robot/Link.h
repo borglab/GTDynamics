@@ -172,7 +172,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// Helper print function
-  void print(std::string &s = "") const {
+  void print(const std::string &s = "") const {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
 };
