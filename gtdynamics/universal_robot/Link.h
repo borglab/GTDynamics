@@ -13,13 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactors.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -28,17 +21,24 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactor.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
+
 namespace gtdynamics {
 
-class Link; // forward declaration
-class Joint; // forward declaration
+class Link;   // forward declaration
+class Joint;  // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
@@ -48,7 +48,7 @@ LINK_TYPEDEF_CLASS_POINTER(Joint);
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
-  unsigned char id_;
+  uint8_t id_;
   std::string name_;
 
   /// Inertial elements.
@@ -68,20 +68,23 @@ class Link : public boost::enable_shared_from_this<Link> {
   std::vector<JointSharedPtr> joints_;
 
  public:
-
   Link() {}
-
 
   /**
    * Initialize Link's inertial properties with a LinkParams instance.
    *
    * @param params LinkParams object containing link information.
    */
-  Link(unsigned char id, const std::string &name, const double mass,
+  Link(uint8_t id, const std::string &name, const double mass,
        const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
        const gtsam::Pose3 &lTcom, bool is_fixed = false)
-      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
-        lTcom_(lTcom), is_fixed_(is_fixed) {}
+      : id_(id),
+        name_(name),
+        mass_(mass),
+        inertia_(inertia),
+        wTl_(wTl),
+        lTcom_(lTcom),
+        is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
@@ -102,15 +105,15 @@ class Link : public boost::enable_shared_from_this<Link> {
   LinkSharedPtr shared(void) { return shared_from_this(); }
 
   /// remove the joint
-  void removeJoint(JointSharedPtr joint) {
+  void removeJoint(const JointSharedPtr &joint) {
     joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
   /// return ID of the link
-  unsigned char id() const { return id_; }
+  uint8_t id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(JointSharedPtr joint_ptr) { joints_.push_back(joint_ptr); }
+  void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
   /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
@@ -137,10 +140,13 @@ class Link : public boost::enable_shared_from_this<Link> {
   void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
-  const std::vector<JointSharedPtr> &getJoints() const { return joints_; }
+  const std::vector<JointSharedPtr> &joints() const { return joints_; }
+
+  /// return the number of connected joints
+  size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
-  std::string name() const { return name_; }
+  const std::string &name() const { return name_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
@@ -167,99 +173,5 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /// Helper print function
   void print() const { std::cout << *this; }
-
-  /**
-   * @fn Return pose factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate q factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return pose factors.
-   */
-  gtsam::NonlinearFactorGraph qFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.addPrior(internal::PoseKey(id(), t), getFixedPose(),
-                     opt.bp_cost_model);
-    return graph;
-  }
-
-  /**
-   * @fn Return velocity factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate v factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return velocity factors.
-   */
-  gtsam::NonlinearFactorGraph vFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.addPrior<gtsam::Vector6>(internal::TwistKey(id(), t),
-                                     gtsam::Z_6x1, opt.bv_cost_model);
-    return graph;
-  }
-
-  /**
-   * @fn Return accel factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate a factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return accel factors.
-   */
-  gtsam::NonlinearFactorGraph aFactors(size_t t,
-                                       const OptimizerSetting &opt) const {
-    gtsam::NonlinearFactorGraph graph;
-    if (isFixed())
-      graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(id(), t),
-                                     gtsam::Z_6x1, opt.ba_cost_model);
-    return graph;
-  }
-
-  /**
-   * @fn Return dynamics factors in the dynamics graph.
-   *
-   * @param[in] t   The timestep for which to generate dynamics factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
-   * @return dynamics factors.
-   */
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const std::vector<DynamicsSymbol> &wrenches,
-      const boost::optional<gtsam::Vector3> &gravity) const {
-    gtsam::NonlinearFactorGraph graph;
-    // Add wrench factors.
-    if (wrenches.size() == 0) {
-      graph.add(WrenchFactor0(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t),
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 1) {
-      graph.add(WrenchFactor1(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 2) {
-      graph.add(WrenchFactor2(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              wrenches[1], internal::PoseKey(id(), t),
-                              opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 3) {
-      graph.add(WrenchFactor3(
-          internal::TwistKey(id(), t), internal::TwistAccelKey(id(), t),
-          wrenches[0], wrenches[1], wrenches[2], internal::PoseKey(id(), t),
-          opt.fa_cost_model, inertiaMatrix(), gravity));
-    } else if (wrenches.size() == 4) {
-      graph.add(WrenchFactor4(internal::TwistKey(id(), t),
-                              internal::TwistAccelKey(id(), t), wrenches[0],
-                              wrenches[1], wrenches[2], wrenches[3],
-                              internal::PoseKey(id(), t), opt.fa_cost_model,
-                              inertiaMatrix(), gravity));
-    } else {
-      throw std::runtime_error("Wrench factor not defined");
-    }
-
-    return graph;
-  }
 };
 }  // namespace gtdynamics

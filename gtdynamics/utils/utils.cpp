@@ -8,7 +8,7 @@
 /**
  * @file  utils.cpp
  * @brief Utility methods.
- * @author Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
 #include "gtdynamics/utils/utils.h"

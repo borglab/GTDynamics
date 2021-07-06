@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
+#include "make_joint.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -32,7 +33,9 @@ namespace example {
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
-gtsam::Key wrench_key = gtsam::Symbol('W', 1);
+const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777);
+gtsam::Pose3 kMj;  // doesn't matter
+auto joint = make_joint(kMj, gtsam::Z_6x1);
 }  // namespace example
 
 // Test wrench planar factor for x-axis
@@ -40,10 +43,14 @@ TEST(WrenchPlanarFactor, x_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 1, 0, 0;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
-  gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
+  WrenchPlanarFactor factor(example::cost_model, planar_axis, example::joint,
+                            777);
+  
+  // Check key.
+  EXPECT(assert_equal(example::wrench_key, factor.keys()[0]));
 
+  // Check evaluateError.
+  gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
   gtsam::Vector3 actual_errors, expected_errors;
   actual_errors = factor.evaluateError(wrench);
   expected_errors << 2, 3, 4;
@@ -61,16 +68,17 @@ TEST(WrenchPlanarFactor, y_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 1, 0;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
+  WrenchPlanarFactor factor(example::cost_model, planar_axis, example::joint,
+                            777);
+  
+  // Check evaluateError.
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
-
   gtsam::Vector3 actual_errors, expected_errors;
   actual_errors = factor.evaluateError(wrench);
   expected_errors << 1, 3, 5;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
-  // Make sure linearization is correct
+  // Make sure linearization is correct.
   gtsam::Values values;
   values.insert(example::wrench_key, wrench);
   double diffDelta = 1e-7;
@@ -82,16 +90,17 @@ TEST(WrenchPlanarFactor, z_axis) {
   // Create all factors
   gtsam::Vector3 planar_axis;
   planar_axis << 0, 0, 1;
-  WrenchPlanarFactor factor(example::wrench_key, example::cost_model,
-                            planar_axis);
-  gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
+  WrenchPlanarFactor factor(example::cost_model, planar_axis, example::joint,
+                            777);
 
+  // Check evaluateError.
+  gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
   gtsam::Vector3 actual_errors, expected_errors;
   actual_errors = factor.evaluateError(wrench);
   expected_errors << 1, 2, 6;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
-  // Make sure linearization is correct
+  // Make sure linearization is correct.
   gtsam::Values values;
   values.insert(example::wrench_key, wrench);
   double diffDelta = 1e-7;

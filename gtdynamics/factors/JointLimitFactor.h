@@ -8,7 +8,7 @@
 /**
  * @file  JointLimitFactor.h
  * @brief apply joint limit
- * @author: Frank Dellaert and Mandy Xie
+ * @author: Frank Dellaert, Mandy Xie, Stephanie McCormick, Varun Agrawal
  */
 
 #pragma once
@@ -24,17 +24,21 @@
 #include <string>
 #include <vector>
 
+#include "gtdynamics/universal_robot/JointTyped.h"
+
 namespace gtdynamics {
 
 /**
  * JointLimitFactor is a class which enforces joint angle, velocity,
  * acceleration and torque value to be within limi
  */
-class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
+class JointLimitFactor
+    : public gtsam::NoiseModelFactor1<JointTyped::JointCoordinateType> {
  private:
+  using JointCoordinateType = JointTyped::JointCoordinateType;
   using This = JointLimitFactor;
-  using Base = gtsam::NoiseModelFactor1<double>;
-  double lower_limit_, upper_limit_, limit_threshold_;
+  using Base = gtsam::NoiseModelFactor1<JointCoordinateType>;
+  JointCoordinateType low_, high_;
 
  public:
   /**
@@ -47,45 +51,39 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
    */
   JointLimitFactor(gtsam::Key q_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   const double &lower_limit, const double &upper_limit,
-                   const double &limit_threshold)
+                   JointCoordinateType lower_limit,
+                   JointCoordinateType upper_limit,
+                   JointCoordinateType limit_threshold)
       : Base(cost_model, q_key),
-        lower_limit_(lower_limit),
-        upper_limit_(upper_limit),
-        limit_threshold_(limit_threshold) {}
+        low_(lower_limit + limit_threshold),
+        high_(upper_limit - limit_threshold) {}
 
   virtual ~JointLimitFactor() {}
 
  public:
   /**
    * Evaluate joint limit errors
+   *
+   * Hinge loss function:
+   *    error = low - q if q < low
+   *    error = 0 if q >= low and q <= high
+   *    error = q - high if q > high
+   *
    * @param q joint value
    */
   gtsam::Vector evaluateError(
-      const double &q,
+      const JointCoordinateType &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    // clang-format off
-    // (don't format below documentation)
-    /**
-     * hinge-loss function:
-     *  error = 0 if q >= lower_limit + limit_threshold and q <= upper_limit - limit_threshold
-     *  error = lower_limit_ + limit_threshold - q if q < lower_limit + limit_threshold
-     *  error = q - upper_limit_ + limit_threshold if q > upper_limit + limit_threshold
-     */
-    // clang-format on
-    gtsam::Vector error(1);
-
-    if (q < lower_limit_ + limit_threshold_) {
+    if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;
-      error << lower_limit_ + limit_threshold_ - q;
-    } else if (q <= upper_limit_ - limit_threshold_) {
+      return gtsam::Vector1(low_ - q);
+    } else if (q <= high_) {
       if (H_q) *H_q = gtsam::Z_1x1;
-      error << 0.0;
+      return gtsam::Vector1(0.0);
     } else {
       if (H_q) *H_q = gtsam::I_1x1;
-      error << q - upper_limit_ + limit_threshold_;
+      return gtsam::Vector1(q - high_);
     }
-    return error;
   }
 
   //// @return a deep copy of this factor
@@ -109,6 +107,8 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+    ar &low_;
+    ar &high_;
   }
 };
 

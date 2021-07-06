@@ -59,12 +59,12 @@ public:
   ///@{
 
   /**
-   * Abstract method. Return the pose of the child link in the parent link
-   * frame, given the joint coordinate.
+   * Abstract method. Return the pose of the child link CoM in the parent link
+   * CoM frame, given the joint coordinate.
    */
-  virtual Pose3
-  parentTchild(JointCoordinate q,
-               gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
+  virtual Pose3 parentTchild(
+      JointCoordinate q,
+      gtsam::OptionalJacobian<6, N> H_q = boost::none) const = 0;
 
   /**
    * Abstract method. Return the pose of the parent link in the child link
@@ -155,8 +155,8 @@ public:
   ///@{
 
   /**
-   * Return the pose of the child link in the parent link frame, given a Values
-   * object containing the joint coordinate.
+   * Return the pose of the child link CoM in the parent link CoM frame, given a
+   * Values object containing the joint coordinate.
    */
   Pose3 parentTchild(
       const gtsam::Values &q, size_t t = 0,
@@ -208,7 +208,7 @@ public:
       boost::optional<gtsam::Vector6> other_twist = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
-      boost::optional<gtsam::Matrix &> H_other_twist = boost::none) //
+      gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none)  //
       const override {
     return transformTwistTo(link, JointAngle<JointCoordinate>(values, id(), t),
                             JointVel<JointVelocity>(values, id(), t),
@@ -228,8 +228,8 @@ public:
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_q_dot = boost::none,
       boost::optional<gtsam::Matrix &> H_q_ddot = boost::none,
-      boost::optional<gtsam::Matrix &> H_this_twist = boost::none,
-      boost::optional<gtsam::Matrix &> H_other_twist_accel =
+      gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const override {
     return transformTwistAccelTo(link,
                                  JointAngle<JointCoordinate>(values, id(), t),
@@ -238,32 +238,6 @@ public:
                                  this_twist, other_twist_accel, H_q, H_q_dot,
                                  H_q_ddot, H_this_twist, H_other_twist_accel);
   }
-
-  ///@}
-  /**
-   * @name factors
-   * Methods that create factors based on joint relationships.
-   */
-  ///@{
-
-  /// Return joint pose factors.
-  gtsam::NonlinearFactorGraph
-  qFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint vel factors.
-  gtsam::NonlinearFactorGraph
-  vFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint accel factors.
-  gtsam::NonlinearFactorGraph
-  aFactors(size_t t, const OptimizerSetting &opt) const override;
-
-  /// Return joint dynamics factors.
-  gtsam::NonlinearFactorGraph dynamicsFactors(
-      size_t t, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis) const override;
-
-  ///@}
 };
 
 } // namespace gtdynamics

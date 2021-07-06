@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "gtdynamics/config.h"
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
@@ -76,7 +77,7 @@ class Robot {
   void removeLink(const LinkSharedPtr &link);
 
   /// remove specified joint from the robot
-  void removeJoint(JointSharedPtr joint);
+  void removeJoint(const JointSharedPtr &joint);
 
   /// Return the link corresponding to the input string.
   LinkSharedPtr link(const std::string &name) const;
@@ -100,13 +101,25 @@ class Robot {
    * Calculate forward kinematics by performing BFS in the link-joint graph
    * (will throw an error when invalid joint angle specification detected).
    *
+   * If the root link pose and twist are not provided in `known_values`,
+   * default Pose3() and Vector6::Zeros() are used respectively.
+   *
+   * *Important* Forward kinematics is done with CoM frames.
+   *
    * @param[in] t integer time index
-   * @param[in] known_values Values with joint angles and velocities
+   * @param[in] known_values Values with joint angles, joint velocities, and
+   * (optionally) root link pose and twist.
    * @param[in] prior_link_name name of link with known pose & twist
-   * @return poses and twists of all links, as a new Values instance
+   * @return CoM poses and twists of all links, as a new Values instance
    */
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
       const boost::optional<std::string> &prior_link_name = boost::none) const;
+
+ private:
+  /// Find root link for forward kinematics
+  LinkSharedPtr findRootLink(
+      const gtsam::Values &values,
+      const boost::optional<std::string> &prior_link_name) const;
 };
-} // namespace gtdynamics
+}  // namespace gtdynamics

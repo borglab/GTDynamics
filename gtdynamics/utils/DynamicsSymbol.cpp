@@ -13,12 +13,9 @@
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
-
-#define kMax_uchar_ std::numeric_limits<unsigned char>::max()
 
 using gtsam::Key;
 namespace gtdynamics {
@@ -36,8 +33,8 @@ DynamicsSymbol::DynamicsSymbol(const DynamicsSymbol& key)
       t_(key.t_) {}
 
 /* ************************************************************************* */
-DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                               unsigned char joint_idx, std::uint64_t t)
+DynamicsSymbol::DynamicsSymbol(const std::string& s, uint8_t link_idx,
+                               uint8_t joint_idx, uint64_t t)
     : link_idx_(link_idx), joint_idx_(joint_idx), t_(t) {
   if (s.length() > 2) {
     throw std::runtime_error(
@@ -56,59 +53,38 @@ DynamicsSymbol::DynamicsSymbol(const std::string& s, unsigned char link_idx,
 }
 
 DynamicsSymbol DynamicsSymbol::LinkJointSymbol(const std::string& s,
-                                               unsigned char link_idx,
-                                               unsigned char joint_idx,
-                                               std::uint64_t t) {
+                                               uint8_t link_idx,
+                                               uint8_t joint_idx,
+                                               uint64_t t) {
   return DynamicsSymbol(s, link_idx, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::JointSymbol(const std::string& s,
-                                           unsigned char joint_idx,
-                                           std::uint64_t t) {
+                                           uint8_t joint_idx,
+                                           uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::LinkSymbol(const std::string& s,
-                                          unsigned char link_idx,
-                                          std::uint64_t t) {
+                                          uint8_t link_idx, uint64_t t) {
   return DynamicsSymbol(s, link_idx, kMax_uchar_, t);
 }
 
-DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s,
-                                            std::uint64_t t) {
+DynamicsSymbol DynamicsSymbol::SimpleSymbol(const std::string& s, uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, kMax_uchar_, t);
 }
 
 /* ************************************************************************* */
 DynamicsSymbol::DynamicsSymbol(const Key& key) {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
-  const Key ch1_mask = Key(kMax_uchar_) << (key_bits - ch1_bits);
-  const Key ch2_mask = Key(kMax_uchar_) << (key_bits - ch1_bits - ch2_bits);
-  const Key link_mask = Key(kMax_uchar_) << (time_bits + joint_bits);
-  const Key joint_mask = Key(kMax_uchar_) << time_bits;
-  const Key time_mask = ~(ch1_mask | ch2_mask | link_mask | joint_mask);
-  c1_ = (unsigned char)((key & ch1_mask) >> (key_bits - ch1_bits));
-  c2_ = (unsigned char)((key & ch2_mask) >> (key_bits - ch1_bits - ch2_bits));
-  link_idx_ = (unsigned char)((key & link_mask) >> (time_bits + joint_bits));
-  joint_idx_ = (unsigned char)((key & joint_mask) >> time_bits);
+  c1_ = (uint8_t)((key & ch1_mask) >> (key_bits - ch1_bits));
+  c2_ = (uint8_t)((key & ch2_mask) >> (key_bits - ch1_bits - ch2_bits));
+  link_idx_ = (uint8_t)((key & link_mask) >> (time_bits + joint_bits));
+  joint_idx_ = (uint8_t)((key & joint_mask) >> time_bits);
   t_ = key & time_mask;
 }
 
 /* ************************************************************************* */
 DynamicsSymbol::operator Key() const {
-  const size_t key_bits = sizeof(Key) * 8;
-  const size_t ch1_bits = sizeof(unsigned char) * 8;
-  const size_t ch2_bits = sizeof(unsigned char) * 8;
-  const size_t link_bits = sizeof(unsigned char) * 8;
-  const size_t joint_bits = sizeof(unsigned char) * 8;
-  const size_t time_bits =
-      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
   Key ch1_comp = Key(c1_) << (key_bits - ch1_bits);
   Key ch2_comp = Key(c2_) << (key_bits - ch1_bits - ch2_bits);
   Key link_comp = Key(link_idx_) << (time_bits + joint_bits);
@@ -118,8 +94,23 @@ DynamicsSymbol::operator Key() const {
 }
 
 /* ************************************************************************* */
+std::string DynamicsSymbol::label() const {
+  std::string s = "";
+  if (c1_ != 0) {
+    s += c1_;
+  }
+  if (c2_ != 0) {
+    s += c2_;
+  }
+  return s;
+}
+
+/* ************************************************************************* */
 void DynamicsSymbol::print(const std::string& s) const {
-  std::cout << s << ": " << std::string(*this) << std::endl;
+  if (s != "") {
+    std::cout << s << ": ";
+  }
+  std::cout << std::string(*this) << std::endl;
 }
 
 /* ************************************************************************* */
@@ -136,8 +127,7 @@ DynamicsSymbol::operator std::string() const {
 }
 
 std::string _GTDKeyFormatter(Key key) {
-  const DynamicsSymbol asDynamicsSymbol(key);
-  return std::string(asDynamicsSymbol);
+  return std::string(DynamicsSymbol(key));
 }
 
 /* ************************************************************************* */

@@ -20,8 +20,8 @@ namespace gtdynamics {
 
 class DynamicsSymbol {
  protected:
-  unsigned char c1_, c2_, link_idx_, joint_idx_;
-  std::uint64_t t_;
+  uint8_t c1_, c2_, link_idx_, joint_idx_;
+  uint64_t t_;
 
  private:
   /**
@@ -32,8 +32,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  DynamicsSymbol(const std::string& s, unsigned char link_idx,
-                 unsigned char joint_idx, std::uint64_t t);
+  DynamicsSymbol(const std::string& s, uint8_t link_idx,
+                 uint8_t joint_idx, uint64_t t);
 
  public:
   /** Default constructor */
@@ -47,9 +47,8 @@ class DynamicsSymbol {
    *  See private constructor
    */
   static DynamicsSymbol LinkJointSymbol(const std::string& s,
-                                        unsigned char link_idx,
-                                        unsigned char joint_idx,
-                                        std::uint64_t t);
+                                        uint8_t link_idx,
+                                        uint8_t joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only joint (e.g. joint angle).
@@ -59,7 +58,7 @@ class DynamicsSymbol {
    * @param[in] t         time step
    */
   static DynamicsSymbol JointSymbol(const std::string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
+                                    uint8_t joint_idx, uint64_t t);
 
   /**
    * Constructor for symbol related to only link (e.g. link pose).
@@ -68,8 +67,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  static DynamicsSymbol LinkSymbol(const std::string& s, unsigned char link_idx,
-                                   std::uint64_t t);
+  static DynamicsSymbol LinkSymbol(const std::string& s, uint8_t link_idx,
+                                   uint64_t t);
 
   /**
    * Constructor for symbol related to neither joint or link (e.g. time).
@@ -77,33 +76,32 @@ class DynamicsSymbol {
    * @param[in] s         1 or 2 characters to represent the variable type
    * @param[in] t         time step
    */
-  static DynamicsSymbol SimpleSymbol(const std::string& s, std::uint64_t t);
+  static DynamicsSymbol SimpleSymbol(const std::string& s, uint64_t t);
 
   /**
    * Constructor that decodes an integer gtsam::Key
    */
   DynamicsSymbol(const gtsam::Key& key);
 
-  /** Cast to integer */
+  /// Cast to a GTSAM Key.
   operator gtsam::Key() const;
 
-  inline std::string label() const {
-    std::string s = "";
-    if (c1_ != 0) s += c1_;
-    if (c2_ != 0) s += c2_;
-    return s;
-  }
+  /// Return string label.
+  std::string label() const;
 
-  inline unsigned char linkIdx() const { return link_idx_; }
+  /// Return link id.
+  inline uint8_t linkIdx() const { return link_idx_; }
 
-  inline unsigned char jointIdx() const { return joint_idx_; }
+  /// Return joint id.
+  inline uint8_t jointIdx() const { return joint_idx_; }
 
-  /// Retrieve key index
-  inline size_t time() const { return t_; }
+  /// Retrieve key index.
+  inline uint64_t time() const { return t_; }
 
-  /// Testable Requirements
+  /// Print.
   void print(const std::string& s = "") const;
 
+  /// Check equality.
   bool equals(const DynamicsSymbol& expected, double tol = 0.0) const {
     return (*this) == expected;
   }
@@ -125,6 +123,32 @@ class DynamicsSymbol {
     ar& BOOST_SERIALIZATION_NVP(joint_idx_);
     ar& BOOST_SERIALIZATION_NVP(t_);
   }
+
+  /**
+   * \defgroup Bitfield bit field constants
+   * @{
+   */
+  static constexpr size_t kMax_uchar_ =
+      std::numeric_limits<uint8_t>::max();
+  // bit counts
+  static constexpr size_t key_bits = sizeof(gtsam::Key) * 8;
+  static constexpr size_t ch1_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t ch2_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t link_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t joint_bits = sizeof(uint8_t) * 8;
+  static constexpr size_t time_bits =
+      key_bits - ch1_bits - ch2_bits - link_bits - joint_bits;
+  // masks
+  static constexpr gtsam::Key ch1_mask = gtsam::Key(kMax_uchar_)
+                                         << (key_bits - ch1_bits);
+  static constexpr gtsam::Key ch2_mask = gtsam::Key(kMax_uchar_)
+                                         << (key_bits - ch1_bits - ch2_bits);
+  static constexpr gtsam::Key link_mask = gtsam::Key(kMax_uchar_)
+                                          << (time_bits + joint_bits);
+  static constexpr gtsam::Key joint_mask = gtsam::Key(kMax_uchar_) << time_bits;
+  static constexpr gtsam::Key time_mask =
+      ~(ch1_mask | ch2_mask | link_mask | joint_mask);
+  /**@}*/
 };
 
 /// key formatter function

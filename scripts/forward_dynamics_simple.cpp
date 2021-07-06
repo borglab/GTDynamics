@@ -23,25 +23,31 @@
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/initialize_solution_utils.h"
 
-using namespace gtdynamics; 
+using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
-  using simple_urdf::robot, simple_urdf::planar_axis;
+  using simple_urdf::planar_axis;
+  using simple_urdf::robot;
   robot.fixLink("l1");
 
+  gtsam::Vector3 gravity(0, 0, -9.8);
+
   // Build a factor graph with all the kinodynamics constraints.
-  DynamicsGraph dg_builder = DynamicsGraph();
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  DynamicsGraph dg_builder = DynamicsGraph(gravity, planar_axis);
   gtsam::NonlinearFactorGraph dfg =
-      dg_builder.dynamicsFactorGraph(robot, 0, gravity, planar_axis);
+      dg_builder.dynamicsFactorGraph(robot, 0);
 
   // Specify the priors and add them to the factor graph.
-  gtsam::Vector theta = (gtsam::Vector(1) << 0).finished();
-  gtsam::Vector theta_dot = (gtsam::Vector(1) << 0).finished();
-  gtsam::Vector tau = (gtsam::Vector(1) << 0).finished();
+  gtsam::Values known_values;
+  for (auto&& joint : robot.joints()) {
+    int j = joint->id();
+    InsertJointAngle(&known_values, j, 0, 0.0);
+    InsertJointVel(&known_values, j, 0, 0.0);
+    InsertTorque(&known_values, j, 0, 0.0);
+  }
   gtsam::NonlinearFactorGraph fd_priors =
-      dg_builder.forwardDynamicsPriors(robot, 0, theta, theta_dot, tau);
+      dg_builder.forwardDynamicsPriors(robot, 0, known_values);
   dfg.add(fd_priors);
 
   // Obtain solution initialization.

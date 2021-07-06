@@ -1,0 +1,32 @@
+/* ----------------------------------------------------------------------------
+
+ * Copyright 2021, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * Authors: Frank Dellaert, et al. (see THANKS for the full author list)
+
+ * See LICENSE for the license information
+
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file    config.h
+ * @brief   Settings and paths configured with CMake
+ * @author  Varun Agrawal
+ */
+
+#pragma once
+
+#include <string>
+
+// Library version
+#define GTDYNAMICS_VERSION_MAJOR @CMAKE_PROJECT_VERSION_MAJOR@
+#define GTDYNAMICS_VERSION_MINOR @CMAKE_PROJECT_VERSION_MINOR@
+#define GTDYNAMICS_VERSION_PATCH @CMAKE_PROJECT_VERSION_PATCH@
+#define GTDYNAMICS_VERSION_STRING "@CMAKE_PROJECT_VERSION@"
+
+namespace gtdynamics {
+// Paths to SDF & URDF files.
+constexpr const char* kSdfPath = "@PROJECT_SOURCE_DIR@/sdfs";
+constexpr const char* kUrdfPath = "@PROJECT_SOURCE_DIR@/urdfs";
+}  // namespace gtdynamics

@@ -139,8 +139,13 @@ Values InitializeSolutionInterpolation(
       InsertJointVel(&init_vals, joint->id(), t, sampler.sample()[0]);
     }
 
-    InsertPose(&init_vals, robot.link(link_name)->id(), t, wTl_t);
-    InsertTwist(&init_vals, robot.link(link_name)->id(), t, gtsam::Z_6x1);
+    auto link = robot.link(link_name);
+    if (link->isFixed()) {
+      throw std::invalid_argument("InitializeSolutionInterpolation: Link " +
+                                  link_name + " is fixed.");
+    }
+    InsertPose(&init_vals, link->id(), t, wTl_t);
+    InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
     for (auto &&kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
@@ -228,55 +233,47 @@ Values InitializeSolutionInverseKinematics(
 }
 
 Values MultiPhaseZeroValuesTrajectory(
-    const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+    const Robot& robot, const std::vector<int>& phase_steps,
     std::vector<Values> transition_graph_init, double dt_i,
     double gaussian_noise,
-    const boost::optional<std::vector<ContactPoints>> &phase_contact_points) {
+    const boost::optional<std::vector<ContactPoints>>& phase_contact_points) {
   Values values;
-  int num_phases = robots.size();
+  int num_phases = phase_steps.size();
 
-  int t = 0;
-  if (phase_contact_points) {
-    values.insert(
-        ZeroValues(robots[0], t, gaussian_noise, (*phase_contact_points)[0]));
-  } else {
-    values.insert(ZeroValues(robots[0], t, gaussian_noise));
-  }
+  // Return either ContactPoints or None if none specified for phase p
+  auto contact_points =
+      [&phase_contact_points](int p) -> boost::optional<ContactPoints> {
+    if (phase_contact_points) return (*phase_contact_points)[p];
+    return boost::none;
+  };
 
-  for (int phase = 0; phase < num_phases; phase++) {
+  // First slice, k==0
+  values.insert(ZeroValues(robot, 0, gaussian_noise, contact_points(0)));
+
+  int k = 0;
+  for (int p = 0; p < num_phases; p++) {
     // in-phase
-    for (int phase_step = 0; phase_step < phase_steps[phase] - 1;
-         phase_step++) {
-      if (phase_contact_points) {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise,
-                                 (*phase_contact_points)[phase]));
-      } else {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise));
-      }
+    for (int step = 0; step < phase_steps[p] - 1; step++) {
+      values.insert(ZeroValues(robot, ++k, gaussian_noise, contact_points(p)));
     }
 
-    if (phase == num_phases - 1) {
-      if (phase_contact_points) {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise,
-                                 (*phase_contact_points)[phase]));
-      } else {
-        values.insert(ZeroValues(robots[phase], ++t, gaussian_noise));
-      }
+    if (p == num_phases - 1) {
+      values.insert(ZeroValues(robot, ++k, gaussian_noise, contact_points(p)));
     } else {
-      t++;
-      values.insert(transition_graph_init[phase]);
+      values.insert(transition_graph_init[p]);
+      k++;
     }
   }
 
-  for (int phase = 0; phase < num_phases; phase++) {
-    values.insert(PhaseKey(phase), dt_i);
+  for (int p = 0; p < num_phases; p++) {
+    values.insert(PhaseKey(p), dt_i);
   }
 
   return values;
 }
 
 Values MultiPhaseInverseKinematicsTrajectory(
-    const std::vector<Robot>& robots, const std::string& link_name,
+    const Robot& robot, const std::string& link_name,
     const std::vector<int>& phase_steps, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     std::vector<Values> transition_graph_init, double dt, double gaussian_noise,
@@ -293,23 +290,23 @@ Values MultiPhaseInverseKinematicsTrajectory(
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
   Values init_vals,
-      values = InitializePosesAndJoints(robots[0], wTl_i, wTl_t, link_name,
-                                             t_i, ts, dt, sampler, &wTl_dt);
+      values = InitializePosesAndJoints(robot, wTl_i, wTl_t, link_name, t_i, ts,
+                                        dt, sampler, &wTl_dt);
 
   DynamicsGraph dgb(gravity);
 
   int t = 0;
-  int num_phases = robots.size();
+  int num_phases = phase_steps.size();
 
   for (int phase = 0; phase < num_phases; phase++) {
     // In-phase.
     int curr_phase_steps =
         phase == (num_phases - 1) ? phase_steps[phase] + 1 : phase_steps[phase];
     for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
-      auto kfg = dgb.qFactors(robots[phase], t, (*phase_contact_points)[phase]);
+      auto kfg = dgb.qFactors(robot, t, (*phase_contact_points)[phase]);
 
-      kfg.addPrior(internal::PoseKey(robots[phase].link(link_name)->id(), t),
-                   wTl_dt[t], gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
+      kfg.addPrior(internal::PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
+                   gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
       gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
       Values results = optimizer.optimize();
@@ -318,12 +315,12 @@ Values MultiPhaseInverseKinematicsTrajectory(
 
       // Update initial values for next timestep.
       values.clear();
-      for (auto&& link : robots[phase].links()) {
+      for (auto&& link : robot.links()) {
         int link_id = link->id();
         InsertPose(&values, link_id, t + 1, Pose(results, link_id, t));
       }
 
-      for (auto&& joint : robots[phase].joints()) {
+      for (auto&& joint : robot.joints()) {
         int joint_id = joint->id();
         InsertJointAngle(&values, joint_id, t + 1,
                          JointAngle(results, joint_id, t));
@@ -333,7 +330,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
   }
 
   Values zero_values =
-      MultiPhaseZeroValuesTrajectory(robots, phase_steps, transition_graph_init,
+      MultiPhaseZeroValuesTrajectory(robot, phase_steps, transition_graph_init,
                                      dt, gaussian_noise, phase_contact_points);
 
   for (auto&& key_value_pair : zero_values) {

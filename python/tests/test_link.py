@@ -59,15 +59,15 @@ class TestLink(GtsamTestCase):
             l1.inertia(), np.array([[0.05, 0, 0], [0, 0.06, 0], [0, 0, 0.03]]))
 
     def test_get_joints(self):
-        """Test the getJoints method."""
+        """Test the joints method."""
         l0 = self.simple_rr.link("link_0")
         l1 = self.simple_rr.link("link_1")
 
-        self.assertIsInstance(l0.getJoints(), list)
-        self.assertIsInstance(l0.getJoints()[0], gtd.Joint)
+        self.assertIsInstance(l0.joints(), list)
+        self.assertIsInstance(l0.joints()[0], gtd.Joint)
 
-        self.assertEqual(len(l0.getJoints()), 1)
-        self.assertEqual(len(l1.getJoints()), 2)
+        self.assertEqual(len(l0.joints()), 1)
+        self.assertEqual(len(l1.joints()), 2)
 
 
 if __name__ == "__main__":
