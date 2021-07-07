@@ -156,7 +156,8 @@ class PreintegratedPointContactFactor
     }
     if (H_wTc_j) {
       gtsam::Matrix36 H;
-      H << gtsam::Z_3x3, (wTb_i.rotation().inverse() * wTb_j.rotation()).matrix();
+      H << gtsam::Z_3x3,
+          (wTb_i.rotation().inverse() * wTb_j.rotation()).matrix();
       *H_wTc_j = H;
     }
     return error;
@@ -171,7 +172,7 @@ class PreintegratedPointContactFactor
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
+                 gtdynamics::GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Point Contact Factor" << std::endl;
     Base::print("", keyFormatter);
@@ -260,7 +261,7 @@ class PreintegratedRigidContactFactor
 
  public:
   /**
-   * Constructor
+   * Constructor. The measurement for rigid contact is always the identity pose.
    *
    * @param wTci_key Key for contact pose in world frame at initial time of
    contact.
@@ -284,12 +285,10 @@ class PreintegratedRigidContactFactor
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  // TODO(Varun) Verify jacobians as per supplementary material.
-
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
+                 gtdynamics::GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Rigid Contact Factor" << std::endl;
     Base::print("", keyFormatter);

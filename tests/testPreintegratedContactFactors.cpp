@@ -12,7 +12,6 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/LabeledSymbol.h>
@@ -100,6 +99,90 @@ TEST(PreintegratedPointContactFactor, Jacobians) {
   Values values;
   InsertPose(&values, base_id, t0, wTb_i);
   InsertPose(&values, base_id, t1, wTb_j);
+  InsertPose(&values, contact_id, t0, wTc_i);
+  InsertPose(&values, contact_id, t1, wTc_j);
+
+  // Check Jacobians
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+}
+
+TEST(PreintegratedRigidContactMeasurements, Constructor) {
+  PreintegratedRigidContactMeasurements();
+
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+  // Covariance is 0 initially
+  EXPECT(assert_equal<Matrix6>(Z_6x6, pcm.preintMeasCov()));
+}
+
+TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementConstant) {
+  double deltaT = 0.01;
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+
+  // Regression
+  pcm.integrateMeasurement(deltaT);
+  EXPECT(assert_equal<Matrix6>(I_6x6 * deltaT, pcm.preintMeasCov()));
+}
+
+TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementVarying) {
+  double dt = 0.01;
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+
+  Matrix6 expected;
+  // Regression
+  pcm.integrateMeasurement(I_3x3 * 0.05, I_3x3 * 0.01, dt);
+  expected << I_3x3 * 0.05, Z_3x3, Z_3x3, I_3x3 * 0.01;
+  EXPECT(assert_equal<Matrix6>(expected * dt * dt, pcm.preintMeasCov()));
+
+  // Regression 2
+  pcm.integrateMeasurement(I_3x3 * 0.06, I_3x3 * 0.02, dt);
+  expected << I_3x3 * (0.05 + 0.06), Z_3x3, Z_3x3, I_3x3 * (0.01 + 0.02);
+  EXPECT(assert_equal<Matrix6>(expected * dt * dt, pcm.preintMeasCov()));
+}
+
+TEST(PreintegratedRigidContactFactor, Constructor) {
+  size_t contact_id = 0;
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+  PreintegratedRigidContactFactor ppcf(PoseKey(contact_id, 0),
+                                       PoseKey(contact_id, 1), pcm);
+}
+
+TEST(PreintegratedRigidContactFactor, Error) {
+  size_t contact_id = 0;
+  size_t t0 = 0, t1 = 1;
+
+  // Simple case where the foot is in fixed contact but rotates forward by PI/4.
+  Pose3 wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
+        wTc_j = Pose3(Rot3::Ry(M_PI_4), Point3(0, 0, 1));
+
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+  // Integrate with constant noise
+  pcm.integrateMeasurement(0.1);
+
+  PreintegratedRigidContactFactor factor(PoseKey(contact_id, t0),
+                                         PoseKey(contact_id, t1), pcm);
+
+  Vector6 actual_error = factor.evaluateError(wTc_i, wTc_j);
+  Vector6 expected_error;
+  expected_error << 0, M_PI_4, 0, 0, 0, 0;
+  EXPECT(assert_equal<Vector6>(expected_error, actual_error, 1e-9));
+}
+
+TEST(PreintegratedRigidContactFactor, Jacobians) {
+  size_t contact_id = 0;
+  size_t t0 = 0, t1 = 1;
+
+  PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
+  // Integrate with constant noise
+  pcm.integrateMeasurement(1);
+
+  PreintegratedRigidContactFactor factor(PoseKey(contact_id, t0),
+                                         PoseKey(contact_id, t1), pcm);
+
+  // Simple case.
+  Pose3 wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
+        wTc_j = Pose3(Rot3(), Point3(0, 0, 1));
+
+  Values values;
   InsertPose(&values, contact_id, t0, wTc_i);
   InsertPose(&values, contact_id, t1, wTc_j);
 
