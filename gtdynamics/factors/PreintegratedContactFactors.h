@@ -135,8 +135,7 @@ class PreintegratedPointContactFactor
       boost::optional<gtsam::Matrix &> H_wTc_i = boost::none,
       boost::optional<gtsam::Matrix &> H_wTb_j = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc_j = boost::none) const override {
-    // For Rot3, translation == inverse due to orthogonality
-    gtsam::Vector3 error = wTb_i.rotation().inverse() *
+    gtsam::Vector3 error = wTb_i.rotation().transpose() *
                            (wTc_j.translation() - wTc_i.translation());
 
     // Please refer to the supplementary material for the Jacobian calculations.
@@ -156,8 +155,9 @@ class PreintegratedPointContactFactor
     }
     if (H_wTc_j) {
       gtsam::Matrix36 H;
+      //TODO(Varun) The paper says this should be `wRb_i.T * wRb_j` but then the unit test fails
       H << gtsam::Z_3x3,
-          (wTb_i.rotation().inverse() * wTb_j.rotation()).matrix();
+          (wTc_i.rotation().inverse() * wTc_j.rotation()).matrix();
       *H_wTc_j = H;
     }
     return error;
