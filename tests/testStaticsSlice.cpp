@@ -115,7 +115,7 @@ TEST(Statics, Quadruped) {
   // Get an inverse kinematics solution
   const size_t k = 1;
   const Slice slice(k);
-  auto ik_solution = statics.Kinematics::inverse(slice, contact_goals);
+  auto ik_solution = statics.inverse(slice, contact_goals);
 
   // Test graph generation
   auto graph = statics.graph(slice);
@@ -129,7 +129,7 @@ TEST(Statics, Quadruped) {
   auto result = statics.solve(slice, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
   // Regression
-  EXPECT_DOUBLES_EQUAL(0.1518, Torque(result, 0, k), 1e-5);
+  EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
   auto minimal = statics.minimizeTorques(slice);
@@ -141,4 +141,3 @@ int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
 }
-
