@@ -28,13 +28,84 @@
 #include "gtdynamics/factors/PreintegratedContactFactors.h"
 
 using namespace gtdynamics;
+using namespace gtsam;
+using gtdynamics::internal::PoseKey;
 using gtsam::assert_equal;
 
 TEST(PreintegratedPointContactMeasurements, Constructor) {
   PreintegratedPointContactMeasurements();
-  PreintegratedPointContactMeasurements(gtsam::I_3x3*0.1);
+  PreintegratedPointContactMeasurements pcm(
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), 0.01, I_3x3);
+  EXPECT(assert_equal<Matrix3>(I_3x3 * 1e-4, pcm.preintMeasCov()));
 }
 
+TEST(PreintegratedPointContactMeasurements, IntegrateMeasurement) {
+  double dt = 0.01;
+  PreintegratedPointContactMeasurements pcm(
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, I_3x3);
+  Rot3 deltaRik = Rot3::Ry(M_PI_4);
+  Pose3 contact_k(Rot3(), Vector3(0, 0, 1));
+
+  // Regression
+  pcm.integrateMeasurement(deltaRik, contact_k, dt);
+  EXPECT(assert_equal<Matrix3>(I_3x3 * 2e-4, pcm.preintMeasCov()));
+
+  // Regression
+  pcm.integrateMeasurement(deltaRik, Pose3(Rot3(), Vector3(0, 0, 1.01)), dt);
+  EXPECT(assert_equal<Matrix3>(I_3x3 * 3e-4, pcm.preintMeasCov()));
+}
+
+TEST(PreintegratedPointContactFactor, Constructor) {
+  double dt = 0.01;
+  PreintegratedPointContactMeasurements pcm(
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, I_3x3);
+  size_t base_id = 0, contact_id = 1;
+  PreintegratedPointContactFactor ppcf(
+      PoseKey(base_id, 0), PoseKey(contact_id, 0), PoseKey(base_id, 1),
+      PoseKey(contact_id, 1), pcm);
+}
+
+TEST(PreintegratedPointContactFactor, Error) {
+  size_t base_id = 0, contact_id = 1;
+  size_t t0 = 0, t1 = 1;
+
+  // Simple case where body moves forward 0.1 m/s and the foot is in fixed
+  // contact.
+  Pose3 wTb_i = Pose3(), wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
+        wTb_j = Pose3(Rot3(), Point3(0.1, 0, 0)),
+        wTc_j = Pose3(Rot3(), Point3(0, 0, 1));
+
+  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, I_3x3);
+  PreintegratedPointContactFactor factor(
+      PoseKey(base_id, t0), PoseKey(contact_id, t0), PoseKey(base_id, t1),
+      PoseKey(contact_id, t1), pcm);
+
+  Vector3 error = factor.evaluateError(wTb_i, wTc_i, wTb_j, wTc_j);
+  EXPECT(assert_equal<Vector3>(Vector3::Zero(), error, 1e-9));
+}
+
+TEST(PreintegratedPointContactFactor, Jacobians) {
+  size_t base_id = 0, contact_id = 1;
+  size_t t0 = 0, t1 = 1;
+
+  Pose3 wTb_i = Pose3(), wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
+        wTb_j = Pose3(Rot3(), Point3(0.1, 0, 0)),
+        wTc_j = Pose3(Rot3(), Point3(0, 0, 1));
+
+  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, I_3x3);
+  PreintegratedPointContactFactor factor(
+      PoseKey(base_id, t0), PoseKey(contact_id, t0), PoseKey(base_id, t1),
+      PoseKey(contact_id, t1), pcm);
+
+  Values values;
+  InsertPose(&values, base_id, t0, wTb_i);
+  InsertPose(&values, base_id, t1, wTb_j);
+  InsertPose(&values, contact_id, t0, wTc_i);
+  InsertPose(&values, contact_id, t1, wTc_j);
+
+  // Check Jacobians
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+}
 
 int main() {
   TestResult tr;
