@@ -19,6 +19,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include <memory>
 #include <string>
@@ -29,12 +30,14 @@
 namespace gtdynamics {
 
 /**
- * Class to perform preintegration of contact measurements for point foot model.
+ * Class to perform preintegration of contact measurements for a point foot
+ * model.
  */
 class PreintegratedPointContactMeasurements {
+  /// The preintegrated measurement covariance
   gtsam::Matrix3 preintMeasCov_;
 
-  ///< The covariance of the discrete contact noise, aka Σvd in the paper
+  /// The covariance of the discrete contact noise, aka Σvd in the paper
   gtsam::Matrix3 vdCov_;
 
  public:
@@ -42,44 +45,38 @@ class PreintegratedPointContactMeasurements {
 
   /**
    * @brief Construct a new Preintegrated Point Contact Measurements object.
+   * We initialize it with the measurement at the first step.
    *
+   * @param base_k The pose of the current base frame.
+   * @param contact_k The pose of the current contact frame. Taken from the
+   * forward kinematics.
+   * @param dt The time between the previous and current step.
    * @param discreteVelocityCovariance The covariance matrix for the discrete
    * velocity of the contact frame.
    */
   PreintegratedPointContactMeasurements(
-      const gtsam::Matrix3 &discreteVelocityCovariance) {
-    preintMeasCov_.setZero();
-    vdCov_ = discreteVelocityCovariance;
+      const gtsam::Pose3 &base_k, const gtsam::Pose3 &contact_k, double dt,
+      const gtsam::Matrix3 &discreteVelocityCovariance)
+      : vdCov_(discreteVelocityCovariance) {
+    // Propagate measurement for the first step, i.e. when k = i.
+    gtsam::Matrix3 B =
+        base_k.rotation().transpose() * contact_k.rotation().matrix() * dt;
+    preintMeasCov_ = B * vdCov_ * B.transpose();
   }
 
   /// Virtual destructor for serialization
   ~PreintegratedPointContactMeasurements() {}
 
   /**
-   * @brief Propagate measurement for the first step, i.e. when k = i.
-   *
-   * @param base_k The pose of the current base frame.
-   * @param contact_k The pose of the current contact frame. Taken from the
-   * forward kinematics.
-   * @param dt The time between the previous and current step.
-   */
-  void initialize(const gtsam::Pose3 &base_k, const gtsam::Pose3 &contact_k,
-                  double dt) {
-    gtsam::Matrix3 B =
-        base_k.rotation().transpose() * contact_k.rotation().matrix() * dt;
-    preintMeasCov_ = preintMeasCov_ + (B * vdCov_ * B.transpose());
-  }
-
-  /**
    * @brief Add a single slip/noise measurement to the preintegration.
    *
-   * @param contact_k The pose of the current contact frame obtained via forward
-   * kinematics.
    * @param deltaRik The rotation delta obtained from the IMU preintegration.
+   * @param contact_k The pose of the contact frame at k obtained via forward
+   * kinematics.
    * @param dt Time interval between this and the last IMU measurement.
    */
-  void integrateMeasurement(const gtsam::Pose3 &contact_k,
-                            const gtsam::Rot3 &deltaRik, const double dt) {
+  void integrateMeasurement(const gtsam::Rot3 &deltaRik,
+                            const gtsam::Pose3 &contact_k, const double dt) {
     gtsam::Matrix3 B = (deltaRik * contact_k.rotation()).matrix() * dt;
     preintMeasCov_ = preintMeasCov_ + (B * vdCov_ * B.transpose());
   }
@@ -155,11 +152,11 @@ class PreintegratedPointContactFactor
       *H_wTc_i = H;
     }
     if (H_wTb_j) {
-      *H_wTb_j = gtsam::Z_6x6;
+      *H_wTb_j = gtsam::Matrix36::Zero();
     }
     if (H_wTc_j) {
       gtsam::Matrix36 H;
-      H << gtsam::Z_3x3, wTb_i.rotation().inverse() * wTb_j.rotation();
+      H << gtsam::Z_3x3, (wTb_i.rotation().inverse() * wTb_j.rotation()).matrix();
       *H_wTc_j = H;
     }
     return error;
@@ -191,42 +188,61 @@ class PreintegratedPointContactFactor
 };
 
 /**
- * Class to perform preintegration of contact measurements for rigid foot model.
+ * Class to perform preintegration of contact measurements for a rigid foot
+ * model.
  */
 class PreintegratedRigidContactMeasurements {
   gtsam::Matrix6 preintMeasCov_;
   gtsam::Matrix3 wCov_, vCov_;
-  double deltaT_;
 
  public:
   PreintegratedRigidContactMeasurements() {}
 
   /**
-   * @brief Construct a new Preintegrated Point Contact Measurements object.
+   * @brief Construct a new Preintegrated Rigid Contact Measurements object.
    *
-   * @param discreteVelocityCovariance The covariance matrix for the discrete
-   * velocity of the contact frame.
+   * @param angularVelocityCovariance The discrete covariance matrix for the
+   * contact frame's angular velocity.
+   * @param linearVelocityCovariance The discrete covariance matrix for the
+   * contact frame's linear velocity.
    */
   PreintegratedRigidContactMeasurements(
       const gtsam::Matrix3 &angularVelocityCovariance,
-      const gtsam::Matrix3 &linearVelocityCovariance) {
+      const gtsam::Matrix3 &linearVelocityCovariance)
+      : wCov_(angularVelocityCovariance), vCov_(linearVelocityCovariance) {
     preintMeasCov_.setZero();
-    wCov_ = angularVelocityCovariance;
-    vCov_ = linearVelocityCovariance;
   }
 
   /// Virtual destructor for serialization
   ~PreintegratedRigidContactMeasurements() {}
 
   /**
-   * @brief Integrate a new measurement.
+   * @brief Integrate a new measurement with time varying contact noise.
    *
+   * @param angularVelocityCovariance The discrete covariance matrix for the
+   * contact frame's angular velocity.
+   * @param linearVelocityCovariance The discrete covariance matrix for the
+   * contact frame's linear velocity.
    * @param dt Time interval between this and the last IMU measurement.
    */
-  void integrateMeasurement(double dt) {
+  void integrateMeasurement(const gtsam::Matrix3 &angularVelocityCovariance,
+                            const gtsam::Matrix3 &linearVelocityCovariance,
+                            double dt) {
+    gtsam::Matrix6 C;
+    C << angularVelocityCovariance, gtsam::Z_3x3, gtsam::Z_3x3,
+        linearVelocityCovariance;
+    preintMeasCov_ += (C * dt * dt);
+  }
+
+  /**
+   * @brief Integrate a new measurement with constant contact noise.
+   *
+   * @param deltaT Time interval between the initial and the final contact time
+   * steps.
+   */
+  void integrateMeasurement(double deltaT) {
     preintMeasCov_ << wCov_, gtsam::Z_3x3, gtsam::Z_3x3, vCov_;
-    deltaT_ += dt;
-    preintMeasCov_ *= deltaT_;
+    preintMeasCov_ *= deltaT;
   }
 
   gtsam::Matrix6 preintMeasCov() const { return preintMeasCov_; }
@@ -257,8 +273,8 @@ class PreintegratedRigidContactFactor
   PreintegratedRigidContactFactor(
       gtsam::Key wTci_key, gtsam::Key wTcj_key,
       const PreintegratedRigidContactMeasurements &pcm)
-      : Base(gtsam::noiseModel::Gaussian::Covariance(pcm.preintMeasCov()),
-             wTbi_key, wTci_key, wTbj_key, wTcj_key) {}
+      : Base(wTci_key, wTcj_key, gtsam::Pose3(),
+             gtsam::noiseModel::Gaussian::Covariance(pcm.preintMeasCov())) {}
 
   virtual ~PreintegratedRigidContactFactor() {}
 
@@ -268,7 +284,7 @@ class PreintegratedRigidContactFactor
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  //TODO(Varun) Verify jacobians as per supplementary material.
+  // TODO(Varun) Verify jacobians as per supplementary material.
 
   /// print contents
   void print(const std::string &s = "",
