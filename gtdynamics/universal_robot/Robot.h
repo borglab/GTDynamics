@@ -95,7 +95,7 @@ class Robot {
   int numJoints() const;
 
   /// Print links and joints of the robot, for debug purposes
-  void print() const;
+  void print(const std::string &s = "") const;
 
   /**
    * Calculate forward kinematics by performing BFS in the link-joint graph

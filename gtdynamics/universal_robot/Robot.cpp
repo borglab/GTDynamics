@@ -97,9 +97,11 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void Robot::print() const {
+void Robot::print(const std::string &s) const {
   using std::cout;
   using std::endl;
+
+  cout << (s.empty() ? s : s + " ") << endl;
 
   // Sort joints by id.
   auto sorted_links = links();
