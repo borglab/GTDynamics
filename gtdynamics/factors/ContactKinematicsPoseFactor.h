@@ -38,10 +38,10 @@ class ContactKinematicsPoseFactor
   using This = ContactKinematicsPoseFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
-  gtsam::Pose3 comTc_;
-  gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
+  gtsam::Point3 comPc_;  // The contact point in the link's COM frame.
+  gtsam::Vector1 h_;     // Height of the ground plane in the world frame.
 
-  gtsam::Matrix13 H_err_;
+  gtsam::Matrix13 gravity_s_unit_;  // Gravity unit vector in the spatial frame.
 
  public:
   /**
@@ -50,7 +50,7 @@ class ContactKinematicsPoseFactor
    *
    * @param pose_key The key corresponding to the link's CoM pose.
    * @param cost_model Noise model associated with this factor.
-   * @param comTc Static transform from point of contact to link CoM.
+   * @param comPc Static transform from point of contact to link CoM.
    * @param gravity Gravity vector in the spatial frame. Used to calculate the
    * "up" direction.
    * @param ground_plane_height Height of the ground plane in the world frame.
@@ -58,10 +58,10 @@ class ContactKinematicsPoseFactor
   ContactKinematicsPoseFactor(
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Pose3 &comTc, const gtsam::Vector3 &gravity,
+      const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
       const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), comTc_(comTc) {
-    H_err_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
+      : Base(cost_model, pose_key), comPc_(comPc) {
+    gravity_s_unit_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
 
     h_ = gtsam::Vector1(ground_plane_height);
   }
@@ -76,19 +76,15 @@ class ContactKinematicsPoseFactor
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &sTl,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change contact reference frame from CoM to spatial.
-    gtsam::Matrix6 H_sTl;
-    gtsam::Pose3 sTc = sTl.transformPoseFrom(comTc_, H_sTl);
-
-    // Obtain translation component and corresponding jacobian.
-    gtsam::Matrix36 H_trans;
-    gtsam::Vector3 sTc_p = sTc.translation(H_trans);
+    // Change contact from CoM to spatial reference frame.
+    gtsam::Matrix36 H_sTl;
+    gtsam::Point3 sPc = sTl.transformFrom(comPc_, H_sTl);
 
     // Compute the error.
-    gtsam::Vector sTc_p_h = gtsam::Vector1(H_err_.dot(sTc_p));
-    gtsam::Vector error = sTc_p_h - h_;
+    gtsam::Vector sPc_h = gtsam::Vector1(gravity_s_unit_.dot(sPc));
+    gtsam::Vector error = sPc_h - h_;
 
-    if (H_pose) *H_pose = H_err_ * H_trans * H_sTl;
+    if (H_pose) *H_pose = gravity_s_unit_ * H_sTl;
 
     return error;
   }
@@ -103,7 +99,7 @@ class ContactKinematicsPoseFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << (s.empty() ? "" : s + " ") << "Contact kinematics pose factor"
+    std::cout << (s.empty() ? "" : s + " ") << "ContactKinematicsPoseFactor"
               << std::endl;
     Base::print("", keyFormatter);
   }

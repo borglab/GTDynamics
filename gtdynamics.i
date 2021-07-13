@@ -156,7 +156,7 @@ class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
 class ContactKinematicsPoseFactor : gtsam::NonlinearFactor {
   ContactKinematicsPoseFactor(gtsam::Key pose_key,
                               gtsam::noiseModel::Base *cost_model,
-                              const gtsam::Pose3 &cTcom,
+                              const gtsam::Point3 &cTcom,
                               const gtsam::Vector3 &gravity,
                               double ground_plane_height = 0.0);
 
@@ -193,6 +193,8 @@ class Link  {
     const gtsam::Pose3 &centerOfMass();
     const Matrix &inertia();
     gtsam::Matrix6 inertiaMatrix();
+
+    void print(const std::string &s = "") const;
 };
 
 /********************** joint **********************/
