@@ -172,6 +172,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// Helper print function
-  void print() const { std::cout << *this; }
+  void print(const std::string &s = "") const {
+    std::cout << (s.empty() ? s : s + " ") << *this;
+  }
 };
 }  // namespace gtdynamics
