@@ -135,6 +135,7 @@ class PreintegratedPointContactFactor
       boost::optional<gtsam::Matrix &> H_wTc_i = boost::none,
       boost::optional<gtsam::Matrix &> H_wTb_j = boost::none,
       boost::optional<gtsam::Matrix &> H_wTc_j = boost::none) const override {
+    // Compute the error.
     gtsam::Vector3 error = wTb_i.rotation().transpose() *
                            (wTc_j.translation() - wTc_i.translation());
 
@@ -154,8 +155,15 @@ class PreintegratedPointContactFactor
       *H_wTb_j = gtsam::Matrix36::Zero();
     }
     if (H_wTc_j) {
+      // Assert the rotation of the contact frame is the same as the rotation of
+      // the body frame. This will ensure the retraction is d <- d + δR as per
+      // the paper.
+      if (!wTc_i.rotation().equals(wTb_i.rotation()) ||
+          !wTc_j.rotation().equals(wTb_j.rotation())) {
+        throw std::runtime_error(
+            "Body rotation and contact rotation are not equal.");
+      }
       gtsam::Matrix36 H;
-      //TODO(Varun) The paper says this should be `wRb_i.T * wRb_j` but then the unit test fails
       H << gtsam::Z_3x3,
           (wTc_i.rotation().inverse() * wTc_j.rotation()).matrix();
       *H_wTc_j = H;

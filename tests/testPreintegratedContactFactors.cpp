@@ -91,7 +91,7 @@ TEST(PreintegratedPointContactFactor, Jacobians) {
   // Simple case where body moves forward 0.1 m/s and the foot is in fixed
   // contact but rotates by PI/4.
   Pose3 wTb_i = Pose3(), wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
-        wTb_j = Pose3(Rot3(), Point3(0.1, 0, 0)),
+        wTb_j = Pose3(Rot3::Ry(M_PI_4), Point3(0.1, 0, 0)),
         wTc_j = Pose3(Rot3::Ry(M_PI_4), Point3(0, 0, 1));
 
   PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, I_3x3);
