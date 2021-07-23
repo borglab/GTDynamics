@@ -14,7 +14,7 @@
 
 #include "gtsam/config.h"
 #include "gtsam/base/serialization.h"
-#include "gtsam/nonlinear/utilities.h"  // for RedirectCout.
+#include "gtsam/base/utilities.h"  // for RedirectCout.
 
 {includes}
 #include <boost/serialization/export.hpp>
