@@ -228,7 +228,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         // TODO(frank): #179 make sure height is handled correctly.
         ContactKinematicsPoseFactor contact_pose_factor(
             internal::PoseKey(i, k), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity);
+            contact_point.second.point, gravity);
         graph.add(contact_pose_factor);
       }
     }

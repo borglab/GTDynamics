@@ -28,9 +28,9 @@
 namespace gtdynamics {
 
 /**
- * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces zero
- * height at the contact point. This factor assumes that the ground is flat and
- * level.
+ * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces a
+ * known ground plane height for the contact point. This factor assumes that the
+ * ground is flat and level.
  */
 class ContactKinematicsPoseFactor
     : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
@@ -38,10 +38,10 @@ class ContactKinematicsPoseFactor
   using This = ContactKinematicsPoseFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
-  gtsam::Pose3 cTcom_;
-  gtsam::Vector1 h_;  // Height of the ground plane in the world frame.
+  gtsam::Point3 comPc_;  // The contact point in the link's COM frame.
+  gtsam::Vector1 h_;     // Height of the ground plane in the world frame.
 
-  gtsam::Matrix13 H_err_;
+  gtsam::Matrix13 gravity_s_unit_;  // Gravity unit vector in the spatial frame.
 
  public:
   /**
@@ -50,7 +50,7 @@ class ContactKinematicsPoseFactor
    *
    * @param pose_key The key corresponding to the link's CoM pose.
    * @param cost_model Noise model associated with this factor.
-   * @param cTcom Static transform from link CoM to point of contact.
+   * @param comPc Static transform from point of contact to link CoM.
    * @param gravity Gravity vector in the spatial frame. Used to calculate the
    * "up" direction.
    * @param ground_plane_height Height of the ground plane in the world frame.
@@ -58,40 +58,33 @@ class ContactKinematicsPoseFactor
   ContactKinematicsPoseFactor(
       gtsam::Key pose_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Pose3 &cTcom, const gtsam::Vector3 &gravity,
+      const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
       const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), cTcom_(cTcom) {
-    if (gravity[0] != 0)
-      H_err_ = (gtsam::Matrix13() << 1, 0, 0).finished();  // x.
-    else if (gravity[1] != 0)
-      H_err_ = (gtsam::Matrix13() << 0, 1, 0).finished();  // y.
-    else
-      H_err_ = (gtsam::Matrix13() << 0, 0, 1).finished();  // z.
+      : Base(cost_model, pose_key), comPc_(comPc) {
+    gravity_s_unit_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
 
-    h_ = (gtsam::Vector(1) << ground_plane_height).finished();
+    h_ = gtsam::Vector1(ground_plane_height);
   }
+
   virtual ~ContactKinematicsPoseFactor() {}
 
  public:
   /**
    * Evaluate contact errors.
-   * @param pose This link's COM pose in the spatial frame.
+   * @param sTl This link's COM pose in the spatial frame.
    */
   gtsam::Vector evaluateError(
-      const gtsam::Pose3 &pose,
+      const gtsam::Pose3 &sTl,
       boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change contact reference frame from com to spatial.
-    gtsam::Pose3 sTc = pose.transformPoseFrom(cTcom_.inverse());
-
-    // Obtain translation component and corresponding jacobian.
-    gtsam::Matrix36 H_trans;
-    gtsam::Vector3 sTc_p = gtsam::Vector3(sTc.translation(H_trans));
+    // Change contact from CoM to spatial reference frame.
+    gtsam::Matrix36 H_sTl;
+    gtsam::Point3 sPc = sTl.transformFrom(comPc_, H_sTl);
 
     // Compute the error.
-    gtsam::Vector sTc_p_h = (gtsam::Vector(1) << H_err_.dot(sTc_p)).finished();
-    gtsam::Vector error = sTc_p_h - h_;
+    gtsam::Vector sPc_h = gtsam::Vector1(gravity_s_unit_.dot(sPc));
+    gtsam::Vector error = sPc_h - h_;
 
-    if (H_pose) *H_pose = H_err_ * H_trans * cTcom_.AdjointMap();
+    if (H_pose) *H_pose = gravity_s_unit_ * H_sTl;
 
     return error;
   }
@@ -106,7 +99,8 @@ class ContactKinematicsPoseFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "Contact kinematics pose factor" << std::endl;
+    std::cout << (s.empty() ? "" : s + " ") << "ContactKinematicsPoseFactor"
+              << std::endl;
     Base::print("", keyFormatter);
   }
 

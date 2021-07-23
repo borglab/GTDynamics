@@ -110,7 +110,7 @@ class WrenchFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base *cost_model,
-                          gtdynamics::JointTyped *joint, size_t k=0);
+                          gtdynamics::JointTyped *joint, size_t k = 0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
@@ -152,6 +152,18 @@ class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
                                     const gtsam::noiseModel::Base *cost_model);
 };
 
+#include <gtdynamics/factors/ContactKinematicsPoseFactor.h>
+class ContactKinematicsPoseFactor : gtsam::NonlinearFactor {
+  ContactKinematicsPoseFactor(gtsam::Key pose_key,
+                              gtsam::noiseModel::Base *cost_model,
+                              const gtsam::Point3 &cTcom,
+                              const gtsam::Vector3 &gravity,
+                              double ground_plane_height = 0.0);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
@@ -181,6 +193,8 @@ class Link  {
     const gtsam::Pose3 &centerOfMass();
     const Matrix &inertia();
     gtsam::Matrix6 inertiaMatrix();
+
+    void print(const std::string &s = "") const;
 };
 
 /********************** joint **********************/
