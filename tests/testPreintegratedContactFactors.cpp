@@ -31,6 +31,9 @@ using namespace gtsam;
 using gtdynamics::internal::PoseKey;
 using gtsam::assert_equal;
 
+/* ************************************************************************* */
+// Test constructor of Preintegrated Point Contact Measurements object.
+// Used to perform forward integration for Preintegrated Point Contact Factor.
 TEST(PreintegratedPointContactMeasurements, Constructor) {
   PreintegratedPointContactMeasurements();
   PreintegratedPointContactMeasurements pcm(
@@ -38,6 +41,8 @@ TEST(PreintegratedPointContactMeasurements, Constructor) {
   EXPECT(assert_equal<Matrix3>(I_3x3 * 1e-4, pcm.preintMeasCov()));
 }
 
+/* ************************************************************************* */
+// Test integration of a single measurement.
 TEST(PreintegratedPointContactMeasurements, IntegrateMeasurement) {
   double dt = 0.01;
   PreintegratedPointContactMeasurements pcm(
@@ -54,6 +59,8 @@ TEST(PreintegratedPointContactMeasurements, IntegrateMeasurement) {
   EXPECT(assert_equal<Matrix3>(I_3x3 * 3e-4, pcm.preintMeasCov()));
 }
 
+/* ************************************************************************* */
+// Test constructor for Preintegrated Point Contact Factor.
 TEST(PreintegratedPointContactFactor, Constructor) {
   double dt = 0.01;
   PreintegratedPointContactMeasurements pcm(
@@ -64,6 +71,8 @@ TEST(PreintegratedPointContactFactor, Constructor) {
       PoseKey(contact_id, 1), pcm);
 }
 
+/* ************************************************************************* */
+// Test error function for Preintegrated Point Contact Factor.
 TEST(PreintegratedPointContactFactor, Error) {
   size_t base_id = 0, contact_id = 1;
   size_t t0 = 0, t1 = 1;
@@ -84,6 +93,8 @@ TEST(PreintegratedPointContactFactor, Error) {
   EXPECT(assert_equal<Vector3>(Vector3::Zero(), error, 1e-9));
 }
 
+/* ************************************************************************* */
+// Test jacobians for Preintegrated Point Contact Factor.
 TEST(PreintegratedPointContactFactor, Jacobians) {
   size_t base_id = 0, contact_id = 1;
   size_t t0 = 0, t1 = 1;
@@ -109,6 +120,8 @@ TEST(PreintegratedPointContactFactor, Jacobians) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
+/* ************************************************************************* */
+// Test constructor for Preintegrated Rigid Contact Factor.
 TEST(PreintegratedRigidContactMeasurements, Constructor) {
   PreintegratedRigidContactMeasurements();
 
@@ -117,6 +130,9 @@ TEST(PreintegratedRigidContactMeasurements, Constructor) {
   EXPECT(assert_equal<Matrix6>(Z_6x6, pcm.preintMeasCov()));
 }
 
+/* ************************************************************************* */
+// Test if integrating a constant measurement for a Preintegrated Rigid Contact
+// Measurements object works as expected.
 TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementConstant) {
   double deltaT = 0.01;
   PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
@@ -126,6 +142,9 @@ TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementConstant) {
   EXPECT(assert_equal<Matrix6>(I_6x6 * deltaT, pcm.preintMeasCov()));
 }
 
+/* ************************************************************************* */
+// Test if integrating time varying measurements for a Preintegrated Rigid
+// Contact Measurements object works as expected.
 TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementVarying) {
   double dt = 0.01;
   PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
@@ -142,6 +161,8 @@ TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementVarying) {
   EXPECT(assert_equal<Matrix6>(expected * dt * dt, pcm.preintMeasCov()));
 }
 
+/* ************************************************************************* */
+// Test constructor for Preintegrated Rigid Contact Factor.
 TEST(PreintegratedRigidContactFactor, Constructor) {
   size_t contact_id = 0;
   PreintegratedRigidContactMeasurements pcm(I_3x3, I_3x3);
@@ -149,6 +170,8 @@ TEST(PreintegratedRigidContactFactor, Constructor) {
                                        PoseKey(contact_id, 1), pcm);
 }
 
+/* ************************************************************************* */
+// Test error function for Preintegrated Rigid Contact Factor.
 TEST(PreintegratedRigidContactFactor, Error) {
   size_t contact_id = 0;
   size_t t0 = 0, t1 = 1;
@@ -170,6 +193,8 @@ TEST(PreintegratedRigidContactFactor, Error) {
   EXPECT(assert_equal<Vector6>(expected_error, actual_error, 1e-9));
 }
 
+/* ************************************************************************* */
+// Test jacobians for Preintegrated Rigid Contact Factor.
 TEST(PreintegratedRigidContactFactor, Jacobians) {
   size_t contact_id = 0;
   size_t t0 = 0, t1 = 1;
