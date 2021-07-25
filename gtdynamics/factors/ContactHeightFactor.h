@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ContactKinematicsPoseFactor.h
+ * @file  ContactHeightFactor.h
  * @brief Factor to enforce zero height at the contact point.
  * @author: Alejandro Escontrela
  */
@@ -28,14 +28,13 @@
 namespace gtdynamics {
 
 /**
- * ContactKinematicsPoseFactor is a one-way nonlinear factor which enforces a
+ * ContactHeightFactor is a one-way nonlinear factor which enforces a
  * known ground plane height for the contact point. This factor assumes that the
  * ground is flat and level.
  */
-class ContactKinematicsPoseFactor
-    : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class ContactHeightFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  private:
-  using This = ContactKinematicsPoseFactor;
+  using This = ContactHeightFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
 
   gtsam::Point3 comPc_;  // The contact point in the link's COM frame.
@@ -55,18 +54,17 @@ class ContactKinematicsPoseFactor
    * "up" direction.
    * @param ground_plane_height Height of the ground plane in the world frame.
    */
-  ContactKinematicsPoseFactor(
-      gtsam::Key pose_key,
-      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-      const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
-      const double &ground_plane_height = 0.0)
+  ContactHeightFactor(gtsam::Key pose_key,
+                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                      const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
+                      const double &ground_plane_height = 0.0)
       : Base(cost_model, pose_key), comPc_(comPc) {
     gravity_s_unit_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
 
     h_ = gtsam::Vector1(ground_plane_height);
   }
 
-  virtual ~ContactKinematicsPoseFactor() {}
+  virtual ~ContactHeightFactor() {}
 
  public:
   /**
@@ -99,7 +97,7 @@ class ContactKinematicsPoseFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << (s.empty() ? "" : s + " ") << "ContactKinematicsPoseFactor"
+    std::cout << (s.empty() ? "" : s + " ") << "ContactHeightFactor"
               << std::endl;
     Base::print("", keyFormatter);
   }
