@@ -9,44 +9,67 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 ## Dependencies
 
-* [`GTSAM4`](https://github.com/borglab/gtsam)
+* [GTSAM4](https://github.com/borglab/gtsam)
+* [gtwrap](https://github.com/borglab/wrap)
+* [sdformat10](https://github.com/osrf/sdformat)
 
-### macOS
-* [`sdformat9`](https://github.com/osrf/sdformat)
-```bash
+## Installing SDFormat
+
+GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot descriptions.
+
+### Homebrew
+
+Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+
+```sh
 $ # Install homebrew.
-$ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+$ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
-$ brew install sdformat9
+$ brew install sdformat10
 ```
 
-### Ubuntu
-* [`sdformat9`](https://github.com/osrf/sdformat)
-```bash
-$ # Install homebrew (for linux).
-$ sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
-$ # Download sdformat to your preferred location.
-$ brew tap osrf/simulation
-$ brew install sdformat9
+### Source
+
+Alternatively, you can install from source if you want more fine-tuned control.
+
+We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
+
+
+```sh
+# Install basic dependencies
+sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cmake pkg-config
+
+# sdformat requires libignition-math
+sudo apt-get install libignition-math4-dev
+
+# Specifically download sdformat8
+wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-8.6.1.tar.bz2
+
+tar -xvjf sdformat-8.6.1.tar.bz2
+
+cd sdformat-8.6.1
+mkdir build && cd build
+
+cmake -DCMAKE_INSTALL_PREFIX ../install ..
+make -j4
+sudo make install
 ```
 
-If issues arise when installing dependencies for sdformat, reference the following [tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) to install sdformat from source.
-
-## Installing
-```bash
+## Installing GTDynamics
+```sh
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
-# Optionally specify install path with -DCMAKE_INSTALL_PREFIX
-$ cmake ../
+# We can specify the install path with -DCMAKE_INSTALL_PREFIX
+$ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
 ```
 
 ## Running Tests
 
-```bash
+```sh
 $ make check
 ```
 
@@ -55,7 +78,7 @@ $ make check
 The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
-```bash
+```sh
 cd GTDynamics/examples/example_forward_dynamics
 mkdir build; cd build
 ```
@@ -64,13 +87,13 @@ mkdir build; cd build
 
 If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
 
-```bash
+```sh
 cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
 make
 ```
 
 3. Run the example!
-```bash
+```sh
 ./exec
 ```
 
@@ -92,6 +115,12 @@ To compile and install the GTDynamics python library:
 
     ```sh
     make && make python-install
+    ```
+
+3. To run the Python tests, you can simply run:
+
+    ```sh
+    make python-test
     ```
 
 ## Citing This Work

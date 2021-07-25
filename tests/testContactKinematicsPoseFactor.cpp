@@ -40,25 +40,24 @@ TEST(ContactKinematicsPoseFactor, error) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
-      0);
+  gtsam::Point3 comPc(0, 0, 1);
+  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
+                                     gtsam::Vector3(0, 0, -9.8), 0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      (gtsam::Vector(1) << 3).finished()));
+                      gtsam::Vector1(3)));
 
   // Leg oriented down with contact 1m away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      (gtsam::Vector(1) << 1).finished()));
+                      gtsam::Vector1(1)));
 
   // Contact touching the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      (gtsam::Vector(1) << 0).finished()));
+                      gtsam::Vector1(0)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
@@ -94,27 +93,26 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
+  gtsam::Point3 comPc(0, 0, 1);
 
   // Create a factor that establishes a ground plane at z = -1.0.
-  ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished(),
-      -1.0);
+  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
+                                     gtsam::Vector3(0, 0, -9.8), -1.0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      (gtsam::Vector(1) << 4).finished()));
+                      gtsam::Vector1(4)));
 
   // Leg oriented down with contact 1m away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      (gtsam::Vector(1) << 2).finished()));
+                      gtsam::Vector1(2)));
 
   // Contact touching the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
                           gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      (gtsam::Vector(1) << 1).finished()));
+                      gtsam::Vector1(1)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
@@ -151,9 +149,9 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Pose3 cTcom = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, -1));
-  ContactKinematicsPoseFactor factor(
-      pose_key, cost_model, cTcom, (gtsam::Vector(3) << 0, 0, -9.8).finished());
+  gtsam::Point3 comPc(0, 0, 1);
+  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
+                                     gtsam::Vector3(0, 0, -9.8));
 
   // Initial link pose.
   gtsam::Pose3 link_pose_init = gtsam::Pose3(
@@ -188,7 +186,7 @@ TEST(ContactKinematicsPoseFactor, optimization) {
   std::cout << factor.evaluateError(link_pose_optimized) << std::endl;
 
   EXPECT(assert_equal(factor.evaluateError(link_pose_optimized),
-                      (gtsam::Vector(1) << 0).finished(), 1e-3));
+                      gtsam::Vector1(0), 1e-3));
 }
 
 int main() {

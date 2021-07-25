@@ -7,16 +7,18 @@
 
 using namespace gtdynamics;
 int main(int argc, char** argv) {
-  // Load the robot and build a nonlinear factor graph of kinodynamics
-  // constraints.
-  auto simple_rr = CreateRobotFromFile("../simple_rr.sdf", "simple_rr_sdf");
+  // Load the robot
+  auto simple_rr = CreateRobotFromFile(
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
   simple_rr.print();
 
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  gtsam::Vector3 gravity(0, 0, -9.8);
+
+  // Build a nonlinear factor graph of kinodynamics constraints.
   auto graph_builder = DynamicsGraph(gravity);
   auto kdfg = graph_builder.dynamicsFactorGraph(simple_rr,
                                                 0  // timestep
-                                                );
+  );
 
   // Specify the forward dynamics priors and add them to the factor graph.
   gtsam::Values known_values;

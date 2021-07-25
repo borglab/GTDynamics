@@ -13,6 +13,7 @@
 
 #include "gtdynamics/universal_robot/sdf.h"
 
+#include <fstream>
 #include <sdf/parser.hh>
 #include <sdf/sdf.hh>
 
@@ -99,7 +100,7 @@ gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint) {
   return gtsam::Vector3(axis[0], axis[1], axis[2]);
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
+LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   gtsam::Matrix3 inertia;
   const auto &I = sdf_link.Inertial().Moi();
   inertia << I(0, 0), I(0, 1), I(0, 2), I(1, 0), I(1, 1), I(1, 2), I(2, 0),
@@ -125,14 +126,14 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link) {
                                   inertia, wTl, lTcom);
 }
 
-LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &link_name,
+LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
                           const std::string &sdf_file_path,
                           const std::string &model_name) {
   auto model = GetSdf(sdf_file_path, model_name);
   return LinkFromSdf(id, *model.LinkByName(link_name));
 }
 
-JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
@@ -219,6 +220,12 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
  */
 static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
                                           const std::string &model_name) {
+  std::ifstream is(file_path);
+  if (!is.good())
+    throw std::runtime_error("ExtractRobotFromFile: no file found at " +
+                             file_path);
+  is.close();
+
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 

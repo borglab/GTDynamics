@@ -1,13 +1,12 @@
 """Run kinematic motion planning using GTDynamics outputs."""
-from typing import Dict
-
 import time
 
-# import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import pybullet as p
 import pybullet_data
-import pandas as pd
-import numpy as np
+
+import gtdynamics as gtd
 
 # pylint: disable=I1101, C0103
 
@@ -25,19 +24,7 @@ for i in range(p.getNumJoints(quad_id)):
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
 
-def set_joint_angles(joint_angles: Dict[str, float], joint_vels: Dict[str, float]):
-    """Actuate to the suppplied joint angles using PD control."""
-    for jid in joint_to_jid_map.values():
-        p.setJointMotorControl2(quad_id, jid, p.VELOCITY_CONTROL, force=500)
-
-    for k, v in joint_angles.items():
-        p.setJointMotorControl2(bodyUniqueId=quad_id,
-                                jointIndex=joint_to_jid_map[k],
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=v,
-                                targetVelocity=joint_vels[k + '.1'])
-
-
+#TODO(Varun) This should be passed as a cmdline argument
 df = pd.read_csv('traj.csv')
 print(df.columns)
 
@@ -69,7 +56,7 @@ for i in range(len(df)):
     new_goal_pos[2] = new_goal_pos[2] + 0.21
     new_goal_orn = df.loc[i][['gol_qx', 'gol_qy', 'gol_qz', 'gol_qw']].tolist()
 
-    set_joint_angles(jangles, jvels)
+    gtd.sim.set_joint_angles(p, quad_id, joint_to_jid_map, jangles, jvels)
 
     # Update body CoM coordinate frame.
     new_pos, new_orn = p.getBasePositionAndOrientation(quad_id)
@@ -80,7 +67,7 @@ for i in range(len(df)):
     if (new_goal_pos != goal_pos) or (new_goal_orn != goal_orn):
 
         # Remove old debug items.
-        if debug_line_x != None:
+        if debug_line_x is not None:
             p.removeUserDebugItem(debug_line_x)
             p.removeUserDebugItem(debug_line_y)
             p.removeUserDebugItem(debug_line_z)
@@ -134,9 +121,5 @@ pos, orn = p.getBasePositionAndOrientation(quad_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
                                                 p.getEulerFromQuaternion(orn)))
 
-
-while True:
-    p.stepSimulation()
-    time.sleep(1. / 240)
 
 p.disconnect()

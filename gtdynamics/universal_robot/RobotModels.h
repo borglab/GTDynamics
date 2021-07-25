@@ -22,10 +22,13 @@
 // TODO(aescontrela): The entire program shouldn't crash when a single file
 // doesn't load.
 
-namespace four_bar_linkage {
+using gtdynamics::kSdfPath;
+using gtdynamics::kUrdfPath;
+
+namespace four_bar_linkage_pure {
 gtdynamics::Robot getFourBar() {
   gtdynamics::Robot four_bar = gtdynamics::CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/four_bar_linkage_pure.sdf");
+      kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
   return four_bar;
 }
 // Load the robot from urdf file
@@ -33,12 +36,12 @@ gtdynamics::Robot robot = getFourBar();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace four_bar_linkage
+}  // namespace four_bar_linkage_pure
 
 namespace simple_urdf {
 gtdynamics::Robot getSimpleUrdf() {
-  auto robot = gtdynamics::CreateRobotFromFile(std::string(URDF_PATH) +
-                                               "/test/simple_urdf.urdf");
+  auto robot = gtdynamics::CreateRobotFromFile(
+      kUrdfPath + std::string("/test/simple_urdf.urdf"));
   robot.fixLink("l1");
   return robot;
 }
@@ -51,7 +54,7 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 namespace simple_urdf_prismatic {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(
-      std::string(URDF_PATH) + "/test/simple_urdf_prismatic.urdf");
+      kUrdfPath + std::string("/test/simple_urdf_prismatic.urdf"));
   robot.fixLink("l1");
   return robot;
 }
@@ -61,7 +64,7 @@ gtdynamics::Robot robot = getSimpleUrdf();
 namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(
-      std::string(URDF_PATH) + "/test/simple_urdf_zero_inertia.urdf");
+      kUrdfPath + std::string("/test/simple_urdf_zero_inertia.urdf"));
   robot.fixLink("l1");
   return robot;
 }
@@ -74,7 +77,7 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 namespace simple_urdf_eq_mass {
 gtdynamics::Robot getSimpleUrdfEqMass() {
   auto robot = gtdynamics::CreateRobotFromFile(
-      std::string(URDF_PATH) + "/test/simple_urdf_eq_mass.urdf");
+      kUrdfPath + std::string("/test/simple_urdf_eq_mass.urdf"));
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdfEqMass();
@@ -86,7 +89,7 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 namespace simple_rr {
 gtdynamics::Robot getSimpleRR() {
   auto robot = gtdynamics::CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/simple_rr.sdf", "simple_rr_sdf");
+      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
   return robot;
 }
 gtdynamics::Robot robot = getSimpleRR();
@@ -98,7 +101,7 @@ gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 namespace jumping_robot {
 gtdynamics::Robot getJumpingRobot() {
   gtdynamics::Robot jumping_robot = gtdynamics::CreateRobotFromFile(
-      std::string(SDF_PATH) + "/test/jumping_robot.sdf");
+      kSdfPath + std::string("/test/jumping_robot.sdf"));
   jumping_robot.fixLink("l0");
   return jumping_robot;
 }

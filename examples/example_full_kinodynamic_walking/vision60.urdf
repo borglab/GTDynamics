@@ -122,16 +122,16 @@
       </geometry>
       <material name="green"/>
     </visual>
-    <collision>
+    <!-- <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.14 0 0"/>
       <geometry>
         <cylinder length="0.28" radius="0.011"/>
       </geometry>
-    </collision>
+    </collision> -->
     <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.28 0 0"/>
       <geometry>
-        <sphere radius="0.011"/>
+        <sphere radius="0.001"/>
       </geometry>
     </collision>
     <inertial>
@@ -231,16 +231,16 @@
       </geometry>
       <material name="green"/>
     </visual>
-    <collision>
+    <!-- <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.14 0 0"/>
       <geometry>
         <cylinder length="0.28" radius="0.011"/>
       </geometry>
-    </collision>
+    </collision> -->
     <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.28 0 0"/>
       <geometry>
-        <sphere radius="0.011"/>
+        <sphere radius="0.001"/>
       </geometry>
     </collision>
     <inertial>
@@ -340,16 +340,16 @@
       </geometry>
       <material name="green"/>
     </visual>
-    <collision>
+    <!-- <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.14 0 0"/>
       <geometry>
         <cylinder length="0.28" radius="0.011"/>
       </geometry>
-    </collision>
+    </collision> -->
     <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.28 0 0"/>
       <geometry>
-        <sphere radius="0.011"/>
+        <sphere radius="0.001"/>
       </geometry>
     </collision>
     <inertial>
@@ -449,16 +449,16 @@
       </geometry>
       <material name="green"/>
     </visual>
-    <collision>
+    <!-- <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.14 0 0"/>
       <geometry>
         <cylinder length="0.28" radius="0.011"/>
       </geometry>
-    </collision>
+    </collision> -->
     <collision>
       <origin rpy="0 1.5707963268 0" xyz="0.28 0 0"/>
       <geometry>
-        <sphere radius="0.011"/>
+        <sphere radius="0.001"/>
       </geometry>
     </collision>
     <inertial>

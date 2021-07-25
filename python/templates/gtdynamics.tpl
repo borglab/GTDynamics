@@ -7,12 +7,14 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
+#include <pybind11/functional.h>
+#include <pybind11/iostream.h>
 
 #include <boost/optional.hpp>
 
 #include "gtsam/config.h"
 #include "gtsam/base/serialization.h"
-#include "gtsam/nonlinear/utilities.h"  // for RedirectCout.
+#include "gtsam/base/utilities.h"  // for RedirectCout.
 
 {includes}
 #include <boost/serialization/export.hpp>

@@ -1,2 +1,0 @@
-import gtsam
-from ${PROJECT_NAME}.${PROJECT_NAME} import *

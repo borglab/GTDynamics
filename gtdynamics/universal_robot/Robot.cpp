@@ -31,7 +31,8 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
-template <typename K, typename V> std::vector<V> getValues(std::map<K, V> m) {
+template <typename K, typename V>
+std::vector<V> getValues(std::map<K, V> m) {
   std::vector<V> vec;
   vec.reserve(m.size());
   std::transform(m.begin(), m.end(), back_inserter(vec),
@@ -96,9 +97,11 @@ int Robot::numLinks() const { return name_to_link_.size(); }
 
 int Robot::numJoints() const { return name_to_joint_.size(); }
 
-void Robot::print() const {
+void Robot::print(const std::string &s) const {
   using std::cout;
   using std::endl;
+
+  cout << (s.empty() ? s : s + " ") << endl;
 
   // Sort joints by id.
   auto sorted_links = links();
@@ -143,17 +146,12 @@ void Robot::print() const {
 
 LinkSharedPtr Robot::findRootLink(
     const gtsam::Values &values,
-    const boost::optional<std::string> &prior_link_name, size_t t) const {
+    const boost::optional<std::string> &prior_link_name) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
   if (prior_link_name) {
     root_link = link(*prior_link_name);
-    if (!values.exists(internal::PoseKey(root_link->id(), t)) ||
-        !values.exists(internal::TwistKey(root_link->id(), t))) {
-      throw std::invalid_argument(
-          "forwardKinematics: values does not contain pose/twist.");
-    }
   } else {
     auto links = this->links();
     auto links_iter =
@@ -204,7 +202,6 @@ static bool InsertWithCheck(size_t i, size_t t,
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
-  // TODO(varun): #116 Use Values.tryInsert and save all this boilerplate?
   auto pose_key = internal::PoseKey(i, t);
   auto twist_key = internal::TwistKey(i, t);
   const bool exists = values->exists(pose_key);
@@ -228,8 +225,15 @@ gtsam::Values Robot::forwardKinematics(
   gtsam::Values values = known_values;
 
   // Set root link.
-  const auto root_link = findRootLink(values, prior_link_name, t);
+  const auto root_link = findRootLink(values, prior_link_name);
   InsertFixedLinks(links(), t, &values);
+
+  if (!values.exists(internal::PoseKey(root_link->id(), t))) {
+    InsertPose(&values, root_link->id(), t, gtsam::Pose3());
+  }
+  if (!values.exists(internal::TwistKey(root_link->id(), t))) {
+    InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
+  }
 
   // BFS to update all poses downstream in the graph.
   std::queue<LinkSharedPtr> q;
@@ -258,4 +262,4 @@ gtsam::Values Robot::forwardKinematics(
   return values;
 }
 
-} // namespace gtdynamics.
+}  // namespace gtdynamics.

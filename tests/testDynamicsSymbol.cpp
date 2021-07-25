@@ -23,8 +23,8 @@ using namespace gtdynamics;
 /* ************************************************************************* */
 TEST(DynamicsSymbol, LinkJointSymbol) {
   std::string variable_type = "F";
-  const unsigned char link_index = 1;
-  const unsigned char joint_index = 2;
+  const uint8_t link_index = 1;
+  const uint8_t joint_index = 2;
   const uint64_t t = 10;
   const DynamicsSymbol symbol = DynamicsSymbol::LinkJointSymbol(
       variable_type, link_index, joint_index, t);
@@ -41,7 +41,7 @@ TEST(DynamicsSymbol, LinkJointSymbol) {
 }
 
 TEST(DynamicsSymbol, LinkSymbol) {
-  const unsigned char link_index = 2;
+  const uint8_t link_index = 2;
   const uint64_t t = 10;
   const DynamicsSymbol symbol =
       DynamicsSymbol::LinkSymbol("FA", link_index, 10);
@@ -57,7 +57,7 @@ TEST(DynamicsSymbol, LinkSymbol) {
 }
 
 TEST(DynamicsSymbol, JointSymbol) {
-  const unsigned char joint_index = 1;
+  const uint8_t joint_index = 1;
   const uint64_t t = 10;
   const DynamicsSymbol symbol =
       DynamicsSymbol::JointSymbol("q", joint_index, 10);
