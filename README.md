@@ -43,12 +43,15 @@ sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cm
 # sdformat requires libignition-math
 sudo apt-get install libignition-math4-dev
 
-# Specifically download sdformat8
-wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-8.6.1.tar.bz2
+# Set the version to install
+export GTD_SDFormat_VERSION="10.5.0"
 
-tar -xvjf sdformat-8.6.1.tar.bz2
+# Download specific version of SDFormat
+wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 
-cd sdformat-8.6.1
+tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+
+cd sdformat-${GTD_SDFormat_VERSION}
 mkdir build && cd build
 
 cmake -DCMAKE_INSTALL_PREFIX ../install ..
