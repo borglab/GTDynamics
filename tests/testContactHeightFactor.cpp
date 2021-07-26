@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testContactKinematicsPoseFactor.cpp
+ * @file  testContactHeightFactor.cpp
  * @brief test contact kinematics pose factor.
  * @author Alejandro Escontrela
  */
@@ -25,7 +25,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
+#include "gtdynamics/factors/ContactHeightFactor.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -33,7 +33,7 @@ using gtsam::assert_equal;
 /**
  * Test the evaluateError method with various link twists.
  **/
-TEST(ContactKinematicsPoseFactor, error) {
+TEST(ContactHeightFactor, Error) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
@@ -41,8 +41,8 @@ TEST(ContactKinematicsPoseFactor, error) {
 
   // Transform from the robot com to the link end.
   gtsam::Point3 comPc(0, 0, 1);
-  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
-                                     gtsam::Vector3(0, 0, -9.8), 0);
+  ContactHeightFactor factor(pose_key, cost_model, comPc,
+                             gtsam::Vector3(0, 0, -9.8), 0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -86,7 +86,7 @@ TEST(ContactKinematicsPoseFactor, error) {
 /**
  * Test the evaluateError method with various link twists.
  **/
-TEST(ContactKinematicsPoseFactor, error_with_height) {
+TEST(ContactHeightFactor, ErrorWithHeight) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
@@ -96,8 +96,8 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
   gtsam::Point3 comPc(0, 0, 1);
 
   // Create a factor that establishes a ground plane at z = -1.0.
-  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
-                                     gtsam::Vector3(0, 0, -9.8), -1.0);
+  ContactHeightFactor factor(pose_key, cost_model, comPc,
+                             gtsam::Vector3(0, 0, -9.8), -1.0);
 
   // Leg oriented upwards with contact away from the ground.
   EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
@@ -142,7 +142,7 @@ TEST(ContactKinematicsPoseFactor, error_with_height) {
  * Test the optimization of a link twist to ensure zero
  * velocity at the contact point.
  **/
-TEST(ContactKinematicsPoseFactor, optimization) {
+TEST(ContactHeightFactor, Optimization) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
       gtsam::noiseModel::Constrained::All(1);
 
@@ -150,8 +150,8 @@ TEST(ContactKinematicsPoseFactor, optimization) {
 
   // Transform from the contact frame to the link com.
   gtsam::Point3 comPc(0, 0, 1);
-  ContactKinematicsPoseFactor factor(pose_key, cost_model, comPc,
-                                     gtsam::Vector3(0, 0, -9.8));
+  ContactHeightFactor factor(pose_key, cost_model, comPc,
+                             gtsam::Vector3(0, 0, -9.8));
 
   // Initial link pose.
   gtsam::Pose3 link_pose_init = gtsam::Pose3(

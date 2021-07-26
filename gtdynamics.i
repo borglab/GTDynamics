@@ -152,13 +152,11 @@ class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
                                     const gtsam::noiseModel::Base *cost_model);
 };
 
-#include <gtdynamics/factors/ContactKinematicsPoseFactor.h>
-class ContactKinematicsPoseFactor : gtsam::NonlinearFactor {
-  ContactKinematicsPoseFactor(gtsam::Key pose_key,
-                              gtsam::noiseModel::Base *cost_model,
-                              const gtsam::Point3 &cTcom,
-                              const gtsam::Vector3 &gravity,
-                              double ground_plane_height = 0.0);
+#include <gtdynamics/factors/ContactHeightFactor.h>
+class ContactHeightFactor : gtsam::NonlinearFactor {
+  ContactHeightFactor(gtsam::Key pose_key, gtsam::noiseModel::Base *cost_model,
+                      const gtsam::Point3 &cTcom, const gtsam::Vector3 &gravity,
+                      double ground_plane_height = 0.0);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
