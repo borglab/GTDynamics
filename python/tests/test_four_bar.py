@@ -14,8 +14,8 @@
 import unittest
 
 import gtsam
-from gtsam import Pose3, Rot3
 import numpy as np
+from gtsam import Pose3, Rot3
 
 import gtdynamics as gtd
 

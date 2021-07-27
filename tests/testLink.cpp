@@ -29,7 +29,7 @@ using gtsam::Rot3;
 
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
-  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(), Pose3(),
+  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
           Pose3(Rot3(), Point3(0, 0, 1)));
 
   // name

@@ -165,34 +165,33 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
-    Link();
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_);
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_, bool is_fixed);
+  Link();
+  Link(int id, const string &name, const double mass, const Matrix &inertia,
+       const gtsam::Pose3 &wTl, const gtsam::Pose3 &lTcom,
+       bool is_fixed = false);
+  Link(int id, const string &name, const double mass, const Matrix &inertia,
+       const gtsam::Pose3 &lTcom, bool is_fixed = false);
 
-    gtdynamics::Link* shared();
-    int id() const;
-    void addJoint(gtdynamics::Joint* joint_ptr);
-    const gtsam::Pose3 &wTl() const;
-    const gtsam::Pose3 &lTcom() const;
-    const gtsam::Pose3 wTcom() const;
-    const gtsam::Pose3 &getFixedPose() const;
-    bool isFixed() const;
-    void fix();
-    void fix(gtsam::Pose3 & fixed_pose);
-    void unfix();
-    const std::vector<Joint*> &joints() const;
-    size_t numJoints() const;
-    string name() const;
-    double mass() const;
-    const gtsam::Pose3 &centerOfMass();
-    const Matrix &inertia();
-    gtsam::Matrix6 inertiaMatrix();
+  gtdynamics::Link *shared();
+  int id() const;
+  void addJoint(gtdynamics::Joint *joint_ptr);
+  const gtsam::Pose3 &wTl() const;
+  const gtsam::Pose3 &lTcom() const;
+  const gtsam::Pose3 wTcom() const;
+  const gtsam::Pose3 &getFixedPose() const;
+  bool isFixed() const;
+  void fix();
+  void fix(gtsam::Pose3 &fixed_pose);
+  void unfix();
+  const std::vector<Joint *> &joints() const;
+  size_t numJoints() const;
+  string name() const;
+  double mass() const;
+  const gtsam::Pose3 &centerOfMass();
+  const Matrix &inertia();
+  gtsam::Matrix6 inertiaMatrix();
 
-    void print(const std::string &s = "") const;
+  void print(const std::string &s = "") const;
 };
 
 /********************** joint **********************/
