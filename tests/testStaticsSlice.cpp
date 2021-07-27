@@ -41,22 +41,15 @@ TEST(Statics, OneMovingLink) {
                       Fg_B, kTol));
 
   // Create base and link
-  // TODO(frank): #207 should not have to provide wTl to Link constructor
   const Pose3 lTcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
-  auto base =
-      boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3(), true);
+  auto base = boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), true);
   auto link = boost::make_shared<Link>(1, "link", 1.0, I3, lTcom);
 
   // Create joint
   constexpr unsigned char id = 22;
-  // TODO(frank): #206 should not have to provide wTj to the joint constructor.
-  const Pose3 wTj;
-  // TODO(frank): #205 make JointParams last argument and provide default
-  const JointParams jointParams;
   const Vector3 axis(0, 0, 1);
-  auto joint = boost::make_shared<RevoluteJoint>(id, "joint1", wTj, base, link,
-                                                 jointParams, axis);
+  auto joint = boost::make_shared<RevoluteJoint>(id, "joint1", base, link, axis);
 
   // Create mechanism.
   // TODO(frank): specifying name is redundant and failure prone!

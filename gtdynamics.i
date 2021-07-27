@@ -231,27 +231,30 @@ virtual class JointTyped : gtdynamics::Joint {
 virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
-  RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                const gtdynamics::Link* parent_link,
-                const gtdynamics::Link* child_link,
-                const gtdynamics::JointParams &parameters, const Vector &axis);
+  RevoluteJoint(
+      int id, const string &name, const gtdynamics::Link *parent_link,
+      const gtdynamics::Link *child_link, const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
+      const gtsam::Pose3 &wTj = gtsam::Pose3());
   void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
-  PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                 const gtdynamics::Link* parent_link,
-                 const gtdynamics::Link* child_link,
-                 const gtdynamics::JointParams &parameters, const Vector &axis);
+  PrismaticJoint(
+      int id, const string &name, const gtdynamics::Link *parent_link,
+      const gtdynamics::Link *child_link, const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
+      const gtsam::Pose3 &wTj = gtsam::Pose3());
   void print(const string &s = "") const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
-  ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::Link* parent_link,
-             const gtdynamics::Link* child_link,
-             const gtdynamics::JointParams &parameters, const Vector &axis,
-             double thread_pitch);
+  ScrewJoint(
+      int id, const string &name, const gtdynamics::Link *parent_link,
+      const gtdynamics::Link *child_link, const Vector &axis,
+      double thread_pitch,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
+      const gtsam::Pose3 &wTj = gtsam::Pose3());
   void print(const string &s = "") const;
 };
 

@@ -41,6 +41,6 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
   return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      1, "j1", wTj, l1, l2, joint_params, jScrewAxis.head<3>(), jScrewAxis));
+      1, "j1", l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params, wTj));
 }
 }  // namespace gtdynamics
