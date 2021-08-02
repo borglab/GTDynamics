@@ -1,7 +1,6 @@
 name: macOS CI
 
-# TODO Uncomment when ready to enable CI
-# on: [pull_request]
+on: [pull_request]
 
 jobs:
   build:
