@@ -1,5 +1,8 @@
 # GTDynamics
 
+**<span style=“color:red”>This library is still under very active development, hence bleeding edge, and not "supported" in the way [GTSAM](https://gtsam.org) is. In particular, we are still actively re-factoring the way we deal with time and time intervals.</span>**
+
+
 ### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
 <!-- =================================================== -->
 
