@@ -17,10 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [
-          ubuntu-18.04-gcc-9,
-          ubuntu-18.04-clang-9,
-        ]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -36,27 +33,50 @@ jobs:
             version: "9"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-      - name: Dependencies
+      - name: Setup Compiler
         run: |
-          brew tap osrf/simulation
-          brew install sdformat8
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            brew install gcc@${{ matrix.version }}
+            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
+
           else
-            sudo xcode-select -switch /Applications/Xcode_${{ matrix.version }}.app
+            sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
+
+      - name: Install SDFormat
+        run: |
+          # sudo apt-get -y update
+          # sudo apt-get install libsdformat8-dev
+
+          brew install ruby swig
+          sudo apt-get -y remove ruby
+
+          brew tap osrf/simulation
+          brew install sdformat8
+
+      - name: Install GTSAM
+        run: |
+          sudo add-apt-repository -y ppa:borglab/gtsam-develop
+          sudo apt-get -y update
+          sudo apt-get -y install libgtsam-dev libgtsam-unstable-dev
+
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Build Directory
+        run: mkdir build
+
       - name: Configure
         run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
         working-directory: ./build
+
       - name: Build
         run: make -j4
         working-directory: ./build
+
       - name: Test
         run: make -j4 check
         working-directory: ./build

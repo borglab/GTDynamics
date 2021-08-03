@@ -1,6 +1,6 @@
 name: macOS CI
 
-on: [pull_request]
+# on: [pull_request]
 
 jobs:
   build:
@@ -30,12 +30,8 @@ jobs:
             version: "11.3.1"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-      - name: Dependencies
+      - name: Setup Compiler
         run: |
-          brew tap osrf/simulation
-          brew install sdformat8
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             brew install gcc@${{ matrix.version }}
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
@@ -45,12 +41,36 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
+
+      - name: Dependencies
+        run: |
+          brew install boost
+          brew tap osrf/simulation
+          brew install sdformat8
+
+      - name: GTSAM
+        run: |
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd build
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          make -j4 install
+          cd  # go back to home directory
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build Directory
+        run: mkdir ./build
+
       - name: Configure
         run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
         working-directory: ./build
+
       - name: Build
         run: make -j4
         working-directory: ./build
+
       - name: Test
         run: make -j4 check
         working-directory: ./build
