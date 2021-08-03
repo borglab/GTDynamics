@@ -75,18 +75,26 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const LinkSharedPtr &parent_link,
                     const LinkSharedPtr &child_link) {
-  auto frame = sdf_joint.PoseRelativeTo();
-  Pose3 sdf_joint_pose = Pose3FromIgnition(sdf_joint.RawPose());
-  if (frame.empty() || frame == child_link->name()) {
-    if (sdf_joint.RawPose() == ignition::math::Pose3d()) {
-      return child_link->wTl();
-    } else {
-      return child_link->wTl() * Pose3FromIgnition(sdf_joint.RawPose());
-    }
-  } else if (frame == parent_link->name()) {
-    return parent_link->wTl() * Pose3FromIgnition(sdf_joint.RawPose());
-  } else if (frame == "world") {
-    return Pose3FromIgnition(sdf_joint.RawPose());
+  // Name of the coordinate frame the joint's pose is relative to.
+  // Specified by `relative_to` in the SDF file.
+  std::string frame_name = sdf_joint.PoseRelativeTo();
+
+  // Get the pose of the joint in the parent or child link's frame depending on
+  // the value of `frame_name`.
+  Pose3 lTj = Pose3FromIgnition(sdf_joint.RawPose());
+
+  if (frame_name.empty() || frame_name == child_link->name()) {
+    // If `frame_name` is empty or has the same name as the child_link, it means
+    // the joint frame is relative to the child link. So to get the joint pose
+    // in the world frame, we pre-multiply by the child link's frame.
+    return child_link->wTl() * lTj;
+
+  } else if (frame_name == parent_link->name()) {
+    // Else the joint pose is in the frame of the parent link.
+    return parent_link->wTl() * lTj;
+  } else if (frame_name == "world") {
+    // If `frame_name` is "world", the joint pose is already in the world frame.
+    return lTj;
   } else {
     // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
     throw std::runtime_error(
@@ -108,22 +116,23 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
 
   /// Call SemanticPose::Resolve so the pose is resolved to the correct frame
   /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
-  // Get non-const Pose3d
-  auto jTl = sdf_link.RawPose();
+  // Get non-const pose of link in the frame of the joint it is connect to (http://wiki.ros.org/urdf/XML/link).
+  auto raw_pose = sdf_link.RawPose();
+
   // Update from joint frame to base frame in-place.
   // Base frame is denoted by "".
-  auto errors = sdf_link.SemanticPose().Resolve(jTl, "");
+  auto errors = sdf_link.SemanticPose().Resolve(raw_pose, "");
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
     throw std::runtime_error(errors[0].Message());
   }
-  // Pose is updated from joint frame to world frame.
-  const auto wTl = Pose3FromIgnition(jTl);
+  // Pose is updated from joint frame to base frame.
+  const auto bTl = Pose3FromIgnition(raw_pose);
   const auto lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
 
   return boost::make_shared<Link>(id, sdf_link.Name(),
                                   sdf_link.Inertial().MassMatrix().Mass(),
-                                  inertia, wTl, lTcom);
+                                  inertia, bTl, lTcom);
 }
 
 LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
