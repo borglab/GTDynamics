@@ -92,9 +92,11 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   } else if (frame_name == parent_link->name()) {
     // Else the joint pose is in the frame of the parent link.
     return parent_link->wTl() * lTj;
+
   } else if (frame_name == "world") {
     // If `frame_name` is "world", the joint pose is already in the world frame.
     return lTj;
+
   } else {
     // TODO(gchen328): get pose frame from name. Need sdf::Model to do that
     throw std::runtime_error(
@@ -116,7 +118,8 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
 
   /// Call SemanticPose::Resolve so the pose is resolved to the correct frame
   /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
-  // Get non-const pose of link in the frame of the joint it is connect to (http://wiki.ros.org/urdf/XML/link).
+  // Get non-const pose of link in the frame of the joint it is connect to
+  // (http://wiki.ros.org/urdf/XML/link).
   auto raw_pose = sdf_link.RawPose();
 
   // Update from joint frame to base frame in-place.
