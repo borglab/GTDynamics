@@ -17,9 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [
-          macOS-10.15-xcode-11.3.1,
-        ]
+        name: [macOS-10.15-xcode-11.3.1]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -55,7 +53,7 @@ jobs:
           mkdir build && cd build
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
           make -j4 install
-          cd  # go back to home directory
+          cd ../../ # go back to home directory
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -64,7 +62,8 @@ jobs:
         run: mkdir ./build
 
       - name: Configure
-        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
         working-directory: ./build
 
       - name: Build

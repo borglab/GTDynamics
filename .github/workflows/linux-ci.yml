@@ -46,20 +46,24 @@ jobs:
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
 
-      - name: Install GTSAM
+      - name: Install Dependencies
         run: |
-          sudo add-apt-repository -y ppa:borglab/gtsam-develop
-          sudo apt-get -y update
-          sudo apt-get -y install libgtsam-dev libgtsam-unstable-dev
-
-      - name: Install SDFormat
-        run: |
-          # Set up the package channel.
+          # For SDFormat
           sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get update
 
-          sudo apt-get install libsdformat10-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+
+      - name: GTSAM
+        run: |
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd build
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          sudo make -j4 install
+          sudo ldconfig
+          cd ../../ # go back to home directory
 
       - name: Checkout
         uses: actions/checkout@master
@@ -68,7 +72,8 @@ jobs:
         run: mkdir build
 
       - name: Configure
-        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
         working-directory: ./build
 
       - name: Build
