@@ -33,7 +33,7 @@ using gtsam::Rot3;
 using gtsam::Values;
 
 // Load a URDF file and ensure its joints and links were parsed correctly.
-TEST(utils, load_and_parse_urdf_file) {
+TEST(Sdf, load_and_parse_urdf_file) {
   // Load the file and parse URDF structure.
   auto simple_urdf = GetSdf(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
@@ -55,14 +55,14 @@ TEST(utils, load_and_parse_urdf_file) {
   EXPECT(assert_equal(3, simple_urdf.LinkByName("l2")->Inertial().Moi()(2, 2)));
 }
 
-TEST(utils, load_and_parse_sdf_file) {
+TEST(Sdf, load_and_parse_sdf_file) {
   auto simple_sdf = GetSdf(kSdfPath + std::string("/test/simple.sdf"));
 
   EXPECT(assert_equal(1, simple_sdf.LinkCount()));
   EXPECT(assert_equal(0, simple_sdf.JointCount()));
 }
 
-TEST(utils, load_and_parse_sdf_world_file) {
+TEST(Sdf, load_and_parse_sdf_world_file) {
   auto simple_sdf =
       GetSdf(kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
 
@@ -81,7 +81,7 @@ TEST(utils, load_and_parse_sdf_world_file) {
   EXPECT(assert_equal(0.03, l1.Inertial().Moi()(2, 2)));
 }
 
-TEST(utils, Pose3FromIgnition) {
+TEST(Sdf, Pose3FromIgnition) {
   ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
 
   gtsam::Pose3 parsed_pose = Pose3FromIgnition(pose_to_parse);
@@ -94,7 +94,7 @@ TEST(utils, Pose3FromIgnition) {
 /**
  * Test parsing of all joint parameters from URDF or SDF files.
  */
-TEST(File, parameters_from_file) {
+TEST(Sdf, parameters_from_file) {
   // Test for reading parameters from a simple URDF.
   auto simple_urdf = GetSdf(kUrdfPath + std::string("/test/simple_urdf.urdf"));
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
@@ -131,7 +131,7 @@ TEST(File, parameters_from_file) {
  * Test parsing of all joint parameters from a robot created via URDF or SDF
  * files.
  */
-TEST(File, create_robot_from_file) {
+TEST(Sdf, create_robot_from_file) {
   // Test for reading parameters from a robot created via simple URDF.
   auto simple_robot =
       CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
@@ -170,7 +170,7 @@ TEST(File, create_robot_from_file) {
 /**
  * Construct a Link via URDF and ensure all values are as expected.
  */
-TEST(Link, urdf_constructor_link) {
+TEST(Sdf, urdf_constructor_link) {
   auto simple_urdf = GetSdf(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   // Initialize Robot instance using urdf::ModelInterfacePtr.
@@ -232,7 +232,7 @@ TEST(Link, urdf_constructor_link) {
 /**
  * Construct a Revolute Joint from URDF and ensure all values are as expected.
  */
-TEST(Joint, urdf_constructor_revolute) {
+TEST(Sdf, urdf_constructor_revolute) {
   auto simple_urdf = GetSdf(kUrdfPath + std::string("/test/simple_urdf.urdf"));
 
   LinkSharedPtr l1 = LinkFromSdf(1, *simple_urdf.LinkByName("l1"));
@@ -268,17 +268,17 @@ TEST(Joint, urdf_constructor_revolute) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(0), Point3(0, 0, 2));
-  Pose3 T_21comRest(Rot3::Rx(0), Point3(0, 0, -2));
+  Pose3 M_12(Rot3::Rx(0), Point3(0, 0, 2));
+  Pose3 M_21(Rot3::Rx(0), Point3(0, 0, -2));
 
-  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0.0)));
-  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0.0)));
+  EXPECT(assert_equal(M_12, j1->relativePoseOf(l2, 0.0)));
+  EXPECT(assert_equal(M_21, j1->relativePoseOf(l1, 0.0)));
 
   // transform to (rotating -pi/2)
-  Pose3 T_12com(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
-  Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
-  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, -M_PI / 2)));
-  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, -M_PI / 2)));
+  Pose3 T_12(Rot3::Rx(-M_PI / 2), Point3(0, 1, 1));
+  Pose3 T_21(Rot3::Rx(M_PI / 2), Point3(0, 1, -1));
+  EXPECT(assert_equal(T_12, j1->relativePoseOf(l2, -M_PI / 2)));
+  EXPECT(assert_equal(T_21, j1->relativePoseOf(l1, -M_PI / 2)));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -306,7 +306,7 @@ TEST(Joint, urdf_constructor_revolute) {
 /**
  * Construct a Revolute Joint from SDF and ensure all values are as expected.
  */
-TEST(Joint, sdf_constructor_revolute) {
+TEST(Sdf, sdf_constructor_revolute) {
   auto model =
       GetSdf(kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
 
@@ -331,13 +331,13 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
-  Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
-  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 M_01(Rot3::identity(), Point3(0, 0, 0.4));
+  Pose3 T_01_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4));
+  Pose3 T_01_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4));
 
-  EXPECT(assert_equal(T_01comRest, j1->relativePoseOf(l1, 0.0)));
-  EXPECT(assert_equal(T_01com_neg, j1->relativePoseOf(l1, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->relativePoseOf(l1, M_PI / 2)));
+  EXPECT(assert_equal(M_01, j1->relativePoseOf(l1, 0.0)));
+  EXPECT(assert_equal(T_01_neg, j1->relativePoseOf(l1, -M_PI / 2)));
+  EXPECT(assert_equal(T_01_pos, j1->relativePoseOf(l1, M_PI / 2)));
 
   // constructor for j2
   JointParams j2_parameters;
@@ -357,17 +357,17 @@ TEST(Joint, sdf_constructor_revolute) {
   EXPECT(assert_equal(screw_axis_j2_l2, j2->screwAxis(l2)));
 
   // Check transform from l1 com to l2 com at rest and at various angles.
-  Pose3 T_12com_rest(Rot3::identity(), Point3(0, 0, 0.6));
-  Pose3 T_12com_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
-  Pose3 T_12com_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
+  Pose3 M_12(Rot3::identity(), Point3(0, 0, 0.6));
+  Pose3 T_12_pi_2(Rot3::Ry(M_PI / 2), Point3(0.3, 0.0, 0.3));
+  Pose3 T_12_pi_4(Rot3::Ry(M_PI / 4), Point3(0.2121, 0.0, 0.5121));
 
-  EXPECT(assert_equal(T_12com_rest, j2->relativePoseOf(l2, 0.0)));
-  EXPECT(assert_equal(T_12com_pi_2, j2->relativePoseOf(l2, M_PI / 2.0)));
-  EXPECT(assert_equal(T_12com_pi_4, j2->relativePoseOf(l2, M_PI / 4.0), 1e-3));
+  EXPECT(assert_equal(M_12, j2->relativePoseOf(l2, 0.0)));
+  EXPECT(assert_equal(T_12_pi_2, j2->relativePoseOf(l2, M_PI / 2.0)));
+  EXPECT(assert_equal(T_12_pi_4, j2->relativePoseOf(l2, M_PI / 4.0), 1e-3));
 }
 
 // Test parsing of Revolute joint limit values from various robots.
-TEST(Joint, limit_params) {
+TEST(Sdf, limit_params) {
   // Check revolute joint limits parsed correctly for first test robot.
   auto model = GetSdf(kSdfPath + std::string("/test/four_bar_linkage.sdf"));
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("l1"));
@@ -417,7 +417,7 @@ TEST(Joint, limit_params) {
  * Construct a Prismatic joint from URDF and ensure joint type and screw axis
  * are as expected.
  */
-TEST(Joint, urdf_constructor_prismatic) {
+TEST(Sdf, urdf_constructor_prismatic) {
   auto simple_urdf =
       GetSdf(kUrdfPath + std::string("/test/simple_urdf_prismatic.urdf"));
 
@@ -457,16 +457,16 @@ TEST(Joint, urdf_constructor_prismatic) {
   EXPECT(j1->otherLink(l1) == l2);
 
   // rest transform
-  Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
-  Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0), 1e-5));
+  Pose3 M_12(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
+  Pose3 M_21(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
+  EXPECT(assert_equal(M_12, j1->relativePoseOf(l2, 0), 1e-5));
+  EXPECT(assert_equal(M_21, j1->relativePoseOf(l1, 0), 1e-5));
 
   // transform to (translating +1)
-  Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
-  Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
-  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, 1), 1e-5));
+  Pose3 T_12(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
+  Pose3 T_21(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
+  EXPECT(assert_equal(T_12, j1->relativePoseOf(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_21, j1->relativePoseOf(l1, 1), 1e-5));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
@@ -495,7 +495,7 @@ TEST(Joint, urdf_constructor_prismatic) {
  * Construct a Screw joint from SDF and ensure joint type and screw axis
  * are as expected.
  */
-TEST(Joint, sdf_constructor_screw) {
+TEST(Sdf, sdf_constructor_screw) {
   auto model = GetSdf(kSdfPath + std::string("/test/simple_screw_joint.sdf"),
                       "simple_screw_joint_sdf");
 
@@ -522,13 +522,13 @@ TEST(Joint, sdf_constructor_screw) {
   EXPECT(assert_equal(screw_axis_j1_l1, j1->screwAxis(l1)));
 
   // Check transform from l0 com to l1 com at rest and at various angles.
-  Pose3 T_01comRest(Rot3::identity(), Point3(0, 0, 0.4));
-  Pose3 T_01com_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4 - 0.125));
-  Pose3 T_01com_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4 + 0.125));
+  Pose3 M_01(Rot3::identity(), Point3(0, 0, 0.4));
+  Pose3 T_01_neg(Rot3::Rz(-M_PI / 2), Point3(0, 0, 0.4 - 0.125));
+  Pose3 T_01_pos(Rot3::Rz(M_PI / 2), Point3(0, 0, 0.4 + 0.125));
 
-  EXPECT(assert_equal(T_01comRest, j1->relativePoseOf(l1, 0)));
-  EXPECT(assert_equal(T_01com_neg, j1->relativePoseOf(l1, -M_PI / 2)));
-  EXPECT(assert_equal(T_01com_pos, j1->relativePoseOf(l1, M_PI / 2)));
+  EXPECT(assert_equal(M_01, j1->relativePoseOf(l1, 0)));
+  EXPECT(assert_equal(T_01_neg, j1->relativePoseOf(l1, -M_PI / 2)));
+  EXPECT(assert_equal(T_01_pos, j1->relativePoseOf(l1, M_PI / 2)));
 }
 
 // Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
@@ -577,7 +577,7 @@ TEST(Robot, simple_urdf) {
 }
 
 // Check the links in the simple RR robot.
-TEST(Link, sdf_constructor) {
+TEST(Sdf, sdf_constructor) {
   std::string file_path = kSdfPath + std::string("/test/simple_rr.sdf");
   std::string model_name = "simple_rr_sdf";
   Link l0 = Link(*LinkFromSdf(0, "link_0", file_path, model_name));
