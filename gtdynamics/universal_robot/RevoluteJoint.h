@@ -46,16 +46,15 @@ class RevoluteJoint : public ScrewJointBase {
    * @param[in] wTj           joint pose expressed in world frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
+   * @param[in] parameters    JointParams struct
    */
-  RevoluteJoint(uint8_t id, const std::string &name,
+  RevoluteJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &wTj,
                 const LinkSharedPtr &parent_link,
                 const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
-                const JointParams &parameters = JointParams(),
-                const gtsam::Pose3 &wTj = gtsam::Pose3())
-      : ScrewJointBase(id, name, parent_link, child_link, axis,
-                       getScrewAxis(axis), parameters, wTj) {}
+                const JointParams &parameters = JointParams())
+      : ScrewJointBase(id, name, wTj, parent_link, child_link, axis,
+                       getScrewAxis(axis), parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::Revolute; }

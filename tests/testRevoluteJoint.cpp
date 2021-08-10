@@ -55,8 +55,8 @@ TEST(Joint, params_constructor) {
 
   const Vector3 axis = (Vector(3) << 1, 0, 0).finished();
 
-  RevoluteJoint j1(1, "j1", l1, l2, axis, parameters,
-                   Pose3(Rot3(), Point3(0, 0, 2)));
+  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                   parameters);
 
   // name
   EXPECT(assert_equal(j1.name(), "j1"));

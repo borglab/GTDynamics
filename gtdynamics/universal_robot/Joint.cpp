@@ -23,9 +23,9 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Joint::Joint(uint8_t id, const std::string &name,
+Joint::Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-             const JointParams &parameters, const Pose3 &wTj)
+             const JointParams &parameters)
     : id_(id),
       name_(name),
       wTj_(wTj),

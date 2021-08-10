@@ -169,8 +169,6 @@ class Link  {
   Link(int id, const string &name, const double mass, const Matrix &inertia,
        const gtsam::Pose3 &wTl, const gtsam::Pose3 &lTcom,
        bool is_fixed = false);
-  Link(int id, const string &name, const double mass, const Matrix &inertia,
-       const gtsam::Pose3 &lTcom, bool is_fixed = false);
 
   gtdynamics::Link *shared();
   int id() const;
@@ -232,29 +230,28 @@ virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
   RevoluteJoint(
-      int id, const string &name, const gtdynamics::Link *parent_link,
-      const gtdynamics::Link *child_link, const Vector &axis,
-      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
-      const gtsam::Pose3 &wTj = gtsam::Pose3());
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   PrismaticJoint(
-      int id, const string &name, const gtdynamics::Link *parent_link,
-      const gtdynamics::Link *child_link, const Vector &axis,
-      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
-      const gtsam::Pose3 &wTj = gtsam::Pose3());
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
   ScrewJoint(
-      int id, const string &name, const gtdynamics::Link *parent_link,
-      const gtdynamics::Link *child_link, const Vector &axis,
-      double thread_pitch,
-      const gtdynamics::JointParams &parameters = gtdynamics::JointParams(),
-      const gtsam::Pose3 &wTj = gtsam::Pose3());
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis, double thread_pitch,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 

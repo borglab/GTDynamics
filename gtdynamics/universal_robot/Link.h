@@ -92,28 +92,6 @@ class Link : public boost::enable_shared_from_this<Link> {
         lTcom_(lTcom),
         is_fixed_(is_fixed) {}
 
-  /**
-   * @brief Construct a new Link object with default pose in spatial frame.
-   * 
-   * @param id Link ID
-   * @param name The name of the link as defined in the SDF/URDF file.
-   * @param mass The mass of the link.
-   * @param inertia The inertial matrix of the link.
-   * @param wTl The pose of the link in the spatial frame.
-   * @param lTcom The transform of the link's CoM in the link frame.
-   * @param is_fixed Flag indicating if the link is fixed.
-   */
-  Link(uint8_t id, const std::string &name, const double mass,
-       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &lTcom,
-       bool is_fixed = false)
-      : id_(id),
-        name_(name),
-        mass_(mass),
-        inertia_(inertia),
-        wTl_(gtsam::Pose3()),
-        lTcom_(lTcom),
-        is_fixed_(is_fixed) {}
-
   /** destructor */
   virtual ~Link() = default;
 

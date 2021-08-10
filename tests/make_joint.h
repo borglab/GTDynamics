@@ -26,7 +26,7 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   gtsam::Matrix3 inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
   gtsam::Pose3 wTl, lTcom;
 
-  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, lTcom));
+  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, wTl, lTcom));
   auto l2 = boost::make_shared<Link>(
       Link(2, name, mass, inertia, cMp.inverse(), lTcom));
 
@@ -41,6 +41,6 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   gtsam::Vector6 jScrewAxis = jTccom.AdjointMap() * cScrewAxis;
 
   return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      1, "j1", l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params, wTj));
+      1, "j1", wTj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
 }
 }  // namespace gtdynamics

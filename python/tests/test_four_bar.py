@@ -48,14 +48,14 @@ class TestFourBar(unittest.TestCase):
         j3_pose = Pose3(Rot3.Rz(0), (0, 2, 0))
         j4_pose = Pose3(Rot3.Rz(0), (0, 0, 0))
 
-        joint1 = gtd.RevoluteJoint(1, "j1", link1, link2, axis, params,
-                                   j1_pose)
-        joint2 = gtd.RevoluteJoint(2, "j2", link2, link3, axis, params,
-                                   j2_pose)
-        joint3 = gtd.RevoluteJoint(3, "j3", link3, link4, axis, params,
-                                   j3_pose)
-        joint4 = gtd.RevoluteJoint(4, "j4", link4, link1, axis, params,
-                                   j4_pose)
+        joint1 = gtd.RevoluteJoint(1, "j1", j1_pose, link1, link2, axis,
+                                   params)
+        joint2 = gtd.RevoluteJoint(2, "j2", j2_pose, link2, link3, axis,
+                                   params)
+        joint3 = gtd.RevoluteJoint(3, "j3", j3_pose, link3, link4, axis,
+                                   params)
+        joint4 = gtd.RevoluteJoint(4, "j4", j4_pose, link4, link1, axis,
+                                   params)
         joints = {"j1": joint1, "j2": joint2, "j3": joint3, "j4": joint4}
 
         # connect links to joints

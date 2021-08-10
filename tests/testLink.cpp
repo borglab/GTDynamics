@@ -29,7 +29,7 @@ using gtsam::Rot3;
 
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
-  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(), Pose3(),
           Pose3(Rot3(), Point3(0, 0, 1)));
 
   // name
@@ -68,8 +68,8 @@ TEST(Link, NumJoints) {
   EXPECT_LONGS_EQUAL(1, l1->numJoints());
 
   auto j2 = boost::make_shared<RevoluteJoint>(
-      123, "j2", l1, l2, gtsam::Vector3(1, 0, 0), JointParams(),
-      Pose3(Rot3(), Point3(0, 0.5, 2)));
+      123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2,
+      gtsam::Vector3(1, 0, 0), JointParams());
 
   l1->addJoint(j2);
   EXPECT_LONGS_EQUAL(2, l1->numJoints());
