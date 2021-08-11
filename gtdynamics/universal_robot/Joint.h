@@ -101,8 +101,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// ID reference to DynamicsSymbol.
   uint8_t id_;
 
-  /// Joint frame defined in world frame.
-  Pose3 wTj_;
   /// Rest transform to parent link CoM frame from joint frame.
   Pose3 jMp_;
   /// Rest transform to child link CoM frame from joint frame.
@@ -150,9 +148,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Get the joint's ID.
   uint8_t id() const { return id_; }
 
-  /// Transform from the world frame to the joint frame.
-  const Pose3 &wTj() const { return wTj_; }
-
   /// Transform from the joint frame to the parent's center of mass.
   const Pose3 &jMp() const { return jMp_; }
 
@@ -186,8 +181,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->wTj_.equals(other.wTj_) && this->jMp_.equals(other.jMp_) &&
-            this->jMc_.equals(other.jMc_));
+            this->jMp_.equals(other.jMp_) && this->jMc_.equals(other.jMc_));
   }
 
   bool operator!=(const Joint &other) const { return !(*this == other); }
