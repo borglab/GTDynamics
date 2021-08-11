@@ -107,8 +107,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   Pose3 jMp_;
   /// Rest transform to child link CoM frame from joint frame.
   Pose3 jMc_;
-  /// Transform to parent link com frame from child link com frame at rest.
-  Pose3 pMccom_;
 
   using LinkSharedPtr = boost::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
@@ -188,10 +186,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->wTj_.equals(other.wTj_) &&
-            this->jMp_.equals(other.jMp_) &&
-            this->jMc_.equals(other.jMc_) &&
-            this->pMccom_.equals(other.pMccom_));
+            this->wTj_.equals(other.wTj_) && this->jMp_.equals(other.jMp_) &&
+            this->jMc_.equals(other.jMc_));
   }
 
   bool operator!=(const Joint &other) const { return !(*this == other); }

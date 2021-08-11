@@ -34,7 +34,6 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
       parameters_(parameters) {
   jMp_ = wTj_.inverse() * parent_link_->wTcom();
   jMc_ = wTj_.inverse() * child_link_->wTcom();
-  pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
 }
 
 /* ************************************************************************* */

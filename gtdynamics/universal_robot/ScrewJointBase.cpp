@@ -40,15 +40,17 @@ namespace gtdynamics {
 Pose3 ScrewJointBase::parentTchild(
     double q,
     gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
+  const Pose3 pMc = jMp_.inverse() * jMc_;
+
   if (pMc_H_q) {
     gtsam::Matrix6 exp_H_Sq;
     Vector6 Sq = cScrewAxis_ * q;
     Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
-    Pose3 pMc = pMccom_.compose(exp);  // derivative in exp is identity!
+    Pose3 pTc = pMc * exp;  // derivative in exp is identity!
     *pMc_H_q = exp_H_Sq * cScrewAxis_;
-    return pMc;
+    return pTc;
   } else {
-    return pMccom_ * Pose3::Expmap(cScrewAxis_ * q);
+    return pMc * Pose3::Expmap(cScrewAxis_ * q);
   }
 }
 
