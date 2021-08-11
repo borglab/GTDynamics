@@ -104,9 +104,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Joint frame defined in world frame.
   Pose3 wTj_;
   /// Rest transform to parent link CoM frame from joint frame.
-  Pose3 jTpcom_;
+  Pose3 jMp_;
   /// Rest transform to child link CoM frame from joint frame.
-  Pose3 jTccom_;
+  Pose3 jMc_;
   /// Transform to parent link com frame from child link com frame at rest.
   Pose3 pMccom_;
 
@@ -156,10 +156,10 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   const Pose3 &wTj() const { return wTj_; }
 
   /// Transform from the joint frame to the parent's center of mass.
-  const Pose3 &jTpcom() const { return jTpcom_; }
+  const Pose3 &jMp() const { return jMp_; }
 
   /// Transform from the joint frame to the child's center of mass.
-  const Pose3 &jTccom() const { return jTccom_; }
+  const Pose3 &jMc() const { return jMc_; }
 
   /// Get a gtsam::Key for this joint
   gtsam::Key key() const { return gtsam::Key(id()); }
@@ -189,8 +189,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
             this->wTj_.equals(other.wTj_) &&
-            this->jTpcom_.equals(other.jTpcom_) &&
-            this->jTccom_.equals(other.jTccom_) &&
+            this->jMp_.equals(other.jMp_) &&
+            this->jMc_.equals(other.jMc_) &&
             this->pMccom_.equals(other.pMccom_));
   }
 

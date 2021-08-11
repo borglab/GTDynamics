@@ -214,8 +214,8 @@ class JointParams {
 virtual class Joint {
   uint8_t id() const;
   const gtsam::Pose3 &wTj() const;
-  const gtsam::Pose3 &jTpcom() const;
-  const Pose3 &jTccom() const;
+  const gtsam::Pose3 &jMp() const;
+  const Pose3 &jMc() const;
   string name() const;
   gtdynamics::Link* otherLink(const gtdynamics::Link* link);
   std::vector<gtdynamics::Link*> links() const;
