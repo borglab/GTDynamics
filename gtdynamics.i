@@ -165,34 +165,31 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
-    Link();
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_);
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_, bool is_fixed);
+  Link();
+  Link(int id, const string &name, const double mass, const Matrix &inertia,
+       const gtsam::Pose3 &wTl, const gtsam::Pose3 &lTcom,
+       bool is_fixed = false);
 
-    gtdynamics::Link* shared();
-    int id() const;
-    void addJoint(gtdynamics::Joint* joint_ptr);
-    const gtsam::Pose3 &wTl() const;
-    const gtsam::Pose3 &lTcom() const;
-    const gtsam::Pose3 wTcom() const;
-    const gtsam::Pose3 &getFixedPose() const;
-    bool isFixed() const;
-    void fix();
-    void fix(gtsam::Pose3 & fixed_pose);
-    void unfix();
-    const std::vector<Joint*> &joints() const;
-    size_t numJoints() const;
-    string name() const;
-    double mass() const;
-    const gtsam::Pose3 &centerOfMass();
-    const Matrix &inertia();
-    gtsam::Matrix6 inertiaMatrix();
+  gtdynamics::Link *shared();
+  int id() const;
+  void addJoint(gtdynamics::Joint *joint_ptr);
+  const gtsam::Pose3 &wTl() const;
+  const gtsam::Pose3 &lTcom() const;
+  const gtsam::Pose3 wTcom() const;
+  const gtsam::Pose3 &getFixedPose() const;
+  bool isFixed() const;
+  void fix();
+  void fix(gtsam::Pose3 &fixed_pose);
+  void unfix();
+  const std::vector<Joint *> &joints() const;
+  size_t numJoints() const;
+  string name() const;
+  double mass() const;
+  const gtsam::Pose3 &centerOfMass();
+  const Matrix &inertia();
+  gtsam::Matrix6 inertiaMatrix();
 
-    void print(const std::string &s = "") const;
+  void print(const std::string &s = "") const;
 };
 
 /********************** joint **********************/
@@ -232,27 +229,29 @@ virtual class JointTyped : gtdynamics::Joint {
 virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
-  RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                const gtdynamics::Link* parent_link,
-                const gtdynamics::Link* child_link,
-                const gtdynamics::JointParams &parameters, const Vector &axis);
+  RevoluteJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
-  PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                 const gtdynamics::Link* parent_link,
-                 const gtdynamics::Link* child_link,
-                 const gtdynamics::JointParams &parameters, const Vector &axis);
+  PrismaticJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
-  ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::Link* parent_link,
-             const gtdynamics::Link* child_link,
-             const gtdynamics::JointParams &parameters, const Vector &axis,
-             double thread_pitch);
+  ScrewJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis, double thread_pitch,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 

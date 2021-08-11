@@ -53,11 +53,9 @@ TEST(Statics, OneMovingLink) {
   constexpr unsigned char id = 22;
   // TODO(frank): #206 should not have to provide wTj to the joint constructor.
   const Pose3 wTj;
-  // TODO(frank): #205 make JointParams last argument and provide default
-  const JointParams jointParams;
   const Vector3 axis(0, 0, 1);
-  auto joint = boost::make_shared<RevoluteJoint>(id, "joint1", wTj, base, link,
-                                                 jointParams, axis);
+  auto joint =
+      boost::make_shared<RevoluteJoint>(id, "joint1", wTj, base, link, axis);
 
   // Create mechanism.
   // TODO(frank): specifying name is redundant and failure prone!
@@ -128,7 +126,7 @@ TEST(Statics, Quadruped) {
   // Solve for wrenches, with known kinematics
   auto result = statics.solve(slice, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
-  //TODO(Varun) Issue #233
+  // TODO(Varun) Issue #233
   // Regression
   // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 

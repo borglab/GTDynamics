@@ -160,16 +160,16 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
       joint = boost::make_shared<PrismaticJoint>(id, name, wTj, parent_link,
-                                                 child_link, parameters, axis);
+                                                 child_link, axis, parameters);
       break;
     case sdf::JointType::REVOLUTE:
       joint = boost::make_shared<RevoluteJoint>(id, name, wTj, parent_link,
-                                                child_link, parameters, axis);
+                                                child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<ScrewJoint>(id, name, wTj, parent_link,
-                                             child_link, parameters, axis,
-                                             sdf_joint.ThreadPitch());
+      joint = boost::make_shared<ScrewJoint>(
+          id, name, wTj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
+          parameters);
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +

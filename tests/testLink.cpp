@@ -68,8 +68,8 @@ TEST(Link, NumJoints) {
   EXPECT_LONGS_EQUAL(1, l1->numJoints());
 
   auto j2 = boost::make_shared<RevoluteJoint>(
-      123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2, JointParams(),
-      gtsam::Vector3(1, 0, 0));
+      123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2,
+      gtsam::Vector3(1, 0, 0), JointParams());
 
   l1->addJoint(j2);
   EXPECT_LONGS_EQUAL(2, l1->numJoints());

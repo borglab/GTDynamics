@@ -68,6 +68,8 @@ struct JointParams {
   double torque_limit_threshold = 0.0;
   double damping_coefficient = 0.0;
   double spring_coefficient = 0.0;
+
+  /// Constructor
   JointParams() {}
 };
 
@@ -130,10 +132,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @param[in] wTj          joint pose expressed in world frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
+   * @param[in] parameters   The joint parameters.
    */
   Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-        const JointParams &parameters);
+        const JointParams &parameters = JointParams());
 
   /**
    * @brief Default destructor.
