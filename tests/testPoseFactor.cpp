@@ -174,8 +174,6 @@ TEST(PoseFactor, ForwardKinematics) {
   double angle = M_PI_2;
 
   auto link0_key = internal::PoseKey(0, t);
-  auto link1_key = internal::PoseKey(1, t);
-  auto link2_key = internal::PoseKey(2, t);
 
   auto pose_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   auto joint_angle_model = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
