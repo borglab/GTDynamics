@@ -22,7 +22,7 @@ GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot des
 
 ### Homebrew
 
-Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+If you are on a Mac, using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
 
 ```sh
 $ # Install homebrew.
@@ -34,7 +34,7 @@ $ brew install sdformat10
 
 ### Source
 
-Alternatively, you can install from source if you want more fine-tuned control.
+Alternatively, you can install from source if you are on Linux or want more fine-tuned control.
 
 We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
 
