@@ -38,19 +38,25 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 Pose3 ScrewJointBase::parentTchild(
-    double q,
-    gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
+    double q, gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
+  // Calculate pose of child in parent link, at rest.
+  // TODO(dellaert): store `pMj_` rather than `jMp_`
+  // NOTE(dellaert): Only if this is called more often than childTparent
   const Pose3 pMc = jMp_.inverse() * jMc_;
 
+  // Multiply screw axis with joint angle to get a finite 6D screw
+  const Vector6 screw = cScrewAxis_ * q;
+
+  // Calculate the actual relative pose taking into account the joint angle.
+  // TODO(dellaert): use formula `pMj_ * screw_around_Z * jMc_`.
   if (pMc_H_q) {
     gtsam::Matrix6 exp_H_Sq;
-    Vector6 Sq = cScrewAxis_ * q;
-    Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
+    Pose3 exp = Pose3::Expmap(screw, exp_H_Sq);
     Pose3 pTc = pMc * exp;  // derivative in exp is identity!
     *pMc_H_q = exp_H_Sq * cScrewAxis_;
     return pTc;
   } else {
-    return pMc * Pose3::Expmap(cScrewAxis_ * q);
+    return pMc * Pose3::Expmap(screw);
   }
 }
 
