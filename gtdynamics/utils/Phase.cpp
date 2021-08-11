@@ -67,9 +67,9 @@ NonlinearFactorGraph Phase::contactPointObjectives(
   return factors;
 }
 
-Matrix Phase::jointMatrix(const gtsam::Values &results,
+Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,
                           size_t k, boost::optional<double> dt) const {
-  const auto &joints = robot_.joints();
+  const auto &joints = robot.joints();
   const size_t J = joints.size();
   const int m = numTimeSteps(), n = 4 * J + (dt ? 1 : 0);
   Matrix table(m, n);

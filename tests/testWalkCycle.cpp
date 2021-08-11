@@ -58,7 +58,7 @@ TEST(WalkCycle, robotModel) {
   THROWS_EXCEPTION(WalkCycle({phase_1, phase_2}));
 }
 
-TEST(Phase, inverse_kinematics) {
+TEST(WalkCycle, inverse_kinematics) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
   EXPECT_LONGS_EQUAL(13, robot.numLinks());

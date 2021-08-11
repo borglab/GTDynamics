@@ -25,7 +25,13 @@ using std::string;
 #include "contactGoalsExample.h"
 
 TEST(Phase, InverseKinematics) {
-  // TODO(frank): create test for Phase, derived from interval?
+  // Load robot and establish contact/goal pairs
+  using namespace contact_goals_example;
+
+  constexpr size_t num_time_steps = 5;
+  Phase phase0(robot, num_time_steps);
+  phase0.addContactPoint(LH, contact_in_com);
+  phase0.addContactPoint(RF, contact_in_com);
 }
 
 int main() {

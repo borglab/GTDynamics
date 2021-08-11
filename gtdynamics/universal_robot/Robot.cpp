@@ -50,21 +50,6 @@ std::vector<JointSharedPtr> Robot::joints() const {
   return getValues<std::string, JointSharedPtr>(name_to_joint_);
 }
 
-bool Robot::isIdentical(const Robot &other) const {
-  if (name_to_link_.size() != other.numLinks() ||
-      name_to_joint_.size() != other.numJoints())
-    return false;
-  for (int i = 0; i < other.numLinks(); ++i) {
-    if (links()[i]->name() != other.links()[i]->name())
-      return false;
-  }
-  for (int i = 0; i < other.numJoints(); ++i) {
-    if (joints()[i]->name() != other.joints()[i]->name())
-      return false;
-  }
-  return true;
-}
-
 void Robot::removeLink(const LinkSharedPtr &link) {
   // remove all joints associated to the link
   auto joints = link->joints();
