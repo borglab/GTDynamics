@@ -77,8 +77,8 @@ class ScrewJointBase : public JointTyped {
                  const JointParams &parameters = JointParams())
       : JointTyped(id, name, wTj, parent_link, child_link, parameters),
         axis_(axis),
-        pScrewAxis_(-jTpcom_.inverse().AdjointMap() * jScrewAxis),
-        cScrewAxis_(jTccom_.inverse().AdjointMap() * jScrewAxis) {}
+        pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
+        cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::ScrewAxis; }
