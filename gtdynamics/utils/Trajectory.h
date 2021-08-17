@@ -29,7 +29,6 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
-  Robot robot_;           ///< Copy of the robot configuration
   size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
@@ -57,10 +56,7 @@ class Trajectory {
    * @param repeat      The number of repetitions for each phase of the gait.
    */
   Trajectory(const WalkCycle &walk_cycle, size_t repeat)
-      : repeat_(repeat), walk_cycle_(walk_cycle) {
-        robot_ = walk_cycle.phase(0).robotModel();
-      }
-
+      : repeat_(repeat), walk_cycle_(walk_cycle) {};
   
   ContactPoints toContactPointsObject(const PointOnLinks &contact_points) const{
     ContactPoints cps;
@@ -145,38 +141,43 @@ class Trajectory {
 
   /**
    * @fn Builds vector of Transition Graphs.
+   * @param[in]robot            Configuration of the robot
    * @param[in]graph_builder    Dynamics Graph
    * @param[in]mu               Coefficient of static friction
    * @return Vector of Transition Graphs
    */
   std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      DynamicsGraph &graph_builder, double mu) const;
+      const Robot &robot, DynamicsGraph &graph_builder, double mu) const;
 
   /**
    * @fn Builds multi-phase factor graph.
+   * @param[in]robot            Configuration of the robot
    * @param[in]graph_builder    Dynamics Graph
    * @param[in]mu               Coefficient of static friction
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
-      DynamicsGraph &graph_builder, const CollocationScheme collocation,
-      double mu) const;
+      const Robot& robot, DynamicsGraph &graph_builder,
+      const CollocationScheme collocation, double mu) const;
 
   /**
    * @fn Returns Initial values for transition graphs.
+   * @param[in]robot             Configuration of the robot
    * @param[in]gaussian_noise    Gaussian noise to add to initial values
    * @return Initial values for transition graphs
    */
   std::vector<gtsam::Values> transitionPhaseInitialValues(
-      double gaussian_noise) const;
+      const Robot &robot, double gaussian_noise) const;
 
   /**
    * @fn Returns Initial values for multi-phase factor graph.
+   * @param[in]robot             Configuration of the robot
    * @param[in]gaussian_noise    Gaussian noise to add to initial values
    * @param[in]desired_dt        integration timestep
    * @return Initial values for multi-phase factor graph
    */
-  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
+  gtsam::Values multiPhaseInitialValues(
+      const Robot &robot, double gaussian_noise, double dt) const;
 
   /**
    * @fn Returns a vector of final time step for every phase.
@@ -259,11 +260,12 @@ class Trajectory {
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
-  PointGoalFactor pointGoalFactor(const std::string &link_name,
+  PointGoalFactor pointGoalFactor(const Robot &robot,
+                                  const std::string &link_name,
                                   const ContactPoint &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const {
-    LinkSharedPtr link = robot_.link(link_name);
+    LinkSharedPtr link = robot.link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
     return PointGoalFactor(pose_key, cost_model, cp.point, goal_point);
   }
@@ -273,15 +275,18 @@ class Trajectory {
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
-      const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &step,
+      const Robot &robot,
+      const gtsam::SharedNoiseModel &cost_model,
+      const gtsam::Point3 &step,
       const ContactAdjustments &contact_adjustments = {}) const;
 
   /**
    * @fn Add minimum torque objectives.
    * @return All MinTorqueFactor factors as a NonlinearFactorGraph
    */
-  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
-                               const gtsam::SharedNoiseModel &cost_model) const;
+  void addMinimumTorqueFactors(
+    const Robot &robot, gtsam::NonlinearFactorGraph *graph,
+    const gtsam::SharedNoiseModel &cost_model) const;
 
   /**
    * @fn Create objective factors for slice 0 and slice K.
@@ -294,7 +299,7 @@ class Trajectory {
    * @return All factors as a NonlinearFactorGraph
    */
   void addBoundaryConditions(
-      gtsam::NonlinearFactorGraph *graph,
+      const Robot &robot, gtsam::NonlinearFactorGraph *graph,
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,
@@ -317,18 +322,21 @@ class Trajectory {
   /**
    * @fn Writes the angles, vels, accels, torques and time values for a single
    * phase to disk.
+   * @param[in] robot        Configuration of the robot
    * @param[in] traj_file    Trajectory File being written onto.
    * @param[in] results      Results of Optimization.
    * @param[in] phase        Phase number.
    */
-  void writePhaseToFile(std::ofstream &traj_file, const gtsam::Values &results,
-                        int phase) const;
+  void writePhaseToFile(const Robot &robot, std::ofstream &traj_file,
+                        const gtsam::Values &results, int phase) const;
 
   /**
    * @fn Writes the angles, vels, accels, torques and time values to disk.
+   * @param[in] robot     Configuration of the robot
    * @param[in] name      Trajectory File name.
    * @param[in] results   Results of Optimization.
    */
-  void writeToFile(const std::string &name, const gtsam::Values &results) const;
+  void writeToFile(const Robot &robot, const std::string &name,
+                   const gtsam::Values &results) const;
 };
 }  // namespace gtdynamics

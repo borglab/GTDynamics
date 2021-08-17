@@ -35,16 +35,20 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot &robot, size_t repeat) {
-  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
-                           "tarsus_7_R2"};
-  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
-                            "tarsus_8_R1"};
+  vector<LinkSharedPtr> odd_links = {robot.link("tarsus_1_L1"),
+                                     robot.link("tarsus_3_L3"),
+                                     robot.link("tarsus_5_R4"),
+                                     robot.link("tarsus_7_R2")};
+  vector<LinkSharedPtr> even_links = {robot.link("tarsus_2_L2"),
+                                      robot.link("tarsus_4_L4"),
+                                      robot.link("tarsus_6_R3"),
+                                      robot.link("tarsus_8_R1")};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(robot, 1, links, contact_in_com), odd(robot, 2, odd_links, contact_in_com),
-      even(robot, 2, even_links, contact_in_com);
+  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
+      even(2, even_links, contact_in_com);
 
   WalkCycle walk_cycle;
   walk_cycle.addPhase(stationary);
@@ -82,14 +86,16 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
-  auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
+  auto graph = trajectory.multiPhaseFactorGraph(robot, graph_builder,
+                                                collocation, mu);
   EXPECT_LONGS_EQUAL(3557, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot,
+                                        Isotropic::Sigma(3, 1e-7), step);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
@@ -108,7 +114,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
+  trajectory.addBoundaryConditions(robot, &objectives, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -117,7 +123,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(robot, &objectives, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
@@ -138,7 +144,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Initialize solution.
   double gaussian_noise = 1e-5;
   Values init_vals =
-      trajectory.multiPhaseInitialValues(gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
   // Optimize!

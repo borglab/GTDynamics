@@ -89,7 +89,7 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = walk_cycle.initContactPointGoal();
+  auto cp_goals = walk_cycle.initContactPointGoal(robot);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
   // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
@@ -97,7 +97,7 @@ TEST(Trajectory, error) {
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
-      trajectory.transitionPhaseInitialValues(gaussian_noise);
+      trajectory.transitionPhaseInitialValues(robot, gaussian_noise);
   EXPECT_LONGS_EQUAL(5, transition_graph_init.size());
 
   gtsam::Vector3 gravity(0, 0, -9.8);
@@ -106,25 +106,25 @@ TEST(Trajectory, error) {
   auto opt = OptimizerSetting(sigma_dynamics);
   auto graph_builder = DynamicsGraph(opt, gravity);
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
-      trajectory.getTransitionGraphs(graph_builder, mu);
+      trajectory.getTransitionGraphs(robot, graph_builder, mu);
   EXPECT_LONGS_EQUAL(repeat * 2 - 1, transition_graphs.size());
   // regression test
   EXPECT_LONGS_EQUAL(203, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
-  auto graph = trajectory.multiPhaseFactorGraph(graph_builder,
+  auto graph = trajectory.multiPhaseFactorGraph(robot, graph_builder,
                                                 CollocationScheme::Euler, mu);
   // regression test
   EXPECT_LONGS_EQUAL(4298, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
 
-  Values init_vals = trajectory.multiPhaseInitialValues(1e-5, 1. / 240);
+  Values init_vals = trajectory.multiPhaseInitialValues(robot, 1e-5, 1. / 240);
   EXPECT_LONGS_EQUAL(4712, init_vals.size());
 
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      noiseModel::Isotropic::Sigma(3, 1e-7), step);
+      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());
@@ -136,8 +136,8 @@ TEST(Trajectory, error) {
 
   // Test boundary conditions.
   NonlinearFactorGraph boundary_conditions;
-  trajectory.addBoundaryConditions(&boundary_conditions, kModel6, kModel6,
-                                   kModel6, kModel1, kModel1);
+  trajectory.addBoundaryConditions(robot, &boundary_conditions, kModel6,
+                                   kModel6, kModel6, kModel1, kModel1);
   // regression test
   EXPECT_LONGS_EQUAL(260, boundary_conditions.size());
 }
