@@ -77,13 +77,7 @@ class WalkCycle {
       if (link_count == 0)
         contact_points_.push_back(kv);
     }
-    
     phases_.push_back(phase);
-    if (phases_.size() > 0) {
-      if (!phases_[0].robotModel().isIdentical(phase.robotModel()))
-        throw std::runtime_error(
-            "This phase belongs to a different Robot model!");
-    }
   }
 
   /**
@@ -126,6 +120,7 @@ class WalkCycle {
    * @return Map from link name to goal points.
    */
   ContactGoals initContactPointGoal(
+      const Robot &robot,
       const ContactAdjustments &contact_adjustments = {}) const;
 
   /**

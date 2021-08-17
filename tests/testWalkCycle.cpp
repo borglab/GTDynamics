@@ -37,27 +37,6 @@ TEST(WalkCycle, error) {
   EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
 }
 
-TEST(WalkCycle, robotModel) {
-
-  Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
-
-  // First phase
-  constexpr size_t num_time_steps = 2;
-  gtsam::Point3 contact_in_com(0, 0.19, 0);
-  Phase phase_1(robot, num_time_steps);
-  phase_1.addContactPoint("tarsus_1_L1", contact_in_com);
-  phase_1.addContactPoint("tarsus_2_L2", contact_in_com);
-
-  // Second phase
-  auto robot_2 = gtdynamics::CreateRobotFromFile(
-      kSdfPath + std::string("/test/simple_rr.sdf"), "simple_rr_sdf");
-  Phase phase_2(robot_2, num_time_steps);
-  phase_2.addContactPoint("link_0", contact_in_com);
-  phase_2.addContactPoint("link_1", contact_in_com);
-  THROWS_EXCEPTION(WalkCycle({phase_1, phase_2}));
-}
-
 TEST(WalkCycle, inverse_kinematics) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
@@ -65,11 +44,11 @@ TEST(WalkCycle, inverse_kinematics) {
 
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
-  Phase phase0(robot, num_time_steps), phase1(robot, num_time_steps);
-  phase0.addContactPoint("lower1", contact_in_com);  // LH
-  phase1.addContactPoint("lower0", contact_in_com);  // LF
-  phase0.addContactPoint("lower2", contact_in_com);  // RF
-  phase1.addContactPoint("lower3", contact_in_com);  // RH
+  Phase phase0(num_time_steps), phase1(num_time_steps);
+  phase0.addContactPoint(robot.link("lower1"), contact_in_com);  // LH
+  phase1.addContactPoint(robot.link("lower0"), contact_in_com);  // LF
+  phase0.addContactPoint(robot.link("lower2"), contact_in_com);  // RF
+  phase1.addContactPoint(robot.link("lower3"), contact_in_com);  // RH
   auto walk_cycle = WalkCycle({phase0, phase1});
 
   // Set goal points to reasonable values
