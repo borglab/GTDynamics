@@ -140,7 +140,7 @@ class Trajectory {
    * @return Vector of Transition Graphs
    */
   std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      const Robot &robot, DynamicsGraph &graph_builder, double mu) const;
+      const Robot &robot, const DynamicsGraph &graph_builder, double mu) const;
 
   /**
    * @fn Builds multi-phase factor graph.
@@ -150,7 +150,7 @@ class Trajectory {
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
-      const Robot &robot, DynamicsGraph &graph_builder,
+      const Robot& robot, const DynamicsGraph &graph_builder,
       const CollocationScheme collocation, double mu) const;
 
   /**
