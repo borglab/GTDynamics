@@ -1,5 +1,8 @@
 # GTDynamics
 
+**<span style=“color:red”>This library is still under very active development, hence bleeding edge, and not "supported" in the way [GTSAM](https://gtsam.org) is. In particular, we are still actively re-factoring the way we deal with time and time intervals.</span>**
+
+
 ### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
 <!-- =================================================== -->
 
@@ -11,7 +14,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat8](https://github.com/osrf/sdformat)
+* [sdformat10](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -19,19 +22,19 @@ GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot des
 
 ### Homebrew
 
-Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+If you are on a Mac, using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
 
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
-$ brew install sdformat8
+$ brew install sdformat10
 ```
 
 ### Source
 
-Alternatively, you can install from source if you want more fine-tuned control.
+Alternatively, you can install from source if you are on Linux or want more fine-tuned control.
 
 We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
 
@@ -43,12 +46,15 @@ sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cm
 # sdformat requires libignition-math
 sudo apt-get install libignition-math4-dev
 
-# Specifically download sdformat8
-wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-8.6.1.tar.bz2
+# Set the version to install
+export GTD_SDFormat_VERSION="10.5.0"
 
-tar -xvjf sdformat-8.6.1.tar.bz2
+# Download specific version of SDFormat
+wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 
-cd sdformat-8.6.1
+tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+
+cd sdformat-${GTD_SDFormat_VERSION}
 mkdir build && cd build
 
 cmake -DCMAKE_INSTALL_PREFIX ../install ..

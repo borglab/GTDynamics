@@ -14,8 +14,8 @@
 import unittest
 
 import gtsam
-from gtsam import Pose3, Rot3
 import numpy as np
+from gtsam import Pose3, Rot3
 
 import gtdynamics as gtd
 
@@ -48,14 +48,14 @@ class TestFourBar(unittest.TestCase):
         j3_pose = Pose3(Rot3.Rz(0), (0, 2, 0))
         j4_pose = Pose3(Rot3.Rz(0), (0, 0, 0))
 
-        joint1 = gtd.RevoluteJoint(1, "j1", j1_pose, link1, link2, params,
-                                   axis)
-        joint2 = gtd.RevoluteJoint(2, "j2", j2_pose, link2, link3, params,
-                                   axis)
-        joint3 = gtd.RevoluteJoint(3, "j3", j3_pose, link3, link4, params,
-                                   axis)
-        joint4 = gtd.RevoluteJoint(4, "j4", j4_pose, link4, link1, params,
-                                   axis)
+        joint1 = gtd.RevoluteJoint(1, "j1", j1_pose, link1, link2, axis,
+                                   params)
+        joint2 = gtd.RevoluteJoint(2, "j2", j2_pose, link2, link3, axis,
+                                   params)
+        joint3 = gtd.RevoluteJoint(3, "j3", j3_pose, link3, link4, axis,
+                                   params)
+        joint4 = gtd.RevoluteJoint(4, "j4", j4_pose, link4, link1, axis,
+                                   params)
         joints = {"j1": joint1, "j2": joint2, "j3": joint3, "j4": joint4}
 
         # connect links to joints
@@ -86,8 +86,9 @@ class TestFourBar(unittest.TestCase):
         torques = np.array([1, 0, 0, 0])
         for idx, joint in enumerate(robot.joints()):
             gtd.InsertJointAngleDouble(known_values, joint.id(), 0,
-                                 joint_angles[idx])
-            gtd.InsertJointVelDouble(known_values, joint.id(), 0, joint_vels[idx])
+                                       joint_angles[idx])
+            gtd.InsertJointVelDouble(known_values, joint.id(), 0,
+                                     joint_vels[idx])
             gtd.InsertTorqueDouble(known_values, joint.id(), 0, torques[idx])
 
         prior_graph = graph_builder.forwardDynamicsPriors(

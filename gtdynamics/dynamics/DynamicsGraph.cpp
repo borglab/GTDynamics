@@ -28,7 +28,7 @@
 #include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
 #include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/factors/ContactKinematicsPoseFactor.h"
+#include "gtdynamics/factors/ContactHeightFactor.h"
 #include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/JsonSaver.h"
@@ -225,10 +225,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
       for (auto &&contact_point : *contact_points) {
         if (contact_point.first != link->name()) continue;
 
-        // TODO(frank): #179 make sure height is handled correctly.
-        ContactKinematicsPoseFactor contact_pose_factor(
+        ContactHeightFactor contact_pose_factor(
             internal::PoseKey(i, k), opt_.cp_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point), gravity);
+            contact_point.second.point, gravity);
         graph.add(contact_pose_factor);
       }
     }

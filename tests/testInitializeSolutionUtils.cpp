@@ -157,7 +157,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    * the y direction all the while ensuring that the end of link l1 remains in
    * contact with the ground. When initialized in it's upright position, the
    * two link robot is in a singular state. This is because the gradients of
-   * the ContactKinematicsPoseFactor with respect to the x and y are equally 0.
+   * the ContactHeightFactor with respect to the x and y are equally 0.
    * This prevents link 1 from rotating about the revolute joint as to remain
    * in contact with the ground. This problem is addressed by adding a small
    * amount of gaussian noise to the initial solution, which prevents it from
@@ -182,7 +182,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
-    robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
+      robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
 
   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 

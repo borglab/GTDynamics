@@ -28,13 +28,11 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
              const JointParams &parameters)
     : id_(id),
       name_(name),
-      wTj_(wTj),
       parent_link_(parent_link),
       child_link_(child_link),
       parameters_(parameters) {
-  jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-  jTccom_ = wTj_.inverse() * child_link_->wTcom();
-  pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+  jMp_ = wTj.inverse() * parent_link_->wTcom();
+  jMc_ = wTj.inverse() * child_link_->wTcom();
 }
 
 /* ************************************************************************* */
@@ -47,7 +45,7 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
 
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << " id=" << size_t(j.id())
+  os << j.name() << "\n\tid=" << size_t(j.id())
      << "\n\tparent link: " << j.parent()->name()
      << "\n\t child link: " << j.child()->name();
   return os;

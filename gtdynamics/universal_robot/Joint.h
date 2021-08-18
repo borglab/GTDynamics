@@ -68,6 +68,8 @@ struct JointParams {
   double torque_limit_threshold = 0.0;
   double damping_coefficient = 0.0;
   double spring_coefficient = 0.0;
+
+  /// Constructor
   JointParams() {}
 };
 
@@ -99,14 +101,10 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// ID reference to DynamicsSymbol.
   uint8_t id_;
 
-  /// Joint frame defined in world frame.
-  Pose3 wTj_;
   /// Rest transform to parent link CoM frame from joint frame.
-  Pose3 jTpcom_;
+  Pose3 jMp_;
   /// Rest transform to child link CoM frame from joint frame.
-  Pose3 jTccom_;
-  /// Transform to parent link com frame from child link com frame at rest.
-  Pose3 pMccom_;
+  Pose3 jMc_;
 
   using LinkSharedPtr = boost::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
@@ -130,10 +128,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @param[in] wTj          joint pose expressed in world frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
+   * @param[in] parameters   The joint parameters.
    */
   Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-        const JointParams &parameters);
+        const JointParams &parameters = JointParams());
 
   /**
    * @brief Default destructor.
@@ -149,14 +148,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Get the joint's ID.
   uint8_t id() const { return id_; }
 
-  /// Transform from the world frame to the joint frame.
-  const Pose3 &wTj() const { return wTj_; }
-
   /// Transform from the joint frame to the parent's center of mass.
-  const Pose3 &jTpcom() const { return jTpcom_; }
+  const Pose3 &jMp() const { return jMp_; }
 
   /// Transform from the joint frame to the child's center of mass.
-  const Pose3 &jTccom() const { return jTccom_; }
+  const Pose3 &jMc() const { return jMc_; }
 
   /// Get a gtsam::Key for this joint
   gtsam::Key key() const { return gtsam::Key(id()); }
@@ -185,10 +181,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->wTj_.equals(other.wTj_) &&
-            this->jTpcom_.equals(other.jTpcom_) &&
-            this->jTccom_.equals(other.jTccom_) &&
-            this->pMccom_.equals(other.pMccom_));
+            this->jMp_.equals(other.jMp_) && this->jMc_.equals(other.jMc_));
   }
 
   bool operator!=(const Joint &other) const { return !(*this == other); }
@@ -199,7 +192,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
                                   const JointSharedPtr &j);
 
   /// Helper print function
-  void print() const { std::cout << *this; }
+  void print(const std::string &s = "") const {
+    std::cout << (s.empty() ? s : s + " ") << *this;
+  }
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.
