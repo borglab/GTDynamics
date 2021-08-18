@@ -26,7 +26,7 @@ using std::string;
 std::ostream &operator<<(std::ostream &os, const Phase &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {
-    os << cp.link->name() << ": " << cp.point << ", ";
+    os << cp.link->name() << ": [" << cp.point.transpose() << "], ";
   }
   os << "]";
   return os;
