@@ -84,12 +84,14 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
  * @param[in] sdf_joint    a joint object which allows access to
  * functions needed to populate joint parameters.
  * @param[in] parent_link  Shared pointer to the parent Link.
+ * @param[in] parent_sdf_link  The sdf::Link object of the parent link
  * @param[in] child_link   Shared pointer to the child Link.
+ * @param[in] child_link   The sdf::Link object of the child link
  * @return Joint pose defined in world frame
  */
 gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                           const LinkSharedPtr &parent_link,
-                           const LinkSharedPtr &child_link);
+                           const LinkSharedPtr &parent_link, const sdf::Link &parent_sdf_link,
+                           const LinkSharedPtr &child_link, const sdf::Link &child_sdf_link);
 
 /**
  * @fn Converts an axis taken from input sdf::Joint into the Vector3 format
