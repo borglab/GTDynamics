@@ -43,18 +43,22 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
   return link == child_link_;
 }
 
-/* ************************************************************************* */
-std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << "\n\tid=" << size_t(j.id())
-     << "\n\tparent link: " << j.parent()->name()
-     << "\n\t child link: " << j.child()->name();
+std::ostream &Joint::print(std::ostream &os) const {
+  os << name_ << "\n\tid=" << size_t(id_)
+     << "\n\tparent link: " << parent()->name()
+     << "\n\tchild link: " << child()->name();
   return os;
 }
 
 /* ************************************************************************* */
+std::ostream &operator<<(std::ostream &os, const Joint &j) {
+  // Delegate printing responsibility to member function so we can override.
+  return j.print(os);
+}
+
+/* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
-  os << *j;
-  return os;
+  return j->print(os);
 }
 
 }  // namespace gtdynamics
