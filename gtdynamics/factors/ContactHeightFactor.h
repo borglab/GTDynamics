@@ -8,7 +8,7 @@
 /**
  * @file  ContactHeightFactor.h
  * @brief Factor to enforce zero height at the contact point.
- * @author: Alejandro Escontrela
+ * @author: Alejandro Escontrela, Varun Agrawal
  */
 
 #pragma once
@@ -18,12 +18,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
-#include <iostream>
 #include <string>
-#include <vector>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -44,7 +39,7 @@ class ContactHeightFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
  public:
   /**
-   * Contact kinematics factor for link end to remain in contact with the
+   * Factor for link end to remain in contact with the
    * ground.
    *
    * @param pose_key The key corresponding to the link's CoM pose.
@@ -66,7 +61,6 @@ class ContactHeightFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
 
   virtual ~ContactHeightFactor() {}
 
- public:
   /**
    * Evaluate contact errors.
    * @param sTl This link's COM pose in the spatial frame.

@@ -7,7 +7,7 @@
 
 /**
  * @file  ContactEqualityFactor.h
- * @brief Factor to constrain contact points to be equal.
+ * @brief Factor to constrain temporal contact points to be equal.
  * @author Varun Agrawal
  */
 
