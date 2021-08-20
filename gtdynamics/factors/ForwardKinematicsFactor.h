@@ -53,7 +53,7 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
    * @param end_link_name   The end link name whose pose to compute via FK.
    * @param joint_angles    gtsam::Values with joint angles for relevant joints.
    * @param model           The noise model for this factor.
-   * @param k               The discretized time index.
+   * @param k               The discrete time index.
    */
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
                           const Robot &robot,

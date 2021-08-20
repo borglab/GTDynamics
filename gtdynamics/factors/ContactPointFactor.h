@@ -25,8 +25,12 @@
 namespace gtdynamics {
 
 /**
- * ContactPointFactor is a two-way nonlinear factor which enforces a
- * point on the link to be equal to the point of contact in the environment.
+ * ContactPointFactor is a two-way nonlinear factor which constrains a link pose
+ * and a point of contact P in the world/spatial frame by enforcing a point on
+ * the link to be equal (and thus, in contact) to P.
+ *
+ * This factor differs from PointGoalFactor since it also estimates the point of
+ * contact.
  */
 class ContactPointFactor
     : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3> {
@@ -34,7 +38,8 @@ class ContactPointFactor
   using This = ContactPointFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3>;
 
-  gtsam::Point3 lPc_;  // The contact point in the link's COM frame.
+  // The contact point in the link's CoM frame.
+  gtsam::Point3 contact_in_com_;
 
  public:
   /**
@@ -43,12 +48,13 @@ class ContactPointFactor
    * @param link_pose_key Key for the CoM pose of the link in contact.
    * @param point_key Key for the contact point in the environment.
    * @param cost_model Noise model associated with this factor.
-   * @param lPc Static transform from point of contact to link CoM.
+   * @param contact_in_com Static transform from point of contact to link CoM.
    */
   ContactPointFactor(gtsam::Key link_pose_key, gtsam::Key point_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     const gtsam::Point3 &lPc)
-      : Base(cost_model, link_pose_key, point_key), lPc_(lPc) {}
+                     const gtsam::Point3 &contact_in_com)
+      : Base(cost_model, link_pose_key, point_key),
+        contact_in_com_(contact_in_com) {}
 
   /**
    * Convenience constructor which uses PointOnLink.
@@ -62,10 +68,9 @@ class ContactPointFactor
   ContactPointFactor(const PointOnLink &point_on_link, gtsam::Key point_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
                      size_t t = 0)
-      : Base(cost_model,
-             gtdynamics::internal::PoseKey(point_on_link.link->id(), t),
-             point_key),
-        lPc_(point_on_link.point) {}
+      : ContactPointFactor(
+            gtdynamics::internal::PoseKey(point_on_link.link->id(), t),
+            point_key, cost_model, point_on_link.point) {}
 
   virtual ~ContactPointFactor() {}
 
@@ -78,8 +83,7 @@ class ContactPointFactor
       const gtsam::Pose3 &wTl, const gtsam::Point3 &wPc,
       boost::optional<gtsam::Matrix &> H_pose = boost::none,
       boost::optional<gtsam::Matrix &> H_point = boost::none) const override {
-    gtsam::Vector error = gtsam::traits<gtsam::Point3>::Local(
-        wTl.transformFrom(lPc_, H_pose), wPc);
+    gtsam::Vector error = wPc - wTl.transformFrom(contact_in_com_, H_pose);
     if (H_pose) *H_pose = -gtsam::Matrix3::Identity() * (*H_pose);
     if (H_point) *H_point = gtsam::Matrix3::Identity();
     return error;
