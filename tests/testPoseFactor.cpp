@@ -193,26 +193,23 @@ TEST(PoseFactor, ForwardKinematics) {
   InsertPose(&initial, 0, t, robot.links()[0]->wTcom());
   InsertPose(&initial, 1, t, robot.links()[1]->wTcom());
   InsertPose(&initial, 2, t, robot.links()[2]->wTcom());
-  initial.insert<double>(internal::JointAngleKey(0, t), angle);
-  initial.insert<double>(internal::JointAngleKey(1, t), angle);
+  InsertJointAngle(&initial, 0, t, angle);
+  InsertJointAngle(&initial, 1, t, angle);
 
   gtsam::GaussNewtonOptimizer optimizer(graph, initial);
   Values result = optimizer.optimize();
 
-  Values joint_angles_and_poses;
-  joint_angles_and_poses.insert<double>(internal::JointAngleKey(0, t), angle);
-  joint_angles_and_poses.insert<double>(internal::JointAngleKey(1, t), angle);
-  InsertPose(&joint_angles_and_poses, 0, t, robot.links()[0]->wTcom());
+  Values known_values;
+  InsertJointAngle(&known_values, 0, t, angle);
+  InsertJointAngle(&known_values, 1, t, angle);
+  InsertPose(&known_values, 0, t, robot.links()[0]->wTcom());
 
   Values expected =
-      robot.forwardKinematics(joint_angles_and_poses, t, base_link->name());
+      robot.forwardKinematics(known_values, t, base_link->name());
 
-  auto link0 = result.at<Pose3>(link0_key);
-  EXPECT(assert_equal(link0, Pose(expected, 0, t)));
-  auto link1 = result.at<Pose3>(link1_key);
-  EXPECT(assert_equal(link1, Pose(expected, 1, t)));
-  auto link2 = result.at<Pose3>(link2_key);
-  EXPECT(assert_equal(link2, Pose(expected, 2, t)));
+  EXPECT(assert_equal(Pose(result, 0, t), Pose(expected, 0, t)));
+  EXPECT(assert_equal(Pose(result, 1, t), Pose(expected, 1, t)));
+  EXPECT(assert_equal(Pose(result, 2, t), Pose(expected, 2, t)));
 }
 
 int main() {
