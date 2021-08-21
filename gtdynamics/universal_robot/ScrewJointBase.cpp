@@ -261,8 +261,8 @@ gtsam::NonlinearFactorGraph ScrewJointBase::jointLimitFactors(
   return graph;
 }
 
-std::ostream &ScrewJointBase::print(std::ostream &os) const {
-  Joint::print(os);
+std::ostream &ScrewJointBase::to_stream(std::ostream &os) const {
+  Joint::to_stream(os);
   os << "\n\tscrew axis (parent): " << screwAxis(parent()).transpose();
   return os;
 }

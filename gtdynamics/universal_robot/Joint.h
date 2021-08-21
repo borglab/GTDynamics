@@ -196,8 +196,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
 
-  /// Helper print function for overloading strem operator
-  virtual std::ostream &print(std::ostream &os) const;
+  /// Helper function for overloading stream operator
+  virtual std::ostream &to_stream(std::ostream &os) const;
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

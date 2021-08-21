@@ -159,8 +159,8 @@ class ScrewJointBase : public JointTyped {
     return pScrewAxis_ * q_dot;
   }
 
-  /// Helper print function for overloading strem operator
-  virtual std::ostream &print(std::ostream &os) const override;
+  /// Helper function for overloading stream operator
+  virtual std::ostream &to_stream(std::ostream &os) const override;
 };
 
 }  // namespace gtdynamics
