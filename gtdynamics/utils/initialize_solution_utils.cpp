@@ -351,7 +351,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   // Initialize link dynamics to 0.
   for (auto&& link : robot.links()) {
     int i = link->id();
-    InsertPose(&values, i, t, AddGaussianNoiseToPose(link->wTcom(), sampler));
+    InsertPose(&values, i, t, AddGaussianNoiseToPose(link->bTcom(), sampler));
     InsertTwist(&values, i, t, sampler.sample());
     InsertTwistAccel(&values, i, t, sampler.sample());
   }

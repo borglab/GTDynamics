@@ -48,10 +48,10 @@ TEST(PointGoalFactor, error) {
 
   // Test the goal pose error against the robot's various nominal poses.
   EXPECT(assert_equal(Vector3(0, 0, 0),
-                      factor.evaluateError(robot.link("l1")->wTcom())));
+                      factor.evaluateError(robot.link("l1")->bTcom())));
 
   EXPECT(assert_equal(Vector3(0, 0, 2),
-                      factor.evaluateError(robot.link("l2")->wTcom())));
+                      factor.evaluateError(robot.link("l2")->bTcom())));
 
   // Make sure linearization is correct
   Values values;
@@ -74,7 +74,7 @@ TEST(PointGoalFactor, optimization) {
   PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Initial link pose.
-  Pose3 pose_init = robot.link("l1")->wTcom();
+  Pose3 pose_init = robot.link("l1")->bTcom();
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);

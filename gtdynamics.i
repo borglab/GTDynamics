@@ -175,7 +175,7 @@ class Link  {
   void addJoint(gtdynamics::Joint *joint_ptr);
   const gtsam::Pose3 &wTl() const;
   const gtsam::Pose3 &lTcom() const;
-  const gtsam::Pose3 wTcom() const;
+  const gtsam::Pose3 bTcom() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
   void fix();

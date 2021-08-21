@@ -113,8 +113,8 @@ void Robot::print(const std::string &s) const {
   for (const auto &link : sorted_links) {
     std::string fixed = link->isFixed() ? " (fixed)" : "";
     cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
-    cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose() << ", "
-         << link->wTcom().translation().transpose() << "\n";
+    cout << "\tcom pose: " << link->bTcom().rotation().rpy().transpose() << ", "
+         << link->bTcom().translation().transpose() << "\n";
     cout << "\tjoints: ";
     for (const auto &joint : link->joints()) {
       cout << joint->name() << " ";

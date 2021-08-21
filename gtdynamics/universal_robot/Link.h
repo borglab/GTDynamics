@@ -117,8 +117,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// add joint to the link
   void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
-  /// transform from link CoM frame to world frame
-  inline const gtsam::Pose3 wTcom() const { return bMcom_; }
+  /// transform from base frame to link COM frame
+  inline const gtsam::Pose3 bTcom() const { return bMcom_; }
 
   /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }
@@ -129,7 +129,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
     is_fixed_ = true;
-    fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
+    fixed_pose_ = fixed_pose ? *fixed_pose : bTcom();
   }
 
   /// Unfix the link

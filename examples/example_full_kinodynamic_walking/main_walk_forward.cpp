@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
   for (auto&& link : links)
     prev_cp.insert(std::make_pair(
         link,
-        (link_map[link]->wTcom() * Pose3(Rot3(), c0.point)).translation()));
+        (link_map[link]->bTcom() * Pose3(Rot3(), c0.point)).translation()));
 
   // Distance to move contact point during swing.
   auto contact_offset = Point3(0.15, 0, 0);
@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
   // Add link boundary conditions to FG.
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
-    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->wTcom(),
+    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->bTcom(),
                                dynamics_model_6);
     objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), 0),
                                         Vector6::Zero(), dynamics_model_6);

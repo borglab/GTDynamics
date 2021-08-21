@@ -202,7 +202,7 @@ TEST(Sdf, urdf_constructor_link) {
   EXPECT(assert_equal(100, l1->mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->wTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->bTcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -217,7 +217,7 @@ TEST(Sdf, urdf_constructor_link) {
       l1->inertiaMatrix()));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->wTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->bTcom()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1->numJoints()));
@@ -608,8 +608,8 @@ TEST(Sdf, sdf_constructor) {
   Link l1 = Link(*LinkFromSdf(1, "link_1", file_path, model_name));
 
   // Verify center of mass defined in the world frame is correct.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.wTcom()));
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.wTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.bTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.bTcom()));
 
   // Verify that mass is correct.
   EXPECT(assert_equal(0.01, l0.mass()));

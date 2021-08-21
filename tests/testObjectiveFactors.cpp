@@ -86,7 +86,7 @@ TEST(Phase, AddGoals) {
 
   // Predict goal point in world coordinates
   auto LF = robot.link("lower0");  // left forward leg
-  auto bTcom = LF->wTcom();        // world is really body
+  auto bTcom = LF->bTcom();        // world is really body
   Point3 stance_point = bTcom.transformFrom(point_com);
 
   uint8_t id = LF->id();
