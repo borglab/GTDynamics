@@ -122,10 +122,10 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /**
    * @brief Constructor to create Joint from joint name, joint pose in
-   * world frame, and shared pointers to the parent and child links.
+   * base frame, and shared pointers to the parent and child links.
    *
    * @param[in] name         name of joint
-   * @param[in] bTj          joint pose expressed in world frame
+   * @param[in] bTj          joint pose expressed in base frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    * @param[in] parameters   The joint parameters.

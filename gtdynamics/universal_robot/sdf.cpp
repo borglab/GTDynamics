@@ -72,8 +72,8 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
   return parameters;
 }
 
-// Get Link posein base frame from sdf::Link object
-Pose3 GetBTLFromSdfLink(const sdf::Link &sdf_link) {
+// Get Link pose in base frame from sdf::Link object
+Pose3 GetSdfLinkFrame(const sdf::Link &sdf_link) {
 // Call SemanticPose::Resolve so the pose is resolved to the correct frame
   /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
   // Get non-const pose of link in the frame of the joint it is connect to
@@ -94,8 +94,8 @@ Pose3 GetBTLFromSdfLink(const sdf::Link &sdf_link) {
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                    const LinkSharedPtr &parent_link, const sdf::Link &parent_sdf_link,
-                    const LinkSharedPtr &child_link, const sdf::Link &child_sdf_link) {
+                    const sdf::Link &parent_sdf_link,
+                    const sdf::Link &child_sdf_link) {
 
   // Name of the coordinate frame the joint's pose is relative to.
   // Specified by `relative_to` in the SDF file.
@@ -105,22 +105,22 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   // the value of `frame_name`.
   Pose3 lTj = Pose3FromIgnition(sdf_joint.RawPose());
 
-  // Get the pose of the parent and child links in the base frame
-  // (not the COM of the link, the pose of the link as described in the sdf file)
-  // this is done here once in order to avoid saving the bTl transform
-  // as part of the Link class
-  // we need the bTl here because the joint is defined in the link frame in the sdf file.
-  auto bTlp = GetBTLFromSdfLink(parent_sdf_link);
-  auto bTlc = GetBTLFromSdfLink(child_sdf_link);
-
-  if (frame_name.empty() || frame_name == child_link->name()) {
+  if (frame_name.empty() || frame_name == child_sdf_link.Name()) {
     // If `frame_name` is empty or has the same name as the child_link, it means
     // the joint frame is relative to the child link. So to get the joint pose
-    // in the world frame, we pre-multiply by the child link's frame.
+    // in the base frame, we pre-multiply by the child link's frame.
+
+    // The child link frame here is not COM of the link, 
+    // it is the pose of the link as described in the sdf file.
+    // This is done here once in order to avoid saving the bTl transform
+    // as part of the Link class.
+    // We need the bTl here because the joint is defined in the link frame in the sdf.
+    const Pose3 bTlc = GetSdfLinkFrame(child_sdf_link);
     return bTlc * lTj;
 
-  } else if (frame_name == parent_link->name()) {
+  } else if (frame_name == parent_sdf_link.Name()) {
     // Else the joint pose is in the frame of the parent link.
+    const Pose3 bTlp = GetSdfLinkFrame(parent_sdf_link);
     return bTlp * lTj;
 
   } else if (frame_name == "world") {
@@ -148,7 +148,7 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
 
   // Get the pose of the link in the base frame
   // we only save the bMcom rest matrix as part of the Link class
-  auto bTl = GetBTLFromSdfLink(sdf_link);
+  auto bTl = GetSdfLinkFrame(sdf_link);
   const auto lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   auto bMcom = bTl * lTcom;
 
@@ -164,8 +164,10 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
   return LinkFromSdf(id, *model.LinkByName(link_name));
 }
 
-JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link, const sdf::Link &parent_sdf_link,
-                            const LinkSharedPtr &child_link, const sdf::Link &child_sdf_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
+                            const sdf::Link &parent_sdf_link,
+                            const LinkSharedPtr &child_link,
+                            const sdf::Link &child_sdf_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
@@ -173,7 +175,7 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link, const 
   JointParams parameters = ParametersFromSdfJoint(sdf_joint);
 
   std::string name(sdf_joint.Name());
-  Pose3 bTj = GetJointFrame(sdf_joint, parent_link, parent_sdf_link, child_link, child_sdf_link);
+  Pose3 bTj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
 
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {

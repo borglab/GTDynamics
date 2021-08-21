@@ -182,7 +182,7 @@ TEST(Sdf, urdf_constructor_link) {
   auto sdf_link_l1 = *simple_urdf.LinkByName("l1");
   auto sdf_link_l2 = *simple_urdf.LinkByName("l2");
 
-  Pose3 bTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, sdf_link_l1, l2, sdf_link_l2);
+  Pose3 bTj = GetJointFrame(*simple_urdf.JointByName("j1"), sdf_link_l1, sdf_link_l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
@@ -247,7 +247,8 @@ TEST(Sdf, urdf_constructor_revolute) {
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
   j1_parameters.effort_type = JointEffortType::Actuated;
 
-  Pose3 j1_bTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, sdf_link_l1, l2, sdf_link_l2);
+  Pose3 j1_bTj = GetJointFrame(*simple_urdf.JointByName("j1"), sdf_link_l1, sdf_link_l2);
+
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   // Test constructor.
@@ -324,7 +325,8 @@ TEST(Sdf, sdf_constructor_revolute) {
   auto sdf_link_l1 = *model.LinkByName("link_1");
   auto sdf_link_l2 = *model.LinkByName("link_2");
   
-  Pose3 j1_bTj = GetJointFrame(*model.JointByName("joint_1"), l0, sdf_link_l0, l1, sdf_link_l1);
+  Pose3 j1_bTj = GetJointFrame(*model.JointByName("joint_1"), sdf_link_l0, sdf_link_l1);
+
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("joint_1"));
 
   // constructor for j1
@@ -353,7 +355,8 @@ TEST(Sdf, sdf_constructor_revolute) {
   JointParams j2_parameters;
   j2_parameters.effort_type = JointEffortType::Actuated;
 
-  Pose3 j2_bTj = GetJointFrame(*model.JointByName("joint_2"), l1, sdf_link_l1, l2, sdf_link_l2);
+  Pose3 j2_bTj = GetJointFrame(*model.JointByName("joint_2"), sdf_link_l1, sdf_link_l2);
+
   const gtsam::Vector3 j2_axis = GetSdfAxis(*model.JointByName("joint_2"));
 
   auto j2 = boost::make_shared<RevoluteJoint>(2, "joint_2", j2_bTj, l1, l2,
@@ -389,7 +392,7 @@ TEST(Sdf, limit_params) {
   auto j1_parameters = ParametersFromSdfJoint(*model.JointByName("j1"));
   j1_parameters.effort_type = JointEffortType::Actuated;
 
-  Pose3 j1_bTj = GetJointFrame(*model.JointByName("j1"), l1, sdf_link_l1, l2, sdf_link_l2);
+  Pose3 j1_bTj = GetJointFrame(*model.JointByName("j1"), sdf_link_l1, sdf_link_l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*model.JointByName("j1"));
 
   auto j1 = boost::make_shared<RevoluteJoint>(1, "j1", j1_bTj, l1, l2, j1_axis,
@@ -415,7 +418,7 @@ TEST(Sdf, limit_params) {
   joint_1_parameters.effort_type = JointEffortType::Actuated;
 
   Pose3 joint_1_bTj =
-      GetJointFrame(*model2.JointByName("joint_1"), link_0, sdf_link_0, link_1, sdf_link_1);
+      GetJointFrame(*model2.JointByName("joint_1"), sdf_link_0, sdf_link_1);
   const gtsam::Vector3 joint_1_axis =
       GetSdfAxis(*model2.JointByName("joint_1"));
 
@@ -447,7 +450,7 @@ TEST(Sdf, urdf_constructor_prismatic) {
   auto j1_parameters = ParametersFromSdfJoint(joint1);
   j1_parameters.effort_type = JointEffortType::Actuated;
 
-  Pose3 bTj = GetJointFrame(joint1, l1, *simple_urdf.LinkByName("l1"), l2, *simple_urdf.LinkByName("l2"));
+  Pose3 bTj = GetJointFrame(joint1, *simple_urdf.LinkByName("l1"), *simple_urdf.LinkByName("l2"));
 
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
@@ -520,7 +523,7 @@ TEST(Sdf, sdf_constructor_screw) {
   LinkSharedPtr l0 = LinkFromSdf(0, *model.LinkByName("link_0"));
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("link_1"));
 
-  Pose3 bTj = GetJointFrame(*model.JointByName("joint_1"), l0, *model.LinkByName("link_0"), l1, *model.LinkByName("link_1"));
+  Pose3 bTj = GetJointFrame(*model.JointByName("joint_1"), *model.LinkByName("link_0"), *model.LinkByName("link_1"));
 
   // constructor for j1
   JointParams j1_parameters;
@@ -562,7 +565,7 @@ TEST(Robot, simple_urdf) {
   auto sdf_link_l2 = *simple_urdf.LinkByName("l2");
 
   auto j1_parameters = ParametersFromSdfJoint(*simple_urdf.JointByName("j1"));
-  Pose3 bTj = GetJointFrame(*simple_urdf.JointByName("j1"), l1, sdf_link_l1, l2, sdf_link_l2);
+  Pose3 bTj = GetJointFrame(*simple_urdf.JointByName("j1"), sdf_link_l1, sdf_link_l2);
   const gtsam::Vector3 j1_axis = GetSdfAxis(*simple_urdf.JointByName("j1"));
 
   auto j1 = boost::make_shared<RevoluteJoint>(1, "j1", bTj, l1, l2, j1_axis,

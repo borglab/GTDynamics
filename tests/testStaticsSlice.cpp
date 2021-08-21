@@ -41,7 +41,6 @@ TEST(Statics, OneMovingLink) {
                       Fg_B, kTol));
 
   // Create base and link
-  // TODO(frank): #207 should not have to provide wTl to Link constructor
   const Pose3 bTcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
   auto base =
