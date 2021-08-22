@@ -73,29 +73,29 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 }
 
 // Get Link pose in base frame from sdf::Link object
-Pose3 GetSdfLinkFrame(const sdf::Link &sdf_link) {
+Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
 // Call SemanticPose::Resolve so the pose is resolved to the correct frame
   /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
   // Get non-const pose of link in the frame of the joint it is connect to
   // (http://wiki.ros.org/urdf/XML/link).
-  auto raw_pose = sdf_link.RawPose();
+  auto raw_pose = sdf_link->RawPose();
 
   // Update from joint frame to base frame in-place.
   // Base frame is denoted by "".
-  auto errors = sdf_link.SemanticPose().Resolve(raw_pose, "");
+  auto errors = sdf_link->SemanticPose().Resolve(raw_pose, "");
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
     throw std::runtime_error(errors[0].Message());
   }
   // Pose is updated from joint frame to base frame.
-  const auto bTl = Pose3FromIgnition(raw_pose);
+  const auto bMl = Pose3FromIgnition(raw_pose);
 
-  return bTl;
+  return bMl;
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                    const sdf::Link &parent_sdf_link,
-                    const sdf::Link &child_sdf_link) {
+                    const sdf::Link *parent_sdf_link,
+                    const sdf::Link *child_sdf_link) {
 
   // Name of the coordinate frame the joint's pose is relative to.
   // Specified by `relative_to` in the SDF file.
@@ -105,7 +105,7 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
   // the value of `frame_name`.
   Pose3 lTj = Pose3FromIgnition(sdf_joint.RawPose());
 
-  if (frame_name.empty() || frame_name == child_sdf_link.Name()) {
+  if (frame_name.empty() || frame_name == child_sdf_link->Name()) {
     // If `frame_name` is empty or has the same name as the child_link, it means
     // the joint frame is relative to the child link. So to get the joint pose
     // in the base frame, we pre-multiply by the child link's frame.
@@ -115,13 +115,13 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
     // This is done here once in order to avoid saving the bTl transform
     // as part of the Link class.
     // We need the bTl here because the joint is defined in the link frame in the sdf.
-    const Pose3 bTlc = GetSdfLinkFrame(child_sdf_link);
-    return bTlc * lTj;
+    const Pose3 bTcl = GetSdfLinkFrame(child_sdf_link);
+    return bTcl * lTj;
 
-  } else if (frame_name == parent_sdf_link.Name()) {
+  } else if (frame_name == parent_sdf_link->Name()) {
     // Else the joint pose is in the frame of the parent link.
-    const Pose3 bTlp = GetSdfLinkFrame(parent_sdf_link);
-    return bTlp * lTj;
+    const Pose3 bTpl = GetSdfLinkFrame(parent_sdf_link);
+    return bTpl * lTj;
 
   } else if (frame_name == "world") {
     // If `frame_name` is "world", the joint pose is already in the world frame.
@@ -148,9 +148,9 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
 
   // Get the pose of the link in the base frame
   // we only save the bMcom rest matrix as part of the Link class
-  auto bTl = GetSdfLinkFrame(sdf_link);
-  const auto lTcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
-  auto bMcom = bTl * lTcom;
+  const Pose3 bMl = GetSdfLinkFrame(&sdf_link);
+  const Pose3 lMcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
+  const Pose3 bMcom = bMl * lMcom;
 
   return boost::make_shared<Link>(id, sdf_link.Name(),
                                   sdf_link.Inertial().MassMatrix().Mass(),
@@ -165,9 +165,9 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
 }
 
 JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
-                            const sdf::Link &parent_sdf_link,
+                            const sdf::Link *parent_sdf_link,
                             const LinkSharedPtr &child_link,
-                            const sdf::Link &child_sdf_link,
+                            const sdf::Link *child_sdf_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
@@ -175,21 +175,21 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
   JointParams parameters = ParametersFromSdfJoint(sdf_joint);
 
   std::string name(sdf_joint.Name());
-  Pose3 bTj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
+  Pose3 bMj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
 
   const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(id, name, bTj, parent_link,
+      joint = boost::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
                                                  child_link, axis, parameters);
       break;
     case sdf::JointType::REVOLUTE:
-      joint = boost::make_shared<RevoluteJoint>(id, name, bTj, parent_link,
+      joint = boost::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
                                                 child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
       joint = boost::make_shared<ScrewJoint>(
-          id, name, bTj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
+          id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
       break;
     default:
@@ -230,8 +230,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     }
     LinkSharedPtr parent_link = name_to_link[parent_link_name];
     LinkSharedPtr child_link = name_to_link[child_link_name];
-    sdf::Link parent_sdf_link = *sdf.LinkByName(parent_link_name);
-    sdf::Link child_sdf_link = *sdf.LinkByName(child_link_name);
+    const sdf::Link *parent_sdf_link = sdf.LinkByName(parent_link_name);
+    const sdf::Link *child_sdf_link = sdf.LinkByName(child_link_name);
 
     // Construct Joint and insert into name_to_joint.
     JointSharedPtr joint = JointFromSdf(j, parent_link, parent_sdf_link, child_link, child_sdf_link, sdf_joint);

@@ -88,8 +88,8 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
  * @return Joint pose defined in world frame
  */
 gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                           const sdf::Link &parent_sdf_link,
-                           const sdf::Link &child_sdf_link);
+                           const sdf::Link *parent_sdf_link,
+                           const sdf::Link *child_sdf_link);
 
 /**
  * @fn Converts an axis taken from input sdf::Joint into the Vector3 format
