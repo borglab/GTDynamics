@@ -53,7 +53,7 @@ TEST(Statics, OneMovingLink) {
   const Pose3 bMj;
   const Vector3 axis(0, 0, 1);
   auto joint =
-      boost::make_shared<RevoluteJoint>(id, "joint1", bTj, base, link, axis);
+      boost::make_shared<RevoluteJoint>(id, "joint1", bMj, base, link, axis);
 
   // Create mechanism.
   // TODO(frank): specifying name is redundant and failure prone!
