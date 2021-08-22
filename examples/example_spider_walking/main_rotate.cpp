@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
   for (auto&& link : links) {
     prev_cp.insert(std::make_pair(
         link,
-        (link_map[link]->bTcom() * Pose3(Rot3(), c1.point)).translation()));
+        link_map[link]->bTcom() * c1.point));
   }
 
   // Distance to move contact point per time step during swing.

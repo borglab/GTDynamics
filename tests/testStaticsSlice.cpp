@@ -41,16 +41,16 @@ TEST(Statics, OneMovingLink) {
                       Fg_B, kTol));
 
   // Create base and link
-  const Pose3 bTcom(Rot3(), Point3(L / 2, 0, 0));
+  const Pose3 bMcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
   auto base =
       boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), true);
-  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bTcom);
+  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bMcom);
 
   // Create joint
   constexpr unsigned char id = 22;
   // TODO(frank): #206 should not have to provide wTj to the joint constructor.
-  const Pose3 bTj;
+  const Pose3 bMj;
   const Vector3 axis(0, 0, 1);
   auto joint =
       boost::make_shared<RevoluteJoint>(id, "joint1", bTj, base, link, axis);

@@ -36,11 +36,11 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   joint_params.scalar_limits.value_lower_limit = -1.57;
   joint_params.scalar_limits.value_upper_limit = 1.57;
   joint_params.scalar_limits.value_limit_threshold = 0;
-  gtsam::Pose3 bTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
-  gtsam::Pose3 jMc = bTj.inverse() * l2->bTcom();
+  gtsam::Pose3 bMj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
+  gtsam::Pose3 jMc = bMj.inverse() * l2->bTcom();
   gtsam::Vector6 jScrewAxis = jMc.AdjointMap() * cScrewAxis;
 
   return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      1, "j1", bTj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
+      1, "j1", bMj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
 }
 }  // namespace gtdynamics
