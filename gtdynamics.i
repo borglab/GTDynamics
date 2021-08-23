@@ -55,6 +55,18 @@ class ContactEqualityFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/ContactPointFactor.h>
+class ContactPointFactor : gtsam::NoiseModelFactor {
+  ContactPointFactor(gtsam::Key link_pose_key, gtsam::Key point_key,
+                     const gtsam::noiseModel::Base *model,
+                     const gtsam::Point3 &contact_in_com);
+  ContactPointFactor(const gtdynamics::PointOnLink &point_on_link,
+                     gtsam::Key point_key, const gtsam::noiseModel::Base *model,
+                     size_t t = 0);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
 
 #include <gtdynamics/factors/TwistFactor.h>
 class TwistFactor : gtsam::NonlinearFactor {
