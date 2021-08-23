@@ -18,11 +18,8 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [
-          ubuntu-18.04-gcc-9,
-          ubuntu-18.04-clang-9,
-          macOS-10.15-xcode-11.3.1,
-        ]
+        name:
+          [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9, macOS-10.15-xcode-11.3.1]
 
         build_type: [Debug, Release]
         python_version: [3]
@@ -63,7 +60,7 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
-          
+
           # For SDFormat
           sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
@@ -72,7 +69,7 @@ jobs:
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
 
           # sudo apt-get -y install libpython-dev python-numpy
-          
+
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -97,7 +94,7 @@ jobs:
       - name: Set Make processes (macOS)
         if: runner.os == 'macOS'
         run: echo "MAKE_J=$(sysctl -n hw.physicalcpu)" >> $GITHUB_ENV
-  
+
       - name: Install GTSAM
         run: |
           git clone https://github.com/borglab/gtsam.git
@@ -113,13 +110,13 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v2
-      
+
       - name: Build Directory
         run: mkdir build
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
         working-directory: ./build
 
       - name: Build
