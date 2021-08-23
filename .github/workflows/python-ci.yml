@@ -100,7 +100,7 @@ jobs:
           git clone https://github.com/borglab/gtsam.git
           cd gtsam
           mkdir build && cd $_
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
           sudo make -j$MAKE_J install
           cd ../../ # go back to home directory
 
