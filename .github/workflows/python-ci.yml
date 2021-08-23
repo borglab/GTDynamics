@@ -1,0 +1,131 @@
+name: Python CI
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.name }} ${{ matrix.build_type }} Python ${{ matrix.python_version }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CTEST_OUTPUT_ON_FAILURE: ON
+      CTEST_PARALLEL_LEVEL: 2
+      CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
+      PYTHON_VERSION: ${{ matrix.python_version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Github Actions requires a single row to be added to the build matrix.
+        # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
+        name: [
+          ubuntu-18.04-gcc-9,
+          ubuntu-18.04-clang-9,
+          macOS-10.15-xcode-11.3.1,
+        ]
+
+        build_type: [Debug, Release]
+        python_version: [3]
+        include:
+          - name: ubuntu-18.04-gcc-9
+            os: ubuntu-18.04
+            compiler: gcc
+            version: "9"
+
+          - name: ubuntu-18.04-clang-9
+            os: ubuntu-18.04
+            compiler: clang
+            version: "9"
+
+          - name: ubuntu-18.04-clang-9
+            os: ubuntu-18.04
+            compiler: clang
+            version: "9"
+            build_type: Debug
+            python_version: "3"
+
+          - name: macOS-10.15-xcode-11.3.1
+            os: macOS-10.15
+            compiler: xcode
+            version: "11.3.1"
+
+    steps:
+      - name: Install Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
+            echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
+
+          else
+            sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+          
+          # For SDFormat
+          sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
+          sudo apt-get -y update
+
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+
+          # sudo apt-get -y install libpython-dev python-numpy
+          
+      - name: Install Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            brew install gcc@${{ matrix.version }}
+            echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
+          else
+            sudo xcode-select -switch /Applications/Xcode_${{ matrix.version }}.app
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+          brew install boost
+          brew tap osrf/simulation
+          brew install sdformat10
+
+      - name: Set Make processes (Linux)
+        if: runner.os == 'Linux'
+        run: echo "MAKE_J=$(nproc)" >> $GITHUB_ENV
+
+      - name: Set Make processes (macOS)
+        if: runner.os == 'macOS'
+        run: echo "MAKE_J=$(sysctl -n hw.physicalcpu)" >> $GITHUB_ENV
+  
+      - name: Install GTSAM
+        run: |
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd $_
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          sudo make -j$MAKE_J install
+          cd ../../ # go back to home directory
+
+      - name: Configure Linux
+        if: runner.os == 'Linux'
+        run: sudo ldconfig
+
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Build Directory
+        run: mkdir build
+
+      - name: Configure
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
+        working-directory: ./build
+
+      - name: Build
+        run: make -j$MAKE_J
+        working-directory: ./build
+
+      - name: Test
+        run: make -j$MAKE_J python-test
+        working-directory: ./build
