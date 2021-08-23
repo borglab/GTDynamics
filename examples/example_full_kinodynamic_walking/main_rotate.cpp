@@ -177,13 +177,13 @@ int main(int argc, char** argv) {
   // Compute the centroid of the contacts.
   auto centroid = Point3(0, 0, 0);
   for (auto&& link : links)
-    centroid += link_map[link]->bTcom() * c0.point;
+    centroid += link_map[link]->bMcom() * c0.point;
   centroid = centroid / 4;
 
   std::map<string, double> centroid_contact_dist;
   std::map<string, double> prev_theta;
   for (auto&& link : links) {
-    auto cp = link_map[link]->bTcom() * c0.point;
+    auto cp = link_map[link]->bMcom() * c0.point;
     auto delta = cp - centroid;
     centroid_contact_dist.insert(std::make_pair(link, delta.norm()));
     prev_theta.insert(std::make_pair(link, std::atan2(delta.y(), delta.x())));
@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
   // Add link boundary conditions to FG.
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
-    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->bTcom(),
+    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->bMcom(),
                                dynamics_model_6);
     objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), 0),
                                         Vector6::Zero(), dynamics_model_6);

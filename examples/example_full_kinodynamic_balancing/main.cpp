@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   double sigma_objectives = 1e-3;  // Variance of additional objectives.
 
   // Specify boundary conditions for base and joints.
-  gtsam::Pose3 base_pose_init = vision60.link("body")->bTcom();
+  gtsam::Pose3 base_pose_init = vision60.link("body")->bMcom();
   gtsam::Vector6 base_twist_init = gtsam::Z_6x1,
                  base_twist_final = gtsam::Z_6x1,
                  base_accel_init = gtsam::Z_6x1,

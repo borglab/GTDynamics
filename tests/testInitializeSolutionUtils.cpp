@@ -113,7 +113,7 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->bTcom();
+  Pose3 wTb_i = l2->bMcom();
   std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5)),
                               Pose3(Rot3(), Point3(2, 0, 2.5))};
   double t_i = 0.0;
@@ -141,7 +141,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->bTcom();
+  Pose3 wTb_i = l2->bMcom();
   std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5))};
 
   std::vector<double> ts = {10};
@@ -211,7 +211,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->bTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
@@ -223,7 +223,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   double joint_angle;
   for (auto &&link : robot.links()) {
     pose = Pose(init_vals, link->id());
-    EXPECT(assert_equal(link->bTcom(), pose));
+    EXPECT(assert_equal(link->bMcom(), pose));
   }
 
   for (auto &&joint : robot.joints()) {
@@ -239,7 +239,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->bTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   ContactPoints contact_points = {
@@ -251,7 +251,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   double joint_angle;
   for (size_t t = 0; t <= 100; t++) {
     for (auto &&link : robot.links()) {
-      EXPECT(assert_equal(link->bTcom(), Pose(init_vals, link->id(), t)));
+      EXPECT(assert_equal(link->bMcom(), Pose(init_vals, link->id(), t)));
     }
     for (auto &&joint : robot.joints()) {
       joint_angle = JointAngle(init_vals, joint->id(), t);
@@ -280,7 +280,7 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   int steps_per_phase = 100;
   std::vector<int> phase_steps(3, steps_per_phase);
 
-  Pose3 wTb_i = l2->bTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   std::vector<Pose3> wTb_t;
   std::vector<double> ts;

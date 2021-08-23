@@ -50,7 +50,7 @@ def update_jr_frame(ax, values, jr, k):
 
     # for link in jr.robot.links():
     #     i = link.id()
-    #     pose = link.bTcom()
+    #     pose = link.bMcom()
 
     #     y = pose.y()
     #     z = pose.z()
@@ -167,6 +167,6 @@ if __name__ == "__main__":
     k = 0
     for link in jr.robot.links():
         i = link.id()
-        pose = link.bTcom()
+        pose = link.bMcom()
         gtd.InsertPose(values, i, k, pose)
     visualize_jr(values, jr, k)

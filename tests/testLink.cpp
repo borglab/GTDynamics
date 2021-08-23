@@ -39,7 +39,7 @@ TEST(Link, params_constructor) {
   EXPECT(assert_equal(100, l1.mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -54,7 +54,7 @@ TEST(Link, params_constructor) {
       l1.inertiaMatrix()));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1.joints().size()));

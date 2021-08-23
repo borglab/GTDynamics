@@ -224,7 +224,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
       LinkSharedPtr child_link = name_to_link[child_link_name];
-      Pose3 fixed_pose = child_link->bTcom();
+      Pose3 fixed_pose = child_link->bMcom();
       child_link->fix(fixed_pose);
       continue;
     }

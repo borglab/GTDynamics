@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
 
   // Compute coefficients for cubic spline from current robot position
   // to final position using hermite parameterization.
-  Pose3 wTb_i = robot.link("body")->bTcom();
+  Pose3 wTb_i = robot.link("body")->bMcom();
   Pose3 wTb_f = Pose3(Rot3(), Point3(3, 0, 0.1));
   Point3 x_0_p(1, 0, 0);
   Point3 x_0_p_traj(1, 0, 0.4);
@@ -304,9 +304,9 @@ int main(int argc, char **argv) {
       Pose3(Rot3(), Point3(0.14, 0, 0)); // Foot is 14cm along X in COM
   Pose3 bTw_i = wTb_i.inverse();
   for (auto &&leg : swing_sequence) {
-    const Pose3 bTfoot = bTw_i * robot.link(leg)->bTcom() * comTfoot;
+    const Pose3 bTfoot = bTw_i * robot.link(leg)->bMcom() * comTfoot;
     bTfs.emplace(leg, bTfoot);
-  }
+  } 
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
   // Initialize values.
   gtsam::Values values;
   for (auto &&link : robot.links())
-    InsertPose(&values, link->id(), link->bTcom());
+    InsertPose(&values, link->id(), link->bMcom());
   for (auto &&joint : robot.joints())
     InsertJointAngle(&values, joint->id(), 0.0);
 

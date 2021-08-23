@@ -45,8 +45,8 @@ class TestLink(GtsamTestCase):
         self.gtsamAssertEquals(l1.lTcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
 
         # Verify center of mass defined in the world frame is correct.
-        self.gtsamAssertEquals(l0.bTcom(), Pose3(Rot3(), Point3(0, 0, 0.1)))
-        self.gtsamAssertEquals(l1.bTcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
+        self.gtsamAssertEquals(l0.bMcom(), Pose3(Rot3(), Point3(0, 0, 0.1)))
+        self.gtsamAssertEquals(l1.bMcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
 
         # Verify that mass is correct.
         self.assertEqual(l0.mass(), 0.01)

@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.addPrior(internal::PoseKey(i, 0), link->bTcom(),
+    prior_factors.addPrior(internal::PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
         internal::TwistKey(i, 0), gtsam::Z_6x1,
