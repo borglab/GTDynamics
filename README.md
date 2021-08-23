@@ -107,23 +107,30 @@ make
 
 GTDynamics now supports a Pybind11-based Python API.
 
-To start, please download and install the [GTwrap repository](https://github.com/borglab/wrap).
+GTWrap comes with the installation with GTSAM, which can also be used for generate the python bindings for GTDynamics.
 
 To compile and install the GTDynamics python library:
 
-1. In the build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
+1. Ensure that GTSAM is built with generated python bindings. If not, go to the build directory and run `cmake` with the flag `GTSAM_BUILD_PYTHON=ON`. Afterwards, install the GTSAM python package.
+
+    ```sh
+    cmake -DGTSAM_BUILD_PYTHON=ON ..
+    make && make python-install
+    ```
+
+2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
 
     ```sh
     cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
     ```
 
-2. Build as normal and install the python package.
+3. Build as normal and install the python package.
 
     ```sh
     make && make python-install
     ```
 
-3. To run the Python tests, you can simply run:
+4. To run the Python tests, you can simply run:
 
     ```sh
     make python-test
