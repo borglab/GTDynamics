@@ -52,7 +52,7 @@ jobs:
           cd gtsam
           mkdir build && cd build
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
-          make -j4 install
+          make -j$(sysctl -n hw.physicalcpu) install
           cd ../../ # go back to home directory
 
       - name: Checkout
@@ -67,9 +67,9 @@ jobs:
         working-directory: ./build
 
       - name: Build
-        run: make -j4
+        run: make -j$(sysctl -n hw.physicalcpu)
         working-directory: ./build
 
       - name: Test
-        run: make -j4 check
+        run: make -j$(sysctl -n hw.physicalcpu) check
         working-directory: ./build
