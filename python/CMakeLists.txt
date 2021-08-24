@@ -74,9 +74,7 @@ macro(PYTHON_UNIT_TEST_SUITE suiteName directory)
   list(APPEND python_unit_test_suites python-test.${suiteName})
 endmacro()
 
-if(NOT GTDYNAMICS_BYPASS_FAILING_PYTHON_TESTS)
-  PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
-endif()
+PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
 
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
