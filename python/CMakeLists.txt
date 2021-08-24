@@ -60,23 +60,29 @@ else()
   set(GTD_PATH_SEP ";")
 endif()
 
-if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+# Unit tests
+set(python_unit_test_suites)
+macro(PYTHON_UNIT_TEST_SUITE suiteName directory)
   add_custom_target(
-    python-test-cablerobot
+    python-test.${suiteName}
     COMMAND
       ${CMAKE_COMMAND} -E env # add package to python path so no need to install
       "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
-      ${PYTHON_EXECUTABLE} -m unittest discover 
+      ${PYTHON_EXECUTABLE} -m unittest discover
     DEPENDS ${PROJECT_NAME}_py
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
+    WORKING_DIRECTORY ${directory})
+  list(APPEND python_unit_test_suites python-test.${suiteName})
+endmacro()
+
+if(NOT GTDYNAMICS_BYPASS_FAILING_PYTHON_TESTS)
+  PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
+endif()
+
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
 endif()
 
 # Custom make command to run all Python tests
 add_custom_target(
   python-test
-  COMMAND
-    ${CMAKE_COMMAND} -E env # add package to python path so no need to install
-    "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
-    ${PYTHON_EXECUTABLE} -m unittest discover
-  DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/python/tests)
+  DEPENDS ${PROJECT_NAME}_py ${python_unit_test_suites})

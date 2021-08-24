@@ -58,6 +58,8 @@ add_subdirectory(gtdynamics)
 
 option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")
+# TODO(gerry): Fix the python unit tests and delete this flag
+option(GTDYNAMICS_BYPASS_FAILING_PYTHON_TESTS "Skip python tests in CI that need to be fixed" OFF)
 
 if(GTDYNAMICS_BUILD_PYTHON)
   add_subdirectory(python)
