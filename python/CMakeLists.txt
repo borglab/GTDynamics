@@ -60,6 +60,17 @@ else()
   set(GTD_PATH_SEP ";")
 endif()
 
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  add_custom_target(
+    python-test-cablerobot
+    COMMAND
+      ${CMAKE_COMMAND} -E env # add package to python path so no need to install
+      "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
+      ${PYTHON_EXECUTABLE} -m unittest discover 
+    DEPENDS ${PROJECT_NAME}_py
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
+endif()
+
 # Custom make command to run all Python tests
 add_custom_target(
   python-test
