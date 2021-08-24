@@ -68,8 +68,6 @@ jobs:
 
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
 
-          # sudo apt-get -y install libpython-dev python-numpy python3-pip
-
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
