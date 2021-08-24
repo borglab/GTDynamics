@@ -302,9 +302,8 @@ int main(int argc, char **argv) {
   std::map<std::string, Pose3> bTfs;
   Pose3 comTfoot =
       Pose3(Rot3(), Point3(0.14, 0, 0)); // Foot is 14cm along X in COM
-  Pose3 bTw_i = wTb_i.inverse();
   for (auto &&leg : swing_sequence) {
-    const Pose3 bTfoot = bTw_i * robot.link(leg)->bMcom() * comTfoot;
+    const Pose3 bTfoot = robot.link(leg)->bMcom() * comTfoot;
     bTfs.emplace(leg, bTfoot);
   } 
 
