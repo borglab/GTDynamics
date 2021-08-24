@@ -68,7 +68,7 @@ jobs:
 
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
 
-          # sudo apt-get -y install libpython-dev python-numpy python3-pip python3-setuptools
+          # sudo apt-get -y install libpython-dev python-numpy python3-pip
 
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
@@ -91,7 +91,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           # Install dependencies for gtwrap
-          pip3 install -U pyparsing
+          pip3 install -U pyparsing setuptools
           pip3 install -U kinpy
 
           # Install gtsam
@@ -107,7 +107,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Install dependencies for gtwrap
-          pip3 install -U pyparsing
+          pip3 install -U pyparsing setuptools
           pip3 install -U kinpy
 
           # Install gtsam
