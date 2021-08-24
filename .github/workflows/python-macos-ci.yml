@@ -17,12 +17,12 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [macOS-10.15-xcode-11.3.1]
+        name: [python/macOS-10.15-xcode-11.3.1]
 
-        build_type: [Debug, Release]
+        build_type: [Release]
         build_unstable: [ON]
         include:
-          - name: macOS-10.15-xcode-11.3.1
+          - name: python/macOS-10.15-xcode-11.3.1
             os: macOS-10.15
             compiler: xcode
             version: "11.3.1"
