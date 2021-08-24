@@ -102,7 +102,7 @@ class CdprController(CdprControllerBase):
                     gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
                                           gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
-        cost_x = gtsam.noiseModel.Constrained.All(6) if Q is None else \
+        cost_x = gtsam.noiseModel.Isotropic.Sigma(6, 0.001) if Q is None else \
             gtsam.noiseModel.Diagonal.Precisions(Q)
         for k in range(N):
             fg.push_back(
