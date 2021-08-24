@@ -158,6 +158,9 @@ class ScrewJointBase : public JointTyped {
   gtsam::Vector6 parentTwist(double q_dot) const override {
     return pScrewAxis_ * q_dot;
   }
+
+  /// Helper function for overloading stream operator
+  virtual std::ostream &to_stream(std::ostream &os) const override;
 };
 
 }  // namespace gtdynamics

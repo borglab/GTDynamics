@@ -132,7 +132,7 @@ gtsam::Values Statics::solve(const Slice& slice,
     values.insert(key, pose);
   }
 
-  // Add constriants for joint angles and initialize them.
+  // Add constraints for joint angles and initialize them.
   for (auto&& joint : robot_.joints()) {
     auto key = internal::JointAngleKey(joint->id(), slice.k);
     auto q = configuration.at<double>(key);
