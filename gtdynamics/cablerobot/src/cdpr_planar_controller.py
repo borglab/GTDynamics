@@ -68,7 +68,7 @@ class CdprController(CdprControllerBase):
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
         control from the optimal trajectory.
-        """        
+        """
         return self.result
 
     @staticmethod

@@ -62,7 +62,7 @@ class Cdpr:
 
         Returns:
             int: The end effector's link id
-        """        
+        """
         return self.eelink().id()
 
     def all_factors(self, N, dt):
@@ -77,7 +77,7 @@ class Cdpr:
 
         Returns:
             gtsam.NonlinearFactorGraph: the factor graph
-        """        
+        """
         fg = gtsam.NonlinearFactorGraph()
         fg.push_back(self.kinematics_factors(ks=range(N)))
         fg.push_back(self.dynamics_factors(ks=range(N)))
@@ -285,7 +285,7 @@ class Cdpr:
         """
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
-            graph.push_back(gtsam.PriorFactorVector6(
+            graph.push_back(gtd.PriorFactorVector6(
                 gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
                 VA, self.costmodel_prior_twistaccel))
         return graph
