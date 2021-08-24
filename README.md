@@ -129,6 +129,13 @@ To compile and install the GTDynamics python library:
     make python-test
     ```
 
+    You can also run individual test suites, e.g. with:
+
+    ```sh
+    make python-test.base
+    make python-test.cablerobot
+    ```
+
 ## Citing This Work
 
 Please cite the following paper if you use this code as part of any published research:
