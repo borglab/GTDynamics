@@ -92,7 +92,6 @@ jobs:
         run: |
           # Install dependencies for gtwrap
           pip3 install -U pyparsing setuptools
-          pip3 install -U kinpy
 
           # Install gtsam
           git clone https://github.com/borglab/gtsam.git /home/runner/work/gtsam
@@ -108,7 +107,6 @@ jobs:
         run: |
           # Install dependencies for gtwrap
           pip3 install -U pyparsing setuptools
-          pip3 install -U kinpy
 
           # Install gtsam
           git clone https://github.com/borglab/gtsam.git
