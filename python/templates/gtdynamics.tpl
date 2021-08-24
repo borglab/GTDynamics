@@ -24,7 +24,7 @@
 {holder_type}
 
 // Preamble for STL classes
-#include "python/preamble.h"
+#include "python/preamble/{module_name}.h"
 
 using namespace std;
 
@@ -36,6 +36,6 @@ PYBIND11_MODULE({module_name}, m_) {{
     {wrapped_namespace}
 
 // Specializations for STL classes
-#include "python/specializations.h"
+#include "python/specializations/{module_name}.h"
 
 }}
