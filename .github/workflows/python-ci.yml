@@ -68,7 +68,7 @@ jobs:
 
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
 
-          # sudo apt-get -y install libpython-dev python-numpy
+          # sudo apt-get -y install libpython-dev python-numpy python3-pip python3-setuptools
 
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
@@ -87,26 +87,36 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat10
 
-      - name: Set Make processes (Linux)
+      - name: GTSAM (Linux)
         if: runner.os == 'Linux'
-        run: echo "MAKE_J=$(nproc)" >> $GITHUB_ENV
-
-      - name: Set Make processes (macOS)
-        if: runner.os == 'macOS'
-        run: echo "MAKE_J=$(sysctl -n hw.physicalcpu)" >> $GITHUB_ENV
-
-      - name: Install GTSAM
         run: |
+          # Install dependencies for gtwrap
+          pip3 install -U pyparsing
+          pip3 install -U kinpy
+
+          # Install gtsam
+          git clone https://github.com/borglab/gtsam.git /home/runner/work/gtsam
+          cd /home/runner/work/gtsam
+          mkdir build && cd $_
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
+          sudo make -j$(nproc) install && sudo make python-install
+          sudo ldconfig
+          cd $GITHUB_WORKSPACE # go back to home directory
+
+      - name: GTSAM (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Install dependencies for gtwrap
+          pip3 install -U pyparsing
+          pip3 install -U kinpy
+
+          # Install gtsam
           git clone https://github.com/borglab/gtsam.git
           cd gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-          sudo make -j$MAKE_J install
-          cd ../../ # go back to home directory
-
-      - name: Configure Linux
-        if: runner.os == 'Linux'
-        run: sudo ldconfig
+          make -j$(sysctl -n hw.physicalcpu) install && make python-install
+          cd $GITHUB_WORKSPACE # go back to home directory
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -120,9 +130,9 @@ jobs:
         working-directory: ./build
 
       - name: Build
-        run: make -j$MAKE_J
+        run: make -j4
         working-directory: ./build
 
       - name: Test
-        run: make -j$MAKE_J python-test
+        run: make -j4 python-test
         working-directory: ./build
