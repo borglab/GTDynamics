@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -23,9 +20,11 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/assign/list_of.hpp>
-
 #include <memory>
 #include <string>
+
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -83,7 +82,6 @@ class PoseFactor : public gtsam::NoiseModelFactor {
 
   virtual ~PoseFactor() {}
 
-
   /**
    * Evaluate link pose errors
    * @param x Values containing:
@@ -127,7 +125,7 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "pose factor" << std::endl;
+    std::cout << (s.empty() ? s : s + " ") << "Pose Factor" << std::endl;
     Base::print("", keyFormatter);
   }
 

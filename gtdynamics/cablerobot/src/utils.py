@@ -26,7 +26,7 @@ def zerovalues(lid, ts=[], dt=0.01):
         gtsam.Values: initialized values with zeros
     """
     zero = gtsam.Values()
-    zero.insertDouble(0, dt)
+    zero.insert(0, dt)
     for t in ts:
         for j in range(4):
             gtd.InsertJointAngleDouble(zero, j, t, 0)

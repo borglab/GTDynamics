@@ -140,7 +140,7 @@ class CdprSimulator:
                 *gtd.Pose(self.x, self.cdpr.ee_id(), self.k).translation()), end='  --  ')
         self.update_kinematics(self.cdpr, self.fg, self.x, self.k)
         if self.k == 0:
-            self.x.insertDouble(0, self.dt)
+            self.x.insert(0, self.dt)
         u = self.controller.update(self.x, self.k)
         if verbose:
             print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
