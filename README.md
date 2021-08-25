@@ -4,7 +4,6 @@
 
 
 ### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
-<!-- =================================================== -->
 
 ![Build Status](https://travis-ci.com/Alescontrela/GTDynamics.svg?token=V6isP7NT7qX4qsBuX1sY&branch=master)
 
@@ -103,11 +102,11 @@ make
 ./exec
 ```
 
-## Python Wrapper
+## Python Wrapper (Recommended use case)
 
 GTDynamics now supports a Pybind11-based Python API.
 
-GTWrap comes with the installation with GTSAM, which can also be used for generate the python bindings for GTDynamics.
+GTWrap comes bundled with GTSAM, which generates a corresponding GTSAM Python API. The same GTWrap package can be used to generate python bindings for GTDynamics (i.e. it is not necessary to manually install a separate GTWrap).
 
 To compile and install the GTDynamics python library:
 
@@ -122,6 +121,14 @@ To compile and install the GTDynamics python library:
 
     ```sh
     cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
+    ```
+
+    **Note**: when using CMake, it is ideal for GTSAM and GTDynamics to have the same, *non* `/usr/local` prefix for installing packages. To update the CMake prefix from a system directory, use the flag `CMAKE_INSTALL_PREFIX=/path/to/install/dir` when running `cmake`.
+
+    To update the CMake prefix, run:
+
+    ```sh
+    cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
     ```
 
 3. Build as normal and install the python package.
@@ -142,6 +149,10 @@ To compile and install the GTDynamics python library:
     make python-test.base
     make python-test.cablerobot
     ```
+
+## (Alternative) Python Wrapper installation
+
+If preferred, GTWrap can be [downloaded and installed separately](https://github.com/borglab/wrap). Afterwards, follow the instructions above from step 2 for building and installing the GTDynamics python bindings.
 
 ## Citing This Work
 
