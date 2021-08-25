@@ -114,7 +114,7 @@ To compile and install the GTDynamics python library:
 
     ```sh
     cmake -DGTSAM_BUILD_PYTHON=ON ..
-    make && make python-install
+    make && make install && make python-install
     ```
 
 2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
