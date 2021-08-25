@@ -108,24 +108,18 @@ GTDynamics now supports a Pybind11-based Python API.
 
 GTWrap comes bundled with GTSAM, which generates a corresponding GTSAM Python API. The same GTWrap package can be used to generate python bindings for GTDynamics (i.e. it is not necessary to manually install a separate GTWrap).
 
+**Note**: when using CMake, it is ideal for GTSAM and GTDynamics to have the same, *non* `/usr/local` prefix for installing packages. To update the CMake prefix from a system directory, use the flag `CMAKE_INSTALL_PREFIX=/path/to/install/dir` when running `cmake`.
+
 To compile and install the GTDynamics python library:
 
-1. Ensure that GTSAM is built with generated python bindings. If not, go to the build directory and run `cmake` with the flag `GTSAM_BUILD_PYTHON=ON`. Afterwards, install the GTSAM python package.
+1. Ensure that GTSAM is built with generated python bindings. If not, go to the build directory and run `cmake` with the flag `GTSAM_BUILD_PYTHON=ON`. It is highly advised to specify a *non* `user/local` CMake prefix for installing packages. Afterwards, install the GTSAM python package.
 
     ```sh
-    cmake -DGTSAM_BUILD_PYTHON=ON ..
+    cmake -DGTSAM_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
     make && make install && make python-install
     ```
 
-2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
-
-    ```sh
-    cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
-    ```
-
-    **Note**: when using CMake, it is ideal for GTSAM and GTDynamics to have the same, *non* `/usr/local` prefix for installing packages. To update the CMake prefix from a system directory, use the flag `CMAKE_INSTALL_PREFIX=/path/to/install/dir` when running `cmake`.
-
-    To update the CMake prefix, run:
+2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`. It is highly advised for the GTDynamics CMake prefix to match the CMake prefix used for GTSAM. Again, use the `CMAKE_INSTALL_PREFIX=/path/to/install/dir` flag to specify the updated prefix.
 
     ```sh
     cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
