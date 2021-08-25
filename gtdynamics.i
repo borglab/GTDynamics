@@ -166,15 +166,12 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
   Link();
-  Link(int id, const string &name, const double mass, const Matrix &inertia,
-       const gtsam::Pose3 &wTl, const gtsam::Pose3 &lTcom,
-       bool is_fixed = false);
+  Link(int id, const string &name, const double mass,
+       const Matrix &inertia, const gtsam::Pose3 &bMcom, bool is_fixed = false) ;    
 
   gtdynamics::Link *shared();
   int id() const;
   void addJoint(gtdynamics::Joint *joint_ptr);
-  const gtsam::Pose3 &wTl() const;
-  const gtsam::Pose3 &lTcom() const;
   const gtsam::Pose3 bMcom() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
