@@ -68,8 +68,6 @@ jobs:
 
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
 
-          # sudo apt-get -y install libpython-dev python-numpy python3-pip
-
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -87,13 +85,14 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat10
 
+      - name: Python Dependencies
+        run: |
+          # Install dependencies for gtwrap
+          pip3 install -U setuptools numpy pyparsing
+
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Install dependencies for gtwrap
-          pip3 install -U pyparsing setuptools
-          pip3 install -U kinpy
-
           # Install gtsam
           git clone https://github.com/borglab/gtsam.git /home/runner/work/gtsam
           cd /home/runner/work/gtsam
@@ -106,10 +105,6 @@ jobs:
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Install dependencies for gtwrap
-          pip3 install -U pyparsing setuptools
-          pip3 install -U kinpy
-
           # Install gtsam
           git clone https://github.com/borglab/gtsam.git
           cd gtsam
