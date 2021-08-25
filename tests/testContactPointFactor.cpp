@@ -54,12 +54,12 @@ TEST(ContactPointFactor, Error) {
 
   ContactPointFactor factor(point_on_link, point_key, kModel, 0);
 
-  Vector error = factor.evaluateError(point_on_link.link->wTl(), wPc);
+  Vector error = factor.evaluateError(point_on_link.link->bMcom(), wPc);
   EXPECT(assert_equal(Vector3::Zero(), error, 1e-9));
 
   // Check error when contact point is not consistent
   Point3 wPc2(1, 1, 2);
-  error = factor.evaluateError(point_on_link.link->wTl(), wPc2);
+  error = factor.evaluateError(point_on_link.link->bMcom(), wPc2);
   EXPECT(assert_equal(Vector3::Ones(), error, 1e-9));
 }
 
@@ -73,7 +73,7 @@ TEST(ContactPointFactor, Jacobians) {
   ContactPointFactor factor(point_on_link, point_key, kModel, 0);
 
   Values values;
-  InsertPose(&values, end_link->id(), 0, point_on_link.link->wTl());
+  InsertPose(&values, end_link->id(), 0, point_on_link.link->bMcom());
   values.insert<Point3>(point_key, wPc);
 
   // Check Jacobians
