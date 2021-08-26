@@ -868,6 +868,9 @@ class Trajectory {
   gtsam::NonlinearFactorGraph
   contactPointObjectives(const gtdynamics::Robot& robot, 
                          const gtsam::SharedNoiseModel &cost_model,
+                         const gtsam::Point3 &step) const;
+  contactPointObjectives(const gtdynamics::Robot& robot, 
+                         const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step,
                          const gtdynamics::ContactAdjustments &contact_adjustments) const;
   void addMinimumTorqueFactors(const gtdynamics::Robot& robot, 
