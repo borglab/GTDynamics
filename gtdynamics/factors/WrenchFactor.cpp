@@ -14,85 +14,72 @@
 #include "gtdynamics/factors/WrenchFactor.h"
 
 #include <gtsam/base/Matrix.h>
-#include <gtsam/base/Vector.h>
 #include <gtsam/base/OptionalJacobian.h>
+#include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/Values.h>
 
 #include <boost/optional.hpp>
+#include <iostream>
 #include <vector>
 
-using gtsam::Values;
+#include "gtdynamics/dynamics/Dynamics.h"
+#include "gtdynamics/statics/Statics.h"
+
 using gtsam::Matrix;
-using gtsam::Matrix63;
 using gtsam::Matrix6;
+using gtsam::Pose3;
+using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
-using gtsam::Pose3;
-using gtsam::Point3;
 
 namespace gtdynamics {
 
-/// calculate coriolis term and jacobian w.r.t. joint coordinate twist
-// TODO(gerry): replace with gtsam adjoint Jacobian
-Vector6 coriolis(const Matrix6 &inertia, const Vector6 &twist,
-                 gtsam::OptionalJacobian<-1, -1> H_twist = boost::none) {
-  if (H_twist) {
-    auto g1 = inertia(0, 0), g2 = inertia(1, 1), g3 = inertia(2, 2),
-         m = inertia(3, 3);
-    auto w1 = twist(0), w2 = twist(1), w3 = twist(2), v1 = twist(3),
-         v2 = twist(4), v3 = twist(5);
-    *H_twist = -(Matrix6() << 0, (g2 - g3) * w3, (g2 - g3) * w2, 0, 0, 0,  //
-                 (g3 - g1) * w3, 0, (g3 - g1) * w1, 0, 0, 0,               //
-                 (g1 - g2) * w2, (g1 - g2) * w1, 0, 0, 0, 0,               //
-                 0, -m * v3, m * v2, 0, m * w3, -m * w2,                   //
-                 m * v3, 0, -m * v1, -m * w3, 0, m * w1,                   //
-                 -m * v2, m * v1, 0, m * w2, -m * w1, 0)
-                    .finished();
-  }
-  return -Pose3::adjointMap(twist).transpose() * inertia * twist;
+WrenchFactor::WrenchFactor(
+    gtsam::Key twist_key, gtsam::Key twistAccel_key,
+    const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const Matrix6 &inertia, const boost::optional<gtsam::Vector3> &gravity)
+    : Base(cost_model), inertia_(inertia), gravity_(gravity) {
+  keys_.reserve(wrench_keys.size() + 3);
+  keys_.push_back(twist_key);
+  keys_.push_back(twistAccel_key);
+  keys_.insert(keys_.end(), wrench_keys.cbegin(), wrench_keys.cend());
+  keys_.push_back(pose_key);
 }
 
 Vector WrenchFactor::unwhitenedError(
-    const Values &x,
-    boost::optional<std::vector<Matrix> &> H) const {
+    const Values &x, boost::optional<std::vector<Matrix> &> H) const {
   if (!this->active(x)) {
     return Vector::Zero(this->dim());
   }
 
-  // `keys_` order: twist, twistAccel, pose, *wrenches
+  // Collect wrenches to implement L&P Equation 8.48 (F = ma)
+  std::vector<Vector6> wrenches;
+
+  // Coriolis forces.
   const Vector6 twist = x.at<Vector6>(keys_.at(0));
+  Matrix6 H_twist;
+  wrenches.push_back(Coriolis(inertia_, twist, H ? &H_twist : 0));
+
+  // Change in generalized momentum.
   const Vector6 twistAccel = x.at<Vector6>(keys_.at(1));
-  const Pose3 pose = x.at<Pose3>(keys_.at(2));
-  Vector6 wrenchSum = gtsam::Z_6x1;
-  for (auto key = keys_.cbegin() + 3; key != keys_.cend(); ++key) {
-    wrenchSum += x.at<Vector6>(*key);
+  wrenches.push_back(-inertia_ * twistAccel);
+
+  // External wrenches.
+  for (auto key = keys_.cbegin() + 2; key != keys_.cend() - 1; ++key) {
+    wrenches.push_back(x.at<Vector6>(*key));
   }
 
-  // transform gravity from base frame to link COM frame,
-  // to use unrotate function, have to convert gravity vector to a point
-  Vector6 gravity_wrench;
-  Matrix H_rotation, H_unrotate;
-  Matrix63 intermediateMatrix;
-  if (gravity_) {
-    auto gravity =
-        pose.rotation(H_rotation).unrotate(*gravity_, H_unrotate);
-    intermediateMatrix << gtsam::Z_3x3, gtsam::I_3x3;
-    gravity_wrench = inertia_ * intermediateMatrix * gravity;
-    if (H) (*H)[2] = -inertia_ * intermediateMatrix * H_unrotate * H_rotation;
-  } else {
-    gravity_wrench = gtsam::Z_6x1;
-    if (H) (*H)[2] = gtsam::Z_6x6;
-  }
+  // Calculate resultant wrench, fills up H with identity matrices if asked,
+  // except the last H contains the pose derivative or zero if no gravity.
+  const Vector6 error = ResultantWrench(wrenches, inertia_(3, 3),
+                                        x.at<Pose3>(keys_.back()), gravity_, H);
 
-  // Equation 8.48 (F = ma)
-  Vector6 error = (inertia_ * twistAccel) +
-                  coriolis(inertia_, twist, H ? &(*H)[0] : 0)  //
-                  - wrenchSum - gravity_wrench;
-
+  // If asked, update Jacobians not yet calculated by ResultantWrench.
   if (H) {
-    (*H)[1] = inertia_;
-    std::fill(H->begin()+3, H->end(), -gtsam::I_6x6);
+    (*H)[0] = H_twist;    // Coriolis depends in twist (key 0)
+    (*H)[1] = -inertia_;  // Derivative with respect to twist acceleration
   }
 
   return error;

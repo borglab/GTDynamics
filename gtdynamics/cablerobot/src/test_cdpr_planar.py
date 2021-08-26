@@ -148,7 +148,7 @@ class TestCdprPlanar(GtsamTestCase):
         fg.push_back(cdpr.priors_fd(ks=[0, 1, 2], torquess=[torques,]*3))
         # construct initial guess
         init = gtsam.Values()
-        init.insertDouble(0, 0.01)
+        init.insert(0, 0.01)
         for t in range(3):
             for j in range(4):
                 gtd.InsertJointAngleDouble(init, j, t, 1)

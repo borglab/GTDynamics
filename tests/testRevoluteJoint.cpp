@@ -55,8 +55,8 @@ TEST(Joint, params_constructor) {
 
   const Vector3 axis = (Vector(3) << 1, 0, 0).finished();
 
-  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, parameters,
-                   axis);
+  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                   parameters);
 
   // name
   EXPECT(assert_equal(j1.name(), "j1"));
@@ -149,6 +149,21 @@ TEST(Joint, params_constructor) {
                       j1.parameters().scalar_limits.value_upper_limit));
   EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold,
                       j1.parameters().scalar_limits.value_limit_threshold));
+}
+
+// Test parentTchild method at rest configuration.
+TEST(RevoluteJoint, ParentTchild) {
+  using simple_urdf::robot;
+  auto j1 = robot.joint("j1");
+
+  Values joint_angles;
+  InsertJointAngle(&joint_angles, j1->id(), M_PI_2);
+
+  auto pTc = j1->parentTchild(joint_angles);
+  // Rotate around the x axis for arm point up.
+  // This means the second link bends to the right.
+  Pose3 expected_pTc(Rot3::Rx(M_PI_2), Point3(0, -1, 1));
+  EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
 
 int main() {

@@ -1,5 +1,7 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS dynamics factors universal_robot utils)
+set(SOURCE_SUBDIRS universal_robot utils factors kinematics statics dynamics)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Include cable robot stuff
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
@@ -31,7 +33,8 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
   list(APPEND headers ${GLOB_RESULT})
-  install(FILES ${GLOB_RESULT} DESTINATION include/${SOURCE_SUBDIR})
+  # Install header file to INSTALL_INCUDEDIR/gtdynamics/subdirectory.
+  install(FILES ${GLOB_RESULT} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/${SOURCE_SUBDIR})
 
   # Process subdirectory.
   message(STATUS "Building ${SOURCE_SUBDIR}")

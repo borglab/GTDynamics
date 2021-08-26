@@ -1,7 +1,6 @@
 name: macOS CI
 
-# TODO Uncomment when ready to enable CI
-# on: [pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -18,9 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [
-          macOS-10.15-xcode-11.3.1,
-        ]
+        name: [macOS-10.15-xcode-11.3.1]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -31,12 +28,8 @@ jobs:
             version: "11.3.1"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-      - name: Dependencies
+      - name: Setup Compiler
         run: |
-          brew tap osrf/simulation
-          brew install sdformat8
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             brew install gcc@${{ matrix.version }}
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
@@ -46,12 +39,37 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
+
+      - name: Dependencies
+        run: |
+          brew install boost
+          brew tap osrf/simulation
+          brew install sdformat10
+
+      - name: GTSAM
+        run: |
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd build
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          make -j$(sysctl -n hw.physicalcpu) install
+          cd ../../ # go back to home directory
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build Directory
+        run: mkdir ./build
+
       - name: Configure
-        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
         working-directory: ./build
+
       - name: Build
-        run: make -j4
+        run: make -j$(sysctl -n hw.physicalcpu)
         working-directory: ./build
+
       - name: Test
-        run: make -j4 check
+        run: make -j$(sysctl -n hw.physicalcpu) check
         working-directory: ./build

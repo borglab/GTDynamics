@@ -55,9 +55,9 @@ class ForceBalanceFactor
         q_rest_(q_rest),
         positive_(contract) {
     double sign = positive_ ? 1 : -1;
-    H_delta_x_.setConstant(1, 1, 0.01);  // from cm to m
-    H_q_.setConstant(1, 1, sign * r_);
-    H_f_.setConstant(1, 1, -k_);
+    H_delta_x_.setConstant(1, 1, k_ * 0.01);  // from cm to m
+    H_q_.setConstant(1, 1, -sign * k_ * r_);
+    H_f_.setConstant(1, 1, -1);
   }
   virtual ~ForceBalanceFactor() {}
 

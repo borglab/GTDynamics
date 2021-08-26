@@ -13,13 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -28,17 +21,24 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/factors/WrenchFactor.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
+
 namespace gtdynamics {
 
-class Link; // forward declaration
-class Joint; // forward declaration
+class Link;   // forward declaration
+class Joint;  // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
@@ -48,7 +48,7 @@ LINK_TYPEDEF_CLASS_POINTER(Joint);
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
-  unsigned char id_;
+  uint8_t id_;
   std::string name_;
 
   /// Inertial elements.
@@ -68,20 +68,29 @@ class Link : public boost::enable_shared_from_this<Link> {
   std::vector<JointSharedPtr> joints_;
 
  public:
-
   Link() {}
 
-
   /**
-   * Initialize Link's inertial properties with a LinkParams instance.
-   *
-   * @param params LinkParams object containing link information.
+   * @brief Construct a new Link object.
+   * 
+   * @param id Link ID
+   * @param name The name of the link as defined in the SDF/URDF file.
+   * @param mass The mass of the link.
+   * @param inertia The inertial matrix of the link.
+   * @param wTl The pose of the link in the spatial frame.
+   * @param lTcom The transform of the link's CoM in the link frame.
+   * @param is_fixed Flag indicating if the link is fixed.
    */
-  Link(unsigned char id, const std::string &name, const double mass,
+  Link(uint8_t id, const std::string &name, const double mass,
        const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
        const gtsam::Pose3 &lTcom, bool is_fixed = false)
-      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
-        lTcom_(lTcom), is_fixed_(is_fixed) {}
+      : id_(id),
+        name_(name),
+        mass_(mass),
+        inertia_(inertia),
+        wTl_(wTl),
+        lTcom_(lTcom),
+        is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
@@ -102,15 +111,15 @@ class Link : public boost::enable_shared_from_this<Link> {
   LinkSharedPtr shared(void) { return shared_from_this(); }
 
   /// remove the joint
-  void removeJoint(const JointSharedPtr& joint) {
+  void removeJoint(const JointSharedPtr &joint) {
     joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
   /// return ID of the link
-  unsigned char id() const { return id_; }
+  uint8_t id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(const JointSharedPtr& joint) { joints_.push_back(joint); }
+  void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
   /// transform from link to world frame
   const gtsam::Pose3 &wTl() const { return wTl_; }
@@ -143,7 +152,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
-  std::string name() const { return name_; }
+  const std::string &name() const { return name_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
@@ -169,6 +178,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// Helper print function
-  void print() const { std::cout << *this; }
+  void print(const std::string &s = "") const {
+    std::cout << (s.empty() ? s : s + " ") << *this;
+  }
 };
 }  // namespace gtdynamics

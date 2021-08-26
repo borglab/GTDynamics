@@ -1,7 +1,9 @@
 # GTDynamics
 
+**<span style=“color:red”>This library is still under very active development, hence bleeding edge, and not "supported" in the way [GTSAM](https://gtsam.org) is. In particular, we are still actively re-factoring the way we deal with time and time intervals.</span>**
+
+
 ### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
-<!-- =================================================== -->
 
 ![Build Status](https://travis-ci.com/Alescontrela/GTDynamics.svg?token=V6isP7NT7qX4qsBuX1sY&branch=master)
 
@@ -11,7 +13,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat8](https://github.com/osrf/sdformat)
+* [sdformat10](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -19,19 +21,19 @@ GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot des
 
 ### Homebrew
 
-Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+If you are on a Mac, using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
 
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 $ # Download sdformat to your preferred location.
 $ brew tap osrf/simulation
-$ brew install sdformat8
+$ brew install sdformat10
 ```
 
 ### Source
 
-Alternatively, you can install from source if you want more fine-tuned control.
+Alternatively, you can install from source if you are on Linux or want more fine-tuned control.
 
 We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
 
@@ -43,12 +45,15 @@ sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cm
 # sdformat requires libignition-math
 sudo apt-get install libignition-math4-dev
 
-# Specifically download sdformat8
-wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-8.6.1.tar.bz2
+# Set the version to install
+export GTD_SDFormat_VERSION="10.5.0"
 
-tar -xvjf sdformat-8.6.1.tar.bz2
+# Download specific version of SDFormat
+wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 
-cd sdformat-8.6.1
+tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+
+cd sdformat-${GTD_SDFormat_VERSION}
 mkdir build && cd build
 
 cmake -DCMAKE_INSTALL_PREFIX ../install ..
@@ -62,7 +67,7 @@ $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
 # We can specify the install path with -DCMAKE_INSTALL_PREFIX
-$ cmake -DCMAKE_INSTALL_PREFIX ../install ..
+$ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
 ```
@@ -97,31 +102,51 @@ make
 ./exec
 ```
 
-## Python Wrapper
+## Python Wrapper (Recommended use case)
 
 GTDynamics now supports a Pybind11-based Python API.
 
-To start, please download and install the [GTwrap repository](https://github.com/borglab/wrap).
+GTWrap comes bundled with GTSAM, which generates a corresponding GTSAM Python API. The same GTWrap package can be used to generate python bindings for GTDynamics (i.e. it is not necessary to manually install a separate GTWrap).
+
+**Note**: when using CMake, it is ideal for GTSAM and GTDynamics to have the same, *non* `/usr/local` prefix for installing packages. To update the CMake prefix from a system directory, use the flag `CMAKE_INSTALL_PREFIX=/path/to/install/dir` when running `cmake`.
 
 To compile and install the GTDynamics python library:
 
-1. In the build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
+1. Ensure that GTSAM is built with generated python bindings. If not, go to the build directory and run `cmake` with the flag `GTSAM_BUILD_PYTHON=ON`. It is highly advised to specify a *non* `user/local` CMake prefix for installing packages. Afterwards, install the GTSAM python package.
 
     ```sh
-    cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
+    cmake -DGTSAM_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
+    make && make install && make python-install
     ```
 
-2. Build as normal and install the python package.
+2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`. It is highly advised for the GTDynamics CMake prefix to match the CMake prefix used for GTSAM. Again, use the `CMAKE_INSTALL_PREFIX=/path/to/install/dir` flag to specify the updated prefix.
+
+    ```sh
+    cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
+    ```
+
+3. Build as normal and install the python package.
 
     ```sh
     make && make python-install
     ```
 
-3. To run the Python tests, you can simply run:
+4. To run the Python tests, you can simply run:
 
     ```sh
     make python-test
     ```
+
+    You can also run individual test suites, e.g. with:
+
+    ```sh
+    make python-test.base
+    make python-test.cablerobot
+    ```
+
+## (Alternative) Python Wrapper installation
+
+If preferred, GTWrap can be [downloaded and installed separately](https://github.com/borglab/wrap). Afterwards, follow the instructions above from step 2 for building and installing the GTDynamics python bindings.
 
 ## Citing This Work
 

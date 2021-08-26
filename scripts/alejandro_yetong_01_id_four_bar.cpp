@@ -25,10 +25,10 @@
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  using four_bar_linkage::joint_angles;
-  using four_bar_linkage::joint_vels;
-  using four_bar_linkage::planar_axis;
-  using four_bar_linkage::robot;
+  using four_bar_linkage_pure::planar_axis;
+  using four_bar_linkage_pure::robot;
+
+  gtsam::Values joint_angles_vels_accels;
 
   gtsam::Vector3 gravity(0, -10, 0);
   robot.fixLink("l1");
@@ -45,8 +45,7 @@ int main(int argc, char** argv) {
   // Inverse dynamics priors. We care about the torques.
   gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
   gtsam::NonlinearFactorGraph prior_factors =
-      graph_builder.inverseDynamicsPriors(robot, 0, joint_angles, joint_vels,
-                                          joint_accels);
+      graph_builder.inverseDynamicsPriors(robot, 0, joint_angles_vels_accels);
 
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : robot.links()) {

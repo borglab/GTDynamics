@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file testActuatorJointFactor.cpp
+ *  @file testPneumaticActuatorFactor.cpp
  *  @brief Tests for pneumatic actuator factors.
  *  @author Yetong Zhang
  **/
@@ -26,8 +26,9 @@
 
 #include "gtdynamics/jumpingrobot/factors/PneumaticActuatorFactors.h"
 
-using gtdynamics::JointTorqueFactor, gtdynamics::ActuatorVolumeFactor,
-    gtdynamics::SmoothActuatorFactor, gtdynamics::ClippingActuatorFactor;
+using gtdynamics::ForceBalanceFactor, gtdynamics::JointTorqueFactor,
+    gtdynamics::ActuatorVolumeFactor, gtdynamics::SmoothActuatorFactor,
+    gtdynamics::ClippingActuatorFactor;
 using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
     gtsam::assert_equal, gtsam::noiseModel::Isotropic;
 
@@ -37,6 +38,62 @@ namespace example {
     l_key('l', 0), p_key('p', 0), delta_x_key('x', 0);
 }  // namespace example
 
+/** Test the force balance with contract configuration of the actuator. */
+TEST(ForceBalanceFactor, Contract) {
+  double kt = 8200;
+  double r = 0.02;
+  double q_rest = 0.5;
+  bool positive = false;
+  ForceBalanceFactor factor(example::delta_x_key, example::q_key,
+                            example::f_key, example::cost_model, kt, r, q_rest,
+                            positive);
+
+  double delta_x = 0.4;
+  double q = 0.8;
+  double f = 10;
+
+  Vector1 actual_errors, expected_errors;
+  actual_errors = factor.evaluateError(delta_x, q, f);
+  expected_errors << 72;
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
+
+  Values values;
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::q_key, q);
+  values.insert(example::f_key, f);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+}
+
+/** Test the force balance with expand configuration of the actuator. */
+TEST(ForceBalanceFactor, Expand) {
+  double kt = 8200;
+  double r = 0.02;
+  double q_rest = 0.5;
+  bool positive = true;
+  ForceBalanceFactor factor(example::delta_x_key, example::q_key,
+                            example::f_key, example::cost_model, kt, r, q_rest,
+                            positive);
+
+  double delta_x = 0.4;
+  double q = 0.8;
+  double f = 10;
+
+  Vector1 actual_errors, expected_errors;
+  actual_errors = factor.evaluateError(delta_x, q, f);
+  expected_errors << -26.4;
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-3));
+
+  Values values;
+  values.insert(example::delta_x_key, delta_x);
+  values.insert(example::q_key, q);
+  values.insert(example::f_key, f);
+  double diffDelta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+}
+
+/** Test the joint torque factor with expand configuration of the actuator, 
+ * and anatagnostic spring inactive. */
 TEST(JointTorqueFactor, ExpandInactive) {
   double q_limit = 0.4;
   double ka = 5;
@@ -160,6 +217,7 @@ TEST(JointTorqueFactor, contractInactive) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
+/** Check if actuator volume computaiton is correct */
 TEST(ActuatorVolumeFactor, Factor) {
   double l = 10;
   double v = 0.001;
@@ -183,7 +241,8 @@ TEST(ActuatorVolumeFactor, Factor) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
 }
 
-TEST(SmoothActuatorFactor, negative_contraction_zero) {
+/** Test SmoothActuatorFactor with the case of 0 output force */
+TEST(SmoothActuatorFactor, zero_force) {
   const double delta_x = 2;
   const double p = 800;
   const double f = 0;

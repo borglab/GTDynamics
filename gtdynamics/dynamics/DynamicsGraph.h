@@ -25,14 +25,15 @@
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/utils/ContactPoint.h"
 
 namespace gtdynamics {
 
 using JointValueMap = std::map<std::string, double>;
 
-/* Shorthand for C_i_k_t, for kth contact wrench on i-th link at time t.*/
-inline DynamicsSymbol ContactWrenchKey(int i, int k, int t) {
-  return DynamicsSymbol::LinkJointSymbol("C", i, k, t);
+/// Shorthand for C_i_c_k, for contact wrench c on i-th link at time step k.
+inline DynamicsSymbol ContactWrenchKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
 }
 
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
@@ -40,31 +41,13 @@ inline DynamicsSymbol PhaseKey(int k) {
   return DynamicsSymbol::SimpleSymbol("dt", k);
 }
 
-/* Shorthand for t_t, time at time step t. */
-inline DynamicsSymbol TimeKey(int t) {
-  return DynamicsSymbol::SimpleSymbol("t", t);
+/* Shorthand for t_k, time at time step k. */
+inline DynamicsSymbol TimeKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("t", k);
 }
 
-/**
- * ContactPoint defines a single contact point at a link.
- *
- * @param point The location of the contact point relative to the link COM.
- * @param id Each link's contact points must have a unique contact id.
- * @param height Height at which contact is made.
- */
-struct ContactPoint {
-  gtsam::Point3 point;
-  int id;
-  double height = 0.0;
-
-  bool operator==(const ContactPoint &other) {
-    return (point == other.point && id == other.id && height == other.height);
-  }
-  bool operator!=(const ContactPoint &other) { return !(*this == other); }
-};
-
-///< Map of link name to ContactPoint
-using ContactPoints = std::map<std::string, ContactPoint>;
+/** Collocation methods. */
+enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
 /**
  * DynamicsGraph is a class which builds a factor graph to do kinodynamic
@@ -101,8 +84,6 @@ class DynamicsGraph {
       : opt_(opt), gravity_(gravity), planar_axis_(planar_axis) {}
 
   ~DynamicsGraph() {}
-
-  enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
   /**
    * Return linear factor graph of all dynamics factors, Values version
@@ -222,18 +203,57 @@ class DynamicsGraph {
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
-   * @param robots            the robot configuration for each phase
-   * @param phase_steps       number of time steps for each phase
-   * @param transition_graphs transition step graphs with guardian factors
-   * @param collocation       the collocation scheme
+   * @param robot                the robot configuration
+   * @param phase_steps          number of time steps for each phase
+   * @param transition_graphs    transition step graphs with guardian factors
+   * @param collocation          the collocation scheme
+   * @param phase_contact_points contact points at each phase
+   * @param mu                   optional coefficient of static friction
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const std::vector<Robot> &robots, const std::vector<int> &phase_steps,
+      const Robot &robot, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation = Trapezoidal,
       const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
+
+  /** Add collocation factor for doubles. */
+  static void addCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph *graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const double dt, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const CollocationScheme collocation = Trapezoidal);
+
+  /** Add collocation factor for doubles, with dt as a variable. */
+  static void addMultiPhaseCollocationFactorDouble(
+      gtsam::NonlinearFactorGraph *graph, const gtsam::Key x0_key,
+      const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
+      const gtsam::Key phase_key,
+      const gtsam::noiseModel::Base::shared_ptr &cost_model,
+      const CollocationScheme collocation = Trapezoidal);
+
+  /**
+   * Return collocation factors for the specified joint.
+   * @param j           joint index
+   * @param t           time step
+   * @param dt          time delta
+   * @param collocation the collocation scheme
+   */
+  gtsam::NonlinearFactorGraph jointCollocationFactors(
+      const int j, const int t, const double dt,
+      const CollocationScheme collocation = Trapezoidal) const;
+
+  /**
+   * Return collocation factors for the specified joint, with dt as a variable.
+   * @param j           joint index
+   * @param t           time step
+   * @param phase       the phase of the timestamp
+   * @param collocation the collocation scheme
+   */
+  gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
+      const int j, const int t, const int phase,
+      const CollocationScheme collocation = Trapezoidal) const;
 
   /**
    * Return collocation factors on angles and velocities from time step t to t+1
@@ -244,7 +264,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph collocationFactors(
       const Robot &robot, const int t, const double dt,
-      const CollocationScheme collocation) const;
+      const CollocationScheme collocation = Trapezoidal) const;
 
   /**
    * Return collocation factors on angles and velocities from time step t to
@@ -256,7 +276,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
       const Robot &robot, const int t, const int phase,
-      const CollocationScheme collocation) const;
+      const CollocationScheme collocation = Trapezoidal) const;
 
   /**
    * Return joint factors to limit angle, velocity, acceleration, and torque
@@ -314,19 +334,20 @@ class DynamicsGraph {
    * @param t     time step
    */
   static JointValueMap jointAccelsMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
+                                      const gtsam::Values &result, const int t);
 
   /// Return joint velocities as std::map<name, velocity>.
   static JointValueMap jointVelsMap(const Robot &robot,
-                                  const gtsam::Values &result, const int t);
+                                    const gtsam::Values &result, const int t);
 
   /// Return joint angles as std::map<name, angle>.
   static JointValueMap jointAnglesMap(const Robot &robot,
-                                    const gtsam::Values &result, const int t);
+                                      const gtsam::Values &result, const int t);
 
   /// Return joint torques as std::map<name, torque>.
   static JointValueMap jointTorquesMap(const Robot &robot,
-                                     const gtsam::Values &result, const int t);
+                                       const gtsam::Values &result,
+                                       const int t);
 
   /// Print the factors of the factor graph
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);

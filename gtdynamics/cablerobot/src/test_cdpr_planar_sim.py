@@ -51,7 +51,7 @@ class TestCdprSimulator(GtsamTestCase):
         xdot = 0
         for k in range(10):
             pExp = Pose3(Rot3(), (x, 0, 1.5))
-            self.gtsamAssertEquals(pExp, pAct[k], tol=0)
+            self.gtsamAssertEquals(pExp, pAct[k], tol=1e-15)
             dx, dy = 3 - x - 0.15, 1.35  # (dx, dy) represents the cable vector
             xddot = 2 * dx / np.sqrt(dx**2 + dy**2)
             x += xdot * dt

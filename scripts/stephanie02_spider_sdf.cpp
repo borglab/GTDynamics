@@ -11,16 +11,16 @@
  * @author Stephanie McCormick
  */
 
+#include <string>
+
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
-
-#include <string>
 
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   const Robot spider =
-      CreateRobotFromFile(SDF_PATH + "/test/spider.sdf", "spider");
+      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   spider.print();
 

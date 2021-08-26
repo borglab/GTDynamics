@@ -18,7 +18,7 @@ if __name__ == "__main__":
                         help='CSV file')
     args = parser.parse_args()
 
-    # Creae and run Dash app.
+    # Create and run Dash app.
     df = plotting.read_simulation_results(args.file)
     app = plotting.create_interactive_viewer(df)
     app.run_server(debug=False)
