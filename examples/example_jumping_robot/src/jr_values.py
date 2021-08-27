@@ -36,9 +36,9 @@ class JRValues:
             if key does not exist, copy the value form previous step.
         """
         if values.exists(key):
-            new_values.insertDouble(key, values.atDouble(key))
+            new_values.insert(key, values.atDouble(key))
         else:
-            new_values.insertDouble(key, values.atDouble(key-1))
+            new_values.insert(key, values.atDouble(key-1))
 
     @staticmethod
     def init_config_values(jr, controls) -> gtsam.Values:
@@ -50,9 +50,9 @@ class JRValues:
         P_s_0 = controls["P_s_0"]
         m_s_0 = V_s * P_s_0 * 1e3 / jr.gas_constant
         m_a_0 = jr.params["pneumatic"]["init_mass"]
-        values.insertDouble(Actuator.SourceVolumeKey(), V_s)
-        values.insertDouble(Actuator.SourceMassKey(0), m_s_0)
-        values.insertDouble(Actuator.SourcePressureKey(0), P_s_0)
+        values.insert(Actuator.SourceVolumeKey(), V_s)
+        values.insert(Actuator.SourceMassKey(0), m_s_0)
+        values.insert(Actuator.SourcePressureKey(0), P_s_0)
 
         # initial joint angles nad velocities
         for joint in jr.robot.joints():
@@ -62,8 +62,8 @@ class JRValues:
             v_key = gtd.internal.JointVelKey(j, 0).key()
             q = float(jr.init_config["qs"][name])
             v = float(jr.init_config["vs"][name])
-            values.insertDouble(q_key, q)
-            values.insertDouble(v_key, v)
+            values.insert(q_key, q)
+            values.insert(v_key, v)
 
         # torso pose and twists
         torso_i = jr.robot.link("torso").id()
@@ -73,14 +73,14 @@ class JRValues:
         # valve open close times
         for actuator in jr.actuators:
             j = actuator.j
-            values.insertDouble(Actuator.MassKey(j, 0), m_a_0)
+            values.insert(Actuator.MassKey(j, 0), m_a_0)
             To_key = Actuator.ValveOpenTimeKey(j)
             Tc_key = Actuator.ValveCloseTimeKey(j)
-            values.insertDouble(To_key, float(controls["Tos"][name]))
-            values.insertDouble(Tc_key, float(controls["Tcs"][name]))
+            values.insert(To_key, float(controls["Tos"][name]))
+            values.insert(Tc_key, float(controls["Tcs"][name]))
 
         # time for the first step
-        values.insertDouble(gtd.TimeKey(0).key(), 0)
+        values.insert(gtd.TimeKey(0).key(), 0)
         return values
 
     @staticmethod
@@ -91,9 +91,9 @@ class JRValues:
         m_a_key = Actuator.MassKey(j, k)
 
         init_values = gtsam.Values()
-        init_values.insertDouble(q_key, values.atDouble(q_key))
-        init_values.insertDouble(v_key, values.atDouble(v_key))
-        init_values.insertDouble(m_a_key, values.atDouble(m_a_key))
+        init_values.insert(q_key, values.atDouble(q_key))
+        init_values.insert(v_key, values.atDouble(v_key))
+        init_values.insert(m_a_key, values.atDouble(m_a_key))
         return init_values
 
     @staticmethod
@@ -110,17 +110,17 @@ class JRValues:
         f_a_key = Actuator.ForceKey(j, k)
         torque_key = gtd.internal.TorqueKey(j, k).key()
 
-        init_values.insertDouble(P_s_key, values.atDouble(
+        init_values.insert(P_s_key, values.atDouble(
             Actuator.SourcePressureKey(k-1)))
-        init_values.insertDouble(
+        init_values.insert(
             P_a_key, values.atDouble(Actuator.PressureKey(j, k-1)))
-        init_values.insertDouble(delta_x_key, values.atDouble(
+        init_values.insert(delta_x_key, values.atDouble(
             Actuator.ContractionKey(j, k-1)))
-        init_values.insertDouble(
+        init_values.insert(
             f_a_key, values.atDouble(Actuator.ForceKey(j, k-1)))
-        init_values.insertDouble(torque_key, values.atDouble(
+        init_values.insert(torque_key, values.atDouble(
             gtd.internal.TorqueKey(j, k-1).key()))
-        init_values.insertDouble(
+        init_values.insert(
             V_a_key, values.atDouble(Actuator.VolumeKey(j, k-1)))
         return init_values
 
@@ -165,9 +165,9 @@ class JRValues:
         graph.add(gtd.PriorFactorDouble(P_s_key, P_s, prior_model))
 
         init_values = gtsam.Values()
-        init_values.insertDouble(P_a_key, P_a)
-        init_values.insertDouble(P_s_key, P_s)
-        init_values.insertDouble(mdot_key, 0.007)
+        init_values.insert(P_a_key, P_a)
+        init_values.insert(P_s_key, P_s)
+        init_values.insert(mdot_key, 0.007)
 
         result = gtsam.LevenbergMarquardtOptimizer(
             graph, init_values).optimize()
@@ -209,12 +209,12 @@ class JRValues:
         f_a_key = Actuator.ForceKey(j, k)
         torque_key = gtd.internal.TorqueKey(j, k).key()
 
-        init_values.insertDouble(P_s_key, values.atDouble(P_s_key))
-        init_values.insertDouble(P_a_key, 101.325)
-        init_values.insertDouble(delta_x_key, 0.0)
-        init_values.insertDouble(f_a_key, 0.0)
-        init_values.insertDouble(torque_key, 0.0)
-        init_values.insertDouble(V_a_key, JRValues.compute_volume(jr, 0.0))
+        init_values.insert(P_s_key, values.atDouble(P_s_key))
+        init_values.insert(P_a_key, 101.325)
+        init_values.insert(delta_x_key, 0.0)
+        init_values.insert(f_a_key, 0.0)
+        init_values.insert(torque_key, 0.0)
+        init_values.insert(V_a_key, JRValues.compute_volume(jr, 0.0))
         return init_values
 
     @staticmethod
@@ -298,8 +298,8 @@ class JRValues:
                 q = values.atDouble(q_key)
             if values.exists(v_key):
                 v = values.atDouble(v_key)
-            init_values.insertDouble(q_key, q)
-            init_values.insertDouble(v_key, v)
+            init_values.insert(q_key, q)
+            init_values.insert(v_key, v)
             gtd.InsertJointAccelDouble(init_values, j, k, 0.0)
             i1 = joint.parent().id()
             i2 = joint.child().id()
@@ -350,11 +350,11 @@ class JRValues:
             m_a_prev = values.atDouble(Actuator.MassKey(j, k-1))
             mdot_a_prev = values.atDouble(Actuator.MassRateActualKey(j, k-1))
             m_a_curr = m_a_prev + mdot_a_prev * dt
-            values.insertDouble(Actuator.MassKey(j, k), m_a_curr)
+            values.insert(Actuator.MassKey(j, k), m_a_curr)
             total_m_out += mdot_a_prev * dt
         m_s_prev = values.atDouble(Actuator.SourceMassKey(k-1))
         m_s_curr = m_s_prev - total_m_out
-        values.insertDouble(Actuator.SourceMassKey(k), m_s_curr)
+        values.insert(Actuator.SourceMassKey(k), m_s_curr)
 
     @staticmethod
     def get_ground_force_z(jr, side, k, values):
