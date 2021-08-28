@@ -123,11 +123,7 @@ class CdprControllerTensionDist(CdprControllerBase):
 
     @staticmethod
     def solve_graph(graph, init):
-        params = gtsam.LevenbergMarquardtParams()
-        params.setRelativeErrorTol(0)
-        params.setAbsoluteErrorTol(0)
-        params.setErrorTol(1e-15)
-        result = gtsam.LevenbergMarquardtOptimizer(graph, init, params).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(graph, init, utils.MyLMParams()).optimize()
         return result
 
     @staticmethod
