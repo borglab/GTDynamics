@@ -122,8 +122,12 @@ class TestCdprPlanar(GtsamTestCase):
         for ji in range(4):
             init.erase(gtd.internal.TorqueKey(ji, 0).key())
             gtd.InsertTorqueDouble(init, ji, 0, -1)
-        results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
-        self.gtsamAssertEquals(results, values)
+        params = gtsam.LevenbergMarquardtParams()
+        params.setRelativeErrorTol(0)
+        params.setAbsoluteErrorTol(0)
+        params.setErrorTol(1e-20)
+        results = gtsam.LevenbergMarquardtOptimizer(dfg, init, params).optimize()
+        self.gtsamAssertEquals(values, results)
         # check FD priors functions
         fd1 = cdpr.priors_fd(ks=[0], torquess=[[gtd.TorqueDouble(results, ji, 0) for ji in range(4)]])
         fd2 = cdpr.priors_fd(ks=[0], values=results)

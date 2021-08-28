@@ -16,6 +16,7 @@ import gtdynamics as gtd
 import numpy as np
 import utils
 from cdpr_controller import CdprControllerBase
+from cdpr_planar import Cdpr
 
 class CdprControllerTensionDist(CdprControllerBase):
     """Precomputes the open-loop trajectory
@@ -40,7 +41,7 @@ class CdprControllerTensionDist(CdprControllerBase):
         # # initial guess
         # lid = cdpr.ee_id()
         # x_guess = gtsam.Values()
-        # x_guess.insertDouble(0, dt)
+        # x_guess.insert(0, dt)
         # for k, T in enumerate(pdes):
         #     gtd.InsertPose(x_guess, lid, k, T)
         # utils.InsertTwist(x_guess, lid, 0, x0)
@@ -72,9 +73,9 @@ class CdprControllerTensionDist(CdprControllerBase):
         """
         return self.solve_one_step(self.cdpr,
                                    self.cdpr.ee_id(),
-                                   self.pdes[t],
+                                   self.pdes[t+1],
                                    t,
-                                   lldotnow=values,
+                                   TVnow=values,
                                    dt=self.dt,
                                    R=self.R)
 
@@ -97,7 +98,39 @@ class CdprControllerTensionDist(CdprControllerBase):
         Returns:
             gtsam.Values: a Values object containing the control torques
         """
+        print("My goal for k = {:d} is:".format(k), Tgoal.translation())
+
+        ## First solve for required TwistAccel
+        print("\tpose: ", gtd.Pose(TVnow, cdpr.ee_id(), k).translation())
+        print("\tTwist: ", gtd.Twist(TVnow, cdpr.ee_id(), k)[3:])
+        VAres = CdprControllerTensionDist.solve_twist_accel(cdpr, lid, Tgoal, k, TVnow, lldotnow, dt)
+        print("\tpose: ", gtd.Pose(VAres, cdpr.ee_id(), k).translation())
+        print("\tpose: ", gtd.Pose(VAres, cdpr.ee_id(), k + 1).translation())
+        print("\tTwist: ", gtd.Twist(VAres, cdpr.ee_id(), k)[3:])
+        print("\tTwist: ", gtd.Twist(VAres, cdpr.ee_id(), k + 1)[3:])
+        print("\tTwistAccel: ", gtd.TwistAccel(VAres, cdpr.ee_id(), k)[3:])
+
+        ## Now solve for required torques
+        result = CdprControllerTensionDist.solve_torques(cdpr, lid, k, VAres, VAres, dt)
+        print("\tTwistAccel: ", gtd.TwistAccel(result, cdpr.ee_id(), k)[3:])
+        print("\tTorques: ", [gtd.TorqueDouble(result, ji, k) for ji in range(4)])
+
+        return result
+
+    @staticmethod
+    def solve_graph(graph, init):
+        params = gtsam.LevenbergMarquardtParams()
+        params.setRelativeErrorTol(0)
+        params.setAbsoluteErrorTol(0)
+        params.setErrorTol(1e-15)
+        result = gtsam.LevenbergMarquardtOptimizer(graph, init, params).optimize()
+        print("\terror ", graph.error(result))
+        return result
+
+    @staticmethod
+    def solve_twist_accel(cdpr, lid, Tgoal, k, TVnow=None, lldotnow=None, dt=0.01):
         fg = gtsam.NonlinearFactorGraph()
+
         # IK: either solve for current pose T given measurements, or use open-loop solution
         if lldotnow is not None:
             fg.push_back(cdpr.kinematics_factors(ks=[k]))
@@ -105,20 +138,13 @@ class CdprControllerTensionDist(CdprControllerBase):
         else:
             fg.push_back(cdpr.priors_ik(ks=[k], values=TVnow))
         # pose constraints: must reach next pose T
-        fg.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(lid, k).key(),
+        fg.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(lid, k+1).key(),
                                             Tgoal, cdpr.costmodel_prior_pose))
         # collocation: given current+next Ts, solve for current+next Vs and current VAs
-        fg.push_back(cdpr.collocation_factors(ks=[k]))
-        # dynamics: given VA, solve for torque/wrenches
-        fg.push_back(cdpr.dynamics_factors(ks=[k]))
-        # redundancy resolution: control costs
-        for ji in range(4):
-            fg.push_back(
-                gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
-                                      gtsam.noiseModel.Diagonal.Precisions(R)))
-        # tmp initial guess
+        fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
+
         xk = gtsam.Values()
-        xk.insertDouble(0, dt)
+        xk.insert(0, dt)
         if lldotnow is not None:
             utils.InsertJointAngles(xk, k, lldotnow)
             utils.InsertJointVels(xk, k, lldotnow)
@@ -130,10 +156,35 @@ class CdprControllerTensionDist(CdprControllerBase):
         gtd.InsertPose(xk, lid, k+1, Tgoal)
         gtd.InsertTwist(xk, lid, k+1, np.zeros(6))
         gtd.InsertTwistAccel(xk, lid, k, np.zeros(6))
+
+        return CdprControllerTensionDist.solve_graph(fg, xk)
+
+    @staticmethod
+    def solve_torques(cdpr: Cdpr, lid, k, VAnow, TVnow, dt=0.01):
+        fg = gtsam.NonlinearFactorGraph()
+        # priors
+        fg.push_back(cdpr.priors_ik(ks=[k], values=TVnow))
+        fg.push_back(cdpr.priors_id_va(ks=[k], values=VAnow))
+
+        # dynamics: given VA, solve for torque/wrenches
+        fg.push_back(cdpr.dynamics_factors(ks=[k]))
+        # redundancy resolution: control costs
         for ji in range(4):
-            gtd.InsertTorqueDouble(xk, ji, k, 0)
+            fg.push_back(
+                gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
+                                      gtsam.noiseModel.Isotropic.Sigma(1, 100000.)))
+        
+        # tmp initial guess
+        xk = gtsam.Values()
+        utils.InsertPose(xk, lid, k, TVnow)
+        utils.InsertTwist(xk, lid, k, TVnow)
+        gtd.InsertTwistAccel(xk, lid, k, np.zeros(6))
+        for ji in range(4):
+            gtd.InsertJointVelDouble(xk, ji, k, 0)
+            gtd.InsertJointAccelDouble(xk, ji, k, 1)
+            gtd.InsertTorqueDouble(xk, ji, k, 1)
+            gtd.InsertTensionDouble(xk, ji, k, 50)
             gtd.InsertWrench(xk, lid, ji, k, np.zeros(6))
-        # optimize and update
-        result = gtsam.LevenbergMarquardtOptimizer(fg, xk).optimize()
-        print(fg.error(result))
-        return result
+        
+        # optimize
+        return CdprControllerTensionDist.solve_graph(fg, xk)

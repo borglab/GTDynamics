@@ -109,7 +109,7 @@ class CdprSimulator:
         lid = cdpr.ee_id()
         # local copy of values
         xd = gtsam.Values()
-        xd.insertDouble(0, dt)
+        xd.insert(0, dt)
         gtd.InsertPose(xd, lid, k, gtd.Pose(x, lid, k))
         gtd.InsertTwist(xd, lid, k, gtd.Twist(x, lid, k))
         # FD for this timestep + collocation to next time step
@@ -130,8 +130,13 @@ class CdprSimulator:
         gtd.InsertTwist(xd, cdpr.ee_id(), k+1, np.zeros(6))
         gtd.InsertTwistAccel(xd, cdpr.ee_id(), k, np.zeros(6))
         # optimize
-        result = gtsam.LevenbergMarquardtOptimizer(fg, xd).optimize()
-        assert abs(fg.error(result)) < 1e-20, "dynamics simulation didn't converge"
+        params = gtsam.LevenbergMarquardtParams()
+        params.setRelativeErrorTol(0)
+        params.setAbsoluteErrorTol(0)
+        params.setErrorTol(1e-15)
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xd, params).optimize()
+        assert abs(fg.error(result)) < 1e-15, "dynamics simulation didn't converge: {:.5e}".format(
+            abs(fg.error(result)))
         xd.update(result)
         return fg, xd
 

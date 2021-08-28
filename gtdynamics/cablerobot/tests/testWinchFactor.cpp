@@ -61,10 +61,10 @@ TEST(WinchFactor, error) {
       factor.evaluateError(0.12 + 0.34 + 1 / 0.12 * 0.56, 1, -1, 0)));
 
   Values values;
-  values.insertDouble(torqueKey, 1);
-  values.insertDouble(tensionKey, 2);
-  values.insertDouble(jointVelKey, .03);
-  values.insertDouble(jointAccKey, 4);
+  values.insert(torqueKey, 1.);
+  values.insert(tensionKey, 2.);
+  values.insert(jointVelKey, .03);
+  values.insert(jointAccKey, 4.);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 }
 

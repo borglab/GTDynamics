@@ -31,6 +31,7 @@ class CdprParams:
                                             radius=1,
                                             staticFriction=0,
                                             viscousFriction=0)
+        self.collocation_mode = 0
 
 
 class Cdpr:
@@ -150,7 +151,7 @@ class Cdpr:
         generalized version of F=ma and calculates wrenches from cable tensions.
         Primary variables:          Torque <--> lengthddot
         Intermediate variables:     Wrenches, TwistAccel
-        Prerequisite variables:     Pose, Twist, length, lengthdot
+        Prerequisite variables:     Pose, Twist, lengthdot, tension
 
 
         Args:
@@ -212,19 +213,39 @@ class Cdpr:
             gtsam.NonlinearFactorGraph: the collocation factors
         """
         dfg = gtsam.NonlinearFactorGraph()
-        for k in ks:
-            dfg.push_back(
-                gtd.EulerPoseCollocationFactor(
-                    gtd.internal.PoseKey(self.ee_id(), k).key(),
-                    gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
-                    gtd.internal.TwistKey(self.ee_id(), k).key(), 0,
-                    self.costmodel_posecollo))
-            dfg.push_back(
-                gtd.EulerTwistCollocationFactor(
-                    gtd.internal.TwistKey(self.ee_id(), k).key(),
-                    gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
-                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(), 0,
-                    self.costmodel_twistcollo))
+        if self.params.collocation_mode == 1:
+            for k in ks:
+                dfg.push_back(
+                    gtd.TrapezoidalPoseCollocationFactor(
+                        gtd.internal.PoseKey(self.ee_id(), k).key(),
+                        gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
+                        gtd.internal.TwistKey(self.ee_id(), k).key(),  #
+                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),  #
+                        0,
+                        self.costmodel_posecollo))
+                dfg.push_back(
+                    gtd.EulerTwistCollocationFactor(
+                        gtd.internal.TwistKey(self.ee_id(), k).key(),
+                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
+                        gtd.internal.TwistAccelKey(self.ee_id(), k).key(),  #
+                        0,
+                        self.costmodel_twistcollo))
+        else:
+            for k in ks:
+                dfg.push_back(
+                    gtd.EulerPoseCollocationFactor(
+                        gtd.internal.PoseKey(self.ee_id(), k).key(),
+                        gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
+                        gtd.internal.TwistKey(self.ee_id(), k).key(), #
+                        0,
+                        self.costmodel_posecollo))
+                dfg.push_back(
+                    gtd.EulerTwistCollocationFactor(
+                        gtd.internal.TwistKey(self.ee_id(), k).key(),
+                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
+                        gtd.internal.TwistAccelKey(self.ee_id(), k).key(),  #
+                        0,
+                        self.costmodel_twistcollo))
         dfg.push_back(gtd.PriorFactorDouble(0, dt, self.costmodel_dt))
         return dfg
 
