@@ -58,3 +58,11 @@ def InsertTorques(dest, k, source):
 def InsertWrenches(dest, link_id, k, source):
     for ji in range(4):
         gtd.InsertWrench(dest, link_id, ji, k, gtd.Wrench(source, link_id, ji, k))
+
+def MyLMParams(abs_err_tol=1e-15):
+    params = gtsam.LevenbergMarquardtParams()
+    params.setRelativeErrorTol(0)
+    params.setAbsoluteErrorTol(0)
+    params.setErrorTol(abs_err_tol)
+    params.setLinearSolverType("MULTIFRONTAL_QR")
+    return params
