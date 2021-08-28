@@ -13,6 +13,7 @@ See LICENSE for the license information
 import gtsam
 import gtdynamics as gtd
 import numpy as np
+from utils import MyLMParams
 
 class CdprSimulator:
     """Simulates a cable robot forward in time, given a robot, initial state, and controller.
@@ -83,7 +84,7 @@ class CdprSimulator:
             gtd.InsertJointAngleDouble(xk, j, k, 0)
             gtd.InsertJointVelDouble(xk, j, k, 0)
         # IK solve
-        result = gtsam.LevenbergMarquardtOptimizer(fg, xk).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xk, MyLMParams()).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
         xk.update(result)
         return fg, xk
@@ -130,11 +131,7 @@ class CdprSimulator:
         gtd.InsertTwist(xd, cdpr.ee_id(), k+1, np.zeros(6))
         gtd.InsertTwistAccel(xd, cdpr.ee_id(), k, np.zeros(6))
         # optimize
-        params = gtsam.LevenbergMarquardtParams()
-        params.setRelativeErrorTol(0)
-        params.setAbsoluteErrorTol(0)
-        params.setErrorTol(1e-15)
-        result = gtsam.LevenbergMarquardtOptimizer(fg, xd, params).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xd, MyLMParams()).optimize()
         assert abs(fg.error(result)) < 1e-15, "dynamics simulation didn't converge: {:.5e}".format(
             abs(fg.error(result)))
         xd.update(result)
