@@ -18,6 +18,7 @@ from gtsam import Pose3, Rot3
 import numpy as np
 from cdpr_planar import Cdpr
 from gtsam.utils.test_case import GtsamTestCase
+from utils import MyLMParams
 
 class TestCdprPlanar(GtsamTestCase):
     """Unit tests for planar CDPR"""
@@ -55,7 +56,7 @@ class TestCdprPlanar(GtsamTestCase):
         ik2 = cdpr.priors_ik(ks=[0], values=values)
         self.gtsamAssertEquals(ik1, ik2)
         ikgraph.push_back(ik1)
-        ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph, zeroValues()).optimize()
+        ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph, zeroValues(), MyLMParams()).optimize()
         self.gtsamAssertEquals(ikres, values)  # should match with full sol
         # try optimizing FK
         fkgraph = gtsam.NonlinearFactorGraph(kfg)
@@ -65,9 +66,8 @@ class TestCdprPlanar(GtsamTestCase):
         fk2 = cdpr.priors_fk(ks=[0], values=values)
         self.gtsamAssertEquals(fk1, fk2)
         fkgraph.push_back(fk1)
-        params = gtsam.LevenbergMarquardtParams()
-        params.setAbsoluteErrorTol(1e-20)  # FK less sensitive so we need to decrease the tolerance
-        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), params).optimize()
+        # FK less sensitive so we need to decrease the tolerance to 1e-20
+        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), MyLMParams(1e-20)).optimize()
         self.gtsamAssertEquals(fkres, values, tol=1e-5)  # should match with full sol
 
     def testDynamicsInstantaneous(self):
@@ -122,11 +122,7 @@ class TestCdprPlanar(GtsamTestCase):
         for ji in range(4):
             init.erase(gtd.internal.TorqueKey(ji, 0).key())
             gtd.InsertTorqueDouble(init, ji, 0, -1)
-        params = gtsam.LevenbergMarquardtParams()
-        params.setRelativeErrorTol(0)
-        params.setAbsoluteErrorTol(0)
-        params.setErrorTol(1e-20)
-        results = gtsam.LevenbergMarquardtOptimizer(dfg, init, params).optimize()
+        results = gtsam.LevenbergMarquardtOptimizer(dfg, init, MyLMParams(1e-20)).optimize()
         self.gtsamAssertEquals(values, results)
         # check FD priors functions
         fd1 = cdpr.priors_fd(ks=[0], torquess=[[gtd.TorqueDouble(results, ji, 0) for ji in range(4)]])
@@ -165,7 +161,7 @@ class TestCdprPlanar(GtsamTestCase):
             gtd.InsertTwist(init, cdpr.ee_id(), t, np.ones(6))
             gtd.InsertTwistAccel(init, cdpr.ee_id(), t, np.ones(6))
         # optimize
-        optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init)
+        optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init, MyLMParams())
         result = optimizer.optimize()
         # correctness checks:
         # timestep 0
