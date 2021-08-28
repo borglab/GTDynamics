@@ -48,7 +48,7 @@ class TestCdprControllerIlqr(GtsamTestCase):
                            *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
 
         for k, (des, act) in enumerate(zip(x_des, pAct)):
-            self.gtsamAssertEquals(des, act)
+            self.gtsamAssertEquals(des, act, tol=1e-3)
 
     def testGainsNearConstrained(self):
         """Tests locally linear, time-varying feedback gains
@@ -56,6 +56,7 @@ class TestCdprControllerIlqr(GtsamTestCase):
         cdpr = Cdpr()
         cdpr.params.tmin = -1
         cdpr.params.tmax = 1
+        cdpr.params.collocation_mode = 0
         dt = 0.01
 
         x0 = gtsam.Values()
@@ -76,7 +77,7 @@ class TestCdprControllerIlqr(GtsamTestCase):
                                       -1 / np.sqrt(2) / 2, 0, 1 / np.sqrt(2) / 2]).reshape((1, -1)) * \
                             cdpr.params.mass / dt  # cable 0 tension at t=0 in response to v at t=1
         expected_0c0_K_0x = -expected_0c0_K_1v @ expected_1v_K_0x
-        self.gtsamAssertEquals(actual_0c0_K_0x[:, 3:], expected_0c0_K_0x[:, 3:], tol=1/dt)
+        self.gtsamAssertEquals(expected_0c0_K_0x[:, 3:], actual_0c0_K_0x[:, 3:], tol=1/dt)
 
         # velocity gain (Kd) - time 0, cable 0, twist gain
         actual_0c0_K_0v = controller.gains_ff[0][0][0:1, :6]

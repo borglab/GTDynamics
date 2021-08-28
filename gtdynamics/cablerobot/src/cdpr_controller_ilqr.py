@@ -44,7 +44,7 @@ class CdprControllerIlqr(CdprControllerBase):
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
         # optimize
-        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess)
+        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, utils.MyLMParams())
         self.result = self.optimizer.optimize()
         self.fg = fg
         # gains
@@ -163,6 +163,10 @@ class CdprControllerIlqr(CdprControllerBase):
         # extract_gains
         gains = [None for t in range(N)]
         # for t, neti in enumerate(u_inds):
+        # 0 mod 4: ("stuff we do care about") -> ("stuff we don't care about")
+        # 1 mod 4: (wrenches, twist, pose) -> torques
+        # 2 mod 4: (twist, pose) -> wrenches
+        # 3 mod 4: (prev state) -> (twist, pose)   aka collocation update
         for t, (neti, netu) in enumerate(zip(reversed(range(2, 4*N, 4)),
                                              reversed(range(1, 4*N, 4)))):
             ucond = net.at(netu)
