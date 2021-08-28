@@ -80,7 +80,7 @@ class CdprControllerTensionDist(CdprControllerBase):
                                    R=self.R)
 
     @staticmethod
-    def solve_one_step(cdpr, lid, Tgoal, k, TVnow=None, lldotnow=None, dt=0.01, R=np.ones(1)):
+    def solve_one_step(cdpr, lid, Tgoal, k, TVnow=None, lldotnow=None, dt=0.01, R=np.ones(1), debug=False):
         """Creates the factor graph for the tension distribution problem.  This essentially consists
         of creating a factor graph that describes the CDPR dynamics for this one timestep, then
         adding control cost factors.  Either the current pose/twist may be specified, or the current
@@ -98,22 +98,26 @@ class CdprControllerTensionDist(CdprControllerBase):
         Returns:
             gtsam.Values: a Values object containing the control torques
         """
-        print("My goal for k = {:d} is:".format(k), Tgoal.translation())
 
-        ## First solve for required TwistAccel
-        print("\tpose: ", gtd.Pose(TVnow, cdpr.ee_id(), k).translation())
-        print("\tTwist: ", gtd.Twist(TVnow, cdpr.ee_id(), k)[3:])
-        VAres = CdprControllerTensionDist.solve_twist_accel(cdpr, lid, Tgoal, k, TVnow, lldotnow, dt)
-        print("\tpose: ", gtd.Pose(VAres, cdpr.ee_id(), k).translation())
-        print("\tpose: ", gtd.Pose(VAres, cdpr.ee_id(), k + 1).translation())
-        print("\tTwist: ", gtd.Twist(VAres, cdpr.ee_id(), k)[3:])
-        print("\tTwist: ", gtd.Twist(VAres, cdpr.ee_id(), k + 1)[3:])
-        print("\tTwistAccel: ", gtd.TwistAccel(VAres, cdpr.ee_id(), k)[3:])
+        # First solve for required TwistAccel
+        VAres = CdprControllerTensionDist.solve_twist_accel(cdpr, lid, Tgoal, k, TVnow, lldotnow,
+                                                            dt)
 
-        ## Now solve for required torques
-        result = CdprControllerTensionDist.solve_torques(cdpr, lid, k, VAres, VAres, dt)
-        print("\tTwistAccel: ", gtd.TwistAccel(result, cdpr.ee_id(), k)[3:])
-        print("\tTorques: ", [gtd.TorqueDouble(result, ji, k) for ji in range(4)])
+        # Now solve for required torques
+        result = CdprControllerTensionDist.solve_torques(cdpr, lid, k, VAres, VAres, dt, R)
+
+        # Debug
+        if debug:
+            print("My goal for k = {:d} is:".format(k), Tgoal.translation())
+            print("\cur pose: ", gtd.Pose(TVnow, cdpr.ee_id(), k).translation())
+            print("\tcur Twist: ", gtd.Twist(TVnow, cdpr.ee_id(), k)[3:])
+            print("\tcur pose VA: ", gtd.Pose(VAres, cdpr.ee_id(), k).translation())
+            print("\tnext pose VA: ", gtd.Pose(VAres, cdpr.ee_id(), k + 1).translation())
+            print("\tcur Twist VA: ", gtd.Twist(VAres, cdpr.ee_id(), k)[3:])
+            print("\tnext Twist VA: ", gtd.Twist(VAres, cdpr.ee_id(), k + 1)[3:])
+            print("\tcur TwistAccel VA: ", gtd.TwistAccel(VAres, cdpr.ee_id(), k)[3:])
+            print("\tcur TwistAccel res: ", gtd.TwistAccel(result, cdpr.ee_id(), k)[3:])
+            print("\tcur Torques res: ", [gtd.TorqueDouble(result, ji, k) for ji in range(4)])
 
         return result
 
@@ -124,7 +128,6 @@ class CdprControllerTensionDist(CdprControllerBase):
         params.setAbsoluteErrorTol(0)
         params.setErrorTol(1e-15)
         result = gtsam.LevenbergMarquardtOptimizer(graph, init, params).optimize()
-        print("\terror ", graph.error(result))
         return result
 
     @staticmethod
@@ -160,7 +163,7 @@ class CdprControllerTensionDist(CdprControllerBase):
         return CdprControllerTensionDist.solve_graph(fg, xk)
 
     @staticmethod
-    def solve_torques(cdpr: Cdpr, lid, k, VAnow, TVnow, dt=0.01):
+    def solve_torques(cdpr: Cdpr, lid, k, VAnow, TVnow, dt, R):
         fg = gtsam.NonlinearFactorGraph()
         # priors
         fg.push_back(cdpr.priors_ik(ks=[k], values=TVnow))
@@ -172,8 +175,8 @@ class CdprControllerTensionDist(CdprControllerBase):
         for ji in range(4):
             fg.push_back(
                 gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
-                                      gtsam.noiseModel.Isotropic.Sigma(1, 100000.)))
-        
+                                      gtsam.noiseModel.Diagonal.Precisions(R)))
+
         # tmp initial guess
         xk = gtsam.Values()
         utils.InsertPose(xk, lid, k, TVnow)
@@ -185,6 +188,6 @@ class CdprControllerTensionDist(CdprControllerBase):
             gtd.InsertTorqueDouble(xk, ji, k, 1)
             gtd.InsertTensionDouble(xk, ji, k, 50)
             gtd.InsertWrench(xk, lid, ji, k, np.zeros(6))
-        
+
         # optimize
         return CdprControllerTensionDist.solve_graph(fg, xk)
