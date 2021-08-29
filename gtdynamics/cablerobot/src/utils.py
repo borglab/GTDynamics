@@ -40,6 +40,69 @@ def zerovalues(lid, ts=[], dt=0.01):
         gtd.InsertTwistAccel(zero, lid, t, np.zeros(6))
     return zero
 
+def InsertZeroByLabel(values, key, dt=None):
+    label, l, j, t = key.label(), key.linkIdx(), key.jointIdx(), key.time()
+    if label == "q":  # JointAngleKey
+        gtd.InsertJointAngleDouble(values, j, t, 0.0)
+    elif label == "v":  # JointVelKey
+        gtd.InsertJointVelDouble(values, j, t, 0.0)
+    elif label == "a":  # JointAccelKey
+        gtd.InsertJointAccelDouble(values, j, t, 0.0)
+    elif label == "t":  # TensionKey
+        gtd.InsertTensionDouble(values, j, t, 0.0)
+    elif label == "T":  # TorqueKey
+        gtd.InsertTorqueDouble(values, j, t, 0.0)
+    elif label == "p":  # PoseKey
+        gtd.InsertPose(values, l, t, gtsam.Pose3())
+    elif label == "V":  # TwistKey
+        gtd.InsertTwist(values, l, t, np.zeros(6))
+    elif label == "A":  # TwistAccelKey
+        gtd.InsertTwistAccel(values, l, t, np.zeros(6))
+    elif label == "F":  # WrenchKey
+        gtd.InsertWrench(values, l, j, t, np.zeros(6))
+    elif (dt is not None) and (key.key() == 0):
+        values.insert(key.key(), dt)
+    else:
+        print(key)
+        raise RuntimeError("Unknown key label type: ", label)
+
+def ZeroValues(graph, dt=None):
+    z = gtsam.Values()
+    for key in graph.keyVector():
+        key = gtd.DynamicsSymbol(key)
+        InsertZeroByLabel(z, key, dt)
+    return z
+
+def UpdateFromValues(src, dst, key):
+    label = key.label()
+    if label in "qvatT":  # joint angle, vel, acc, tension, torque
+        dst.insert(key.key(), src.atDouble(key.key()))
+    elif label == "p":  # PoseKey
+        dst.insert(key.key(), src.atPose3(key.key()))
+    elif label == "V":  # TwistKey
+        gtd.InsertTwist(dst, key.linkIdx(), key.time(), gtd.Twist(src, key.linkIdx(), key.time()))
+    elif label == "A":  # TwistAccelKey
+        gtd.InsertTwistAccel(dst, key.linkIdx(), key.time(),
+                             gtd.TwistAccel(src, key.linkIdx(), key.time()))
+    elif label == "F":  # WrenchKey
+        gtd.InsertWrench(dst, key.linkIdx(), key.time(), gtd.Wrench(src, key.linkIdx(), key.time()))
+    elif key.key() == 0:
+        dst.insert(key.key(), src.atDouble(key.key()))
+    else:
+        print(key)
+        raise RuntimeError("Unknown key label type: ", label)
+
+def InitValues(graph, values=None, dt=None):
+    init = gtsam.Values()
+    existing_keys = values.keys() if values is not None else []
+    for key in graph.keyVector():
+        key = gtd.DynamicsSymbol(key)
+        if key.key() in existing_keys:
+            UpdateFromValues(values, init, key)
+        else:
+            InsertZeroByLabel(init, key, dt)
+    return init
+
 def InsertPose(dest, link_id, k, source):
     gtd.InsertPose(dest, link_id, k, gtd.Pose(source, link_id, k))
 def InsertTwist(dest, link_id, k, source):

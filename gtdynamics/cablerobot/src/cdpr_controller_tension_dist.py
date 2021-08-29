@@ -122,11 +122,6 @@ class CdprControllerTensionDist(CdprControllerBase):
         return result
 
     @staticmethod
-    def solve_graph(graph, init):
-        result = gtsam.LevenbergMarquardtOptimizer(graph, init, utils.MyLMParams()).optimize()
-        return result
-
-    @staticmethod
     def solve_twist_accel(cdpr, lid, Tgoal, k, TVnow=None, lldotnow=None, dt=0.01):
         fg = gtsam.NonlinearFactorGraph()
 
@@ -156,7 +151,7 @@ class CdprControllerTensionDist(CdprControllerBase):
         gtd.InsertTwist(xk, lid, k+1, np.zeros(6))
         gtd.InsertTwistAccel(xk, lid, k, np.zeros(6))
 
-        return CdprControllerTensionDist.solve_graph(fg, xk)
+        return gtsam.LevenbergMarquardtOptimizer(fg, xk, utils.MyLMParams()).optimize()
 
     @staticmethod
     def solve_torques(cdpr: Cdpr, lid, k, VAnow, TVnow, dt, R):
@@ -186,4 +181,4 @@ class CdprControllerTensionDist(CdprControllerBase):
             gtd.InsertWrench(xk, lid, ji, k, np.zeros(6))
 
         # optimize
-        return CdprControllerTensionDist.solve_graph(fg, xk)
+        return gtsam.LevenbergMarquardtOptimizer(fg, xk, utils.MyLMParams()).optimize()
