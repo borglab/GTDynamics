@@ -42,7 +42,7 @@ class CdprControllerIlqr(CdprControllerBase):
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
         # initial guess
-        x_guess = utils.ZeroValues(fg, dt)
+        x_guess = utils.InitValues(fg, dt=dt)
         # optimize
         self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, utils.MyLMParams())
         self.result = self.optimizer.optimize()

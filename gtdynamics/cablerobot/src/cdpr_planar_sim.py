@@ -81,10 +81,10 @@ class CdprSimulator:
         fg.push_back(cdpr.priors_ik(ks=[k], values=xk))
         # IK initial estimate
         for j in range(4):
-            gtd.InsertJointAngleDouble(xk, j, k, 0)
+            gtd.InsertJointAngleDouble(xk, j, k, 1.5)
             gtd.InsertJointVelDouble(xk, j, k, 0)
         # IK solve
-        result = gtsam.LevenbergMarquardtOptimizer(fg, InitValues(fg), MyLMParams()).optimize()
+        result = gtsam.LevenbergMarquardtOptimizer(fg, xk, MyLMParams()).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
         xk.update(result)
         return fg, xk
@@ -127,8 +127,8 @@ class CdprSimulator:
             gtd.InsertTensionDouble(xd, ji, k,
                                     gtd.TorqueDouble(u, ji, k) / cdpr.params.winch_params.radius_)
             gtd.InsertWrench(xd, cdpr.ee_id(), ji, k, np.zeros(6))
-        gtd.InsertPose(xd, cdpr.ee_id(), k+1, gtsam.Pose3(gtsam.Rot3(), (1.5, 0, 1.5)))
-        gtd.InsertTwist(xd, cdpr.ee_id(), k+1, np.zeros(6))
+        gtd.InsertPose(xd, cdpr.ee_id(), k + 1, gtd.Pose(x, lid, k))
+        gtd.InsertTwist(xd, cdpr.ee_id(), k + 1, gtd.Twist(x, lid, k))
         gtd.InsertTwistAccel(xd, cdpr.ee_id(), k, np.zeros(6))
         # optimize
         result = gtsam.LevenbergMarquardtOptimizer(fg, xd, MyLMParams()).optimize()
@@ -173,6 +173,8 @@ class CdprSimulator:
             print('time step: {:4d}'.format(k), end='  --  ')
             print('EE position: ({:.2f}, {:.2f}, {:.2f})'.format(
                 *gtd.Pose(x, lid, k).translation()), end='  --  ')
+            print('next: ({:.2f}, {:.2f}, {:.2f})'.format(
+                *gtd.Pose(x, lid, k+1).translation()), end='  --  ')
             print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
                 *[gtd.TorqueDouble(u, ji, k) for ji in range(4)]))
 
@@ -189,7 +191,7 @@ class CdprSimulator:
         Returns:
             gtsam.Values: The values object containing all the data from the simulation.
         """
-        for k in range(N):
+        for _ in range(N):
             self.step(verbose=verbose)
         return self.x
 

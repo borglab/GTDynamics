@@ -51,7 +51,8 @@ def main(fname='data/iros_logo_2.h',
          R=np.ones(1) * 1e-2,
          N0=0,
          N=None,
-         dN=1):
+         dN=1,
+         speed_multiplier=1):
     """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
 
     Args:
@@ -84,6 +85,7 @@ def main(fname='data/iros_logo_2.h',
     bw, bh = 0.15, 0.30
     params = CdprParams()
     params.mass = 0.5
+    params.gravity = np.array([0, 0, -9.8]).reshape((3, 1))
     params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
     params.b_locs = np.array([[bw, 0., -bh], [bw, 0., bh], [-bw, 0., bh], [-bw, 0, -bh]]) / 2
     params.b_locs = params.b_locs - [0, 0, bh * 0.4]
@@ -94,7 +96,8 @@ def main(fname='data/iros_logo_2.h',
     # import data
     isPaints, colorinds, colorpalette, traj = ParseFile(fname)
     N = len(traj) - N0 - 1 if N is None else N
-    dt = 0.01 * dN # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
+    dt = (0.01 / speed_multiplier
+          ) * dN  # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
     N = int(N/dN)  # scale time by dN
     N0 = int(N0/dN)
     traj = (traj - [aw/2, ah/2]) * 0.85 + [aw/2, ah/2]  # rescale trajectory to be smaller
