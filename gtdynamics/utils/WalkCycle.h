@@ -65,32 +65,14 @@ class WalkCycle {
    * @fn Adds phase in walk cycle
    * @param[in] phase Swing or stance phase in the walk cycle.
    */
-  void addPhase(const Phase &phase) {
-    // Add unique PointOnLink objects to contact_points_
-    for (auto &&kv : phase.contactPoints()) {
-      int link_count =
-          std::count_if(contact_points_.begin(), contact_points_.end(),
-                        [&](const PointOnLink &contact_point) {
-                          return contact_point.point == kv.point &&
-                                 contact_point.link == kv.link;
-                        });
-      if (link_count == 0)
-        contact_points_.push_back(kv);
-    }
-    phases_.push_back(phase);
-  }
+  void addPhase(const Phase &phase);
 
   /**
    * @fn Return phase for given phase number p.
    * @param[in]p    Phase number \in [0..numPhases()[.
    * @return Phase instance.
    */
-  const Phase& phase(size_t p) const {
-    if (p >= numPhases()) {
-      throw std::invalid_argument("Trajectory:phase: no such phase");
-    }
-    return phases_.at(p);
-  }
+  const Phase& phase(size_t p) const;
 
   /// Returns vector of phases in the walk cycle
   const std::vector<Phase>& phases() const { return phases_; }
@@ -99,11 +81,7 @@ class WalkCycle {
   size_t numPhases() const { return phases_.size(); }
 
   /// Returns the number of time steps, summing over all phases.
-  size_t numTimeSteps() const {
-    size_t num_time_steps = 0;
-    for (const Phase& p : phases_) num_time_steps += p.numTimeSteps();
-    return num_time_steps;
-  }
+  size_t numTimeSteps() const;
 
   /// Return all the contact points.
   const PointOnLinks& contactPoints() const { return contact_points_; }

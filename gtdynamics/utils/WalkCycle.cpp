@@ -20,6 +20,34 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
+void WalkCycle::addPhase(const Phase &phase) {
+  // Add unique PointOnLink objects to contact_points_
+  for (auto &&kv : phase.contactPoints()) {
+    int link_count =
+        std::count_if(contact_points_.begin(), contact_points_.end(),
+                      [&](const PointOnLink &contact_point) {
+                        return contact_point.point == kv.point &&
+                                contact_point.link == kv.link;
+                      });
+    if (link_count == 0)
+      contact_points_.push_back(kv);
+  }
+  phases_.push_back(phase);
+}
+
+const Phase& WalkCycle::phase(size_t p) const {
+  if (p >= numPhases()) {
+    throw std::invalid_argument("Trajectory:phase: no such phase");
+  }
+  return phases_.at(p);
+}
+  
+size_t WalkCycle::numTimeSteps() const {
+  size_t num_time_steps = 0;
+  for (const Phase& p : phases_) num_time_steps += p.numTimeSteps();
+  return num_time_steps;
+}
+  
 std::ostream &operator<<(std::ostream &os, const WalkCycle &walk_cycle) {
   os << "[\n";
   for (auto &&phase : walk_cycle.phases()) {
