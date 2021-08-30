@@ -115,8 +115,8 @@ TEST(MassFlowRateFactor, Negative) {
   values.insert(example::pa_key, pa);
   values.insert(example::ps_key, ps);
   values.insert(example::mdot_key, mdot);
-  double diffDelta = 1e-10;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-5);
+  double diffDelta = 1e-13;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 TEST(ValveControlFactor, Factor) {

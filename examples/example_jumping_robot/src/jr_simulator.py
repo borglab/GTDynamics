@@ -55,7 +55,7 @@ class JRSimulator:
         # integrate time
         t_prev = values.atDouble(gtd.TimeKey(k-1).key())
         t_curr = t_prev + dt
-        values.insertDouble(gtd.TimeKey(k).key(), t_curr)
+        values.insert(gtd.TimeKey(k).key(), t_curr)
 
     def step_actuation_dynamics(self, k, values):
         """ Perform actuation dynamics by solving the actuation dynamics factor
@@ -105,8 +105,8 @@ class JRSimulator:
 
             # compute mass flow
             mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
-            values.insertDouble(Actuator.MassRateOpenKey(j, k), mdot)
-            values.insertDouble(Actuator.MassRateActualKey(j, k), mdot_sigma)
+            values.insert(Actuator.MassRateOpenKey(j, k), mdot)
+            values.insert(Actuator.MassRateActualKey(j, k), mdot_sigma)
 
     def step_robot_dynamics_by_layer(self, k, values):
         """ In case solving the entire dynamics graph is hard to converge,

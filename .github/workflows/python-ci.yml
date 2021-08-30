@@ -121,7 +121,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=OFF ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
         working-directory: ./build
 
       - name: Build
