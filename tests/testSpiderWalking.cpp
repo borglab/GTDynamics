@@ -34,15 +34,11 @@ using std::vector;
 using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
-Trajectory getTrajectory(const Robot &robot, size_t repeat) {
-  vector<LinkSharedPtr> odd_links = {robot.link("tarsus_1_L1"),
-                                     robot.link("tarsus_3_L3"),
-                                     robot.link("tarsus_5_R4"),
-                                     robot.link("tarsus_7_R2")};
-  vector<LinkSharedPtr> even_links = {robot.link("tarsus_2_L2"),
-                                      robot.link("tarsus_4_L4"),
-                                      robot.link("tarsus_6_R3"),
-                                      robot.link("tarsus_8_R1")};
+Trajectory getTrajectory(size_t repeat) {
+  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
+                           "tarsus_7_R2"};
+  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
+                            "tarsus_8_R1"};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
@@ -56,7 +52,7 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   walk_cycle.addPhase(stationary);
   walk_cycle.addPhase(odd);
 
-  return Trajectory(robot, walk_cycle, repeat);
+  return Trajectory(walk_cycle, repeat);
 }
 
 TEST(testSpiderWalking, WholeEnchilada) {
@@ -82,20 +78,19 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create the trajectory, consisting of 2 walk phases, each consisting of 4
   // phases: [stationary, odd, stationary, even].
-  auto trajectory = getTrajectory(robot, 2);
+  auto trajectory = getTrajectory(2);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
-  auto graph = trajectory.multiPhaseFactorGraph(robot, graph_builder,
-                                                collocation, mu);
+  auto graph =
+      trajectory.multiPhaseFactorGraph(robot, graph_builder, collocation, mu);
   EXPECT_LONGS_EQUAL(3557, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot,
-                                        Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());

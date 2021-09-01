@@ -39,7 +39,7 @@ using gtsam::noiseModel::Unit;
 using namespace gtdynamics;
 
 // Returns a Trajectory object for a single spider walk cycle.
-Trajectory getTrajectory(vector<string> links, Robot robot, size_t repeat) {
+Trajectory getTrajectory(vector<string>& links, size_t repeat) {
   const Point3 contact_in_com(0, 0.19, 0);
   Phase stationary(40);
   stationary.addContactPoints(links, contact_in_com);
@@ -60,7 +60,7 @@ Trajectory getTrajectory(vector<string> links, Robot robot, size_t repeat) {
   walk_cycle.addPhase(stationary);
   walk_cycle.addPhase(odd);
 
-  Trajectory trajectory(robot, walk_cycle, repeat);
+  Trajectory trajectory(walk_cycle, repeat);
   return trajectory;
 }
 
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 
   // Create the trajectory, consisting of 3 walk cycles, each consisting of 4
   // phases: [stationary, odd, stationary, even].
-  auto trajectory = getTrajectory(links, robot, 3);
+  auto trajectory = getTrajectory(links, 3);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;

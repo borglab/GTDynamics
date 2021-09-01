@@ -113,6 +113,7 @@ class WalkCycle {
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const gtsam::Point3& step, const gtsam::SharedNoiseModel& cost_model,
-      const Robot& robot, size_t k_start, ContactGoals* cp_goals) const;
+      const Robot& robot, size_t k_start,
+      std::map<std::string, gtsam::Point3>* cp_goals) const;
 };
 }  // namespace gtdynamics
