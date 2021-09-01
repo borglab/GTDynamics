@@ -36,16 +36,14 @@ struct OptimizationParameters {
 /// Base class for GTDynamics optimizer hierarchy.
 class Optimizer {
  protected:
-  Robot robot_;
   boost::shared_ptr<const OptimizationParameters> p_;
 
  public:
   /**
    * @fn Constructor.
    */
-  Optimizer(const Robot& robot,
-            const boost::shared_ptr<const OptimizationParameters>& parameters)
-      : robot_(robot), p_(parameters) {}
+  Optimizer(const boost::shared_ptr<const OptimizationParameters>& parameters)
+      : p_(parameters) {}
 
   /**
    * @brief optimize graph using optimizer settings.

@@ -349,13 +349,16 @@ class ContactGoal {
 };
 
 class Kinematics {
-  Kinematics(const gtdynamics::Robot &robot);
+  Kinematics();
   gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::Robot &robot,
               const gtdynamics::ContactGoals &contact_goals1,
               const gtdynamics::ContactGoals &contact_goals2) const;
 };
@@ -838,8 +841,7 @@ class WalkCycle {
 #include <gtdynamics/utils/Trajectory.h>
 class Trajectory {
   Trajectory();
-  Trajectory(const gtdynamics::Robot &robot,
-             const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
+  Trajectory(const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
   std::vector<gtdynamics::ContactPoints> phaseContactPoints() const;
   std::vector<gtdynamics::ContactPoints> transitionContactPoints() const;
   std::vector<int> phaseDurations() const;
@@ -874,12 +876,12 @@ class Trajectory {
   contactPointObjectives(const gtdynamics::Robot& robot, 
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step) const;
-  void addMinimumTorqueFactors(const gtdynamics::Robot& robot, 
-                         gtsam::NonlinearFactorGraph @graph,
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
+                               const gtdynamics::Robot& robot,
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
-      const gtdynamics::Robot& robot, 
       gtsam::NonlinearFactorGraph @graph,
+      const gtdynamics::Robot& robot, 
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,

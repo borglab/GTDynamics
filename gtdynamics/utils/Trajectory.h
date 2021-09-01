@@ -150,7 +150,7 @@ class Trajectory {
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
-      const Robot& robot, const DynamicsGraph &graph_builder,
+      const Robot &robot, const DynamicsGraph &graph_builder,
       const CollocationScheme collocation, double mu) const;
 
   /**
@@ -275,8 +275,8 @@ class Trajectory {
    * @fn Add minimum torque objectives.
    * @return All MinTorqueFactor factors as a NonlinearFactorGraph
    */
-  void addMinimumTorqueFactors(const Robot &robot,
-                               gtsam::NonlinearFactorGraph *graph,
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
+                               const Robot &robot,
                                const gtsam::SharedNoiseModel &cost_model) const;
 
   /**
@@ -290,7 +290,7 @@ class Trajectory {
    * @return All factors as a NonlinearFactorGraph
    */
   void addBoundaryConditions(
-      const Robot &robot, gtsam::NonlinearFactorGraph *graph,
+      gtsam::NonlinearFactorGraph *graph, const Robot &robot,
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,

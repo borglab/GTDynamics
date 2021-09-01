@@ -34,10 +34,10 @@ TEST(Slice, InverseKinematics) {
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
   // parameters.lm_parameters.setVerbosityLM("SUMMARY");
-  Kinematics kinematics(robot, parameters);
+  Kinematics kinematics(parameters);
 
   // Create initial values
-  auto values = kinematics.initialValues(slice, 0.0);
+  auto values = kinematics.initialValues(slice, robot, 0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
@@ -56,16 +56,16 @@ TEST(Slice, InverseKinematics) {
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
-  auto graph = kinematics.graph(slice);
+  auto graph = kinematics.graph(slice, robot);
   EXPECT_LONGS_EQUAL(12, graph.size());
 
   auto objectives = kinematics.pointGoalObjectives(slice, contact_goals);
   EXPECT_LONGS_EQUAL(4, objectives.size());
 
-  auto objectives2 = kinematics.jointAngleObjectives(slice);
+  auto objectives2 = kinematics.jointAngleObjectives(slice, robot);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  auto result = kinematics.inverse(slice, contact_goals);
+  auto result = kinematics.inverse(slice, robot, contact_goals);
 
   // Check that well-determined
   graph.add(objectives);

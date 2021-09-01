@@ -97,13 +97,14 @@ int main(int argc, char **argv) {
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
-  auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
+  auto graph =
+      trajectory.multiPhaseFactorGraph(robot, graph_builder, collocation, mu);
 
   // Build the objective factors.
   double ground_height = 1.0;
   const Point3 step(0, 0.4, 0);
-  gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step, ground_height);
+  gtsam::NonlinearFactorGraph objectives = trajectory.contactPointObjectives(
+      robot, Isotropic::Sigma(3, 1e-7), step, ground_height);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -118,7 +119,7 @@ int main(int argc, char **argv) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -127,7 +128,7 @@ int main(int argc, char **argv) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
@@ -142,7 +143,7 @@ int main(int argc, char **argv) {
   // Initialize solution.
   double gaussian_noise = 1e-5;
   gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
@@ -155,7 +156,7 @@ int main(int argc, char **argv) {
   auto results = optimizer.optimize();
 
   // Write results to traj file
-  trajectory.writeToFile("forward_traj.csv", results);
+  trajectory.writeToFile(robot, "forward_traj.csv", results);
 
   return 0;
 }

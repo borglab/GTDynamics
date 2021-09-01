@@ -87,10 +87,9 @@ class Kinematics : public Optimizer {
   /**
    * @fn Constructor.
    */
-  Kinematics(const Robot& robot,
-             const boost::shared_ptr<const KinematicsParameters>& parameters =
+  Kinematics(const boost::shared_ptr<const KinematicsParameters>& parameters =
                  boost::make_shared<const KinematicsParameters>())
-      : Optimizer(robot, parameters), p_(parameters) {}
+      : Optimizer(parameters), p_(parameters) {}
 
   /**
    * @fn Create graph with kinematics constraints.
@@ -98,7 +97,8 @@ class Kinematics : public Optimizer {
    * @returns factor graph..
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph graph(const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
+                                    const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
@@ -116,8 +116,8 @@ class Kinematics : public Optimizer {
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph jointAngleObjectives(
-      const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context,
+                                                   const Robot& robot) const;
 
   /**
    * @fn Initialize kinematics.
@@ -129,7 +129,7 @@ class Kinematics : public Optimizer {
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values initialValues(const CONTEXT& context,
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.1) const;
 
   /**
@@ -139,7 +139,7 @@ class Kinematics : public Optimizer {
    * @returns values with poses and joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values inverse(const CONTEXT& context,
+  gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals) const;
 
   /**
@@ -149,7 +149,7 @@ class Kinematics : public Optimizer {
    * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval,
+  gtsam::Values interpolate(const Interval& interval, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };

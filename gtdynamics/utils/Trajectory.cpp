@@ -49,7 +49,7 @@ vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
 }
 
 NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
-    const Robot& robot, const DynamicsGraph &graph_builder,
+    const Robot &robot, const DynamicsGraph &graph_builder,
     const CollocationScheme collocation, double mu) const {
   // Graphs for transition between phases + their initial values.
   auto transition_graphs = getTransitionGraphs(robot, graph_builder, mu);
@@ -100,7 +100,7 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 }
 
 void Trajectory::addBoundaryConditions(
-    const Robot &robot, gtsam::NonlinearFactorGraph *graph,
+    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
     const SharedNoiseModel &pose_model, const SharedNoiseModel &twist_model,
     const SharedNoiseModel &twist_acceleration_model,
     const SharedNoiseModel &joint_velocity_model,
@@ -129,7 +129,7 @@ void Trajectory::addBoundaryConditions(
 }
 
 void Trajectory::addMinimumTorqueFactors(
-    const Robot &robot, gtsam::NonlinearFactorGraph *graph,
+    gtsam::NonlinearFactorGraph *graph, const Robot &robot,
     const SharedNoiseModel &cost_model) const {
   int K = getEndTimeStep(numPhases() - 1);
   for (auto &&joint : robot.joints()) {
