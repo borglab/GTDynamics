@@ -82,14 +82,14 @@ struct StaticsParameters : public KinematicsParameters {
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
 class Statics : public Kinematics {
  protected:
-  StaticsParameters p_;  // TODO(frank): stored twice w different type?
+  boost::shared_ptr<const StaticsParameters> p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
   Statics(const Robot& robot,
-          const StaticsParameters& parameters = StaticsParameters())
+          const boost::shared_ptr<const StaticsParameters>& parameters)
       : Kinematics(robot, parameters), p_(parameters) {}
 
   /// Graph with a WrenchEquivalenceFactor for each joint
