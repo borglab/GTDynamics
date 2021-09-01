@@ -88,7 +88,8 @@ class Kinematics : public Optimizer {
    * @fn Constructor.
    */
   Kinematics(const Robot& robot,
-             const boost::shared_ptr<const KinematicsParameters>& parameters)
+             const boost::shared_ptr<const KinematicsParameters>& parameters =
+                 boost::make_shared<const KinematicsParameters>())
       : Optimizer(robot, parameters), p_(parameters) {}
 
   /**
