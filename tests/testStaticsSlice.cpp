@@ -72,7 +72,8 @@ TEST(Statics, OneMovingLink) {
   EXPECT_DOUBLES_EQUAL(expected_tau, tau, kTol);
 
   // Now do statics using GTD.
-  StaticsParameters parameters2D(kSigmaDynamics, gravity2D);
+  auto parameters2D =
+      boost::make_shared<StaticsParameters>(kSigmaDynamics, gravity2D);
   // parameters2D.lm_parameters.setVerbosityLM("SUMMARY");
   Statics statics(robot, parameters2D);
   const size_t k = 777;
@@ -107,7 +108,8 @@ TEST(Statics, Quadruped) {
 
   // Instantiate statics algorithms
   const Vector3 kGravity(0, 0, -10);
-  StaticsParameters parameters3D(kSigmaDynamics, kGravity);
+  auto parameters3D =
+      boost::make_shared<StaticsParameters>(kSigmaDynamics, kGravity);
   Statics statics(robot, parameters3D);
 
   // Get an inverse kinematics solution

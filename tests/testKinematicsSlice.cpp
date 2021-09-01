@@ -32,7 +32,7 @@ TEST(Phase, InverseKinematics) {
   const Slice slice(k);
 
   // Instantiate kinematics algorithms
-  KinematicsParameters parameters;
+  auto parameters = boost::make_shared<KinematicsParameters>();
   // parameters.lm_parameters.setVerbosityLM("SUMMARY");
   Kinematics kinematics(robot, parameters);
 
