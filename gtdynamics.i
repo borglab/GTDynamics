@@ -889,11 +889,10 @@ class Trajectory {
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step,
                          const gtdynamics::ContactAdjustments &contact_adjustments) const;
-  void addMinimumTorqueFactors(const gtdynamics::Robot& robot, 
-                               gtsam::NonlinearFactorGraph @graph,
+  void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
+                               const gtdynamics::Robot& robot, 
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
-      const gtdynamics::Robot& robot, 
       gtsam::NonlinearFactorGraph @graph,
       const gtdynamics::Robot& robot, 
       const gtsam::SharedNoiseModel &pose_model,

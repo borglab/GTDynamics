@@ -82,7 +82,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create the trajectory, consisting of 2 walk phases, each consisting of 4
   // phases: [stationary, odd, stationary, even].
-  auto trajectory = getTrajectory(2);
+  auto trajectory = getTrajectory(robot, 2);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
