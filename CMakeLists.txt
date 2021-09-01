@@ -51,8 +51,8 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
-option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
 
 add_subdirectory(gtdynamics)
 
@@ -66,12 +66,12 @@ endif()
 # Process subdirectories.
 add_subdirectory(tests)
 
-option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" OFF)
+option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" ON)
 if(GTDYNAMICS_BUILD_SCRIPTS)
   add_subdirectory(scripts)
 endif()
 
-option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" OFF)
+option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 if(GTDYNAMICS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
