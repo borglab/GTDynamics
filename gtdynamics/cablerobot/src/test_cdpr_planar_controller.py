@@ -48,7 +48,7 @@ class TestCdprPlanar(GtsamTestCase):
                            *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
 
         for k, (des, act) in enumerate(zip(x_des, pAct)):
-            self.gtsamAssertEquals(des, act)
+            self.gtsamAssertEquals(des, act, tol=1e-2)
 
 if __name__ == "__main__":
     unittest.main()

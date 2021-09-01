@@ -4,7 +4,6 @@
 
 
 ### *Full kinodynamics constraints for arbitrary robot configurations with factor graphs.*
-<!-- =================================================== -->
 
 ![Build Status](https://travis-ci.com/Alescontrela/GTDynamics.svg?token=V6isP7NT7qX4qsBuX1sY&branch=master)
 
@@ -103,31 +102,51 @@ make
 ./exec
 ```
 
-## Python Wrapper
+## Python Wrapper (Recommended use case)
 
 GTDynamics now supports a Pybind11-based Python API.
 
-To start, please download and install the [GTwrap repository](https://github.com/borglab/wrap).
+GTWrap comes bundled with GTSAM, which generates a corresponding GTSAM Python API. The same GTWrap package can be used to generate python bindings for GTDynamics (i.e. it is not necessary to manually install a separate GTWrap).
+
+**Note**: when using CMake, it is ideal for GTSAM and GTDynamics to have the same, *non* `/usr/local` prefix for installing packages. To update the CMake prefix from a system directory, use the flag `CMAKE_INSTALL_PREFIX=/path/to/install/dir` when running `cmake`.
 
 To compile and install the GTDynamics python library:
 
-1. In the build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`.
+1. Ensure that GTSAM is built with generated python bindings. If not, go to the build directory and run `cmake` with the flag `GTSAM_BUILD_PYTHON=ON`. It is highly advised to specify a *non* `user/local` CMake prefix for installing packages. Afterwards, install the GTSAM python package.
 
     ```sh
-    cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
+    cmake -DGTSAM_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
+    make && make install && make python-install
     ```
 
-2. Build as normal and install the python package.
+2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`. It is highly advised for the GTDynamics CMake prefix to match the CMake prefix used for GTSAM. Again, use the `CMAKE_INSTALL_PREFIX=/path/to/install/dir` flag to specify the updated prefix.
+
+    ```sh
+    cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
+    ```
+
+3. Build as normal and install the python package.
 
     ```sh
     make && make python-install
     ```
 
-3. To run the Python tests, you can simply run:
+4. To run the Python tests, you can simply run:
 
     ```sh
     make python-test
     ```
+
+    You can also run individual test suites, e.g. with:
+
+    ```sh
+    make python-test.base
+    make python-test.cablerobot
+    ```
+
+## (Alternative) Python Wrapper installation
+
+If preferred, GTWrap can be [downloaded and installed separately](https://github.com/borglab/wrap). Afterwards, follow the instructions above from step 2 for building and installing the GTDynamics python bindings.
 
 ## Citing This Work
 

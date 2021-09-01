@@ -55,6 +55,18 @@ class ContactEqualityFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/ContactPointFactor.h>
+class ContactPointFactor : gtsam::NoiseModelFactor {
+  ContactPointFactor(gtsam::Key link_pose_key, gtsam::Key point_key,
+                     const gtsam::noiseModel::Base *model,
+                     const gtsam::Point3 &contact_in_com);
+  ContactPointFactor(const gtdynamics::PointOnLink &point_on_link,
+                     gtsam::Key point_key, const gtsam::noiseModel::Base *model,
+                     size_t t = 0);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
 
 #include <gtdynamics/factors/TwistFactor.h>
 class TwistFactor : gtsam::NonlinearFactor {
@@ -344,13 +356,16 @@ class ContactGoal {
 };
 
 class Kinematics {
-  Kinematics(const gtdynamics::Robot &robot);
+  Kinematics();
   gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::Robot &robot,
               const gtdynamics::ContactGoals &contact_goals1,
               const gtdynamics::ContactGoals &contact_goals2) const;
 };
@@ -880,6 +895,7 @@ class Trajectory {
   void addBoundaryConditions(
       const gtdynamics::Robot& robot, 
       gtsam::NonlinearFactorGraph @graph,
+      const gtdynamics::Robot& robot, 
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,

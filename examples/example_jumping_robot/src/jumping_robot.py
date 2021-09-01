@@ -200,17 +200,17 @@ class JumpingRobot:
         axis_r = np.array([1, 0, 0])
         axis_l = np.array([-1, 0, 0])
         foot_r = gtd.RevoluteJoint(
-            0, "foot_r", joint_poses["foot_r"], ground, shank_r, gtd.JointParams(), axis_r)
+            0, "foot_r", joint_poses["foot_r"], ground, shank_r, axis_r, gtd.JointParams())
         knee_r = gtd.RevoluteJoint(
-            1, "knee_r", joint_poses["knee_r"], shank_r, thigh_r, gtd.JointParams(), axis_r)
+            1, "knee_r", joint_poses["knee_r"], shank_r, thigh_r, axis_r, gtd.JointParams())
         hip_r = gtd.RevoluteJoint(
-            2, "hip_r", joint_poses["hip_r"], thigh_r, torso, gtd.JointParams(), axis_r)
+            2, "hip_r", joint_poses["hip_r"], thigh_r, torso, axis_r, gtd.JointParams())
         hip_l = gtd.RevoluteJoint(
-            3, "hip_l", joint_poses["hip_l"], thigh_l, torso, gtd.JointParams(), axis_l)
+            3, "hip_l", joint_poses["hip_l"], thigh_l, torso, axis_l, gtd.JointParams())
         knee_l = gtd.RevoluteJoint(
-            4, "knee_l", joint_poses["knee_l"], shank_l, thigh_l, gtd.JointParams(), axis_l)
+            4, "knee_l", joint_poses["knee_l"], shank_l, thigh_l, axis_l, gtd.JointParams())
         foot_l = gtd.RevoluteJoint(
-            5, "foot_l", joint_poses["foot_l"], ground, shank_l, gtd.JointParams(), axis_l)
+            5, "foot_l", joint_poses["foot_l"], ground, shank_l, axis_l, gtd.JointParams())
 
         # use links, joints to create robot
         if phase == 0:

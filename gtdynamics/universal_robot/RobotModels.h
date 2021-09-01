@@ -36,7 +36,7 @@ gtdynamics::Robot robot = getFourBar();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace four_bar_linkage_pure
+} // namespace four_bar_linkage_pure
 
 namespace simple_urdf {
 gtdynamics::Robot getSimpleUrdf() {
@@ -49,7 +49,7 @@ gtdynamics::Robot robot = getSimpleUrdf();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace simple_urdf
+} // namespace simple_urdf
 
 namespace simple_urdf_prismatic {
 gtdynamics::Robot getSimpleUrdf() {
@@ -59,7 +59,7 @@ gtdynamics::Robot getSimpleUrdf() {
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdf();
-}  // namespace simple_urdf_prismatic
+} // namespace simple_urdf_prismatic
 
 namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getSimpleUrdf() {
@@ -72,7 +72,7 @@ gtdynamics::Robot robot = getSimpleUrdf();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace simple_urdf_zero_inertia
+} // namespace simple_urdf_zero_inertia
 
 namespace simple_urdf_eq_mass {
 gtdynamics::Robot getSimpleUrdfEqMass() {
@@ -84,7 +84,7 @@ gtdynamics::Robot robot = getSimpleUrdfEqMass();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace simple_urdf_eq_mass
+} // namespace simple_urdf_eq_mass
 
 namespace simple_rr {
 gtdynamics::Robot getSimpleRR() {
@@ -96,7 +96,7 @@ gtdynamics::Robot robot = getSimpleRR();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace simple_rr
+} // namespace simple_rr
 
 namespace jumping_robot {
 gtdynamics::Robot getJumpingRobot() {
@@ -110,4 +110,4 @@ gtdynamics::Robot robot = getJumpingRobot();
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
 gtsam::Vector3 planar_axis = (gtsam::Vector(3) << 1, 0, 0).finished();
 
-}  // namespace jumping_robot
+} // namespace jumping_robot

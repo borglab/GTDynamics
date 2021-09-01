@@ -38,14 +38,14 @@ class TestJRValues(unittest.TestCase):
         k = 0
 
         values = gtsam.Values()
-        values.insertDouble(Actuator.ValveOpenTimeKey(j), 0)
-        values.insertDouble(Actuator.ValveCloseTimeKey(j), 1)
+        values.insert(Actuator.ValveOpenTimeKey(j), 0)
+        values.insert(Actuator.ValveCloseTimeKey(j), 1)
         P_a_key = Actuator.PressureKey(j, k)
         P_s_key = Actuator.SourcePressureKey(k)
         t_key = gtd.TimeKey(k).key()
-        values.insertDouble(P_a_key, 101.325)
-        values.insertDouble(P_s_key, 65 * 6894.76/1000)
-        values.insertDouble(t_key, 0.0001)
+        values.insert(P_a_key, 101.325)
+        values.insert(P_s_key, 65 * 6894.76/1000)
+        values.insert(t_key, 0.0001)
 
         mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)
 

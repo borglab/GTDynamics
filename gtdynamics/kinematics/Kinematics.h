@@ -6,13 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  KinematicsSlice.h
- * @brief Kinematics in single time slice.
+ * @file  Kinematics.h
+ * @brief Kinematics optimizer.
  * @author: Frank Dellaert
  */
 
 #pragma once
 
+#include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ContactPoint.h>
 #include <gtdynamics/utils/Interval.h>
@@ -64,14 +65,6 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-/// Optimization parameters shared between all solvers
-struct OptimizationParameters {
-  gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
-  OptimizationParameters() {
-    lm_parameters.setlambdaInitial(1e7);
-    lm_parameters.setAbsoluteErrorTol(1e-3);
-  }
-};
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
@@ -86,18 +79,17 @@ struct KinematicsParameters : public OptimizationParameters {
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
-class Kinematics {
+class Kinematics : public Optimizer {
  protected:
-  Robot robot_;
-  KinematicsParameters p_;
+  boost::shared_ptr<const KinematicsParameters> p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
-  Kinematics(const Robot& robot,
-             const KinematicsParameters& parameters = KinematicsParameters())
-      : robot_(robot), p_(parameters) {}
+  Kinematics(const boost::shared_ptr<const KinematicsParameters>& parameters =
+                 boost::make_shared<const KinematicsParameters>())
+      : Optimizer(parameters), p_(parameters) {}
 
   /**
    * @fn Create graph with kinematics constraints.
@@ -105,7 +97,8 @@ class Kinematics {
    * @returns factor graph..
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph graph(const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
+                                    const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
@@ -123,8 +116,8 @@ class Kinematics {
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph jointAngleObjectives(
-      const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context,
+                                                   const Robot& robot) const;
 
   /**
    * @fn Initialize kinematics.
@@ -136,7 +129,7 @@ class Kinematics {
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values initialValues(const CONTEXT& context,
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.1) const;
 
   /**
@@ -146,7 +139,7 @@ class Kinematics {
    * @returns values with poses and joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values inverse(const CONTEXT& context,
+  gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals) const;
 
   /**
@@ -156,7 +149,7 @@ class Kinematics {
    * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval,
+  gtsam::Values interpolate(const Interval& interval, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };

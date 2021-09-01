@@ -82,39 +82,41 @@ struct StaticsParameters : public KinematicsParameters {
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
 class Statics : public Kinematics {
  protected:
-  StaticsParameters p_;  // TODO(frank): stored twice w different type?
+  boost::shared_ptr<const StaticsParameters> p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
-  Statics(const Robot& robot,
-          const StaticsParameters& parameters = StaticsParameters())
-      : Kinematics(robot, parameters), p_(parameters) {}
+  Statics(const boost::shared_ptr<const StaticsParameters>& parameters)
+      : Kinematics(parameters), p_(parameters) {}
 
   /// Graph with a WrenchEquivalenceFactor for each joint
   gtsam::NonlinearFactorGraph wrenchEquivalenceFactors(
-      const Slice& slice) const;
+      const Slice& slice, const Robot& robot) const;
 
   /// Graph with a TorqueFactor for each joint
-  gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice) const;
+  gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice,
+                                            const Robot& robot) const;
 
   /// Graph with a WrenchPlanarFactor for each joint
-  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice) const;
+  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice,
+                                                  const Robot& robot) const;
 
   /**
    * Create graph with only static balance factors.
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
    */
-  gtsam::NonlinearFactorGraph graph(const Slice& slice) const;
+  gtsam::NonlinearFactorGraph graph(const Slice& slice,
+                                    const Robot& robot) const;
 
   /**
    * Create keys for unkowns and initial values.
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
    */
-  gtsam::Values initialValues(const Slice& slice,
+  gtsam::Values initialValues(const Slice& slice, const Robot& robot,
                               double gaussian_noise = 1e-6) const;
 
   /**
@@ -122,13 +124,13 @@ class Statics : public Kinematics {
    * @param slice Slice instance.
    * @param configuration A known kinematics configuration.
    */
-  gtsam::Values solve(const Slice& slice,
+  gtsam::Values solve(const Slice& slice, const Robot& robot,
                       const gtsam::Values& configuration) const;
 
   /**
    * Solve for wrenches and kinematics configuration.
    * @param slice Slice instance.
    */
-  gtsam::Values minimizeTorques(const Slice& slice) const;
+  gtsam::Values minimizeTorques(const Slice& slice, const Robot& robot) const;
 };
 }  // namespace gtdynamics
