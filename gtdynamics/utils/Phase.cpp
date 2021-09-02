@@ -23,6 +23,22 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
+Phase::Phase(size_t num_time_steps,
+             const std::vector<PointOnLink> &points_on_links)
+    : num_time_steps_(num_time_steps) {
+  for (auto &&point_on_link : points_on_links) {
+    contact_points_.push_back(point_on_link);
+  }
+}
+
+Phase::Phase(size_t num_time_steps, const std::vector<LinkSharedPtr> &links,
+             const gtsam::Point3 &contact_in_com)
+    : num_time_steps_(num_time_steps) {
+  for (auto &&link : links) {
+    contact_points_.emplace_back(link, contact_in_com);
+  }
+}
+
 std::ostream &operator<<(std::ostream &os, const Phase &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {
@@ -36,7 +52,8 @@ void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-//Searches a contact_link from ContactGoals object and returns the corresponding goal_point
+// Searches a contact_link from ContactGoals object and returns the
+// corresponding goal_point
 gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
                          const PointOnLink contact_point) {
   for (auto it = cp_goals->begin(); it != cp_goals->end(); ++it) {
@@ -49,7 +66,8 @@ gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
 
 NonlinearFactorGraph Phase::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
-    const gtsam::SharedNoiseModel &cost_model, size_t k_start, ContactGoals *cp_goals) const {
+    const gtsam::SharedNoiseModel &cost_model, size_t k_start,
+    ContactGoals *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (auto &&kv : all_contact_points) {
@@ -60,9 +78,8 @@ NonlinearFactorGraph Phase::contactPointObjectives(
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
     if (!stance) cp_goal += step;  // Update the goal if swing
 
-    factors.push_back(PointGoalFactors(cost_model, kv.point,
-                                       goal_trajectory, kv.link->id(),
-                                       k_start));
+    factors.push_back(PointGoalFactors(cost_model, kv.point, goal_trajectory,
+                                       kv.link->id(), k_start));
   }
   return factors;
 }

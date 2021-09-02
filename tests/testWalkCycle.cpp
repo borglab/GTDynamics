@@ -44,11 +44,10 @@ TEST(WalkCycle, inverse_kinematics) {
 
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
-  Phase phase0(num_time_steps), phase1(num_time_steps);
-  phase0.addContactPoint(robot.link("lower1"), contact_in_com);  // LH
-  phase1.addContactPoint(robot.link("lower0"), contact_in_com);  // LF
-  phase0.addContactPoint(robot.link("lower2"), contact_in_com);  // RF
-  phase1.addContactPoint(robot.link("lower3"), contact_in_com);  // RH
+  Phase phase0(num_time_steps, {robot.link("lower1"), robot.link("lower2")},
+               contact_in_com),
+      phase1(num_time_steps, {robot.link("lower0"), robot.link("lower3")},
+             contact_in_com);
   auto walk_cycle = WalkCycle({phase0, phase1});
 
   // Set goal points to reasonable values

@@ -56,8 +56,8 @@ class Trajectory {
    * @param repeat      The number of repetitions for each phase of the gait.
    */
   Trajectory(const WalkCycle &walk_cycle, size_t repeat)
-      : repeat_(repeat), walk_cycle_(walk_cycle) {};
-  
+      : repeat_(repeat), walk_cycle_(walk_cycle) {}
+
   ContactPoints toContactPointsObject(const PointOnLinks &contact_points) const{
     ContactPoints cps;
     for(auto&& cp : contact_points){

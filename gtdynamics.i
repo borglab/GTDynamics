@@ -806,12 +806,10 @@ class Interval {
 class Phase {
   Phase(size_t num_time_steps);
   Phase(size_t num_time_steps, 
+        const std::vector<gtdynamics::PointOnLink> &point_on_links);
+  Phase(size_t num_time_steps, 
         const std::vector<gtdynamics::LinkSharedPtr> &links,
         const gtsam::Point3 &contact_in_com);
-  void addContactPoint(const gtdynamics::LinkSharedPtr &link, 
-                       const gtsam::Point3 &contact_in_com);
-  void addContactPoints(const std::vector<gtdynamics::LinkSharedPtr> &links,
-                        const gtsam::Point3 &contact_in_com);
   const gtdynamics::PointOnLinks &contactPoints() const;
   const gtsam::Point3 &contactPoint(const std::string &link_name) const;
   int numTimeSteps() const;

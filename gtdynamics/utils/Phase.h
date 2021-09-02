@@ -34,40 +34,23 @@ class Phase {
   Phase(size_t num_time_steps) : num_time_steps_(num_time_steps) {}
 
   /**
-   * @fbrief Constructor with all contact points.
+   * @fbrief Constructor with all contact points, takes list of PointOnLinks.
+   *
+   * @param[in] num_time_steps  Number of time steps in phase.
+   * @param[in] points_on_links List of link PointOnLinks.
+   */
+  Phase(size_t num_time_steps, const std::vector<PointOnLink> &points_on_links);
+
+  /**
+   * @fbrief Constructor with all contact points, takes a number of links and
+   * creates same contact points on all links.
    *
    * @param[in] num_time_steps  Number of time steps in phase.
    * @param[in] links           List of link pointers.
    * @param[in] contact_in_com  Point of contact on link.
    */
   Phase(size_t num_time_steps, const std::vector<LinkSharedPtr> &links,
-        const gtsam::Point3 &contact_in_com)
-      : num_time_steps_(num_time_steps) {
-    addContactPoints(links, contact_in_com);
-  }
-
-  /** @fn Adds a contact point in the phase.
-   *
-   * @param[in] link  Name of link in the robot_configuration.
-   * @param[in] contact_in_com Point of contact on link.
-   */
-  void addContactPoint(const LinkSharedPtr &link,
-                       const gtsam::Point3 &contact_in_com) {
-    contact_points_.push_back(PointOnLink(link, contact_in_com));
-  }
-
-  /**
-   * @fn Add multiple contact points.
-   *
-   * @param[in] links           List of link pointers.
-   * @param[in] contact_in_com  Point of contact on link.
-   */
-  void addContactPoints(const std::vector<LinkSharedPtr> &links,
-                        const gtsam::Point3 &contact_in_com) {
-    for (auto &&link : links) {
-      addContactPoint(link, contact_in_com);
-    }
-  }
+        const gtsam::Point3 &contact_in_com);
 
   /// Returns all the contact points in the stance
   const PointOnLinks &contactPoints() const { return contact_points_; }
