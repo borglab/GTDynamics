@@ -517,6 +517,10 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Set initial values.
   Values init_values = ZeroValues(biped, 0, 0.0, contact_points);
 
+  // Regression on graph and values size.
+  EXPECT_LONGS_EQUAL(74, graph.size());
+  EXPECT_LONGS_EQUAL(59, init_values.size());
+
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values results = optimizer.optimize();

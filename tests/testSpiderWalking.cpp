@@ -149,8 +149,8 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto results = optimizer.optimize();
 
   // Regression!
-  EXPECT_DOUBLES_EQUAL(986936294413055.0, graph.error(init_vals), 0.1);
-  EXPECT_DOUBLES_EQUAL(353211972620861.44, graph.error(results), 0.1);
+  EXPECT_DOUBLES_EQUAL(986936294413055, graph.error(init_vals), 100);
+  EXPECT_DOUBLES_EQUAL(353211972620861, graph.error(results), 100);
 }
 
 int main() {

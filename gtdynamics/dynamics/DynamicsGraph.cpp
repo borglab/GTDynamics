@@ -218,20 +218,15 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     gravity = gtsam::Vector3(0, 0, -9.8);
 
   // Add contact factors.
-  for (auto &&link : robot.links()) {
-    int i = link->id();
-    // Check if the link has contact points. If so, add pose constraints.
-    if (contact_points) {
-      for (auto &&contact_point : *contact_points) {
-        if (contact_point.first != link->name()) continue;
-
-        ContactHeightFactor contact_pose_factor(
-            internal::PoseKey(i, k), opt_.cp_cost_model,
-            contact_point.second.point, gravity);
-        graph.add(contact_pose_factor);
-      }
+  if (contact_points) {
+    for (auto &&cp : *contact_points) {
+      ContactHeightFactor contact_pose_factor(
+          internal::PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point,
+          gravity);
+      graph.add(contact_pose_factor);
     }
   }
+
   return graph;
 }
 
@@ -252,20 +247,15 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
                                     opt_.v_cost_model, joint);
 
   // Add contact factors.
-  for (auto &&link : robot.links()) {
-    int i = link->id();
-    // Check if the link has contact points. If so, add twist constraints.
-    if (contact_points) {
-      for (auto &&contact_point : *contact_points) {
-        if (contact_point.first != link->name()) continue;
-
-        ContactKinematicsTwistFactor contact_twist_factor(
-            internal::TwistKey(i, t), opt_.cv_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
-        graph.add(contact_twist_factor);
-      }
+  if (contact_points) {
+    for (auto &&cp : *contact_points) {
+      ContactKinematicsTwistFactor contact_twist_factor(
+          internal::TwistKey(cp.link->id(), t), opt_.cv_cost_model,
+          gtsam::Pose3(gtsam::Rot3(), -cp.point));
+      graph.add(contact_twist_factor);
     }
   }
+
   return graph;
 }
 
@@ -287,21 +277,15 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
       boost::static_pointer_cast<const JointTyped>(joint));
 
   // Add contact factors.
-  for (auto &&link : robot.links()) {
-    int i = link->id();
-
-    // Check if the link has contact points. If so, add accel constraints.
-    if (contact_points) {
-      for (auto &&contact_point : *contact_points) {
-        if (contact_point.first != link->name()) continue;
-
-        ContactKinematicsAccelFactor contact_accel_factor(
-            internal::TwistAccelKey(i, t), opt_.ca_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
-        graph.add(contact_accel_factor);
-      }
+  if (contact_points) {
+    for (auto &&cp : *contact_points) {
+      ContactKinematicsAccelFactor contact_accel_factor(
+          internal::TwistAccelKey(cp.link->id(), t), opt_.ca_cost_model,
+          gtsam::Pose3(gtsam::Rot3(), -cp.point));
+      graph.add(contact_accel_factor);
     }
   }
+
   return graph;
 }
 
@@ -337,9 +321,10 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
       // Add wrench keys for contact points.
       if (contact_points) {
-        for (auto &&contact_point : *contact_points) {
-          if (contact_point.first != link->name()) continue;
-          auto wrench_key = ContactWrenchKey(i, contact_point.second.id, k);
+        for (auto &&cp : *contact_points) {
+          if (cp.link->id() != i) continue;
+          // TODO(frank): allow multiple contact points on one link, id = 0,1,..
+          auto wrench_key = ContactWrenchKey(i, 0, k);
           wrench_keys.push_back(wrench_key);
 
           // Add contact dynamics constraints.
@@ -349,7 +334,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -contact_point.second.point));
+              gtsam::Pose3(gtsam::Rot3(), -cp.point));
         }
       }
 
