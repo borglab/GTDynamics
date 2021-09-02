@@ -6,13 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  KinematicsSlice.h
- * @brief Kinematics in single time slice.
+ * @file  Kinematics.h
+ * @brief Kinematics optimizer.
  * @author: Frank Dellaert
  */
 
 #pragma once
 
+#include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ContactPoint.h>
 #include <gtdynamics/utils/Interval.h>
@@ -64,14 +65,6 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-/// Optimization parameters shared between all solvers
-struct OptimizationParameters {
-  gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
-  OptimizationParameters() {
-    lm_parameters.setlambdaInitial(1e7);
-    lm_parameters.setAbsoluteErrorTol(1e-3);
-  }
-};
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
@@ -86,18 +79,18 @@ struct KinematicsParameters : public OptimizationParameters {
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
-class Kinematics {
+class Kinematics : public Optimizer {
  protected:
-  Robot robot_;
-  KinematicsParameters p_;
+  boost::shared_ptr<const KinematicsParameters> p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
   Kinematics(const Robot& robot,
-             const KinematicsParameters& parameters = KinematicsParameters())
-      : robot_(robot), p_(parameters) {}
+             const boost::shared_ptr<const KinematicsParameters>& parameters =
+                 boost::make_shared<const KinematicsParameters>())
+      : Optimizer(robot, parameters), p_(parameters) {}
 
   /**
    * @fn Create graph with kinematics constraints.

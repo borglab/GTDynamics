@@ -36,8 +36,8 @@ TEST(Interval, InverseKinematics) {
   const Interval interval(0, num_time_steps - 1);
 
   // Instantiate kinematics algorithms
-  KinematicsParameters parameters;
-  //   parameters.lm_parameters.setVerbosityLM("SUMMARY");
+  auto parameters = boost::make_shared<KinematicsParameters>();
+  //   parameters->lm_parameters.setVerbosityLM("SUMMARY");
   Kinematics kinematics(robot, parameters);
 
   auto graph = kinematics.graph(interval);
@@ -70,7 +70,8 @@ TEST(Interval, Interpolate) {
   contact_goals2[2] = {{RF, contact_in_com}, {0.4, -0.16, -0.2}};
 
   // Create expected values for start and end times
-  Kinematics kinematics(robot);
+  auto parameters = boost::make_shared<KinematicsParameters>();
+  Kinematics kinematics(robot, parameters);
   auto result1 = kinematics.inverse(Slice(5), contact_goals);
   auto result2 = kinematics.inverse(Slice(9), contact_goals);
 

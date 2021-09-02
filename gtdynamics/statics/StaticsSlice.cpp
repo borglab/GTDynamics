@@ -34,7 +34,7 @@ gtsam::NonlinearFactorGraph Statics::wrenchEquivalenceFactors(
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot_.joints()) {
     graph.emplace_shared<WrenchEquivalenceFactor>(
-        p_.f_cost_model, boost::static_pointer_cast<const JointTyped>(joint),
+        p_->f_cost_model, boost::static_pointer_cast<const JointTyped>(joint),
         slice.k);
   }
   return graph;
@@ -44,7 +44,7 @@ gtsam::NonlinearFactorGraph Statics::torqueFactors(const Slice& slice) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot_.joints()) {
     graph.emplace_shared<TorqueFactor>(
-        p_.t_cost_model, boost::static_pointer_cast<const JointTyped>(joint),
+        p_->t_cost_model, boost::static_pointer_cast<const JointTyped>(joint),
         slice.k);
   }
   return graph;
@@ -53,10 +53,10 @@ gtsam::NonlinearFactorGraph Statics::torqueFactors(const Slice& slice) const {
 gtsam::NonlinearFactorGraph Statics::wrenchPlanarFactors(
     const Slice& slice) const {
   gtsam::NonlinearFactorGraph graph;
-  if (p_.planar_axis)
+  if (p_->planar_axis)
     for (auto&& joint : robot_.joints()) {
       graph.emplace_shared<WrenchPlanarFactor>(
-          p_.planar_cost_model, *p_.planar_axis,
+          p_->planar_cost_model, *p_->planar_axis,
           boost::static_pointer_cast<const JointTyped>(joint), slice.k);
     }
   return graph;
@@ -79,8 +79,8 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice) const {
 
     // Add static wrench factor for link.
     graph.emplace_shared<StaticWrenchFactor>(
-        wrench_keys, internal::PoseKey(link->id(), k), p_.fs_cost_model,
-        link->mass(), p_.gravity);
+        wrench_keys, internal::PoseKey(link->id(), k), p_->fs_cost_model,
+        link->mass(), p_->gravity);
   }
 
   /// Add a WrenchEquivalenceFactor for each joint.
@@ -118,8 +118,8 @@ gtsam::Values Statics::initialValues(const Slice& slice,
 gtsam::Values Statics::solve(const Slice& slice,
                              const gtsam::Values& configuration) const {
   auto graph = this->graph(slice);
-  gtsam::Values values;
-  values.insert(initialValues(slice));
+  gtsam::Values initial_values;
+  initial_values.insert(initialValues(slice));
 
   // In this function we assume the kinematics is given, and we add priors to
   // the graph to enforce this. Would be much nicer with constant expressions.
@@ -129,7 +129,7 @@ gtsam::Values Statics::solve(const Slice& slice,
     auto key = internal::PoseKey(link->id(), slice.k);
     auto pose = configuration.at<Pose3>(key);
     graph.emplace_shared<gtsam::NonlinearEquality1<Pose3>>(pose, key);
-    values.insert(key, pose);
+    initial_values.insert(key, pose);
   }
 
   // Add constraints for joint angles and initialize them.
@@ -137,11 +137,10 @@ gtsam::Values Statics::solve(const Slice& slice,
     auto key = internal::JointAngleKey(joint->id(), slice.k);
     auto q = configuration.at<double>(key);
     graph.emplace_shared<gtsam::NonlinearEquality1<double>>(q, key);
-    values.insert(key, q);
+    initial_values.insert(key, q);
   }
 
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
-  return optimizer.optimize();
+  return optimize(graph, initial_values);
 }
 
 gtsam::Values Statics::minimizeTorques(const Slice& slice) const {
@@ -151,7 +150,8 @@ gtsam::Values Statics::minimizeTorques(const Slice& slice) const {
   values.insert(initialValues(slice));
 
   // TODO(frank): make IPOPT optimizer base class.
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values,
+                                               p_->lm_parameters);
   return optimizer.optimize();
 }
 }  // namespace gtdynamics

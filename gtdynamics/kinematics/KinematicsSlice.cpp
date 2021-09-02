@@ -44,7 +44,7 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice) const {
     graph.emplace_shared<PoseFactor>(
         internal::PoseKey(joint->parent()->id(), slice.k),
         internal::PoseKey(joint->child()->id(), slice.k),
-        internal::JointAngleKey(j, slice.k), p_.p_cost_model, joint);
+        internal::JointAngleKey(j, slice.k), p_->p_cost_model, joint);
   }
 
   return graph;
@@ -58,7 +58,7 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
-    graph.emplace_shared<PointGoalFactor>(pose_key, p_.g_cost_model,
+    graph.emplace_shared<PointGoalFactor>(pose_key, p_->g_cost_model,
                                           goal.contactInCoM(), goal.goal_point);
   }
 
@@ -73,7 +73,7 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
   // Minimize the joint angles.
   for (auto&& joint : robot_.joints()) {
     const gtsam::Key key = internal::JointAngleKey(joint->id(), slice.k);
-    graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
+    graph.addPrior<double>(key, 0.0, p_->prior_q_cost_model);
   }
 
   return graph;
@@ -115,10 +115,8 @@ Values Kinematics::inverse<Slice>(const Slice& slice,
   // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
 
-  auto values = initialValues(slice);
+  auto initial_values = initialValues(slice);
 
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, values, p_.lm_parameters);
-  Values results = optimizer.optimize();
-  return results;
+  return optimize(graph, initial_values);
 }
 }  // namespace gtdynamics
