@@ -39,8 +39,8 @@ namespace gtdynamics {
 vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     const Robot &robot, const DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
-  vector<PointOnLinks> trans_cps = transitionContactPoints();
-  vector<int> final_timesteps = finalTimeSteps();
+  const vector<int> final_timesteps = finalTimeSteps();
+  const vector<PointOnLinks> trans_cps = transitionContactPoints();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, final_timesteps[p - 1], trans_cps[p - 1], mu));

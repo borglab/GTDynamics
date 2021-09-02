@@ -38,7 +38,7 @@ class Trajectory {
     PointOnLinks intersection;
     for (auto &&cp1 : cps1) {
       for (auto &&cp2 : cps2) {
-        if (cps1 == cps2) {
+        if (cp1 == cp2) {
           intersection.push_back(cp1);
         }
       }
