@@ -16,6 +16,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/util/ConstraintSpec.h>
+#include <gtdynamics/util/Interval.h>
 
 #include <iosfwd>
 
@@ -26,15 +28,16 @@ namespace gtdynamics {
  */
 using ContactPointGoals = std::map<std::string, gtsam::Point3>;
 
-class Phase {
+class Phase : Interval {
  public:
  protected:
-  size_t num_time_steps_;        ///< Number of time steps in this phase
-  PointOnLinks contact_points_;  ///< Contact Points
+  boost::shared_ptr<ConstraintSpec> constraints;
 
  public:
   /// Constructor
-  Phase(size_t num_time_steps) : num_time_steps_(num_time_steps) {}
+  Phase(size_t k_start, size_t k_end,
+        const boost::shared_ptr<ConstraintSpec> &constraints)
+      : Interval(k_start, k_end), constraints(constraints) {}
 
   /**
    * @fbrief Constructor with all contact points, takes list of PointOnLinks.

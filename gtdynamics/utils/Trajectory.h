@@ -29,8 +29,7 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
-  size_t repeat_;         ///< Number of repetitions of walk cycle
-  WalkCycle walk_cycle_;  ///< Walk Cycle
+  std::vector<Phase> phases_;
 
   /// Gets the intersection between two PointOnLinks objects
   static PointOnLinks getIntersection(const PointOnLinks &cps1,
@@ -57,8 +56,16 @@ class Trajectory {
    * @param walk_cycle  The Walk Cycle for the robot.
    * @param repeat      The number of repetitions for each phase of the gait.
    */
-  Trajectory(const WalkCycle &walk_cycle, size_t repeat)
-      : repeat_(repeat), walk_cycle_(walk_cycle) {}
+  Trajectory(const WalkCycle &walk_cycle, size_t repeat) {
+    size_t k = 0
+    // Loop over `repeat` walk cycles W_i
+    for (size_t i = 0; i < repeat_; i++) {
+      // Creating the phases for the ith walk cycle, and append them phases_.
+      auto phases_i = walk_cycle.create_phases(k);
+      phases_.insert(phases_i.begin(), phases_i.end());
+      k += walk_cycle.length();
+    }
+  }
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all phases after
