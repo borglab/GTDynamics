@@ -109,7 +109,7 @@ void Trajectory::addBoundaryConditions(
   for (auto &&link : robot_.links()) {
     // Initial link pose, twists.
     graph->add(LinkObjectives(link->id(), 0)
-                   .pose(link->wTcom(), pose_model)
+                   .pose(link->bMcom(), pose_model)
                    .twist(Z_6x1, twist_model));
 
     // Final link twists, accelerations.

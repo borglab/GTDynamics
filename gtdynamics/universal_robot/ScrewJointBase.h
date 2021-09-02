@@ -67,15 +67,15 @@ class ScrewJointBase : public JointTyped {
 
  public:
   /**
-   * Constructor using JointParams, joint name, wTj, screw axes,
+   * Constructor using JointParams, joint name, bTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &bTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                  const Vector6 &jScrewAxis,
                  const JointParams &parameters = JointParams())
-      : JointTyped(id, name, wTj, parent_link, child_link, parameters),
+      : JointTyped(id, name, bTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis) {}
@@ -158,6 +158,9 @@ class ScrewJointBase : public JointTyped {
   gtsam::Vector6 parentTwist(double q_dot) const override {
     return pScrewAxis_ * q_dot;
   }
+
+  /// Helper function for overloading stream operator
+  virtual std::ostream &to_stream(std::ostream &os) const override;
 };
 
 }  // namespace gtdynamics

@@ -28,14 +28,14 @@
 #include "make_joint.h"
 
 using namespace gtdynamics;
-using gtsam::noiseModel::Gaussian;
 using gtsam::assert_equal;
+using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
-using gtsam::Point3;
-using gtsam::Vector6;
 using gtsam::Values;
+using gtsam::Vector6;
 using gtsam::Z_6x1;
+using gtsam::noiseModel::Gaussian;
 
 namespace example {
 // nosie model
@@ -95,8 +95,7 @@ TEST(PoseFactor, breaking) {
   {
     Values values;
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-    InsertPose(&values, 2,
-               Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
+    InsertPose(&values, 2, Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
     InsertJointAngle(&values, 1, M_PI / 2);
     EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
   }
@@ -112,8 +111,7 @@ TEST(PoseFactor, breaking_rr) {
   auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
       robot.joint("j1"));
 
-  Vector6 screw_axis =
-      (Vector6() << 1, 0, 0, 0, -1, 0).finished();
+  Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);
   auto joint = make_joint(cMp, screw_axis);
   PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
@@ -165,6 +163,53 @@ TEST(PoseFactor, nonzero_rest) {
     double diffDelta = 1e-7;
     EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
   }
+}
+
+TEST(PoseFactor, ForwardKinematics) {
+  using simple_rr::robot;
+
+  gtsam::NonlinearFactorGraph graph;
+  Values initial;
+  size_t t = 0;
+  double angle = M_PI_2;
+
+  auto link0_key = internal::PoseKey(0, t);
+  auto link1_key = internal::PoseKey(1, t);
+  auto link2_key = internal::PoseKey(2, t);
+
+  auto pose_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
+  auto joint_angle_model = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
+
+  // Set prior for base link aka fix the base link
+  auto base_link = robot.link("link_0");
+  graph.addPrior<gtsam::Pose3>(link0_key, base_link->bMcom());
+
+  for (auto&& joint : robot.joints()) {
+    graph.emplace_shared<PoseFactor>(pose_model, joint, t);
+    graph.addPrior<double>(internal::JointAngleKey(joint->id(), t), angle,
+                           joint_angle_model);
+  }
+
+  InsertPose(&initial, 0, t, robot.links()[0]->bMcom());
+  InsertPose(&initial, 1, t, robot.links()[1]->bMcom());
+  InsertPose(&initial, 2, t, robot.links()[2]->bMcom());
+  InsertJointAngle(&initial, 0, t, angle);
+  InsertJointAngle(&initial, 1, t, angle);
+
+  gtsam::GaussNewtonOptimizer optimizer(graph, initial);
+  Values result = optimizer.optimize();
+
+  Values known_values;
+  InsertJointAngle(&known_values, 0, t, angle);
+  InsertJointAngle(&known_values, 1, t, angle);
+  InsertPose(&known_values, 0, t, robot.links()[0]->bMcom());
+
+  Values expected =
+      robot.forwardKinematics(known_values, t, base_link->name());
+
+  EXPECT(assert_equal(Pose(result, 0, t), Pose(expected, 0, t)));
+  EXPECT(assert_equal(Pose(result, 1, t), Pose(expected, 1, t)));
+  EXPECT(assert_equal(Pose(result, 2, t), Pose(expected, 2, t)));
 }
 
 int main() {

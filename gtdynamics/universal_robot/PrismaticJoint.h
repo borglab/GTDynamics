@@ -43,17 +43,17 @@ class PrismaticJoint : public ScrewJointBase {
    *
    * @param[in] id            id for keys
    * @param[in] name          Name of the joint
-   * @param[in] wTj           joint pose expressed in world frame
+   * @param[in] bTj           joint pose expressed in base frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] parameters    JointParams struct
    */
-  PrismaticJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &wTj,
+  PrismaticJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                  const JointParams &parameters = JointParams())
-      : ScrewJointBase(id, name, wTj, parent_link, child_link, axis,
+      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
                        getScrewAxis(axis), parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.

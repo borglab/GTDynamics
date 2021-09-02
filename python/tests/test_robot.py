@@ -13,7 +13,6 @@
 import os.path as osp
 import unittest
 
-import kinpy as kp
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
@@ -30,16 +29,7 @@ class TestRobot(GtsamTestCase):
 
     def test_forward_kinematics(self):
         """Test if forward kinematics are correct via comparison to a 3rd party library."""
-        def transform_to_pose(transform):
-            return Pose3(Rot3.Quaternion(*transform.rot), transform.pos)
-
-        def pose_to_transform(pose: Pose3):
-            return kp.Transform(pose.rotation().quaternion(),
-                                pose.translation())
-
         robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
-        with open(self.ROBOT_MODEL) as f:
-            robot_kp = kp.build_chain_from_urdf(f.read())
 
         th = {}
         joints = [
@@ -62,16 +52,6 @@ class TestRobot(GtsamTestCase):
 
         # Forward kinematics via GTDynamics.
         fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")
-
-        # CoM of the trunk link in the body frame.
-        bTtrunk = Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515))
-
-        # Forward kinematics via kinpy.
-        # ret is a dict from link name to poses,
-        # in kinpy this would be a pose whose origin coincides with the joint.
-        ret = robot_kp.forward_kinematics(th,
-                                          world=pose_to_transform(
-                                              bTtrunk.inverse()))
 
         # Transform from lower link CoM frame to CoM of combined lower+toe link.
         # Lower and toe links are combined since they are connected by a fixed joint.
@@ -108,10 +88,52 @@ class TestRobot(GtsamTestCase):
             Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515)),
         }
 
+        # True FK poses computed using kinpy
+        bTl_poses = {
+            "FL_hip":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.044814, -0.000515)),
+            "FL_lower":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.129864, -0.200515)),
+            "FL_upper":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.129864, -0.000515)),
+            "FR_hip":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, -0.049186, -0.000515)),
+            "FR_lower":
+            Pose3(Rot3.Quaternion(0.99875026, 0.0, 0.04997917, 0.),
+                  (0.15030232, -0.134236, -0.19951583)),
+            "FR_upper":
+            Pose3(Rot3.Quaternion(0.99875026, 0.0, 0.04997917, 0.),
+                  (0.170269, -0.134236, -0.000515)),
+            "RL_hip":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.044814, -0.000515)),
+            "RL_lower":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.129864, -0.200515)),
+            "RL_upper":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.129864, -0.000515)),
+            "RR_hip":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.049186, -0.000515)),
+            "RR_lower":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.134236, -0.200515)),
+            "RR_upper":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.134236, -0.000515)),
+            "trunk":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.012731, -0.002186, -0.000515)),
+        }
         # Test all the links
         for link in robot.links():
             lTcom = lTcom_adjustments[link.name()]
-            bTl = transform_to_pose(ret[link.name()])
+            bTl = bTl_poses[link.name()]
             expected_bTcom = bTl.compose(lTcom)
 
             actual_bTcom = gtd.Pose(fk, link.id(), 0)

@@ -122,15 +122,15 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /**
    * @brief Constructor to create Joint from joint name, joint pose in
-   * world frame, and shared pointers to the parent and child links.
+   * base frame, and shared pointers to the parent and child links.
    *
    * @param[in] name         name of joint
-   * @param[in] wTj          joint pose expressed in world frame
+   * @param[in] bTj          joint pose expressed in base frame
    * @param[in] parent_link  Shared pointer to the parent Link.
    * @param[in] child_link   Shared pointer to the child Link.
    * @param[in] parameters   The joint parameters.
    */
-  Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
+  Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
         const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
         const JointParams &parameters = JointParams());
 
@@ -195,6 +195,9 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   void print(const std::string &s = "") const {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
+
+  /// Helper function for overloading stream operator
+  virtual std::ostream &to_stream(std::ostream &os) const;
 
   /**
    * \defgroup AbstractMethods Abstract methods for the joint class.

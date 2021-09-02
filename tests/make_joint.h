@@ -24,11 +24,11 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   std::string name = "l1";
   double mass = 100;
   gtsam::Matrix3 inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
-  gtsam::Pose3 wTl, lTcom;
+  gtsam::Pose3 bMcom;
 
-  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, wTl, lTcom));
+  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, bMcom));
   auto l2 = boost::make_shared<Link>(
-      Link(2, name, mass, inertia, cMp.inverse(), lTcom));
+      Link(2, name, mass, inertia, cMp.inverse()));
 
   // create joint
   JointParams joint_params;
@@ -36,11 +36,11 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   joint_params.scalar_limits.value_lower_limit = -1.57;
   joint_params.scalar_limits.value_upper_limit = 1.57;
   joint_params.scalar_limits.value_limit_threshold = 0;
-  gtsam::Pose3 wTj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
-  gtsam::Pose3 jMc = wTj.inverse() * l2->wTcom();
+  gtsam::Pose3 bMj = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2));
+  gtsam::Pose3 jMc = bMj.inverse() * l2->bMcom();
   gtsam::Vector6 jScrewAxis = jMc.AdjointMap() * cScrewAxis;
 
   return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      1, "j1", wTj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
+      1, "j1", bMj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
 }
 }  // namespace gtdynamics
