@@ -35,14 +35,12 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot &robot, size_t repeat) {
-  vector<LinkSharedPtr> odd_links = {robot.link("tarsus_1_L1"),
-                                     robot.link("tarsus_3_L3"),
-                                     robot.link("tarsus_5_R4"),
-                                     robot.link("tarsus_7_R2")};
-  vector<LinkSharedPtr> even_links = {robot.link("tarsus_2_L2"),
-                                      robot.link("tarsus_4_L4"),
-                                      robot.link("tarsus_6_R3"),
-                                      robot.link("tarsus_8_R1")};
+  vector<LinkSharedPtr> odd_links = {
+      robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
+      robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
+  vector<LinkSharedPtr> even_links = {
+      robot.link("tarsus_2_L2"), robot.link("tarsus_4_L4"),
+      robot.link("tarsus_6_R3"), robot.link("tarsus_8_R1")};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 
@@ -150,7 +148,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
   auto results = optimizer.optimize();
 
-  // TODO(frank): test whether it works
+  // Regression!
+  EXPECT_DOUBLES_EQUAL(986936294413055.0, graph.error(init_vals), 0.1);
+  EXPECT_DOUBLES_EQUAL(353211972620861.44, graph.error(results), 0.1);
 }
 
 int main() {
