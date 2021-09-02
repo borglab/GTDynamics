@@ -95,34 +95,29 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   // All contacts.
-  auto c0 = PointOnLink{Point3(0.14, 0, 0), 0};  // Front left.
-  auto c1 = PointOnLink{Point3(0.14, 0, 0), 0};  // Hind left.
-  auto c2 = PointOnLink{Point3(0.14, 0, 0), 0};  // Front right.
-  auto c3 = PointOnLink{Point3(0.14, 0, 0), 0};  // Hind right.
+  Point3 contact_in_com(0.14, 0, 0);
+  PointOnLink c0{robot.link("lower0"), contact_in_com},
+      c1{robot.link("lower1"), contact_in_com},
+      c2{robot.link("lower2"), contact_in_com},
+      c3{robot.link("lower3"), contact_in_com};
 
   // Contact points for each phase. First move one leg at a time then switch
   // to a more dynamic gait with two legs in swing per phase.
   using CPs = PointOnLinks;
   // Initially stationary.
-  CPs p0 = {{"lower0", c0}, {"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
-  CPs t01 = {{"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
+  CPs p0 = {c0, c1, c2, c3}, t01 = {c1, c2, c3};
   // Front right leg swing.
-  CPs p1 = {{"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
-  CPs t12 = {{"lower2", c2}, {"lower3", c3}};
+  CPs p1 = {c1, c2, c3}, t12 = {c2, c3};
   // Front left leg swing.
-  CPs p2 = {{"lower0", c0}, {"lower2", c2}, {"lower3", c3}};
-  CPs t23 = {{"lower0", c0}, {"lower3", c3}};
+  CPs p2 = {c0, c2, c3}, t23 = {c0, c3};
   // Hind right swing.
-  CPs p3 = {{"lower0", c0}, {"lower1", c1}, {"lower3", c3}};
-  CPs t34 = {{"lower0", c0}, {"lower1", c1}};
+  CPs p3 = {c0, c1, c3}, t34 = {c0, c1};
   // Hind left swing.
-  CPs p4 = {{"lower0", c0}, {"lower1", c1}, {"lower2", c2}};
-  CPs t45 = {{"lower1", c1}, {"lower2", c2}};
+  CPs p4 = {c0, c1, c2}, t45 = {c1, c2};
   // Front left leg and hind right swing.
-  CPs p5 = {{"lower1", c1}, {"lower2", c2}};
-  CPs t56 = {};
+  CPs p5 = {c1, c2}, t56 = {};
   // Front right leg and hind left swing.
-  CPs p6 = {{"lower0", c0}, {"lower3", c3}};
+  CPs p6 = {c0, c3};
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
@@ -190,8 +185,8 @@ int main(int argc, char** argv) {
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
-    for (auto&& kv : phase_cps[p]) {
-      phase_contact_links.push_back(kv.first);
+    for (auto&& cp : phase_cps[p]) {
+      phase_contact_links.push_back(cp.link->name());
     }
 
     vector<string> phase_swing_links;

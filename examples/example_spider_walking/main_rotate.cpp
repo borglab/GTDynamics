@@ -100,29 +100,19 @@ int main(int argc, char** argv) {
 
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
 
-  // All contacts.
-  const Point3 contact_in_com(0, 0.19, 0);
-  auto c1 = PointOnLink{contact_in_com, 0};  // Front left.
-  auto c2 = PointOnLink{contact_in_com, 0};  // Hind left.
-  auto c3 = PointOnLink{contact_in_com, 0};  // Front right.
-  auto c4 = PointOnLink{contact_in_com, 0};  // Hind right.
-  auto c5 = PointOnLink{contact_in_com, 0};  // Front left.
-  auto c6 = PointOnLink{contact_in_com, 0};  // Hind left.
-  auto c7 = PointOnLink{contact_in_com, 0};  // Front right.
-  auto c8 = PointOnLink{contact_in_com, 0};  // Hind right.
-
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
                           "tarsus_7_R2", "tarsus_8_R1"};
-
-  auto cp1 = std::make_pair("tarsus_1_L1", c1);
-  auto cp2 = std::make_pair("tarsus_2_L2", c2);
-  auto cp3 = std::make_pair("tarsus_3_L3", c3);
-  auto cp4 = std::make_pair("tarsus_4_L4", c4);
-  auto cp5 = std::make_pair("tarsus_5_R4", c5);
-  auto cp6 = std::make_pair("tarsus_6_R3", c6);
-  auto cp7 = std::make_pair("tarsus_7_R2", c7);
-  auto cp8 = std::make_pair("tarsus_8_R1", c8);
+  // All contacts.
+  const Point3 contact_in_com(0, 0.19, 0);
+  PointOnLink cp1(robot.link("tarsus_1_L1"), contact_in_com);
+  PointOnLink cp2(robot.link("tarsus_2_L2"), contact_in_com);
+  PointOnLink cp3(robot.link("tarsus_3_L3"), contact_in_com);
+  PointOnLink cp4(robot.link("tarsus_4_L4"), contact_in_com);
+  PointOnLink cp5(robot.link("tarsus_5_R4"), contact_in_com);
+  PointOnLink cp6(robot.link("tarsus_6_R3"), contact_in_com);
+  PointOnLink cp7(robot.link("tarsus_7_R2"), contact_in_com);
+  PointOnLink cp8(robot.link("tarsus_8_R1"), contact_in_com);
 
   // Contact points for each phase.
   // This gait moves one leg at a time.
@@ -215,7 +205,7 @@ int main(int argc, char** argv) {
   for (auto&& link : links) {
     prev_cp.insert(std::make_pair(
         link,
-        (link_map[link]->wTcom() * Pose3(Rot3(), c1.point)).translation()));
+        (link_map[link]->wTcom() * Pose3(Rot3(), cp1.point)).translation()));
   }
 
   // Distance to move contact point per time step during swing.
@@ -233,8 +223,8 @@ int main(int argc, char** argv) {
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
-    for (auto&& kv : phase_cps[p]) {
-      phase_contact_links.push_back(kv.first);
+    for (auto&& cp : phase_cps[p]) {
+      phase_contact_links.push_back(cp.link->name());
     }
     vector<string> phase_swing_links;
     for (auto&& l : links) {
@@ -253,7 +243,7 @@ int main(int argc, char** argv) {
         // TODO(frank): #179 make sure height is handled correctly.
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[pcl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), c1.point,
+            Isotropic::Sigma(3, 1e-7), cp1.point,
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
       }
 
@@ -263,7 +253,7 @@ int main(int argc, char** argv) {
       for (auto&& psl : phase_swing_links) {
         objective_factors.add(gtdynamics::PointGoalFactor(
             internal::PoseKey(link_map[psl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), c1.point,
+            Isotropic::Sigma(3, 1e-7), cp1.point,
             Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
       }
 
