@@ -67,15 +67,15 @@ class ScrewJointBase : public JointTyped {
 
  public:
   /**
-   * Constructor using JointParams, joint name, wTj, screw axes,
+   * Constructor using JointParams, joint name, bTj, screw axes,
    * and parent and child links.
    */
-  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &wTj,
+  ScrewJointBase(uint8_t id, const std::string &name, const Pose3 &bTj,
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                  const Vector6 &jScrewAxis,
                  const JointParams &parameters = JointParams())
-      : JointTyped(id, name, wTj, parent_link, child_link, parameters),
+      : JointTyped(id, name, bTj, parent_link, child_link, parameters),
         axis_(axis),
         pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
         cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis) {}

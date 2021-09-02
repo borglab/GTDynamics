@@ -44,9 +44,8 @@ std::map<string, Point3> WalkCycle::initContactPointGoal(
       // If no goal set yet, add it here
       if (cp_goals.count(link_name) == 0) {
         LinkSharedPtr link = robot.link(link_name);
-        auto foot_w = link->wTcom().transformFrom(kv.second.point) +
-                      robot.link("body")->wTcom().transformFrom(
-                          Point3(0, 0, -ground_height));
+        auto foot_w = link->bMcom() * kv.second.point +
+                      Point3(0, 0, -ground_height);
         cp_goals.emplace(link_name, foot_w);
       }
     }

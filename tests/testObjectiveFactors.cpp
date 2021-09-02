@@ -86,8 +86,7 @@ TEST(Phase, AddGoals) {
 
   // Predict goal point in world coordinates
   auto LF = robot.link("lower0");  // left forward leg
-  auto bTcom = LF->wTcom();        // world is really body
-  Point3 stance_point = bTcom.transformFrom(point_com);
+  Point3 stance_point = LF->bMcom().transformFrom(point_com);
 
   uint8_t id = LF->id();
   constexpr size_t num_stance_steps = 10;
@@ -104,7 +103,7 @@ TEST(Phase, AddGoals) {
   EXPECT(assert_equal(stance_point, f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
-  EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
+  EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(LF->bMcom())));
 
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps

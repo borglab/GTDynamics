@@ -180,7 +180,7 @@ TEST(PoseFactor, ForwardKinematics) {
 
   // Set prior for base link aka fix the base link
   auto base_link = robot.link("link_0");
-  graph.addPrior<gtsam::Pose3>(link0_key, base_link->wTcom());
+  graph.addPrior<gtsam::Pose3>(link0_key, base_link->bMcom());
 
   for (auto&& joint : robot.joints()) {
     graph.emplace_shared<PoseFactor>(pose_model, joint, t);
@@ -188,9 +188,9 @@ TEST(PoseFactor, ForwardKinematics) {
                            joint_angle_model);
   }
 
-  InsertPose(&initial, 0, t, robot.links()[0]->wTcom());
-  InsertPose(&initial, 1, t, robot.links()[1]->wTcom());
-  InsertPose(&initial, 2, t, robot.links()[2]->wTcom());
+  InsertPose(&initial, 0, t, robot.links()[0]->bMcom());
+  InsertPose(&initial, 1, t, robot.links()[1]->bMcom());
+  InsertPose(&initial, 2, t, robot.links()[2]->bMcom());
   InsertJointAngle(&initial, 0, t, angle);
   InsertJointAngle(&initial, 1, t, angle);
 
@@ -200,7 +200,7 @@ TEST(PoseFactor, ForwardKinematics) {
   Values known_values;
   InsertJointAngle(&known_values, 0, t, angle);
   InsertJointAngle(&known_values, 1, t, angle);
-  InsertPose(&known_values, 0, t, robot.links()[0]->wTcom());
+  InsertPose(&known_values, 0, t, robot.links()[0]->bMcom());
 
   Values expected =
       robot.forwardKinematics(known_values, t, base_link->name());
