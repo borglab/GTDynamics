@@ -57,8 +57,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   gtsam::Matrix3 inertia_;
 
   /// SDF Elements.
-  gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
-  gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
+  gtsam::Pose3 bMcom_;  // CoM frame defined in the base frame in rest.
 
   /// Option to fix the link, used for ground link
   bool is_fixed_;
@@ -77,19 +76,16 @@ class Link : public boost::enable_shared_from_this<Link> {
    * @param name The name of the link as defined in the SDF/URDF file.
    * @param mass The mass of the link.
    * @param inertia The inertial matrix of the link.
-   * @param wTl The pose of the link in the spatial frame.
-   * @param lTcom The transform of the link's CoM in the link frame.
+   * @param bMcom The pose of the link CoM relative to the base frame.
    * @param is_fixed Flag indicating if the link is fixed.
    */
   Link(uint8_t id, const std::string &name, const double mass,
-       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
-       const gtsam::Pose3 &lTcom, bool is_fixed = false)
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom, bool is_fixed = false)
       : id_(id),
         name_(name),
         mass_(mass),
         inertia_(inertia),
-        wTl_(wTl),
-        lTcom_(lTcom),
+        bMcom_(bMcom),
         is_fixed_(is_fixed) {}
 
   /** destructor */
@@ -99,8 +95,8 @@ class Link : public boost::enable_shared_from_this<Link> {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
             this->mass_ == other.mass_ &&
             this->centerOfMass_.equals(other.centerOfMass_) &&
-            this->inertia_ == other.inertia_ && this->wTl_.equals(other.wTl_) &&
-            this->lTcom_.equals(other.lTcom_) &&
+            this->inertia_ == other.inertia_ &&
+            this->bMcom_.equals(other.bMcom_) &&
             this->is_fixed_ == other.is_fixed_ &&
             this->fixed_pose_.equals(other.fixed_pose_));
   }
@@ -121,14 +117,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// add joint to the link
   void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
-  /// transform from link to world frame
-  const gtsam::Pose3 &wTl() const { return wTl_; }
-
-  /// transform from link CoM frame to link frame
-  const gtsam::Pose3 &lTcom() const { return lTcom_; }
-
-  /// transform from link CoM frame to world frame
-  inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
+  /// Relative pose at rest from link’s COM to the base frame.
+  inline const gtsam::Pose3 bMcom() const { return bMcom_; }
 
   /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }
@@ -136,10 +126,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// whether the link is fixed
   bool isFixed() const { return is_fixed_; }
 
-  /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
+  /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
     is_fixed_ = true;
-    fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
+    fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
   }
 
   /// Unfix the link

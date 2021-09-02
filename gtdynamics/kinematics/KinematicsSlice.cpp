@@ -97,7 +97,7 @@ Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
   // Initialize all poses.
   for (auto&& link : robot.links()) {
     const gtsam::Vector6 xi = sampler.sample();
-    InsertPose(&values, link->id(), slice.k, link->wTcom().expmap(xi));
+    InsertPose(&values, link->id(), slice.k, link->bMcom().expmap(xi));
   }
 
   return values;

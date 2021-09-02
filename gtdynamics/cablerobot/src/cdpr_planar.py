@@ -32,7 +32,7 @@ class Cdpr:
     """
     def __init__(self, params=CdprParams()):
         self.params = params
-        ee = gtd.Link(1, "ee", params.mass, params.inertia, Pose3(), Pose3())
+        ee = gtd.Link(1, "ee", params.mass, params.inertia, Pose3())
         self.robot = gtd.Robot({'ee': ee}, {})
         self.costmodel_l = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
         self.costmodel_ldot = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)

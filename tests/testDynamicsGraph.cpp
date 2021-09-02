@@ -60,7 +60,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   Values values;
   int t = 777;
   auto j = robot.joint("j1")->id();
-  InsertPose(&values, l1->id(), t, l1->wTcom());
+  InsertPose(&values, l1->id(), t, l1->bMcom());
   InsertTwist(&values, l1->id(), t, gtsam::Z_6x1);
 
   // Do forward kinematics.
@@ -115,7 +115,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    graph.addPrior(internal::PoseKey(i, t), link->wTcom(),
+    graph.addPrior(internal::PoseKey(i, t), link->bMcom(),
                    graph_builder.opt().bp_cost_model);
     graph.addPrior<Vector6>(internal::TwistKey(i, t), gtsam::Z_6x1,
                             graph_builder.opt().bv_cost_model);
@@ -152,7 +152,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.addPrior(internal::PoseKey(i, 0), link->wTcom(),
+    prior_factors.addPrior(internal::PoseKey(i, 0), link->bMcom(),
                            graph_builder.opt().bp_cost_model);
     prior_factors.addPrior<Vector6>(internal::TwistKey(i, 0), gtsam::Z_6x1,
                                     graph_builder.opt().bv_cost_model);
@@ -442,7 +442,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->wTcom(),
+  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->bMcom(),
                          gtsam::noiseModel::Constrained::All(6));
   prior_factors.addPrior<Vector6>(internal::TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));
@@ -499,7 +499,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Specify pose and twist priors for base.
   auto body = biped.link("body");
-  prior_factors.addPrior(internal::PoseKey(body->id(), 0), body->wTcom(),
+  prior_factors.addPrior(internal::PoseKey(body->id(), 0), body->bMcom(),
                          graph_builder.opt().bp_cost_model);
   prior_factors.addPrior<Vector6>(internal::TwistKey(body->id(), 0),
                                   gtsam::Z_6x1,
@@ -575,7 +575,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->wTcom(),
+  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->bMcom(),
                          gtsam::noiseModel::Constrained::All(6));
   prior_factors.addPrior<Vector6>(internal::TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));

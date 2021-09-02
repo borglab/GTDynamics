@@ -203,9 +203,7 @@ int main(int argc, char** argv) {
   // Previous contact point goal.
   std::map<string, Point3> prev_cp;
   for (auto&& link : links) {
-    prev_cp.insert(std::make_pair(
-        link,
-        (link_map[link]->wTcom() * Pose3(Rot3(), cp1.point)).translation()));
+    prev_cp.insert(std::make_pair(link, link_map[link]->bMcom() * cp1.point));
   }
 
   // Distance to move contact point per time step during swing.
@@ -286,7 +284,7 @@ int main(int argc, char** argv) {
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        internal::PoseKey(link->id(), 0), link->wTcom(), dynamics_model_6));
+        internal::PoseKey(link->id(), 0), link->bMcom(), dynamics_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
         internal::TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
 

@@ -61,32 +61,31 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-bool hasPoint(const ContactGoals& cp_goals, const PointOnLink &contact_point) {
+static bool hasPoint(const ContactGoals& cp_goals, const PointOnLink &cp) {
     auto it = std::find_if(
         cp_goals.begin(), cp_goals.end(),
         [&](const ContactGoal &cp_goal){
-          return cp_goal.point_on_link.link->name() == contact_point.link->name();
+          return cp_goal.point_on_link.link->name() == cp.link->name();
         });
     return !(it == cp_goals.end());
 }
 
+// TODO(frank): I really have very litte recollection of what's going on here.
 ContactGoals WalkCycle::initContactPointGoal(
   const Robot &robot, const ContactAdjustments &contact_adjustments) const {
   ContactGoals cp_goals;
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
-    for (auto &&kv : phase.contactPoints()) {
+    for (auto &&cp : phase.contactPoints()) {
       // If no goal set yet, add it here
-      if (!hasPoint(cp_goals, kv)) {
-        auto foot_w = kv.link->wTcom().transformFrom(kv.point);
-
-        for (auto &&contact_adjustment : contact_adjustments) {
-          foot_w += robot.link(contact_adjustment.link_name)
-                        ->wTcom()
-                        .transformFrom(contact_adjustment.adjustment);
+      if (!hasPoint(cp_goals, cp)) {
+        auto foot_b = cp.link->bMcom().transformFrom(cp.point);
+        for (auto &&ca : contact_adjustments) {
+          foot_b +=
+              robot.link(ca.link_name)->bMcom().transformFrom(ca.adjustment);
         }
-        cp_goals.push_back(ContactGoal(kv, foot_w));
+        cp_goals.push_back(ContactGoal(cp, foot_b));
       }
     }
   }

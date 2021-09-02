@@ -23,7 +23,7 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Joint::Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
+Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const JointParams &parameters)
     : id_(id),
@@ -31,8 +31,8 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &wTj,
       parent_link_(parent_link),
       child_link_(child_link),
       parameters_(parameters) {
-  jMp_ = wTj.inverse() * parent_link_->wTcom();
-  jMc_ = wTj.inverse() * child_link_->wTcom();
+  jMp_ = bTj.inverse() * parent_link_->bMcom();
+  jMc_ = bTj.inverse() * child_link_->bMcom();
 }
 
 /* ************************************************************************* */
