@@ -102,14 +102,14 @@ int main(int argc, char** argv) {
 
   // All contacts.
   const Point3 contact_in_com(0, 0.19, 0);
-  auto c1 = ContactPoint{contact_in_com, 0};  // Front left.
-  auto c2 = ContactPoint{contact_in_com, 0};  // Hind left.
-  auto c3 = ContactPoint{contact_in_com, 0};  // Front right.
-  auto c4 = ContactPoint{contact_in_com, 0};  // Hind right.
-  auto c5 = ContactPoint{contact_in_com, 0};  // Front left.
-  auto c6 = ContactPoint{contact_in_com, 0};  // Hind left.
-  auto c7 = ContactPoint{contact_in_com, 0};  // Front right.
-  auto c8 = ContactPoint{contact_in_com, 0};  // Hind right.
+  auto c1 = PointOnLink{contact_in_com, 0};  // Front left.
+  auto c2 = PointOnLink{contact_in_com, 0};  // Hind left.
+  auto c3 = PointOnLink{contact_in_com, 0};  // Front right.
+  auto c4 = PointOnLink{contact_in_com, 0};  // Hind right.
+  auto c5 = PointOnLink{contact_in_com, 0};  // Front left.
+  auto c6 = PointOnLink{contact_in_com, 0};  // Hind left.
+  auto c7 = PointOnLink{contact_in_com, 0};  // Front right.
+  auto c8 = PointOnLink{contact_in_com, 0};  // Hind right.
 
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
 
   // Contact points for each phase.
   // This gait moves one leg at a time.
-  using CPs = ContactPoints;
+  using CPs = PointOnLinks;
   CPs t00 = {cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8};
   // Initially stationary.
   CPs p0 = {cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8};

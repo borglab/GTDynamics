@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include "gtdynamics/utils/ContactPoint.h"
+#include "gtdynamics/utils/PointOnLink.h"
 
 namespace gtdynamics {
 

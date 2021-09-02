@@ -15,7 +15,7 @@
 
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/ContactPoint.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>

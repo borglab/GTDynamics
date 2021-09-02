@@ -43,11 +43,11 @@ TEST(Trajectory, Intersection) {
 
   using namespace walk_cycle_example;
   TrajectoryTest traj;
-  ContactPoints intersection =
+  PointOnLinks intersection =
       traj.getIntersection(traj.toContactPointsObject(phase_1.contactPoints()),
                            traj.toContactPointsObject(phase_2.contactPoints()));
 
-  ContactPoints expected = {{"tarsus_2_L2", {contact_in_com, 0}},
+  PointOnLinks expected = {{"tarsus_2_L2", {contact_in_com, 0}},
                             {"tarsus_3_L3", {contact_in_com, 0}}};
 
   for (auto const& contact_point : intersection) {

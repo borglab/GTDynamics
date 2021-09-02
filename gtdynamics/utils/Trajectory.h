@@ -32,13 +32,15 @@ class Trajectory {
   size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
-  /// Gets the intersection between two ContactPoints objects
-  ContactPoints getIntersection(ContactPoints CPs_1,
-                                ContactPoints CPs_2) const {
-    ContactPoints intersection;
-    for (auto &&cp : CPs_1) {
-      if (CPs_2.find(cp.first) != CPs_2.end()) {
-        intersection.emplace(cp.first, cp.second);
+  /// Gets the intersection between two PointOnLinks objects
+  static PointOnLinks getIntersection(const PointOnLinks &cps1,
+                                      const PointOnLinks &cps2) {
+    PointOnLinks intersection;
+    for (auto &&cp1 : cps1) {
+      for (auto &&cp2 : cps2) {
+        if (cps1 == cps2) {
+          intersection.push_back(cp1);
+        }
       }
     }
     return intersection;
@@ -58,59 +60,49 @@ class Trajectory {
   Trajectory(const WalkCycle &walk_cycle, size_t repeat)
       : repeat_(repeat), walk_cycle_(walk_cycle) {}
 
-  // TODO(frank): eradicate.
-  ContactPoints toContactPointsObject(
-      const PointOnLinks &contact_points) const {
-    ContactPoints cps;
-    for (auto &&cp : contact_points) {
-      cps.emplace(cp.link->name(), ContactPoint{cp.point, 0});
-    }
-    return cps;
-  }
-
   /**
    * @fn Returns a vector of PointOnLinks objects for all phases after
    * applying repetition on the walk cycle.
    * @return Phase CPs.
    */
-  std::vector<ContactPoints> phaseContactPoints() const {
-    std::vector<ContactPoints> phase_cps;
+  std::vector<PointOnLinks> phaseContactPoints() const {
+    std::vector<PointOnLinks> phase_cps;
     const auto &phases = walk_cycle_.phases();
     for (size_t i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
-        phase_cps.push_back(toContactPointsObject(phase.contactPoints()));
+        phase_cps.push_back(phase.contactPoints());
       }
     }
     return phase_cps;
   }
 
   /**
-   * @fn Returns a vector of ContactPoints objects for all transitions between
+   * @fn Returns a vector of PointOnLinks objects for all transitions between
    * phases after applying repetition on the original sequence.
    * @return Transition CPs.
    */
-  std::vector<ContactPoints> transitionContactPoints() const {
-    std::vector<ContactPoints> trans_cps_orig;
+  std::vector<PointOnLinks> transitionContactPoints() const {
+    std::vector<PointOnLinks> trans_cps_orig;
 
     auto phases = walk_cycle_.phases();
-    ContactPoints phase_1_cps;
-    ContactPoints phase_2_cps;
+    PointOnLinks phase_1_cps;
+    PointOnLinks phase_2_cps;
 
     for (size_t p = 0; p < walk_cycle_.numPhases(); p++) {
-      phase_1_cps = toContactPointsObject(phases[p].contactPoints());
+      phase_1_cps = phases[p].contactPoints();
       if (p == walk_cycle_.numPhases() - 1) {
-        phase_2_cps = toContactPointsObject(phases[0].contactPoints());
+        phase_2_cps = phases[0].contactPoints();
       } else {
-        phase_2_cps = toContactPointsObject(phases[p + 1].contactPoints());
+        phase_2_cps = phases[p + 1].contactPoints();
       }
 
-      ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
+      PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
       trans_cps_orig.push_back(intersection);
     }
 
     // Copy the original transition contact point sequence
     // `repeat_` number of times.
-    std::vector<ContactPoints> trans_cps(trans_cps_orig);
+    std::vector<PointOnLinks> trans_cps(trans_cps_orig);
     for (size_t i = 0; i < repeat_ - 1; i++) {
       trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),
                        trans_cps_orig.end());
@@ -267,7 +259,7 @@ class Trajectory {
    */
   PointGoalFactor pointGoalFactor(const Robot &robot,
                                   const std::string &link_name,
-                                  const ContactPoint &cp, int k,
+                                  const PointOnLink &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link = robot.link(link_name);

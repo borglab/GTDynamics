@@ -6,23 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file ContactPoint.h
+ * @file PointOnLink.h
  * @brief A point on a link that can be in contact with something.
  * @author Yetong Zhang, Alejandro Escontrela, Frank Dellaert
  */
 
-#include <gtdynamics/utils/ContactPoint.h>
+#include <gtdynamics/utils/PointOnLink.h>
 
 namespace gtdynamics {
-
-std::ostream &operator<<(std::ostream &os, const ContactPoint &cp) {
-  os << "{[" << cp.point.transpose() << "], " << cp.id << "}";
-  return os;
-}
-
-void ContactPoint::print(const std::string &s) const {
-  std::cout << (s.empty() ? s : s + " ") << *this;
-}
 
 std::ostream &operator<<(std::ostream &os, const PointOnLink &cp) {
   os << "{" << cp.link->name() << ", [" << cp.point.transpose() << "]}";

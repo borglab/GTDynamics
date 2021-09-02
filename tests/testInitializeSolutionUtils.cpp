@@ -148,8 +148,8 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   double dt = 1;
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {
+      {l1->name(), PointOnLink{oTc_l1.translation(), 1}}};
 
   /**
    * The aim of this test is to initialize a trajectory for the simple two-link
@@ -214,8 +214,8 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   Pose3 wTb_i = l2->wTcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {
+      {l1->name(), PointOnLink{oTc_l1.translation(), 1}}};
 
   gtsam::Values init_vals = ZeroValues(robot, 0, 0.0, contact_points);
 
@@ -242,8 +242,8 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   Pose3 wTb_i = l2->wTcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {
+      {l1->name(), PointOnLink{oTc_l1.translation(), 1}}};
 
   gtsam::Values init_vals =
       ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
@@ -269,12 +269,12 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
 
-  ContactPoint c = ContactPoint{oTc_l1.translation(), 1};
-  ContactPoints p0{{l1->name(), c}};
-  ContactPoints p1{};
-  ContactPoints p2{{l1->name(), c}};
+  PointOnLink c = PointOnLink{oTc_l1.translation(), 1};
+  PointOnLinks p0{{l1->name(), c}};
+  PointOnLinks p1{};
+  PointOnLinks p2{{l1->name(), c}};
 
-  std::vector<ContactPoints> phase_contact_points = {p0, p1, p2};
+  std::vector<PointOnLinks> phase_contact_points = {p0, p1, p2};
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;

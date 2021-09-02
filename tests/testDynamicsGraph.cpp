@@ -427,8 +427,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   using simple_rr::robot;
 
   // Add some contact points.
-  ContactPoints contact_points;
-  contact_points.emplace("link_0", ContactPoint{gtsam::Point3(0, 0, -0.1), 0});
+  PointOnLinks contact_points;
+  contact_points.emplace("link_0", PointOnLink{gtsam::Point3(0, 0, -0.1), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -485,9 +485,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   Robot biped = CreateRobotFromFile(kUrdfPath + std::string("/biped.urdf"));
 
   // Add some contact points.
-  ContactPoints contact_points;
-  contact_points.emplace("lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
-  contact_points.emplace("lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
+  PointOnLinks contact_points;
+  contact_points.emplace("lower0", PointOnLink{gtsam::Point3(0.14, 0, 0), 0});
+  contact_points.emplace("lower2", PointOnLink{gtsam::Point3(0.14, 0, 0), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.81).finished();
@@ -561,8 +561,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       kSdfPath + std::string("/test/simple_rrr.sdf"), "simple_rrr_sdf");
 
   // Add some contact points.
-  ContactPoints contact_points;
-  contact_points.emplace("link_0", ContactPoint{gtsam::Point3(0, 0, -0.1), 0});
+  PointOnLinks contact_points;
+  contact_points.emplace("link_0", PointOnLink{gtsam::Point3(0, 0, -0.1), 0});
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

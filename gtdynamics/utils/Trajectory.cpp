@@ -39,7 +39,7 @@ namespace gtdynamics {
 vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     const Robot &robot, const DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
-  vector<ContactPoints> trans_cps = transitionContactPoints();
+  vector<PointOnLinks> trans_cps = transitionContactPoints();
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
@@ -60,7 +60,7 @@ NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
     const Robot &robot, double gaussian_noise) const {
-  vector<ContactPoints> trans_cps = transitionContactPoints();
+  vector<PointOnLinks> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
