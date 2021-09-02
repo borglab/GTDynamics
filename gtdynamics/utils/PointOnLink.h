@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/universal_robot/Link.h>
+#include <gtsam/base/Testable.h>
 #include <gtsam/geometry/Point3.h>
 
 #include <map>
@@ -45,19 +46,26 @@ struct PointOnLink {
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
    */
-  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const {
-    const gtsam::Pose3 wTcom = Pose(values, link->id(), k);
-    return wTcom.transformFrom(point);
-  }
+  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os, const PointOnLink &cp);
 
   /// GTSAM-style print, works with wrapper.
   void print(const std::string &s) const;
+
+  /// GTSAM-style equal, allows for using assert_equal.
+  bool equals(const PointOnLink &other, double tol = 1e-9) const;
 };
 
 ///< Map of link name to PointOnLink
 using PointOnLinks = std::vector<PointOnLink>;
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+template <>
+struct traits<gtdynamics::PointOnLink>
+    : public Testable<gtdynamics::PointOnLink> {};
+
+}  // namespace gtsam
