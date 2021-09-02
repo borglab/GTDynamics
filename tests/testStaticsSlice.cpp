@@ -75,7 +75,7 @@ TEST(Statics, OneMovingLink) {
   auto parameters2D =
       boost::make_shared<StaticsParameters>(kSigmaDynamics, gravity2D);
   // parameters2D.lm_parameters.setVerbosityLM("SUMMARY");
-  Statics statics(robot, parameters2D);
+  Statics statics(parameters2D);
   const size_t k = 777;
   const Slice slice(k);
   Values values;
@@ -86,7 +86,7 @@ TEST(Statics, OneMovingLink) {
   EXPECT(assert_equal(wTcom, Pose(fk_solution, link->id(), k), kTol));
 
   // Now solve for wrenches/torques.
-  auto result = statics.solve(slice, fk_solution);
+  auto result = statics.solve(slice, robot, fk_solution);
 
   // Check that the actual wrench on the link is the negative gravity wrench.
   const Vector6 actualWrench =
@@ -110,30 +110,30 @@ TEST(Statics, Quadruped) {
   const Vector3 kGravity(0, 0, -10);
   auto parameters3D =
       boost::make_shared<StaticsParameters>(kSigmaDynamics, kGravity);
-  Statics statics(robot, parameters3D);
+  Statics statics(parameters3D);
 
   // Get an inverse kinematics solution
   const size_t k = 1;
   const Slice slice(k);
-  auto ik_solution = statics.inverse(slice, contact_goals);
+  auto ik_solution = statics.inverse(slice, robot, contact_goals);
 
   // Test graph generation
-  auto graph = statics.graph(slice);
+  auto graph = statics.graph(slice, robot);
   EXPECT_LONGS_EQUAL(37, graph.size());
 
   // Test initialization
-  auto values = statics.initialValues(slice);
+  auto values = statics.initialValues(slice, robot);
   EXPECT_LONGS_EQUAL(36, values.size());
 
   // Solve for wrenches, with known kinematics
-  auto result = statics.solve(slice, ik_solution);
+  auto result = statics.solve(slice, robot, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
   // TODO(Varun) Issue #233
   // Regression
   // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
-  auto minimal = statics.minimizeTorques(slice);
+  auto minimal = statics.minimizeTorques(slice, robot);
   EXPECT_LONGS_EQUAL(61, minimal.size());
   // GTD_PRINT(minimal);
 }

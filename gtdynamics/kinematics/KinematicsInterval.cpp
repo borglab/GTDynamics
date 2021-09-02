@@ -25,11 +25,11 @@ using std::string;
 using std::vector;
 
 template <>
-NonlinearFactorGraph Kinematics::graph<Interval>(
-    const Interval& interval) const {
+NonlinearFactorGraph Kinematics::graph<Interval>(const Interval& interval,
+                                                 const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k)));
+    graph.add(this->graph(Slice(k), robot));
   }
   return graph;
 }
@@ -46,35 +46,37 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
 
 template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
-    const Interval& interval) const {
+    const Interval& interval, const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(jointAngleObjectives(Slice(k)));
+    graph.add(jointAngleObjectives(Slice(k), robot));
   }
   return graph;
 }
 
 template <>
 Values Kinematics::initialValues<Interval>(const Interval& interval,
+                                           const Robot& robot,
                                            double gaussian_noise) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(initialValues(Slice(k), gaussian_noise));
+    values.insert(initialValues(Slice(k), robot, gaussian_noise));
   }
   return values;
 }
 
 template <>
 Values Kinematics::inverse<Interval>(const Interval& interval,
+                                     const Robot& robot,
                                      const ContactGoals& contact_goals) const {
   Values results;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    results.insert(inverse(Slice(k), contact_goals));
+    results.insert(inverse(Slice(k), robot, contact_goals));
   }
   return results;
 }
 
-Values Kinematics::interpolate(const Interval& interval,
+Values Kinematics::interpolate(const Interval& interval, const Robot& robot,
                                const ContactGoals& contact_goals1,
                                const ContactGoals& contact_goals2) const {
   Values result;
@@ -89,7 +91,7 @@ Values Kinematics::interpolate(const Interval& interval,
                     goal1.point_on_link,
                     (1.0 - t) * goal1.goal_point + t * goal2.goal_point};
               });
-    result.insert(inverse(Slice(k), goals));
+    result.insert(inverse(Slice(k), robot, goals));
   }
   return result;
 }

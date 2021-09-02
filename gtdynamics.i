@@ -349,13 +349,16 @@ class ContactGoal {
 };
 
 class Kinematics {
-  Kinematics(const gtdynamics::Robot &robot);
+  Kinematics();
   gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::Robot &robot,
               const gtdynamics::ContactGoals &contact_goals1,
               const gtdynamics::ContactGoals &contact_goals2) const;
 };
@@ -838,22 +841,25 @@ class WalkCycle {
 #include <gtdynamics/utils/Trajectory.h>
 class Trajectory {
   Trajectory();
-  Trajectory(const gtdynamics::Robot &robot,
-             const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
+  Trajectory(const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
   std::vector<gtdynamics::ContactPoints> phaseContactPoints() const;
   std::vector<gtdynamics::ContactPoints> transitionContactPoints() const;
   std::vector<int> phaseDurations() const;
   size_t numPhases() const;
   std::vector<gtsam::NonlinearFactorGraph>
-  getTransitionGraphs(gtdynamics::DynamicsGraph &graph_builder,
+  getTransitionGraphs(const gtdynamics::Robot& robot, 
+                      const gtdynamics::DynamicsGraph &graph_builder,
                       double mu) const;
   gtsam::NonlinearFactorGraph
-  multiPhaseFactorGraph(gtdynamics::DynamicsGraph &graph_builder,
+  multiPhaseFactorGraph(const gtdynamics::Robot& robot, 
+                        const gtdynamics::DynamicsGraph &graph_builder,
                         const gtdynamics::CollocationScheme collocation,
                         double mu) const;
   std::vector<gtsam::Values>
-  transitionPhaseInitialValues(double gaussian_noise) const;
-  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
+  transitionPhaseInitialValues(const gtdynamics::Robot& robot, 
+                               double gaussian_noise) const;
+  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, 
+                                        double gaussian_noise, double dt) const;
   std::vector<int> finalTimeSteps() const;
   size_t phaseIndex(size_t p) const;
   const Phase &phase(size_t p) const;
@@ -861,17 +867,21 @@ class Trajectory {
   size_t getEndTimeStep(size_t p) const;
   const ContactPoints &getPhaseContactLinks(size_t p) const;
   std::vector<string> getPhaseSwingLinks(size_t p) const;
-  PointGoalFactor pointGoalFactor(const string &link_name,
+  PointGoalFactor pointGoalFactor(const gtdynamics::Robot &robot,
+                                  const string &link_name,
                                   const gtdynamics::ContactPoint &cp, size_t k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
-  contactPointObjectives(const gtsam::SharedNoiseModel &cost_model,
+  contactPointObjectives(const gtdynamics::Robot& robot, 
+                         const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
+                               const gtdynamics::Robot& robot,
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
       gtsam::NonlinearFactorGraph @graph,
+      const gtdynamics::Robot& robot, 
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,
@@ -879,7 +889,7 @@ class Trajectory {
       const gtsam::SharedNoiseModel &joint_acceleration_model) const;
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
                                  double desired_dt, double sigma = 0) const;
-  void writeToFile(const string &name, const gtsam::Values &results) const;
+  void writeToFile(const gtdynamics::Robot &robot, const string &name, const gtsam::Values &results) const;
 };
 
 /********************** Utilities  **********************/

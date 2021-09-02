@@ -38,19 +38,19 @@ TEST(Interval, InverseKinematics) {
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
   //   parameters->lm_parameters.setVerbosityLM("SUMMARY");
-  Kinematics kinematics(robot, parameters);
+  Kinematics kinematics(parameters);
 
-  auto graph = kinematics.graph(interval);
+  auto graph = kinematics.graph(interval, robot);
   EXPECT_LONGS_EQUAL(12 * num_time_steps, graph.size());
 
   auto objectives = kinematics.pointGoalObjectives(interval, contact_goals);
   EXPECT_LONGS_EQUAL(4 * num_time_steps, objectives.size());
 
-  auto objectives2 = kinematics.jointAngleObjectives(interval);
+  auto objectives2 = kinematics.jointAngleObjectives(interval, robot);
   EXPECT_LONGS_EQUAL(12 * num_time_steps, objectives2.size());
 
   // TODO(frank): consider renaming ContactPoint to PointOnLink
-  auto result = kinematics.inverse(interval, contact_goals);
+  auto result = kinematics.inverse(interval, robot, contact_goals);
 
   // Check that goals are achieved
   constexpr double tol = 0.01;
@@ -71,14 +71,14 @@ TEST(Interval, Interpolate) {
 
   // Create expected values for start and end times
   auto parameters = boost::make_shared<KinematicsParameters>();
-  Kinematics kinematics(robot, parameters);
-  auto result1 = kinematics.inverse(Slice(5), contact_goals);
-  auto result2 = kinematics.inverse(Slice(9), contact_goals);
+  Kinematics kinematics(parameters);
+  auto result1 = kinematics.inverse(Slice(5), robot, contact_goals);
+  auto result2 = kinematics.inverse(Slice(9), robot, contact_goals);
 
   // Create a kinematic trajectory over timesteps 5, 6, 7, 8, 9 that
   // interpolates between goal configurations at timesteps 5 and 9.
   gtsam::Values result =
-      kinematics.interpolate(Interval(5, 9), contact_goals, contact_goals2);
+      kinematics.interpolate(Interval(5, 9), robot, contact_goals, contact_goals2);
   EXPECT(result.exists(internal::PoseKey(0, 5)));
   EXPECT(result.exists(internal::PoseKey(0, 9)));
   EXPECT(assert_equal(Pose(result1, 0, 5), Pose(result, 0, 5)));
