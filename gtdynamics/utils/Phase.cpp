@@ -49,7 +49,6 @@ NonlinearFactorGraph Phase::contactPointObjectives(
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
-    // if (!stance) cp_goal += step;  // Update the goal if swing
 
     factors.push_back(PointGoalFactors(cost_model, kv.second.point,
                                        goal_trajectory, robot.link(name)->id(),
@@ -67,6 +66,8 @@ Phase::ContactPointGoals Phase::updateContactPointGoals(
     const string &name = kv.first;
     const Point3 &cp_goal = cp_goals.at(name);
     const bool stance = hasContact(name);
+    // If a contact is not on a stance leg, it is on a swing leg and we advance
+    // the contac goal by adding the 3-vector `step`.
     new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
   }
   return new_goals;
