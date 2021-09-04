@@ -39,23 +39,37 @@ void Phase::print(const string &s) const {
 NonlinearFactorGraph Phase::contactPointObjectives(
     const ContactPoints &all_contact_points, const Point3 &step,
     const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
-    size_t k_start, std::map<string, Point3> *cp_goals) const {
+    size_t k_start, const ContactPointGoals &cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (auto &&kv : all_contact_points) {
     const string &name = kv.first;
-    Point3 &cp_goal = cp_goals->at(name);
+    const Point3 &cp_goal = cp_goals.at(name);
     const bool stance = hasContact(name);
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
-    if (!stance) cp_goal += step;  // Update the goal if swing
+    // if (!stance) cp_goal += step;  // Update the goal if swing
 
     factors.push_back(PointGoalFactors(cost_model, kv.second.point,
                                        goal_trajectory, robot.link(name)->id(),
                                        k_start));
   }
   return factors;
+}
+
+Phase::ContactPointGoals Phase::updateContactPointGoals(
+    const ContactPoints &all_contact_points, const Point3 &step,
+    const ContactPointGoals &cp_goals) const {
+  ContactPointGoals new_goals;
+
+  for (auto &&kv : all_contact_points) {
+    const string &name = kv.first;
+    const Point3 &cp_goal = cp_goals.at(name);
+    const bool stance = hasContact(name);
+    new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
+  }
+  return new_goals;
 }
 
 Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,
