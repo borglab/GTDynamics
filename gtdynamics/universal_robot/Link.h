@@ -118,7 +118,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
   /// Relative pose at rest from link’s COM to the base frame.
-  inline const gtsam::Pose3 bMcom() const { return bMcom_; }
+  inline const gtsam::Pose3& bMcom() const { return bMcom_; }
 
   /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }

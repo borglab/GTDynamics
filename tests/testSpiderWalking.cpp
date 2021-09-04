@@ -34,7 +34,7 @@ using std::vector;
 using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
-Trajectory getTrajectory(size_t repeat) {
+Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
                            "tarsus_7_R2"};
   vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
@@ -78,7 +78,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create the trajectory, consisting of 2 walk phases, each consisting of 4
   // phases: [stationary, odd, stationary, even].
-  auto trajectory = getTrajectory(2);
+  auto trajectory = getTrajectory(robot, 2);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
@@ -122,7 +122,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
-  for (auto &&joint : robot.joints())
+  for (auto&& joint : robot.joints())
     if (joint->name().find("hip2") == 0)
       for (int k = 0; k <= K; k++)
         objectives.add(JointObjectives(joint->id(), k).angle(2.5, prior_model));
@@ -142,11 +142,39 @@ TEST(testSpiderWalking, WholeEnchilada) {
       trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
+  // Compare error for all factors with expected values in file.
+  // Note, expects space after comma in csv or won't work.
+  std::string key, comm;
+  double expected;
+  std::string filename = kTestPath + std::string("/testSpiderWalking.csv");
+  std::ifstream is(filename.c_str());
+  is >> key >> expected;
+  double actual = graph.error(init_vals);
+  const double tol = 1.0;
+  EXPECT_DOUBLES_EQUAL(expected, actual, tol);
+
+  // If there is an error, create a file errors.csv with all error comparisons.
+  if (fabs(actual - expected) > tol) {
+    std::ofstream os("errors.csv");
+    os << "total, " << actual << "\n";
+    for (size_t i = 0; i < graph.size(); i++) {
+      is >> key >> expected;
+      const auto& factor = graph[i];
+      const double actual = factor->error(init_vals);
+      bool equal = fabs(actual - expected) < tol;
+      auto bare_ptr = factor.get();
+      os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
+         << ", " << equal << "\n";
+    }
+  }
+
   // Optimize!
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
   auto results = optimizer.optimize();
 
-  // TODO(frank): test whether it works
+  // Regression!
+  EXPECT_DOUBLES_EQUAL(986936294413055, graph.error(init_vals), 100);
+  EXPECT_DOUBLES_EQUAL(353211972620861, graph.error(results), 100);
 }
 
 int main() {
