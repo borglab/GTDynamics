@@ -165,6 +165,11 @@ TEST(testSpiderWalking, WholeEnchilada) {
       const double actual = factor->error(init_vals);
       bool equal = fabs(actual - expected) < tol;
       auto bare_ptr = factor.get();
+      if (!equal) {
+        // Print to stdout for CI.
+        std::cout << typeid(*bare_ptr).name() << ", " << actual << ", "
+                  << expected << ", " << equal << "\n";
+      }
       os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
          << ", " << equal << "\n";
     }
