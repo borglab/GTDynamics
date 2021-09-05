@@ -27,27 +27,26 @@ void WalkCycle::addPhase(const Phase &phase) {
         std::count_if(contact_points_.begin(), contact_points_.end(),
                       [&](const PointOnLink &contact_point) {
                         return contact_point.point == kv.point &&
-                                contact_point.link == kv.link;
+                               contact_point.link == kv.link;
                       });
-    if (link_count == 0)
-      contact_points_.push_back(kv);
+    if (link_count == 0) contact_points_.push_back(kv);
   }
   phases_.push_back(phase);
 }
 
-const Phase& WalkCycle::phase(size_t p) const {
+const Phase &WalkCycle::phase(size_t p) const {
   if (p >= numPhases()) {
     throw std::invalid_argument("Trajectory:phase: no such phase");
   }
   return phases_.at(p);
 }
-  
+
 size_t WalkCycle::numTimeSteps() const {
   size_t num_time_steps = 0;
-  for (const Phase& p : phases_) num_time_steps += p.numTimeSteps();
+  for (const Phase &p : phases_) num_time_steps += p.numTimeSteps();
   return num_time_steps;
 }
-  
+
 std::ostream &operator<<(std::ostream &os, const WalkCycle &walk_cycle) {
   os << "[\n";
   for (auto &&phase : walk_cycle.phases()) {
@@ -61,31 +60,20 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-static bool hasPoint(const ContactGoals& cp_goals, const PointOnLink &cp) {
-    auto it = std::find_if(
-        cp_goals.begin(), cp_goals.end(),
-        [&](const ContactGoal &cp_goal){
-          return cp_goal.point_on_link.link->name() == cp.link->name();
-        });
-    return !(it == cp_goals.end());
-}
-
-// TODO(frank): I really have very litte recollection of what's going on here.
-ContactGoals WalkCycle::initContactPointGoal(
-  const Robot &robot, const ContactAdjustments &contact_adjustments) const {
-  ContactGoals cp_goals;
+ContactPointGoals WalkCycle::initContactPointGoal(const Robot &robot,
+                                                  double ground_height) const {
+  ContactPointGoals cp_goals;
+  const Point3 adjust(0, 0, -ground_height);
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
     for (auto &&cp : phase.contactPoints()) {
+      auto link_name = cp.link->name();
       // If no goal set yet, add it here
-      if (!hasPoint(cp_goals, cp)) {
-        auto foot_b = cp.link->bMcom().transformFrom(cp.point);
-        for (auto &&ca : contact_adjustments) {
-          foot_b +=
-              robot.link(ca.link_name)->bMcom().transformFrom(ca.adjustment);
-        }
-        cp_goals.push_back(ContactGoal(cp, foot_b));
+      if (cp_goals.count(link_name) == 0) {
+        LinkSharedPtr link = robot.link(link_name);
+        const Point3 foot_w = link->bMcom() * cp.point + adjust;
+        cp_goals.emplace(link_name, foot_w);
       }
     }
   }
@@ -106,13 +94,15 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
 
 NonlinearFactorGraph WalkCycle::contactPointObjectives(
     const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-    size_t k_start, ContactGoals *cp_goals) const {
+    size_t k_start, ContactPointGoals *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (const Phase &phase : phases_) {
     // Ask the Phase instance to anchor the stance legs
     factors.add(phase.contactPointObjectives(contact_points_, step, cost_model,
-                                             k_start, cp_goals));
+                                             k_start, *cp_goals));
+    // Update goals for swing legs
+    *cp_goals = phase.updateContactPointGoals(contact_points_, step, *cp_goals);
 
     // update the start time step for the next phase
     k_start += phase.numTimeSteps();

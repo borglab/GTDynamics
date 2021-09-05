@@ -23,7 +23,7 @@
 using namespace gtdynamics;
 using gtsam::Point3;
 
-TEST(WalkCycle, error) {
+TEST(WalkCycle, contactPoints) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
@@ -37,7 +37,7 @@ TEST(WalkCycle, error) {
   EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
 }
 
-TEST(WalkCycle, inverse_kinematics) {
+TEST(WalkCycle, objectives) {
   Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
   EXPECT_LONGS_EQUAL(13, robot.numLinks());
@@ -50,31 +50,28 @@ TEST(WalkCycle, inverse_kinematics) {
              contact_in_com);
   auto walk_cycle = WalkCycle({phase0, phase1});
 
-  // Set goal points to reasonable values
-  Point3 goal_LH(0, 0.15, 0);     // LH
-  Point3 goal_LF(0.6, 0.15, 0);   // LF
-  Point3 goal_RF(0.6, -0.15, 0);  // RF
-  Point3 goal_RH(0, -0.15, 0);    // RH
+  // Expected contact goal points.
+  Point3 goal_LH(-0.371306, 0.1575, 0);   // LH
+  Point3 goal_LF(0.278694, 0.1575, 0);    // LF
+  Point3 goal_RF(0.278694, -0.1575, 0);   // RF
+  Point3 goal_RH(-0.371306, -0.1575, 0);  // RH
+
+  // Check initalization of contact goals.
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, -0.191839);
+  EXPECT_LONGS_EQUAL(4, cp_goals.size());
+  EXPECT(gtsam::assert_equal(goal_LH, cp_goals["lower1"], 1e-6));
+  EXPECT(gtsam::assert_equal(goal_LF, cp_goals["lower0"], 1e-6));
+  EXPECT(gtsam::assert_equal(goal_RF, cp_goals["lower2"], 1e-6));
+  EXPECT(gtsam::assert_equal(goal_RH, cp_goals["lower3"], 1e-6));
 
   const Point3 step(0, 0.4, 0);
   const gtsam::SharedNoiseModel cost_model = nullptr;
   const size_t k = 777;
-  ContactGoals cp_goals = {
-      ContactGoal(PointOnLink(robot.link("lower1"), contact_in_com), goal_LH),
-      ContactGoal(PointOnLink(robot.link("lower0"), contact_in_com), goal_LF),
-      ContactGoal(PointOnLink(robot.link("lower2"), contact_in_com), goal_RF),
-      ContactGoal(PointOnLink(robot.link("lower3"), contact_in_com), goal_RH)};
+
+  // Check creation of PointGoalFactors.
   gtsam::NonlinearFactorGraph factors =
       walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
-}
-
-TEST(WalkCycle, ContactAdjustment) {
-  gtdynamics::ContactAdjustment cf_1("body", gtsam::Point3(0, 0, -1.0));
-  gtdynamics::ContactAdjustment cf_2("link_0", gtsam::Point3(1, 0, -1.0));
-  gtdynamics::ContactAdjustments cfs{cf_1, cf_2};
-  EXPECT(cfs[0].link_name == "body");
-  EXPECT(cfs[1].adjustment == gtsam::Point3(1, 0, -1.0));
 }
 
 int main() {

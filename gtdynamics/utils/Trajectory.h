@@ -272,13 +272,12 @@ class Trajectory {
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model
    * @param[in] step The 3D vector the foot moves in a step.
-   * @param[in] contact_adjustments TODO(issue #256) document.
+   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
-      const gtsam::Point3 &step,
-      const ContactAdjustments &contact_adjustments = {}) const;
+      const gtsam::Point3 &step, double ground_height = {}) const;
 
   /**
    * @fn Add minimum torque objectives.

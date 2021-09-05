@@ -124,7 +124,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
-  for (auto &&joint : robot.joints())
+  for (auto&& joint : robot.joints())
     if (joint->name().find("hip2") == 0)
       for (int k = 0; k <= K; k++)
         objectives.add(JointObjectives(joint->id(), k).angle(2.5, prior_model));
@@ -143,6 +143,32 @@ TEST(testSpiderWalking, WholeEnchilada) {
   Values init_vals =
       trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
+
+  // Compare error for all factors with expected values in file.
+  // Note, expects space after comma in csv or won't work.
+  std::string key, comm;
+  double expected;
+  std::string filename = kTestPath + std::string("/testSpiderWalking.csv");
+  std::ifstream is(filename.c_str());
+  is >> key >> expected;
+  double actual = graph.error(init_vals);
+  const double tol = 1.0;
+  EXPECT_DOUBLES_EQUAL(expected, actual, tol);
+
+  // If there is an error, create a file errors.csv with all error comparisons.
+  if (fabs(actual - expected) > tol) {
+    std::ofstream os("errors.csv");
+    os << "total, " << actual << "\n";
+    for (size_t i = 0; i < graph.size(); i++) {
+      is >> key >> expected;
+      const auto& factor = graph[i];
+      const double actual = factor->error(init_vals);
+      bool equal = fabs(actual - expected) < tol;
+      auto bare_ptr = factor.get();
+      os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
+         << ", " << equal << "\n";
+    }
+  }
 
   // Optimize!
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);

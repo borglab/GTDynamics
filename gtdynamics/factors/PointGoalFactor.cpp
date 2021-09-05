@@ -24,8 +24,9 @@ using gtsam::Vector;
 Vector PointGoalFactor::evaluateError(const Pose3 &wTcom,
                                       boost::optional<Matrix &> H_pose) const {
   // Change point reference frame from com to spatial.
-  auto sTp_t = wTcom.transformFrom(point_com_, H_pose);
-  return sTp_t - goal_point_;
+  const Point3 point_world = wTcom.transformFrom(point_com_, H_pose);
+  Vector error(point_world - goal_point_);
+  return error;
 }
 
 /// print contents

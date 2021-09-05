@@ -24,7 +24,10 @@ namespace gtdynamics {
  * @class Phase class stores information about a robot stance
  * and its duration.
  */
+using ContactPointGoals = std::map<std::string, gtsam::Point3>;
+
 class Phase {
+ public:
  protected:
   size_t num_time_steps_;        ///< Number of time steps in this phase
   PointOnLinks contact_points_;  ///< Contact Points
@@ -94,12 +97,21 @@ class Phase {
    * @param[in] step 3D vector to move by
    * @param[in] cost_model noise model
    * @param[in] k_start Factors are added at this time step
-   * @param[inout] cp_goals either stance goal or start of swing (updated)
+   * @param[in] cp_goals either stance goal or start of swing
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model, size_t k_start,
-      ContactGoals *cp_goals) const;
+      const ContactPointGoals &cp_goals) const;
+
+  /**
+   * Update goal points by `step` for all swing legs.
+   * @param[in] step 3D vector to move by
+   * @param[in] cp_goals either stance goal or start of swing
+   */
+  ContactPointGoals updateContactPointGoals(
+      const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
+      const ContactPointGoals &cp_goals) const;
 
   /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
   gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,

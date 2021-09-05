@@ -52,36 +52,40 @@ void Phase::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-// Searches a contact_link from ContactGoals object and returns the
-// corresponding goal_point
-gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
-                         const PointOnLink contact_point) {
-  for (auto it = cp_goals->begin(); it != cp_goals->end(); ++it) {
-    if ((*it).point_on_link.link->name() == contact_point.link->name() &&
-        (*it).point_on_link.point == contact_point.point)
-      return (*it).goal_point;
-  }
-  throw std::runtime_error("Contact Point was not found.");
-}
-
 NonlinearFactorGraph Phase::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
     const gtsam::SharedNoiseModel &cost_model, size_t k_start,
-    ContactGoals *cp_goals) const {
+    const ContactPointGoals &cp_goals) const {
   NonlinearFactorGraph factors;
 
-  for (auto &&kv : all_contact_points) {
-    Point3 &cp_goal = pointGoal(cp_goals, kv);
-    const bool stance = hasContact(kv.link);
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
+    const Point3 &cp_goal = cp_goals.at(name);
+    const bool stance = hasContact(cp.link);
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
-    if (!stance) cp_goal += step;  // Update the goal if swing
 
-    factors.push_back(PointGoalFactors(cost_model, kv.point, goal_trajectory,
-                                       kv.link->id(), k_start));
+    factors.push_back(PointGoalFactors(cost_model, cp.point, goal_trajectory,
+                                       cp.link->id(), k_start));
   }
   return factors;
+}
+
+ContactPointGoals Phase::updateContactPointGoals(
+    const PointOnLinks &all_contact_points, const Point3 &step,
+    const ContactPointGoals &cp_goals) const {
+  ContactPointGoals new_goals;
+
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
+    const Point3 &cp_goal = cp_goals.at(name);
+    const bool stance = hasContact(cp.link);
+    // If a contact is not on a stance leg, it is on a swing leg and we advance
+    // the contac goal by adding the 3-vector `step`.
+    new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
+  }
+  return new_goals;
 }
 
 Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,

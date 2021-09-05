@@ -25,29 +25,12 @@
 namespace gtdynamics {
 
 /**
- * ContactAdjustment is the adjustment made to all the contact points in relation to a given link in the robot.
- *
- * @param link_name  The link in relation to which adjustment is to be made.
- * @param adjustment The adjustment made to the contact points relative to the link COM.
- */
-struct ContactAdjustment{
-  std::string link_name;
-  gtsam::Point3 adjustment;
-
-  ContactAdjustment(const std::string& link_name, const gtsam::Point3 &adjustment)
-      : link_name(link_name), adjustment(adjustment) {}
-};
-
-using ContactAdjustments = std::vector<ContactAdjustment>;
-
-
-/**
  * @class WalkCycle class stores the sequence of phases
  * in a walk cycle.
  */
 class WalkCycle {
  protected:
-  std::vector<Phase> phases_;     ///< Phases in walk cycle
+  std::vector<Phase> phases_;    ///< Phases in walk cycle
   PointOnLinks contact_points_;  ///< All contact points
 
  public:
@@ -65,7 +48,7 @@ class WalkCycle {
    * @fn Adds phase in walk cycle
    * @param[in] phase Swing or stance phase in the walk cycle.
    */
-  void addPhase(const Phase &phase);
+  void addPhase(const Phase& phase);
 
   /**
    * @fn Return phase for given phase number p.
@@ -95,11 +78,12 @@ class WalkCycle {
 
   /**
    * @fn Returns the initial contact point goal for every contact link.
+   * @param[in] robot Robot specification from URDF/SDF.
+   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
    * @return Map from link name to goal points.
    */
-  ContactGoals initContactPointGoal(
-      const Robot &robot,
-      const ContactAdjustments &contact_adjustments = {}) const;
+  ContactPointGoals initContactPointGoal(const Robot& robot,
+                                         double ground_height = 0.0) const;
 
   /**
    * @fn Returns the swing links for a given phase.
@@ -108,8 +92,6 @@ class WalkCycle {
    */
   std::vector<std::string> swingLinks(size_t p) const;
 
-
-  //NOTE DISHA: Remove Robot
   /**
    * Add PointGoalFactors for all feet as given in cp_goals.
    * @param[in] step 3D vector to move by
@@ -118,7 +100,7 @@ class WalkCycle {
    * @param[inout] cp_goals either stance goal or start of swing (updated)
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
-      const gtsam::Point3 &step, const gtsam::SharedNoiseModel &cost_model,
-      size_t k_start, ContactGoals *cp_goals) const;
+      const gtsam::Point3& step, const gtsam::SharedNoiseModel& cost_model,
+      size_t k_start, ContactPointGoals* cp_goals) const;
 };
 }  // namespace gtdynamics
