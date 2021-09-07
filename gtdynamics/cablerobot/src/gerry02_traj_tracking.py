@@ -4,10 +4,13 @@ Atlanta, Georgia 30332-0415
 All Rights Reserved
 See LICENSE for the license information
 
-@file  gerry01_planar_tracking.py
-@brief quick test of open-loop trajectory tracking for planar cdpr.
+@file  gerry02_traj_tracking.py
+@brief Computes the linearized feedforward controllers for tracking a trajectory.
 @author Frank Dellaert
 @author Gerry Chen
+
+Given a .h file containing the trajectory, we compute the time-varying linearized iLQR gains &
+feedforward terms and write them out to a new .h file.
 """
 
 import gtdynamics as gtd
@@ -25,6 +28,25 @@ from draw_controller import draw_controller_anim
 
 import cProfile
 from pstats import SortKey
+
+FRAME_WIDTH, FRAME_HEIGHT = 2.92, 2.32
+EE_WIDTH, EE_HEIGHT = 0.15, 0.30
+
+def create_cdpr():
+    """Creates a cdpr with parameters matching the real CDPR in lab.
+    """
+    # cdpr object
+    aw, ah = FRAME_WIDTH, FRAME_HEIGHT
+    bw, bh = EE_WIDTH, EE_HEIGHT
+    params = CdprParams()
+    params.mass = 0.5
+    params.gravity = np.array([0, 0, -9.8]).reshape((3, 1))
+    params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
+    params.b_locs = np.array([[bw, 0., -bh], [bw, 0., bh], [-bw, 0., bh], [-bw, 0, -bh]]) / 2
+    params.b_locs = params.b_locs - [0, 0, bh * 0.4]
+    params.winch_params.inertia_ = 9.26e-5 * 890 / 420 # https://bit.ly/3sOF2Wt
+    params.winch_params.radius_ = 0.0127
+    return Cdpr(params)
 
 def print_data(isPaints, colorinds, colorpalette, traj, N=100):
     """Prints out the paint trajectory for sanity check"""
@@ -81,17 +103,7 @@ def main(fname='data/iros_logo_2.h',
             - des_T: the desired poses
     """
     # cdpr object
-    aw, ah = 2.92, 2.32
-    bw, bh = 0.15, 0.30
-    params = CdprParams()
-    params.mass = 0.5
-    params.gravity = np.array([0, 0, -9.8]).reshape((3, 1))
-    params.a_locs = np.array([[aw, 0, 0], [aw, 0, ah], [0, 0, ah], [0, 0, 0]])
-    params.b_locs = np.array([[bw, 0., -bh], [bw, 0., bh], [-bw, 0., bh], [-bw, 0, -bh]]) / 2
-    params.b_locs = params.b_locs - [0, 0, bh * 0.4]
-    params.winch_params.inertia_ = 9.26e-5 * 890 / 420 # https://bit.ly/3sOF2Wt
-    params.winch_params.radius_ = 0.0127
-    cdpr = Cdpr(params)
+    cdpr = create_cdpr()
 
     # import data
     isPaints, colorinds, colorpalette, traj = ParseFile(fname)
@@ -100,7 +112,8 @@ def main(fname='data/iros_logo_2.h',
           ) * dN  # this is a hardcoded constant.  TODO(gerry): include this in the .h file.
     N = int(N/dN)  # scale time by dN
     N0 = int(N0/dN)
-    traj = (traj - [aw/2, ah/2]) * 0.85 + [aw/2, ah/2]  # rescale trajectory to be smaller
+    width, _, height = cdpr.params.a_locs[1] - cdpr.params.a_locs[3]  # rescale trajectory to be
+    traj = (traj - [width/2, height/2]) * 0.85 + [width/2, height/2]  # smaller
     traj = traj[::dN, :]
     if debug:
         print_data(isPaints, colorinds, colorpalette, traj, N=100)
