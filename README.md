@@ -50,9 +50,6 @@ sudo apt-get update
 # Install SDFormat dependencies
 sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev
 
-# sdformat requires libignition-math
-sudo apt-get install libignition-math4-dev
-
 # Set the version to install
 export GTD_SDFormat_VERSION="10.5.0"
 
