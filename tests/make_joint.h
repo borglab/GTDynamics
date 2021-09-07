@@ -25,10 +25,11 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   double mass = 100;
   gtsam::Matrix3 inertia = gtsam::Vector3(3, 2, 1).asDiagonal();
   gtsam::Pose3 bMcom;
+  gtsam::Pose3 bMl;
 
-  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, bMcom));
+  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, bMcom, bMl));
   auto l2 = boost::make_shared<Link>(
-      Link(2, name, mass, inertia, cMp.inverse()));
+      Link(2, name, mass, inertia, cMp.inverse(), bMl));
 
   // create joint
   JointParams joint_params;
