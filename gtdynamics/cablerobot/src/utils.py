@@ -73,24 +73,34 @@ def ZeroValues(graph, dt=None):
         InsertZeroByLabel(z, key, dt)
     return z
 
-def UpdateFromValues(src, dst, key):
+
+def UpdateFromValues(src, dst, key, shift_time_by=0):
     label = key.label()
+    if shift_time_by:
+        new_key = gtd.DynamicsSymbol.LinkJointSymbol(key.label(), key.linkIdx(), key.jointIdx(),
+                                                     key.time() + shift_time_by)
+    else:
+        new_key = key
+
     if label in "qvatT":  # joint angle, vel, acc, tension, torque
-        dst.insert(key.key(), src.atDouble(key.key()))
+        dst.insert(new_key.key(), src.atDouble(key.key()))
     elif label == "p":  # PoseKey
-        dst.insert(key.key(), src.atPose3(key.key()))
+        dst.insert(new_key.key(), src.atPose3(key.key()))
     elif label == "V":  # TwistKey
-        gtd.InsertTwist(dst, key.linkIdx(), key.time(), gtd.Twist(src, key.linkIdx(), key.time()))
+        gtd.InsertTwist(dst, new_key.linkIdx(), new_key.time(),
+                        gtd.Twist(src, key.linkIdx(), key.time()))
     elif label == "A":  # TwistAccelKey
-        gtd.InsertTwistAccel(dst, key.linkIdx(), key.time(),
+        gtd.InsertTwistAccel(dst, new_key.linkIdx(), new_key.time(),
                              gtd.TwistAccel(src, key.linkIdx(), key.time()))
     elif label == "F":  # WrenchKey
-        gtd.InsertWrench(dst, key.linkIdx(), key.time(), gtd.Wrench(src, key.linkIdx(), key.time()))
+        gtd.InsertWrench(dst, new_key.linkIdx(), new_key.time(),
+                         gtd.Wrench(src, key.linkIdx(), key.time()))
     elif key.key() == 0:
-        dst.insert(key.key(), src.atDouble(key.key()))
+        dst.insert(new_key.key(), src.atDouble(key.key()))
     else:
         print(key)
         raise RuntimeError("Unknown key label type: ", label)
+
 
 def InitValues(graph, values=None, dt=None):
     init = gtsam.Values()
