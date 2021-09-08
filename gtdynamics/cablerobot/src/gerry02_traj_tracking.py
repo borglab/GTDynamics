@@ -155,5 +155,8 @@ def save_controller(fname, controller):
     writeControls(fname, controller.gains_ff)
 
 if __name__ == '__main__':
-    cProfile.run('results = main(N=100)', sort=SortKey.TIME)
+    # cProfile.run('results = main(N=100)', sort=SortKey.TIME)
+    results = main(fname='data/ATL_filled.h', Q=np.ones(6)*1e1, R=np.ones(1)*1e-3, dN=1, debug=False, speed_multiplier=1)
     plot(*results)
+    plt.show()
+    save_controller('data/tmp.h', results[1])

@@ -112,6 +112,9 @@ def optimizeStrokes(cdpr: Cdpr, strokes: list[list[gtsam.Pose3]], Q, R, dt: floa
     cur_x, cur_v = strokes[0][0], (0, 0, 0, 0, 0, 0)
     k = 0
 
+    # TODO(Gerry): figure out multithreading.  Tried concurrent.futures.ThreadPoolExecutor but it
+    # didn't help at all due to GIL.  Couldn't get ProcessPoolExecutor to work - it wouldn't
+    # actually execute the thread.
     for stroke in tqdm.tqdm(strokes):  # tqdm is iteration timer
         cur_x, cur_v, controller, result = optimizeStroke(cdpr, stroke, cur_x, cur_v, Q, R, dt)
 
@@ -196,5 +199,8 @@ def save_controller(fname, all_controllers):
 
 
 if __name__ == '__main__':
-    cProfile.run('cdpr, controller, result, des_poses, dt = main(dN=10)', sort=SortKey.TIME)
-    gerry02_traj_tracking.plot(cdpr, result, des_poses, dt)
+    # cProfile.run('cdpr, controller, result, des_poses, dt = main(dN=10)', sort=SortKey.TIME)
+    cdpr, controller, result, des_poses, dt = main(dN=1)
+    gerry02_traj_tracking.plot(cdpr, controller, result, len(des_poses), dt, des_poses)
+    plt.show()
+    gerry02_traj_tracking.save_controller('data/tmp.h', controller)
