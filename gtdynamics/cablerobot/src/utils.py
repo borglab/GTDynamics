@@ -104,13 +104,12 @@ def UpdateFromValues(src, dst, key, shift_time_by=0):
 
 def InitValues(graph, values=None, dt=None):
     init = gtsam.Values()
-    existing_keys = values.keys() if values is not None else []
-    for key in graph.keyVector():
-        key = gtd.DynamicsSymbol(key)
-        if key.key() in existing_keys:
-            UpdateFromValues(values, init, key)
-        else:
-            InsertZeroByLabel(init, key, dt)
+    existing_keys = set(values.keys()) if values is not None else set()
+    graphkeys = set(graph.keyVector())
+    for key in graphkeys & existing_keys:
+        UpdateFromValues(values, init, gtd.DynamicsSymbol(key))
+    for key in graphkeys - existing_keys:
+        InsertZeroByLabel(init, gtd.DynamicsSymbol(key), dt)
     return init
 
 def InsertPose(dest, link_id, k, source):
