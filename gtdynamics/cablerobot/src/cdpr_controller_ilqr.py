@@ -50,6 +50,7 @@ class CdprControllerIlqr(CdprControllerBase):
 
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
+
         # initial guess
         if x_guess is None:
             x_guess = gtsam.Values()
@@ -59,17 +60,21 @@ class CdprControllerIlqr(CdprControllerBase):
                     l = np.linalg.norm(cdpr.params.a_locs[ji] - pdes_.translation())
                     gtd.InsertJointAngleDouble(x_guess, ji, k, l)
         x_guess = utils.InitValues(fg, x_guess, dt=dt)
+
         # optimize
-        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, utils.MyLMParams())
-        self.result = self.optimizer.optimize()
-        self.fg = fg
+        params = utils.MyLMParams(None)
+        # params.setRelativeErrorTol(1e-10)
+        # params.setAbsoluteErrorTol(1e-10)
+        self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, params)
         def optimize(optimizer): # so this shows up in the profiler
             return optimizer.optimize()
         tstart = time.time()
         self.result = optimize(self.optimizer)
         tend = time.time()
+
         # gains
         self.gains_ff = self.extract_gains_ff(cdpr, fg, self.result, len(self.pdes))
+
         # print debug info
         if debug:
             print("FG size: ", fg.size())

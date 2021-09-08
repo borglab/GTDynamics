@@ -133,8 +133,9 @@ def InsertWrenches(dest, link_id, k, source):
 
 def MyLMParams(abs_err_tol=1e-15):
     params = gtsam.LevenbergMarquardtParams()
-    params.setRelativeErrorTol(0)
-    params.setAbsoluteErrorTol(0)
-    params.setErrorTol(abs_err_tol)
+    if abs_err_tol is not None:
+        params.setRelativeErrorTol(0)
+        params.setAbsoluteErrorTol(0)
+        params.setErrorTol(abs_err_tol)
     params.setLinearSolverType("MULTIFRONTAL_QR")
     return params
