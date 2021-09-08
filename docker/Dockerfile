@@ -3,19 +3,29 @@
 # Get the base Ubuntu/GTSAM (with wrapper) image from Docker Hub
 FROM borglab/ubuntu-gtsam-python:bionic
 
-# Install basic dependencies for sdfformat
-RUN apt-get -y install libtinyxml2-dev libxml2-utils pkg-config ruby-dev ruby wget
 
-# sdformat requires libignition-math
-RUN apt-get -y install libignition-math4-dev
-
-# Download specific version of SDFormat
+# Make sure we are not in GTSAM dir
 WORKDIR /usr/src/
-RUN wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-10.5.0.tar.bz2
-RUN tar -xvjf sdformat-10.5.0.tar.bz2
+
+# Make sure we have latest packages
+RUN apt-get -y update
+
+# Install basic dependencies for sdfformat
+RUN apt-get install -y ruby-dev build-essential libboost-all-dev cmake pkg-config wget lsb-release
+
+# Get Gazebo packages
+RUN sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+RUN wget http://packages.osrfoundation.org/gazebo.key -O - | apt-key add -
+RUN apt-get update
+
+# Get sdfformat package
+ENV GTD_SDFormat_VERSION="10.5.0"
+RUN wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+RUN tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+RUN rm sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 
 # Change to build directory. Will be created automatically.
-WORKDIR sdformat-10.5.0/build
+WORKDIR sdformat-${GTD_SDFormat_VERSION}/build
 
 # Run cmake and make
 RUN cmake ..
