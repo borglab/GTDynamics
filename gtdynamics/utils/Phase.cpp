@@ -49,7 +49,6 @@ NonlinearFactorGraph Phase::contactPointObjectives(
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
-    // if (!stance) cp_goal += step;  // Update the goal if swing
 
     factors.push_back(PointGoalFactors(cost_model, kv.second.point,
                                        goal_trajectory, robot.link(name)->id(),
@@ -63,6 +62,7 @@ Phase::ContactPointGoals Phase::updateContactPointGoals(
     const ContactPointGoals &cp_goals) const {
   ContactPointGoals new_goals;
 
+  // For all "feet", update the goal point with step iff in swing.
   for (auto &&kv : all_contact_points) {
     const string &name = kv.first;
     const Point3 &cp_goal = cp_goals.at(name);
