@@ -87,7 +87,7 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 
   // Initials contact point goal.
   // TODO(frank): #179 make sure height is handled correctly.
-  map<string, Point3> cp_goals =
+  Phase::ContactPointGoals cp_goals =
       walk_cycle_.initContactPointGoal(robot, ground_height);
 
   size_t k_start = 0;

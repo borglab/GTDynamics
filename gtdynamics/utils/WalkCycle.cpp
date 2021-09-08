@@ -33,9 +33,9 @@ void WalkCycle::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
-std::map<string, Point3> WalkCycle::initContactPointGoal(
+Phase::ContactPointGoals WalkCycle::initContactPointGoal(
     const Robot &robot, double ground_height) const {
-  std::map<string, Point3> cp_goals;
+  Phase::ContactPointGoals cp_goals;
   const Point3 adjust(0, 0, -ground_height);
 
   // Go over all phases, and all contact points
@@ -69,13 +69,15 @@ std::vector<string> WalkCycle::swingLinks(size_t p) const {
 NonlinearFactorGraph WalkCycle::contactPointObjectives(
     const Point3 &step, const gtsam::SharedNoiseModel &cost_model,
     const Robot &robot, size_t k_start,
-    std::map<string, Point3> *cp_goals) const {
+    Phase::ContactPointGoals *cp_goals) const {
   NonlinearFactorGraph factors;
 
   for (const Phase &phase : phases_) {
     // Ask the Phase instance to anchor the stance legs
     factors.add(phase.contactPointObjectives(contact_points_, step, cost_model,
-                                            robot, k_start, cp_goals));
+                                             robot, k_start, *cp_goals));
+    // Update goals for swing legs
+    *cp_goals = phase.updateContactPointGoals(contact_points_, step, *cp_goals);
 
     // update the start time step for the next phase
     k_start += phase.numTimeSteps();

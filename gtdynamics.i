@@ -810,7 +810,11 @@ class Phase {
                          const gtsam::Point3 &step,
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtdynamics::Robot &robot, size_t k_start,
-                         std::map<string, gtsam::Point3> @cp_goals) const;
+                         const std::map<string, gtsam::Point3> &cp_goals) const;
+  std::map<string, gtsam::Point3>
+  updateContactPointGoals(const gtdynamics::ContactPoints &all_contact_points,
+                         const gtsam::Point3 &step,
+                         const std::map<string, gtsam::Point3> &cp_goals) const;
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
                             double dt) const;
