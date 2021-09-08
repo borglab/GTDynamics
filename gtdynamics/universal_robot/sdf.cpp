@@ -154,7 +154,7 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
 
   return boost::make_shared<Link>(id, sdf_link.Name(),
                                   sdf_link.Inertial().MassMatrix().Mass(),
-                                  inertia, bMcom);
+                                  inertia, bMcom, bMl);
 }
 
 LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,

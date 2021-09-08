@@ -57,7 +57,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   gtsam::Matrix3 inertia_;
 
   /// SDF Elements.
-  gtsam::Pose3 bMcom_;  // CoM frame defined in the base frame in rest.
+  gtsam::Pose3 bMcom_;  // CoM frame defined in the base frame at rest.
+  gtsam::Pose3 bMlink_; // link frame defined in the base frame at rest.
 
   /// Option to fix the link, used for ground link
   bool is_fixed_;
@@ -77,15 +78,17 @@ class Link : public boost::enable_shared_from_this<Link> {
    * @param mass The mass of the link.
    * @param inertia The inertial matrix of the link.
    * @param bMcom The pose of the link CoM relative to the base frame.
+   * @param bMlink The pose of the link frame relative to the base frame.
    * @param is_fixed Flag indicating if the link is fixed.
    */
   Link(uint8_t id, const std::string &name, const double mass,
-       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom, bool is_fixed = false)
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom, const gtsam::Pose3 &bMlink, bool is_fixed = false)
       : id_(id),
         name_(name),
         mass_(mass),
         inertia_(inertia),
         bMcom_(bMcom),
+        bMlink_(bMlink),
         is_fixed_(is_fixed) {}
 
   /** destructor */
@@ -97,6 +100,7 @@ class Link : public boost::enable_shared_from_this<Link> {
             this->centerOfMass_.equals(other.centerOfMass_) &&
             this->inertia_ == other.inertia_ &&
             this->bMcom_.equals(other.bMcom_) &&
+            this->bMlink_.equals(other.bMlink_) &&
             this->is_fixed_ == other.is_fixed_ &&
             this->fixed_pose_.equals(other.fixed_pose_));
   }
@@ -119,6 +123,9 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /// Relative pose at rest from link’s COM to the base frame.
   inline const gtsam::Pose3 bMcom() const { return bMcom_; }
+
+    /// Relative pose at rest from link frame to the base frame. mainly for interoperability uses
+  inline const gtsam::Pose3 bMlink() const { return bMlink_; }
 
   /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }

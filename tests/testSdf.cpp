@@ -386,6 +386,13 @@ TEST(Sdf, limit_params) {
   LinkSharedPtr l1 = LinkFromSdf(1, *model.LinkByName("l1"));
   LinkSharedPtr l2 = LinkFromSdf(2, *model.LinkByName("l2"));
 
+  //check link and com frames
+  EXPECT(assert_equal(Pose3(), l1->bMlink()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->bMcom()));
+  Rot3 R_check = Rot3::Rx(1.5708);
+  EXPECT(assert_equal(Pose3(R_check, Point3(0, 0, 2)), l2->bMlink(), 1e-3));
+  EXPECT(assert_equal(Pose3(R_check, Point3(0, -1, 2)), l2->bMcom(), 1e-3));
+  
   auto sdf_link_l1 = model.LinkByName("l1");
   auto sdf_link_l2 = model.LinkByName("l2");
 
@@ -598,6 +605,13 @@ TEST(Robot, simple_urdf) {
                       j1->relativePoseOf(j1->parent(), 0)));
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 2)),
                       j1->relativePoseOf(j1->child(), 0)));
+
+  // Check link frames and com frames are correct
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1->bMcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 3)), l2->bMcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0)), l1->bMlink()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 2)), l2->bMlink()));
+
 }
 
 // Check the links in the simple RR robot.
@@ -610,6 +624,10 @@ TEST(Sdf, sdf_constructor) {
   // Verify center of mass defined in the world frame is correct.
   EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.1)), l0.bMcom()));
   EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 0.5)), l1.bMcom()));
+
+  // Verify link frame of both links is identity.
+  EXPECT(assert_equal(Pose3(), l0.bMlink()));
+  EXPECT(assert_equal(Pose3(), l1.bMlink()));
 
   // Verify that mass is correct.
   EXPECT(assert_equal(0.01, l0.mass()));
