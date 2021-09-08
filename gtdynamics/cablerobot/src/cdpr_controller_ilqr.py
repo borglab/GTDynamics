@@ -17,13 +17,22 @@ import numpy as np
 import utils
 from cdpr_controller import CdprControllerBase
 from scipy.linalg import solve_triangular
+import time
 
 
 class CdprControllerIlqr(CdprControllerBase):
     """Precomputes the open-loop trajectory
     then just calls on that for each update.
     """
-    def __init__(self, cdpr, x0, pdes=[], dt=0.01, Q=None, R=np.array([1.])):
+    def __init__(self,
+                 cdpr,
+                 x0,
+                 pdes=[],
+                 dt=0.01,
+                 Q=None,
+                 R=np.array([1.]),
+                 x_guess=None,
+                 debug=False):
         """constructor
 
         Args:
@@ -42,13 +51,31 @@ class CdprControllerIlqr(CdprControllerBase):
         # create iLQR graph
         fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
         # initial guess
-        x_guess = utils.InitValues(fg, dt=dt)
+        if x_guess is None:
+            x_guess = gtsam.Values()
+            for k, pdes_ in enumerate(pdes):
+                gtd.InsertPose(x_guess, cdpr.ee_id(), k, pdes_)
+                for ji in range(4):
+                    l = np.linalg.norm(cdpr.params.a_locs[ji] - pdes_.translation())
+                    gtd.InsertJointAngleDouble(x_guess, ji, k, l)
+        x_guess = utils.InitValues(fg, x_guess, dt=dt)
         # optimize
         self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, utils.MyLMParams())
         self.result = self.optimizer.optimize()
         self.fg = fg
+        def optimize(optimizer): # so this shows up in the profiler
+            return optimizer.optimize()
+        tstart = time.time()
+        self.result = optimize(self.optimizer)
+        tend = time.time()
         # gains
         self.gains_ff = self.extract_gains_ff(cdpr, fg, self.result, len(self.pdes))
+        # print debug info
+        if debug:
+            print("FG size: ", fg.size())
+            print("\tNumber of variables: ", len(x_guess.keys()))
+            print("\tNumber of timesteps: ", len(pdes))
+            print("\tTime to optimize: ", tend - tstart)
 
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
