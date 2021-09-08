@@ -17,6 +17,7 @@ RUN apt-get install -y ruby-dev build-essential libboost-all-dev cmake pkg-confi
 RUN sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
 RUN wget http://packages.osrfoundation.org/gazebo.key -O - | apt-key add -
 RUN apt-get update
+RUN apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev python3-psutil
 
 # Get sdfformat package
 ENV GTD_SDFormat_VERSION="10.5.0"
