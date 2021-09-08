@@ -32,6 +32,12 @@ WORKDIR sdformat-${GTD_SDFormat_VERSION}/build
 RUN cmake ..
 RUN make -j4 install
 
+# Avoid ascii errors when reading files in Python
+RUN apt-get install -y locales && locale-gen en_US.UTF-8
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+# Update setuptools to avoid python wrapper install warnings
+RUN pip3 install -U setuptools
+
 # Clone GTDynamics (develop branch)
 WORKDIR /usr/src/
 RUN git clone https://github.com/borglab/GTDynamics.git
@@ -42,8 +48,8 @@ WORKDIR /usr/src/GTDynamics/build
 # Run cmake
 RUN cmake \
     -DCMAKE_BUILD_TYPE=Release \
-    -DGTSAM_BUILD_PYTHON=ON \
-    -DGTSAM_PYTHON_VERSION=3\
+    -DGTDYNAMICS_BUILD_PYTHON=ON \
+    -DWRAP_PYTHON_VERSION=3.6.9 \
     ..
 
 # Build and install
