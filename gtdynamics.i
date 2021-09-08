@@ -179,12 +179,13 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 class Link  {
   Link();
   Link(int id, const string &name, const double mass,
-       const Matrix &inertia, const gtsam::Pose3 &bMcom, bool is_fixed = false) ;    
+       const Matrix &inertia, const gtsam::Pose3 &bMcom, const gtsam::Pose3 &bMlink, bool is_fixed = false) ;    
 
   gtdynamics::Link *shared();
   int id() const;
   void addJoint(gtdynamics::Joint *joint_ptr);
   const gtsam::Pose3 bMcom() const;
+  const gtsam::Pose3 bMlink() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
   void fix();
