@@ -98,7 +98,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
-  EXPECT_LONGS_EQUAL(12, K); // TODO(frank): why not 11?
+  EXPECT_LONGS_EQUAL(12, K);  // TODO(frank): why not 11?
 
   // Add base goal objectives to the factor graph.
   auto base_link = robot.link("body");
@@ -143,62 +143,73 @@ TEST(testSpiderWalking, WholeEnchilada) {
       trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
+  // Compare error for all factors with expected values in file.
+  // Note, expects space after comma in csv or won't work.
+  std::string key, comm;
+  double expected;
+  std::string filename = kTestPath + std::string("/testSpiderWalking.csv");
+  std::ifstream is(filename.c_str());
+  is >> key >> expected;
+  double actual = graph.error(init_vals);
+  const double tol = 1.0;
+  EXPECT_DOUBLES_EQUAL(expected, actual, tol);
+
+  // If there is an error, create a file errors.csv with all error comparisons.
+  if (fabs(actual - expected) > tol) {
+    std::ofstream os("errors.csv");
+    os << "total, " << actual << "\n";
+    for (size_t i = 0; i < graph.size(); i++) {
+      is >> key >> expected;
+      const auto& factor = graph[i];
+      const double actual = factor->error(init_vals);
+      bool equal = fabs(actual - expected) < tol;
+      auto bare_ptr = factor.get();
+      if (!equal) {
+        // Print to stdout for CI.
+        std::cout << typeid(*bare_ptr).name() << ", " << actual << ", "
+                  << expected << ", " << equal << "\n";
+      }
+      os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
+         << ", " << equal << "\n";
+    }
+  }
+
+  // Optimize!
+  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
+  auto results = optimizer.optimize();
+
+  // Regression!
+  EXPECT_DOUBLES_EQUAL(986936294413055, graph.error(init_vals), 100);
+  EXPECT_DOUBLES_EQUAL(353211972620861, graph.error(results), 100);
+
   // Add regressions on initial values.
   auto body = robot.link("body");
   EXPECT(gtsam::assert_equal(Pose3(Rot3(), Point3(0, 0, 0)),
-                      Pose(init_vals, body->id(), 0), 1e-3));
+                             Pose(init_vals, body->id(), 0), 1e-3));
 
   // TODO(frank): why is this still at the identity?
   EXPECT(gtsam::assert_equal(Pose3(Rot3(), Point3(0, 0, 0)),
-                      Pose(init_vals, body->id(), K), 1e-3));
+                             Pose(init_vals, body->id(), K), 1e-3));
 
   auto foot = robot.link("tarsus_1_L1");
   EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
-                      Pose(init_vals, foot->id(), 0).translation(), 1e-3));
+                             Pose(init_vals, foot->id(), 0).translation(),
+                             1e-3));
 
   // TODO(frank): similarly, why did this not move?
   EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
-                      Pose(init_vals, foot->id(), K).translation(), 1e-3));
+                             Pose(init_vals, foot->id(), K).translation(),
+                             1e-3));
 
+  EXPECT_DOUBLES_EQUAL(-1.85e-05, JointAngle(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(1.976e-06, JointAngle(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(-1.85e-05, JointAngle(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(1.976e-06, JointAngle(init_vals, 31, K), 1e-7);
 
-  // // Compare error for all factors with expected values in file.
-  // // Note, expects space after comma in csv or won't work.
-  // std::string key, comm;
-  // double expected;
-  // std::string filename = kTestPath + std::string("/testSpiderWalking.csv");
-  // std::ifstream is(filename.c_str());
-  // is >> key >> expected;
-  // double actual = graph.error(init_vals);
-  // const double tol = 1.0;
-  // EXPECT_DOUBLES_EQUAL(expected, actual, tol);
-
-  // // If there is an error, create a file errors.csv with all error comparisons.
-  // if (fabs(actual - expected) > tol) {
-  //   std::ofstream os("errors.csv");
-  //   os << "total, " << actual << "\n";
-  //   for (size_t i = 0; i < graph.size(); i++) {
-  //     is >> key >> expected;
-  //     const auto& factor = graph[i];
-  //     const double actual = factor->error(init_vals);
-  //     bool equal = fabs(actual - expected) < tol;
-  //     auto bare_ptr = factor.get();
-  //     if (!equal) {
-  //       // Print to stdout for CI.
-  //       std::cout << typeid(*bare_ptr).name() << ", " << actual << ", "
-  //                 << expected << ", " << equal << "\n";
-  //     }
-  //     os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
-  //        << ", " << equal << "\n";
-  //   }
-  // }
-
-  // // Optimize!
-  // gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
-  // auto results = optimizer.optimize();
-
-  // // Regression!
-  // EXPECT_DOUBLES_EQUAL(986936294413055, graph.error(init_vals), 100);
-  // EXPECT_DOUBLES_EQUAL(353211972620861, graph.error(results), 100);
+  EXPECT_DOUBLES_EQUAL(-3.90e-06, JointVel(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(-5.11e-06, JointVel(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(-3.90e-06, JointVel(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(-5.11e-06, JointVel(init_vals, 31, K), 1e-7);
 }
 
 int main() {
