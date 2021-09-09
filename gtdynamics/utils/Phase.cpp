@@ -62,6 +62,7 @@ Phase::ContactPointGoals Phase::updateContactPointGoals(
     const ContactPointGoals &cp_goals) const {
   ContactPointGoals new_goals;
 
+  // For all "feet", update the goal point with step iff in swing.
   for (auto &&kv : all_contact_points) {
     const string &name = kv.first;
     const Point3 &cp_goal = cp_goals.at(name);
