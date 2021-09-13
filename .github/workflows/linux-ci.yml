@@ -1,7 +1,6 @@
 name: Linux CI
 
-# TODO Uncomment when ready to enable CI
-# on: [pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -18,10 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [
-          ubuntu-18.04-gcc-9,
-          ubuntu-18.04-clang-9,
-        ]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -37,27 +33,53 @@ jobs:
             version: "9"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@master
-      - name: Dependencies
+      - name: Setup Compiler
         run: |
-          brew tap osrf/simulation
-          brew install sdformat8
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            brew install gcc@${{ matrix.version }}
+            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
+
           else
-            sudo xcode-select -switch /Applications/Xcode_${{ matrix.version }}.app
+            sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
+
+      - name: Install Dependencies
+        run: |
+          # For SDFormat
+          sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
+          sudo apt-get -y update
+
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+
+      - name: GTSAM
+        run: |
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd build
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          sudo make -j$(nproc) install
+          sudo ldconfig
+          cd ../../ # go back to home directory
+
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Build Directory
+        run: mkdir build
+
       - name: Configure
-        run: cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON ..
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
         working-directory: ./build
+
       - name: Build
-        run: make -j4
+        run: make -j$(nproc)
         working-directory: ./build
+
       - name: Test
-        run: make -j4 check
+        run: make -j$(nproc) check
         working-directory: ./build

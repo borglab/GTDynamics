@@ -15,7 +15,6 @@
 
 #include <ignition/math/Pose3.hh>
 #include <sdf/sdf.hh>
-
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
@@ -39,7 +38,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
  * @param[in] sdf_link
  * @return LinkSharedPtr
  */
-LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link);
+LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link);
 
 /**
  * @fn Construct a Link from sdf file
@@ -47,9 +46,9 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const sdf::Link &sdf_link);
  * @param[in] name          name of the specified link
  * @param[in] sdf_file_path path to sdf file
  * @param[in] model_name    name of the robot
- * @return LinkSharedPtr 
+ * @return LinkSharedPtr
  */
-LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &name,
+LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &name,
                           const std::string &sdf_file_path,
                           const std::string &model_name = "");
 
@@ -60,7 +59,7 @@ LinkSharedPtr LinkFromSdf(unsigned char id, const std::string &name,
  * @param[in] sdf_joint
  * @return LinkSharedPtr
  */
-JointSharedPtr JointFromSdf(unsigned char id, const LinkSharedPtr &parent_link,
+JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const LinkSharedPtr &child_link,
                             const sdf::Joint &sdf_joint);
 
@@ -84,13 +83,13 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint);
  * @fn Get joint pose defined in world frame from an sdf::Joint object
  * @param[in] sdf_joint    a joint object which allows access to
  * functions needed to populate joint parameters.
- * @param[in] parent_link  Shared pointer to the parent Link.
- * @param[in] child_link   Shared pointer to the child Link.
+ * @param[in] parent_sdf_link  The sdf::Link object of the parent link
+ * @param[in] child_sdf_link   The sdf::Link object of the child link
  * @return Joint pose defined in world frame
  */
 gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
-                           const LinkSharedPtr &parent_link,
-                           const LinkSharedPtr &child_link);
+                           const sdf::Link *parent_sdf_link,
+                           const sdf::Link *child_sdf_link);
 
 /**
  * @fn Converts an axis taken from input sdf::Joint into the Vector3 format
@@ -101,4 +100,4 @@ gtsam::Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
  */
 gtsam::Vector3 GetSdfAxis(const sdf::Joint &sdf_joint);
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

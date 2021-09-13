@@ -38,17 +38,24 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 Pose3 ScrewJointBase::parentTchild(
-    double q,
-    gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
+    double q, gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
+  // Calculate pose of child in parent link, at rest.
+  // TODO(dellaert): store `pMj_` rather than `jMp_`.
+  // NOTE(dellaert): Only if this is called more often than childTparent.
+  const Pose3 pMc = jMp_.inverse() * jMc_;
+
+  // Multiply screw axis with joint angle to get a finite 6D screw.
+  const Vector6 screw = cScrewAxis_ * q;
+
+  // Calculate the actual relative pose taking into account the joint angle.
+  // TODO(dellaert): use formula `pMj_ * screw_around_Z * jMc_`.
   if (pMc_H_q) {
-    gtsam::Matrix6 exp_H_Sq;
-    Vector6 Sq = cScrewAxis_ * q;
-    Pose3 exp = Pose3::Expmap(Sq, exp_H_Sq);
-    Pose3 pMc = pMccom_.compose(exp);  // derivative in exp is identity!
-    *pMc_H_q = exp_H_Sq * cScrewAxis_;
-    return pMc;
+    gtsam::Matrix6 exp_H_screw;
+    const Pose3 exp = Pose3::Expmap(screw, exp_H_screw);
+    *pMc_H_q = exp_H_screw * cScrewAxis_;
+    return pMc * exp;  // Note: derivative of compose in exp is identity.
   } else {
-    return pMccom_ * Pose3::Expmap(cScrewAxis_ * q);
+    return pMc * Pose3::Expmap(screw);
   }
 }
 
@@ -174,7 +181,7 @@ gtsam::GaussianFactorGraph ScrewJointBase::linearAFactors(
   const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
   const Vector6 V_i2 = Twist(known_values, child()->id(), t);
   const Vector6 S_i2_j = screwAxis(child_link_);
-  const double v_j = JointAngle(known_values, id(), t);
+  const double v_j = JointVel(known_values, id(), t);
 
   // twist acceleration factor
   // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
@@ -252,6 +259,12 @@ gtsam::NonlinearFactorGraph ScrewJointBase::jointLimitFactors(
       internal::TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
       parameters().torque_limit, parameters().torque_limit_threshold);
   return graph;
+}
+
+std::ostream &ScrewJointBase::to_stream(std::ostream &os) const {
+  Joint::to_stream(os);
+  os << "\n\tscrew axis (parent): " << screwAxis(parent()).transpose();
+  return os;
 }
 
 }  // namespace gtdynamics

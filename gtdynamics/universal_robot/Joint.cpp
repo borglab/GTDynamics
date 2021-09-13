@@ -23,14 +23,16 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Joint::Joint(unsigned char id, const std::string &name, const Pose3 &wTj,
+Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const JointParams &parameters)
-    : id_(id), name_(name), wTj_(wTj), parent_link_(parent_link),
-      child_link_(child_link), parameters_(parameters) {
-  jTpcom_ = wTj_.inverse() * parent_link_->wTcom();
-  jTccom_ = wTj_.inverse() * child_link_->wTcom();
-  pMccom_ = parent_link_->wTcom().inverse() * child_link_->wTcom();
+    : id_(id),
+      name_(name),
+      parent_link_(parent_link),
+      child_link_(child_link),
+      parameters_(parameters) {
+  jMp_ = bTj.inverse() * parent_link_->bMcom();
+  jMc_ = bTj.inverse() * child_link_->bMcom();
 }
 
 /* ************************************************************************* */
@@ -41,18 +43,22 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
   return link == child_link_;
 }
 
-/* ************************************************************************* */
-std::ostream &operator<<(std::ostream &os, const Joint &j) {
-  os << j.name() << " id=" << size_t(j.id())
-     << "\n\tparent link: " << j.parent()->name()
-     << "\n\t child link: " << j.child()->name();
+std::ostream &Joint::to_stream(std::ostream &os) const {
+  os << name_ << "\n\tid=" << size_t(id_)
+     << "\n\tparent link: " << parent()->name()
+     << "\n\tchild link: " << child()->name();
   return os;
 }
 
 /* ************************************************************************* */
+std::ostream &operator<<(std::ostream &os, const Joint &j) {
+  // Delegate printing responsibility to member function so we can override.
+  return j.to_stream(os);
+}
+
+/* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
-  os << *j;
-  return os;
+  return j->to_stream(os);
 }
 
 }  // namespace gtdynamics

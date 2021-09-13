@@ -46,19 +46,19 @@ class ScrewJoint : public ScrewJointBase {
    *
    * @param[in] id            id for keys
    * @param[in] name          Name of the joint
-   * @param[in] wTj           joint pose expressed in world frame
+   * @param[in] bTj           joint pose expressed in base frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] parameters    JointParams struct
    * @param[in] axis          joint axis expressed in joint frame
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
+   * @param[in] parameters    JointParams struct.
    */
-  ScrewJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &wTj,
+  ScrewJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-             const JointParams &parameters, const gtsam::Vector3 &axis,
-             double thread_pitch)
-      : ScrewJointBase(id, name, wTj, parent_link, child_link, parameters, axis,
-                       getScrewAxis(axis, thread_pitch)) {}
+             const gtsam::Vector3 &axis, double thread_pitch,
+             const JointParams &parameters = JointParams())
+      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
+                       getScrewAxis(axis, thread_pitch), parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::Screw; }

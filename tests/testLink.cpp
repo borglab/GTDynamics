@@ -29,8 +29,8 @@ using gtsam::Rot3;
 
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
-  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(), Pose3(),
-          Pose3(Rot3(), Point3(0, 0, 1)));
+  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+          Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
 
   // name
   EXPECT(assert_equal("l1", l1.name()));
@@ -39,7 +39,7 @@ TEST(Link, params_constructor) {
   EXPECT(assert_equal(100, l1.mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -54,7 +54,7 @@ TEST(Link, params_constructor) {
       l1.inertiaMatrix()));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1.joints().size()));
@@ -68,8 +68,8 @@ TEST(Link, NumJoints) {
   EXPECT_LONGS_EQUAL(1, l1->numJoints());
 
   auto j2 = boost::make_shared<RevoluteJoint>(
-      123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2, JointParams(),
-      gtsam::Vector3(1, 0, 0));
+      123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2,
+      gtsam::Vector3(1, 0, 0), JointParams());
 
   l1->addJoint(j2);
   EXPECT_LONGS_EQUAL(2, l1->numJoints());

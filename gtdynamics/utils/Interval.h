@@ -8,7 +8,7 @@
 /**
  * @file  Interval.h
  * @brief An interval from k_start to k_end.
- * @author: Frank Dellaert
+ * @author Frank Dellaert
  */
 
 #pragma once

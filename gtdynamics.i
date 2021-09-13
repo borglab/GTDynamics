@@ -32,12 +32,40 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model,
-                          size_t t);
+                          const gtsam::noiseModel::Base* model, size_t k = 0);
+
+  ForwardKinematicsFactor(const gtdynamics::Robot &robot,
+                          const string &start_link_name,
+                          const string &end_link_name,
+                          const gtsam::Values &joint_angles,
+                          const gtsam::noiseModel::Base* model, size_t k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
+};
+
+#include <gtdynamics/factors/ContactEqualityFactor.h>
+class ContactEqualityFactor : gtsam::NoiseModelFactor {
+  ContactEqualityFactor(const gtdynamics::PointOnLink &point_on_link,
+                        const gtsam::noiseModel::Base *model, size_t k1,
+                        size_t k2);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/ContactPointFactor.h>
+class ContactPointFactor : gtsam::NoiseModelFactor {
+  ContactPointFactor(gtsam::Key link_pose_key, gtsam::Key point_key,
+                     const gtsam::noiseModel::Base *model,
+                     const gtsam::Point3 &contact_in_com);
+  ContactPointFactor(const gtdynamics::PointOnLink &point_on_link,
+                     gtsam::Key point_key, const gtsam::noiseModel::Base *model,
+                     size_t t = 0);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/TwistFactor.h>
@@ -64,9 +92,8 @@ class TwistAccelFactor : gtsam::NonlinearFactor {
 
 #include <gtdynamics/factors/TorqueFactor.h>
 class TorqueFactor : gtsam::NonlinearFactor {
-  TorqueFactor(gtsam::Key wrench_key, gtsam::Key torque_key,
-               const gtsam::noiseModel::Base *cost_model,
-               const gtdynamics::JointTyped *joint);
+  TorqueFactor(const gtsam::noiseModel::Base *cost_model,
+               const gtdynamics::JointTyped *joint, size_t k=0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -94,79 +121,85 @@ class WrenchFactor : gtsam::NonlinearFactor {
 
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
-  WrenchEquivalenceFactor(gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
-                          gtsam::Key q_key,
-                          const gtsam::noiseModel::Base *cost_model,
-                          gtdynamics::JointTyped *joint);
+  WrenchEquivalenceFactor(const gtsam::noiseModel::Base *cost_model,
+                          gtdynamics::JointTyped *joint, size_t k = 0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
 class WrenchPlanarFactor : gtsam::NonlinearFactor {
-  WrenchPlanarFactor(gtsam::Key wrench_key,
-                     const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis);
+  WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
+                     Vector planar_axis, gtdynamics::JointTyped *joint, size_t k=0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
 #include <gtdynamics/factors/CollocationFactors.h>
-class EulerPoseColloFactor : gtsam::NonlinearFactor {
-  EulerPoseColloFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
-                       gtsam::Key twist_key, gtsam::Key dt_key,
-                       const gtsam::noiseModel::Base *cost_model);
+class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
+  EulerPoseCollocationFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
+                             gtsam::Key twist_key, gtsam::Key dt_key,
+                             const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalPoseColloFactor : gtsam::NonlinearFactor {
-  TrapezoidalPoseColloFactor(
-      gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
-      gtsam::Key twist_t1_key, gtsam::Key dt_key,
-      const gtsam::noiseModel::Base *cost_model);
+class TrapezoidalPoseCollocationFactor : gtsam::NonlinearFactor {
+  TrapezoidalPoseCollocationFactor(gtsam::Key pose_t0_key,
+                                   gtsam::Key pose_t1_key,
+                                   gtsam::Key twist_t0_key,
+                                   gtsam::Key twist_t1_key, gtsam::Key dt_key,
+                                   const gtsam::noiseModel::Base *cost_model);
 };
 
-class EulerTwistColloFactor : gtsam::NonlinearFactor {
-  EulerTwistColloFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
-                        gtsam::Key accel_key, gtsam::Key dt_key,
-                        const gtsam::noiseModel::Base *cost_model);
+class EulerTwistCollocationFactor : gtsam::NonlinearFactor {
+  EulerTwistCollocationFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
+                              gtsam::Key accel_key, gtsam::Key dt_key,
+                              const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalTwistColloFactor : gtsam::NonlinearFactor {
-  TrapezoidalTwistColloFactor(
-      gtsam::Key twist_t0_key, gtsam::Key twist_t1_key, gtsam::Key accel_t0_key,
-      gtsam::Key accel_t1_key, gtsam::Key dt_key,
-      const gtsam::noiseModel::Base *cost_model);
+class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
+  TrapezoidalTwistCollocationFactor(gtsam::Key twist_t0_key,
+                                    gtsam::Key twist_t1_key,
+                                    gtsam::Key accel_t0_key,
+                                    gtsam::Key accel_t1_key, gtsam::Key dt_key,
+                                    const gtsam::noiseModel::Base *cost_model);
+};
+
+#include <gtdynamics/factors/ContactHeightFactor.h>
+class ContactHeightFactor : gtsam::NonlinearFactor {
+  ContactHeightFactor(gtsam::Key pose_key, gtsam::noiseModel::Base *cost_model,
+                      const gtsam::Point3 &cTcom, const gtsam::Vector3 &gravity,
+                      double ground_plane_height = 0.0);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
 };
 
 /********************** link **********************/
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
-    Link();
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_);
-    Link(int id, const string &name_, const double mass_,
-         const Matrix &inertia_, const gtsam::Pose3 &wTl_,
-         const gtsam::Pose3 &lTcom_, bool is_fixed);
+  Link();
+  Link(int id, const string &name, const double mass,
+       const Matrix &inertia, const gtsam::Pose3 &bMcom, const gtsam::Pose3 &bMlink, bool is_fixed = false) ;    
 
-    gtdynamics::Link* shared();
-    int id() const;
-    void addJoint(gtdynamics::Joint* joint_ptr);
-    const gtsam::Pose3 &wTl() const;
-    const gtsam::Pose3 &lTcom() const;
-    const gtsam::Pose3 wTcom() const;
-    const gtsam::Pose3 &getFixedPose() const;
-    bool isFixed() const;
-    void fix();
-    void fix(gtsam::Pose3 & fixed_pose);
-    void unfix();
-    const std::vector<Joint*> &joints() const;
-    size_t numJoints() const;
-    string name() const;
-    double mass() const;
-    const gtsam::Pose3 &centerOfMass();
-    const Matrix &inertia();
-    gtsam::Matrix6 inertiaMatrix();
+  gtdynamics::Link *shared();
+  int id() const;
+  void addJoint(gtdynamics::Joint *joint_ptr);
+  const gtsam::Pose3 bMcom() const;
+  const gtsam::Pose3 bMlink() const;
+  const gtsam::Pose3 &getFixedPose() const;
+  bool isFixed() const;
+  void fix();
+  void fix(gtsam::Pose3 &fixed_pose);
+  void unfix();
+  const std::vector<Joint *> &joints() const;
+  size_t numJoints() const;
+  string name() const;
+  double mass() const;
+  const gtsam::Pose3 &centerOfMass();
+  const Matrix &inertia();
+  gtsam::Matrix6 inertiaMatrix();
+
+  void print(const std::string &s = "") const;
 };
 
 /********************** joint **********************/
@@ -189,10 +222,9 @@ class JointParams {
 };
 
 virtual class Joint {
-  unsigned char id() const;
-  const gtsam::Pose3 &wTj() const;
-  const gtsam::Pose3 &jTpcom() const;
-  const Pose3 &jTccom() const;
+  uint8_t id() const;
+  const gtsam::Pose3 &jMp() const;
+  const gtsam::Pose3 &jMc() const;
   string name() const;
   gtdynamics::Link* otherLink(const gtdynamics::Link* link);
   std::vector<gtdynamics::Link*> links() const;
@@ -206,25 +238,30 @@ virtual class JointTyped : gtdynamics::Joint {
 virtual class ScrewJointBase : gtdynamics::JointTyped {};
 
 virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
-  RevoluteJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                const gtdynamics::Link* parent_link,
-                const gtdynamics::Link* child_link,
-                const gtdynamics::JointParams &parameters, const Vector &axis);
+  RevoluteJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
+  void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
-  PrismaticJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-                 const gtdynamics::Link* parent_link,
-                 const gtdynamics::Link* child_link,
-                 const gtdynamics::JointParams &parameters, const Vector &axis);
+  PrismaticJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
+  void print(const string &s = "") const;
 };
 
 virtual class ScrewJoint : gtdynamics::ScrewJointBase {
-  ScrewJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::Link* parent_link,
-             const gtdynamics::Link* child_link,
-             const gtdynamics::JointParams &parameters, const Vector &axis,
-             double thread_pitch);
+  ScrewJoint(
+      int id, const string &name, const gtsam::Pose3 &wTj,
+      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
+      const Vector &axis, double thread_pitch,
+      const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
+  void print(const string &s = "") const;
 };
 
 /********************** robot **********************/
@@ -254,7 +291,7 @@ class Robot {
 
   int numJoints() const;
 
-  void print() const;
+  void print(const string &s = "") const;
 
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values) const;
@@ -288,6 +325,10 @@ class ContactPoint {
 class PointOnLink {
   PointOnLink();
   PointOnLink(const gtdynamics::Link* link, const gtsam::Point3 &point);
+
+  gtdynamics::LinkSharedPtr link;
+  gtsam::Point3 point;
+
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   void print(const string &s = "");
 };
@@ -299,19 +340,23 @@ class ContactGoal {
   ContactGoal(const gtdynamics::PointOnLink &point_on_link,
               const gtsam::Point3 &goal_point);
   gtdynamics::Link *link() const;
-  gtsam::Point3 &contact_in_com() const;
+  gtsam::Point3 &contactInCoM() const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
                  double tol = 1e-9) const;
   void print(const string &s = "");
 };
 
 class Kinematics {
-  Kinematics(const gtdynamics::Robot &robot);
-  template <CONTEXT={gtdynamics::Slice, gtdynamics::Interval}> 
-  gtsam::Values inverse(const CONTEXT &context,
+  Kinematics();
+  gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::Robot &robot,
+                        const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
+              const gtdynamics::Robot &robot,
               const gtdynamics::ContactGoals &contact_goals1,
               const gtdynamics::ContactGoals &contact_goals2) const;
 };
@@ -574,7 +619,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
 
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
-    const std::vector<gtsam::Point3> &goal_trajectory, unsigned char i,
+    const std::vector<gtsam::Point3> &goal_trajectory, uint8_t i,
     size_t k = 0);
 
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
@@ -603,22 +648,22 @@ class DynamicsSymbol {
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
   static DynamicsSymbol LinkJointSymbol(const string& s,
-                                        unsigned char link_idx,
-                                        unsigned char joint_idx,
+                                        uint8_t link_idx,
+                                        uint8_t joint_idx,
                                         std::uint64_t t);
   static DynamicsSymbol JointSymbol(const string& s,
-                                    unsigned char joint_idx, std::uint64_t t);
-  static DynamicsSymbol LinkSymbol(const string& s, unsigned char link_idx,
+                                    uint8_t joint_idx, std::uint64_t t);
+  static DynamicsSymbol LinkSymbol(const string& s, uint8_t link_idx,
                                    std::uint64_t t);
   static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
 
   string label() const;
-  unsigned char linkIdx() const;
-  unsigned char jointIdx() const;
+  uint8_t linkIdx() const;
+  uint8_t jointIdx() const;
   size_t time() const;
   gtsam::Key key() const;
 
-  void print(const string& s = "");
+  void print(const string &s = "");
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
@@ -765,7 +810,11 @@ class Phase {
                          const gtsam::Point3 &step,
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtdynamics::Robot &robot, size_t k_start,
-                         std::map<string, gtsam::Point3> @cp_goals) const;
+                         const std::map<string, gtsam::Point3> &cp_goals) const;
+  std::map<string, gtsam::Point3>
+  updateContactPointGoals(const gtdynamics::ContactPoints &all_contact_points,
+                         const gtsam::Point3 &step,
+                         const std::map<string, gtsam::Point3> &cp_goals) const;
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
                             double dt) const;
@@ -780,7 +829,7 @@ class WalkCycle {
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
   const ContactPoints& contactPoints() const;
-  void print(const string& s = "") const;
+  void print(const string &s = "") const;
   std::map<string, gtsam::Point3>
   initContactPointGoal(const gtdynamics::Robot &robot) const;
   std::vector<string> swingLinks(size_t p) const;
@@ -794,22 +843,25 @@ class WalkCycle {
 #include <gtdynamics/utils/Trajectory.h>
 class Trajectory {
   Trajectory();
-  Trajectory(const gtdynamics::Robot &robot,
-             const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
+  Trajectory(const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
   std::vector<gtdynamics::ContactPoints> phaseContactPoints() const;
   std::vector<gtdynamics::ContactPoints> transitionContactPoints() const;
   std::vector<int> phaseDurations() const;
   size_t numPhases() const;
   std::vector<gtsam::NonlinearFactorGraph>
-  getTransitionGraphs(gtdynamics::DynamicsGraph &graph_builder,
+  getTransitionGraphs(const gtdynamics::Robot& robot, 
+                      const gtdynamics::DynamicsGraph &graph_builder,
                       double mu) const;
   gtsam::NonlinearFactorGraph
-  multiPhaseFactorGraph(gtdynamics::DynamicsGraph &graph_builder,
+  multiPhaseFactorGraph(const gtdynamics::Robot& robot, 
+                        const gtdynamics::DynamicsGraph &graph_builder,
                         const gtdynamics::CollocationScheme collocation,
                         double mu) const;
   std::vector<gtsam::Values>
-  transitionPhaseInitialValues(double gaussian_noise) const;
-  gtsam::Values multiPhaseInitialValues(double gaussian_noise, double dt) const;
+  transitionPhaseInitialValues(const gtdynamics::Robot& robot, 
+                               double gaussian_noise) const;
+  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, 
+                                        double gaussian_noise, double dt) const;
   std::vector<int> finalTimeSteps() const;
   size_t phaseIndex(size_t p) const;
   const Phase &phase(size_t p) const;
@@ -817,17 +869,21 @@ class Trajectory {
   size_t getEndTimeStep(size_t p) const;
   const ContactPoints &getPhaseContactLinks(size_t p) const;
   std::vector<string> getPhaseSwingLinks(size_t p) const;
-  PointGoalFactor pointGoalFactor(const string &link_name,
+  PointGoalFactor pointGoalFactor(const gtdynamics::Robot &robot,
+                                  const string &link_name,
                                   const gtdynamics::ContactPoint &cp, size_t k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
-  contactPointObjectives(const gtsam::SharedNoiseModel &cost_model,
+  contactPointObjectives(const gtdynamics::Robot& robot, 
+                         const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
+                               const gtdynamics::Robot& robot,
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
       gtsam::NonlinearFactorGraph @graph,
+      const gtdynamics::Robot& robot, 
       const gtsam::SharedNoiseModel &pose_model,
       const gtsam::SharedNoiseModel &twist_model,
       const gtsam::SharedNoiseModel &twist_acceleration_model,
@@ -835,7 +891,7 @@ class Trajectory {
       const gtsam::SharedNoiseModel &joint_acceleration_model) const;
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
                                  double desired_dt, double sigma = 0) const;
-  void writeToFile(const string &name, const gtsam::Values &results) const;
+  void writeToFile(const gtdynamics::Robot &robot, const string &name, const gtsam::Values &results) const;
 };
 
 /********************** Utilities  **********************/

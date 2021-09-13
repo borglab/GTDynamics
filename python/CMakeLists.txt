@@ -11,22 +11,25 @@ set(PYTHON_TESTS "${PROJECT_NAME}.tests")
 
 set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
 
+file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/python" GTD_PYTHON_BINARY_DIR)
+
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
-               ${PROJECT_BINARY_DIR}/python/setup.py)
+               ${GTD_PYTHON_BINARY_DIR}/setup.py)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
-               ${PROJECT_BINARY_DIR}/python/requirements.txt COPYONLY)
+               ${GTD_PYTHON_BINARY_DIR}/requirements.txt COPYONLY)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 file(COPY ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}
-     DESTINATION ${PROJECT_BINARY_DIR}/python)
+     DESTINATION ${GTD_PYTHON_BINARY_DIR})
 
-combine_interface_headers(
-  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i
-  ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i ${ADDITIONAL_INTERFACE_FILES})
+set(interface_headers
+    ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.i
+    ${ADDITIONAL_INTERFACE_FILES}
+)
 
 pybind_wrap(
   ${PROJECT_NAME}_py # target
-  ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.i # interface header file
+  "${interface_headers}" # interface header file
   "${PROJECT_NAME}.cpp" # the generated cpp
   "${PROJECT_NAME}" # module_name
   "${PROJECT_NAME}" # top namespace in the cpp file
@@ -40,21 +43,44 @@ pybind_wrap(
 set_target_properties(
   ${PROJECT_NAME}_py
   PROPERTIES OUTPUT_NAME "${PROJECT_NAME}"
-             LIBRARY_OUTPUT_DIRECTORY
-             "${PROJECT_BINARY_DIR}/python/${PROJECT_NAME}"
+             LIBRARY_OUTPUT_DIRECTORY "${GTD_PYTHON_BINARY_DIR}/${PROJECT_NAME}"
              DEBUG_POSTFIX "" # Otherwise you will have a wrong name
              RELWITHDEBINFO_POSTFIX "" # Otherwise you will have a wrong name
 )
 
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_BINARY_DIR}/python/setup.py install
+  COMMAND ${PYTHON_EXECUTABLE} ${GTD_PYTHON_BINARY_DIR}/setup.py install
   DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/python)
+  WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
+
+if(UNIX)
+  set(GTD_PATH_SEP ":")
+else()
+  set(GTD_PATH_SEP ";")
+endif()
+
+# Unit tests
+set(python_unit_test_suites)
+macro(PYTHON_UNIT_TEST_SUITE suiteName directory)
+  add_custom_target(
+    python-test.${suiteName}
+    COMMAND
+      ${CMAKE_COMMAND} -E env # add package to python path so no need to install
+      "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
+      ${PYTHON_EXECUTABLE} -m unittest discover
+    DEPENDS ${PROJECT_NAME}_py
+    WORKING_DIRECTORY ${directory})
+  list(APPEND python_unit_test_suites python-test.${suiteName})
+endmacro()
+
+PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
+
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
+endif()
 
 # Custom make command to run all Python tests
 add_custom_target(
   python-test
-  COMMAND ${PYTHON_EXECUTABLE} -m unittest discover
-  DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/python/tests)
+  DEPENDS ${PROJECT_NAME}_py ${python_unit_test_suites})

@@ -6,13 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  KinematicsSlice.h
- * @brief Kinematics in single time slice.
+ * @file  Kinematics.h
+ * @brief Kinematics optimizer.
  * @author: Frank Dellaert
  */
 
 #pragma once
 
+#include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ContactPoint.h>
 #include <gtdynamics/utils/Interval.h>
@@ -22,6 +23,13 @@
 
 namespace gtdynamics {
 
+/**
+ * Desired world position for a given point on some link.
+ *
+ * This simple struct stores a `point_on_link`, which specifies a 3D
+ * point in the link's CoM frame, and a `goal_point` in world coordinate frames.
+ * The goal is satisfied iff `point_on_link.predict(values, k) == goal_point`.
+ */
 struct ContactGoal {
   PointOnLink point_on_link;  ///< In COM.
   gtsam::Point3 goal_point;   ///< In world frame.
@@ -34,7 +42,7 @@ struct ContactGoal {
   const LinkSharedPtr& link() const { return point_on_link.link; }
 
   /// Return contact point in link COM frame.
-  const gtsam::Point3& contact_in_com() const { return point_on_link.point; }
+  const gtsam::Point3& contactInCoM() const { return point_on_link.point; }
 
   /// Print to stream.
   friend std::ostream& operator<<(std::ostream& os, const ContactGoal& cg);
@@ -43,7 +51,7 @@ struct ContactGoal {
   void print(const std::string& s) const;
 
   /**
-   * @fn Check that the contact goal has been achived for given values.
+   * @fn Check that the contact goal has been achieved for given values.
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
    * @param tol tolerance in 3D (default 1e-9).
@@ -57,12 +65,12 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-struct KinematicsParameters {
+/// Noise models etc specific to Kinematics class
+struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,     // pose factor
-      g_cost_model,                               // goal point
-      prior_q_cost_model;                         // joint angle prior factor
-  gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
+  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
+      g_cost_model,                            // goal point
+      prior_q_cost_model;                      // joint angle prior factor
 
   KinematicsParameters()
       : p_cost_model(Isotropic::Sigma(6, 1e-4)),
@@ -71,28 +79,30 @@ struct KinematicsParameters {
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
-class Kinematics {
-  Robot robot_;
-  KinematicsParameters p_;
+class Kinematics : public Optimizer {
+ protected:
+  boost::shared_ptr<const KinematicsParameters> p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
-   * @param context e.g., a Slice, Phase, WalkCycle, or Trajectory instance
    */
-  Kinematics(const Robot& robot,
-             const KinematicsParameters& parameters = KinematicsParameters())
-      : robot_(robot), p_(parameters) {}
+  Kinematics(const boost::shared_ptr<const KinematicsParameters>& parameters =
+                 boost::make_shared<const KinematicsParameters>())
+      : Optimizer(parameters), p_(parameters) {}
 
   /**
-   * @fn Slice with kinematics constraints.
+   * @fn Create graph with kinematics constraints.
+   * @param context Slice or Interval instance
    * @returns factor graph..
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph graph(const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
+                                    const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
+   * @param context Slice or Interval instance
    * @param contact_goals goals for contact points
    * @returns graph with point goal factors.
    */
@@ -102,38 +112,44 @@ class Kinematics {
 
   /**
    * @fn Factors that minimize joint angles.
+   * @param context Slice or Interval instance
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph jointAngleObjectives(
-      const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context,
+                                                   const Robot& robot) const;
 
   /**
    * @fn Initialize kinematics.
    *
    * Use wTcom for poses and zero-mean noise for joint angles.
    *
+   * @param context Slice or Interval instance
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values initialValues(const CONTEXT& context,
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.1) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
+   * @param context Slice or Interval instance
    * @param contact_goals goals for contact points
    * @returns values with poses and joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values inverse(const CONTEXT& context,
+  gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals) const;
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
+   * @param interval Interval instance
+   * @param contact_goals1 goals for contact points for interval.k_start
+   * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval,
+  gtsam::Values interpolate(const Interval& interval, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };

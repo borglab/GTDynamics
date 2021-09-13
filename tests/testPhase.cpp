@@ -57,19 +57,21 @@ TEST(Phase, All) {
   const gtsam::SharedNoiseModel cost_model = nullptr;
   Point3 goal(1, 2, 3);
   const size_t k_start = 777;
-  std::map<std::string, Point3> cp_goals = {{"tarsus_2_L2", goal},
-                                            {"tarsus_1_L1", goal},
-                                            {"tarsus_3_L3", goal},
-                                            {"tarsus_4_L4", goal},
-                                            {"tarsus_5_R4", goal}};
+  Phase::ContactPointGoals cp_goals = {{"tarsus_2_L2", goal},
+                                       {"tarsus_1_L1", goal},
+                                       {"tarsus_3_L3", goal},
+                                       {"tarsus_4_L4", goal},
+                                       {"tarsus_5_R4", goal}};
   gtsam::NonlinearFactorGraph factors = phase_1.contactPointObjectives(
-      walk_cycle.contactPoints(), step, cost_model, robot, k_start, &cp_goals);
+      walk_cycle.contactPoints(), step, cost_model, robot, k_start, cp_goals);
+  auto new_goals = phase_1.updateContactPointGoals(walk_cycle.contactPoints(),
+                                                   step, cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
-  EXPECT(assert_equal(goal, cp_goals["tarsus_2_L2"]));
-  EXPECT(assert_equal(goal, cp_goals["tarsus_1_L1"]));
-  EXPECT(assert_equal(goal, cp_goals["tarsus_3_L3"]));
-  EXPECT(assert_equal(Point3(goal + step), cp_goals["tarsus_4_L4"]));
-  EXPECT(assert_equal(Point3(goal + step), cp_goals["tarsus_5_R4"]));
+  EXPECT(assert_equal(goal, new_goals["tarsus_2_L2"]));
+  EXPECT(assert_equal(goal, new_goals["tarsus_1_L1"]));
+  EXPECT(assert_equal(goal, new_goals["tarsus_3_L3"]));
+  EXPECT(assert_equal(Point3(goal + step), new_goals["tarsus_4_L4"]));
+  EXPECT(assert_equal(Point3(goal + step), new_goals["tarsus_5_R4"]));
 }
 
 int main() {

@@ -25,8 +25,8 @@
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  using four_bar_linkage::planar_axis;
-  using four_bar_linkage::robot;
+  using four_bar_linkage_pure::planar_axis;
+  using four_bar_linkage_pure::robot;
 
   gtsam::Values joint_angles_vels_accels;
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.addPrior(internal::PoseKey(i, 0), link->wTcom(),
+    prior_factors.addPrior(internal::PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
         internal::TwistKey(i, 0), gtsam::Z_6x1,
