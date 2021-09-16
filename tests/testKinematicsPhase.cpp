@@ -25,6 +25,12 @@ using std::string;
 #include "contactGoalsExample.h"
 
 TEST(Phase, InverseKinematics) {
+  // Load robot and establish contact/goal pairs
+  using namespace contact_goals_example;
+
+  constexpr size_t num_time_steps = 5;
+  Phase phase0(num_time_steps, {LH,RF}, contact_in_com);
+  // TODO(frank): test methods producing constraints.
 }
 
 int main() {

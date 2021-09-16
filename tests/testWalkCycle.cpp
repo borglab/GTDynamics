@@ -21,7 +21,6 @@
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
-
 using gtsam::Point3;
 
 TEST(WalkCycle, contactPoints) {
@@ -45,11 +44,10 @@ TEST(WalkCycle, objectives) {
 
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
-  Phase phase0(num_time_steps), phase1(num_time_steps);
-  phase0.addContactPoint("lower1", contact_in_com);  // LH
-  phase1.addContactPoint("lower0", contact_in_com);  // LF
-  phase0.addContactPoint("lower2", contact_in_com);  // RF
-  phase1.addContactPoint("lower3", contact_in_com);  // RH
+  Phase phase0(num_time_steps, {robot.link("lower1"), robot.link("lower2")},
+               contact_in_com),
+      phase1(num_time_steps, {robot.link("lower0"), robot.link("lower3")},
+             contact_in_com);
   auto walk_cycle = WalkCycle({phase0, phase1});
 
   // Expected contact goal points.
@@ -72,7 +70,7 @@ TEST(WalkCycle, objectives) {
 
   // Check creation of PointGoalFactors.
   gtsam::NonlinearFactorGraph factors =
-      walk_cycle.contactPointObjectives(step, cost_model, robot, k, &cp_goals);
+      walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
 
   // Check goals have been updated

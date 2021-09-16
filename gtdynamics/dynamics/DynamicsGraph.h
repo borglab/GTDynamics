@@ -25,7 +25,7 @@
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/ContactPoint.h"
+#include "gtdynamics/utils/PointOnLink.h"
 
 namespace gtdynamics {
 
@@ -129,22 +129,22 @@ class DynamicsGraph {
   /// Return q-level nonlinear factor graph (pose related factors)
   gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points = boost::none) const;
+      const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 
   /// Return v-level nonlinear factor graph (twist related factors)
   gtsam::NonlinearFactorGraph vFactors(
       const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points = boost::none) const;
+      const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 
   /// Return a-level nonlinear factor graph (acceleration related factors)
   gtsam::NonlinearFactorGraph aFactors(
       const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points = boost::none) const;
+      const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 
   /// Return dynamics-level nonlinear factor graph (wrench related factors)
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points = boost::none,
+      const boost::optional<PointOnLinks> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /**
@@ -157,7 +157,7 @@ class DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
-      const boost::optional<ContactPoints> &contact_points = boost::none,
+      const boost::optional<PointOnLinks> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /**
@@ -198,7 +198,7 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph trajectoryFG(
       const Robot &robot, const int num_steps, const double dt,
       const CollocationScheme collocation = Trapezoidal,
-      const boost::optional<ContactPoints> &contact_points = boost::none,
+      const boost::optional<PointOnLinks> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
   /**
@@ -214,7 +214,7 @@ class DynamicsGraph {
       const Robot &robot, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation = Trapezoidal,
-      const boost::optional<std::vector<ContactPoints>> &phase_contact_points =
+      const boost::optional<std::vector<PointOnLinks>> &phase_contact_points =
           boost::none,
       const boost::optional<double> &mu = boost::none) const;
 
