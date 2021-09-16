@@ -33,48 +33,46 @@ using gtsam::Rot3;
 
 double kNoiseSigma = 1e-8;
 
-// TODO(frank): #117 Fix test, which attempts to change a fixed link.
-// TEST(InitializeSolutionUtils, Interpolation) {
-//   using simple_urdf::robot;
-//   robot.print();
+TEST(InitializeSolutionUtils, Interpolation) {
+  using simple_rr::robot;
 
-//   // Set initial and final values.
-//   Pose3 wTb_i;
-//   Rot3 wRb_f = Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2);
-//   Pose3 wTb_f(wRb_f, Point3(1, 1, 1));
+  // Set initial and final values.
+  Pose3 wTb_i;
+  Rot3 wRb_f = Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2);
+  Pose3 wTb_f(wRb_f, Point3(1, 1, 1));
 
-//   // We will interpolate from 0->10s, in 1 second increments.
-//   double T_i = 0, T_f = 10, dt = 1;
+  // We will interpolate from 0->10s, in 1 second increments.
+  double T_i = 0, T_f = 10, dt = 1;
 
-//   gtsam::Values init_vals =
-//       InitializeSolutionInterpolation(robot, "l1", wTb_i, wTb_f, T_i, T_f,
-//       dt);
+  gtsam::Values init_vals =
+      InitializeSolutionInterpolation(robot, "link_0", wTb_i, wTb_f, T_i, T_f,
+      dt);
 
-//   int n_steps_final = static_cast<int>(std::round(T_f / dt));
+  int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-//   size_t id = 0;
+  size_t id = 0;
 
-//   // Check start pose.
-//   EXPECT(assert_equal(wTb_i, Pose(init_vals, id)));
+  // Check start pose.
+  EXPECT(assert_equal(wTb_i, Pose(init_vals, id)));
 
-//   // Check middle of trajectory.
-//   EXPECT(assert_equal(Pose3(wTb_i.rotation().slerp(0.5, wRb_f),
-//                             Point3(0.136439103437, 0.863560896563, 0.5)),
-//                       Pose(init_vals, id, 5)));
+  // Check middle of trajectory.
+  EXPECT(assert_equal(Pose3(wTb_i.rotation().slerp(0.5, wRb_f),
+                            Point3(0.136439103437, 0.863560896563, 0.5)),
+                      Pose(init_vals, id, 5)));
 
-//   // Check penultimate pose.
-//   EXPECT(
-//       assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
-//                          Point3(0.794193007439, 1.03129011851,
-//                          0.961521708273)),
-//                    Pose(init_vals, id, n_steps_final - 1)));
+  // Check penultimate pose.
+  EXPECT(
+      assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
+                         Point3(0.794193007439, 1.03129011851,
+                         0.961521708273)),
+                   Pose(init_vals, id, n_steps_final - 1)));
 
-//   // Check end pose.
-//   EXPECT(assert_equal(wTb_f, Pose(init_vals, id, n_steps_final)));
-// }
+  // Check end pose.
+  EXPECT(assert_equal(wTb_f, Pose(init_vals, id, n_steps_final)));
+}
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -148,8 +146,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   double dt = 1;
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   /**
    * The aim of this test is to initialize a trajectory for the simple two-link
@@ -214,8 +211,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   gtsam::Values init_vals = ZeroValues(robot, 0, 0.0, contact_points);
 
@@ -242,8 +238,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   gtsam::Values init_vals =
       ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
@@ -269,12 +264,12 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
 
-  ContactPoint c = ContactPoint{oTc_l1.translation(), 1};
-  ContactPoints p0{{l1->name(), c}};
-  ContactPoints p1{};
-  ContactPoints p2{{l1->name(), c}};
+  Point3 c = oTc_l1.translation();
+  PointOnLinks p0{{l1, c}};
+  PointOnLinks p1{};
+  PointOnLinks p2{{l1, c}};
 
-  std::vector<ContactPoints> phase_contact_points = {p0, p1, p2};
+  std::vector<PointOnLinks> phase_contact_points = {p0, p1, p2};
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;

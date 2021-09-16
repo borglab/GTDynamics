@@ -15,7 +15,7 @@
 
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/ContactPoint.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
@@ -93,7 +93,8 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create graph with kinematics constraints.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @returns factor graph..
    */
   template <class CONTEXT>
@@ -102,7 +103,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create point goal objectives.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
    * @param contact_goals goals for contact points
    * @returns graph with point goal factors.
    */
@@ -112,7 +113,8 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Factors that minimize joint angles.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -124,7 +126,8 @@ class Kinematics : public Optimizer {
    *
    * Use wTcom for poses and zero-mean noise for joint angles.
    *
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
@@ -134,7 +137,8 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @param contact_goals goals for contact points
    * @returns values with poses and joint angles.
    */
@@ -145,6 +149,7 @@ class Kinematics : public Optimizer {
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
    * @param interval Interval instance
+   * @param robot Robot specification from URDF/SDF.
    * @param contact_goals1 goals for contact points for interval.k_start
    * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.

@@ -72,7 +72,6 @@ TEST(Statics, OneMovingLink) {
   // Now do statics using GTD.
   auto parameters2D =
       boost::make_shared<StaticsParameters>(kSigmaDynamics, gravity2D);
-  // parameters2D.lm_parameters.setVerbosityLM("SUMMARY");
   Statics statics(parameters2D);
   const size_t k = 777;
   const Slice slice(k);
@@ -128,12 +127,12 @@ TEST(Statics, Quadruped) {
   EXPECT_LONGS_EQUAL(61, result.size());
   // TODO(Varun) Issue #233
   // Regression
+  result.print("", GTDKeyFormatter);
   // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
   auto minimal = statics.minimizeTorques(slice, robot);
   EXPECT_LONGS_EQUAL(61, minimal.size());
-  // GTD_PRINT(minimal);
 }
 
 int main() {

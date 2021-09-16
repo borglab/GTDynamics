@@ -84,14 +84,14 @@ gtsam::Values InitializePosesAndJoints(const Robot& robot,
  * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
  *      Noise drawn from a zero-mean gaussian distribution with a standard
  *      deviation of gaussian_noise.
- * @param[in] contact_points  ContactPoint objects.
+ * @param[in] contact_points  PointOnLink objects.
  * @return Initial solution stored in gtsam::Values object.
  */
 gtsam::Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const gtsam::Pose3& wTl_f, double T_s, double T_f, double dt,
     double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
+    const boost::optional<PointOnLinks>& contact_points = boost::none);
 
 /**
  * @fn Initialize interpolated solution for multiple phases.
@@ -105,14 +105,14 @@ gtsam::Values InitializeSolutionInterpolation(
  * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
  *      Noise drawn from a zero-mean gaussian distribution with a standard
  *      deviation of gaussian_noise.
- * @param[in] contact_points  ContactPoint objects.
+ * @param[in] contact_points  PointOnLink objects.
  * @return Initial solution stored in gtsam::Values object.
  */
 gtsam::Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     double dt, double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
+    const boost::optional<PointOnLinks>& contact_points = boost::none);
 
 /**
  * @fn Iteratively solve for the robot kinematics with contacts.
@@ -126,14 +126,14 @@ gtsam::Values InitializeSolutionInterpolationMultiPhase(
  * @param[in] gaussian_noise  Optional gaussian noise to add to initial values.
  *      Noise drawn from a zero-mean gaussian distribution with a standard
  *      deviation of gaussian_noise.
- * @param[in] contact_points  ContactPoint objects.
+ * @param[in] contact_points  PointOnLink objects.
  * @return Initial solution stored in gtsam::Values object.
  */
 gtsam::Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     double dt, double gaussian_noise = 1e-8,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
+    const boost::optional<PointOnLinks>& contact_points = boost::none);
 
 /**
  * @fn Initialize solution for multi-phase trajectory to nominal pose.
@@ -149,7 +149,7 @@ gtsam::Values MultiPhaseZeroValuesTrajectory(
     const Robot& robot, const std::vector<int>& phase_steps,
     std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
     const double gaussian_noise = 1e-8,
-    const boost::optional<std::vector<ContactPoints>>& phase_contact_points =
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points =
         boost::none);
 
 /**
@@ -177,7 +177,7 @@ gtsam::Values MultiPhaseInverseKinematicsTrajectory(
     const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
     std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
     double gaussian_noise = 1e-8,
-    const boost::optional<std::vector<ContactPoints>>& phase_contact_points =
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points =
         boost::none);
 
 /**
@@ -192,7 +192,7 @@ gtsam::Values MultiPhaseInverseKinematicsTrajectory(
  */
 gtsam::Values ZeroValues(
     const Robot& robot, const int t, double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
+    const boost::optional<PointOnLinks>& contact_points = boost::none);
 
 /**
  * @fn Return zero values of the trajectory for initial value of optimization.
@@ -209,6 +209,6 @@ gtsam::Values ZeroValues(
 gtsam::Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases = -1,
     double gaussian_noise = 0.0,
-    const boost::optional<ContactPoints>& contact_points = boost::none);
+    const boost::optional<PointOnLinks>& contact_points = boost::none);
 
 }  // namespace gtdynamics
