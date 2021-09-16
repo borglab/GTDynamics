@@ -40,7 +40,6 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single spider walk cycle.
 Trajectory getTrajectory(const Robot& robot, size_t repeat) {
-  // TODO(frank): copy/paste from testSpiderWalking :-(
   const vector<LinkSharedPtr> odd_links = {
       robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
       robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};

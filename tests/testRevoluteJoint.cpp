@@ -43,7 +43,7 @@ using namespace gtdynamics;
  * expected.
  */
 TEST(Joint, params_constructor) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -153,7 +153,7 @@ TEST(Joint, params_constructor) {
 
 // Test parentTchild method at rest configuration.
 TEST(RevoluteJoint, ParentTchild) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto j1 = robot.joint("j1");
 
   Values joint_angles;

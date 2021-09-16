@@ -33,8 +33,11 @@ using std::vector;
 
 using namespace gtdynamics;
 
+#define EXPECT_DOUBLES_SIMILAR(expected, actual, rtol) \
+  EXPECT_DOUBLES_EQUAL(expected, actual, rtol* expected)
+
 // Returns a Trajectory object for a single robot walk cycle.
-Trajectory getTrajectory(const Robot &robot, size_t repeat) {
+Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   vector<LinkSharedPtr> odd_links = {
       robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
       robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
@@ -100,6 +103,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
+  EXPECT_LONGS_EQUAL(12, K);  // TODO(frank): why not 11?
 
   // Add base goal objectives to the factor graph.
   auto base_link = robot.link("body");
@@ -139,7 +143,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Initialize solution.
-  double gaussian_noise = 1e-5;
+  double gaussian_noise = 0.0;
   Values init_vals =
       trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
@@ -152,8 +156,8 @@ TEST(testSpiderWalking, WholeEnchilada) {
   std::ifstream is(filename.c_str());
   is >> key >> expected;
   double actual = graph.error(init_vals);
-  const double tol = 1.0;
-  EXPECT_DOUBLES_EQUAL(expected, actual, tol);
+  const double tol = 1.0, rtol = 0.01;
+  EXPECT_DOUBLES_SIMILAR(expected, actual, rtol);
 
   // If there is an error, create a file errors.csv with all error comparisons.
   if (fabs(actual - expected) > tol) {
@@ -163,7 +167,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
       is >> key >> expected;
       const auto& factor = graph[i];
       const double actual = factor->error(init_vals);
-      bool equal = fabs(actual - expected) < tol;
+      bool equal = fabs(actual - expected) < std::max(tol, rtol * expected);
       auto bare_ptr = factor.get();
       if (!equal) {
         // Print to stdout for CI.
@@ -180,8 +184,35 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto results = optimizer.optimize();
 
   // Regression!
-  EXPECT_DOUBLES_EQUAL(986936294413055, graph.error(init_vals), 100);
-  EXPECT_DOUBLES_EQUAL(353211972620861, graph.error(results), 100);
+  EXPECT_DOUBLES_SIMILAR(986944306277409, graph.error(init_vals), rtol);
+  EXPECT_DOUBLES_SIMILAR(349267962507918, graph.error(results), rtol);
+
+  // Add regressions on initial values.
+  auto body = robot.link("body");
+  EXPECT(gtsam::assert_equal(Pose3(), Pose(init_vals, body->id(), 0), 1e-3));
+
+  // Still at the identity as this is a zero values initialization.
+  EXPECT(gtsam::assert_equal(Pose3(), Pose(init_vals, body->id(), K), 1e-3));
+
+  auto foot = robot.link("tarsus_1_L1");
+  EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
+                             Pose(init_vals, foot->id(), 0).translation(),
+                             1e-3));
+
+  // TODO(frank): why did this not move?
+  EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
+                             Pose(init_vals, foot->id(), K).translation(),
+                             1e-3));
+
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 31, K), 1e-7);
+
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 31, K), 1e-7);
 }
 
 int main() {

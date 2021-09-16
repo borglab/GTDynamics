@@ -25,11 +25,7 @@ using std::string;
 
 Phase::Phase(size_t num_time_steps,
              const std::vector<PointOnLink> &points_on_links)
-    : num_time_steps_(num_time_steps) {
-  for (auto &&point_on_link : points_on_links) {
-    contact_points_.push_back(point_on_link);
-  }
-}
+    : num_time_steps_(num_time_steps), contact_points_(points_on_links) {}
 
 Phase::Phase(size_t num_time_steps, const std::vector<LinkSharedPtr> &links,
              const gtsam::Point3 &contact_in_com)
@@ -77,12 +73,13 @@ ContactPointGoals Phase::updateContactPointGoals(
     const ContactPointGoals &cp_goals) const {
   ContactPointGoals new_goals;
 
+  // For all "feet", update the goal point with step iff in swing.
   for (auto &&cp : all_contact_points) {
     const string &name = cp.link->name();
     const Point3 &cp_goal = cp_goals.at(name);
     const bool stance = hasContact(cp.link);
     // If a contact is not on a stance leg, it is on a swing leg and we advance
-    // the contac goal by adding the 3-vector `step`.
+    // the contact goal by adding the 3-vector `step`.
     new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
   }
   return new_goals;
