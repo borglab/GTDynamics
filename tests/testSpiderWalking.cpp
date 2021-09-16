@@ -33,6 +33,9 @@ using std::vector;
 
 using namespace gtdynamics;
 
+#define EXPECT_DOUBLES_SIMILAR(expected, actual, rtol) \
+  EXPECT_DOUBLES_EQUAL(expected, actual, rtol* expected)
+
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
@@ -152,7 +155,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   is >> key >> expected;
   double actual = graph.error(init_vals);
   const double tol = 1.0, rtol = 0.01;
-  EXPECT_DOUBLES_EQUAL(expected, actual, rtol * expected);
+  EXPECT_DOUBLES_SIMILAR(expected, actual, rtol);
 
   // If there is an error, create a file errors.csv with all error comparisons.
   if (fabs(actual - expected) > tol) {
@@ -179,8 +182,8 @@ TEST(testSpiderWalking, WholeEnchilada) {
   auto results = optimizer.optimize();
 
   // Regression!
-  EXPECT_DOUBLES_EQUAL(986944306277409, graph.error(init_vals), 100);
-  EXPECT_DOUBLES_EQUAL(349267962507918, graph.error(results), 100);
+  EXPECT_DOUBLES_SIMILAR(986944306277409, graph.error(init_vals), rtol);
+  EXPECT_DOUBLES_SIMILAR(349267962507918, graph.error(results), rtol);
 
   // Add regressions on initial values.
   auto body = robot.link("body");
