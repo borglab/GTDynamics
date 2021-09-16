@@ -68,7 +68,7 @@ Phase::ContactPointGoals Phase::updateContactPointGoals(
     const Point3 &cp_goal = cp_goals.at(name);
     const bool stance = hasContact(name);
     // If a contact is not on a stance leg, it is on a swing leg and we advance
-    // the contac goal by adding the 3-vector `step`.
+    // the contact goal by adding the 3-vector `step`.
     new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
   }
   return new_goals;
