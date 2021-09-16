@@ -37,7 +37,7 @@ using namespace gtdynamics;
   EXPECT_DOUBLES_EQUAL(expected, actual, rtol* expected)
 
 // Returns a Trajectory object for a single robot walk cycle.
-Trajectory getTrajectory(const Robot &robot, size_t repeat) {
+Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   vector<LinkSharedPtr> odd_links = {
       robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
       robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
