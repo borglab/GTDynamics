@@ -72,6 +72,12 @@ TEST(WalkCycle, objectives) {
   gtsam::NonlinearFactorGraph factors =
       walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
+
+  // Check goals have been updated
+  EXPECT(gtsam::assert_equal<Point3>(goal_LH + step, cp_goals["lower1"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_LF + step, cp_goals["lower0"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RF + step, cp_goals["lower2"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RH + step, cp_goals["lower3"], 1e-6));
 }
 
 int main() {

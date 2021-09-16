@@ -44,8 +44,8 @@ TEST(Statics, OneMovingLink) {
   const Pose3 bMcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
   auto base =
-      boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), true);
-  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bMcom);
+      boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3(), true);
+  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bMcom, Pose3());
 
   // Create joint
   constexpr unsigned char id = 22;
