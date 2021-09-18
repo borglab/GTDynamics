@@ -67,6 +67,9 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// Joints connected to the link
   std::vector<JointSharedPtr> joints_;
 
+  /// Robot class should have access to the internals of its links.
+  friend class Robot;
+
  public:
   Link() {}
 
@@ -182,4 +185,5 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// Unfix the link
   void unfix() { is_fixed_ = false; }
 };
+
 }  // namespace gtdynamics
