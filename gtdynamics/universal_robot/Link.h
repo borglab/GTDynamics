@@ -57,8 +57,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   gtsam::Matrix3 inertia_;
 
   /// SDF Elements.
-  gtsam::Pose3 bMcom_;  // CoM frame defined in the base frame at rest.
-  gtsam::Pose3 bMlink_; // link frame defined in the base frame at rest.
+  gtsam::Pose3 bMcom_;   // CoM frame defined in the base frame at rest.
+  gtsam::Pose3 bMlink_;  // link frame defined in the base frame at rest.
 
   /// Option to fix the link, used for ground link
   bool is_fixed_;
@@ -72,7 +72,7 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /**
    * @brief Construct a new Link object.
-   * 
+   *
    * @param id Link ID
    * @param name The name of the link as defined in the SDF/URDF file.
    * @param mass The mass of the link.
@@ -82,7 +82,8 @@ class Link : public boost::enable_shared_from_this<Link> {
    * @param is_fixed Flag indicating if the link is fixed.
    */
   Link(uint8_t id, const std::string &name, const double mass,
-       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom, const gtsam::Pose3 &bMlink, bool is_fixed = false)
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom,
+       const gtsam::Pose3 &bMlink, bool is_fixed = false)
       : id_(id),
         name_(name),
         mass_(mass),
@@ -122,9 +123,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
   /// Relative pose at rest from link’s COM to the base frame.
-  inline const gtsam::Pose3& bMcom() const { return bMcom_; }
+  inline const gtsam::Pose3 &bMcom() const { return bMcom_; }
 
-    /// Relative pose at rest from link frame to the base frame. mainly for interoperability uses
+  /// Relative pose at rest from link frame to the base frame. mainly for
+  /// interoperability uses
   inline const gtsam::Pose3 bMlink() const { return bMlink_; }
 
   /// the fixed pose of the link
@@ -132,15 +134,6 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /// whether the link is fixed
   bool isFixed() const { return is_fixed_; }
-
-  /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
-  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
-    is_fixed_ = true;
-    fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
-  }
-
-  /// Unfix the link
-  void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
   const std::vector<JointSharedPtr> &joints() const { return joints_; }
@@ -178,5 +171,15 @@ class Link : public boost::enable_shared_from_this<Link> {
   void print(const std::string &s = "") const {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
+
+ private:
+  /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
+  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+    is_fixed_ = true;
+    fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
+  }
+
+  /// Unfix the link
+  void unfix() { is_fixed_ = false; }
 };
 }  // namespace gtdynamics
