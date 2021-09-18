@@ -37,7 +37,6 @@ TEST(Interval, InverseKinematics) {
 
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
-  //   parameters->lm_parameters.setVerbosityLM("SUMMARY");
   Kinematics kinematics(parameters);
 
   auto graph = kinematics.graph(interval, robot);
@@ -49,7 +48,6 @@ TEST(Interval, InverseKinematics) {
   auto objectives2 = kinematics.jointAngleObjectives(interval, robot);
   EXPECT_LONGS_EQUAL(12 * num_time_steps, objectives2.size());
 
-  // TODO(frank): consider renaming ContactPoint to PointOnLink
   auto result = kinematics.inverse(interval, robot, contact_goals);
 
   // Check that goals are achieved

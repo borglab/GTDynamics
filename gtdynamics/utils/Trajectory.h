@@ -32,13 +32,15 @@ class Trajectory {
   size_t repeat_;         ///< Number of repetitions of walk cycle
   WalkCycle walk_cycle_;  ///< Walk Cycle
 
-  /// Gets the intersection between two ContactPoints objects
-  ContactPoints getIntersection(ContactPoints CPs_1,
-                                ContactPoints CPs_2) const {
-    ContactPoints intersection;
-    for (auto &&cp : CPs_1) {
-      if (CPs_2.find(cp.first) != CPs_2.end()) {
-        intersection.emplace(cp.first, cp.second);
+  /// Gets the intersection between two PointOnLinks objects
+  static PointOnLinks getIntersection(const PointOnLinks &cps1,
+                                      const PointOnLinks &cps2) {
+    PointOnLinks intersection;
+    for (auto &&cp1 : cps1) {
+      for (auto &&cp2 : cps2) {
+        if (cp1 == cp2) {
+          intersection.push_back(cp1);
+        }
       }
     }
     return intersection;
@@ -52,7 +54,6 @@ class Trajectory {
    * Construct trajectory from WalkCycle and specified number of gait
    * repetitions.
    *
-   * @param robot       Robot configuration.
    * @param walk_cycle  The Walk Cycle for the robot.
    * @param repeat      The number of repetitions for each phase of the gait.
    */
@@ -60,12 +61,12 @@ class Trajectory {
       : repeat_(repeat), walk_cycle_(walk_cycle) {}
 
   /**
-   * @fn Returns a vector of ContactPoints objects for all phases after
+   * @fn Returns a vector of PointOnLinks objects for all phases after
    * applying repetition on the walk cycle.
    * @return Phase CPs.
    */
-  std::vector<ContactPoints> phaseContactPoints() const {
-    std::vector<ContactPoints> phase_cps;
+  std::vector<PointOnLinks> phaseContactPoints() const {
+    std::vector<PointOnLinks> phase_cps;
     const auto &phases = walk_cycle_.phases();
     for (size_t i = 0; i < repeat_; i++) {
       for (auto &&phase : phases) {
@@ -76,16 +77,16 @@ class Trajectory {
   }
 
   /**
-   * @fn Returns a vector of ContactPoints objects for all transitions between
+   * @fn Returns a vector of PointOnLinks objects for all transitions between
    * phases after applying repetition on the original sequence.
    * @return Transition CPs.
    */
-  std::vector<ContactPoints> transitionContactPoints() const {
-    std::vector<ContactPoints> trans_cps_orig;
+  std::vector<PointOnLinks> transitionContactPoints() const {
+    std::vector<PointOnLinks> trans_cps_orig;
 
     auto phases = walk_cycle_.phases();
-    ContactPoints phase_1_cps;
-    ContactPoints phase_2_cps;
+    PointOnLinks phase_1_cps;
+    PointOnLinks phase_2_cps;
 
     for (size_t p = 0; p < walk_cycle_.numPhases(); p++) {
       phase_1_cps = phases[p].contactPoints();
@@ -95,13 +96,13 @@ class Trajectory {
         phase_2_cps = phases[p + 1].contactPoints();
       }
 
-      ContactPoints intersection = getIntersection(phase_1_cps, phase_2_cps);
+      PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
       trans_cps_orig.push_back(intersection);
     }
 
     // Copy the original transition contact point sequence
     // `repeat_` number of times.
-    std::vector<ContactPoints> trans_cps(trans_cps_orig);
+    std::vector<PointOnLinks> trans_cps(trans_cps_orig);
     for (size_t i = 0; i < repeat_ - 1; i++) {
       trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),
                        trans_cps_orig.end());
@@ -134,9 +135,9 @@ class Trajectory {
 
   /**
    * @fn Builds vector of Transition Graphs.
-   * @param[in]robot            Configuration of the robot
-   * @param[in]graph_builder    Dynamics Graph
-   * @param[in]mu               Coefficient of static friction
+   * @param[in] robot            Robot specification from URDF/SDF.
+   * @param[in] graph_builder    Dynamics Graph
+   * @param[in] mu               Coefficient of static friction
    * @return Vector of Transition Graphs
    */
   std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
@@ -144,9 +145,10 @@ class Trajectory {
 
   /**
    * @fn Builds multi-phase factor graph.
-   * @param[in]robot            Configuration of the robot
-   * @param[in]graph_builder    Dynamics Graph
-   * @param[in]mu               Coefficient of static friction
+   * @param[in] robot            Robot specification from URDF/SDF.
+   * @param[in] graph_builder    GraphBuilder instance.
+   * @param[in] collocation      Which collocation scheme to use.
+   * @param[in] mu               Coefficient of static friction.
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
@@ -155,8 +157,8 @@ class Trajectory {
 
   /**
    * @fn Returns Initial values for transition graphs.
-   * @param[in]robot             Configuration of the robot
-   * @param[in]gaussian_noise    Gaussian noise to add to initial values
+   * @param[in] robot             Robot specification from URDF/SDF.
+   * @param[in] gaussian_noise    Gaussian noise to add to initial values
    * @return Initial values for transition graphs
    */
   std::vector<gtsam::Values> transitionPhaseInitialValues(
@@ -164,9 +166,9 @@ class Trajectory {
 
   /**
    * @fn Returns Initial values for multi-phase factor graph.
-   * @param[in]robot             Configuration of the robot
-   * @param[in]gaussian_noise    Gaussian noise to add to initial values
-   * @param[in]desired_dt        integration timestep
+   * @param[in] robot             Robot specification from URDF/SDF.
+   * @param[in] gaussian_noise    Gaussian noise to add to initial values
+   * @param[in] desired_dt        integration timestep
    * @return Initial values for multi-phase factor graph
    */
   gtsam::Values multiPhaseInitialValues(const Robot &robot,
@@ -190,7 +192,7 @@ class Trajectory {
 
   /**
    * @fn Return phase index for given phase number p.
-   * @param[in]p    Phase number \in [0..repeat * numPhases()[.
+   * @param[in] p    Phase number \in [0..repeat * numPhases()[.
    * @return Phase instance.
    */
   size_t phaseIndex(size_t p) const {
@@ -202,7 +204,7 @@ class Trajectory {
 
   /**
    * @fn Return phase for given phase number p.
-   * @param[in]p    Phase number \in [0..repeat * numPhases()[.
+   * @param[in] p    Phase number \in [0..repeat * numPhases()[.
    * @return Phase instance.
    */
   const Phase &phase(size_t p) const {
@@ -211,7 +213,7 @@ class Trajectory {
 
   /**
    * @fn Returns the start time step for a given phase.
-   * @param[in]p    Phase number.
+   * @param[in] p    Phase number.
    * @return Initial time step.
    */
   int getStartTimeStep(size_t p) const {
@@ -223,23 +225,23 @@ class Trajectory {
 
   /**
    * @fn Returns the end time step for a given phase.
-   * @param[in]p    Phase number.
+   * @param[in] p    Phase number.
    * @return Final time step.
    */
   int getEndTimeStep(size_t p) const { return finalTimeSteps()[p]; }
 
   /**
    * @fn Returns the contact links for a given phase.
-   * @param[in]p    Phase number.
+   * @param[in] p    Phase number.
    * @return Vector of contact links.
    */
-  const ContactPoints &getPhaseContactLinks(size_t p) const {
+  const PointOnLinks &getPhaseContactLinks(size_t p) const {
     return phase(p).contactPoints();
   }
 
   /**
    * @fn Returns the swing links for a given phase.
-   * @param[in]p    Phase number.
+   * @param[in] p    Phase number.
    * @return Vector of swing links.
    */
   std::vector<std::string> getPhaseSwingLinks(size_t p) const {
@@ -248,14 +250,16 @@ class Trajectory {
 
   /**
    * @fn Generates a PointGoalFactor object
+   * @param[in] robot             Robot specification from URDF/SDF.
    * @param[in] link_name         concerned link
+   * @param[in] cp                contact point on that link
    * @param[in] k                 time index k
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
   PointGoalFactor pointGoalFactor(const Robot &robot,
                                   const std::string &link_name,
-                                  const ContactPoint &cp, int k,
+                                  const PointOnLink &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link = robot.link(link_name);
@@ -265,6 +269,10 @@ class Trajectory {
 
   /**
    * @fn Create desired stance and swing trajectories for all contact links.
+   * @param[in] robot Robot specification from URDF/SDF.
+   * @param[in] cost_model Noise model
+   * @param[in] step The 3D vector the foot moves in a step.
+   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
@@ -273,6 +281,9 @@ class Trajectory {
 
   /**
    * @fn Add minimum torque objectives.
+   * @param[in,out] graph nonlinear factor graph to add to.
+   * @param[in] robot Robot specification from URDF/SDF.
+   * @param[in] cost_model Noise model
    * @return All MinTorqueFactor factors as a NonlinearFactorGraph
    */
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph *graph,
@@ -287,6 +298,8 @@ class Trajectory {
    * Joint angles velocities and accelerations are set to zero for all joints at
    * start *and* end.
    *
+   * @param[in,out] graph nonlinear factor graph to add to.
+   * @param[in] robot Robot specification from URDF/SDF.
    * @return All factors as a NonlinearFactorGraph
    */
   void addBoundaryConditions(
@@ -313,7 +326,7 @@ class Trajectory {
   /**
    * @fn Writes the angles, vels, accels, torques and time values for a single
    * phase to disk.
-   * @param[in] robot        Configuration of the robot
+   * @param[in] robot        Robot specification from URDF/SDF.
    * @param[in] traj_file    Trajectory File being written onto.
    * @param[in] results      Results of Optimization.
    * @param[in] phase        Phase number.
@@ -323,7 +336,7 @@ class Trajectory {
 
   /**
    * @fn Writes the angles, vels, accels, torques and time values to disk.
-   * @param[in] robot     Configuration of the robot
+   * @param[in] robot     Robot specification from URDF/SDF.
    * @param[in] name      Trajectory File name.
    * @param[in] results   Results of Optimization.
    */
