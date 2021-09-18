@@ -104,7 +104,7 @@ TEST(PoseFactor, breaking) {
 // Test breaking case for rr link
 TEST(PoseFactor, breaking_rr) {
   // Evaluate PoseFunctor on an RR link.
-  using simple_urdf_zero_inertia::robot;
+  auto robot = simple_urdf_zero_inertia::getRobot();
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
@@ -166,7 +166,7 @@ TEST(PoseFactor, nonzero_rest) {
 }
 
 TEST(PoseFactor, ForwardKinematics) {
-  using simple_rr::robot;
+  auto robot = simple_rr::getRobot();
 
   gtsam::NonlinearFactorGraph graph;
   Values initial;

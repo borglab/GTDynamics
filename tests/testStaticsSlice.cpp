@@ -127,6 +127,7 @@ TEST(Statics, Quadruped) {
   EXPECT_LONGS_EQUAL(61, result.size());
   // TODO(Varun) Issue #233
   // Regression
+  result.print("", GTDKeyFormatter);
   // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque

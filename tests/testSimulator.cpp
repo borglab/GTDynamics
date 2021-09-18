@@ -28,7 +28,8 @@ using namespace gtdynamics;
 
 TEST(Simulate, simple_urdf) {
   using gtsam::assert_equal;
-  using simple_urdf::robot, simple_urdf::gravity, simple_urdf::planar_axis;
+  using simple_urdf::gravity, simple_urdf::planar_axis;
+  auto robot = simple_urdf::getRobot();
   using std::vector;
   gtsam::Values initial_values, torques;
   robot.print();

@@ -61,7 +61,7 @@ TEST(Link, params_constructor) {
 }
 
 TEST(Link, NumJoints) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
