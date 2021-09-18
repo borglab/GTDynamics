@@ -37,7 +37,7 @@ using gtsam::noiseModel::Unit;
 
 // Test the evaluateError method with various link poses.
 TEST(PointGoalFactor, error) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
 
   auto cost_model = Unit::Create(3);
   LabeledSymbol pose_key('P', 0, 0);
@@ -63,7 +63,7 @@ TEST(PointGoalFactor, error) {
 
 // Test the optimization of a link pose to ensure goal point is reached.
 TEST(PointGoalFactor, optimization) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
 
   auto cost_model = Constrained::All(3);
 

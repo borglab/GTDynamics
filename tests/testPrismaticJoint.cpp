@@ -29,7 +29,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
-  using simple_urdf_prismatic::robot;
+  auto robot = simple_urdf_prismatic::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 

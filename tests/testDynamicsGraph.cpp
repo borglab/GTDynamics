@@ -51,7 +51,7 @@ using std::vector;
 
 // Test linear dynamics graph of a two-link robot, base fixed, with gravity
 TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
 
   std::string prior_link_name = "l1";
   auto l1 = robot.link(prior_link_name);
@@ -97,7 +97,7 @@ Values zero_values(const Robot& robot, size_t t, bool insert_accels = false) {
 
 // Test forward dynamics with gravity of a two-link robot, with base link fixed
 TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
 
   // build the dynamics factor graph
   size_t t = 777;
@@ -134,7 +134,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
 // Test forward dynamics with gravity of a four-bar linkage
 TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   // Load the robot from urdf file
-  using four_bar_linkage_pure::robot;
+  auto robot = four_bar_linkage_pure::getRobot();
 
   Values known_values = zero_values(robot, 0);
   gtsam::Vector torques = (gtsam::Vector(4) << 1, 0, 1, 0).finished();
@@ -185,7 +185,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
 
 // test jumping robot
 TEST(dynamicsFactorGraph_FD, jumping_robot) {
-  using jumping_robot::robot;
+  auto robot = jumping_robot::getRobot();
 
   Values known_values = zero_values(robot, 0);
   double torque3 = 0;
@@ -230,7 +230,7 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
 
 TEST(collocationFactors, simple_urdf) {
   DynamicsGraph graph_builder;
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   double dt = 1;
   int t = 0;
   int j = robot.joints()[0]->id();
@@ -313,7 +313,7 @@ TEST(collocationFactors, simple_urdf) {
 
 // test forward dynamics of a trajectory
 TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
 
   robot.fixLink("l1");
   int j = robot.joints()[0]->id();
@@ -424,7 +424,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 // Test contacts in dynamics graph.
 TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   // Load the robot from urdf file
-  using simple_rr::robot;
+  auto robot = simple_rr::getRobot();
 
   // Add some contact points.
   ContactPoints contact_points;
@@ -544,7 +544,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
 // check joint limit factors
 TEST(jointlimitFactors, simple_urdf) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   DynamicsGraph graph_builder;
   NonlinearFactorGraph joint_limit_factors =
       graph_builder.jointLimitFactors(robot, 0);

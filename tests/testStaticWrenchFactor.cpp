@@ -37,7 +37,7 @@ using namespace gtsam;
 namespace example {
 
 // R link example
-using simple_urdf::robot;
+auto robot = simple_urdf::getRobot();
 
 const double mass = robot.links()[0]->mass();
 const Vector3 gravity(0, -9.8, 0);

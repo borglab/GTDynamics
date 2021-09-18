@@ -74,7 +74,7 @@ double kNoiseSigma = 1e-8;
 // }
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
