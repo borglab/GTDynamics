@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   auto ip =
       CreateRobotFromFile(kUrdfPath + std::string("/inverted_pendulum.urdf"));
   auto j1_id = ip.joint("j1")->id();
-  ip.fixLink("l1");
+  ip = ip.fixLink("l1");
   ip.print();
   gtsam::Vector3 gravity(0, 0, -9.8), planar_axis(1, 0, 0);
 

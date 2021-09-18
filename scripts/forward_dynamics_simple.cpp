@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::planar_axis;
   using simple_urdf::robot;
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
 
   gtsam::Vector3 gravity(0, 0, -9.8);
 

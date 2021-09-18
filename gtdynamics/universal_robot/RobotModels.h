@@ -42,7 +42,7 @@ namespace simple_urdf {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdf();
@@ -55,7 +55,7 @@ namespace simple_urdf_prismatic {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf_prismatic.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdf();
@@ -65,7 +65,7 @@ namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getSimpleUrdf() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf_zero_inertia.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 gtdynamics::Robot robot = getSimpleUrdf();
@@ -102,7 +102,7 @@ namespace jumping_robot {
 gtdynamics::Robot getJumpingRobot() {
   gtdynamics::Robot jumping_robot = gtdynamics::CreateRobotFromFile(
       kSdfPath + std::string("/test/jumping_robot.sdf"));
-  jumping_robot.fixLink("l0");
+  jumping_robot = jumping_robot.fixLink("l0");
   return jumping_robot;
 }
 // Load the robot from urdf file

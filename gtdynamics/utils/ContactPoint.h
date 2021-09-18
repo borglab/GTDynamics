@@ -85,7 +85,7 @@ struct PointOnLink {
   void print(const std::string &s) const;
 };
 
-///< Map of link name to PointOnLink
+///< Vector of `PointOnLink`s
 using PointOnLinks = std::vector<PointOnLink>;
 
 }  // namespace gtdynamics
