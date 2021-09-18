@@ -105,14 +105,14 @@ int main(int argc, char** argv) {
                           "tarsus_7_R2", "tarsus_8_R1"};
   // All contacts.
   const Point3 contact_in_com(0, 0.19, 0);
-  PointOnLink cp1(robot.link("tarsus_1_L1"), contact_in_com);
-  PointOnLink cp2(robot.link("tarsus_2_L2"), contact_in_com);
-  PointOnLink cp3(robot.link("tarsus_3_L3"), contact_in_com);
-  PointOnLink cp4(robot.link("tarsus_4_L4"), contact_in_com);
-  PointOnLink cp5(robot.link("tarsus_5_R4"), contact_in_com);
-  PointOnLink cp6(robot.link("tarsus_6_R3"), contact_in_com);
-  PointOnLink cp7(robot.link("tarsus_7_R2"), contact_in_com);
-  PointOnLink cp8(robot.link("tarsus_8_R1"), contact_in_com);
+  PointOnLink cp1(robot.link("tarsus_1_L1"), contact_in_com);  // Front left.
+  PointOnLink cp2(robot.link("tarsus_2_L2"), contact_in_com);  // Hind left.
+  PointOnLink cp3(robot.link("tarsus_3_L3"), contact_in_com);  // Front right.
+  PointOnLink cp4(robot.link("tarsus_4_L4"), contact_in_com);  // Hind right.
+  PointOnLink cp5(robot.link("tarsus_5_R4"), contact_in_com);  // Front left.
+  PointOnLink cp6(robot.link("tarsus_6_R3"), contact_in_com);  // Hind left.
+  PointOnLink cp7(robot.link("tarsus_7_R2"), contact_in_com);  // Front right.
+  PointOnLink cp8(robot.link("tarsus_8_R1"), contact_in_com);  // Hind right.
 
   // Contact points for each phase.
   // This gait moves one leg at a time.

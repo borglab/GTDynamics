@@ -96,13 +96,14 @@ int main(int argc, char** argv) {
 
   // All contacts.
   Point3 contact_in_com(0.14, 0, 0);
-  PointOnLink c0{robot.link("lower0"), contact_in_com},
-      c1{robot.link("lower1"), contact_in_com},
-      c2{robot.link("lower2"), contact_in_com},
-      c3{robot.link("lower3"), contact_in_com};
+  PointOnLink c0{robot.link("lower0"), contact_in_com},  // Front left.
+      c1{robot.link("lower1"), contact_in_com},          // Hind left.
+      c2{robot.link("lower2"), contact_in_com},          // Front right.
+      c3{robot.link("lower3"), contact_in_com};          // Hind right.
 
   // Contact points for each phase. First move one leg at a time then switch
-  // to a more dynamic gait with two legs in swing per phase.
+  // to a more dynamic gait with two legs in swing per phase. Below pi are the
+  // contacts for phase i and tij=contacts for transition from phase i to j.
   using CPs = PointOnLinks;
   // Initially stationary.
   CPs p0 = {c0, c1, c2, c3}, t01 = {c1, c2, c3};
@@ -169,9 +170,7 @@ int main(int argc, char** argv) {
   // Previous contact point goal.
   std::map<string, Point3> prev_cp;
   for (auto&& link : links)
-    prev_cp.insert(std::make_pair(
-        link,
-        link_map[link]->bMcom() * c0.point));
+    prev_cp.insert(std::make_pair(link, link_map[link]->bMcom() * c0.point));
 
   // Distance to move contact point during swing.
   auto contact_offset = Point3(0.15, 0, 0);
