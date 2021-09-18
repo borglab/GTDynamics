@@ -23,6 +23,8 @@ class PoseFactor : gtsam::NonlinearFactor {
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
+
+  gtsam::Vector unwhitenedError(const gtsam::Values& x) const;
 };
 
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
@@ -43,6 +45,8 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
+
+  gtsam::Vector evaluateError(const gtsam::Pose3& p1, const gtsam::Pose3& p2) const;
 };
 
 #include <gtdynamics/factors/ContactEqualityFactor.h>
@@ -172,6 +176,8 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
+
+  gtsam::Vector evaluateError(const gtsam::Pose3 &sTl) const;
 };
 
 /********************** link **********************/
