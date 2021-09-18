@@ -312,15 +312,7 @@ gtdynamics::Robot CreateRobotFromFile(const string& file_path,
 
 
 /********************** utilities **********************/
-#include <gtdynamics/utils/ContactPoint.h>
-
-class ContactPoint {
-  ContactPoint();
-  ContactPoint(const gtsam::Point3& point, int id);
-  void print(const string &s = "");
-};
-
-// ContactPoints defined in specializations.h
+#include <gtdynamics/utils/PointOnLink.h>
 
 class PointOnLink {
   PointOnLink();
@@ -332,6 +324,8 @@ class PointOnLink {
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   void print(const string &s = "");
 };
+
+// PointOnLinks defined in specializations.h
 
 /********************** kinematics **********************/
 #include <gtdynamics/kinematics/Kinematics.h>
@@ -431,27 +425,27 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph qFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points) const;
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points,
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points,
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const gtdynamics::Robot &robot, const int t,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points,
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points,
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
@@ -472,7 +466,7 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::CollocationScheme collocation,
-      const boost::optional<gtdynamics::ContactPoints> &contact_points,
+      const boost::optional<gtdynamics::PointOnLinks> &contact_points,
       const boost::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
@@ -637,7 +631,7 @@ gtsam::Values ZeroValues(
 gtsam::Values ZeroValuesTrajectory(
     const gtdynamics::Robot& robot, const int num_steps, const int num_phases,
     double gaussian_noise,
-    const boost::optional<gtdynamics::ContactPoints>& contact_points);
+    const boost::optional<gtdynamics::PointOnLinks>& contact_points);
 
 /********************** symbols **********************/
 
@@ -794,27 +788,30 @@ class Interval {
 };
 
 #include <gtdynamics/utils/Phase.h>
+
+// ContactPointGoals is defined in specializations
+
 class Phase {
-  Phase(const int &num_time_steps);
-  Phase(const size_t &num_time_steps, const std::vector<string> &link_names,
-        const gtsam::Point3 &point);
-  void addContactPoint(const string &link, const gtsam::Point3 &point);
-  void addContactPoints(const std::vector<string> &links,
-                        const gtsam::Point3 &point);
-  const gtdynamics::ContactPoints &contactPoints() const;
-  const gtdynamics::ContactPoint &contactPoint(const string &link) const;
+  Phase(size_t num_time_steps);
+  Phase(size_t num_time_steps, 
+        const std::vector<gtdynamics::PointOnLink> &point_on_links);
+  Phase(size_t num_time_steps, 
+        const std::vector<gtdynamics::LinkSharedPtr> &links,
+        const gtsam::Point3 &contact_in_com);
+  const gtdynamics::PointOnLinks &contactPoints() const;
+  const gtsam::Point3 &contactPoint(const std::string &link_name) const;
   int numTimeSteps() const;
   void print(const string &s = "");
   gtsam::NonlinearFactorGraph
-  contactPointObjectives(const gtdynamics::ContactPoints &all_contact_points,
+  contactPointObjectives(const gtdynamics::PointOnLinks &all_contact_points,
                          const gtsam::Point3 &step,
                          const gtsam::SharedNoiseModel &cost_model,
-                         const gtdynamics::Robot &robot, size_t k_start,
-                         const std::map<string, gtsam::Point3> &cp_goals) const;
+                         size_t k_start,
+                         gtdynamics::ContactPointGoals &cp_goals) const;
   std::map<string, gtsam::Point3>
-  updateContactPointGoals(const gtdynamics::ContactPoints &all_contact_points,
+  updateContactPointGoals(const gtdynamics::PointOnLinks &all_contact_points,
                          const gtsam::Point3 &step,
-                         const std::map<string, gtsam::Point3> &cp_goals) const;
+                         gtdynamics::ContactPointGoals &cp_goals) const;
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
                             double dt) const;
@@ -828,24 +825,24 @@ class WalkCycle {
   const gtdynamics::Phase& phase(size_t p);
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
-  const ContactPoints& contactPoints() const;
-  void print(const string &s = "") const;
-  std::map<string, gtsam::Point3>
-  initContactPointGoal(const gtdynamics::Robot &robot) const;
+  const gtdynamics::PointOnLinks& contactPoints() const;
+  void print(const string& s = "") const;
+  gtdynamics::ContactPointGoals
+  initContactPointGoal(const gtdynamics::Robot& robot, 
+                       double ground_height) const;
   std::vector<string> swingLinks(size_t p) const;
   gtsam::NonlinearFactorGraph
   contactPointObjectives(const gtsam::Point3 &step,
-                         const gtsam::SharedNoiseModel &cost_model,
-                         const gtdynamics::Robot &robot, size_t k_start,
-                         std::map<string, gtsam::Point3> @cp_goals) const;
+                         const gtsam::SharedNoiseModel &cost_model, size_t k_start,
+                         gtdynamics::ContactPointGoals @cp_goals) const;
 };
 
 #include <gtdynamics/utils/Trajectory.h>
 class Trajectory {
   Trajectory();
   Trajectory(const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
-  std::vector<gtdynamics::ContactPoints> phaseContactPoints() const;
-  std::vector<gtdynamics::ContactPoints> transitionContactPoints() const;
+  std::vector<gtdynamics::PointOnLinks> phaseContactPoints() const;
+  std::vector<gtdynamics::PointOnLinks> transitionContactPoints() const;
   std::vector<int> phaseDurations() const;
   size_t numPhases() const;
   std::vector<gtsam::NonlinearFactorGraph>
@@ -867,19 +864,20 @@ class Trajectory {
   const Phase &phase(size_t p) const;
   size_t getStartTimeStep(size_t p) const;
   size_t getEndTimeStep(size_t p) const;
-  const ContactPoints &getPhaseContactLinks(size_t p) const;
+  const gtdynamics::PointOnLinks &getPhaseContactLinks(size_t p) const;
   std::vector<string> getPhaseSwingLinks(size_t p) const;
   PointGoalFactor pointGoalFactor(const gtdynamics::Robot &robot,
                                   const string &link_name,
-                                  const gtdynamics::ContactPoint &cp, size_t k,
+                                  const gtdynamics::PointOnLink &cp, size_t k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
   contactPointObjectives(const gtdynamics::Robot& robot, 
                          const gtsam::SharedNoiseModel &cost_model,
-                         const gtsam::Point3 &step) const;
+                         const gtsam::Point3 &step,
+                         double ground_height = 0) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
-                               const gtdynamics::Robot& robot,
+                               const gtdynamics::Robot& robot, 
                                const gtsam::SharedNoiseModel &cost_model) const;
   void addBoundaryConditions(
       gtsam::NonlinearFactorGraph @graph,

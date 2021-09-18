@@ -33,7 +33,7 @@ using gtsam::assert_equal;
 
 auto kModel = noiseModel::Isotropic::Sigma(3, 0.1);
 
-using simple_rr::robot;
+auto robot = simple_rr::getRobot();
 
 TEST(ContactPointFactor, Constructor) {
   Key link_pose_key = gtdynamics::internal::PoseKey(0, 0),

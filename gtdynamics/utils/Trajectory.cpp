@@ -39,8 +39,8 @@ namespace gtdynamics {
 vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     const Robot &robot, const DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
-  vector<ContactPoints> trans_cps = transitionContactPoints();
-  vector<int> final_timesteps = finalTimeSteps();
+  const vector<int> final_timesteps = finalTimeSteps();
+  const vector<PointOnLinks> trans_cps = transitionContactPoints();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, final_timesteps[p - 1], trans_cps[p - 1], mu));
@@ -60,7 +60,7 @@ NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
     const Robot &robot, double gaussian_noise) const {
-  vector<ContactPoints> trans_cps = transitionContactPoints();
+  vector<PointOnLinks> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
@@ -86,13 +86,13 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
   NonlinearFactorGraph factors;
 
   // Initialize contact point goals.
-  Phase::ContactPointGoals cp_goals =
+  ContactPointGoals cp_goals =
       walk_cycle_.initContactPointGoal(robot, ground_height);
 
   size_t k_start = 0;
   for (int w = 0; w < repeat_; w++) {
-    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, robot,
-                                                   k_start, &cp_goals));
+    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, k_start,
+                                                   &cp_goals));
     k_start += walk_cycle_.numTimeSteps();
   }
   return factors;

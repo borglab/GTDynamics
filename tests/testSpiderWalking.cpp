@@ -38,10 +38,12 @@ using namespace gtdynamics;
 
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot& robot, size_t repeat) {
-  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
-                           "tarsus_7_R2"};
-  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
-                            "tarsus_8_R1"};
+  vector<LinkSharedPtr> odd_links = {
+      robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
+      robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
+  vector<LinkSharedPtr> even_links = {
+      robot.link("tarsus_2_L2"), robot.link("tarsus_4_L4"),
+      robot.link("tarsus_6_R3"), robot.link("tarsus_8_R1")};
   auto links = odd_links;
   links.insert(links.end(), even_links.begin(), even_links.end());
 

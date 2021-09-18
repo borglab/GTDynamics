@@ -22,7 +22,7 @@ using namespace gtdynamics;
 
 int main(int argc, char **argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
-  using simple_rr::robot;
+  auto robot = simple_rr::getRobot();
 
   // Build the factor graph for the robot.
   robot = robot.fixLink("link_0");

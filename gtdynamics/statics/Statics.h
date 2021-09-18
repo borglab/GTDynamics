@@ -107,6 +107,7 @@ class Statics : public Kinematics {
    * Create graph with only static balance factors.
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
    */
   gtsam::NonlinearFactorGraph graph(const Slice& slice,
                                     const Robot& robot) const;
@@ -115,6 +116,7 @@ class Statics : public Kinematics {
    * Create keys for unkowns and initial values.
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
    */
   gtsam::Values initialValues(const Slice& slice, const Robot& robot,
                               double gaussian_noise = 1e-6) const;
@@ -122,6 +124,7 @@ class Statics : public Kinematics {
   /**
    * Solve for wrenches given kinematics configuration.
    * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
    * @param configuration A known kinematics configuration.
    */
   gtsam::Values solve(const Slice& slice, const Robot& robot,

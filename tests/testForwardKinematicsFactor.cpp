@@ -37,7 +37,7 @@ const Key key1 = gtdynamics::internal::PoseKey(i1),
 
 auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
 
-using simple_rr::robot;
+auto robot = simple_rr::getRobot();
 
 gtsam::Values zeroValues() {
   gtsam::Values joint_angles;

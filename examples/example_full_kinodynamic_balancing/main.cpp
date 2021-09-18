@@ -44,15 +44,12 @@ int main(int argc, char** argv) {
   double mu = 2.0;
 
   // Contact points at feet.
-  ContactPoints contact_points;
-  contact_points.emplace(
-      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
-  contact_points.emplace(
-      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1});
-  contact_points.emplace(
-      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2});
-  contact_points.emplace(
-      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3});
+  PointOnLinks contact_points;
+  gtsam::Point3 contact_in_com(0.14, 0, 0);
+  contact_points.emplace_back(vision60.link("lower0"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower1"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower2"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower3"), contact_in_com);
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)

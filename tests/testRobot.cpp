@@ -56,7 +56,7 @@ TEST(Robot, four_bar_sdf) {
 
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
-  using simple_rr::robot;
+  auto robot = simple_rr::getRobot();
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
@@ -74,7 +74,7 @@ TEST(Robot, simple_rr_sdf) {
 
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
-  using four_bar_linkage_pure::robot;
+  auto robot = four_bar_linkage_pure::getRobot();
 
   robot.removeLink(robot.link("l2"));
   EXPECT(robot.numLinks() == 3);
