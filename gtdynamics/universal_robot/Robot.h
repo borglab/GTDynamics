@@ -82,8 +82,23 @@ class Robot {
   /// Return the link corresponding to the input string.
   LinkSharedPtr link(const std::string &name) const;
 
-  /// Fix the link corresponding to the input string.
+  /**
+   * @brief Return a copy of this robot with the link corresponding to the input
+   * string as a fixed link.
+   *
+   * @param name The name of the link to fix.
+   * @return Robot
+   */
   Robot fixLink(const std::string &name);
+
+  /**
+   * @brief Return a copy of this robot after unfixing the link corresponding to
+   * the input string.
+   *
+   * @param name The name of the link to unfix.
+   * @return Robot
+   */
+  Robot unfixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
   JointSharedPtr joint(const std::string &name) const;
