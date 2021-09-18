@@ -68,8 +68,6 @@ class Phase {
     return link_count > 0;
   }
 
-  // NOTE DISHA: Can modify this function to return multiple contact points on a
-  // single link
   /// Returns the contact point object of link.
   const gtsam::Point3 &contactPoint(const std::string &link_name) const {
     auto it = std::find_if(contact_points_.begin(), contact_points_.end(),

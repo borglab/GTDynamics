@@ -25,11 +25,7 @@ using std::string;
 
 Phase::Phase(size_t num_time_steps,
              const std::vector<PointOnLink> &points_on_links)
-    : num_time_steps_(num_time_steps) {
-  for (auto &&point_on_link : points_on_links) {
-    contact_points_.push_back(point_on_link);
-  }
-}
+    : num_time_steps_(num_time_steps), contact_points_(points_on_links) {}
 
 Phase::Phase(size_t num_time_steps, const std::vector<LinkSharedPtr> &links,
              const gtsam::Point3 &contact_in_com)
