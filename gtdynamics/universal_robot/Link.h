@@ -164,6 +164,26 @@ class Link : public boost::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
+  /// Functional way to fix a link
+  static Link fix(
+      const Link &link,
+      const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+    // Copy construct
+    Link fixed_link(link);
+    // Fix the link
+    fixed_link.fix(fixed_pose);
+    return fixed_link;
+  }
+
+  /// Functional way to unfix a link
+  static Link unfix(const Link &link) {
+    // Copy construct
+    Link unfixed_link(link);
+    // unfix the link
+    unfixed_link.unfix();
+    return unfixed_link;
+  }
+
   /// Print to ostream
   friend std::ostream &operator<<(std::ostream &os, const Link &l) {
     os << l.name();
