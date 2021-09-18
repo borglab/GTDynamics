@@ -188,9 +188,6 @@ class Link  {
   const gtsam::Pose3 bMlink() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
-  void fix();
-  void fix(gtsam::Pose3 &fixed_pose);
-  void unfix();
   const std::vector<Joint *> &joints() const;
   size_t numJoints() const;
   string name() const;
@@ -200,6 +197,11 @@ class Link  {
   gtsam::Matrix6 inertiaMatrix();
 
   void print(const std::string &s = "") const;
+
+  static gtdynamics::Link fix(const gtdynamics::Link& link);
+  static gtdynamics::Link fix(const gtdynamics::Link& link, gtsam::Pose3 &fixed_pose);
+  static gtdynamics::Link unfix(const gtdynamics::Link& link);
+  
 };
 
 /********************** joint **********************/
