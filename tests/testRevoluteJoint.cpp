@@ -28,6 +28,8 @@ using gtsam::Matrix;
 using gtsam::Matrix61;
 using gtsam::Matrix66;
 using gtsam::numericalDerivative11;
+using gtsam::numericalDerivative21;
+using gtsam::numericalDerivative22;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
@@ -38,22 +40,27 @@ using gtsam::Vector6;
 
 using namespace gtdynamics;
 
-/**
- * Construct a Revolute joint via Parameters and ensure all values are as
- * expected.
- */
-TEST(Joint, params_constructor) {
-  auto robot = simple_urdf::getRobot();
-  auto l1 = robot.link("l1");
-  auto l2 = robot.link("l2");
+auto robot = simple_urdf::getRobot();
+auto l1 = robot.link("l1");
+auto l2 = robot.link("l2");
 
+JointParams getJointParams() {
   JointParams parameters;
   parameters.effort_type = JointEffortType::Actuated;
   parameters.scalar_limits.value_lower_limit = -1.57;
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
+  return parameters;
+}
 
-  const Vector3 axis = (Vector(3) << 1, 0, 0).finished();
+/**
+ * Construct a Revolute joint via Parameters and ensure all values are as
+ * expected.
+ */
+TEST(Joint, Constructor) {
+  JointParams parameters = getJointParams();
+
+  const Vector3 axis(1, 0, 0);
 
   RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
                    parameters);
@@ -78,6 +85,15 @@ TEST(Joint, params_constructor) {
 
   Pose3 wT1(Rot3::Rx(4), Point3(1, 2, 3));
   EXPECT(assert_equal(wT1 * M12, j1.poseOf(l2, wT1, 0.0)));
+}
+
+// Test relativePoseOf and it derivatives
+TEST(Joint, RelativePoseOfDerivatives) {
+  const Vector3 axis(1, 0, 0);
+  JointParams parameters = getJointParams();
+
+  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                   parameters);
 
   // Rotating joint by -M_PI / 2
   double q = -M_PI / 2;
@@ -96,30 +112,61 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(T12, j1.relativePoseOf(l2, q, H2)));
   EXPECT(assert_equal(numericalH1, H1));
   EXPECT(assert_equal(numericalH2, H2));
+}
 
-  // Calculate numerical derivatives of poseOf with respect to q.
+// Test poseOf and it derivatives
+TEST(Joint, PoseOfDerivatives) {
+  const Vector3 axis(1, 0, 0);
+  JointParams parameters = getJointParams();
+
+  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                   parameters);
+  Pose3 wT1(Rot3::Rx(4), Point3(1, 2, 3));
+  Pose3 wT2(Rot3::Rx(5), Point3(6, 7, 8));
+
+  // Rotating joint by -M_PI / 2
+  double q = -M_PI / 2;
+  Pose3 T12(Rot3::Rx(q), Point3(0, 1, 1));
+  Pose3 T21(Rot3::Rx(-q), Point3(0, 1, -1));
+
+  // Calculate numerical derivatives of poseOf with respect to q and link pose.
   auto g1 = [&](double q) { return j1.poseOf(l1, wT2, q); };
-  numericalH1 = numericalDerivative11<Pose3, double>(g1, q);
+  Matrix61 numericalH1 = numericalDerivative11<Pose3, double>(g1, q);
   auto g2 = [&](double q) { return j1.poseOf(l2, wT1, q); };
-  numericalH2 = numericalDerivative11<Pose3, double>(g2, q);
-
-  // Calculate numerical derivatives of poseOf with respect to other link pose.
-  // auto h1 = [&](double q) { return j1.poseOf(l1, wT2, q); };
-  // numericalH1 = numericalDerivative11<Pose3, double>(h1, q);
-  // auto h2 = [&](double q) { return j1.poseOf(l2, wT1, q); };
-  // numericalH2 = numericalDerivative11<Pose3, double>(h2, q);
+  Matrix61 numericalH2 = numericalDerivative11<Pose3, double>(g2, q);
 
   // Check poseOf with derivatives.
+  Matrix61 H1, H2;
   Matrix66 dummy1, dummy2;
   EXPECT(assert_equal(wT2 * T21, j1.poseOf(l1, wT2, q, dummy1, H1)));
   EXPECT(assert_equal(wT1 * T12, j1.poseOf(l2, wT1, q, dummy2, H2)));
   EXPECT(assert_equal(numericalH1, H1));
   EXPECT(assert_equal(numericalH2, H2));
+}
 
-  // Check values-based relativePoseOf, with derivatives.
+// Check values-based relativePoseOf, with derivatives.
+TEST(Joint, ValuesRelativePoseOf) {
+  const Vector3 axis(1, 0, 0);
+  JointParams parameters = getJointParams();
+
+  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                   parameters);
   Values values;
   const size_t t = 777;
+  // Rotating joint by -M_PI / 2
+  double q = -M_PI / 2;
+  Pose3 T12(Rot3::Rx(q), Point3(0, 1, 1));
+  Pose3 T21(Rot3::Rx(-q), Point3(0, 1, -1));
+
   InsertJointAngle(&values, 1, t, q);
+
+  // Calculate numerical derivatives of relativePoseOf with respect to other
+  // link pose.
+  auto f1 = [&](double q) { return j1.relativePoseOf(l1, q); };
+  Matrix61 numericalH1 = numericalDerivative11<Pose3, double>(f1, q);
+  auto f2 = [&](double q) { return j1.relativePoseOf(l2, q); };
+  Matrix61 numericalH2 = numericalDerivative11<Pose3, double>(f2, q);
+
   Matrix H1v, H2v;
   EXPECT(assert_equal(T21, j1.relativePoseOf(l1, values, t, H1v)));
   EXPECT(assert_equal(T12, j1.relativePoseOf(l2, values, t, H2v)));
@@ -159,7 +206,7 @@ TEST(RevoluteJoint, ParentTchild) {
   Values joint_angles;
   InsertJointAngle(&joint_angles, j1->id(), M_PI_2);
 
-  auto pTc = j1->parentTchild(joint_angles);
+  Pose3 pTc = j1->parentTchild(joint_angles);
   // Rotate around the x axis for arm point up.
   // This means the second link bends to the right.
   Pose3 expected_pTc(Rot3::Rx(M_PI_2), Point3(0, -1, 1));
