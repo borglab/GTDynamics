@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 
-<robot name="ngr_simple" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="climb_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
 <!-- Define materials -->
   <material name="gray">
@@ -178,12 +178,12 @@
   </link>
 
   <!-- Grabber Joint. Joint names are 12 13 14 15 -->
-  <joint name="12" type="fixed">
+  <joint name="12" type="revolute">
     <parent link="lower0"/>
     <child link="grab0"/>
     <axis xyz="1 0 0"/>
     <origin xyz="-0.28 0 0" rpy="0 0 0"/>
-    <!-- <limit effort="87.5" lower="0" upper="3.14159265359" velocity="30"/> -->
+    <limit effort="100" lower="0" upper="1.57" velocity="30"/>
     <!-- <dynamics damping="0.0" friction="0.0"/> -->
   </joint>
 
@@ -319,12 +319,12 @@
   </link>
 
   <!-- Grabber Joint. Joint names are 12 13 14 15 -->
-  <joint name="13" type="fixed">
+  <joint name="13" type="revolute">
     <parent link="lower1"/>
     <child link="grab1"/>
     <axis xyz="1 0 0"/>
     <origin xyz="-0.28 0 0" rpy="0 0 0"/>
-    <!-- <limit effort="87.5" lower="0" upper="3.14159265359" velocity="30"/> -->
+    <limit effort="100" lower="0" upper="1.57" velocity="30"/>
     <!-- <dynamics damping="0.0" friction="0.0"/> -->
   </joint>
 
@@ -460,12 +460,12 @@
   </link>
 
   <!-- Grabber Joint. Joint names are 12 13 14 15 -->
-  <joint name="14" type="fixed">
+  <joint name="14" type="revolute">
     <parent link="lower2"/>
     <child link="grab2"/>
     <axis xyz="1 0 0"/>
     <origin xyz="-0.28 0 0" rpy="0 0 0"/>
-    <!-- <limit effort="87.5" lower="0" upper="3.14159265359" velocity="30"/> -->
+    <limit effort="100" lower="0" upper="1.57" velocity="30"/>
     <!-- <dynamics damping="0.0" friction="0.0"/> -->
   </joint>
 
@@ -601,12 +601,12 @@
   </link>
 
   <!-- Grabber Joint. Joint names are 12 13 14 15 -->
-  <joint name="15" type="fixed">
+  <joint name="15" type="revolute">
     <parent link="lower3"/>
     <child link="grab3"/>
     <axis xyz="1 0 0"/>
     <origin xyz="-0.28 0 0" rpy="0 0 0"/>
-    <!-- <limit effort="87.5" lower="0" upper="3.14159265359" velocity="30"/> -->
+    <limit effort="100" lower="0" upper="1.57" velocity="30"/>
     <!-- <dynamics damping="0.0" friction="0.0"/> -->
   </joint>
 </robot>
