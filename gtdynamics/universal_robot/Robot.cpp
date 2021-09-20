@@ -82,8 +82,20 @@ Robot Robot::fixLink(const std::string &name) {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
-  name_to_link_.at(name)->fix();
-  return *this;
+
+  Robot fixed_robot = Robot(*this);
+  fixed_robot.name_to_link_.at(name)->fix();
+  return fixed_robot;
+}
+
+Robot Robot::unfixLink(const std::string &name) {
+  if (name_to_link_.find(name) == name_to_link_.end()) {
+    throw std::runtime_error("no link named " + name);
+  }
+
+  Robot unfixed_robot = Robot(*this);
+  unfixed_robot.name_to_link_.at(name)->unfix();
+  return unfixed_robot;
 }
 
 JointSharedPtr Robot::joint(const std::string &name) const {

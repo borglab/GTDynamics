@@ -171,7 +171,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   EXPECT(assert_equal(expected_qAccel, actual_qAccel, 1e-4));
 
   // test the condition when we fix link "l1"
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   graph = graph_builder.dynamicsFactorGraph(robot, 0);
   graph.add(prior_factors);
 
@@ -315,7 +315,7 @@ TEST(collocationFactors, simple_urdf) {
 TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
   auto robot = simple_urdf_eq_mass::getRobot();
 
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   int j = robot.joints()[0]->id();
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
