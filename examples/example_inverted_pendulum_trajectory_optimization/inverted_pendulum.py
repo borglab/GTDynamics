@@ -51,7 +51,7 @@ def run(args):
     ip = gtd.CreateRobotFromFile(osp.join(URDF_PATH, "inverted_pendulum.urdf"),
                                  "inverted_pendulum")
     j1_id = ip.joint("j1").id()
-    ip.fixLink("l1")
+    ip = ip.fixLink("l1")
 
     T = 3.0  # seconds
     dt = 1. / 100  # Time horizon (s) and timestep duration (s).

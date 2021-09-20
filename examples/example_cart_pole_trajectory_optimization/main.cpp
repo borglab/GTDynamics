@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   // Load the inverted pendulum.
   auto cp = CreateRobotFromFile(kUrdfPath + std::string("/cart_pole.urdf"));
   int j0_id = cp.joint("j0")->id(), j1_id = cp.joint("j1")->id();
-  cp.fixLink("l0");
+  cp = cp.fixLink("l0");
   cp.print();
   gtsam::Vector3 gravity(0, 0, -9.8);
 

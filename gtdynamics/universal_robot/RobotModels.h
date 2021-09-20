@@ -40,7 +40,7 @@ namespace simple_urdf {
 gtdynamics::Robot getRobot() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
@@ -52,7 +52,7 @@ namespace simple_urdf_prismatic {
 gtdynamics::Robot getRobot() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf_prismatic.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 } // namespace simple_urdf_prismatic
@@ -61,7 +61,7 @@ namespace simple_urdf_zero_inertia {
 gtdynamics::Robot getRobot() {
   auto robot = gtdynamics::CreateRobotFromFile(
       kUrdfPath + std::string("/test/simple_urdf_zero_inertia.urdf"));
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
   return robot;
 }
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, 0).finished();
@@ -95,7 +95,7 @@ namespace jumping_robot {
 gtdynamics::Robot getRobot() {
   gtdynamics::Robot jumping_robot = gtdynamics::CreateRobotFromFile(
       kSdfPath + std::string("/test/jumping_robot.sdf"));
-  jumping_robot.fixLink("l0");
+  jumping_robot = jumping_robot.fixLink("l0");
   return jumping_robot;
 }
 gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();

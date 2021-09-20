@@ -58,7 +58,7 @@ struct PointOnLink {
   bool equals(const PointOnLink &other, double tol = 1e-9) const;
 };
 
-///< Map of link name to PointOnLink
+///< Vector of `PointOnLink`s
 using PointOnLinks = std::vector<PointOnLink>;
 
 }  // namespace gtdynamics
