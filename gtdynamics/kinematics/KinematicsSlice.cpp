@@ -19,6 +19,9 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
+#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
+
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
@@ -120,4 +123,29 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 
   return optimize(graph, initial_values);
 }
+
+template <>
+Values Kinematics::inverseConstrained<Slice>(const Slice& slice, const Robot& robot,
+                                  const ContactGoals& contact_goals) const {
+  auto graph = this->graph(slice, robot);
+
+  // Add objectives.
+  graph.add(pointGoalObjectives(slice, contact_goals));
+  graph.add(jointAngleObjectives(slice, robot));
+
+  auto initial_values = initialValues(slice, robot);
+
+  // auto pm_parameters = boost::make_shared<PenaltyMethodParameters>();
+  // pm_parameters->lm_parameters = p_->lm_parameters;
+  // PenaltyMethodOptimizer optimizer(pm_parameters);
+
+  auto al_parameters = boost::make_shared<AugmentedLagrangianParameters>();
+  al_parameters->lm_parameters = p_->lm_parameters;
+  AugmentedLagrangianOptimizer optimizer(al_parameters);
+
+  Values results = optimizer.optimize(graph, initial_values);
+  return results;
+}
+
+
 }  // namespace gtdynamics

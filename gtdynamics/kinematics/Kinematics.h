@@ -68,7 +68,7 @@ using ContactGoals = std::vector<ContactGoal>;
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
+  gtsam::SharedNoiseModel p_cost_model,  // pose factor
       g_cost_model,                            // goal point
       prior_q_cost_model;                      // joint angle prior factor
 
@@ -145,6 +145,18 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals) const;
+
+  /**
+   * @fn Inverse kinematics given a set of contact goals, treating contact goals
+   * and kinematics as constraints, joint angle as objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_goals goals for contact points
+   * @returns values with poses and joint angles.
+   */
+  template <class CONTEXT>
+  gtsam::Values inverseConstrained(const CONTEXT& context, const Robot& robot,
+                                   const ContactGoals& contact_goals) const;
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
