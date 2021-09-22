@@ -76,9 +76,10 @@ Values Kinematics::inverse<Interval>(const Interval& interval,
   return results;
 }
 
-Values Kinematics::interpolate(const Interval& interval, const Robot& robot,
-                               const ContactGoals& contact_goals1,
-                               const ContactGoals& contact_goals2) const {
+template <>
+Values Kinematics::interpolate<Interval>(const Interval& interval, const Robot& robot,
+                                         const ContactGoals& contact_goals1,
+                                         const ContactGoals& contact_goals2) const {
   Values result;
   const double dt = 1.0 / (interval.k_start - interval.k_end);  // 5 6 7 8 9 [10
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {

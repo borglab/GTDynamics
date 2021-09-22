@@ -28,7 +28,7 @@ template <>
 NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
                                                    const Robot& robot) const {
   NonlinearFactorGraph graph;
-  for (auto&& phase : trajectory) {
+  for (auto&& phase : trajectory.phases()) {
     graph.add(this->graph(phase, robot));
   }
   return graph;
@@ -38,7 +38,7 @@ template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
     const Trajectory& trajectory, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
-  for (size_t k = trajectory.k_start; k <= trajectory.k_end; k++) {
+  for (size_t k = trajectory.getStartTimeStep(0); k <= trajectory.getEndTimeStep(trajectory.phases().size()-1); k++) {
     graph.add(pointGoalObjectives(Slice(k), contact_goals));
   }
   return graph;
@@ -48,7 +48,7 @@ template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Trajectory>(
     const Trajectory& trajectory, const Robot& robot) const {
   NonlinearFactorGraph graph;
-  for (size_t k = trajectory.k_start; k <= trajectory.k_end; k++) {
+  for (size_t k = trajectory.getStartTimeStep(0); k <= trajectory.getEndTimeStep(trajectory.phases().size()-1); k++) {
     graph.add(jointAngleObjectives(Slice(k), robot));
   }
   return graph;
@@ -59,7 +59,7 @@ Values Kinematics::initialValues<Trajectory>(const Trajectory& trajectory,
                                              const Robot& robot,
                                              double gaussian_noise) const {
   Values values;
-  for (size_t k = trajectory.k_start; k <= trajectory.k_end; k++) {
+  for (size_t k = trajectory.getStartTimeStep(0); k <= trajectory.getEndTimeStep(trajectory.phases().size()-1); k++) {
     values.insert(initialValues(Slice(k), robot, gaussian_noise));
   }
   return values;
@@ -70,20 +70,21 @@ Values Kinematics::inverse<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
     const ContactGoals& contact_goals) const {
   Values results;
-  for (size_t k = trajectory.k_start; k <= trajectory.k_end; k++) {
+  for (size_t k = trajectory.getStartTimeStep(0); k <= trajectory.getEndTimeStep(trajectory.phases().size()-1); k++) {
     results.insert(inverse(Slice(k), robot, contact_goals));
   }
   return results;
 }
 
-Values Kinematics::interpolate(const Trajectory& trajectory, const Robot& robot,
+template<>
+Values Kinematics::interpolate<Trajectory>(const Trajectory& trajectory, const Robot& robot,
                                const ContactGoals& contact_goals1,
                                const ContactGoals& contact_goals2) const {
   Values result;
   const double dt =
-      1.0 / (trajectory.k_start - trajectory.k_end);  // 5 6 7 8 9 [10
-  for (size_t k = trajectory.k_start; k <= trajectory.k_end; k++) {
-    const double t = dt * (k - trajectory.k_start);
+      1.0 / (trajectory.getStartTimeStep(0) - trajectory.getEndTimeStep(trajectory.phases().size()-1));  // 5 6 7 8 9 [10
+  for (size_t k = trajectory.getStartTimeStep(0); k <= trajectory.getEndTimeStep(trajectory.phases().size()-1); k++) {
+    const double t = dt * (k - trajectory.getStartTimeStep(0));
     ContactGoals goals;
     transform(contact_goals1.begin(), contact_goals1.end(),
               contact_goals2.begin(), std::back_inserter(goals),

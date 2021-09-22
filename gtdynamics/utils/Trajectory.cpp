@@ -36,6 +36,21 @@ using std::vector;
 
 namespace gtdynamics {
 
+
+void Trajectory::addPhaseContactPoints(const Phase &phase) {
+  // Add unique PointOnLink objects to contact_points_
+  for (auto &&kv : boost::static_pointer_cast<const FootContactState>(phase.constraints())->contactPoints()) {
+    int link_count =
+        std::count_if(contact_points_.begin(), contact_points_.end(),
+                      [&](const PointOnLink &contact_point) {
+                        return contact_point.point == kv.point &&
+                               contact_point.link == kv.link;
+                      });
+    if (link_count == 0) contact_points_.push_back(kv);
+  }
+}
+
+
 vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
     const Robot &robot, const DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
@@ -80,21 +95,55 @@ Values Trajectory::multiPhaseInitialValues(const Robot &robot,
                                         gaussian_noise, phaseContactPoints());
 }
 
+ContactPointGoals Trajectory::initContactPointGoal(const Robot &robot,
+                                                  double ground_height) const {
+  ContactPointGoals cp_goals;
+  const Point3 adjust(0, 0, -ground_height);
+
+  // Go over all phases, and all contact points
+  for (auto &&phase : phases_) {
+    for (auto &&cp : boost::static_pointer_cast<const FootContactState>(phase.constraints())->contactPoints()) {
+      auto link_name = cp.link->name();
+      // If no goal set yet, add it here
+      if (cp_goals.count(link_name) == 0) {
+        LinkSharedPtr link = robot.link(link_name);
+        const Point3 foot_w = link->bMcom() * cp.point + adjust;
+        cp_goals.emplace(link_name, foot_w);
+      }
+    }
+  }
+
+  return cp_goals;
+}
+
 NonlinearFactorGraph Trajectory::contactPointObjectives(
     const Robot &robot, const SharedNoiseModel &cost_model, const Point3 &step,
     double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Initialize contact point goals.
-  ContactPointGoals cp_goals =
-      walk_cycle_.initContactPointGoal(robot, ground_height);
+  ContactPointGoals cp_goals = initContactPointGoal(robot, ground_height);
 
   size_t k_start = 0;
-  for (int w = 0; w < repeat_; w++) {
-    factors.add(walk_cycle_.contactPointObjectives(step, cost_model, k_start,
-                                                   &cp_goals));
-    k_start += walk_cycle_.numTimeSteps();
+  /////for (int w = 0; w < repeat_; w++) {
+  /////  factors.add(walk_cycle_.contactPointObjectives(step, cost_model, k_start,
+  /////                                                 &cp_goals));
+  /////  k_start += walk_cycle_.numTimeSteps();
+  /////}
+
+  for (const Phase &phase : phases_) {
+    // Ask the Phase instance to anchor the stance legs
+    factors.add(boost::static_pointer_cast<const FootContactState>(phase.constraints())->
+                contactPointObjectives(contact_points_, step, cost_model,
+                                             k_start, cp_goals, phase.numTimeSteps()));
+    // Update goals for swing legs
+    cp_goals = boost::static_pointer_cast<const FootContactState>(phase.constraints())->
+                            updateContactPointGoals(contact_points_, step, cp_goals);
+
+    // update the start time step for the next phase
+    k_start += phase.numTimeSteps();
   }
+
   return factors;
 }
 

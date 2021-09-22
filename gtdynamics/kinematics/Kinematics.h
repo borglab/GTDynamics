@@ -154,7 +154,8 @@ class Kinematics : public Optimizer {
    * @param contact_goals1 goals for contact points for interval.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values interpolate(const CONTEXT& context, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };
