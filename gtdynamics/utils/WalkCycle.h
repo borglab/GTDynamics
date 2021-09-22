@@ -59,4 +59,5 @@ class WalkCycle {
   /// GTSAM-style print, works with wrapper.
   void print(const std::string& s = "") const;
   
+};
 }  // namespace gtdynamics
