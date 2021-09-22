@@ -40,14 +40,7 @@ auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
 auto robot = simple_rr::getRobot();
 size_t t = 0;
 
-gtsam::Values zeroValues() {
-  gtsam::Values joint_angles;
-  for (auto&& joint : robot.joints()) {
-    InsertJointAngle(&joint_angles, joint->id(), 0.0);
-  }
-  return joint_angles;
-}
-
+// Test should not throw an exception.
 TEST(LinkPoseFactor, Constructor) {
   LinkPoseFactor<RevoluteJoint>(key0, key1, kModel, robot.joints()[0], 0.0, t);
 }
@@ -100,29 +93,33 @@ TEST(LinkPoseFactor, Jacobians) {
 
   Vector error2 = factor2.evaluateError(wTl0, wTl1);
   EXPECT(assert_equal(Vector::Zero(6), error2, 1e-9));
-  // values.print("", GTDKeyFormatter);
+
   // Check Jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor2, values, 1e-7, 1e-3);
 }
 
-TEST(ForwardKinematicsFactor, ArbitraryTime) {
-  // Robot robot =
-  //     CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
-  // std::string base_link = "l1", end_link = "l2";
+TEST(LinkPoseFactor, ArbitraryTime) {
+  size_t t = 81;
+  auto link0 = robot.links()[0];
+  auto link1 = robot.links()[1];
 
-  // size_t t = 81;
-  // Values joint_angles;
-  // InsertJointAngle(&joint_angles, robot.joint("j1")->id(), t, M_PI_2);
+  // Non-trivial joint angle
+  double angle = M_PI;
+  LinkPoseFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
+                                       angle, t);
 
-  // ForwardKinematicsFactor factor(key0, key1, robot, base_link, end_link,
-  //                                joint_angles, kModel, t);
+  Pose3 wTl0 = link0->bMcom();
+  Pose3 wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
 
-  // Pose3 actual = factor.measured();
-  // Values fk = robot.forwardKinematics(joint_angles, t, base_link);
-  // Pose3 wTl1 = Pose(fk, robot.link("l1")->id(), t),
-  //       wTl2 = Pose(fk, robot.link("l2")->id(), t);
-  // Pose3 expected = wTl1.between(wTl2);
-  // EXPECT(assert_equal(expected, actual));
+  Values values;
+  InsertPose(&values, link0->id(), wTl0);
+  InsertPose(&values, link1->id(), wTl1);
+
+  Vector error = factor.evaluateError(wTl0, wTl1);
+  EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));
+
+  // Check Jacobians
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 }
 
 int main() {
