@@ -21,8 +21,8 @@
 namespace gtdynamics {
 
 /**
- * @brief A 2-way factor to relate the parent and child links of a joint given the
- * joint coordinate as a measurement.
+ * @brief A 2-way factor to relate the parent and child links of a joint given
+ * the joint coordinate as a measurement.
  *
  * @tparam JOINT The type of joint which is being constrained.
  */
@@ -93,6 +93,17 @@ class LinkPoseFactor
       *H_wTp = H * (*H_wTp);
     }
     return error;
+  }
+
+  /// print contents
+  void print(const std::string& s = "",
+             const gtsam::KeyFormatter& keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "LinkPoseFactor(" << keyFormatter(key1()) << ","
+              << keyFormatter(key2()) << ")\n";
+    gtsam::traits<typename JOINT::JointCoordinate>::Print(joint_coordinate_,
+                                                          "  measured: ");
+    this->noiseModel_->print("  noise model: ");
   }
 };
 }  // namespace gtdynamics
