@@ -16,6 +16,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/ConstraintSpec.h>
 
 #include <iosfwd>
 
@@ -24,34 +25,32 @@ namespace gtdynamics {
  * @class FootContactState class stores information about a robot stance
  * and its duration.
  */
-class FootContactState {
+
+using ContactPointGoals = std::map<std::string, gtsam::Point3>;
+
+class FootContactState : public ConstraintSpec {
  protected:
-  size_t num_time_steps_;        ///< Number of time steps in this phase
   PointOnLinks contact_points_;  ///< Contact Points
 
  public:
   /// Constructor
-  FootContactState(size_t num_time_steps) : num_time_steps_(num_time_steps) {}
+  FootContactState() {};
 
   /**
    * @fbrief Constructor with all contact points, takes list of PointOnLinks.
    *
-   * @param[in] num_time_steps  Number of time steps in phase.
    * @param[in] points_on_links List of link PointOnLinks.
    */
-  FootContactState(size_t num_time_steps,
-                   const std::vector<PointOnLink> &points_on_links);
+  FootContactState(const std::vector<PointOnLink> &points_on_links);
 
   /**
    * @fbrief Constructor with all contact points, takes a number of links and
    * creates same contact points on all links.
    *
-   * @param[in] num_time_steps  Number of time steps in phase.
    * @param[in] links           List of link pointers.
    * @param[in] contact_in_com  Point of contact on link.
    */
-  FootContactState(size_t num_time_steps,
-                   const std::vector<LinkSharedPtr> &links,
+  FootContactState(const std::vector<LinkSharedPtr> &links,
                    const gtsam::Point3 &contact_in_com);
 
   /// Returns all the contact points in the stance
@@ -81,9 +80,6 @@ class FootContactState {
       return (*it).point;
   }
 
-  /// Returns the number of time steps in this phase
-  int numTimeSteps() const { return num_time_steps_; }
-
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os,
                                   const FootContactState &phase);
@@ -102,11 +98,12 @@ class FootContactState {
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const gtsam::SharedNoiseModel &cost_model, size_t k_start,
-      ContactGoals *cp_goals) const;
+      const ContactPointGoals &cp_goals, const size_t ts) const;
 
-  /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
-  gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
-                            size_t k = 0,
-                            boost::optional<double> dt = boost::none) const;
+  std::vector<std::string> swingLinks() const;
+
+  ContactPointGoals updateContactPointGoals(
+      const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
+      const ContactPointGoals &cp_goals) const;
 };
 }  // namespace gtdynamics

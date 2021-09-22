@@ -23,18 +23,14 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
-FootContactState::FootContactState(
-    size_t num_time_steps, const std::vector<PointOnLink> &points_on_links)
-    : num_time_steps_(num_time_steps) {
+FootContactState::FootContactState( const std::vector<PointOnLink> &points_on_links) {
   for (auto &&point_on_link : points_on_links) {
     contact_points_.push_back(point_on_link);
   }
 }
 
-FootContactState::FootContactState(size_t num_time_steps,
-                                   const std::vector<LinkSharedPtr> &links,
-                                   const gtsam::Point3 &contact_in_com)
-    : num_time_steps_(num_time_steps) {
+FootContactState::FootContactState(const std::vector<LinkSharedPtr> &links,
+                                   const gtsam::Point3 &contact_in_com) {
   for (auto &&link : links) {
     contact_points_.emplace_back(link, contact_in_com);
   }
@@ -68,46 +64,48 @@ gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
 NonlinearFactorGraph FootContactState::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
     const gtsam::SharedNoiseModel &cost_model, size_t k_start,
-    ContactGoals *cp_goals) const {
+    const ContactPointGoals &cp_goals, const size_t ts) const {
   NonlinearFactorGraph factors;
 
-  for (auto &&kv : all_contact_points) {
-    Point3 &cp_goal = pointGoal(cp_goals, kv);
-    const bool stance = hasContact(kv.link);
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
+    const Point3 &cp_goal = cp_goals.at(name);
+    const bool stance = hasContact(cp.link);
     auto goal_trajectory =
-        stance ? StanceTrajectory(cp_goal, num_time_steps_)
-               : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
-    if (!stance) cp_goal += step;  // Update the goal if swing
+        stance ? StanceTrajectory(cp_goal, ts)
+               : SimpleSwingTrajectory(cp_goal, step, ts);
 
-    factors.push_back(PointGoalFactors(cost_model, kv.point, goal_trajectory,
-                                       kv.link->id(), k_start));
+    factors.push_back(PointGoalFactors(cost_model, cp.point, goal_trajectory,
+                                       cp.link->id(), k_start));
   }
   return factors;
 }
 
-Matrix FootContactState::jointMatrix(const Robot &robot,
-                                     const gtsam::Values &results, size_t k,
-                                     boost::optional<double> dt) const {
-  const auto &joints = robot.joints();
-  const size_t J = joints.size();
-  const int m = numTimeSteps(), n = 4 * J + (dt ? 1 : 0);
-  Matrix table(m, n);
-  for (int i = 0; i < m; i++) {
-    size_t j = 0;
-    for (auto &&joint : joints) {
-      const auto id = joint->id();
-      table(i, j + 0 * J) = JointAngle(results, id, k);
-      table(i, j + 1 * J) = JointVel(results, id, k);
-      table(i, j + 2 * J) = JointAccel(results, id, k);
-      table(i, j + 3 * J) = Torque(results, id, k);
-      ++j;
+std::vector<string> FootContactState::swingLinks() const {
+  std::vector<string> phase_swing_links;
+  for (auto &&kv : contactPoints()) {
+    if (!hasContact(kv.link)) {
+      phase_swing_links.push_back(kv.link->name());
     }
-    if (dt) {
-      table(i, n - 1) = *dt;
-    }
-    ++k;
   }
-  return table;
+  return phase_swing_links;
+}
+
+ContactPointGoals FootContactState::updateContactPointGoals(
+    const PointOnLinks &all_contact_points, const Point3 &step,
+    const ContactPointGoals &cp_goals) const {
+  ContactPointGoals new_goals;
+
+  // For all "feet", update the goal point with step iff in swing.
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
+    const Point3 &cp_goal = cp_goals.at(name);
+    const bool stance = hasContact(cp.link);
+    // If a contact is not on a stance leg, it is on a swing leg and we advance
+    // the contact goal by adding the 3-vector `step`.
+    new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
+  }
+  return new_goals;
 }
 
 }  // namespace gtdynamics
