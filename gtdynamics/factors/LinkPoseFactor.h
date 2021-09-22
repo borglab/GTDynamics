@@ -20,6 +20,12 @@
 
 namespace gtdynamics {
 
+/**
+ * @brief A 2-way factor to relate the parent and child links of a joint given the
+ * joint coordinate as a measurement.
+ *
+ * @tparam JOINT The type of joint which is being constrained.
+ */
 template <typename JOINT>
 class LinkPoseFactor
     : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
