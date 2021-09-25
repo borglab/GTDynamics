@@ -48,11 +48,11 @@ class JointMeasurementFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
-                 const gtsam::noiseModel::Base::shared_ptr& model,
-                 const JointConstSharedPtr joint,
-                 const typename JOINT::JointCoordinate& joint_coordinate,
-                 size_t k)
+  JointMeasurementFactor(
+      gtsam::Key wTp_key, gtsam::Key wTc_key,
+      const gtsam::noiseModel::Base::shared_ptr& model,
+      const JointConstSharedPtr joint,
+      const typename JOINT::JointCoordinate& joint_coordinate, size_t k)
       : Base(model, wTp_key, wTc_key),
         joint_(joint),
         joint_coordinate_(joint_coordinate),
@@ -66,10 +66,10 @@ class JointMeasurementFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr& model,
-                 const JointConstSharedPtr joint,
-                 const typename JOINT::JointCoordinate& joint_coordinate,
-                 size_t k)
+  JointMeasurementFactor(
+      const gtsam::noiseModel::Base::shared_ptr& model,
+      const JointConstSharedPtr joint,
+      const typename JOINT::JointCoordinate& joint_coordinate, size_t k)
       : Base(model, internal::PoseKey(joint->parent()->id(), k),
              internal::PoseKey(joint->child()->id(), k)),
         joint_(joint),
@@ -83,10 +83,9 @@ class JointMeasurementFactor
     gtsam::Values joint_angles;
     InsertJointAngle(&joint_angles, joint_->id(), k_, joint_coordinate_);
 
-    gtsam::Matrix H_q;
     gtsam::Matrix6 H;
     gtsam::Pose3 wTc_hat =
-        joint_->poseOf(joint_->child(), wTp, joint_angles, k_, H_wTp, H_q);
+        joint_->poseOf(joint_->child(), wTp, joint_angles, k_, H_wTp);
 
     gtsam::Vector6 error = wTc.logmap(wTc_hat, H_wTc, H_wTp ? &H : 0);
     if (H_wTp) {

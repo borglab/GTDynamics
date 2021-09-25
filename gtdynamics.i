@@ -15,17 +15,24 @@ const string SDF_PATH = kSdfPath;
 const gtsam::KeyFormatter GTDKeyFormatter;
 
 /********************** factors **********************/
-#include <gtdynamics/factors/LinkPoseFactor.h>
+#include <gtdynamics/factors/JointMeasurementFactor.h>
 template <JOINT>
-class LinkPoseFactor : gtsam::NonlinearFactor {
-  LinkPoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
-                 const gtsam::noiseModel::Base *cost_model,
-                 const gtdynamics::Joint *joint,
-                 const JOINT::JointCoordinate &joint_coordinate, size_t k);
+class JointMeasurementFactor : gtsam::NonlinearFactor {
+  JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
+                         const gtsam::noiseModel::Base *cost_model,
+                         const gtdynamics::Joint *joint,
+                         const JOINT::JointCoordinate &joint_coordinate,
+                         size_t k);
+  JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr &model,
+                         const gtdynamics::Joint *joint,
+                         const JOINT::JointCoordinate &joint_coordinate,
+                         size_t k);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
+
+typedef gtdynamics::JointMeasurementFactor<gtdynamics::RevoluteJoint> RevoluteJointMeasurementFactor;
 
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
