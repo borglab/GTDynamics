@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testLinkPoseFactor.cpp
- * @brief Test LinkPoseFactor.
+ * @file  testJointMeasurementFactor.cpp
+ * @brief Test JointMeasurementFactor.
  * @author Varun Agrawal
  */
 
@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/LinkPoseFactor.h"
+#include "gtdynamics/factors/JointMeasurementFactor.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/utils/values.h"
@@ -41,12 +41,12 @@ auto robot = simple_rr::getRobot();
 size_t t = 0;
 
 // Test should not throw an exception.
-TEST(LinkPoseFactor, Constructor) {
-  LinkPoseFactor<RevoluteJoint>(key0, key1, kModel, robot.joints()[0], 0.0, t);
+TEST(JointMeasurementFactor, Constructor) {
+  JointMeasurementFactor<RevoluteJoint>(key0, key1, kModel, robot.joints()[0], 0.0, t);
 }
 
-TEST(LinkPoseFactor, Error) {
-  LinkPoseFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
+TEST(JointMeasurementFactor, Error) {
+  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
                                        0.0, t);
 
   auto link0 = robot.links()[0];
@@ -57,7 +57,7 @@ TEST(LinkPoseFactor, Error) {
   EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));
 
   // Error when the elbow is bent to 90 degrees
-  LinkPoseFactor<RevoluteJoint> factor2(key0, key1, kModel, robot.joints()[0],
+  JointMeasurementFactor<RevoluteJoint> factor2(key0, key1, kModel, robot.joints()[0],
                                         M_PI, t);
 
   Pose3 wTl1(Rot3::Rz(M_PI), gtsam::Point3(0, 0, 0.5));
@@ -66,8 +66,8 @@ TEST(LinkPoseFactor, Error) {
   EXPECT(assert_equal(Vector::Zero(6), error2, 1e-9));
 }
 
-TEST(LinkPoseFactor, Jacobians) {
-  LinkPoseFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
+TEST(JointMeasurementFactor, Jacobians) {
+  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
                                        0.0, t);
 
   auto link0 = robot.links()[0];
@@ -84,7 +84,7 @@ TEST(LinkPoseFactor, Jacobians) {
 
   // Non-trivial joint angle
   double angle = M_PI;
-  LinkPoseFactor<RevoluteJoint> factor2(key0, key1, kModel, robot.joints()[0],
+  JointMeasurementFactor<RevoluteJoint> factor2(key0, key1, kModel, robot.joints()[0],
                                         angle, t);
   wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
   values.clear();
@@ -98,14 +98,14 @@ TEST(LinkPoseFactor, Jacobians) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor2, values, 1e-7, 1e-3);
 }
 
-TEST(LinkPoseFactor, ArbitraryTime) {
+TEST(JointMeasurementFactor, ArbitraryTime) {
   size_t t = 81;
   auto link0 = robot.links()[0];
   auto link1 = robot.links()[1];
 
   // Non-trivial joint angle
   double angle = M_PI;
-  LinkPoseFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
+  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel, robot.joints()[0],
                                        angle, t);
 
   Pose3 wTl0 = link0->bMcom();

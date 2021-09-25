@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  LinkPoseFactor.h
+ * @file  JointMeasurementFactor.h
  * @brief Factor relating a parent link and a child link given joint
  * measurement.
  * @author Varun Agrawal
@@ -27,10 +27,10 @@ namespace gtdynamics {
  * @tparam JOINT The type of joint which is being constrained.
  */
 template <typename JOINT>
-class LinkPoseFactor
+class JointMeasurementFactor
     : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
  private:
-  using This = LinkPoseFactor;
+  using This = JointMeasurementFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
   JointConstSharedPtr joint_;
@@ -48,7 +48,7 @@ class LinkPoseFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  LinkPoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
+  JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
                  const gtsam::noiseModel::Base::shared_ptr& model,
                  const JointConstSharedPtr joint,
                  const typename JOINT::JointCoordinate& joint_coordinate,
@@ -66,7 +66,7 @@ class LinkPoseFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  LinkPoseFactor(const gtsam::noiseModel::Base::shared_ptr& model,
+  JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr& model,
                  const JointConstSharedPtr joint,
                  const typename JOINT::JointCoordinate& joint_coordinate,
                  size_t k)
@@ -99,7 +99,7 @@ class LinkPoseFactor
   void print(const std::string& s = "",
              const gtsam::KeyFormatter& keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "LinkPoseFactor(" << keyFormatter(key1()) << ","
+    std::cout << s << "JointMeasurementFactor(" << keyFormatter(key1()) << ","
               << keyFormatter(key2()) << ")\n";
     gtsam::traits<typename JOINT::JointCoordinate>::Print(joint_coordinate_,
                                                           "  measured: ");
