@@ -39,7 +39,7 @@ namespace gtdynamics {
 
 void Trajectory::addPhaseContactPoints(const Phase &phase) {
   // Add unique PointOnLink objects to contact_points_
-  for (auto &&kv : boost::static_pointer_cast<const FootContactState>(phase.constraints())->contactPoints()) {
+  for (auto &&kv : phase.FootContactConstraintSpec()->contactPoints()) {
     int link_count =
         std::count_if(contact_points_.begin(), contact_points_.end(),
                       [&](const PointOnLink &contact_point) {
@@ -102,7 +102,7 @@ ContactPointGoals Trajectory::initContactPointGoal(const Robot &robot,
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
-    for (auto &&cp : boost::static_pointer_cast<const FootContactState>(phase.constraints())->contactPoints()) {
+    for (auto &&cp : phase.FootContactConstraintSpec()->contactPoints()) {
       auto link_name = cp.link->name();
       // If no goal set yet, add it here
       if (cp_goals.count(link_name) == 0) {
@@ -125,19 +125,14 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
   ContactPointGoals cp_goals = initContactPointGoal(robot, ground_height);
 
   size_t k_start = 0;
-  /////for (int w = 0; w < repeat_; w++) {
-  /////  factors.add(walk_cycle_.contactPointObjectives(step, cost_model, k_start,
-  /////                                                 &cp_goals));
-  /////  k_start += walk_cycle_.numTimeSteps();
-  /////}
 
   for (const Phase &phase : phases_) {
     // Ask the Phase instance to anchor the stance legs
-    factors.add(boost::static_pointer_cast<const FootContactState>(phase.constraints())->
+    factors.add(phase.FootContactConstraintSpec()->
                 contactPointObjectives(contact_points_, step, cost_model,
                                              k_start, cp_goals, phase.numTimeSteps()));
     // Update goals for swing legs
-    cp_goals = boost::static_pointer_cast<const FootContactState>(phase.constraints())->
+    cp_goals = phase.FootContactConstraintSpec()->
                             updateContactPointGoals(contact_points_, step, cp_goals);
 
     // update the start time step for the next phase

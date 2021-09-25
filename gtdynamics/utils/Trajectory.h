@@ -20,7 +20,6 @@
 #include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/WalkCycle.h>
 #include <gtdynamics/utils/initialize_solution_utils.h>
-#include <gtdynamics/utils/FootContactState.h>
 
 namespace gtdynamics {
 
@@ -83,7 +82,7 @@ class Trajectory {
   std::vector<PointOnLinks> phaseContactPoints() const {
     std::vector<PointOnLinks> phase_cps;
     for (auto &&phase : phases_) {
-      phase_cps.push_back(boost::static_pointer_cast<const FootContactState>(phase.constraints())->contactPoints());
+      phase_cps.push_back(phase.FootContactConstraintSpec()->contactPoints());
     }
     return phase_cps;
   }
@@ -105,8 +104,8 @@ class Trajectory {
     PointOnLinks phase_2_cps;
 
     for (size_t p = 0; p < phases_.size() - 1; p++) {
-      phase_1_cps = boost::static_pointer_cast<const FootContactState>(phases_[p].constraints())->contactPoints();
-      phase_2_cps = boost::static_pointer_cast<const FootContactState>(phases_[p+1].constraints())->contactPoints();
+      phase_1_cps = phases_[p].FootContactConstraintSpec()->contactPoints();
+      phase_2_cps = phases_[p+1].FootContactConstraintSpec()->contactPoints();
 
       PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
       trans_cps_orig.push_back(intersection);
@@ -224,7 +223,7 @@ class Trajectory {
    * @return Vector of contact links.
    */
   const PointOnLinks &getPhaseContactLinks(size_t p) const {
-    return boost::static_pointer_cast<const FootContactState>(phases_[p].constraints())->contactPoints();
+    return phases_[p].FootContactConstraintSpec()->contactPoints();
   }
 
   /**
@@ -233,7 +232,7 @@ class Trajectory {
    * @return Vector of swing links.
    */
   std::vector<std::string> getPhaseSwingLinks(size_t p) const {
-    return boost::static_pointer_cast<const FootContactState>(phases_[p].constraints())->swingLinks();
+    return phases_[p].FootContactConstraintSpec()->swingLinks();
   }
 
   /**

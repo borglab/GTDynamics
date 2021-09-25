@@ -24,7 +24,7 @@ using gtsam::Point3;
 using std::string;
 
 std::ostream &operator<<(std::ostream &os, const Phase &phase) {
-  os << phase.constraints_;
+  os << phase.constraint_spec_;
   return os;
 }
 

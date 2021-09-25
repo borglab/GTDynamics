@@ -17,6 +17,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtdynamics/utils/FootContactState.h>
 
 #include <map>
 #include <string>
@@ -35,6 +36,18 @@ class WalkCycle {
  public:
   /// Default Constructor
   WalkCycle() {}
+
+  WalkCycle(const std::vector<boost::shared_ptr<FootContactState>> &states, const std::vector<size_t> &phase_lengths) {
+    if (states.size() != phase_lengths.size()){
+      throw std::runtime_error("states vector and phase_lengths vector have different sizes");
+    }
+    size_t k = 0;
+    for (size_t i = 0; i < states.size(); i++)  {
+      Phase ph = Phase(k, k + phase_lengths[i], states[i]);
+      phases_.push_back(ph);
+      k += phase_lengths[i];
+    }
+  }
 
   /**
    * @fn Return phase for given phase number p.

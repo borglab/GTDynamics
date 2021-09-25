@@ -17,6 +17,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ConstraintSpec.h>
 #include <gtdynamics/utils/Interval.h>
+#include <gtdynamics/utils/FootContactState.h>
 
 #include <iosfwd>
 
@@ -28,16 +29,16 @@ namespace gtdynamics {
 
 class Phase : public Interval {
  protected:
-  boost::shared_ptr<ConstraintSpec> constraints_;
+  boost::shared_ptr<ConstraintSpec> constraint_spec_;
 
  public:
   /// Constructor
   Phase(size_t k_start, size_t k_end,
         const boost::shared_ptr<ConstraintSpec> &constraints)
-      : Interval(k_start, k_end), constraints_(constraints) {}
+      : Interval(k_start, k_end), constraint_spec_(constraints) {}
 
   /// Returns all the contact points in the stance
-  const boost::shared_ptr<ConstraintSpec> &constraints() const { return constraints_; }
+  const boost::shared_ptr<const FootContactState> FootContactConstraintSpec() const { return boost::static_pointer_cast<const FootContactState>(constraint_spec_); }
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os, const Phase &phase);

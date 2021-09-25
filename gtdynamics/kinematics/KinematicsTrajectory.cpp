@@ -29,7 +29,8 @@ NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
                                                    const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(this->graph(phase, robot));
+    Interval interval = static_cast<Interval>(phase);
+    graph.add(this->graph(interval, robot));
   }
   return graph;
 }

@@ -50,14 +50,14 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
-      even(2, even_links, contact_in_com);
+  boost::shared_ptr<FootContactState> stationary = boost::make_shared<FootContactState>(links, contact_in_com);
+  boost::shared_ptr<FootContactState> odd = boost::make_shared<FootContactState>(odd_links, contact_in_com);
+  boost::shared_ptr<FootContactState> even = boost::make_shared<FootContactState>(even_links, contact_in_com);
 
-  WalkCycle walk_cycle;
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(even);
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(odd);
+  std::vector<boost::shared_ptr<FootContactState>> states = {stationary, even, stationary, odd};
+  std::vector<size_t> phase_lengths = {1,2,1,2};
+
+  WalkCycle walk_cycle(states, phase_lengths);
 
   return Trajectory(walk_cycle, repeat);
 }
