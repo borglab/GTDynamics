@@ -29,8 +29,8 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
-  std::vector<Phase> phases_;
-  PointOnLinks contact_points_;  ///< All contact points
+  std::vector<Phase> phases_; ///< All phases in the trajectory
+  PointOnLinks contact_points_;  ///< All unique contact points in the trajectory
 
   /// Gets the intersection between two PointOnLinks objects
   static PointOnLinks getIntersection(const PointOnLinks &cps1,
@@ -52,7 +52,9 @@ class Trajectory {
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait
-   * repetitions.
+   * repetitions. phases from walk_cycle will be added to Trajectory phases_
+   * for repeat times. contact points from all phases then will be added to
+   * contact_points_.
    *
    * @param walk_cycle  The Walk Cycle for the robot.
    * @param repeat      The number of repetitions for each phase of the gait.
@@ -65,18 +67,29 @@ class Trajectory {
       auto phases_i = walk_cycle.phases();
       phases_.insert(phases_.end(), phases_i.begin(), phases_i.end());
     }
-
+    
+    // After all phases in the trajectory are in phases_, 
+    // add unique contact from each phase in the trajectory to contact_points_
     for (auto&& phase : phases_) {
       addPhaseContactPoints(phase);
     }
   }
+
+  /**
+   * @fn adds unique contact points from phase to contact_points_ of trajectory 
+   * 
+   * @param[in] phase.... phase from which to add contact points  
+   */
+  void addPhaseContactPoints(const Phase &phase);
 
   /// Returns vector of phases in the walk cycle
   const std::vector<Phase>& phases() const { return phases_; }
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all phases after
-   * applying repetition on the walk cycle.
+   * applying repetition on the walk cycle. 
+   * This function returns all contact points from all phases
+   * and may have repetitions, as opposed to contact_points_.
    * @return Phase CPs.
    */
   std::vector<PointOnLinks> phaseContactPoints() const {
@@ -87,10 +100,8 @@ class Trajectory {
     return phase_cps;
   }
 
-  /// Return all the contact points.
+  /// Return all unique contact points.
   const PointOnLinks& contactPoints() const { return contact_points_; }
-
-  void addPhaseContactPoints(const Phase &phase);
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all transitions between

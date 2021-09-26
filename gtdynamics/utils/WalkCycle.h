@@ -27,7 +27,8 @@ namespace gtdynamics {
 
 /**
  * @class WalkCycle class stores the sequence of phases
- * in a walk cycle.
+ * in a walk cycle. A WalkCycle is built from FootContactStates
+ * and phase lengths and can spawn phases.
  */
 class WalkCycle {
  protected:
@@ -37,6 +38,15 @@ class WalkCycle {
   /// Default Constructor
   WalkCycle() {}
 
+  /**
+   * @fn Construct a new Walk Cycle object from a vector of 
+   * FootContactState pointers and phase lengths. 
+   * for each element in the vectors, a Phase will be generated with a 
+   * corresponding FootContactState and phase length.
+   * 
+   * @param states ........... a vector of FootContactState shared pointers.
+   * @param phase_lengths .... a vector of phase lengths corresponding to the states vector.
+   */
   WalkCycle(const std::vector<boost::shared_ptr<FootContactState>> &states, const std::vector<size_t> &phase_lengths) {
     if (states.size() != phase_lengths.size()){
       throw std::runtime_error("states vector and phase_lengths vector have different sizes");
