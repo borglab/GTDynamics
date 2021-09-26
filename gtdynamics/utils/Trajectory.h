@@ -82,7 +82,7 @@ class Trajectory {
    */
   void addPhaseContactPoints(const Phase &phase);
 
-  /// Returns vector of phases in the walk cycle
+  /// Returns vector of phases in the trajectory
   const std::vector<Phase>& phases() const { return phases_; }
 
   /**
