@@ -17,7 +17,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtdynamics/utils/FootContactState.h>
+#include <gtdynamics/utils/FootContactConstraintSpec.h>
 
 #include <map>
 #include <string>
@@ -27,7 +27,7 @@ namespace gtdynamics {
 
 /**
  * @class WalkCycle class stores the sequence of phases
- * in a walk cycle. A WalkCycle is built from FootContactStates
+ * in a walk cycle. A WalkCycle is built from FootContactConstraintSpecs
  * and phase lengths and can spawn phases.
  */
 class WalkCycle {
@@ -40,14 +40,14 @@ class WalkCycle {
 
   /**
    * @fn Construct a new Walk Cycle object from a vector of 
-   * FootContactState pointers and phase lengths. 
+   * FootContactConstraintSpec pointers and phase lengths. 
    * for each element in the vectors, a Phase will be generated with a 
-   * corresponding FootContactState and phase length.
+   * corresponding FootContactConstraintSpec and phase length.
    * 
-   * @param states ........... a vector of FootContactState shared pointers.
+   * @param states ........... a vector of FootContactConstraintSpec shared pointers.
    * @param phase_lengths .... a vector of phase lengths corresponding to the states vector.
    */
-  WalkCycle(const std::vector<boost::shared_ptr<FootContactState>> &states, const std::vector<size_t> &phase_lengths) {
+  WalkCycle(const std::vector<boost::shared_ptr<FootContactConstraintSpec>> &states, const std::vector<size_t> &phase_lengths) {
     if (states.size() != phase_lengths.size()){
       throw std::runtime_error("states vector and phase_lengths vector have different sizes");
     }

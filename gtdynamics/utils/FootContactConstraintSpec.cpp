@@ -6,13 +6,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  FootContactState.cpp
- * @brief Utility methods for generating FootContactState objects.
+ * @file  FootContactConstraintSpec.cpp
+ * @brief Utility methods for generating FootContactConstraintSpec objects.
  * @author: Disha Das, Frank Dellaert
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
-#include <gtdynamics/utils/FootContactState.h>
+#include <gtdynamics/utils/FootContactConstraintSpec.h>
 
 #include <iostream>
 
@@ -23,20 +23,20 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
-FootContactState::FootContactState( const std::vector<PointOnLink> &points_on_links) {
+FootContactConstraintSpec::FootContactConstraintSpec( const std::vector<PointOnLink> &points_on_links) {
   for (auto &&point_on_link : points_on_links) {
     contact_points_.push_back(point_on_link);
   }
 }
 
-FootContactState::FootContactState(const std::vector<LinkSharedPtr> &links,
+FootContactConstraintSpec::FootContactConstraintSpec(const std::vector<LinkSharedPtr> &links,
                                    const gtsam::Point3 &contact_in_com) {
   for (auto &&link : links) {
     contact_points_.emplace_back(link, contact_in_com);
   }
 }
 
-std::ostream &operator<<(std::ostream &os, const FootContactState &phase) {
+std::ostream &operator<<(std::ostream &os, const FootContactConstraintSpec &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {
     os << cp.link->name() << ": [" << cp.point.transpose() << "], ";
@@ -45,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, const FootContactState &phase) {
   return os;
 }
 
-void FootContactState::print(const string &s) const {
+void FootContactConstraintSpec::print(const string &s) const {
   std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
 }
 
@@ -61,7 +61,7 @@ gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
   throw std::runtime_error("Contact Point was not found.");
 }
 
-NonlinearFactorGraph FootContactState::contactPointObjectives(
+NonlinearFactorGraph FootContactConstraintSpec::contactPointObjectives(
     const PointOnLinks &all_contact_points, const Point3 &step,
     const gtsam::SharedNoiseModel &cost_model, size_t k_start,
     const ContactPointGoals &cp_goals, const size_t ts) const {
@@ -81,7 +81,7 @@ NonlinearFactorGraph FootContactState::contactPointObjectives(
   return factors;
 }
 
-std::vector<string> FootContactState::swingLinks() const {
+std::vector<string> FootContactConstraintSpec::swingLinks() const {
   std::vector<string> phase_swing_links;
   for (auto &&kv : contactPoints()) {
     if (!hasContact(kv.link)) {
@@ -91,7 +91,7 @@ std::vector<string> FootContactState::swingLinks() const {
   return phase_swing_links;
 }
 
-ContactPointGoals FootContactState::updateContactPointGoals(
+ContactPointGoals FootContactConstraintSpec::updateContactPointGoals(
     const PointOnLinks &all_contact_points, const Point3 &step,
     const ContactPointGoals &cp_goals) const {
   ContactPointGoals new_goals;

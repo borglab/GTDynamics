@@ -39,7 +39,7 @@ namespace gtdynamics {
 
 void Trajectory::addPhaseContactPoints(const Phase &phase) {
   // Add unique PointOnLink objects to contact_points_
-  for (auto &&kv : phase.FootContactConstraintSpec()->contactPoints()) {
+  for (auto &&kv : phase.footContactConstraintSpec()->contactPoints()) {
     int link_count =
         std::count_if(contact_points_.begin(), contact_points_.end(),
                       [&](const PointOnLink &contact_point) {
@@ -102,7 +102,7 @@ ContactPointGoals Trajectory::initContactPointGoal(const Robot &robot,
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
-    for (auto &&cp : phase.FootContactConstraintSpec()->contactPoints()) {
+    for (auto &&cp : phase.footContactConstraintSpec()->contactPoints()) {
       auto link_name = cp.link->name();
       // If no goal set yet, add it here
       if (cp_goals.count(link_name) == 0) {
@@ -128,11 +128,11 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
 
   for (const Phase &phase : phases_) {
     // Ask the Phase instance to anchor the stance legs
-    factors.add(phase.FootContactConstraintSpec()->
+    factors.add(phase.footContactConstraintSpec()->
                 contactPointObjectives(contact_points_, step, cost_model,
                                              k_start, cp_goals, phase.numTimeSteps()));
     // Update goals for swing legs
-    cp_goals = phase.FootContactConstraintSpec()->
+    cp_goals = phase.footContactConstraintSpec()->
                             updateContactPointGoals(contact_points_, step, cp_goals);
 
     // update the start time step for the next phase

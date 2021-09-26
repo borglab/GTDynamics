@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  FootContactState.h
- * @brief Utility methods for generating FootContactState objects.
+ * @file  FootContactConstraintSpec.h
+ * @brief Utility methods for generating FootContactConstraintSpec objects.
  * @author: Disha Das, Frank Dellaert
  */
 
@@ -22,26 +22,26 @@
 
 namespace gtdynamics {
 /**
- * @class FootContactState class stores information about a robot stance
+ * @class FootContactConstraintSpec class stores information about a robot stance
  * and its duration.
  */
 
 using ContactPointGoals = std::map<std::string, gtsam::Point3>;
 
-class FootContactState : public ConstraintSpec {
+class FootContactConstraintSpec : public ConstraintSpec {
  protected:
   PointOnLinks contact_points_;  ///< Contact Points
 
  public:
   /// Constructor
-  FootContactState() {};
+  FootContactConstraintSpec() {};
 
   /**
    * @fbrief Constructor with all contact points, takes list of PointOnLinks.
    *
    * @param[in] points_on_links List of link PointOnLinks.
    */
-  FootContactState(const std::vector<PointOnLink> &points_on_links);
+  FootContactConstraintSpec(const std::vector<PointOnLink> &points_on_links);
 
   /**
    * @fbrief Constructor with all contact points, takes a number of links and
@@ -50,7 +50,7 @@ class FootContactState : public ConstraintSpec {
    * @param[in] links           List of link pointers.
    * @param[in] contact_in_com  Point of contact on link.
    */
-  FootContactState(const std::vector<LinkSharedPtr> &links,
+  FootContactConstraintSpec(const std::vector<LinkSharedPtr> &links,
                    const gtsam::Point3 &contact_in_com);
 
   /// Returns all the contact points in the stance
@@ -80,7 +80,7 @@ class FootContactState : public ConstraintSpec {
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os,
-                                  const FootContactState &phase);
+                                  const FootContactConstraintSpec &phase);
 
   /// GTSAM-style print, works with wrapper.
   void print(const std::string &s) const;
