@@ -33,7 +33,6 @@ TEST(Slice, InverseKinematics) {
 
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
-  // parameters.lm_parameters.setVerbosityLM("SUMMARY");
   Kinematics kinematics(parameters);
 
   // Create initial values

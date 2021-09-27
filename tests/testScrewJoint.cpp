@@ -30,7 +30,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
  * expected.
  */
 TEST(Joint, params_constructor) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 

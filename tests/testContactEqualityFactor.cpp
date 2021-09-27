@@ -33,7 +33,7 @@ using gtsam::assert_equal;
 
 auto kModel = noiseModel::Isotropic::Sigma(3, 0.1);
 
-using simple_rr::robot;
+auto robot = simple_rr::getRobot();
 
 TEST(ContactEqualityFactor, Constructor) {
   PointOnLink point_on_link{robot.link("link_0"), Point3(0, 0, 1)};

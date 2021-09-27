@@ -26,12 +26,12 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   using four_bar_linkage_pure::planar_axis;
-  using four_bar_linkage_pure::robot;
+  auto robot = four_bar_linkage_pure::getRobot();
 
   gtsam::Values joint_angles_vels_accels;
 
   gtsam::Vector3 gravity(0, -10, 0);
-  robot.fixLink("l1");
+  robot = robot.fixLink("l1");
 
   std::cout << "\033[1;32;7;4mParsed Robot:\033[0m" << std::endl;
   robot.print();

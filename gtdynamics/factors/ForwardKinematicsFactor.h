@@ -23,7 +23,7 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/ContactPoint.h"
+#include "gtdynamics/utils/PointOnLink.h"
 #include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {

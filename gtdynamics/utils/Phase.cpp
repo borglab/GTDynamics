@@ -23,10 +23,22 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
+Phase::Phase(size_t num_time_steps,
+             const std::vector<PointOnLink> &points_on_links)
+    : num_time_steps_(num_time_steps), contact_points_(points_on_links) {}
+
+Phase::Phase(size_t num_time_steps, const std::vector<LinkSharedPtr> &links,
+             const gtsam::Point3 &contact_in_com)
+    : num_time_steps_(num_time_steps) {
+  for (auto &&link : links) {
+    contact_points_.emplace_back(link, contact_in_com);
+  }
+}
+
 std::ostream &operator<<(std::ostream &os, const Phase &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {
-    os << cp.first << ": " << cp.second << ", ";
+    os << cp.link->name() << ": [" << cp.point.transpose() << "], ";
   }
   os << "]";
   return os;
@@ -37,36 +49,37 @@ void Phase::print(const string &s) const {
 }
 
 NonlinearFactorGraph Phase::contactPointObjectives(
-    const ContactPoints &all_contact_points, const Point3 &step,
-    const gtsam::SharedNoiseModel &cost_model, const Robot &robot,
-    size_t k_start, const ContactPointGoals &cp_goals) const {
+    const PointOnLinks &all_contact_points, const Point3 &step,
+    const gtsam::SharedNoiseModel &cost_model, size_t k_start,
+    const ContactPointGoals &cp_goals) const {
   NonlinearFactorGraph factors;
 
-  for (auto &&kv : all_contact_points) {
-    const string &name = kv.first;
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
     const Point3 &cp_goal = cp_goals.at(name);
-    const bool stance = hasContact(name);
+    const bool stance = hasContact(cp.link);
     auto goal_trajectory =
         stance ? StanceTrajectory(cp_goal, num_time_steps_)
                : SimpleSwingTrajectory(cp_goal, step, num_time_steps_);
 
-    factors.push_back(PointGoalFactors(cost_model, kv.second.point,
-                                       goal_trajectory, robot.link(name)->id(),
-                                       k_start));
+    factors.push_back(PointGoalFactors(cost_model, cp.point, goal_trajectory,
+                                       cp.link->id(), k_start));
   }
   return factors;
 }
 
-Phase::ContactPointGoals Phase::updateContactPointGoals(
-    const ContactPoints &all_contact_points, const Point3 &step,
+ContactPointGoals Phase::updateContactPointGoals(
+    const PointOnLinks &all_contact_points, const Point3 &step,
     const ContactPointGoals &cp_goals) const {
   ContactPointGoals new_goals;
 
   // For all "feet", update the goal point with step iff in swing.
-  for (auto &&kv : all_contact_points) {
-    const string &name = kv.first;
+  for (auto &&cp : all_contact_points) {
+    const string &name = cp.link->name();
     const Point3 &cp_goal = cp_goals.at(name);
-    const bool stance = hasContact(name);
+    const bool stance = hasContact(cp.link);
+    // If a contact is not on a stance leg, it is on a swing leg and we advance
+    // the contact goal by adding the 3-vector `step`.
     new_goals.emplace(name, stance ? cp_goal : cp_goal + step);
   }
   return new_goals;

@@ -17,7 +17,6 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/values.h>
-
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -28,14 +27,14 @@
 #include <utility>
 #include <vector>
 
-using gtsam::Pose3;
-using gtsam::Vector3;
-using gtsam::Vector6;
-using gtsam::Vector;
 using gtsam::Point3;
+using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Sampler;
 using gtsam::Values;
+using gtsam::Vector;
+using gtsam::Vector3;
+using gtsam::Vector6;
 
 namespace gtdynamics {
 
@@ -110,8 +109,7 @@ Values InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const Pose3& wTl_f, double T_s, double T_f, double dt,
     double gaussian_noise,
-    const boost::optional<ContactPoints>& contact_points) {
-
+    const boost::optional<PointOnLinks>& contact_points) {
   auto sampler_noise_model =
       gtsam::noiseModel::Isotropic::Sigma(6, gaussian_noise);
   Sampler sampler(sampler_noise_model);
@@ -134,7 +132,7 @@ Values InitializeSolutionInterpolation(
 
     // Compute forward dynamics to obtain remaining link poses.
     // TODO(Alejandro): forwardKinematics needs to get passed prev link twist
-    for (auto &&joint : robot.joints()) {
+    for (auto&& joint : robot.joints()) {
       InsertJointAngle(&init_vals, joint->id(), t, sampler.sample()[0]);
       InsertJointVel(&init_vals, joint->id(), t, sampler.sample()[0]);
     }
@@ -148,7 +146,7 @@ Values InitializeSolutionInterpolation(
     InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
-    for (auto &&kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
+    for (auto&& kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
       init_vals.tryInsert(kvp.key, kvp.value);
     }
 
@@ -162,7 +160,7 @@ Values InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts, double dt,
     double gaussian_noise,
-    const boost::optional<ContactPoints>& contact_points) {
+    const boost::optional<PointOnLinks>& contact_points) {
   Values init_vals;
   Pose3 pose = wTl_i;
   double curr_t = 0.0;
@@ -184,7 +182,7 @@ Values InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& timesteps,
     double dt, double gaussian_noise,
-    const boost::optional<ContactPoints>& contact_points) {
+    const boost::optional<PointOnLinks>& contact_points) {
   double t_i = 0.0;  // Time elapsed.
 
   Vector3 gravity(0, 0, -9.8);
@@ -199,8 +197,8 @@ Values InitializeSolutionInverseKinematics(
   // Iteratively solve the inverse kinematics problem while statisfying
   // the contact pose constraint.
   Values init_vals,
-      values = InitializePosesAndJoints(
-          robot, wTl_i, wTl_t, link_name, t_i, timesteps, dt, sampler, &wTl_dt);
+      values = InitializePosesAndJoints(robot, wTl_i, wTl_t, link_name, t_i,
+                                        timesteps, dt, sampler, &wTl_dt);
 
   DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
@@ -236,13 +234,13 @@ Values MultiPhaseZeroValuesTrajectory(
     const Robot& robot, const std::vector<int>& phase_steps,
     std::vector<Values> transition_graph_init, double dt_i,
     double gaussian_noise,
-    const boost::optional<std::vector<ContactPoints>>& phase_contact_points) {
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points) {
   Values values;
   int num_phases = phase_steps.size();
 
-  // Return either ContactPoints or None if none specified for phase p
+  // Return either PointOnLinks or None if none specified for phase p
   auto contact_points =
-      [&phase_contact_points](int p) -> boost::optional<ContactPoints> {
+      [&phase_contact_points](int p) -> boost::optional<PointOnLinks> {
     if (phase_contact_points) return (*phase_contact_points)[p];
     return boost::none;
   };
@@ -277,7 +275,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
     const std::vector<int>& phase_steps, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
     std::vector<Values> transition_graph_init, double dt, double gaussian_noise,
-    const boost::optional<std::vector<ContactPoints>>& phase_contact_points) {
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points) {
   double t_i = 0;  // Time elapsed.
   Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
 
@@ -341,7 +339,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
 }
 
 Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
-                  const boost::optional<ContactPoints>& contact_points) {
+                  const boost::optional<PointOnLinks>& contact_points) {
   Values values;
 
   auto sampler_noise_model =
@@ -369,16 +367,9 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   }
 
   if (contact_points) {
-    for (auto&& contact_point : *contact_points) {
-      int link_id = -1;
-      for (auto& link : robot.links()) {
-        if (link->name() == contact_point.first) link_id = link->id();
-      }
-
-      if (link_id == -1) throw std::runtime_error("Link not found.");
-
-      values.insert(ContactWrenchKey(link_id, contact_point.second.id, t),
-                         sampler.sample());
+    for (auto&& cp : *contact_points) {
+      // TODO(frank): allow multiple contact points on one link, id = 0,1,2...
+      values.insert(ContactWrenchKey(cp.link->id(), 0, t), sampler.sample());
     }
   }
 
@@ -388,7 +379,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
 Values ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases,
     double gaussian_noise,
-    const boost::optional<ContactPoints>& contact_points) {
+    const boost::optional<PointOnLinks>& contact_points) {
   Values z_values;
   for (int t = 0; t <= num_steps; t++)
     z_values.insert(ZeroValues(robot, t, gaussian_noise, contact_points));

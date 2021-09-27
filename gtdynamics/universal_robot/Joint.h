@@ -75,6 +75,10 @@ struct JointParams {
 
 /// Joint is the base class for a joint connecting two Link objects.
 class Joint : public boost::enable_shared_from_this<Joint> {
+
+  /// Robot class should have access to the internals of its joints.
+  friend class Robot;
+
  protected:
   using Pose3 = gtsam::Pose3;
 
