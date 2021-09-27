@@ -118,7 +118,7 @@ ContactPointGoals Trajectory::initContactPointGoal(const Robot &robot,
 
 NonlinearFactorGraph Trajectory::contactPointObjectives(
     const Robot &robot, const SharedNoiseModel &cost_model, const Point3 &step,
-    double ground_height) const {
+    ContactPointGoals &updated_cp_goals, double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Initialize contact point goals.
@@ -138,7 +138,8 @@ NonlinearFactorGraph Trajectory::contactPointObjectives(
     // update the start time step for the next phase
     k_start += phase.numTimeSteps();
   }
-
+  
+  updated_cp_goals = cp_goals;
   return factors;
 }
 

@@ -847,6 +847,7 @@ class Trajectory {
   contactPointObjectives(const gtdynamics::Robot& robot, 
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step,
+                         gtdynamics::ContactPointGoals &updated_cp_goals,
                          double ground_height = 0) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
                                const gtdynamics::Robot& robot, 

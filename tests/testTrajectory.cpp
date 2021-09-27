@@ -44,7 +44,7 @@ TEST(Trajectory, Intersection) {
   using namespace walk_cycle_example;
   TrajectoryTest traj;
   PointOnLinks intersection =
-      traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
+      traj.getIntersection(phase_1->contactPoints(), phase_2->contactPoints());
 
   PointOnLinks expected = {{robot.link("tarsus_2_L2"), contact_in_com},
                            {robot.link("tarsus_3_L3"), contact_in_com}};
@@ -90,11 +90,11 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
   EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = walk_cycle.initContactPointGoal(robot);
+  auto cp_goals = trajectory.initContactPointGoal(robot, 0);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
-  // regression
-  // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
-  //                            cp_goals["tarsus_2_L2"], 1e-5));
+  //regression
+  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
+                              cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =
@@ -126,8 +126,9 @@ TEST(Trajectory, error) {
 
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
+  ContactPointGoals updated_cp_goals;
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step);
+      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, updated_cp_goals);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());

@@ -60,7 +60,6 @@ class Trajectory {
    * @param repeat      The number of repetitions for each phase of the gait.
    */
   Trajectory(const WalkCycle &walk_cycle, size_t repeat) {
-    size_t k = 0;
     // Loop over `repeat` walk cycles W_i
     for (size_t i = 0; i < repeat; i++) {
       // Creating the phases for the ith walk cycle, and append them phases_.
@@ -243,7 +242,14 @@ class Trajectory {
    * @return Vector of swing links.
    */
   std::vector<std::string> getPhaseSwingLinks(size_t p) const {
-    return phases_[p].footContactConstraintSpec()->swingLinks();
+    std::vector<std::string> phase_swing_links;
+    const Phase &phase = phases_[p];
+    for (auto &&kv : contact_points_) {
+      if (!phase.footContactConstraintSpec()->hasContact(kv.link)) {
+        phase_swing_links.push_back(kv.link->name());
+    }
+  }
+  return phase_swing_links;
   }
 
   /**
@@ -278,7 +284,7 @@ ContactPointGoals initContactPointGoal(const Robot &robot,
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
-      const gtsam::Point3 &step, double ground_height = {}) const;
+      const gtsam::Point3 &step, ContactPointGoals &updated_cp_goals, double ground_height = {}) const;
 
   /**
    * @fn Add minimum torque objectives.

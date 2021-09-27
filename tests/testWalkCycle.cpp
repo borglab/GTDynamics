@@ -18,6 +18,7 @@
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/Phase.h"
 #include "gtdynamics/utils/WalkCycle.h"
+#include "gtdynamics/utils/Trajectory.h"
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
@@ -28,13 +29,14 @@ TEST(WalkCycle, contactPoints) {
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
+  Trajectory trajectory(walk_cycle,1);
   auto walk_cycle_phases = walk_cycle.phases();
-  EXPECT_LONGS_EQUAL(3, walk_cycle_phases[0].contactPoints().size());
-  EXPECT_LONGS_EQUAL(4, walk_cycle_phases[1].contactPoints().size());
+  EXPECT_LONGS_EQUAL(3, walk_cycle_phases[0].footContactConstraintSpec()->contactPoints().size());
+  EXPECT_LONGS_EQUAL(4, walk_cycle_phases[1].footContactConstraintSpec()->contactPoints().size());
   EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
   EXPECT_LONGS_EQUAL(num_time_steps + num_time_steps_2,
                      walk_cycle.numTimeSteps());
-  EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
+  EXPECT_LONGS_EQUAL(5, trajectory.contactPoints().size());
 }
 
 TEST(WalkCycle, objectives) {
@@ -44,11 +46,18 @@ TEST(WalkCycle, objectives) {
 
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
-  Phase phase0(num_time_steps, {robot.link("lower1"), robot.link("lower2")},
-               contact_in_com),
-      phase1(num_time_steps, {robot.link("lower0"), robot.link("lower3")},
-             contact_in_com);
-  auto walk_cycle = WalkCycle({phase0, phase1});
+
+  std::vector<LinkSharedPtr> phase_0_links = {robot.link("lower1"), robot.link("lower2")};
+  std::vector<LinkSharedPtr> phase_1_links = {robot.link("lower0"), robot.link("lower3")};
+
+  boost::shared_ptr<FootContactConstraintSpec> phase0 = boost::make_shared<FootContactConstraintSpec>(phase_0_links, contact_in_com);
+  boost::shared_ptr<FootContactConstraintSpec> phase1 = boost::make_shared<FootContactConstraintSpec>(phase_1_links, contact_in_com);
+  
+  std::vector<boost::shared_ptr<FootContactConstraintSpec>> states = {phase0, phase1};
+  std::vector<size_t> phase_lengths = {num_time_steps, num_time_steps};
+
+  auto walk_cycle = WalkCycle({phase0, phase1}, {num_time_steps, num_time_steps});
+  Trajectory trajectory(walk_cycle,1);
 
   // Expected contact goal points.
   Point3 goal_LH(-0.371306, 0.1575, 0);   // LH
@@ -57,7 +66,7 @@ TEST(WalkCycle, objectives) {
   Point3 goal_RH(-0.371306, -0.1575, 0);  // RH
 
   // Check initalization of contact goals.
-  auto cp_goals = walk_cycle.initContactPointGoal(robot, -0.191839);
+  auto cp_goals = trajectory.initContactPointGoal(robot, -0.191839);
   EXPECT_LONGS_EQUAL(4, cp_goals.size());
   EXPECT(gtsam::assert_equal(goal_LH, cp_goals["lower1"], 1e-6));
   EXPECT(gtsam::assert_equal(goal_LF, cp_goals["lower0"], 1e-6));
@@ -66,18 +75,18 @@ TEST(WalkCycle, objectives) {
 
   const Point3 step(0, 0.4, 0);
   const gtsam::SharedNoiseModel cost_model = nullptr;
-  const size_t k = 777;
 
   // Check creation of PointGoalFactors.
+  ContactPointGoals updated_cp_goals;
   gtsam::NonlinearFactorGraph factors =
-      walk_cycle.contactPointObjectives(step, cost_model, k, &cp_goals);
+      trajectory.contactPointObjectives(robot, cost_model, step, updated_cp_goals, -0.191839);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
 
   // Check goals have been updated
-  EXPECT(gtsam::assert_equal<Point3>(goal_LH + step, cp_goals["lower1"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_LF + step, cp_goals["lower0"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_RF + step, cp_goals["lower2"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_RH + step, cp_goals["lower3"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_LH + step, updated_cp_goals["lower1"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_LF + step, updated_cp_goals["lower0"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RF + step, updated_cp_goals["lower2"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RH + step, updated_cp_goals["lower3"], 1e-6));
 }
 
 int main() {

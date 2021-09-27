@@ -19,6 +19,7 @@
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/Phase.h"
+#include "gtdynamics/utils/Trajectory.h"
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
@@ -30,26 +31,29 @@ TEST(Phase, All) {
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
-  Point3 cp = phase_1.contactPoint("tarsus_3_L3");
+  Phase phase1(0, 2, phase_1);
+  Trajectory trajectory(walk_cycle,1);
+
+  Point3 cp = phase1.footContactConstraintSpec()->contactPoint("tarsus_3_L3");
   EXPECT(assert_equal(contact_in_com, cp));
 
-  PointOnLinks cps = phase_1.contactPoints();
+  PointOnLinks cps = phase1.footContactConstraintSpec()->contactPoints();
   EXPECT_LONGS_EQUAL(3, cps.size());
   EXPECT(assert_equal(contact_in_com, cps[0].point));
-  EXPECT_LONGS_EQUAL(2, phase_1.numTimeSteps());
+  EXPECT_LONGS_EQUAL(2, phase1.numTimeSteps());
 
   // Check printing
   std::stringstream ss;
-  ss << phase_1;
+  ss << *phase_1;
   EXPECT(std::string("[tarsus_1_L1: [   0 0.19    0], tarsus_2_L2: [   0 0.19  "
                      "  0], tarsus_3_L3: [   0 0.19    0], ]") == ss.str());
 
   // Test hasContact.
-  EXPECT(phase_1.hasContact(robot.link("tarsus_1_L1")));
-  EXPECT(phase_1.hasContact(robot.link("tarsus_2_L2")));
-  EXPECT(phase_1.hasContact(robot.link("tarsus_3_L3")));
-  EXPECT(!phase_1.hasContact(robot.link("tarsus_4_L4")));
-  EXPECT(!phase_1.hasContact(robot.link("tarsus_5_R4")));
+  EXPECT(phase1.footContactConstraintSpec()->hasContact(robot.link("tarsus_1_L1")));
+  EXPECT(phase1.footContactConstraintSpec()->hasContact(robot.link("tarsus_2_L2")));
+  EXPECT(phase1.footContactConstraintSpec()->hasContact(robot.link("tarsus_3_L3")));
+  EXPECT(!phase1.footContactConstraintSpec()->hasContact(robot.link("tarsus_4_L4")));
+  EXPECT(!phase1.footContactConstraintSpec()->hasContact(robot.link("tarsus_5_R4")));
 
   // contactPointObjectives
   const Point3 step(0, 0.4, 0);
@@ -61,10 +65,10 @@ TEST(Phase, All) {
                                        {"tarsus_3_L3", goal},
                                        {"tarsus_4_L4", goal},
                                        {"tarsus_5_R4", goal}};
-  gtsam::NonlinearFactorGraph factors = phase_1.contactPointObjectives(
-      walk_cycle.contactPoints(), step, cost_model, k_start, cp_goals);
-  auto new_goals = phase_1.updateContactPointGoals(walk_cycle.contactPoints(),
-                                                   step, cp_goals);
+  gtsam::NonlinearFactorGraph factors = phase1.footContactConstraintSpec()->contactPointObjectives(
+      trajectory.contactPoints(), step, cost_model, k_start, cp_goals, 2);
+  auto new_goals = phase1.footContactConstraintSpec()->updateContactPointGoals(trajectory.contactPoints(), step, cp_goals);
+
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
   EXPECT(assert_equal(goal, new_goals["tarsus_2_L2"]));
   EXPECT(assert_equal(goal, new_goals["tarsus_1_L1"]));

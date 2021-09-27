@@ -97,8 +97,9 @@ int main(int argc, char** argv) {
   // Build the objective factors.
   double ground_height = 1.0;
   const Point3 step(0, 0.4, 0);
+  ContactPointGoals updated_cp_goals;
   gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step, updated_cp_goals);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);

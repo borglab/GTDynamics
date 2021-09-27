@@ -48,13 +48,17 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
   auto all_feet = odd_feet;
   all_feet.insert(all_feet.end(), even_feet.begin(), even_feet.end());
 
-  // Create three different FootContactStates, one for all the feet on the
+  // Create three different FootContactConstraintSpecs, one for all the feet on the
   // ground, one with even feet on the ground, one with odd feet in contact..
   const Point3 contact_in_com(0, 0.19, 0);
-  FootContactState stationary(1, all_feet, contact_in_com),
-      odd(2, odd_feet, contact_in_com), even(2, even_feet, contact_in_com);
+  boost::shared_ptr<FootContactConstraintSpec> stationary = boost::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
+  boost::shared_ptr<FootContactConstraintSpec> odd = boost::make_shared<FootContactConstraintSpec>(odd_feet, contact_in_com);
+  boost::shared_ptr<FootContactConstraintSpec> even = boost::make_shared<FootContactConstraintSpec>(even_feet, contact_in_com);
+  
+  std::vector<boost::shared_ptr<FootContactConstraintSpec>> states = {stationary, even, stationary, odd};
+  std::vector<size_t> phase_lengths = {1,2,1,2};
 
-  WalkCycle walk_cycle({stationary, even, stationary, odd});
+  WalkCycle walk_cycle(states, phase_lengths);
 
   // TODO(issue #257): Trajectory should *be* a vector of phases, so rather that
   // store the walkcycle and repeat, it should store the phases.
@@ -95,8 +99,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
+  ContactPointGoals updated_cp_goals;
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step, updated_cp_goals);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
