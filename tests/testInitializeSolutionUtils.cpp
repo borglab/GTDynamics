@@ -34,8 +34,8 @@ using gtsam::Rot3;
 double kNoiseSigma = 1e-8;
 
 TEST(InitializeSolutionUtils, Interpolation) {
-  //using simple_rr::robot;
-  auto robot = simple_rr::getRobot();
+  Robot robot = simple_rr::getRobot();
+
   // Set initial and final values.
   Pose3 wTb_i;
   Rot3 wRb_f = Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2);
