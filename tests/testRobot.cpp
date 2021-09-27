@@ -34,7 +34,7 @@ using gtsam::Vector6;
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/four_bar_linkage.sdf"));
+      CreateRobotFromFile(kSdfPath + std::string("test/four_bar_linkage.sdf"));
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -85,7 +85,7 @@ TEST(Robot, removeLink) {
 
 TEST(Robot, ForwardKinematics) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   Values values;
 
@@ -150,7 +150,7 @@ TEST(Robot, ForwardKinematics) {
 
 TEST(Robot, ForwardKinematicsRPR) {
   Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/test/simple_rpr.sdf"), "simple_rpr_sdf");
+      kSdfPath + std::string("test/simple_rpr.sdf"), "simple_rpr_sdf");
 
   Values values;
 
@@ -207,7 +207,7 @@ TEST(Robot, ForwardKinematicsRPR) {
 // test fk for a four bar linkage (loopy)
 TEST(ForwardKinematics, FourBar) {
   Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
   robot = robot.fixLink("l1");
 
   Values values;

@@ -39,7 +39,7 @@ class TrajectoryTest : public Trajectory {
 
 TEST(Trajectory, Intersection) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
   TrajectoryTest traj;
@@ -57,7 +57,7 @@ TEST(Trajectory, Intersection) {
 TEST(Trajectory, error) {
   using namespace walk_cycle_example;
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   // Initialize Trajectory
   size_t repeat = 3;

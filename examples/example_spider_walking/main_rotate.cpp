@@ -53,7 +53,7 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load Stephanie's spider robot.
-  auto robot = gtdynamics::CreateRobotFromFile(kSdfPath + string("/spider.sdf"),
+  auto robot = gtdynamics::CreateRobotFromFile(kSdfPath + string("spider.sdf"),
                                                "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.

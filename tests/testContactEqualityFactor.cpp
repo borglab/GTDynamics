@@ -76,7 +76,7 @@ TEST(ContactEqualityFactor, Jacobians) {
 
 TEST(ContactEqualityFactor, ArbitraryTime) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
   auto end_link = robot.link("l2");
 
   size_t k1 = 81, k2 = k1+3;
