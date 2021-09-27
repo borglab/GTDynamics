@@ -79,7 +79,7 @@ TEST(ObjectiveFactors, OptionalNoiseModels) {
 
 TEST(Phase, AddGoals) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"), "spider");
 
   // Foot is sphere of radius 1.1 cm, 14cm along X in COM
   Point3 point_com(0.14 + 0.011, 0, 0);

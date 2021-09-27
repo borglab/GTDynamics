@@ -27,7 +27,7 @@ constexpr double kTol = 1e-6;
 namespace example {
 constexpr double g = 9.8;
 const Robot robot = gtdynamics::CreateRobotFromFile(
-    kSdfPath + std::string("/test/four_bar_linkage.sdf"));
+    kSdfPath + std::string("test/four_bar_linkage.sdf"));
 Vector3 gravity(0, 0, -g);
 }  // namespace example
 

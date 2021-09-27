@@ -20,7 +20,7 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   const Robot spider =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   spider.print();
 

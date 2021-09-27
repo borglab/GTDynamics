@@ -257,7 +257,7 @@ struct CsvWriter {
 int main(int argc, char **argv) {
   // Load the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
   // Coordinate system:
   //  z
