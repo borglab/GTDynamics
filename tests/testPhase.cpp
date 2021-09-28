@@ -27,7 +27,7 @@ using gtsam::Point3;
 
 TEST(Phase, All) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
   Point3 cp = phase_1.contactPoint("tarsus_3_L3");
