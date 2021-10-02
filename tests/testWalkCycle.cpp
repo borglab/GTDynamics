@@ -50,10 +50,10 @@ TEST(WalkCycle, objectives) {
   std::vector<LinkSharedPtr> phase_0_links = {robot.link("lower1"), robot.link("lower2")};
   std::vector<LinkSharedPtr> phase_1_links = {robot.link("lower0"), robot.link("lower3")};
 
-  boost::shared_ptr<FootContactConstraintSpec> phase0 = boost::make_shared<FootContactConstraintSpec>(phase_0_links, contact_in_com);
-  boost::shared_ptr<FootContactConstraintSpec> phase1 = boost::make_shared<FootContactConstraintSpec>(phase_1_links, contact_in_com);
+  auto phase0 = boost::make_shared<FootContactConstraintSpec>(phase_0_links, contact_in_com);
+  auto phase1 = boost::make_shared<FootContactConstraintSpec>(phase_1_links, contact_in_com);
   
-  std::vector<boost::shared_ptr<FootContactConstraintSpec>> states = {phase0, phase1};
+  FootContactVector states = {phase0, phase1};
   std::vector<size_t> phase_lengths = {num_time_steps, num_time_steps};
 
   auto walk_cycle = WalkCycle({phase0, phase1}, {num_time_steps, num_time_steps});

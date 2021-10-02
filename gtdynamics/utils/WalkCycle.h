@@ -47,7 +47,7 @@ class WalkCycle {
    * @param states ........... a vector of FootContactConstraintSpec shared pointers.
    * @param phase_lengths .... a vector of phase lengths corresponding to the states vector.
    */
-  WalkCycle(const std::vector<boost::shared_ptr<FootContactConstraintSpec>> &states, const std::vector<size_t> &phase_lengths) {
+  WalkCycle(const FootContactVector &states, const std::vector<size_t> &phase_lengths) {
     if (states.size() != phase_lengths.size()){
       throw std::runtime_error("states vector and phase_lengths vector have different sizes");
     }

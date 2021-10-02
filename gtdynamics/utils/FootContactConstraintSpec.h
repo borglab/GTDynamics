@@ -97,4 +97,7 @@ class FootContactConstraintSpec : public ConstraintSpec {
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const ContactPointGoals &cp_goals) const;
 };
+
+using FootContactVector = std::vector<boost::shared_ptr<FootContactConstraintSpec>>;
+
 }  // namespace gtdynamics
