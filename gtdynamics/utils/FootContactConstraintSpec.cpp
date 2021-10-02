@@ -36,6 +36,26 @@ FootContactConstraintSpec::FootContactConstraintSpec(const std::vector<LinkShare
   }
 }
 
+bool FootContactConstraintSpec::hasContact(const LinkSharedPtr &link) const {
+  int link_count =
+      std::count_if(contact_points_.begin(), contact_points_.end(),
+                    [&](const PointOnLink &contact_point) {
+                      return contact_point.link->name() == link->name();
+                    });
+  return link_count > 0;
+}
+
+const gtsam::Point3 &FootContactConstraintSpec::contactPoint(const std::string &link_name) const {
+  auto it = std::find_if(contact_points_.begin(), contact_points_.end(),
+                          [&](const PointOnLink &contact_point) {
+                            return contact_point.link->name() == link_name;
+                          });
+  if (it == contact_points_.end())
+    throw std::runtime_error("Link " + link_name + " has no contact point!");
+  else
+    return (*it).point;
+}
+
 std::ostream &operator<<(std::ostream &os, const FootContactConstraintSpec &phase) {
   os << "[";
   for (auto &&cp : phase.contactPoints()) {

@@ -96,7 +96,7 @@ Values Trajectory::multiPhaseInitialValues(const Robot &robot,
 }
 
 ContactPointGoals Trajectory::initContactPointGoal(const Robot &robot,
-                                                  double ground_height) const {
+                                                   double ground_height) const {
   ContactPointGoals cp_goals;
   const Point3 adjust(0, 0, -ground_height);
 

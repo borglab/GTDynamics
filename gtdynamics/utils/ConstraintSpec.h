@@ -15,9 +15,16 @@
 
 namespace gtdynamics {
 
+/**
+ * @class ConstraintSpec is a base class for constraint specification on phases.
+ * Derived Constraints could be walking, jumping, rocketry etc..
+ * Derived Class currently implemented: FootContactConstraintSpec - specific for walking.
+ */
+
 class ConstraintSpec {
-  protected:
-    ConstraintSpec() {}
+  public:
+    /// GTSAM-style print, pure virtual here
+    virtual void print(const std::string &s) const = 0;
 };
 
 

@@ -57,36 +57,20 @@ class FootContactConstraintSpec : public ConstraintSpec {
   const PointOnLinks &contactPoints() const { return contact_points_; }
 
   /// Check if phase has a contact for given link.
-  bool hasContact(const LinkSharedPtr &link) const {
-    int link_count =
-        std::count_if(contact_points_.begin(), contact_points_.end(),
-                      [&](const PointOnLink &contact_point) {
-                        return contact_point.link->name() == link->name();
-                      });
-    return link_count > 0;
-  }
+  bool hasContact(const LinkSharedPtr &link) const;
 
   /// Returns the contact point object of link.
-  const gtsam::Point3 &contactPoint(const std::string &link_name) const {
-    auto it = std::find_if(contact_points_.begin(), contact_points_.end(),
-                           [&](const PointOnLink &contact_point) {
-                             return contact_point.link->name() == link_name;
-                           });
-    if (it == contact_points_.end())
-      throw std::runtime_error("Link " + link_name + " has no contact point!");
-    else
-      return (*it).point;
-  }
+  const gtsam::Point3 &contactPoint(const std::string &link_name) const;
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os,
                                   const FootContactConstraintSpec &phase);
 
   /// GTSAM-style print, works with wrapper.
-  void print(const std::string &s) const;
+  void print(const std::string &s) const override;
 
   /**
-   * Add PointGoalFactors for all feet as given in cp_goals.
+   * Return PointGoalFactors for all feet as given in cp_goals.
    * @param[in] all_contact_points stance *and* swing feet.
    * @param[in] step 3D vector to move by
    * @param[in] cost_model noise model
@@ -98,8 +82,17 @@ class FootContactConstraintSpec : public ConstraintSpec {
       const gtsam::SharedNoiseModel &cost_model, size_t k_start,
       const ContactPointGoals &cp_goals, const size_t ts) const;
 
+  /**
+   * @fn Returns the swing links during this FootContact
+   * @return Vector of swing links.
+   */
   std::vector<std::string> swingLinks() const;
 
+  /**
+   * Update goal points by `step` for all swing legs.
+   * @param[in] step 3D vector to move by
+   * @param[in] cp_goals either stance goal or start of swing
+   */
   ContactPointGoals updateContactPointGoals(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
       const ContactPointGoals &cp_goals) const;
