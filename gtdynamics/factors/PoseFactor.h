@@ -28,8 +28,6 @@
 
 namespace gtdynamics {
 
-using boost::assign::cref_list_of;
-
 /**
  * PoseFactor is a three-way nonlinear factor between a joint's parent link
  * pose, child link pose, and the joint angle relating the two poses.
@@ -56,31 +54,11 @@ class PoseFactor : public gtsam::NoiseModelFactor {
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
       : Base(cost_model,
-             cref_list_of<3>(
+             boost::assign::cref_list_of<3>(
                  internal::PoseKey(joint->parent()->id(), time).key())(
                  internal::PoseKey(joint->child()->id(), time).key())(
                  internal::JointAngleKey(joint->id(), time).key())),
         t_(time),
-        joint_(joint) {}
-
-  /**
-   * Create single factor relating this link's pose (COM) with previous one.
-   *
-   * Please use the joint based constructor above if possible.
-   *
-   * @param wTp_key Key for parent link's CoM pose in world frame.
-   * @param wTc_key Key for child link's CoM pose in world frame.
-   * @param q_key Key for joint value.
-   * @param cost_model The noise model for this factor.
-   * @param joint The joint connecting the two poses
-   */
-  PoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
-             DynamicsSymbol q_key,
-             const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             JointConstSharedPtr joint)
-      : Base(cost_model,
-             cref_list_of<3>(wTp_key.key())(wTc_key.key())(q_key.key())),
-        t_(wTp_key.time()),
         joint_(joint) {}
 
   virtual ~PoseFactor() {}
