@@ -240,11 +240,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
                                      gtsam::Z_6x1, opt_.bv_cost_model);
 
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistFactor>(internal::TwistKey(joint->parent()->id(), t),
-                                    internal::TwistKey(joint->child()->id(), t),
-                                    internal::JointAngleKey(joint->id(), t),
-                                    internal::JointVelKey(joint->id(), t),
-                                    opt_.v_cost_model, joint);
+    graph.emplace_shared<TwistFactor>(opt_.v_cost_model, joint, t);
 
   // Add contact factors.
   if (contact_points) {

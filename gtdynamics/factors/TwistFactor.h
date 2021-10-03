@@ -18,6 +18,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <string>
 
@@ -29,20 +30,13 @@ namespace gtdynamics {
  * TwistFactor is a four-way nonlinear factor which enforces relation
  * between twist on previous link and this link
  */
-class TwistFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate,
-                                      typename JointTyped::JointVelocity> {
+class TwistFactor : public gtsam::NoiseModelFactor {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
-  using JointVelocity = typename JointTyped::JointVelocity;
   using This = TwistFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                        JointCoordinate, JointVelocity>;
+  using Base = gtsam::NoiseModelFactor;
 
-  gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
-  gtsam::Vector6 screw_axis_;
+  int t_;
 
  public:
   /**
@@ -52,36 +46,49 @@ class TwistFactor
    *
    * @param joint a Joint
    */
-  TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
-              gtsam::Key qVel_key,
-              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-              JointConstSharedPtr joint)
-      : Base(cost_model, twistP_key, twistC_key, q_key, qVel_key),
-        joint_(joint) {}
+  TwistFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
+              JointConstSharedPtr joint, int t)
+      : Base(cost_model,  //
+             boost::assign::cref_list_of<4>(
+                 internal::TwistKey(joint->parent()->id(), t).key())(
+                 internal::TwistKey(joint->child()->id(), t).key())(
+                 internal::JointAngleKey(joint->id(), t).key())(
+                 internal::JointVelKey(joint->id(), t).key())),
+        joint_(joint),
+        t_(t) {}
   virtual ~TwistFactor() {}
 
  public:
   /**
    * Evaluate wrench balance errors
-   * @param twist_p twist on the previous link
-   * @param twist_c twist on this link
-   * @param q joint coordination
-   * @param qVel joint velocity
+   * Order of keys: twist_p, twist_c, q, qdot
    */
-  gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
-      const JointCoordinate &q, const JointVelocity &qVel,
-      boost::optional<gtsam::Matrix &> H_twist_p = boost::none,
-      boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none,
-      boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
+  gtsam::Vector unwhitenedError(const gtsam::Values &x,
+                                boost::optional<std::vector<gtsam::Matrix> &>
+                                    H = boost::none) const override {
+    const gtsam::Vector6 &twist_p = x.at<gtsam::Vector6>(keys_[0]);
+    const gtsam::Vector6 &twist_c = x.at<gtsam::Vector6>(keys_[1]);
+
+    // TODO(Gerry): find better way to handle jacobians
+    gtsam::Matrix6 H_twist_p;
+    gtsam::Matrix H_q, H_q_dot;
+    boost::optional<gtsam::Matrix &> H_q_ref = boost::none,
+                                     H_q_dot_ref = boost::none;
+    if (H) {
+      H_q_ref = H_q;
+      H_q_dot_ref = H_q_dot;
+    }
+
     auto error =
-        boost::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
-            joint_->child(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
+        joint_->transformTwistTo(t_, joint_->child(), x, twist_p, H_q_ref,
+                                 H_q_dot_ref, H ? &H_twist_p : nullptr) -
         twist_c;
 
-    if (H_twist_c) {
-      *H_twist_c = -gtsam::I_6x6;
+    if (H) {
+      (*H)[0] = H_twist_p;
+      (*H)[1] = -gtsam::I_6x6;  // H_twist_c
+      (*H)[2] = H_q;
+      (*H)[3] = H_q_dot;
     }
 
     return error;
