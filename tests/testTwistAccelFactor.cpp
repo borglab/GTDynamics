@@ -48,7 +48,7 @@ TEST(TwistAccelFactor, error) {
   auto joint = make_joint(cMp, screw_axis);
 
   // create factor
-  TwistAccelFactor factor(example::cost_model, joint, 0);
+  TwistAccelFactor factor(example::cost_model, joint, 777);
 
   double q = M_PI / 4, qVel = 10, qAccel = 10;
   gtsam::Vector twist, twistAccel_p, twistAccel_c;
@@ -57,12 +57,12 @@ TEST(TwistAccelFactor, error) {
   twistAccel_c =
       (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
   gtsam::Values values;
-  InsertJointAngle(&values, joint->id(), q);
-  InsertJointVel(&values, joint->id(), qVel);
-  InsertJointAccel(&values, joint->id(), qAccel);
-  InsertTwist(&values, joint->child()->id(), twist);
-  InsertTwistAccel(&values, joint->parent()->id(), twistAccel_p);
-  InsertTwistAccel(&values, joint->child()->id(), twistAccel_c);
+  InsertJointAngle(&values, joint->id(), 777, q);
+  InsertJointVel(&values, joint->id(), 777, qVel);
+  InsertJointAccel(&values, joint->id(), 777, qAccel);
+  InsertTwist(&values, joint->child()->id(), 777, twist);
+  InsertTwistAccel(&values, joint->parent()->id(), 777, twistAccel_p);
+  InsertTwistAccel(&values, joint->child()->id(), 777, twistAccel_c);
 
   gtsam::Vector6 actual_errors, expected_errors;
   actual_errors = factor.unwhitenedError(values);
@@ -82,19 +82,19 @@ TEST(TwistAccelFactor, error_1) {
 
   auto joint = make_joint(cMp, screw_axis);
 
-  TwistAccelFactor factor(example::cost_model, joint, 0);
+  TwistAccelFactor factor(example::cost_model, joint, 777);
   double q = 0, qVel = 0, qAccel = -9.8;
   gtsam::Vector6 twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
   twistAccel_p = (gtsam::Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
   twistAccel_c = (gtsam::Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
   gtsam::Values values;
-  InsertJointAngle(&values, joint->id(), q);
-  InsertJointVel(&values, joint->id(), qVel);
-  InsertJointAccel(&values, joint->id(), qAccel);
-  InsertTwist(&values, joint->child()->id(), twist);
-  InsertTwistAccel(&values, joint->parent()->id(), twistAccel_p);
-  InsertTwistAccel(&values, joint->child()->id(), twistAccel_c);
+  InsertJointAngle(&values, joint->id(), 777, q);
+  InsertJointVel(&values, joint->id(), 777, qVel);
+  InsertJointAccel(&values, joint->id(), 777, qAccel);
+  InsertTwist(&values, joint->child()->id(), 777, twist);
+  InsertTwistAccel(&values, joint->parent()->id(), 777, twistAccel_p);
+  InsertTwistAccel(&values, joint->child()->id(), 777, twistAccel_c);
 
   gtsam::Vector6 actual_errors, expected_errors;
   actual_errors = factor.unwhitenedError(values);

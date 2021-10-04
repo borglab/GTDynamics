@@ -45,7 +45,7 @@ TEST(TwistFactor, error) {
 
   auto joint = make_joint(cMp, screw_axis);
 
-  TwistFactor factor(example::cost_model, joint, 0);
+  TwistFactor factor(example::cost_model, joint, 777);
 
   double q = M_PI / 4, qVel = 10;
   gtsam::Vector twist_p, twist_c;
@@ -53,10 +53,10 @@ TEST(TwistFactor, error) {
   twist_c =
       (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
   gtsam::Values values;
-  InsertJointAngle(&values, joint->id(), q);
-  InsertJointVel(&values, joint->id(), qVel);
-  InsertTwist(&values, joint->parent()->id(), twist_p);
-  InsertTwist(&values, joint->child()->id(), twist_c);
+  InsertJointAngle(&values, joint->id(), 777, q);
+  InsertJointVel(&values, joint->id(), 777, qVel);
+  InsertTwist(&values, joint->parent()->id(), 777, twist_p);
+  InsertTwist(&values, joint->child()->id(), 777, twist_c);
 
   gtsam::Vector6 actual_errors, expected_errors;
   actual_errors = factor.unwhitenedError(values);
