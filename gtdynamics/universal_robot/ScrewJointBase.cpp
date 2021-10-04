@@ -21,7 +21,7 @@
 
 #include "gtdynamics/universal_robot/ScrewJointBase.h"
 
-#include "gtdynamics/factors/JointLimitFactor.h"
+#include "gtdynamics/factors/JointLimitDoubleFactor.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
@@ -231,26 +231,26 @@ gtsam::NonlinearFactorGraph ScrewJointBase::jointLimitFactors(
   gtsam::NonlinearFactorGraph graph;
   auto id = this->id();
   // Add joint angle limit factor.
-  graph.emplace_shared<JointLimitFactor>(
+  graph.emplace_shared<JointLimitDoubleFactor>(
       internal::JointAngleKey(id, t), opt.jl_cost_model,
       parameters().scalar_limits.value_lower_limit,
       parameters().scalar_limits.value_upper_limit,
       parameters().scalar_limits.value_limit_threshold);
 
   // Add joint velocity limit factors.
-  graph.emplace_shared<JointLimitFactor>(
+  graph.emplace_shared<JointLimitDoubleFactor>(
       internal::JointVelKey(id, t), opt.jl_cost_model,
       -parameters().velocity_limit, parameters().velocity_limit,
       parameters().velocity_limit_threshold);
 
   // Add joint acceleration limit factors.
-  graph.emplace_shared<JointLimitFactor>(
+  graph.emplace_shared<JointLimitDoubleFactor>(
       internal::JointAccelKey(id, t), opt.jl_cost_model,
       -parameters().acceleration_limit, parameters().acceleration_limit,
       parameters().acceleration_limit_threshold);
 
   // Add joint torque limit factors.
-  graph.emplace_shared<JointLimitFactor>(
+  graph.emplace_shared<JointLimitDoubleFactor>(
       internal::TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
       parameters().torque_limit, parameters().torque_limit_threshold);
   return graph;

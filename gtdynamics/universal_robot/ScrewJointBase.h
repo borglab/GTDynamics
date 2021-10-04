@@ -26,7 +26,6 @@
 #include <map>
 #include <string>
 
-#include "gtdynamics/factors/JointLimitFactor.h"
 #include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
