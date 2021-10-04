@@ -82,10 +82,12 @@ class TorqueFactor : public gtsam::NoiseModelFactor {
 
     if (H) {
       (*H)[1] = -gtsam::Matrix::Identity(torque.size(), torque.size());
-      return joint_->transformWrenchToTorque(joint_->child(), wrench, (*H)[0]) -
+      return joint_->transformWrenchToTorqueVector(joint_->child(), wrench,
+                                                   (*H)[0]) -
              torque;
     } else {
-      return joint_->transformWrenchToTorque(joint_->child(), wrench) - torque;
+      return joint_->transformWrenchToTorqueVector(joint_->child(), wrench) -
+             torque;
     }
   }
 

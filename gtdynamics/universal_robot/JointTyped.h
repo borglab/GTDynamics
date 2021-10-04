@@ -107,7 +107,7 @@ public:
           boost::none) const = 0;
 
   /// Abstract method. Return the torque on this joint given the wrench.
-  virtual JointTorque transformWrenchToTorqueTyped(
+  virtual JointTorque transformWrenchToTorque(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<N, 6> H_wrench = boost::none) const = 0;
@@ -240,14 +240,14 @@ public:
   }
 
   /// Return the torque on this joint given the wrench.
-  gtsam::Vector transformWrenchToTorque(
+  gtsam::Vector transformWrenchToTorqueVector(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<-1, -1> H_wrench =
           boost::none) const final override {
     gtsam::Vector ret(static_cast<int>(N));  // idk why int cast is needed
-    ret << (H_wrench ? transformWrenchToTorqueTyped(link, wrench, *H_wrench)
-                     : transformWrenchToTorqueTyped(link, wrench));
+    ret << (H_wrench ? transformWrenchToTorque(link, wrench, *H_wrench)
+                     : transformWrenchToTorque(link, wrench));
     return ret;
   }
 };

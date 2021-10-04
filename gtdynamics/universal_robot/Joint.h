@@ -278,7 +278,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
           boost::none) const = 0;
 
   /// Abstract method. Return the torque on this joint given the wrench
-  virtual gtsam::Vector transformWrenchToTorque(
+  virtual gtsam::Vector transformWrenchToTorqueVector(
       const LinkSharedPtr &link,
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<-1, -1> H_wrench = boost::none) const = 0;
