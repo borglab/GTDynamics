@@ -37,13 +37,6 @@ namespace example {
 // Noise model.
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-const DynamicsSymbol wrench_j_key = internal::WrenchKey(1, 1, 777),
-                     wrench_k_key = internal::WrenchKey(2, 1, 777),
-                     qKey = internal::JointAngleKey(1, 777);
-
-gtsam::Key twist_key = gtsam::Symbol('V', 1),
-           twist_accel_key = gtsam::Symbol('T', 1),
-           pKey = gtsam::Symbol('p', 1);
 }  // namespace example
 
 // Test wrench equivalence factor
@@ -57,19 +50,20 @@ TEST(WrenchEquivalenceFactor, error_1) {
 
   // Check evaluateError.
   double q = 0;
-  Vector wrench_j, wrench_k;
-  wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
-  wrench_k = (Vector(6) << 0, 0, 19.6, 0, -9.8, 0).finished();
+  Vector6 wrench_j, wrench_k;
+  wrench_j << 0, 0, 0, 0, 9.8, 0;
+  wrench_k << 0, 0, 19.6, 0, -9.8, 0;
+  Values values;
+  InsertWrench(&values, joint->parent()->id(), joint->id(), 777, wrench_j);
+  InsertWrench(&values, joint->child()->id(), joint->id(), 777, wrench_k);
+  InsertJointAngle(&values, joint->id(), 777, q);
+
   Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
+      actual_errors = factor.unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
-  Values values;
-  values.insert(example::wrench_j_key, wrench_j);
-  values.insert(example::wrench_k_key, wrench_k);
-  values.insert(example::qKey, q);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
@@ -85,19 +79,20 @@ TEST(WrenchEquivalenceFactor, error_2) {
 
   // Check evaluateError.
   double q = -M_PI_2;
-  Vector wrench_j, wrench_k;
-  wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
-  wrench_k = (Vector(6) << 0, 0, 9.8, 9.8, 0, 0).finished();
+  Vector6 wrench_j, wrench_k;
+  wrench_j << 0, 0, 0, 0, 9.8, 0;
+  wrench_k << 0, 0, 9.8, 9.8, 0, 0;
+  Values values;
+  InsertWrench(&values, joint->parent()->id(), joint->id(), 777, wrench_j);
+  InsertWrench(&values, joint->child()->id(), joint->id(), 777, wrench_k);
+  InsertJointAngle(&values, joint->id(), 777, q);
+
   Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
+      actual_errors = factor.unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   
   // Make sure linearization is correct.
-  Values values;
-  values.insert(example::wrench_j_key, wrench_j);
-  values.insert(example::wrench_k_key, wrench_k);
-  values.insert(example::qKey, q);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
@@ -113,19 +108,20 @@ TEST(WrenchEquivalenceFactor, error_3) {
 
   // Check evaluateError.
   double q = 0;
-  Vector wrench_j, wrench_k;
-  wrench_j = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  wrench_k = (Vector(6) << -1, 0, 0, 0, 0, 0).finished();
+  Vector6 wrench_j, wrench_k;
+  wrench_j << 1, 0, 0, 0, 0, 0;
+  wrench_k << -1, 0, 0, 0, 0, 0;
+  gtsam::Values values;
+  InsertWrench(&values, joint->parent()->id(), joint->id(), 777, wrench_j);
+  InsertWrench(&values, joint->child()->id(), joint->id(), 777, wrench_k);
+  InsertJointAngle(&values, joint->id(), 777, q);
+
   Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
+      actual_errors = factor.unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
-  gtsam::Values values;
-  values.insert(example::wrench_j_key, wrench_j);
-  values.insert(example::wrench_k_key, wrench_k);
-  values.insert(example::qKey, q);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }

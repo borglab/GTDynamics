@@ -174,8 +174,10 @@ public:
    */
   Pose3 relativePoseOf(
       const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    return relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t), H_q);
+      gtsam::OptionalJacobian<-1, -1> H_q = boost::none) const override {
+    return H_q ? relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t),
+                                *H_q)
+               : relativePoseOf(link2, JointAngle<JointCoordinate>(q, id(), t));
   }
 
   /// Joint-induced twist in child frame

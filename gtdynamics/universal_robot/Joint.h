@@ -236,7 +236,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   virtual Pose3 relativePoseOf(
       const LinkSharedPtr &link2, const gtsam::Values &q, size_t t = 0,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const = 0;
+      gtsam::OptionalJacobian<-1, -1> H_q = boost::none) const = 0;
 
   /**
    * Return the world pose of the specified link [link2], given
