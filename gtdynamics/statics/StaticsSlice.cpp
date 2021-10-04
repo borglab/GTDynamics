@@ -33,9 +33,8 @@ gtsam::NonlinearFactorGraph Statics::wrenchEquivalenceFactors(
     const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.emplace_shared<WrenchEquivalenceFactor>(
-        p_->f_cost_model, boost::static_pointer_cast<const JointTyped>(joint),
-        slice.k);
+    graph.emplace_shared<WrenchEquivalenceFactor>(p_->f_cost_model, joint,
+                                                  slice.k);
   }
   return graph;
 }
@@ -55,8 +54,7 @@ gtsam::NonlinearFactorGraph Statics::wrenchPlanarFactors(
   if (p_->planar_axis)
     for (auto&& joint : robot.joints()) {
       graph.emplace_shared<WrenchPlanarFactor>(
-          p_->planar_cost_model, *p_->planar_axis,
-          boost::static_pointer_cast<const JointTyped>(joint), slice.k);
+          p_->planar_cost_model, *p_->planar_axis, joint, slice.k);
     }
   return graph;
 }

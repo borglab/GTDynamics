@@ -338,13 +338,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   // TODO(frank): sort out const shared ptr mess
   for (auto &&joint : robot.joints()) {
     auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = boost::static_pointer_cast<const JointTyped>(joint);
-    graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
-                                                  const_joint, k);
-    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, k);
+    graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model, joint, k);
+    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, joint, k);
     if (planar_axis_)
       graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
-                                               *planar_axis_, const_joint, k);
+                                               *planar_axis_, joint, k);
   }
   return graph;
 }
