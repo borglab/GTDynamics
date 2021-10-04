@@ -112,13 +112,6 @@ public:
       boost::optional<gtsam::Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<N, 6> H_wrench = boost::none) const = 0;
 
-  /// Calculate AdjointMap jacobian w.r.t. joint coordinate q.
-  /// TODO(gerry + stephanie): change to calculate the jacobian of Ad_T(v) wrt T
-  /// rather than jacobian of Ad_T wrt q (and put in utils or PR to GTSAM)
-  virtual gtsam::Matrix6
-  AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
-                               JointCoordinate q) const = 0;
-
   ///@}
   /**
    * @name generic

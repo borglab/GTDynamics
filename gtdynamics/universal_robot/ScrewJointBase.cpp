@@ -79,23 +79,23 @@ Vector6 ScrewJointBase::transformTwistTo(
     gtsam::OptionalJacobian<6, 1> H_q_dot,
     gtsam::OptionalJacobian<6, 6> H_other_twist) const {
   Vector6 other_twist_ = other_twist ? *other_twist : Vector6::Zero();
+  Matrix6 twist_from_other_H_T;
+  Matrix61 T_H_q;
 
   auto other = otherLink(link);
-  auto this_ad_other = relativePoseOf(other, q).AdjointMap();
+  auto twist_from_other =
+      relativePoseOf(other, q, H_q ? &T_H_q : nullptr)
+          .Adjoint(other_twist_, H_q ? &twist_from_other_H_T : nullptr,
+                   H_other_twist);
 
   if (H_q) {
-    // TODO(frank): really, zero below? Check derivatives
-    *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screwAxis(link)) *
-           other_twist_;
+    *H_q = twist_from_other_H_T * T_H_q;
   }
   if (H_q_dot) {
     *H_q_dot = screwAxis(link);
   }
-  if (H_other_twist) {
-    *H_other_twist = this_ad_other;
-  }
 
-  return this_ad_other * other_twist_ + screwAxis(link) * q_dot;
+  return twist_from_other + screwAxis(link) * q_dot;
 }
 
 /* ************************************************************************* */
@@ -115,22 +115,19 @@ Vector6 ScrewJointBase::transformTwistAccelTo(
 
   // i = other link
   // j = this link
+  Matrix6 twist_from_other_H_jTi;
+  Matrix61 jTi_H_q;
   auto other = otherLink(link);
-  Pose3 jTi = relativePoseOf(other, q);
+  Pose3 jTi = relativePoseOf(other, q, H_q ? &jTi_H_q : nullptr);
 
   Vector6 this_twist_accel =
-      jTi.AdjointMap() * other_twist_accel_ +
+      jTi.Adjoint(other_twist_accel_, H_q ? &twist_from_other_H_jTi : nullptr,
+                  H_other_twist_accel) +
       Pose3::adjoint(this_twist_, screw_axis_ * q_dot, H_this_twist) +
       screw_axis_ * q_ddot;
 
-  if (H_other_twist_accel) {
-    *H_other_twist_accel = jTi.AdjointMap();
-  }
   if (H_q) {
-    // TODO(frank): really, zero below? Check derivatives. Also, copy/pasta from
-    // above?
-    *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screw_axis_) *
-           other_twist_accel_;
+    *H_q = twist_from_other_H_jTi * jTi_H_q;
   }
   if (H_q_dot) {
     *H_q_dot = Pose3::adjointMap(this_twist_) * screw_axis_;

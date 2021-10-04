@@ -79,21 +79,20 @@ class WrenchEquivalenceFactor
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    gtsam::Pose3 T_21 = joint_->relativePoseOf(joint_->parent(), q);
-    gtsam::Matrix6 Ad_21_T = T_21.AdjointMap().transpose();
-    gtsam::Vector6 error = wrench_1 + Ad_21_T * wrench_2;
+    gtsam::Matrix61 T_21_H_q;
+    gtsam::Matrix6 H_T_21;
+
+    gtsam::Pose3 T_21 =
+        joint_->relativePoseOf(joint_->parent(), q, H_q ? &T_21_H_q : nullptr);
+    gtsam::Vector6 wrench_from_2 =
+        T_21.AdjointTranspose(wrench_2, H_q ? &H_T_21 : nullptr, H_wrench_2);
+    gtsam::Vector6 error = wrench_1 + wrench_from_2;
 
     if (H_wrench_1) {
       *H_wrench_1 = gtsam::I_6x6;
     }
-    if (H_wrench_2) {
-      *H_wrench_2 = Ad_21_T;
-    }
     if (H_q) {
-      // TODO(frank): really, child? Double-check derivatives
-      *H_q =
-          joint_->AdjointMapJacobianJointAngle(joint_->child(), q).transpose() *
-          wrench_2;
+      *H_q = H_T_21 * T_21_H_q;
     }
     return error;
   }

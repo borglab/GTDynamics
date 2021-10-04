@@ -122,13 +122,6 @@ class ScrewJointBase : public JointTyped {
       const LinkSharedPtr &link, boost::optional<Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override;
 
-  // TODO(frank): document and possibly eliminate
-  gtsam::Matrix6 AdjointMapJacobianJointAngle(const LinkSharedPtr &link,
-                                              double q) const override {
-    return AdjointMapJacobianQ(q, relativePoseOf(otherLink(link), 0),
-                               screwAxis(link));
-  }
-
   /// Return forward dynamics priors on torque.
   gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const gtsam::Values &known_values,
