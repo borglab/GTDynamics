@@ -79,18 +79,18 @@ class PoseFactor : public gtsam::NoiseModelFactor {
                        wTc = x.at<gtsam::Pose3>(keys_[1]);
     // TODO(frank): logmap derivative is close to identity when error is small
     gtsam::Matrix6 wTc_hat_H_wTp, H_wTc_hat, H_wTc;
-    // TODO(gerry): figure out how to make this work better for dynamic matrices
     gtsam::Matrix wTc_hat_H_q;
-    boost::optional<gtsam::Matrix &> wTc_hat_H_q_ref;
-    if (H) wTc_hat_H_q_ref = wTc_hat_H_q;
 
-    auto wTc_hat = joint_->poseOf(joint_->child(), wTp, x, t_,
-                                  H ? &wTc_hat_H_wTp : 0, wTc_hat_H_q_ref);
+    // Due to quirks of OptionalJacobian, I think this is more readable
+    gtsam::Pose3 wTc_hat = H ? joint_->poseOf(joint_->child(), wTp, x, t_,
+                                              wTc_hat_H_wTp, wTc_hat_H_q)
+                             : joint_->poseOf(joint_->child(), wTp, x, t_);
+
     gtsam::Vector6 error =
         wTc.logmap(wTc_hat, H ? &H_wTc : 0, H ? &H_wTc_hat : 0);
     if (H) {
       (*H)[0] = H_wTc_hat * wTc_hat_H_wTp;
-      (*H)[1] = H_wTc;
+      (*H)[1] = H_wTc; // this is trading off readability for extra copy op
       (*H)[2] = H_wTc_hat * wTc_hat_H_q;
     }
     return error;

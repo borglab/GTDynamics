@@ -76,33 +76,23 @@ class TwistAccelFactor : public gtsam::NoiseModelFactor {
     const gtsam::Vector6 &twist_c = x.at<gtsam::Vector6>(keys_[0]);
     const gtsam::Vector6 &twistAccel_p = x.at<gtsam::Vector6>(keys_[1]);
     const gtsam::Vector6 &twistAccel_c = x.at<gtsam::Vector6>(keys_[2]);
-    gtsam::Matrix6 H_twist_c, H_twistAccel_p;
-    gtsam::Matrix H_q, H_qVel, H_qAccel;
-    boost::optional<gtsam::Matrix &> H_q_ref = boost::none,
-                                     H_qVel_ref = boost::none,
-                                     H_qAccel_ref = boost::none;
-    if (H) {
-      H_q_ref = H_q;
-      H_qVel_ref = H_qVel;
-      H_qAccel_ref = H_qAccel;
-    }
 
-    auto error = joint_->transformTwistAccelTo(
-                     t_, joint_->child(), x, twist_c, twistAccel_p,  //
-                     H_q_ref, H_qVel_ref, H_qAccel_ref,
-                     H ? &H_twist_c : nullptr, H ? &H_twistAccel_p : nullptr) -
-                 twistAccel_c;
-
+    // Due to quirks of OptionalJacobian, this is the cleanest way (Gerry)
     if (H) {
-      (*H)[0] = H_twist_c;
-      (*H)[1] = H_twistAccel_p;
       (*H)[2] = -gtsam::I_6x6;  // H_twistAccel_c
-      (*H)[3] = H_q;
-      (*H)[4] = H_qVel;
-      (*H)[5] = H_qAccel;
+      return joint_->transformTwistAccelTo(t_, joint_->child(), x, twist_c,
+                                           twistAccel_p,
+                                           (*H)[3],  // H_q
+                                           (*H)[4],  // H_qVel
+                                           (*H)[5],  // H_qAccel
+                                           (*H)[0],  // H_twist_c
+                                           (*H)[1])  // H_twist_p
+             - twistAccel_c;
+    } else {
+      return joint_->transformTwistAccelTo(t_, joint_->child(), x, twist_c,
+                                           twistAccel_p)  //
+             - twistAccel_c;
     }
-
-    return error;
   }
 
   /// @return a deep copy of this factor

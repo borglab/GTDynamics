@@ -69,29 +69,18 @@ class TwistFactor : public gtsam::NoiseModelFactor {
     const gtsam::Vector6 &twist_p = x.at<gtsam::Vector6>(keys_[0]);
     const gtsam::Vector6 &twist_c = x.at<gtsam::Vector6>(keys_[1]);
 
-    // TODO(Gerry): find better way to handle jacobians
-    gtsam::Matrix6 H_twist_p;
-    gtsam::Matrix H_q, H_q_dot;
-    boost::optional<gtsam::Matrix &> H_q_ref = boost::none,
-                                     H_q_dot_ref = boost::none;
+    // Due to quirks of OptionalJacobian, this is the cleanest way (Gerry)
     if (H) {
-      H_q_ref = H_q;
-      H_q_dot_ref = H_q_dot;
-    }
-
-    auto error =
-        joint_->transformTwistTo(t_, joint_->child(), x, twist_p, H_q_ref,
-                                 H_q_dot_ref, H ? &H_twist_p : nullptr) -
-        twist_c;
-
-    if (H) {
-      (*H)[0] = H_twist_p;
       (*H)[1] = -gtsam::I_6x6;  // H_twist_c
-      (*H)[2] = H_q;
-      (*H)[3] = H_q_dot;
+      return joint_->transformTwistTo(t_, joint_->child(), x, twist_p,
+                                      (*H)[2],  // H_q
+                                      (*H)[3],  // H_qdot
+                                      (*H)[0])  // H_twist_p
+             - twist_c;
+    } else {
+      return joint_->transformTwistTo(t_, joint_->child(), x, twist_p)  //
+             - twist_c;
     }
-
-    return error;
   }
 
   /// @return a deep copy of this factor
