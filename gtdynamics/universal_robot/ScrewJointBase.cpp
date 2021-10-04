@@ -143,7 +143,7 @@ Vector6 ScrewJointBase::transformTwistAccelTo(
 }
 
 /* ************************************************************************* */
-ScrewJointBase::JointTorque ScrewJointBase::transformWrenchToTorque(
+ScrewJointBase::JointTorque ScrewJointBase::transformWrenchToTorqueTyped(
     const LinkSharedPtr &link, boost::optional<Vector6> wrench,
     gtsam::OptionalJacobian<1, 6> H_wrench) const {
   auto screw_axis_ = screwAxis(link);

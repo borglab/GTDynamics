@@ -17,6 +17,7 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/assign/list_of.hpp>
 #include <boost/optional.hpp>
 #include <memory>
 #include <string>
@@ -31,21 +32,20 @@ namespace gtdynamics {
  * TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link
  */
-class TorqueFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Vector6,
-                                      typename JointTyped::JointTorque> {
+class TorqueFactor : public gtsam::NoiseModelFactor {
  private:
-  using JointTorque = typename JointTyped::JointTorque;
   using This = TorqueFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque>;
-  using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
+  using Base = gtsam::NoiseModelFactor;
+  using MyJointConstSharedPtr = boost::shared_ptr<const Joint>;
   MyJointConstSharedPtr joint_;
 
   /// Private constructor with arbitrary keys
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                gtsam::Key wrench_key, gtsam::Key torque_key,
                const MyJointConstSharedPtr &joint)
-      : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
+      : Base(cost_model,
+             boost::assign::cref_list_of<2>(wrench_key)(torque_key)),
+        joint_(joint) {}
 
  public:
   /**
@@ -68,20 +68,25 @@ class TorqueFactor
  public:
   /**
    * Evaluate wrench balance errors
-   * @param wrench wrench on this link
-   * @param torque torque on this link joint
    */
-  gtsam::Vector evaluateError(
-      const gtsam::Vector6 &wrench, const JointTorque &torque,
-      boost::optional<gtsam::Matrix &> H_wrench = boost::none,
-      boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
-    if (H_torque) {
-      *H_torque = -JointTyped::MatrixN::Identity();
+  gtsam::Vector unwhitenedError(const gtsam::Values &x,
+                                boost::optional<std::vector<gtsam::Matrix> &>
+                                    H = boost::none) const override {
+    const gtsam::Vector6 &wrench = x.at<gtsam::Vector6>(keys_[0]);
+    gtsam::Vector torque;
+    try {
+      torque = x.at<gtsam::Vector>(keys_[1]);
+    } catch (const gtsam::ValuesIncorrectType &e) {
+      torque = gtsam::Vector1(x.at<double>(keys_[1]));
     }
-    // TODO(G+S): next PR will generalize this from Vector1
-    return gtsam::Vector1(
-        joint_->transformWrenchToTorque(joint_->child(), wrench, H_wrench) -
-        torque);
+
+    if (H) {
+      (*H)[1] = -gtsam::Matrix::Identity(torque.size(), torque.size());
+      return joint_->transformWrenchToTorque(joint_->child(), wrench, (*H)[0]) -
+             torque;
+    } else {
+      return joint_->transformWrenchToTorque(joint_->child(), wrench) - torque;
+    }
   }
 
   /// Returns the joint

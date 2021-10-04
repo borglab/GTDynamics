@@ -119,7 +119,7 @@ class ScrewJointBase : public JointTyped {
       gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const override;
 
-  JointTorque transformWrenchToTorque(
+  JointTorque transformWrenchToTorqueTyped(
       const LinkSharedPtr &link, boost::optional<Vector6> wrench = boost::none,
       gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const override;
 

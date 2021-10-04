@@ -277,6 +277,12 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       gtsam::OptionalJacobian<6, 6> H_other_twist_accel =
           boost::none) const = 0;
 
+  /// Abstract method. Return the torque on this joint given the wrench
+  virtual gtsam::Vector transformWrenchToTorque(
+      const LinkSharedPtr &link,
+      boost::optional<gtsam::Vector6> wrench = boost::none,
+      gtsam::OptionalJacobian<-1, -1> H_wrench = boost::none) const = 0;
+
   /// Abstract method. Returns forward dynamics priors on torque
   virtual gtsam::GaussianFactorGraph linearFDPriors(
       size_t t, const gtsam::Values &torques,
