@@ -18,6 +18,7 @@
 #include <gtsam/nonlinear/Values.h>
 
 #include "gtdynamics/optimizer/NonlinearBiasFactor.h"
+#include "gtdynamics/optimizer/EqualityConstraintFactor.h"
 #include "gtdynamics/optimizer/Optimizer.h"
 
 namespace gtdynamics {
@@ -48,7 +49,6 @@ class AugmentedLagrangianOptimizer : public Optimizer {
     std::map<gtsam::FactorIndex, double> mu;        // penalty parameter
     std::map<gtsam::FactorIndex, gtsam::Vector> z;  // Lagrangian multiplier
 
-    // TODO(yetong): consider constrained only in several dims
     for (size_t factor_index = 0; factor_index < graph.size();
          factor_index++) {
       auto factor = graph.at(factor_index);
@@ -150,6 +150,78 @@ class AugmentedLagrangianOptimizer : public Optimizer {
     return values;
   }
 
+
+
+
+
+
+
+  /// Run optimization with EqualityConstraintFactor.
+  gtsam::Values optimize1(const gtsam::NonlinearFactorGraph& graph,
+                         const gtsam::Values& initial_values) const {
+    gtsam::Values values = initial_values;
+
+    std::map<gtsam::FactorIndex, double> mu;        // penalty parameter
+    std::map<gtsam::FactorIndex, gtsam::Vector> z;  // Lagrangian multiplier
+
+    for (size_t factor_index = 0; factor_index < graph.size();
+         factor_index++) {
+      auto factor = graph.at(factor_index);
+      if (auto constraint_factor =
+              boost::dynamic_pointer_cast<gtsam::EqualityConstraintFactor<double>>(factor)) {
+          z[factor_index] = gtsam::Vector::Zero(constraint_factor->dim());
+          mu[factor_index] = 1;
+      }
+    }
+
+    gtsam::NonlinearFactorGraph merit_graph = graph;
+    // increase the penalty
+    for (int i = 0; i < p_->num_iterations; i++) {
+      // std::cout << "------------------ " << i << " ------------------\n";      
+      for (size_t factor_index = 0; factor_index < graph.size();
+           factor_index++) {
+        auto factor = graph.at(factor_index);
+        // check if is noisemodel factor
+        if (auto constraint_factor =
+                boost::dynamic_pointer_cast<gtsam::EqualityConstraintFactor<double>>(factor)) {
+          constraint_factor->update_mu(mu[factor_index]);
+          gtsam::Vector bias = z[factor_index] / (2 * mu[factor_index]);
+          gtsam::Vector unwhitened_bias = constraint_factor->noiseModel()->unwhiten(bias);
+          constraint_factor->update_bias(unwhitened_bias);
+        }
+      }
+      gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
+                                                   p_->lm_parameters);
+      auto result = optimizer.optimize();
+
+      // merit_graph.print();
+      // std::cout << "mu\t" << mu.begin()->second << "\n";
+      // result.print();
+
+      // save results and update parameters
+      for (const auto it : mu) {
+        auto factor_index = it.first;
+        auto factor = graph.at(factor_index);
+
+        auto constraint_factor =
+            boost::dynamic_pointer_cast<gtsam::EqualityConstraintFactor<double>>(factor);
+
+        // update multipliers
+        auto whitened_error = constraint_factor->tolerance_scaled_error(result);
+        z[factor_index] += 2 * mu[factor_index] * whitened_error;
+
+        // update penalty parameter
+        double previous_error = constraint_factor->original_error(values).norm();
+        double current_error = constraint_factor->original_error(result).norm();
+        if (current_error >= 0.25 * previous_error) {
+          mu[factor_index] *= 2;
+        }
+      }
+
+      values = result;
+    }
+    return values;
+  }
 
 };
 

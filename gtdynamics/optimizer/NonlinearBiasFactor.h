@@ -112,7 +112,6 @@ class NonlinearBiasFactor : public NoiseModelFactor {
     Matrix A = jacobian.first;
     Vector b = jacobian.second;
     b -= noiseModel()->whiten(bias_);
-    // TODO(yetong):create Jacobian factor
 
     std::map<Key, Matrix> terms;
     int start_idx = 0;

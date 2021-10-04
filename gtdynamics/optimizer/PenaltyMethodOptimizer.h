@@ -18,6 +18,7 @@
 #include <gtsam/nonlinear/Values.h>
 
 #include "gtdynamics/optimizer/Optimizer.h"
+#include "gtdynamics/optimizer/EqualityConstraintFactor.h"
 
 namespace gtdynamics {
 
@@ -55,11 +56,10 @@ class PenaltyMethodOptimizer : public Optimizer  {
       for (const auto& factor : graph) {
         // check if is noisemodel factor
         if (auto noise_factor =
-                boost::dynamic_pointer_cast<gtsam::NoiseModelFactor,
-                                            gtsam::NonlinearFactor>(factor)) {
+                boost::dynamic_pointer_cast<gtsam::NoiseModelFactor>(factor)) {
           auto basic_noise = noise_factor->noiseModel();
           if (basic_noise->isConstrained()) {
-            auto constrained_noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Constrained, gtsam::noiseModel::Base>(basic_noise);
+            auto constrained_noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Constrained>(basic_noise);
             auto tolerance = constrained_noise->mu();
             auto original_sigmas = constrained_noise->sigmas();
             auto sigmas = tolerance;
@@ -93,6 +93,42 @@ class PenaltyMethodOptimizer : public Optimizer  {
     }
     return values;
   }
+
+
+
+  /// Run optimization with penalty method with Equality Constraint factor.
+  gtsam::Values optimize1(const gtsam::NonlinearFactorGraph& graph,
+                         const gtsam::Values& initial_values) const {
+    gtsam::Values values = initial_values;
+    double mu = 1.0;
+
+    // TODO(yetong): make deep copy as we will change factor contents
+    gtsam::NonlinearFactorGraph merit_graph = graph;
+
+    // increase the penalty
+    for (int i = 0; i < p_->num_iterations; i++) {
+      // converting constrained factors to unconstrained factors
+      for (auto& factor : merit_graph) {
+        // check if is noisemodel factor
+        // TODO(yetong): how to make it general for the typename T
+
+        if (auto constraint_factor =
+                boost::dynamic_pointer_cast<gtsam::EqualityConstraintFactor<double>>(factor)) {
+          constraint_factor->update_mu(mu);
+        } 
+      }
+
+      // run optimization
+      gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values, p_->lm_parameters);
+      auto result = optimizer.optimize();
+
+      // save results and update parameters
+      values = result;
+      mu *= 2.0;
+    }
+    return values;
+  }
+
 };
 
 }  // namespace gtdynamics
