@@ -68,7 +68,6 @@ using ContactGoals = std::vector<ContactGoal>;
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  using SharedConstPtr = boost::shared_ptr<const KinematicsParameters>;
   const gtsam::SharedNoiseModel p_cost_model,  // pose factor
       g_cost_model,                            // goal point
       prior_q_cost_model;                      // joint angle prior factor

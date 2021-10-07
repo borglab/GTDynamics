@@ -383,9 +383,8 @@ class KinematicsParameters : gtdynamics::OptimizationParameters {
 };
 
 class Kinematics {
-  Kinematics(
-      const gtdynamics::KinematicsParameters::SharedConstPtr &parameters =
-          boost::make_shared<const gtdynamics::KinematicsParameters>());
+  Kinematics(gtdynamics::KinematicsParameters *parameters =
+                 boost::make_shared<const gtdynamics::KinematicsParameters>());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
