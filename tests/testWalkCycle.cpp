@@ -25,7 +25,7 @@ using gtsam::Point3;
 
 TEST(WalkCycle, contactPoints) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
   auto walk_cycle_phases = walk_cycle.phases();
@@ -39,7 +39,7 @@ TEST(WalkCycle, contactPoints) {
 
 TEST(WalkCycle, objectives) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"), "spider");
   EXPECT_LONGS_EQUAL(13, robot.numLinks());
 
   constexpr size_t num_time_steps = 5;

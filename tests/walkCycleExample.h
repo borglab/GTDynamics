@@ -19,7 +19,7 @@ namespace gtdynamics {
 namespace walk_cycle_example {
 
 Robot robot =
-  CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+  CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
 // First phase
 constexpr size_t num_time_steps = 2;
