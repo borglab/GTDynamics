@@ -26,7 +26,7 @@ class TestLink(GtsamTestCase):
         """Set up the fixtures."""
         # load example robot
         SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                            "sdfs")
+                            "models", "sdfs")
         self.simple_rr = gtd.CreateRobotFromFile(
             osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
 

@@ -557,7 +557,7 @@ TEST(Sdf, sdf_constructor_screw) {
   EXPECT(assert_equal(T_01_pos, j1->relativePoseOf(l1, M_PI / 2)));
 }
 
-// Initialize a Robot with "urdfs/test/simple_urdf.urdf" and make sure
+// Initialize a Robot with "models/urdfs/test/simple_urdf.urdf" and make sure
 // that all transforms, link/joint properties, etc. are correct.
 TEST(Robot, simple_urdf) {
   // Load urdf file into sdf::Model
