@@ -17,14 +17,14 @@
 
 namespace gtdynamics {
 
-gtsam::NonlinearFactor::shared_ptr DoubleExpressionEquality::createFactor(
+gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
   auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
   double measure = 0.0;
   if (bias) {
     measure = -(*bias)(0);
   }
-  return gtsam::NonlinearFactor::shared_ptr(
+  return gtsam::NoiseModelFactor::shared_ptr(
       new gtsam::ExpressionFactor<double>(noise, measure, expression_));
 }
 
@@ -48,14 +48,14 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
 size_t DoubleExpressionEquality::dim() const { return 1; }
 
 template <int P>
-gtsam::NonlinearFactor::shared_ptr VectorExpressionEquality<P>::createFactor(
+gtsam::NoiseModelFactor::shared_ptr VectorExpressionEquality<P>::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   VectorP measure = VectorP::Zero();
   if (bias) {
     measure = -*bias;
   }
-  return gtsam::NonlinearFactor::shared_ptr(
+  return gtsam::NoiseModelFactor::shared_ptr(
       new gtsam::ExpressionFactor<VectorP>(noise, measure, expression_));
 }
 
@@ -93,12 +93,12 @@ size_t VectorExpressionEquality<P>::dim() const {
   return P;
 }
 
-gtsam::NonlinearFactor::shared_ptr NoiseFactorEquality::createFactor(
+gtsam::NoiseModelFactor::shared_ptr NoiseFactorEquality::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   auto factor = noise_factor_->cloneWithNewNoiseModel(noise);
   if (bias) {
-    return gtsam::NonlinearFactor::shared_ptr(
+    return gtsam::NoiseModelFactor::shared_ptr(
         new NoiseModelBiasFactor(factor, *bias));
   } else {
     return factor;

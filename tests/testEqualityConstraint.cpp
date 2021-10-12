@@ -25,118 +25,124 @@
 
 using namespace gtdynamics;
 using namespace gtsam;
-using namespace constrained_example;
+using constrained_example::x1_key, constrained_example::x2_key;
 
 // Test methods of DoubleExpressionEquality.
 TEST(EqualityConstraint, DoubleExpressionEquality) {
   // create constraint from double expression
+  // g(x1, x2) = x1 + x1^3 + x2 + x2^2, from Vanderbergh slides
   double tolerance = 0.1;
-  auto constraint = DoubleExpressionEquality(constraint1_expr, tolerance);
+  auto g = constrained_example::constraint1_expr;
+  auto constraint = DoubleExpressionEquality(g, tolerance);
 
-  // create 2 sets of values for testing
+  // Create 2 sets of values for testing.
   Values values1, values2;
   values1.insert(x1_key, 0.0);
   values1.insert(x2_key, 0.0);
   values2.insert(x1_key, 1.0);
   values2.insert(x2_key, 1.0);
 
-  // check method feasible
+  // Check that values1 are feasible.
   EXPECT(constraint.feasible(values1));
+
+  // Check that violation evaluates as 0 at values1.
+  EXPECT(assert_equal(Vector::Zero(1), constraint.evaluateViolation(values1)));
+  EXPECT(assert_equal(Vector::Zero(1),
+                      constraint.toleranceScaledViolation(values1)));
+
+  // Check that values2 are indeed deemed infeasible.
   EXPECT(!constraint.feasible(values2));
 
-  // check method evaluateViolation
-  EXPECT(assert_equal(Vector::Zero(1), constraint.evaluateViolation(values1)));
+  // Check constraint violation is indeed g(x) at values2.
   EXPECT(assert_equal(Vector::Constant(1, 4.0),
                       constraint.evaluateViolation(values2)));
 
-  // check method toleranceScaledViolation
-  EXPECT(assert_equal(Vector::Zero(1),
-                      constraint.toleranceScaledViolation(values1)));
+  // Check scaled violation is indeed g(x)/tolerance at values2.
   EXPECT(assert_equal(Vector::Constant(1, 40.0),
                       constraint.toleranceScaledViolation(values2)));
 
-  // check method dim
+  // Check dimension is 1 for scalar g.
   EXPECT(constraint.dim() == 1);
 
-  // check method createFactor
+  // Generate factor representing the term in merit function.
   double mu = 4;
   Vector bias = Vector::Constant(1, 0.5);
   auto merit_factor = constraint.createFactor(mu, bias);
-  auto noise_factor =
-      boost::dynamic_pointer_cast<NoiseModelFactor>(merit_factor);
 
-  // check noise model is correct
-  auto expected_noise = noiseModel::Isotropic::Sigma(1, 0.05);
-  EXPECT(expected_noise->equals(*noise_factor->noiseModel()));
+  // Check that noise model sigma == tolerance/sqrt(mu).
+  auto expected_noise = noiseModel::Isotropic::Sigma(1, tolerance / sqrt(mu));
+  EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
 
-  // check error is correct
+  // Check that error is equal to 0.5*mu * (g(x)+bias)^2/tolerance^2.
   double expected_error1 = 50;  // 0.5 * 4 * ||0 + 0.5||_(0.1^2)^2
-  EXPECT(assert_equal(expected_error1, noise_factor->error(values1)));
+  EXPECT(assert_equal(expected_error1, merit_factor->error(values1)));
   double expected_error2 = 4050;  // 0.5 * 4 * ||4 + 0.5||_(0.1^2)^2
-  EXPECT(assert_equal(expected_error2, noise_factor->error(values2)));
+  EXPECT(assert_equal(expected_error2, merit_factor->error(values2)));
 
-  // check jacobian is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values1, 1e-7, 1e-5);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values2, 1e-7, 1e-5);
+  // Check jacobian computation is correct.
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
 }
 
 // Test methods of VectorExpressionEquality.
 TEST(EqualityConstraint, VectorExpressionEquality) {
-  // create constraint from Vector2 expression
+  // g(v1, v2) = v1 + v2, our own example.
+  auto g = constrained_example::constraint_sum_vector2_expr;
   auto tolerance = Vector2(0.1, 0.5);
-  auto constraint =
-      VectorExpressionEquality<2>(constraint_sum_vector2_expr, tolerance);
+  auto constraint = VectorExpressionEquality<2>(g, tolerance);
 
-  // create 2 sets of values for testing
+  // Create 2 sets of values for testing.
   Values values1, values2;
   values1.insert(x1_key, Vector2(1, 1));
   values1.insert(x2_key, Vector2(-1, -1));
   values2.insert(x1_key, Vector2(1, 1));
   values2.insert(x2_key, Vector2(1, 1));
 
-  // check method feasible
+  // Check that values1 are feasible.
   EXPECT(constraint.feasible(values1));
-  EXPECT(!constraint.feasible(values2));
 
-  // check method evaluateViolation
+  // Check that violation evaluates as 0 at values1.
   auto expected_violation1 = (Vector(2) << 0, 0).finished();
   EXPECT(
       assert_equal(expected_violation1, constraint.evaluateViolation(values1)));
+  auto expected_scaled_violation1 = (Vector(2) << 0, 0).finished();
+  EXPECT(assert_equal(expected_scaled_violation1,
+                      constraint.toleranceScaledViolation(values1)));
+
+  // Check that values2 are indeed deemed infeasible.
+  EXPECT(!constraint.feasible(values2));
+
+  // Check constraint violation is indeed g(x) at values2.
   auto expected_violation2 = (Vector(2) << 2, 2).finished();
   EXPECT(
       assert_equal(expected_violation2, constraint.evaluateViolation(values2)));
 
-  // check method toleranceScaledViolation
-  auto expected_scaled_violation1 = (Vector(2) << 0, 0).finished();
-  EXPECT(assert_equal(expected_scaled_violation1,
-                      constraint.toleranceScaledViolation(values1)));
+  // Check scaled violation is indeed g(x)/tolerance at values2.
   auto expected_scaled_violation2 = (Vector(2) << 20, 4).finished();
   EXPECT(assert_equal(expected_scaled_violation2,
                       constraint.toleranceScaledViolation(values2)));
 
-  // check method dim
+  // Check dim is the dimension of the vector.
   EXPECT(constraint.dim() == 2);
 
-  // check method createFactor
+  // Generate factor representing the term in merit function.
   double mu = 4;
   Vector bias = (Vector(2) << 1, 0.5).finished();
   auto merit_factor = constraint.createFactor(mu, bias);
-  auto noise_factor =
-      boost::dynamic_pointer_cast<NoiseModelFactor>(merit_factor);
 
-  // check noise model is correct
-  auto expected_noise = noiseModel::Diagonal::Sigmas(Vector2(0.05, 0.25));
-  EXPECT(expected_noise->equals(*noise_factor->noiseModel()));
+  // Check that noise model sigma == tolerance/sqrt(mu).
+  auto expected_noise = noiseModel::Diagonal::Sigmas(tolerance / sqrt(mu));
+  EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
 
-  // check error is correct
+  // Check that error is equal to 0.5*mu*||g(x)+bias)||^2_Diag(tolerance^2).
   double expected_error1 = 202;  // 0.5 * 4 * ||[1, 0.5]||_([0.1,0.5]^2)^2
-  EXPECT(assert_equal(expected_error1, noise_factor->error(values1)));
+  EXPECT(assert_equal(expected_error1, merit_factor->error(values1)));
   double expected_error2 = 1850;  // 0.5 * 4 * ||[3, 2.5]||_([0.1,0.5]^2)^2
-  EXPECT(assert_equal(expected_error2, noise_factor->error(values2)));
+  EXPECT(assert_equal(expected_error2, merit_factor->error(values2)));
 
-  // check jacobian is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values1, 1e-7, 1e-5);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values2, 1e-7, 1e-5);
+  // Check jacobian computation is correct.
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
 }
 
 // Example of pose factor.
@@ -196,31 +202,30 @@ TEST(EqualityConstraint, NoiseFactorEquality) {
   double mu = 4;
   Vector bias = (Vector(6) << 0, 0.1, 0, 0, 0.5, 0).finished();
   auto merit_factor = constraint.createFactor(mu, bias);
-  auto noise_factor =
-      boost::dynamic_pointer_cast<NoiseModelFactor>(merit_factor);
 
   // check noise model is correct
   auto sigmas = (Vector(6) << 0.05, 0.05, 0.05, 0.25, 0.25, 0.25).finished();
   auto expected_noise = noiseModel::Diagonal::Sigmas(sigmas);
-  EXPECT(expected_noise->equals(*noise_factor->noiseModel()));
+  EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
 
   // check error is correct
   double expected_error1 = 4;  // 0.5 * 4 * (1 + 1)
-  EXPECT(assert_equal(expected_error1, noise_factor->error(values1)));
+  EXPECT(assert_equal(expected_error1, merit_factor->error(values1)));
   double expected_error2 = 156;  // 0.5 * 4 * (1 + 4*4 + 5*5 + 6*6)
-  EXPECT(assert_equal(expected_error2, noise_factor->error(values2)));
+  EXPECT(assert_equal(expected_error2, merit_factor->error(values2)));
 
   // check jacobian is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values1, 1e-7, 1e-5);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*noise_factor, values2, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
 }
 
 // Test constraint container by adding different kinds of constraints.
 TEST(EqualityConstraint, EqualityConstraints) {
   EqualityConstraints constraints;
-  constraints.addDoubleExpressionEquality(constraint1_expr, 0.1);
-  constraints.addVectorExpressionEquality<2>(constraint_sum_vector2_expr,
-                                             Vector2(0.1, 0.5));
+  constraints.addDoubleExpressionEquality(constrained_example::constraint1_expr,
+                                          0.1);
+  constraints.addVectorExpressionEquality<2>(
+      constrained_example::constraint_sum_vector2_expr, Vector2(0.1, 0.5));
   constraints.addNoiseFactorEquality(pose_factor_example::factor,
                                      Vector::Ones(6));
   constraints.addNoiseFactorEquality(pose_factor_example::factor);

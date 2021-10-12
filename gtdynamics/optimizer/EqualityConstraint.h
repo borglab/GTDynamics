@@ -39,7 +39,7 @@ class EqualityConstraint {
    * @param bias additional bias.
    * @return a factor representing 1/2 mu||g(x)+bias||_Diag(tolerance^2)^2.
    */
-  virtual gtsam::NonlinearFactor::shared_ptr createFactor(
+  virtual gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const = 0;
 
@@ -86,7 +86,7 @@ class DoubleExpressionEquality : public EqualityConstraint {
                            const double& tolerance)
       : expression_(expression), tolerance_(tolerance) {}
 
-  gtsam::NonlinearFactor::shared_ptr createFactor(
+  gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
@@ -121,7 +121,7 @@ class VectorExpressionEquality : public EqualityConstraint {
                            const VectorP& tolerance)
       : expression_(expression), tolerance_(tolerance) {}
 
-  gtsam::NonlinearFactor::shared_ptr createFactor(
+  gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
@@ -163,7 +163,7 @@ class NoiseFactorEquality : public EqualityConstraint {
       : noise_factor_(noise_factor),
         tolerance_(noise_factor->noiseModel()->sigmas()) {}
 
-  gtsam::NonlinearFactor::shared_ptr createFactor(
+  gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
