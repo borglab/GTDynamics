@@ -36,9 +36,8 @@ typedef gtdynamics::JointMeasurementFactor<gtdynamics::RevoluteJoint> RevoluteJo
 
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
-  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
-             const gtsam::noiseModel::Base* cost_model,
-             const gtdynamics::Joint* joint);
+  PoseFactor(const gtsam::noiseModel::Base *cost_model,
+             const gtdynamics::Joint *joint, int k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -93,10 +92,8 @@ class ContactPointFactor : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/TwistFactor.h>
 class TwistFactor : gtsam::NonlinearFactor {
-  TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
-              gtsam::Key qVel_key,
-              const gtsam::noiseModel::Base* cost_model,
-              const gtdynamics::Joint* joint);
+  TwistFactor(const gtsam::noiseModel::Base *cost_model,
+              const gtdynamics::Joint *joint, int k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -104,10 +101,8 @@ class TwistFactor : gtsam::NonlinearFactor {
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
 class TwistAccelFactor : gtsam::NonlinearFactor {
-  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
-              gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
-              const gtsam::noiseModel::Base* cost_model,
-              const gtdynamics::JointTyped* joint);
+  TwistAccelFactor(const gtsam::noiseModel::Base *cost_model,
+                   const gtdynamics::Joint *joint, int k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -116,7 +111,7 @@ class TwistAccelFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/TorqueFactor.h>
 class TorqueFactor : gtsam::NonlinearFactor {
   TorqueFactor(const gtsam::noiseModel::Base *cost_model,
-               const gtdynamics::JointTyped *joint, size_t k=0);
+               const gtdynamics::Joint *joint, size_t k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -145,7 +140,7 @@ class WrenchFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base *cost_model,
-                          gtdynamics::JointTyped *joint, size_t k = 0);
+                          gtdynamics::Joint *joint, size_t k = 0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
@@ -153,7 +148,8 @@ class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
 class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis, gtdynamics::JointTyped *joint, size_t k=0);
+                     Vector planar_axis, gtdynamics::Joint *joint,
+                     size_t k = 0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
