@@ -38,10 +38,9 @@ using gtsam::Z_6x1;
 using gtsam::noiseModel::Gaussian;
 
 namespace example {
-// nosie model
+// noise model
 Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key wTp_key = internal::PoseKey(1), wTc_key = internal::PoseKey(2),
-           q_key = internal::JointAngleKey(1);
+size_t k = 777;
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -53,14 +52,13 @@ TEST(PoseFactor, error) {
   auto joint = make_joint(cMp, screw_axis);
 
   // Create factor
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  PoseFactor factor(example::cost_model, joint, example::k);
 
   // call unwhitenedError
   Values values;
-  InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-  InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
-  InsertJointAngle(&values, 1, 0.0);
+  InsertPose(&values, 1, example::k, Pose3(Rot3(), Point3(1, 0, 0)));
+  InsertPose(&values, 2, example::k, Pose3(Rot3(), Point3(3, 0, 0)));
+  InsertJointAngle(&values, 1, example::k, 0.0);
   auto actual_errors = factor.unwhitenedError(values);
 
   // check value
@@ -79,24 +77,24 @@ TEST(PoseFactor, breaking) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  PoseFactor factor(example::cost_model, joint, example::k);
 
   // check prediction at zero joint angle
   {
     Values values;
-    InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-    InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
-    InsertJointAngle(&values, 1, 0.0);
+    InsertPose(&values, 1, example::k, Pose3(Rot3(), Point3(1, 0, 0)));
+    InsertPose(&values, 2, example::k, Pose3(Rot3(), Point3(3, 0, 0)));
+    InsertJointAngle(&values, 1, example::k, 0.0);
     EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
   }
 
   // check prediction at half PI
   {
     Values values;
-    InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-    InsertPose(&values, 2, Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
-    InsertJointAngle(&values, 1, M_PI / 2);
+    InsertPose(&values, 1, example::k, Pose3(Rot3(), Point3(1, 0, 0)));
+    InsertPose(&values, 2, example::k,
+               Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
+    InsertJointAngle(&values, 1, example::k, M_PI / 2);
     EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
   }
 }
@@ -114,14 +112,13 @@ TEST(PoseFactor, breaking_rr) {
   Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  PoseFactor factor(example::cost_model, joint, example::k);
 
   // unwhitenedError
   Values values;
-  InsertPose(&values, 1, Pose3());
-  InsertPose(&values, 2, j1->relativePoseOf(l2, M_PI / 4));
-  InsertJointAngle(&values, 1, M_PI / 4);
+  InsertPose(&values, 1, example::k, Pose3());
+  InsertPose(&values, 2, example::k, j1->relativePoseOf(l2, M_PI / 4));
+  InsertJointAngle(&values, 1, example::k, M_PI / 4);
   EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
 }
 
@@ -132,8 +129,7 @@ TEST(PoseFactor, nonzero_rest) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  PoseFactor factor(example::cost_model, joint, example::k);
 
   double jointAngle;
   Pose3 pose_p, pose_c;
@@ -144,9 +140,9 @@ TEST(PoseFactor, nonzero_rest) {
   // Make sure linearization is correct
   {
     Values values;
-    InsertPose(&values, 1, pose_p);
-    InsertPose(&values, 2, pose_c);
-    InsertJointAngle(&values, 1, jointAngle);
+    InsertPose(&values, 1, example::k, pose_p);
+    InsertPose(&values, 2, example::k, pose_c);
+    InsertJointAngle(&values, 1, example::k, jointAngle);
     double diffDelta = 1e-7;
     EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
   }
@@ -157,9 +153,9 @@ TEST(PoseFactor, nonzero_rest) {
     jointAngle = M_PI / 2;
     pose_p = Pose3(Rot3(), Point3(1, 0, 0));
     pose_c = Pose3(Rot3::Rz(jointAngle), Point3(2, 1, 0));
-    InsertPose(&values, 1, pose_p);
-    InsertPose(&values, 2, pose_c);
-    InsertJointAngle(&values, 1, jointAngle);
+    InsertPose(&values, 1, example::k, pose_p);
+    InsertPose(&values, 2, example::k, pose_c);
+    InsertJointAngle(&values, 1, example::k, jointAngle);
     double diffDelta = 1e-7;
     EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
   }
@@ -170,10 +166,10 @@ TEST(PoseFactor, ForwardKinematics) {
 
   gtsam::NonlinearFactorGraph graph;
   Values initial;
-  size_t t = 0;
+  size_t k = example::k;
   double angle = M_PI_2;
 
-  auto link0_key = internal::PoseKey(0, t);
+  auto link0_key = internal::PoseKey(0, k);
 
   auto pose_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   auto joint_angle_model = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
@@ -183,31 +179,31 @@ TEST(PoseFactor, ForwardKinematics) {
   graph.addPrior<gtsam::Pose3>(link0_key, base_link->bMcom());
 
   for (auto&& joint : robot.joints()) {
-    graph.emplace_shared<PoseFactor>(pose_model, joint, t);
-    graph.addPrior<double>(internal::JointAngleKey(joint->id(), t), angle,
+    graph.emplace_shared<PoseFactor>(pose_model, joint, k);
+    graph.addPrior<double>(internal::JointAngleKey(joint->id(), k), angle,
                            joint_angle_model);
   }
 
-  InsertPose(&initial, 0, t, robot.links()[0]->bMcom());
-  InsertPose(&initial, 1, t, robot.links()[1]->bMcom());
-  InsertPose(&initial, 2, t, robot.links()[2]->bMcom());
-  InsertJointAngle(&initial, 0, t, angle);
-  InsertJointAngle(&initial, 1, t, angle);
+  InsertPose(&initial, 0, k, robot.links()[0]->bMcom());
+  InsertPose(&initial, 1, k, robot.links()[1]->bMcom());
+  InsertPose(&initial, 2, k, robot.links()[2]->bMcom());
+  InsertJointAngle(&initial, 0, k, angle);
+  InsertJointAngle(&initial, 1, k, angle);
 
   gtsam::GaussNewtonOptimizer optimizer(graph, initial);
   Values result = optimizer.optimize();
 
   Values known_values;
-  InsertJointAngle(&known_values, 0, t, angle);
-  InsertJointAngle(&known_values, 1, t, angle);
-  InsertPose(&known_values, 0, t, robot.links()[0]->bMcom());
+  InsertJointAngle(&known_values, 0, k, angle);
+  InsertJointAngle(&known_values, 1, k, angle);
+  InsertPose(&known_values, 0, k, robot.links()[0]->bMcom());
 
   Values expected =
-      robot.forwardKinematics(known_values, t, base_link->name());
+      robot.forwardKinematics(known_values, k, base_link->name());
 
-  EXPECT(assert_equal(Pose(result, 0, t), Pose(expected, 0, t)));
-  EXPECT(assert_equal(Pose(result, 1, t), Pose(expected, 1, t)));
-  EXPECT(assert_equal(Pose(result, 2, t), Pose(expected, 2, t)));
+  EXPECT(assert_equal(Pose(result, 0, k), Pose(expected, 0, k)));
+  EXPECT(assert_equal(Pose(result, 1, k), Pose(expected, 1, k)));
+  EXPECT(assert_equal(Pose(result, 2, k), Pose(expected, 2, k)));
 }
 
 int main() {

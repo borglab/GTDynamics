@@ -58,10 +58,11 @@ class TorqueFactor
    * @param joint JointConstSharedPtr to the joint
    */
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const MyJointConstSharedPtr &joint, size_t k = 0)
+               const JointConstSharedPtr &joint, size_t k = 0)
       : TorqueFactor(cost_model,
                      internal::WrenchKey(joint->child()->id(), joint->id(), k),
-                     internal::TorqueKey(joint->id(), k), joint) {}
+                     internal::TorqueKey(joint->id(), k),
+                     boost::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~TorqueFactor() {}
 

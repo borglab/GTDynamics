@@ -24,6 +24,7 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -57,14 +58,16 @@ class TwistAccelFactor
    *
    * @param joint JointConstSharedPtr to the joint
    */
-  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
-                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
-                   gtsam::Key qVel_key, gtsam::Key qAccel_key,
-                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointTypedConstSharedPtr joint)
-      : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
-             qVel_key, qAccel_key),
-        joint_(joint) {}
+  TwistAccelFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                   JointConstSharedPtr joint, int t)
+      : Base(cost_model,  //
+             internal::TwistKey(joint->child()->id(), t).key(),
+             internal::TwistAccelKey(joint->parent()->id(), t).key(),
+             internal::TwistAccelKey(joint->child()->id(), t).key(),
+             internal::JointAngleKey(joint->id(), t).key(),
+             internal::JointVelKey(joint->id(), t).key(),
+             internal::JointAccelKey(joint->id(), t).key()),
+        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
   virtual ~TwistAccelFactor() {}
 
  private:

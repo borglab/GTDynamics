@@ -40,9 +40,7 @@ class TwistFactor
   using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
                                         JointCoordinate, JointVelocity>;
 
-  gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
-  gtsam::Vector6 screw_axis_;
 
  public:
   /**
@@ -52,11 +50,13 @@ class TwistFactor
    *
    * @param joint a Joint
    */
-  TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
-              gtsam::Key qVel_key,
-              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-              JointConstSharedPtr joint)
-      : Base(cost_model, twistP_key, twistC_key, q_key, qVel_key),
+  TwistFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
+              JointConstSharedPtr joint, int t)
+      : Base(cost_model,  //
+             internal::TwistKey(joint->parent()->id(), t).key(),
+             internal::TwistKey(joint->child()->id(), t).key(),
+             internal::JointAngleKey(joint->id(), t).key(),
+             internal::JointVelKey(joint->id(), t).key()),
         joint_(joint) {}
   virtual ~TwistFactor() {}
 
