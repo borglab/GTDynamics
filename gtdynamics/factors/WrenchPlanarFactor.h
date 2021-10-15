@@ -37,10 +37,15 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
   using Base = gtsam::NoiseModelFactor1<gtsam::Vector6>;
   gtsam::Matrix36 H_wrench_;
 
-  /// Private constructor with arbitrary keys
+ public:
+  /** Constructor
+   * @param planar_axis axis of the plane
+   */
   WrenchPlanarFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     gtsam::Vector3 planar_axis, gtsam::Key wrench_key)
-      : Base(cost_model, wrench_key) {
+                     gtsam::Vector3 planar_axis,
+                     const JointConstSharedPtr &joint, size_t k = 0)
+      : Base(cost_model,
+             internal::WrenchKey(joint->child()->id(), joint->id(), k)) {
     if (planar_axis[0] == 1) {  // x axis
       H_wrench_ << 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0;
     } else if (planar_axis[1] == 1) {  // y axis
@@ -49,17 +54,6 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
       H_wrench_ << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
     }
   }
-
- public:
-  /** Constructor
-   * @param planar_axis axis of the plane
-   */
-  WrenchPlanarFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     gtsam::Vector3 planar_axis,
-                     const JointConstSharedPtr &joint, size_t k = 0)
-      : WrenchPlanarFactor(
-            cost_model, planar_axis,
-            internal::WrenchKey(joint->child()->id(), joint->id(), k)) {}
 
   virtual ~WrenchPlanarFactor() {}
 

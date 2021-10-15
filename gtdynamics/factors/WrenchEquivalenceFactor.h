@@ -52,9 +52,9 @@ class WrenchEquivalenceFactor
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                           const JointConstSharedPtr &joint, size_t k = 0)
       : Base(cost_model,
-             internal::WrenchKey(joint->parent()->id(), joint->id(), k).key(),
-             internal::WrenchKey(joint->child()->id(), joint->id(), k).key(),
-             internal::JointAngleKey(joint->id(), k).key()),
+             internal::WrenchKey(joint->parent()->id(), joint->id(), k),
+             internal::WrenchKey(joint->child()->id(), joint->id(), k),
+             internal::JointAngleKey(joint->id(), k)),
         joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~WrenchEquivalenceFactor() {}

@@ -53,10 +53,10 @@ class TwistFactor
   TwistFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
               JointConstSharedPtr joint, int t)
       : Base(cost_model,  //
-             internal::TwistKey(joint->parent()->id(), t).key(),
-             internal::TwistKey(joint->child()->id(), t).key(),
-             internal::JointAngleKey(joint->id(), t).key(),
-             internal::JointVelKey(joint->id(), t).key()),
+             internal::TwistKey(joint->parent()->id(), t),
+             internal::TwistKey(joint->child()->id(), t),
+             internal::JointAngleKey(joint->id(), t),
+             internal::JointVelKey(joint->id(), t)),
         joint_(joint) {}
   virtual ~TwistFactor() {}
 

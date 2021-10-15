@@ -41,12 +41,6 @@ class TorqueFactor
   using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
   MyJointConstSharedPtr joint_;
 
-  /// Private constructor with arbitrary keys
-  TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               gtsam::Key wrench_key, gtsam::Key torque_key,
-               const MyJointConstSharedPtr &joint)
-      : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
-
  public:
   /**
    * Torque factor, common between forward and inverse dynamics.
@@ -59,10 +53,10 @@ class TorqueFactor
    */
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                const JointConstSharedPtr &joint, size_t k = 0)
-      : TorqueFactor(cost_model,
-                     internal::WrenchKey(joint->child()->id(), joint->id(), k),
-                     internal::TorqueKey(joint->id(), k),
-                     boost::static_pointer_cast<const JointTyped>(joint)) {}
+      : Base(cost_model,
+             internal::WrenchKey(joint->child()->id(), joint->id(), k),
+             internal::TorqueKey(joint->id(), k)),
+        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
 
   virtual ~TorqueFactor() {}
 

@@ -61,12 +61,12 @@ class TwistAccelFactor
   TwistAccelFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                    JointConstSharedPtr joint, int t)
       : Base(cost_model,  //
-             internal::TwistKey(joint->child()->id(), t).key(),
-             internal::TwistAccelKey(joint->parent()->id(), t).key(),
-             internal::TwistAccelKey(joint->child()->id(), t).key(),
-             internal::JointAngleKey(joint->id(), t).key(),
-             internal::JointVelKey(joint->id(), t).key(),
-             internal::JointAccelKey(joint->id(), t).key()),
+             internal::TwistKey(joint->child()->id(), t),
+             internal::TwistAccelKey(joint->parent()->id(), t),
+             internal::TwistAccelKey(joint->child()->id(), t),
+             internal::JointAngleKey(joint->id(), t),
+             internal::JointVelKey(joint->id(), t),
+             internal::JointAccelKey(joint->id(), t)),
         joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
   virtual ~TwistAccelFactor() {}
 
