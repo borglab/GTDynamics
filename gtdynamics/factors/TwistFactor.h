@@ -21,7 +21,7 @@
 #include <boost/optional.hpp>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -72,10 +72,9 @@ class TwistFactor
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
-    auto error =
-        boost::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
-            joint_->child(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
-        twist_c;
+    auto error = joint_->transformTwistTo(joint_->child(), q, qVel, twist_p,
+                                          H_q, H_qVel, H_twist_p) -
+                 twist_c;
 
     if (H_twist_c) {
       *H_twist_c = -gtsam::I_6x6;

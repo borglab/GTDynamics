@@ -21,7 +21,6 @@
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/ScrewJoint.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {

@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/values.h"
 
@@ -35,13 +35,12 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
  private:
   using This = TorqueFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, double>;
-  using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  MyJointConstSharedPtr joint_;
+  JointConstSharedPtr joint_;
 
   /// Private constructor with arbitrary keys
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                gtsam::Key wrench_key, gtsam::Key torque_key,
-               const MyJointConstSharedPtr &joint)
+               const JointConstSharedPtr &joint)
       : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
 
  public:
@@ -55,7 +54,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    * @param joint JointConstSharedPtr to the joint
    */
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const MyJointConstSharedPtr &joint, size_t k = 0)
+               const JointConstSharedPtr &joint, size_t k = 0)
       : TorqueFactor(cost_model,
                      internal::WrenchKey(joint->child()->id(), joint->id(), k),
                      internal::TorqueKey(joint->id(), k), joint) {}
@@ -82,7 +81,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   }
 
   /// Returns the joint
-  MyJointConstSharedPtr getJoint() const { return joint_; }
+  JointConstSharedPtr getJoint() const { return joint_; }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

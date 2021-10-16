@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -39,8 +39,7 @@ class TwistAccelFactor
   using Base = gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, double,
                                         double, double>;
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+  JointConstSharedPtr joint_;
 
  public:
   /**
@@ -56,7 +55,7 @@ class TwistAccelFactor
                    gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointTypedConstSharedPtr joint)
+                   JointConstSharedPtr joint)
       : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
         joint_(joint) {}

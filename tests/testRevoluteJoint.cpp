@@ -159,7 +159,6 @@ TEST(Joint, ValuesRelativePoseOf) {
 
   RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
                    parameters);
-  const size_t t = 777;
   // Rotating joint by -M_PI / 2
   double q = -M_PI / 2;
   Pose3 T12(Rot3::Rx(q), Point3(0, 1, 1));
