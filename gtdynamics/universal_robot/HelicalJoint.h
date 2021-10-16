@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ScrewJoint.h
+ * @file  HelicalJoint.h
  * @brief Representation of screw joint.
  * @author Frank Dellaert
  * @author Mandy Xie
@@ -23,10 +23,10 @@
 namespace gtdynamics {
 
 /**
- * @class ScrewJoint is an implementation of the Joint class which represents a
- * screw joint and contains all necessary factor construction methods.
+ * @class HelicalJoint is an implementation of the Joint class which represents
+ * a helical joint and contains all necessary factor construction methods.
  */
-class ScrewJoint : public Joint {
+class HelicalJoint : public Joint {
  protected:
   /**
    * Returns the screw axis in the joint frame given the joint axis and thread
@@ -40,7 +40,7 @@ class ScrewJoint : public Joint {
 
  public:
   /**
-   * @brief Create ScrewJoint using JointParams, joint name, joint pose in
+   * @brief Create HelicalJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
    * @param[in] id            id for keys
@@ -52,7 +52,7 @@ class ScrewJoint : public Joint {
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
    * @param[in] parameters    JointParams struct.
    */
-  ScrewJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
+  HelicalJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const gtsam::Vector3 &axis, double thread_pitch,
              const JointParams &parameters = JointParams())

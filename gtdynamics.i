@@ -228,7 +228,7 @@ class Link  {
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
-#include <gtdynamics/universal_robot/ScrewJoint.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
 class JointParams {
   JointParams();
   double velocity_limit;
@@ -270,8 +270,8 @@ virtual class PrismaticJoint : gtdynamics::Joint {
   void print(const string &s = "") const;
 };
 
-virtual class ScrewJoint : gtdynamics::Joint {
-  ScrewJoint(
+virtual class HelicalJoint : gtdynamics::Joint {
+  HelicalJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
       const Vector &axis, double thread_pitch,
