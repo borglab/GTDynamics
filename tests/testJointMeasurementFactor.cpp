@@ -104,8 +104,8 @@ TEST(JointMeasurementFactor, ArbitraryTime) {
   Pose3 wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
 
   Values values;
-  InsertPose(&values, link0->id(), wTl0);
-  InsertPose(&values, link1->id(), wTl1);
+  InsertPose(&values, link0->id(), t, wTl0);
+  InsertPose(&values, link1->id(), t, wTl1);
 
   Vector error = factor.evaluateError(wTl0, wTl1);
   EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));

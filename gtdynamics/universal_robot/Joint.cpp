@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/factors/JointLimitFactor.h"
 
 using gtsam::Pose3;
 using gtsam::Vector6;
@@ -33,12 +34,11 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
       name_(name),
       parent_link_(parent_link),
       child_link_(child_link),
+      jMp_(bTj.inverse() * parent_link->bMcom()),
+      jMc_(bTj.inverse() * child_link->bMcom()),
       pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
       cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),
-      parameters_(parameters) {
-  jMp_ = bTj.inverse() * parent_link_->bMcom();
-  jMc_ = bTj.inverse() * child_link_->bMcom();
-}
+      parameters_(parameters) {}
 
 /* ************************************************************************* */
 bool Joint::isChildLink(const LinkSharedPtr &link) const {
@@ -250,28 +250,28 @@ gtsam::NonlinearFactorGraph Joint::jointLimitFactors(
   gtsam::NonlinearFactorGraph graph;
   auto id = this->id();
   // Add joint angle limit factor.
-  // graph.emplace_shared<JointLimitFactor>(
-  //     internal::JointAngleKey(id, t), opt.jl_cost_model,
-  //     parameters().scalar_limits.value_lower_limit,
-  //     parameters().scalar_limits.value_upper_limit,
-  //     parameters().scalar_limits.value_limit_threshold);
+  graph.emplace_shared<JointLimitFactor>(
+      internal::JointAngleKey(id, t), opt.jl_cost_model,
+      parameters().scalar_limits.value_lower_limit,
+      parameters().scalar_limits.value_upper_limit,
+      parameters().scalar_limits.value_limit_threshold);
 
-  // // Add joint velocity limit factors.
-  // graph.emplace_shared<JointLimitFactor>(
-  //     internal::JointVelKey(id, t), opt.jl_cost_model,
-  //     -parameters().velocity_limit, parameters().velocity_limit,
-  //     parameters().velocity_limit_threshold);
+  // Add joint velocity limit factors.
+  graph.emplace_shared<JointLimitFactor>(
+      internal::JointVelKey(id, t), opt.jl_cost_model,
+      -parameters().velocity_limit, parameters().velocity_limit,
+      parameters().velocity_limit_threshold);
 
-  // // Add joint acceleration limit factors.
-  // graph.emplace_shared<JointLimitFactor>(
-  //     internal::JointAccelKey(id, t), opt.jl_cost_model,
-  //     -parameters().acceleration_limit, parameters().acceleration_limit,
-  //     parameters().acceleration_limit_threshold);
+  // Add joint acceleration limit factors.
+  graph.emplace_shared<JointLimitFactor>(
+      internal::JointAccelKey(id, t), opt.jl_cost_model,
+      -parameters().acceleration_limit, parameters().acceleration_limit,
+      parameters().acceleration_limit_threshold);
 
-  // // Add joint torque limit factors.
-  // graph.emplace_shared<JointLimitFactor>(
-  //     internal::TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
-  //     parameters().torque_limit, parameters().torque_limit_threshold);
+  // Add joint torque limit factors.
+  graph.emplace_shared<JointLimitFactor>(
+      internal::TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
+      parameters().torque_limit, parameters().torque_limit_threshold);
   return graph;
 }
 
