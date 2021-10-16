@@ -201,7 +201,7 @@ class JsonSaver {
     std::stringstream ss;
     if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
       auto joint = f->getJoint();
-      ss << GetVector(boost::static_pointer_cast<const ScrewJointBase>(joint)
+      ss << GetVector(boost::static_pointer_cast<const Joint>(joint)
                           ->screwAxis(joint->child())
                           .transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =

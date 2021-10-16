@@ -76,10 +76,6 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, -M_PI / 2)));
 
-  // should throw error
-  CHECK_EXCEPTION(j1->relativePoseOf(l2, gtsam::Values()),
-                  gtsam::ValuesKeyDoesNotExist);
-
   // links
   auto links = j1->links();
   EXPECT(links[0] == l1);

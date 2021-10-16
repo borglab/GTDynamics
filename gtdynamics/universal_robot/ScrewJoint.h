@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -27,7 +27,7 @@ namespace gtdynamics {
  *  which represents a screw joint and contains all necessary factor
  *  construction methods.
  */
-class ScrewJoint : public ScrewJointBase {
+class ScrewJoint : public Joint {
  protected:
   /**
    * Returns the screw axis in the joint frame given the joint axis and thread
@@ -57,11 +57,14 @@ class ScrewJoint : public ScrewJointBase {
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const gtsam::Vector3 &axis, double thread_pitch,
              const JointParams &parameters = JointParams())
-      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
-                       getScrewAxis(axis, thread_pitch), parameters) {}
+      : Joint(id, name, bTj, parent_link, child_link,
+              getScrewAxis(axis, thread_pitch), parameters) {}
+  
+  /// Constructor directly from screwAxis
+  using Joint::Joint;
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const override { return Type::Screw; }
+  Type type() const final override { return Type::Screw; }
 };
 
 }  // namespace gtdynamics

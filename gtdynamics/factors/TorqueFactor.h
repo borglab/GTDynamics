@@ -31,13 +31,10 @@ namespace gtdynamics {
  * TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link
  */
-class TorqueFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Vector6,
-                                      typename JointTyped::JointTorque> {
+class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
  private:
-  using JointTorque = typename JointTyped::JointTorque;
   using This = TorqueFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque>;
+  using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, double>;
   using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
   MyJointConstSharedPtr joint_;
 
@@ -72,11 +69,11 @@ class TorqueFactor
    * @param torque torque on this link joint
    */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &wrench, const JointTorque &torque,
+      const gtsam::Vector6 &wrench, const double &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
-      *H_torque = -JointTyped::MatrixN::Identity();
+      *H_torque = -gtsam::Matrix1::Identity();
     }
     // TODO(G+S): next PR will generalize this from Vector1
     return gtsam::Vector1(

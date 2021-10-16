@@ -145,10 +145,7 @@ void Robot::print(const std::string &s) const {
   for (const auto &joint : sorted_joints) {
     cout << joint << endl;
 
-    gtsam::Values joint_angles;
-    InsertJointAngle(&joint_angles, joint->id(), 0.0);
-
-    auto pTc = joint->parentTchild(joint_angles);
+    auto pTc = joint->parentTchild(0.0);
     cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
          << pTc.translation().transpose() << "\n";
   }
@@ -259,7 +256,9 @@ gtsam::Values Robot::forwardKinematics(
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->joints()) {
       InsertZeroDefaults(joint->id(), t, &values);
-      const auto poseTwist = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
+      const auto poseTwist = joint->otherPoseTwist(
+          link1, T_w1, V_1, JointAngle(values, joint->id(), t),
+          JointVel(values, joint->id(), t));
       const auto link2 = joint->otherLink(link1);
       if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
         q.push(link2);

@@ -30,15 +30,12 @@ namespace gtdynamics {
  * between twist on previous link and this link
  */
 class TwistFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate,
-                                      typename JointTyped::JointVelocity> {
+    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
+                                      double> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
-  using JointVelocity = typename JointTyped::JointVelocity;
   using This = TwistFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
-                                        JointCoordinate, JointVelocity>;
+  using Base =
+      gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double, double>;
 
   gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
@@ -70,7 +67,7 @@ class TwistFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
-      const JointCoordinate &q, const JointVelocity &qVel,
+      const double &q, const double &qVel,
       boost::optional<gtsam::Matrix &> H_twist_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,

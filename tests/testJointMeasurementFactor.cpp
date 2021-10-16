@@ -32,9 +32,6 @@ using namespace gtdynamics;
 using namespace gtsam;
 using gtsam::assert_equal;
 
-const Key key0 = gtdynamics::internal::PoseKey(0),
-          key1 = gtdynamics::internal::PoseKey(1);
-
 auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
 
 auto robot = simple_rr::getRobot();
@@ -42,13 +39,11 @@ size_t t = 0;
 
 // Test should not throw an exception.
 TEST(JointMeasurementFactor, Constructor) {
-  JointMeasurementFactor<RevoluteJoint>(key0, key1, kModel, robot.joints()[0],
-                                        0.0, t);
+  JointMeasurementFactor(kModel, robot.joints()[0], 0.0, t);
 }
 
 TEST(JointMeasurementFactor, Error) {
-  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel,
-                                               robot.joints()[0], 0.0, t);
+  JointMeasurementFactor factor(kModel, robot.joints()[0], 0.0, t);
 
   auto link0 = robot.links()[0];
   auto link1 = robot.links()[1];
@@ -58,8 +53,7 @@ TEST(JointMeasurementFactor, Error) {
   EXPECT(assert_equal(Vector::Zero(6), error, 1e-9));
 
   // Error when the elbow is bent to 90 degrees
-  JointMeasurementFactor<RevoluteJoint> factor2(key0, key1, kModel,
-                                                robot.joints()[0], M_PI, t);
+  JointMeasurementFactor factor2(kModel, robot.joints()[0], M_PI, t);
 
   Pose3 wTl1(Rot3::Rz(M_PI), gtsam::Point3(0, 0, 0.5));
   Vector error2 = factor2.evaluateError(link0->bMcom(), wTl1);
@@ -68,8 +62,7 @@ TEST(JointMeasurementFactor, Error) {
 }
 
 TEST(JointMeasurementFactor, Jacobians) {
-  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel,
-                                               robot.joints()[0], 0.0, t);
+  JointMeasurementFactor factor(kModel, robot.joints()[0], 0.0, t);
 
   auto link0 = robot.links()[0];
   auto link1 = robot.links()[1];
@@ -85,8 +78,7 @@ TEST(JointMeasurementFactor, Jacobians) {
 
   // Non-trivial joint angle
   double angle = M_PI;
-  JointMeasurementFactor<RevoluteJoint> factor2(key0, key1, kModel,
-                                                robot.joints()[0], angle, t);
+  JointMeasurementFactor factor2(kModel, robot.joints()[0], angle, t);
   wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
   values.clear();
   InsertPose(&values, link0->id(), wTl0);
@@ -106,8 +98,7 @@ TEST(JointMeasurementFactor, ArbitraryTime) {
 
   // Non-trivial joint angle
   double angle = M_PI;
-  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel,
-                                               robot.joints()[0], angle, t);
+  JointMeasurementFactor factor(kModel, robot.joints()[0], angle, t);
 
   Pose3 wTl0 = link0->bMcom();
   Pose3 wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
