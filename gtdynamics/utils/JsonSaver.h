@@ -34,7 +34,7 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/utils.h"
 
 #define kQuote_ "\""

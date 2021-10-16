@@ -23,9 +23,8 @@
 namespace gtdynamics {
 
 /**
- * @class ScrewJoint is an implementation of the ScrewJointBase class
- *  which represents a screw joint and contains all necessary factor
- *  construction methods.
+ * @class ScrewJoint is an implementation of the Joint class which represents a
+ * screw joint and contains all necessary factor construction methods.
  */
 class ScrewJoint : public Joint {
  protected:

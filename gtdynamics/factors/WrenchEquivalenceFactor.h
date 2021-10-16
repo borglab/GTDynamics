@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/values.h"
 
@@ -38,8 +38,7 @@ class WrenchEquivalenceFactor
   using This = WrenchEquivalenceFactor;
   using Base = gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double>;
 
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+  JointConstSharedPtr joint_;
 
  public:
   /**
@@ -52,7 +51,7 @@ class WrenchEquivalenceFactor
              internal::WrenchKey(joint->parent()->id(), joint->id(), k),
              internal::WrenchKey(joint->child()->id(), joint->id(), k),
              internal::JointAngleKey(joint->id(), k)),
-        joint_(boost::static_pointer_cast<const JointTyped>(joint)) {}
+        joint_(joint) {}
 
   virtual ~WrenchEquivalenceFactor() {}
 

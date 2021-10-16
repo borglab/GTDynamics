@@ -367,6 +367,4 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   }
 };
 
-using JointTyped = Joint;
-
 }  // namespace gtdynamics
