@@ -23,7 +23,7 @@ class TestPrint(unittest.TestCase):
     def test_values(self):
         """Checks that printing Values uses the GTDKeyFormatter instead of gtsam's default"""
         v = gtd.Values()
-        gtd.InsertJointAngleDouble(v, 0, 1, 2)
+        gtd.InsertJointAngle(v, 0, 1, 2)
         self.assertTrue('q(0)1' in v.__repr__())
 
     def test_nonlinear_factor_graph(self):

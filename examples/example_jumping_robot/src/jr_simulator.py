@@ -134,7 +134,7 @@ class JRSimulator:
             for joint in self.jr.robot.joints():
                 j = joint.id()
                 q_key = gtd.internal.JointAngleKey(j, k).key()
-                graph_q.add(gtd.PriorFactorDouble(q_key, gtd.JointAngleDouble(values, j, k), opt.prior_q_cost_model))
+                graph_q.add(gtd.PriorFactorDouble(q_key, gtd.JointAngle(values, j, k), opt.prior_q_cost_model))
 
         init_values_q = gtd.ExtractValues(init_values, graph_q.keys())
         results_q = self.optimize(graph_q, init_values_q)
@@ -153,7 +153,7 @@ class JRSimulator:
             for joint in self.jr.robot.joints():
                 j = joint.id()
                 v_key = gtd.internal.JointVelKey(j, k).key()
-                graph_v.add(gtd.PriorFactorDouble(v_key, gtd.JointVelDouble(values, j, k), opt.prior_qv_cost_model))
+                graph_v.add(gtd.PriorFactorDouble(v_key, gtd.JointVel(values, j, k), opt.prior_qv_cost_model))
 
         init_values_v = gtd.ExtractValues(init_values, graph_v.keys())
         results_v = self.optimize(graph_v, init_values_v)
@@ -230,9 +230,9 @@ class JRSimulator:
             for joint in self.jr.robot.joints():
                 j = joint.id()
                 q_key = gtd.internal.JointAngleKey(j, k).key()
-                graph.add(gtd.PriorFactorDouble(q_key, gtd.JointAngleDouble(values, j, k), opt.prior_q_cost_model))
+                graph.add(gtd.PriorFactorDouble(q_key, gtd.JointAngle(values, j, k), opt.prior_q_cost_model))
                 v_key = gtd.internal.JointVelKey(j, k).key()
-                graph.add(gtd.PriorFactorDouble(v_key, gtd.JointVelDouble(values, j, k), opt.prior_v_cost_model))
+                graph.add(gtd.PriorFactorDouble(v_key, gtd.JointVel(values, j, k), opt.prior_v_cost_model))
 
         # construct initial values
         if k==0:
@@ -347,7 +347,7 @@ class JRSimulator:
                 self.step_integration(k, dt, values, False)
             for joint in self.jr.robot.joints():
                 j = joint.id()
-                gtd.InsertTorqueDouble(values, j, k, torques_seq[k][j])
+                gtd.InsertTorque(values, j, k, torques_seq[k][j])
             self.step_robot_dynamics_by_layer(k, values)
             phase = self.step_phase_change(k, phase, values)
             step_phases.append(phase)
