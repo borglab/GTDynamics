@@ -708,49 +708,37 @@ gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
 
 ///////////////////// Key Methods /////////////////////
-template<T = {double}>
-void InsertJointAngle(gtsam::Values@ values, int j, int t, T value);
+void InsertJointAngle(gtsam::Values@ values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointAngle(gtsam::Values @values, int j, T value);
+void InsertJointAngle(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointAngle(const gtsam::Values &values, int j, int t);
+double JointAngle(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertJointVel(gtsam::Values @values, int j, int t, T value);
+void InsertJointVel(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointVel(gtsam::Values @values, int j, T value);
+void InsertJointVel(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointVel(const gtsam::Values &values, int j, int t);
+double JointVel(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertJointAccel(gtsam::Values @values, int j, int t, T value);
+void InsertJointAccel(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointAccel(gtsam::Values @values, int j, T value);
+void InsertJointAccel(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointAccel(const gtsam::Values &values, int j, int t);
+double JointAccel(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertTorque(gtsam::Values @values, int j, int t, T value);
+void InsertTorque(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertTorque(gtsam::Values @values, int j, T value);
+void InsertTorque(gtsam::Values @values, int j, double value);
 
 gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T Torque(const gtsam::Values &values, int j, int t);
+double Torque(const gtsam::Values &values, int j, int t);
 
 void InsertPose(gtsam::Values @values, int i, int t, gtsam::Pose3 value);
 
