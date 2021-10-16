@@ -31,7 +31,7 @@ class JointMeasurementFactor
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
   JointConstSharedPtr joint_;
-  double joint_angle_;
+  double measured_joint_coordinate_;
 
  public:
   /**
@@ -50,7 +50,7 @@ class JointMeasurementFactor
                          double joint_coordinate)
       : Base(model, wTp_key, wTc_key),
         joint_(joint),
-        joint_angle_(joint_coordinate) {}
+        measured_joint_coordinate_(joint_coordinate) {}
 
   /**
    * @brief Convenience constructor
@@ -66,7 +66,7 @@ class JointMeasurementFactor
       : Base(model, internal::PoseKey(joint->parent()->id(), k),
              internal::PoseKey(joint->child()->id(), k)),
         joint_(joint),
-        joint_angle_(joint_coordinate) {}
+        measured_joint_coordinate_(joint_coordinate) {}
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3& wTp, const gtsam::Pose3& wTc,
@@ -74,7 +74,7 @@ class JointMeasurementFactor
       boost::optional<gtsam::Matrix&> H_wTc = boost::none) const override {
     gtsam::Matrix6 H;
     gtsam::Pose3 wTc_hat =
-        joint_->poseOf(joint_->child(), wTp, joint_angle_, H_wTp);
+        joint_->poseOf(joint_->child(), wTp, measured_joint_coordinate_, H_wTp);
 
     gtsam::Vector6 error = wTc.logmap(wTc_hat, H_wTc, H_wTp ? &H : 0);
     if (H_wTp) {
@@ -89,7 +89,7 @@ class JointMeasurementFactor
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "JointMeasurementFactor(" << keyFormatter(key1()) << ","
               << keyFormatter(key2()) << ")\n";
-    gtsam::traits<double>::Print(joint_angle_, "  measured: ");
+    gtsam::traits<double>::Print(measured_joint_coordinate_, "  measured: ");
     this->noiseModel_->print("  noise model: ");
   }
 };
