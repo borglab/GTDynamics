@@ -41,6 +41,13 @@ class Link;   // forward declaration
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
 
+/**
+ * Joint effort types
+ *
+ * Actuated: motor powered
+ * Unactuated: not powered, free to move, exert zero torque
+ * Impedance: with spring resistance
+ */
 enum JointEffortType { Actuated, Unactuated, Impedance };
 
 /**
@@ -84,19 +91,11 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   using Vector6 = gtsam::Vector6;
 
  public:
-  /**
-   * Joint effort types
-   *
-   * Actuated: motor powered
-   * Unactuated: not powered, free to move, exert zero torque
-   * Impedance: with spring resistance
-   */
-
+  /// Joint Type (see Lee09mmt, 2.1 paragraph 2)
   enum Type : char {
     Revolute = 'R',
     Prismatic = 'P',
-    Screw = 'C',
-    ScrewAxis = 'A'
+    Screw = 'H',
   };
 
  protected:
