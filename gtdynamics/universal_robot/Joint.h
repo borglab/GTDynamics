@@ -324,11 +324,13 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
 
   /**
-   * @fn (ABSTRACT) Return joint limit factors in the dynamics graph.
+   * Return joint limit factors in the dynamics graph.
    *
    * @param[in] t   The timestep for which to generate joint limit factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return joint limit factors.
+   * 
+   * TODO(gerry): remove this out of Joint and into DynamicsGraph
    */
   gtsam::NonlinearFactorGraph jointLimitFactors(
       size_t t, const OptimizerSetting &opt) const;
