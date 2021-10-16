@@ -16,23 +16,18 @@ const gtsam::KeyFormatter GTDKeyFormatter;
 
 /********************** factors **********************/
 #include <gtdynamics/factors/JointMeasurementFactor.h>
-template <JOINT>
 class JointMeasurementFactor : gtsam::NonlinearFactor {
   JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
                          const gtsam::noiseModel::Base *cost_model,
                          const gtdynamics::Joint *joint,
-                         const JOINT::JointCoordinate &joint_coordinate,
-                         size_t k);
+                         double joint_coordinate);
   JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr &model,
                          const gtdynamics::Joint *joint,
-                         const JOINT::JointCoordinate &joint_coordinate,
-                         size_t k);
+                         double joint_coordinate, size_t k);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
-
-typedef gtdynamics::JointMeasurementFactor<gtdynamics::RevoluteJoint> RevoluteJointMeasurementFactor;
 
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
@@ -231,8 +226,6 @@ class Link  {
 
 /********************** joint **********************/
 #include <gtdynamics/universal_robot/Joint.h>
-#include <gtdynamics/universal_robot/JointTyped.h>
-#include <gtdynamics/universal_robot/ScrewJointBase.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
 #include <gtdynamics/universal_robot/ScrewJoint.h>
@@ -259,12 +252,7 @@ virtual class Joint {
   gtdynamics::Link* child() const;
 };
 
-virtual class JointTyped : gtdynamics::Joint {
-};
-
-virtual class ScrewJointBase : gtdynamics::JointTyped {};
-
-virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
+virtual class RevoluteJoint : gtdynamics::Joint {
   RevoluteJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
@@ -273,7 +261,7 @@ virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
   void print(const string &s = "") const;
 };
 
-virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
+virtual class PrismaticJoint : gtdynamics::Joint {
   PrismaticJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
@@ -282,7 +270,7 @@ virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   void print(const string &s = "") const;
 };
 
-virtual class ScrewJoint : gtdynamics::ScrewJointBase {
+virtual class ScrewJoint : gtdynamics::Joint {
   ScrewJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
