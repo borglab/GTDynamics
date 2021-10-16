@@ -33,13 +33,10 @@ namespace gtdynamics {
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
 class WrenchEquivalenceFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate> {
+    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
   using This = WrenchEquivalenceFactor;
-  using Base =
-      gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, JointCoordinate>;
+  using Base = gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double>;
 
   using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
   JointTypedConstSharedPtr joint_;
@@ -68,7 +65,7 @@ class WrenchEquivalenceFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
-      const JointCoordinate &q,
+      const double &q,
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
@@ -84,9 +81,9 @@ class WrenchEquivalenceFactor
     }
     if (H_q) {
       // TODO(frank): really, child? Double-check derivatives
-      *H_q =
-          joint_->AdjointMapJacobianJointAngle(joint_->child(), q).transpose() *
-          wrench_2;
+      // *H_q =
+      //     joint_->AdjointMapJacobianJointAngle(joint_->child(), q).transpose() *
+      //     wrench_2;
     }
     return error;
   }
