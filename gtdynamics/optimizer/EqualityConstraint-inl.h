@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/optimizer/NoiseModelBiasFactor.h"
-
 namespace gtdynamics {
 
 gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
@@ -33,7 +31,7 @@ bool DoubleExpressionEquality::feasible(const gtsam::Values& x) const {
   return abs(result) <= tolerance_;
 }
 
-gtsam::Vector DoubleExpressionEquality::evaluateViolation(
+gtsam::Vector DoubleExpressionEquality::operator()(
     const gtsam::Values& x) const {
   double result = expression_.value(x);
   return (gtsam::Vector(1) << result).finished();
@@ -71,7 +69,7 @@ bool VectorExpressionEquality<P>::feasible(const gtsam::Values& x) const {
 }
 
 template <int P>
-gtsam::Vector VectorExpressionEquality<P>::evaluateViolation(
+gtsam::Vector VectorExpressionEquality<P>::operator()(
     const gtsam::Values& x) const {
   return expression_.value(x);
 }
@@ -92,44 +90,5 @@ template <int P>
 size_t VectorExpressionEquality<P>::dim() const {
   return P;
 }
-
-gtsam::NoiseModelFactor::shared_ptr NoiseFactorEquality::createFactor(
-    const double mu, boost::optional<gtsam::Vector&> bias) const {
-  auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
-  auto factor = noise_factor_->cloneWithNewNoiseModel(noise);
-  if (bias) {
-    return gtsam::NoiseModelFactor::shared_ptr(
-        new NoiseModelBiasFactor(factor, *bias));
-  } else {
-    return factor;
-  }
-}
-
-bool NoiseFactorEquality::feasible(const gtsam::Values& x) const {
-  auto result = noise_factor_->unwhitenedError(x);
-  for (int i = 0; i < noise_factor_->dim(); i++) {
-    if (abs(result[i]) > tolerance_[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-gtsam::Vector NoiseFactorEquality::evaluateViolation(
-    const gtsam::Values& x) const {
-  return noise_factor_->unwhitenedError(x);
-}
-
-gtsam::Vector NoiseFactorEquality::toleranceScaledViolation(
-    const gtsam::Values& x) const {
-  auto violation = noise_factor_->unwhitenedError(x);
-  auto scaled_violation = gtsam::Vector(dim());
-  for (size_t i = 0; i < dim(); i++) {
-    scaled_violation(i) = violation(i) / tolerance_(i);
-  }
-  return scaled_violation;
-}
-
-size_t NoiseFactorEquality::dim() const { return noise_factor_->dim(); }
 
 }  // namespace gtdynamics

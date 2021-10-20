@@ -46,7 +46,7 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
   EXPECT(constraint.feasible(values1));
 
   // Check that violation evaluates as 0 at values1.
-  EXPECT(assert_equal(Vector::Zero(1), constraint.evaluateViolation(values1)));
+  EXPECT(assert_equal(Vector::Zero(1), constraint(values1)));
   EXPECT(assert_equal(Vector::Zero(1),
                       constraint.toleranceScaledViolation(values1)));
 
@@ -55,7 +55,7 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
 
   // Check constraint violation is indeed g(x) at values2.
   EXPECT(assert_equal(Vector::Constant(1, 4.0),
-                      constraint.evaluateViolation(values2)));
+                      constraint(values2)));
 
   // Check scaled violation is indeed g(x)/tolerance at values2.
   EXPECT(assert_equal(Vector::Constant(1, 40.0),
@@ -104,7 +104,7 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
   // Check that violation evaluates as 0 at values1.
   auto expected_violation1 = (Vector(2) << 0, 0).finished();
   EXPECT(
-      assert_equal(expected_violation1, constraint.evaluateViolation(values1)));
+      assert_equal(expected_violation1, constraint(values1)));
   auto expected_scaled_violation1 = (Vector(2) << 0, 0).finished();
   EXPECT(assert_equal(expected_scaled_violation1,
                       constraint.toleranceScaledViolation(values1)));
@@ -115,7 +115,7 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
   // Check constraint violation is indeed g(x) at values2.
   auto expected_violation2 = (Vector(2) << 2, 2).finished();
   EXPECT(
-      assert_equal(expected_violation2, constraint.evaluateViolation(values2)));
+      assert_equal(expected_violation2, constraint(values2)));
 
   // Check scaled violation is indeed g(x)/tolerance at values2.
   auto expected_scaled_violation2 = (Vector(2) << 20, 4).finished();
@@ -145,91 +145,19 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
 }
 
-// Example of pose factor.
-namespace pose_factor_example {
-auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key wTp_key = gtdynamics::internal::PoseKey(1),
-           wTc_key = gtdynamics::internal::PoseKey(2),
-           q_key = gtdynamics::internal::JointAngleKey(1);
-
-Pose3 cMp = Pose3(Rot3(), Point3(-2, 0, 0));
-Vector6 screw_axis = (Vector(6) << 0, 0, 1, 0, 1, 0).finished();
-auto joint = make_joint(cMp, screw_axis);
-auto factor = NoiseModelFactor::shared_ptr(
-    new PoseFactor(wTp_key, wTc_key, q_key, cost_model, joint));
-}  // namespace pose_factor_example
-
-// Test methods of NoiseFactorEquality by creating a constrained PoseFactor.
-TEST(EqualityConstraint, NoiseFactorEquality) {
-  // create constraint from PoseFactor
-  auto tolerance = (Vector(6) << 0.1, 0.1, 0.1, 0.5, 0.5, 0.5).finished();
-  auto constraint = NoiseFactorEquality(pose_factor_example::factor, tolerance);
-
-  // create 2 sets of values for testing
-  Values values1, values2;
-  InsertPose(&values1, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-  InsertPose(&values1, 2, Pose3(Rot3(), Point3(3, 0, 0)));
-  InsertJointAngle(&values1, 1, 0.0);
-  InsertPose(&values2, 1, Pose3(Rot3(), Point3(1, 0, 0)));
-  InsertPose(&values2, 2, Pose3(Rot3(), Point3(5, 3, 3)));
-  InsertJointAngle(&values2, 1, 0.0);
-
-  // check method feasible
-  EXPECT(constraint.feasible(values1));
-  EXPECT(!constraint.feasible(values2));
-
-  // check method evaluateViolation
-  auto expected_violation1 = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  EXPECT(
-      assert_equal(expected_violation1, constraint.evaluateViolation(values1)));
-  auto expected_violation2 = (Vector(6) << 0, 0, 0, -2, -3, -3).finished();
-  EXPECT(
-      assert_equal(expected_violation2, constraint.evaluateViolation(values2)));
-
-  // check method toleranceScaledViolation
-  auto expected_scaled_violation1 = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(expected_scaled_violation1,
-                      constraint.toleranceScaledViolation(values1)));
-  auto expected_scaled_violation2 =
-      (Vector(6) << 0, 0, 0, -4, -6, -6).finished();
-  EXPECT(assert_equal(expected_scaled_violation2,
-                      constraint.toleranceScaledViolation(values2)));
-
-  // check method dim
-  EXPECT(constraint.dim() == 6);
-
-  // check method createFactor
-  double mu = 4;
-  Vector bias = (Vector(6) << 0, 0.1, 0, 0, 0.5, 0).finished();
-  auto merit_factor = constraint.createFactor(mu, bias);
-
-  // check noise model is correct
-  auto sigmas = (Vector(6) << 0.05, 0.05, 0.05, 0.25, 0.25, 0.25).finished();
-  auto expected_noise = noiseModel::Diagonal::Sigmas(sigmas);
-  EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
-
-  // check error is correct
-  double expected_error1 = 4;  // 0.5 * 4 * (1 + 1)
-  EXPECT(assert_equal(expected_error1, merit_factor->error(values1)));
-  double expected_error2 = 156;  // 0.5 * 4 * (1 + 4*4 + 5*5 + 6*6)
-  EXPECT(assert_equal(expected_error2, merit_factor->error(values2)));
-
-  // check jacobian is correct
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
-}
 
 // Test constraint container by adding different kinds of constraints.
-TEST(EqualityConstraint, EqualityConstraints) {
+TEST(EqualityConstraint, EqualityConstraintContainer) {
+  // Create the equality constraint container.
   EqualityConstraints constraints;
+  // Add a DoubleExpressionEquality constraint.
   constraints.addDoubleExpressionEquality(constrained_example::constraint1_expr,
                                           0.1);
+  // Add a VectorExpressionEquality constraint.
   constraints.addVectorExpressionEquality<2>(
       constrained_example::constraint_sum_vector2_expr, Vector2(0.1, 0.5));
-  constraints.addNoiseFactorEquality(pose_factor_example::factor,
-                                     Vector::Ones(6));
-  constraints.addNoiseFactorEquality(pose_factor_example::factor);
-  EXPECT(constraints.size() == 4);
+  // Check the size of container is 2.
+  EXPECT(constraints.size() == 2);
 }
 
 int main() {

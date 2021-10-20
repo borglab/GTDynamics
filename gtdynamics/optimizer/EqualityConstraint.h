@@ -57,7 +57,7 @@ class EqualityConstraint {
    * @param x values to evalute constraint at.
    * @return a vector representing the constraint violation in each dimension.
    */
-  virtual gtsam::Vector evaluateViolation(const gtsam::Values& x) const = 0;
+  virtual gtsam::Vector operator() (const gtsam::Values& x) const = 0;
 
   /** @brief Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   virtual gtsam::Vector toleranceScaledViolation(
@@ -92,7 +92,7 @@ class DoubleExpressionEquality : public EqualityConstraint {
 
   bool feasible(const gtsam::Values& x) const override;
 
-  gtsam::Vector evaluateViolation(const gtsam::Values& x) const override;
+  gtsam::Vector operator() (const gtsam::Values& x) const override;
 
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
@@ -127,54 +127,14 @@ class VectorExpressionEquality : public EqualityConstraint {
 
   bool feasible(const gtsam::Values& x) const override;
 
-  gtsam::Vector evaluateViolation(const gtsam::Values& x) const override;
+  gtsam::Vector operator() (const gtsam::Values& x) const override;
 
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
   size_t dim() const override;
 };
 
-/** Equality constraint that force h(x) = z, with a noisemodel factor
- * representing ||h(x)-z||_\Sigma^2. */
-class NoiseFactorEquality : public EqualityConstraint {
- protected:
-  gtsam::NoiseModelFactor::shared_ptr noise_factor_;
-  gtsam::Vector tolerance_;
 
- public:
-  /**
-   * @brief Constructor.
-   *
-   * @param noise_factor noise factor representing constraint function (notice
-   * noise model is not used).
-   * @param tolerance   vector representing tolerance in each dimension.
-   */
-  NoiseFactorEquality(const gtsam::NoiseModelFactor::shared_ptr& noise_factor,
-                      const gtsam::Vector& tolerance)
-      : noise_factor_(noise_factor), tolerance_(tolerance) {}
-
-  /**
-   * @brief Constructor.
-   *
-   * @param noise_factor noise factor representing constraint function (notice
-   * sigmas of the noise model is used to represent tolerance).
-   */
-  NoiseFactorEquality(const gtsam::NoiseModelFactor::shared_ptr& noise_factor)
-      : noise_factor_(noise_factor),
-        tolerance_(noise_factor->noiseModel()->sigmas()) {}
-
-  gtsam::NoiseModelFactor::shared_ptr createFactor(
-      const double mu,
-      boost::optional<gtsam::Vector&> bias = boost::none) const override;
-
-  bool feasible(const gtsam::Values& x) const override;
-
-  gtsam::Vector evaluateViolation(const gtsam::Values& x) const override;
-
-  gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
-
-  size_t dim() const override;
-};
 
 /// Container of EqualityConstraint.
 class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
@@ -198,23 +158,6 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
                                    const double& tolerance) {
     auto new_constraint = EqualityConstraint::shared_ptr(
         new DoubleExpressionEquality(expression, tolerance));
-    push_back(new_constraint);
-  }
-
-  /** @brief add a equality constraint in the form of noisemodel factor. */
-  void addNoiseFactorEquality(
-      const gtsam::NoiseModelFactor::shared_ptr& noise_factor) {
-    auto new_constraint =
-        EqualityConstraint::shared_ptr(new NoiseFactorEquality(noise_factor));
-    push_back(new_constraint);
-  }
-
-  /** @brief add a equality constraint in the form of noisemodel factor. */
-  void addNoiseFactorEquality(
-      const gtsam::NoiseModelFactor::shared_ptr& noise_factor,
-      const gtsam::Vector& tolerance) {
-    auto new_constraint = EqualityConstraint::shared_ptr(
-        new NoiseFactorEquality(noise_factor, tolerance));
     push_back(new_constraint);
   }
 };
