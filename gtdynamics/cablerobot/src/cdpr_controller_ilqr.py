@@ -156,17 +156,15 @@ class CdprControllerIlqr(CdprControllerBase):
                 ordering[-1].push_back(gtd.internal.JointVelKey(ji, t).key())
             for ji in range(4):
                 ordering[-1].push_back(gtd.internal.JointAccelKey(ji, t).key())
+            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
+            for ji in range(4):
+                ordering[-1].push_back(gtd.internal.WrenchKey(lid, ji, t).key())
             for ji in range(4):
                 ordering[-1].push_back(gtd.cinternal.TensionKey(ji, t).key())
-            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
-            # immediate control variables
+            # control variables
             ordering.append(gtsam.Ordering())
             for ji in range(4):
                 ordering[-1].push_back(gtd.internal.TorqueKey(ji, t).key())
-            # intermediate control variables
-            ordering.append(gtsam.Ordering())
-            for ji in range(4):
-                ordering[-1].push_back(gtd.internal.WrenchKey(lid, ji, t).key())
             # measurement inputs
             ordering.append(gtsam.Ordering())
             ordering[-1].push_back(gtd.internal.TwistKey(lid, t).key())
@@ -195,23 +193,18 @@ class CdprControllerIlqr(CdprControllerBase):
         # extract_gains
         gains = [None for t in range(N)]
         # for t, neti in enumerate(u_inds):
-        # 0 mod 4: ("stuff we do care about") -> ("stuff we don't care about")
-        # 1 mod 4: (wrenches, twist, pose) -> torques
-        # 2 mod 4: (twist, pose) -> wrenches
-        # 3 mod 4: (prev state) -> (twist, pose)   aka collocation update
-        for t, (neti, netu) in enumerate(zip(reversed(range(2, 4*N, 4)),
-                                             reversed(range(1, 4*N, 4)))):
+        # 0 mod 3: ("stuff we do care about") -> ("stuff we don't care about")
+        # 1 mod 3: (twist, pose) -> torques
+        # 2 mod 3: (prev state) -> (twist, pose)   aka collocation update
+        for t, (neti, netu, netx) in enumerate(
+                zip(
+                    reversed(range(0, 3 * N, 3)),  #
+                    reversed(range(1, 3 * N, 3)),
+                    reversed(range(2, 3 * N, 3)))):
             ucond = net.at(netu)
-            icond = net.at(neti)
-            if 0 in ucond.keys():
-                u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, 1:25])
-            else:
-                u_K_F = solve_triangular(ucond.R(), -ucond.S()[:, :24])
-            u_K_p = solve_triangular(ucond.R(), -ucond.S()[:, -6:])
-            F_K_x = solve_triangular(icond.R(), -icond.S())[:24, -12:]
-            u_K_x = u_K_F @ F_K_x
-            u_K_x[:, 6:] += u_K_p
-            gains[t] = u_K_x
+            u_K_x = solve_triangular(ucond.R(), -ucond.S()[:, -6:])
+            u_K_v = solve_triangular(ucond.R(), -ucond.S()[:, -12:-6])
+            gains[t] = np.hstack((u_K_v, u_K_x))
         return gains
 
     @staticmethod
