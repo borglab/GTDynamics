@@ -40,6 +40,9 @@ class Phase : public Interval {
   /// Returns all the contact points in the stance
   const boost::shared_ptr<const FootContactConstraintSpec> footContactConstraintSpec() const { return boost::static_pointer_cast<const FootContactConstraintSpec>(constraint_spec_); }
 
+  /// Get contact points from FootContactConstraintSpec
+  const PointOnLinks &getPhaseContactPoints() const {return footContactConstraintSpec()->contactPoints();}
+
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os, const Phase &phase);
 

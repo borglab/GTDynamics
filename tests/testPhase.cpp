@@ -32,7 +32,6 @@ TEST(Phase, All) {
 
   using namespace walk_cycle_example;
   Phase phase1(0, 2, phase_1);
-  Trajectory trajectory(walk_cycle,1);
 
   Point3 cp = phase1.footContactConstraintSpec()->contactPoint("tarsus_3_L3");
   EXPECT(assert_equal(contact_in_com, cp));
@@ -66,8 +65,8 @@ TEST(Phase, All) {
                                        {"tarsus_4_L4", goal},
                                        {"tarsus_5_R4", goal}};
   gtsam::NonlinearFactorGraph factors = phase1.footContactConstraintSpec()->contactPointObjectives(
-      trajectory.contactPoints(), step, cost_model, k_start, cp_goals, 2);
-  auto new_goals = phase1.footContactConstraintSpec()->updateContactPointGoals(trajectory.contactPoints(), step, cp_goals);
+      walk_cycle.contactPoints(), step, cost_model, k_start, cp_goals, 2);
+  auto new_goals = phase1.footContactConstraintSpec()->updateContactPointGoals(walk_cycle.contactPoints(), step, cp_goals);
 
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
   EXPECT(assert_equal(goal, new_goals["tarsus_2_L2"]));

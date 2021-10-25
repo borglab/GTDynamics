@@ -88,9 +88,8 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
   EXPECT_LONGS_EQUAL(7, trajectory.getEndTimeStep(2));
   EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
-  EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = trajectory.initContactPointGoal(robot, 0);
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, 0);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   //regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
@@ -126,9 +125,8 @@ TEST(Trajectory, error) {
 
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
-  ContactPointGoals updated_cp_goals;
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, updated_cp_goals);
+      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, 0);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());

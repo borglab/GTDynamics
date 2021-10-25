@@ -29,14 +29,13 @@ TEST(WalkCycle, contactPoints) {
       CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
-  Trajectory trajectory(walk_cycle,1);
   auto walk_cycle_phases = walk_cycle.phases();
   EXPECT_LONGS_EQUAL(3, walk_cycle_phases[0].footContactConstraintSpec()->contactPoints().size());
   EXPECT_LONGS_EQUAL(4, walk_cycle_phases[1].footContactConstraintSpec()->contactPoints().size());
   EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
   EXPECT_LONGS_EQUAL(num_time_steps + num_time_steps_2,
                      walk_cycle.numTimeSteps());
-  EXPECT_LONGS_EQUAL(5, trajectory.contactPoints().size());
+  EXPECT_LONGS_EQUAL(5, walk_cycle.contactPoints().size());
 }
 
 TEST(WalkCycle, objectives) {
@@ -57,7 +56,12 @@ TEST(WalkCycle, objectives) {
   std::vector<size_t> phase_lengths = {num_time_steps, num_time_steps};
 
   auto walk_cycle = WalkCycle({phase0, phase1}, {num_time_steps, num_time_steps});
-  Trajectory trajectory(walk_cycle,1);
+
+  //check Phase swing links function
+  auto swing_links0 = walk_cycle.getPhaseSwingLinks(0);
+  auto swing_links1 = walk_cycle.getPhaseSwingLinks(1);
+  EXPECT_LONGS_EQUAL(swing_links0.size(), 2);
+  EXPECT_LONGS_EQUAL(swing_links1.size(), 2);
 
   // Expected contact goal points.
   Point3 goal_LH(-0.371306, 0.1575, 0);   // LH
@@ -66,7 +70,7 @@ TEST(WalkCycle, objectives) {
   Point3 goal_RH(-0.371306, -0.1575, 0);  // RH
 
   // Check initalization of contact goals.
-  auto cp_goals = trajectory.initContactPointGoal(robot, -0.191839);
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, -0.191839);
   EXPECT_LONGS_EQUAL(4, cp_goals.size());
   EXPECT(gtsam::assert_equal(goal_LH, cp_goals["lower1"], 1e-6));
   EXPECT(gtsam::assert_equal(goal_LF, cp_goals["lower0"], 1e-6));
@@ -77,16 +81,15 @@ TEST(WalkCycle, objectives) {
   const gtsam::SharedNoiseModel cost_model = nullptr;
 
   // Check creation of PointGoalFactors.
-  ContactPointGoals updated_cp_goals;
   gtsam::NonlinearFactorGraph factors =
-      trajectory.contactPointObjectives(robot, cost_model, step, updated_cp_goals, -0.191839);
+      walk_cycle.contactPointObjectives(step, cost_model, 0, &cp_goals);
   EXPECT_LONGS_EQUAL(num_time_steps * 2 * 4, factors.size());
 
   // Check goals have been updated
-  EXPECT(gtsam::assert_equal<Point3>(goal_LH + step, updated_cp_goals["lower1"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_LF + step, updated_cp_goals["lower0"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_RF + step, updated_cp_goals["lower2"], 1e-6));
-  EXPECT(gtsam::assert_equal<Point3>(goal_RH + step, updated_cp_goals["lower3"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_LH + step, cp_goals["lower1"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_LF + step, cp_goals["lower0"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RF + step, cp_goals["lower2"], 1e-6));
+  EXPECT(gtsam::assert_equal<Point3>(goal_RH + step, cp_goals["lower3"], 1e-6));
 }
 
 int main() {

@@ -30,7 +30,6 @@ namespace gtdynamics {
 class Trajectory {
  protected:
   std::vector<Phase> phases_; ///< All phases in the trajectory
-  PointOnLinks contact_points_;  ///< All unique contact points in the trajectory
 
   /// Gets the intersection between two PointOnLinks objects
   static PointOnLinks getIntersection(const PointOnLinks &cps1,
@@ -66,20 +65,7 @@ class Trajectory {
       auto phases_i = walk_cycle.phases();
       phases_.insert(phases_.end(), phases_i.begin(), phases_i.end());
     }
-    
-    // After all phases in the trajectory are in phases_, 
-    // add unique contact from each phase in the trajectory to contact_points_
-    for (auto&& phase : phases_) {
-      addPhaseContactPoints(phase);
-    }
   }
-
-  /**
-   * @fn adds unique contact points from phase to contact_points_ of trajectory 
-   * 
-   * @param[in] phase.... phase from which to add contact points  
-   */
-  void addPhaseContactPoints(const Phase &phase);
 
   /// Returns vector of phases in the trajectory
   const std::vector<Phase>& phases() const { return phases_; }
@@ -94,13 +80,10 @@ class Trajectory {
   std::vector<PointOnLinks> phaseContactPoints() const {
     std::vector<PointOnLinks> phase_cps;
     for (auto &&phase : phases_) {
-      phase_cps.push_back(phase.footContactConstraintSpec()->contactPoints());
+      phase_cps.push_back(phase.getPhaseContactPoints());
     }
     return phase_cps;
   }
-
-  /// Return all unique contact points.
-  const PointOnLinks& contactPoints() const { return contact_points_; }
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all transitions between
@@ -114,8 +97,8 @@ class Trajectory {
     PointOnLinks phase_2_cps;
 
     for (size_t p = 0; p < phases_.size() - 1; p++) {
-      phase_1_cps = phases_[p].footContactConstraintSpec()->contactPoints();
-      phase_2_cps = phases_[p+1].footContactConstraintSpec()->contactPoints();
+      phase_1_cps = phases_[p].getPhaseContactPoints();
+      phase_2_cps = phases_[p+1].getPhaseContactPoints();
 
       PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
       trans_cps_orig.push_back(intersection);
@@ -233,23 +216,7 @@ class Trajectory {
    * @return Vector of contact links.
    */
   const PointOnLinks &getPhaseContactLinks(size_t p) const {
-    return phases_[p].footContactConstraintSpec()->contactPoints();
-  }
-
-  /**
-   * @fn Returns the swing links for a given phase.
-   * @param[in] p    Phase number.
-   * @return Vector of swing links.
-   */
-  std::vector<std::string> getPhaseSwingLinks(size_t p) const {
-    std::vector<std::string> phase_swing_links;
-    const Phase &phase = phases_[p];
-    for (auto &&kv : contact_points_) {
-      if (!phase.footContactConstraintSpec()->hasContact(kv.link)) {
-        phase_swing_links.push_back(kv.link->name());
-    }
-  }
-  return phase_swing_links;
+    return phases_[p].getPhaseContactPoints();
   }
 
   /**
@@ -271,11 +238,10 @@ class Trajectory {
     return PointGoalFactor(pose_key, cost_model, cp.point, goal_point);
   }
 
-ContactPointGoals initContactPointGoal(const Robot &robot,
-                                                  double ground_height) const;
-
   /**
    * @fn Create desired stance and swing trajectories for all contact links.
+   * @fn This function creates a WalkCycle object from all phases in the trajectory
+   * @fn and uses WalkCycle functionality
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model
    * @param[in] step The 3D vector the foot moves in a step.
@@ -284,7 +250,7 @@ ContactPointGoals initContactPointGoal(const Robot &robot,
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
-      const gtsam::Point3 &step, ContactPointGoals &updated_cp_goals, double ground_height = {}) const;
+      const gtsam::Point3 &step, double ground_height = {}) const;
 
   /**
    * @fn Add minimum torque objectives.

@@ -808,6 +808,7 @@ class WalkCycle {
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
   void print(const string& s = "") const;
+  std::vector<string> getPhaseSwingLinks(size_t p) const;
 };
 
 #include <gtdynamics/utils/Trajectory.h>
@@ -837,7 +838,6 @@ class Trajectory {
   size_t getStartTimeStep(size_t p) const;
   size_t getEndTimeStep(size_t p) const;
   const gtdynamics::PointOnLinks &getPhaseContactLinks(size_t p) const;
-  std::vector<string> getPhaseSwingLinks(size_t p) const;
   PointGoalFactor pointGoalFactor(const gtdynamics::Robot &robot,
                                   const string &link_name,
                                   const gtdynamics::PointOnLink &cp, size_t k,
@@ -847,7 +847,6 @@ class Trajectory {
   contactPointObjectives(const gtdynamics::Robot& robot, 
                          const gtsam::SharedNoiseModel &cost_model,
                          const gtsam::Point3 &step,
-                         gtdynamics::ContactPointGoals &updated_cp_goals,
                          double ground_height = 0) const;
   void addMinimumTorqueFactors(gtsam::NonlinearFactorGraph @graph,
                                const gtdynamics::Robot& robot, 
