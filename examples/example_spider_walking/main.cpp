@@ -65,7 +65,7 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
 int main(int argc, char** argv) {
   // Load Stephanie's spider robot.
   auto robot =
-      CreateRobotFromFile(kSdfPath + string("/spider_alt.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + string("spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.

@@ -68,7 +68,7 @@ Trajectory getTrajectory(const Robot &robot, size_t repeat) {
 TEST(testSpiderWalking, WholeEnchilada) {
   // Load Stephanie's robot robot (alt version, created by Tarushree/Disha).
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider_alt.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -157,7 +157,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Note, expects space after comma in csv or won't work.
   std::string key, comm;
   double expected;
-  std::string filename = kTestPath + std::string("/testSpiderWalking.csv");
+  std::string filename = kTestPath + std::string("testSpiderWalking.csv");
   std::ifstream is(filename.c_str());
   is >> key >> expected;
   double actual = graph.error(init_vals);

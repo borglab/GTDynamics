@@ -34,7 +34,7 @@ using gtsam::Vector6;
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/test/four_bar_linkage.sdf"));
+      CreateRobotFromFile(kSdfPath + std::string("test/four_bar_linkage.sdf"));
 
   // Check that number of links and joints in the Robot instance is
   // correct.
@@ -85,7 +85,7 @@ TEST(Robot, removeLink) {
 
 TEST(Robot, ForwardKinematics) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   Values values;
 
@@ -94,7 +94,7 @@ TEST(Robot, ForwardKinematics) {
 
   // test fk at rest
   // Values are empty but will default to 0 joint angles.
-  robot.link("l1")->fix();
+  robot = robot.fixLink("l1");
   Values results = robot.forwardKinematics(values);
 
   // The CoM frames at rest are:
@@ -129,7 +129,7 @@ TEST(Robot, ForwardKinematics) {
   EXPECT(assert_equal(V_l2_move, Twist(results2, 1)));
 
   // test fk with moving joint and moving base
-  robot.link("l1")->unfix();
+  robot = robot.unfixLink("l1");
   Pose3 T_wl1_float(Rot3::Rx(-M_PI_2), Point3(0, 1, 1));
   Pose3 T_wl2_float(Rot3::Rx(0), Point3(0, 2, 2));
   Vector6 V_l1_float, V_l2_float;
@@ -150,12 +150,12 @@ TEST(Robot, ForwardKinematics) {
 
 TEST(Robot, ForwardKinematicsRPR) {
   Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/test/simple_rpr.sdf"), "simple_rpr_sdf");
+      kSdfPath + std::string("test/simple_rpr.sdf"), "simple_rpr_sdf");
 
   Values values;
 
   // test fk at rest
-  robot.link("link_0")->fix();
+  robot = robot.fixLink("link_0");
   Values fk_results = robot.forwardKinematics(values);
 
   Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
@@ -207,8 +207,8 @@ TEST(Robot, ForwardKinematicsRPR) {
 // test fk for a four bar linkage (loopy)
 TEST(ForwardKinematics, FourBar) {
   Robot robot = CreateRobotFromFile(
-      kSdfPath + std::string("/test/four_bar_linkage_pure.sdf"));
-  robot.link("l1")->fix();
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+  robot = robot.fixLink("l1");
 
   Values values;
   Values fk_results = robot.forwardKinematics(values);

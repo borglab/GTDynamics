@@ -15,6 +15,25 @@ const string SDF_PATH = kSdfPath;
 const gtsam::KeyFormatter GTDKeyFormatter;
 
 /********************** factors **********************/
+#include <gtdynamics/factors/JointMeasurementFactor.h>
+template <JOINT>
+class JointMeasurementFactor : gtsam::NonlinearFactor {
+  JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
+                         const gtsam::noiseModel::Base *cost_model,
+                         const gtdynamics::Joint *joint,
+                         const JOINT::JointCoordinate &joint_coordinate,
+                         size_t k);
+  JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr &model,
+                         const gtdynamics::Joint *joint,
+                         const JOINT::JointCoordinate &joint_coordinate,
+                         size_t k);
+
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+typedef gtdynamics::JointMeasurementFactor<gtdynamics::RevoluteJoint> RevoluteJointMeasurementFactor;
+
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
   PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
@@ -23,6 +42,8 @@ class PoseFactor : gtsam::NonlinearFactor {
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
+
+  gtsam::Vector unwhitenedError(const gtsam::Values& x) const;
 };
 
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
@@ -43,6 +64,8 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
   const gtsam::Pose3 measured() const;
+
+  gtsam::Vector evaluateError(const gtsam::Pose3& p1, const gtsam::Pose3& p2) const;
 };
 
 #include <gtdynamics/factors/ContactEqualityFactor.h>
@@ -172,6 +195,8 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
+
+  gtsam::Vector evaluateError(const gtsam::Pose3 &sTl) const;
 };
 
 /********************** link **********************/
@@ -188,9 +213,6 @@ class Link  {
   const gtsam::Pose3 bMlink() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
-  void fix();
-  void fix(gtsam::Pose3 &fixed_pose);
-  void unfix();
   const std::vector<Joint *> &joints() const;
   size_t numJoints() const;
   string name() const;
@@ -200,6 +222,11 @@ class Link  {
   gtsam::Matrix6 inertiaMatrix();
 
   void print(const std::string &s = "") const;
+
+  static gtdynamics::Link fix(const gtdynamics::Link& link);
+  static gtdynamics::Link fix(const gtdynamics::Link& link, gtsam::Pose3 &fixed_pose);
+  static gtdynamics::Link unfix(const gtdynamics::Link& link);
+  
 };
 
 /********************** joint **********************/
@@ -327,6 +354,13 @@ class PointOnLink {
 
 // PointOnLinks defined in specializations.h
 
+/********************** Optimizer **********************/
+#include <gtdynamics/optimizer/Optimizer.h>
+class OptimizationParameters {
+  gtsam::LevenbergMarquardtParams lm_parameters;
+  OptimizationParameters();
+};
+
 /********************** kinematics **********************/
 #include <gtdynamics/kinematics/Kinematics.h>
 
@@ -340,8 +374,17 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
+class KinematicsParameters : gtdynamics::OptimizationParameters {
+  const gtsam::SharedNoiseModel p_cost_model; 
+  const gtsam::SharedNoiseModel g_cost_model;
+  const gtsam::SharedNoiseModel prior_q_cost_model;
+
+  KinematicsParameters();
+};
+
 class Kinematics {
-  Kinematics();
+  Kinematics(gtdynamics::KinematicsParameters *parameters =
+                 boost::make_shared<const gtdynamics::KinematicsParameters>());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);

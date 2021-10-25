@@ -9,27 +9,31 @@
  * @author Yetong Zhang
 """
 
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir) 
+import inspect
+import os
+import sys
 
-from src.jumping_robot import Actuator, JumpingRobot
-from src.jr_visualizer import visualize_jr
+currentdir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+
 import unittest
 
-import gtsam
 import gtdynamics as gtd
+import gtsam
 import numpy as np
+from src.jr_visualizer import visualize_jr
+from src.jumping_robot import Actuator, JumpingRobot
 
 
 class TestJumpingRobot(unittest.TestCase):
     """ Tests for jumping robot. """
     def setUp(self):
         """ Set up the jumping robot. """
-        self.yaml_file_path="examples/example_jumping_robot/yaml/robot_config.yaml"
-        self.init_config=JumpingRobot.create_init_config()
-        self.jr=JumpingRobot(self.yaml_file_path, self.init_config)
+        self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        self.init_config = JumpingRobot.create_init_config()
+        self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
 
     def test_links_joints(self):
         """ Test number of links and joints. """
@@ -38,23 +42,23 @@ class TestJumpingRobot(unittest.TestCase):
 
     def test_forward_kinematics(self):
         """ Test forward kinematics of jumping robot. """
-        values=gtsam.Values()
-        k=0
-        theta=np.pi/3
-        qs=[-theta, 2 * theta, -theta, -theta, 2 * theta, -theta]
+        values = gtsam.Values()
+        k = 0
+        theta = np.pi / 3
+        qs = [-theta, 2 * theta, -theta, -theta, 2 * theta, -theta]
         for joint in self.jr.robot.joints():
-            j=joint.id()
+            j = joint.id()
             gtd.InsertJointAngleDouble(values, j, k, qs[j])
             gtd.InsertJointVelDouble(values, j, k, 0.)
 
-        fk_results=self.jr.robot.forwardKinematics(values, k)
-        torso_i=self.jr.robot.link("torso").id()
-        torso_pose=gtd.Pose(fk_results, torso_i, k)
-        expected_torso_pose=gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
+        fk_results = self.jr.robot.forwardKinematics(values, k)
+        torso_i = self.jr.robot.link("torso").id()
+        torso_pose = gtd.Pose(fk_results, torso_i, k)
+        expected_torso_pose = gtsam.Pose3(gtsam.Rot3(),
+                                          gtsam.Point3(0, 0, 0.55))
         self.assertTrue(torso_pose.equals(expected_torso_pose, tol=1e-5))
-        
-        # visualize_jr(fk_results, self.jr, k)
 
+        # visualize_jr(fk_results, self.jr, k)
 
 
 if __name__ == "__main__":

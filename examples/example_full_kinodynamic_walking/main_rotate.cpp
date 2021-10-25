@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
   auto robot =
-      gtdynamics::CreateRobotFromFile(kUrdfPath + string("/vision60.urdf"));
+      gtdynamics::CreateRobotFromFile(kUrdfPath + string("vision60.urdf"));
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-4;  // std of additional objectives.

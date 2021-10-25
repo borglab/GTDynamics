@@ -49,31 +49,26 @@ Pose3 ScrewJointBase::parentTchild(
 
   // Calculate the actual relative pose taking into account the joint angle.
   // TODO(dellaert): use formula `pMj_ * screw_around_Z * jMc_`.
+  gtsam::Matrix6 exp_H_screw;
+  const Pose3 exp = Pose3::Expmap(screw, pMc_H_q ? &exp_H_screw : 0);
   if (pMc_H_q) {
-    gtsam::Matrix6 exp_H_screw;
-    const Pose3 exp = Pose3::Expmap(screw, exp_H_screw);
     *pMc_H_q = exp_H_screw * cScrewAxis_;
-    return pMc * exp;  // Note: derivative of compose in exp is identity.
-  } else {
-    return pMc * Pose3::Expmap(screw);
   }
+  return pMc * exp;  // Note: derivative of compose in exp is identity.
 }
 
 /* ************************************************************************* */
 Pose3 ScrewJointBase::childTparent(
-    double q,
-    gtsam::OptionalJacobian<6, 1> cMp_H_q) const {
+    double q, gtsam::OptionalJacobian<6, 1> cMp_H_q) const {
   // TODO(frank): don't go via inverse, specialize in base class
+  Vector6 pMc_H_q;
+  Pose3 pMc = parentTchild(q, cMp_H_q ? &pMc_H_q : 0);  // pMc(q)    ->  pMc_H_q
+  gtsam::Matrix6 cMp_H_pMc;
+  Pose3 cMp = pMc.inverse(cMp_H_q ? &cMp_H_pMc : 0);  // cMp(pMc)  ->  cMp_H_pMc
   if (cMp_H_q) {
-    gtsam::Matrix6 cMp_H_pMc;
-    Vector6 pMc_H_q;
-    Pose3 pMc = parentTchild(q, pMc_H_q);  // pMc(q)    ->  pMc_H_q
-    Pose3 cMp = pMc.inverse(cMp_H_pMc);    // cMp(pMc)  ->  cMp_H_pMc
     *cMp_H_q = cMp_H_pMc * pMc_H_q;
-    return cMp;
-  } else {
-    return parentTchild(q).inverse();
   }
+  return cMp;
 }
 
 /* ************************************************************************* */

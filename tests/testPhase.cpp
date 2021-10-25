@@ -28,7 +28,7 @@ using gtsam::Point3;
 
 TEST(Phase, All) {
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
   Phase phase1(0, 2, phase_1);
