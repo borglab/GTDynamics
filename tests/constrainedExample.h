@@ -25,12 +25,12 @@ namespace gtdynamics {
 namespace constrained_example {
 
 using gtsam::Double_;
-using gtsam::Vector2;
-using gtsam::Vector2_;
+using gtsam::Expression;
 using gtsam::Key;
 using gtsam::Symbol;
-using gtsam::Expression;
 using gtsam::Vector1;
+using gtsam::Vector2;
+using gtsam::Vector2_;
 
 /** First cost function. */
 double cost1(const double &x1, const double &x2,
@@ -62,16 +62,6 @@ double constraint1(const double &x1, const double &x2,
   return result;
 }
 
-/** A 2-dimensional function that adds up 2 Vector2. */
-Vector2 constraint_sum_vector2(const Vector2 &x1, const Vector2 &x2,
-                   gtsam::OptionalJacobian<2, 2> H_x1 = boost::none,
-                   gtsam::OptionalJacobian<2, 2> H_x2 = boost::none) {
-  Vector2 result = x1 + x2;
-  if (H_x1) *H_x1 = gtsam::I_2x2;
-  if (H_x2) *H_x2 = gtsam::I_2x2;
-  return result;
-}
-
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
 
@@ -81,9 +71,10 @@ Double_ cost1_expr(cost1, x1_expr, x2_expr);
 Double_ cost2_expr(cost2, x1_expr, x2_expr);
 Double_ constraint1_expr(constraint1, x1_expr, x2_expr);
 
+/// A 2-dimensional function that adds up 2 Vector2.
 Vector2_ x1_vec_expr(x1_key);
 Vector2_ x2_vec_expr(x2_key);
-Expression<Vector2> constraint_sum_vector2_expr(constraint_sum_vector2, x1_vec_expr, x2_vec_expr);
+Vector2_ constraint_sum_vector2_expr = x1_vec_expr + x2_vec_expr;
 
 }  // namespace constrained_example
 
