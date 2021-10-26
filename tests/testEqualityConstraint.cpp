@@ -54,8 +54,7 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
   EXPECT(!constraint.feasible(values2));
 
   // Check constraint violation is indeed g(x) at values2.
-  EXPECT(assert_equal(Vector::Constant(1, 4.0),
-                      constraint(values2)));
+  EXPECT(assert_equal(Vector::Constant(1, 4.0), constraint(values2)));
 
   // Check scaled violation is indeed g(x)/tolerance at values2.
   EXPECT(assert_equal(Vector::Constant(1, 40.0),
@@ -103,8 +102,7 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
 
   // Check that violation evaluates as 0 at values1.
   auto expected_violation1 = (Vector(2) << 0, 0).finished();
-  EXPECT(
-      assert_equal(expected_violation1, constraint(values1)));
+  EXPECT(assert_equal(expected_violation1, constraint(values1)));
   auto expected_scaled_violation1 = (Vector(2) << 0, 0).finished();
   EXPECT(assert_equal(expected_scaled_violation1,
                       constraint.toleranceScaledViolation(values1)));
@@ -114,8 +112,7 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
 
   // Check constraint violation is indeed g(x) at values2.
   auto expected_violation2 = (Vector(2) << 2, 2).finished();
-  EXPECT(
-      assert_equal(expected_violation2, constraint(values2)));
+  EXPECT(assert_equal(expected_violation2, constraint(values2)));
 
   // Check scaled violation is indeed g(x)/tolerance at values2.
   auto expected_scaled_violation2 = (Vector(2) << 20, 4).finished();
@@ -143,21 +140,6 @@ TEST(EqualityConstraint, VectorExpressionEquality) {
   // Check jacobian computation is correct.
   EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
-}
-
-
-// Test constraint container by adding different kinds of constraints.
-TEST(EqualityConstraint, EqualityConstraintContainer) {
-  // Create the equality constraint container.
-  EqualityConstraints constraints;
-  // Add a DoubleExpressionEquality constraint.
-  constraints.addDoubleExpressionEquality(constrained_example::constraint1_expr,
-                                          0.1);
-  // Add a VectorExpressionEquality constraint.
-  constraints.addVectorExpressionEquality<2>(
-      constrained_example::constraint_sum_vector2_expr, Vector2(0.1, 0.5));
-  // Check the size of container is 2.
-  EXPECT(constraints.size() == 2);
 }
 
 int main() {

@@ -57,7 +57,7 @@ class EqualityConstraint {
    * @param x values to evalute constraint at.
    * @return a vector representing the constraint violation in each dimension.
    */
-  virtual gtsam::Vector operator() (const gtsam::Values& x) const = 0;
+  virtual gtsam::Vector operator()(const gtsam::Values& x) const = 0;
 
   /** @brief Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   virtual gtsam::Vector toleranceScaledViolation(
@@ -92,7 +92,7 @@ class DoubleExpressionEquality : public EqualityConstraint {
 
   bool feasible(const gtsam::Values& x) const override;
 
-  gtsam::Vector operator() (const gtsam::Values& x) const override;
+  gtsam::Vector operator()(const gtsam::Values& x) const override;
 
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
@@ -127,40 +127,15 @@ class VectorExpressionEquality : public EqualityConstraint {
 
   bool feasible(const gtsam::Values& x) const override;
 
-  gtsam::Vector operator() (const gtsam::Values& x) const override;
+  gtsam::Vector operator()(const gtsam::Values& x) const override;
 
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
   size_t dim() const override;
 };
 
-
-
 /// Container of EqualityConstraint.
-class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
- public:
-  EqualityConstraints() {}
-
-  ~EqualityConstraints() {}
-
-  /** @brief add a equality constraint in the form of vector expression. */
-  template <int P>
-  void addVectorExpressionEquality(
-      const gtsam::Expression<Eigen::Matrix<double, P, 1>>& expression,
-      const Eigen::Matrix<double, P, 1>& tolerance) {
-    auto new_constraint = EqualityConstraint::shared_ptr(
-        new VectorExpressionEquality(expression, tolerance));
-    push_back(new_constraint);
-  }
-
-  /** @brief add a equality constraint in the form of double expression. */
-  void addDoubleExpressionEquality(const gtsam::Expression<double>& expression,
-                                   const double& tolerance) {
-    auto new_constraint = EqualityConstraint::shared_ptr(
-        new DoubleExpressionEquality(expression, tolerance));
-    push_back(new_constraint);
-  }
-};
+typedef std::vector<EqualityConstraint::shared_ptr> EqualityConstraints;
 
 }  // namespace gtdynamics
 
