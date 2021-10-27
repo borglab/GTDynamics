@@ -43,6 +43,4 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
   return (gtsam::Vector(1) << result / tolerance_).finished();
 }
 
-size_t DoubleExpressionEquality::dim() const { return 1; }
-
 }  // namespace gtdynamics

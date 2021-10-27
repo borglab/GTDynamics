@@ -26,8 +26,8 @@ struct PenaltyMethodParameters : public ConstrainedOptimizationParameters {
   /** Constructor. */
   PenaltyMethodParameters()
       : num_iterations(15), initial_mu(1.0), mu_increase_rate(2.0) {
-        lm_parameters = gtsam::LevenbergMarquardtParams();
-      }
+    lm_parameters = gtsam::LevenbergMarquardtParams();
+  }
 };
 
 /// Penalty method only considering equality constraints.
@@ -36,18 +36,21 @@ class PenaltyMethodOptimizer : public ConstrainedOptimizer {
   boost::shared_ptr<const PenaltyMethodParameters> p_;
 
  public:
+  /** Default constructor. */
+  PenaltyMethodOptimizer()
+      : p_(boost::make_shared<const PenaltyMethodParameters>()) {}
+
   /**
-   * Constructor from parameters.
+   * Construct from parameters.
    */
   PenaltyMethodOptimizer(
-      const boost::shared_ptr<const PenaltyMethodParameters>& parameters =
-          boost::make_shared<const PenaltyMethodParameters>())
-      : ConstrainedOptimizer(parameters), p_(parameters) {}
+      const boost::shared_ptr<const PenaltyMethodParameters>& parameters)
+      : p_(parameters) {}
 
   /// Run optimization.
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
-                          const EqualityConstraints& constraints,
-                          const gtsam::Values& initial_values) const override;
+                         const EqualityConstraints& constraints,
+                         const gtsam::Values& initial_values) const override;
 };
 
 }  // namespace gtdynamics

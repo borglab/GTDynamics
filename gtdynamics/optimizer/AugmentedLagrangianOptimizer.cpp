@@ -57,6 +57,8 @@ gtsam::Values AugmentedLagrangianOptimizer::optimize(
     z.push_back(gtsam::Vector::Zero(constraint->dim()));
   }
 
+  // Solve the constrained optimization problem by solving a sequence of
+  // unconstrained optimization problems.
   for (int i = 0; i < p_->num_iterations; i++) {
     // Construct merit function.
     gtsam::NonlinearFactorGraph merit_graph = graph;

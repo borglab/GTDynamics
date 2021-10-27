@@ -32,17 +32,12 @@ struct ConstrainedOptimizationParameters {
 
 /// Base class for constrained optimizer.
 class ConstrainedOptimizer {
- protected:
-  boost::shared_ptr<const ConstrainedOptimizationParameters> p_;
 
  public:
   /**
    * @brief Constructor.
    */
-  ConstrainedOptimizer(
-      const boost::shared_ptr<const ConstrainedOptimizationParameters>&
-          parameters)
-      : p_(parameters) {}
+  ConstrainedOptimizer() {}
 
   /**
    * @brief Solve constrained optimization problem with optimizer settings.

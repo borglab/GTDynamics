@@ -18,11 +18,12 @@ namespace gtdynamics {
 gtsam::Values PenaltyMethodOptimizer::optimize(
     const gtsam::NonlinearFactorGraph& graph,
     const EqualityConstraints& constraints,
-    const gtsam::Values& initial_values) const
-{
+    const gtsam::Values& initial_values) const {
   gtsam::Values values = initial_values;
   double mu = p_->initial_mu;
 
+  // Solve the constrained optimization problem by solving a sequence of
+  // unconstrained optimization problems.
   for (int i = 0; i < p_->num_iterations; i++) {
     gtsam::NonlinearFactorGraph merit_graph = graph;
 

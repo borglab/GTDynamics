@@ -30,10 +30,11 @@ TEST(AugmentedLagrangianOptimizer, ConstrainedExample) {
   /// Create a constrained optimization problem with 2 cost factors and 1
   /// constraint.
   NonlinearFactorGraph graph;
-  EqualityConstraints constraints;
   auto cost_noise = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
   graph.add(ExpressionFactor<double>(cost_noise, 0., cost1_expr));
   graph.add(ExpressionFactor<double>(cost_noise, 0., cost2_expr));
+
+  EqualityConstraints constraints;
   double tolerance = 1.0;
   constraints.push_back(EqualityConstraint::shared_ptr(
       new DoubleExpressionEquality(constraint1_expr, tolerance)));

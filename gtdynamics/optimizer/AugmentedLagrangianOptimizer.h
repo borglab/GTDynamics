@@ -33,11 +33,13 @@ class AugmentedLagrangianOptimizer : public ConstrainedOptimizer {
   boost::shared_ptr<const AugmentedLagrangianParameters> p_;
 
  public:
-  /* Constructor. */
+  AugmentedLagrangianOptimizer()
+      : p_(boost::make_shared<const AugmentedLagrangianParameters>()) {}
+
+  /* Construct from parameters. */
   AugmentedLagrangianOptimizer(
-      const boost::shared_ptr<const AugmentedLagrangianParameters>& parameters =
-          boost::make_shared<const AugmentedLagrangianParameters>())
-      : ConstrainedOptimizer(parameters), p_(parameters) {}
+      const boost::shared_ptr<const AugmentedLagrangianParameters>& parameters)
+      : p_(parameters) {}
 
   /// Run optimization.
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
