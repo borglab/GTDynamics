@@ -23,20 +23,20 @@ gtsam::Values PenaltyMethodOptimizer::optimize(
   gtsam::Values values = initial_values;
   double mu = p_->initial_mu;
 
-  // increase the penalty
   for (int i = 0; i < p_->num_iterations; i++) {
-    // converting constrained factors to unconstrained factors
     gtsam::NonlinearFactorGraph merit_graph = graph;
+
+    // Create factors corresponding to penalty terms of constraints.
     for (auto& constraint : constraints) {
       merit_graph.add(constraint->createFactor(mu));
     }
 
-    // run optimization
+    // Run optimization.
     gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
                                                  p_->lm_parameters);
     auto result = optimizer.optimize();
 
-    // save results and update parameters
+    // Save results and update parameters.
     values = result;
     mu *= p_->mu_increase_rate;
   }

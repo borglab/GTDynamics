@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -22,7 +22,7 @@
 
 namespace gtdynamics {
 
-/// Optimization parameters shared between all solvers
+/// Constrained optimization parameters shared between all solvers.
 struct ConstrainedOptimizationParameters {
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
 
@@ -30,7 +30,7 @@ struct ConstrainedOptimizationParameters {
   ConstrainedOptimizationParameters() {}
 };
 
-/// Base class for GTDynamics optimizer hierarchy.
+/// Base class for constrained optimizer.
 class ConstrainedOptimizer {
  protected:
   boost::shared_ptr<const ConstrainedOptimizationParameters> p_;

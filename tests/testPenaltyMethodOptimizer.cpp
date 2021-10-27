@@ -24,10 +24,9 @@ using std::string;
 
 TEST(PenaltyMethodOptimizer, ConstrainedExample) {
   using namespace constrained_example;
-  Values values;
-  values.insert(x1_key, -0.2);
-  values.insert(x2_key, -0.2);
 
+  /// Create a constrained optimization problem with 2 cost factors and 1
+  /// constraint.
   NonlinearFactorGraph graph;
   EqualityConstraints constraints;
   auto cost_noise = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
@@ -36,19 +35,23 @@ TEST(PenaltyMethodOptimizer, ConstrainedExample) {
   double tolerance = 1.0;
   constraints.push_back(EqualityConstraint::shared_ptr(
       new DoubleExpressionEquality(constraint1_expr, tolerance)));
-  // constraints.addDoubleExpressionEquality(constraint1_expr, tolerance);
 
-  PenaltyMethodOptimizer optimizer;
-  Values results = optimizer.optimize(graph, constraints, values);
+  /// Create initial values.
+  Values init_values;
+  init_values.insert(x1_key, -0.2);
+  init_values.insert(x2_key, -0.2);
 
+  /// Solve the constraint problem with Penalty method optimizer.
+  gtdynamics::PenaltyMethodOptimizer optimizer;
+  Values results = optimizer.optimize(graph, constraints, init_values);
+
+  /// Check the result is correct within tolerance.
   Values gt_results;
   gt_results.insert(x1_key, 0.0);
   gt_results.insert(x2_key, 0.0);
-  double tol = 1e-3;
+  double tol = 1e-4;
   EXPECT(assert_equal(gt_results, results, tol));
 }
-
-TEST(PenaltyMethodOptimizer, KinematicSlice) {}
 
 int main() {
   TestResult tr;
