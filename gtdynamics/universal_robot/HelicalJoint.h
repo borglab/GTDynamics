@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ScrewJoint.h
+ * @file  HelicalJoint.h
  * @brief Representation of screw joint.
  * @author Frank Dellaert
  * @author Mandy Xie
@@ -18,16 +18,15 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
 /**
- * @class ScrewJoint is an implementation of the ScrewJointBase class
- *  which represents a screw joint and contains all necessary factor
- *  construction methods.
+ * @class HelicalJoint is an implementation of the Joint class which represents
+ * a helical joint and contains all necessary factor construction methods.
  */
-class ScrewJoint : public ScrewJointBase {
+class HelicalJoint : public Joint {
  protected:
   /**
    * Returns the screw axis in the joint frame given the joint axis and thread
@@ -41,7 +40,7 @@ class ScrewJoint : public ScrewJointBase {
 
  public:
   /**
-   * @brief Create ScrewJoint using JointParams, joint name, joint pose in
+   * @brief Create HelicalJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
    *
    * @param[in] id            id for keys
@@ -53,15 +52,18 @@ class ScrewJoint : public ScrewJointBase {
    * @param[in] thread_pitch  joint's thread pitch in dist per rev
    * @param[in] parameters    JointParams struct.
    */
-  ScrewJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
+  HelicalJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
              const gtsam::Vector3 &axis, double thread_pitch,
              const JointParams &parameters = JointParams())
-      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
-                       getScrewAxis(axis, thread_pitch), parameters) {}
+      : Joint(id, name, bTj, parent_link, child_link,
+              getScrewAxis(axis, thread_pitch), parameters) {}
+  
+  /// Constructor directly from screwAxis
+  using Joint::Joint;
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const override { return Type::Screw; }
+  Type type() const final override { return Type::Screw; }
 };
 
 }  // namespace gtdynamics

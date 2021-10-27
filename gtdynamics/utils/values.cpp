@@ -32,24 +32,72 @@ const char *KeyDoesNotExist::what() const noexcept {
 }
 
 /* ************************************************************************* */
+void InsertJointAngle(Values *values, int j, int t, double value) {
+  values->insert(internal::JointAngleKey(j, t), value);
+}
+
+void InsertJointAngle(Values *values, int j, double value) {
+  values->insert(internal::JointAngleKey(j), value);
+}
+
 Vector JointAngle(const VectorValues &values, int j, int t) {
   return values.at(internal::JointAngleKey(j, t));
 }
 
+double JointAngle(const Values &values, int j, int t) {
+  return internal::at<double>(values, internal::JointAngleKey(j, t));
+}
+
 /* ************************************************************************* */
+void InsertJointVel(Values *values, int j, int t, double value) {
+  values->insert(internal::JointVelKey(j, t), value);
+}
+
+void InsertJointVel(Values *values, int j, double value) {
+  values->insert(internal::JointVelKey(j), value);
+}
+
 Vector JointVel(const VectorValues &values, int j, int t) {
   return values.at(internal::JointVelKey(j, t));
 }
 
+double JointVel(const Values &values, int j, int t) {
+  return internal::at<double>(values, internal::JointVelKey(j, t));
+}
+
 /* ************************************************************************* */
+void InsertJointAccel(Values *values, int j, int t, double value) {
+  values->insert(internal::JointAccelKey(j, t), value);
+}
+
+void InsertJointAccel(Values *values, int j, double value) {
+  values->insert(internal::JointAccelKey(j), value);
+}
+
 Vector JointAccel(const VectorValues &values, int j, int t) {
   return values.at(internal::JointAccelKey(j, t));
 }
 
+double JointAccel(const Values &values, int j, int t) {
+  return internal::at<double>(values, internal::JointAccelKey(j, t));
+}
+
+
 /* ************************************************************************* */
-/// Retrieve torque on the j-th joint at time t.
+void InsertTorque(Values *values, int j, int t, double value) {
+  values->insert(internal::TorqueKey(j, t), value);
+}
+
+void InsertTorque(Values *values, int j, double value) {
+  values->insert(internal::TorqueKey(j), value);
+}
+
 Vector Torque(const VectorValues &values, int j, int t) {
   return values.at(internal::TorqueKey(j, t));
+};
+
+double Torque(const Values &values, int j, int t) {
+  return internal::at<double>(values, internal::TorqueKey(j, t));
 };
 
 /* ************************************************************************* */

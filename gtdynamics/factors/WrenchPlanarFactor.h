@@ -20,7 +20,7 @@
 #include <boost/optional.hpp>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
@@ -56,8 +56,7 @@ class WrenchPlanarFactor : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
    */
   WrenchPlanarFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                      gtsam::Vector3 planar_axis,
-                     const boost::shared_ptr<const JointTyped> &joint,
-                     size_t k = 0)
+                     const JointConstSharedPtr &joint, size_t k = 0)
       : WrenchPlanarFactor(
             cost_model, planar_axis,
             internal::WrenchKey(joint->child()->id(), joint->id(), k)) {}

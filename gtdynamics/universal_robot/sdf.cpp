@@ -20,8 +20,7 @@
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
 #include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/ScrewJoint.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include "gtdynamics/universal_robot/HelicalJoint.h"
 #include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
@@ -188,7 +187,7 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                                                 child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<ScrewJoint>(
+      joint = boost::make_shared<HelicalJoint>(
           id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
       break;

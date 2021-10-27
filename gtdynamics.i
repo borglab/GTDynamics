@@ -16,23 +16,18 @@ const gtsam::KeyFormatter GTDKeyFormatter;
 
 /********************** factors **********************/
 #include <gtdynamics/factors/JointMeasurementFactor.h>
-template <JOINT>
 class JointMeasurementFactor : gtsam::NonlinearFactor {
   JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
                          const gtsam::noiseModel::Base *cost_model,
                          const gtdynamics::Joint *joint,
-                         const JOINT::JointCoordinate &joint_coordinate,
-                         size_t k);
+                         double joint_coordinate);
   JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr &model,
                          const gtdynamics::Joint *joint,
-                         const JOINT::JointCoordinate &joint_coordinate,
-                         size_t k);
+                         double joint_coordinate, size_t k);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
-
-typedef gtdynamics::JointMeasurementFactor<gtdynamics::RevoluteJoint> RevoluteJointMeasurementFactor;
 
 #include <gtdynamics/factors/PoseFactor.h>
 class PoseFactor : gtsam::NonlinearFactor {
@@ -104,10 +99,11 @@ class TwistFactor : gtsam::NonlinearFactor {
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
 class TwistAccelFactor : gtsam::NonlinearFactor {
-  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p, gtsam::Key twistAccel_key_c,
-              gtsam::Key q_key, gtsam::Key qVel_key, gtsam::Key qAccel_key,
-              const gtsam::noiseModel::Base* cost_model,
-              const gtdynamics::JointTyped* joint);
+  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
+                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
+                   gtsam::Key qVel_key, gtsam::Key qAccel_key,
+                   const gtsam::noiseModel::Base *cost_model,
+                   const gtdynamics::Joint *joint);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -116,7 +112,7 @@ class TwistAccelFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/TorqueFactor.h>
 class TorqueFactor : gtsam::NonlinearFactor {
   TorqueFactor(const gtsam::noiseModel::Base *cost_model,
-               const gtdynamics::JointTyped *joint, size_t k=0);
+               const gtdynamics::Joint *joint, size_t k=0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
@@ -145,7 +141,7 @@ class WrenchFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base *cost_model,
-                          gtdynamics::JointTyped *joint, size_t k = 0);
+                          gtdynamics::Joint *joint, size_t k = 0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
@@ -153,7 +149,7 @@ class WrenchEquivalenceFactor : gtsam::NonlinearFactor{
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
 class WrenchPlanarFactor : gtsam::NonlinearFactor {
   WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis, gtdynamics::JointTyped *joint, size_t k=0);
+                     Vector planar_axis, gtdynamics::Joint *joint, size_t k=0);
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
@@ -231,11 +227,9 @@ class Link  {
 
 /********************** joint **********************/
 #include <gtdynamics/universal_robot/Joint.h>
-#include <gtdynamics/universal_robot/JointTyped.h>
-#include <gtdynamics/universal_robot/ScrewJointBase.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
-#include <gtdynamics/universal_robot/ScrewJoint.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
 class JointParams {
   JointParams();
   double velocity_limit;
@@ -259,12 +253,7 @@ virtual class Joint {
   gtdynamics::Link* child() const;
 };
 
-virtual class JointTyped : gtdynamics::Joint {
-};
-
-virtual class ScrewJointBase : gtdynamics::JointTyped {};
-
-virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
+virtual class RevoluteJoint : gtdynamics::Joint {
   RevoluteJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
@@ -273,7 +262,7 @@ virtual class RevoluteJoint : gtdynamics::ScrewJointBase {
   void print(const string &s = "") const;
 };
 
-virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
+virtual class PrismaticJoint : gtdynamics::Joint {
   PrismaticJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
@@ -282,8 +271,8 @@ virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   void print(const string &s = "") const;
 };
 
-virtual class ScrewJoint : gtdynamics::ScrewJointBase {
-  ScrewJoint(
+virtual class HelicalJoint : gtdynamics::Joint {
+  HelicalJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
       const Vector &axis, double thread_pitch,
@@ -720,49 +709,37 @@ gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
 
 ///////////////////// Key Methods /////////////////////
-template<T = {double}>
-void InsertJointAngle(gtsam::Values@ values, int j, int t, T value);
+void InsertJointAngle(gtsam::Values@ values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointAngle(gtsam::Values @values, int j, T value);
+void InsertJointAngle(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointAngle(const gtsam::Values &values, int j, int t);
+double JointAngle(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertJointVel(gtsam::Values @values, int j, int t, T value);
+void InsertJointVel(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointVel(gtsam::Values @values, int j, T value);
+void InsertJointVel(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointVel(const gtsam::Values &values, int j, int t);
+double JointVel(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertJointAccel(gtsam::Values @values, int j, int t, T value);
+void InsertJointAccel(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertJointAccel(gtsam::Values @values, int j, T value);
+void InsertJointAccel(gtsam::Values @values, int j, double value);
 
 gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T JointAccel(const gtsam::Values &values, int j, int t);
+double JointAccel(const gtsam::Values &values, int j, int t);
 
-template<T = {double}>
-void InsertTorque(gtsam::Values @values, int j, int t, T value);
+void InsertTorque(gtsam::Values @values, int j, int t, double value);
 
-template<T = {double}>
-void InsertTorque(gtsam::Values @values, int j, T value);
+void InsertTorque(gtsam::Values @values, int j, double value);
 
 gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
 
-template<T = {double}>
-T Torque(const gtsam::Values &values, int j, int t);
+double Torque(const gtsam::Values &values, int j, int t);
 
 void InsertPose(gtsam::Values @values, int i, int t, gtsam::Pose3 value);
 

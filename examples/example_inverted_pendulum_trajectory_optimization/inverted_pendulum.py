@@ -112,10 +112,10 @@ def run(args):
         key: [fn(results, j1_id, t) for t in range(t_steps + 1)]
         for (key, fn) in [
             ("t", time),  #
-            ("theta", gtd.JointAngleDouble),
-            ("dtheta", gtd.JointVelDouble),
-            ("ddtheta", gtd.JointAccelDouble),
-            ("tau", gtd.TorqueDouble)
+            ("theta", gtd.JointAngle),
+            ("dtheta", gtd.JointVel),
+            ("ddtheta", gtd.JointAccel),
+            ("tau", gtd.Torque)
         ]
     }
     df = pd.DataFrame(data)

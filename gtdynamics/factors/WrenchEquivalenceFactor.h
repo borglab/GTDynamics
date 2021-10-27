@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/values.h"
 
@@ -33,22 +33,18 @@ namespace gtdynamics {
 /** WrenchEquivalenceFactor is a 3-way nonlinear factor which enforces
  * relation between wrench expressed in two link frames*/
 class WrenchEquivalenceFactor
-    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
-                                      typename JointTyped::JointCoordinate> {
+    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double> {
  private:
-  using JointCoordinate = typename JointTyped::JointCoordinate;
   using This = WrenchEquivalenceFactor;
-  using Base =
-      gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, JointCoordinate>;
+  using Base = gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6, double>;
 
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+  JointConstSharedPtr joint_;
 
   /// Private constructor with arbitrary keys
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                           gtsam::Key wrench_key_1, gtsam::Key wrench_key_2,
                           gtsam::Key q_key,
-                          const JointTypedConstSharedPtr &joint)
+                          const JointConstSharedPtr &joint)
       : Base(cost_model, wrench_key_1, wrench_key_2, q_key), joint_(joint) {}
 
  public:
@@ -57,7 +53,7 @@ class WrenchEquivalenceFactor
    * @param joint JointConstSharedPtr to the joint
    */
   WrenchEquivalenceFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                          const JointTypedConstSharedPtr &joint, size_t k = 0)
+                          const JointConstSharedPtr &joint, size_t k = 0)
       : WrenchEquivalenceFactor(
             cost_model,
             internal::WrenchKey(joint->parent()->id(), joint->id(), k),
@@ -75,11 +71,11 @@ class WrenchEquivalenceFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &wrench_1, const gtsam::Vector6 &wrench_2,
-      const JointCoordinate &q,
+      const double &q,
       boost::optional<gtsam::Matrix &> H_wrench_1 = boost::none,
       boost::optional<gtsam::Matrix &> H_wrench_2 = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
-    gtsam::Pose3 T_21 = joint_->relativePoseOf(joint_->parent(), q);
+    gtsam::Pose3 T_21 = joint_->childTparent(q);
     gtsam::Matrix6 Ad_21_T = T_21.AdjointMap().transpose();
     gtsam::Vector6 error = wrench_1 + Ad_21_T * wrench_2;
 
@@ -91,9 +87,10 @@ class WrenchEquivalenceFactor
     }
     if (H_q) {
       // TODO(frank): really, child? Double-check derivatives
-      *H_q =
-          joint_->AdjointMapJacobianJointAngle(joint_->child(), q).transpose() *
-          wrench_2;
+      *H_q = AdjointMapJacobianQ(q, joint_->childTparent(0.0),
+                                 joint_->screwAxis(joint_->child()))
+                 .transpose() *
+             wrench_2;
     }
     return error;
   }

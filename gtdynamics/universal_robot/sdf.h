@@ -16,7 +16,6 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
