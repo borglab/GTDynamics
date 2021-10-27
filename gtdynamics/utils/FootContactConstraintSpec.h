@@ -8,7 +8,7 @@
 /**
  * @file  FootContactConstraintSpec.h
  * @brief Utility methods for generating FootContactConstraintSpec objects.
- * @author: Disha Das, Frank Dellaert
+ * @author: Disha Das, Dan Barladeanu, Frank Dellaert
  */
 
 #pragma once
@@ -25,7 +25,6 @@ namespace gtdynamics {
  * @class FootContactConstraintSpec class stores information about a robot stance
  * and its duration.
  */
-
 using ContactPointGoals = std::map<std::string, gtsam::Point3>;
 
 class FootContactConstraintSpec : public ConstraintSpec {
@@ -75,7 +74,8 @@ class FootContactConstraintSpec : public ConstraintSpec {
    * @param[in] step 3D vector to move by
    * @param[in] cost_model noise model
    * @param[in] k_start Factors are added at this time step
-   * @param[inout] cp_goals either stance goal or start of swing (updated)
+   * @param[in] cp_goals either stance goal or start of swing (updated)
+   * @param[in] ts number of time steps
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const PointOnLinks &all_contact_points, const gtsam::Point3 &step,
@@ -90,6 +90,7 @@ class FootContactConstraintSpec : public ConstraintSpec {
 
   /**
    * Update goal points by `step` for all swing legs.
+   * @param[in] all_contact_points stance *and* swing feet.
    * @param[in] step 3D vector to move by
    * @param[in] cp_goals either stance goal or start of swing
    */

@@ -34,14 +34,13 @@ class Phase : public Interval {
  public:
   /// Constructor
   Phase(size_t k_start, size_t k_end,
-        const boost::shared_ptr<ConstraintSpec> &constraints)
-      : Interval(k_start, k_end), constraint_spec_(constraints) {}
+        const boost::shared_ptr<ConstraintSpec> &constraint_spec)
+      : Interval(k_start, k_end), constraint_spec_(constraint_spec) {}
 
-  /// Returns all the contact points in the stance
-  const boost::shared_ptr<const FootContactConstraintSpec> footContactConstraintSpec() const { return boost::static_pointer_cast<const FootContactConstraintSpec>(constraint_spec_); }
-
-  /// Get contact points from FootContactConstraintSpec
-  const PointOnLinks &getPhaseContactPoints() const {return footContactConstraintSpec()->contactPoints();}
+  ///Return Constraint Spec pointer
+  const boost::shared_ptr<const ConstraintSpec> constraintSpec() const {
+    return constraint_spec_;
+  }
 
   /// Print to stream.
   friend std::ostream &operator<<(std::ostream &os, const Phase &phase);

@@ -31,20 +31,6 @@ class Trajectory {
  protected:
   std::vector<Phase> phases_; ///< All phases in the trajectory
 
-  /// Gets the intersection between two PointOnLinks objects
-  static PointOnLinks getIntersection(const PointOnLinks &cps1,
-                                      const PointOnLinks &cps2) {
-    PointOnLinks intersection;
-    for (auto &&cp1 : cps1) {
-      for (auto &&cp2 : cps2) {
-        if (cp1 == cp2) {
-          intersection.push_back(cp1);
-        }
-      }
-    }
-    return intersection;
-  }
-
  public:
   /// Default Constructor (for serialization)
   Trajectory() {}
@@ -78,11 +64,8 @@ class Trajectory {
    * @return Phase CPs.
    */
   std::vector<PointOnLinks> phaseContactPoints() const {
-    std::vector<PointOnLinks> phase_cps;
-    for (auto &&phase : phases_) {
-      phase_cps.push_back(phase.getPhaseContactPoints());
-    }
-    return phase_cps;
+    WalkCycle wc = WalkCycle(phases_);
+    return wc.allPhasesContactPoints();
   }
 
   /**
@@ -91,20 +74,8 @@ class Trajectory {
    * @return Transition CPs.
    */
   std::vector<PointOnLinks> transitionContactPoints() const {
-    std::vector<PointOnLinks> trans_cps_orig;
-
-    PointOnLinks phase_1_cps;
-    PointOnLinks phase_2_cps;
-
-    for (size_t p = 0; p < phases_.size() - 1; p++) {
-      phase_1_cps = phases_[p].getPhaseContactPoints();
-      phase_2_cps = phases_[p+1].getPhaseContactPoints();
-
-      PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
-      trans_cps_orig.push_back(intersection);
-    }
-
-    return trans_cps_orig;
+    WalkCycle wc = WalkCycle(phases_);
+    return wc.transitionContactPoints();
   }
 
   /**
@@ -209,15 +180,6 @@ class Trajectory {
    * @return Final time step.
    */
   int getEndTimeStep(size_t p) const { return finalTimeSteps()[p]; }
-
-  /**
-   * @fn Returns the contact links for a given phase.
-   * @param[in] p    Phase number.
-   * @return Vector of contact links.
-   */
-  const PointOnLinks &getPhaseContactLinks(size_t p) const {
-    return phases_[p].getPhaseContactPoints();
-  }
 
   /**
    * @fn Generates a PointGoalFactor object

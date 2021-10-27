@@ -137,6 +137,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
+   * @fn This fuction does inverse kinematics seperately on each slice.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
    * @param contact_goals goals for contact points

@@ -8,7 +8,7 @@
 /**
  * @file  FootContactConstraintSpec.cpp
  * @brief Utility methods for generating FootContactConstraintSpec objects.
- * @author: Disha Das, Frank Dellaert
+ * @author: Disha Das, Dan Barladeanu, Frank Dellaert
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
@@ -23,14 +23,16 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using std::string;
 
-FootContactConstraintSpec::FootContactConstraintSpec( const std::vector<PointOnLink> &points_on_links) {
+FootContactConstraintSpec::FootContactConstraintSpec(
+    const std::vector<PointOnLink> &points_on_links) {
   for (auto &&point_on_link : points_on_links) {
     contact_points_.push_back(point_on_link);
   }
 }
 
-FootContactConstraintSpec::FootContactConstraintSpec(const std::vector<LinkSharedPtr> &links,
-                                   const gtsam::Point3 &contact_in_com) {
+FootContactConstraintSpec::FootContactConstraintSpec(
+    const std::vector<LinkSharedPtr> &links,
+    const gtsam::Point3 &contact_in_com) {
   for (auto &&link : links) {
     contact_points_.emplace_back(link, contact_in_com);
   }
@@ -71,9 +73,9 @@ void FootContactConstraintSpec::print(const string &s) const {
 
 // Searches a contact_link from ContactGoals object and returns the
 // corresponding goal_point
-gtsam::Point3 &pointGoal(ContactGoals *cp_goals,
-                         const PointOnLink contact_point) {
-  for (auto it = cp_goals->begin(); it != cp_goals->end(); ++it) {
+const gtsam::Point3 &pointGoal(const ContactGoals &cp_goals,
+                         const PointOnLink &contact_point) {
+  for (auto it = cp_goals.begin(); it != cp_goals.end(); ++it) {
     if ((*it).point_on_link.link->name() == contact_point.link->name() &&
         (*it).point_on_link.point == contact_point.point)
       return (*it).goal_point;

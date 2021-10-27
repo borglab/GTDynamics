@@ -30,30 +30,6 @@ auto kModel6 = gtsam::noiseModel::Unit::Create(6);
 
 using namespace gtdynamics;
 
-// Class to test protected method
-class TrajectoryTest : public Trajectory {
- public:
-  TrajectoryTest() : Trajectory(){};
-  using Trajectory::getIntersection;
-};
-
-TEST(Trajectory, Intersection) {
-  Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
-
-  using namespace walk_cycle_example;
-  TrajectoryTest traj;
-  PointOnLinks intersection =
-      traj.getIntersection(phase_1->contactPoints(), phase_2->contactPoints());
-
-  PointOnLinks expected = {{robot.link("tarsus_2_L2"), contact_in_com},
-                           {robot.link("tarsus_3_L3"), contact_in_com}};
-
-  for (size_t i = 0; i < 2; i++) {
-    EXPECT(assert_equal(expected[i], intersection[i]));
-  }
-}
-
 TEST(Trajectory, error) {
   using namespace walk_cycle_example;
   Robot robot =
@@ -87,7 +63,6 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(7, final_timesteps[2]);
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
   EXPECT_LONGS_EQUAL(7, trajectory.getEndTimeStep(2));
-  EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
 
   auto cp_goals = walk_cycle.initContactPointGoal(robot, 0);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());

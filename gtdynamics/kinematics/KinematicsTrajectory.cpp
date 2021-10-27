@@ -29,7 +29,7 @@ NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
                                                    const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(this->graph(phase, robot));
+    graph.add(this->graph<Interval>(phase, robot));
   }
   return graph;
 }
@@ -39,7 +39,7 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
     const Trajectory& trajectory, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(pointGoalObjectives(phase, contact_goals));
+    graph.add(pointGoalObjectives<Interval>(phase, contact_goals));
   }
   return graph;
 }
@@ -49,7 +49,7 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Trajectory>(
     const Trajectory& trajectory, const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(jointAngleObjectives(phase, robot));
+    graph.add(jointAngleObjectives<Interval>(phase, robot));
   }
   return graph;
 }
@@ -60,7 +60,7 @@ Values Kinematics::initialValues<Trajectory>(const Trajectory& trajectory,
                                              double gaussian_noise) const {
   Values values;
   for (auto&& phase : trajectory.phases()) {
-    values.insert(initialValues(phase, robot, gaussian_noise));
+    values.insert(initialValues<Interval>(phase, robot, gaussian_noise));
   }
   return values;
 }
@@ -71,7 +71,7 @@ Values Kinematics::inverse<Trajectory>(
     const ContactGoals& contact_goals) const {
   Values results;
   for (auto&& phase : trajectory.phases()) {
-    results.insert(inverse(phase, robot, contact_goals));
+    results.insert(inverse<Interval>(phase, robot, contact_goals));
   }
   return results;
 }
@@ -82,7 +82,7 @@ Values Kinematics::interpolate<Trajectory>(const Trajectory& trajectory, const R
                                const ContactGoals& contact_goals2) const {
   Values results;
   for (auto&& phase : trajectory.phases()) {
-    results.insert(interpolate(phase, robot, contact_goals1, contact_goals2));
+    results.insert(interpolate<Interval>(phase, robot, contact_goals1, contact_goals2));
   }
   return results;
 }

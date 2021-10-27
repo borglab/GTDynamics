@@ -16,21 +16,13 @@
 #include <gtdynamics/utils/Phase.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtdynamics/utils/FootContactConstraintSpec.h>
-#include <gtsam/geometry/Point3.h>
-#include <gtsam/linear/NoiseModel.h>
 
 #include <map>
 #include <string>
 #include <vector>
 
 namespace gtdynamics {
-
-using gtsam::NonlinearFactorGraph;
-using gtsam::SharedNoiseModel;
-using gtsam::Point3;
-using std::string;
 
 /**
  * @class WalkCycle class stores the sequence of phases
@@ -41,6 +33,20 @@ class WalkCycle {
  protected:
   std::vector<Phase> phases_;    ///< Phases in walk cycle
   PointOnLinks contact_points_;  ///< All unique contact points in the walk cycle
+
+ /// Gets the intersection between two PointOnLinks objects
+  static PointOnLinks getIntersection(const PointOnLinks &cps1,
+                                      const PointOnLinks &cps2) {
+    PointOnLinks intersection;
+    for (auto &&cp1 : cps1) {
+      for (auto &&cp2 : cps2) {
+        if (cp1 == cp2) {
+          intersection.push_back(cp1);
+        }
+      }
+    }
+    return intersection;
+  }
 
  public:
   /// Default Constructor
@@ -72,24 +78,25 @@ class WalkCycle {
    * @param states ........... a vector of FootContactConstraintSpec shared pointers.
    * @param phase_lengths .... a vector of phase lengths corresponding to the states vector.
    */
-  WalkCycle(const FootContactVector &states, const std::vector<size_t> &phase_lengths) {
-    if (states.size() != phase_lengths.size()){
-      throw std::runtime_error("states vector and phase_lengths vector have different sizes");
+  WalkCycle(const FootContactVector &states,
+            const std::vector<size_t> &phase_lengths) {
+    if (states.size() != phase_lengths.size()) {
+      throw std::runtime_error(
+          "states vector and phase_lengths vector have different sizes");
     }
     size_t k = 0;
-    for (size_t i = 0; i < states.size(); i++)  {
+    for (size_t i = 0; i < states.size(); i++) {
       Phase ph = Phase(k, k + phase_lengths[i], states[i]);
       phases_.push_back(ph);
       k += phase_lengths[i];
     }
 
-    // After all phases in the trajectory are in phases_, 
+    // After all phases in the trajectory are in phases_,
     // add unique contact from each phase in the trajectory to contact_points_
-    for (auto&& phase : phases_) {
+    for (auto &&phase : phases_) {
       addPhaseContactPoints(phase);
     }
   }
-
 
   /**
    * @fn adds unique contact points from phase to contact_points_ of trajectory 
@@ -100,6 +107,16 @@ class WalkCycle {
 
   /// Return all unique contact points.
   const PointOnLinks& contactPoints() const { return contact_points_; }
+
+   /// Return all contact points from all phases, not only unique
+  std::vector<PointOnLinks> allPhasesContactPoints() const;
+
+  /**
+   * @fn Returns a vector of PointOnLinks objects for all transitions between
+   * phases after applying repetition on the original sequence.
+   * @return Transition CPs.
+   */
+  std::vector<PointOnLinks> transitionContactPoints() const;
 
   /**
    * @fn Return phase for given phase number p.
@@ -134,15 +151,23 @@ class WalkCycle {
    * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
    * @return All objective factors as a NonlinearFactorGraph
    */
-  NonlinearFactorGraph contactPointObjectives(const Point3 &step, const SharedNoiseModel &cost_model,
-                                              size_t k_start, ContactPointGoals *cp_goals) const ;
+  gtsam::NonlinearFactorGraph contactPointObjectives(
+      const gtsam::Point3 &step, const gtsam::SharedNoiseModel &cost_model,
+      size_t k_start, ContactPointGoals *cp_goals) const;
 
- /**
+  /**
    * @fn Returns the swing links for a given phase.
    * @param[in] p    Phase number.
    * @return Vector of swing links.
    */
   std::vector<std::string> getPhaseSwingLinks(size_t p) const; 
+
+  /**
+  * @fn Returns the contact points for a given phase.
+  * @param[in] p    Phase number.
+  * @return Vector of contact links.
+  */
+  const PointOnLinks getPhaseContactPoints(size_t p) const;
 
   /// Print to stream.
   friend std::ostream& operator<<(std::ostream& os,

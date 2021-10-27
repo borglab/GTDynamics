@@ -24,14 +24,38 @@
 using namespace gtdynamics;
 using gtsam::Point3;
 
+// Class to test protected method
+class WalkCycleTest : public WalkCycle {
+ public:
+  WalkCycleTest() : WalkCycle(){};
+  using WalkCycle::getIntersection;
+};
+
+TEST(WalkCycle, Intersection) {
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
+
+  using namespace walk_cycle_example;
+  WalkCycleTest wc;
+  PointOnLinks intersection =
+      wc.getIntersection(phase_1->contactPoints(), phase_2->contactPoints());
+
+  PointOnLinks expected = {{robot.link("tarsus_2_L2"), contact_in_com},
+                           {robot.link("tarsus_3_L3"), contact_in_com}};
+
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(gtsam::assert_equal(expected[i], intersection[i]));
+  }
+}
+
 TEST(WalkCycle, contactPoints) {
   Robot robot =
       CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
 
   using namespace walk_cycle_example;
   auto walk_cycle_phases = walk_cycle.phases();
-  EXPECT_LONGS_EQUAL(3, walk_cycle_phases[0].footContactConstraintSpec()->contactPoints().size());
-  EXPECT_LONGS_EQUAL(4, walk_cycle_phases[1].footContactConstraintSpec()->contactPoints().size());
+  EXPECT_LONGS_EQUAL(3, walk_cycle.getPhaseContactPoints(0).size());
+  EXPECT_LONGS_EQUAL(4, walk_cycle.getPhaseContactPoints(1).size());
   EXPECT_LONGS_EQUAL(2, walk_cycle.numPhases());
   EXPECT_LONGS_EQUAL(num_time_steps + num_time_steps_2,
                      walk_cycle.numTimeSteps());
