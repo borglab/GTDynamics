@@ -96,7 +96,7 @@ class DoubleExpressionEquality : public EqualityConstraint {
 
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
-  size_t dim() const override;
+  size_t dim() const override { return 1; }
 };
 
 /** Equality constraint that force g(x) = 0, where g(x) is a vector-valued
