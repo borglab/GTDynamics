@@ -350,6 +350,13 @@ class PointOnLink {
 
 // PointOnLinks defined in specializations.h
 
+/********************** Optimizer **********************/
+#include <gtdynamics/optimizer/Optimizer.h>
+class OptimizationParameters {
+  gtsam::LevenbergMarquardtParams lm_parameters;
+  OptimizationParameters();
+};
+
 /********************** kinematics **********************/
 #include <gtdynamics/kinematics/Kinematics.h>
 
@@ -363,8 +370,17 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
+class KinematicsParameters : gtdynamics::OptimizationParameters {
+  const gtsam::SharedNoiseModel p_cost_model; 
+  const gtsam::SharedNoiseModel g_cost_model;
+  const gtsam::SharedNoiseModel prior_q_cost_model;
+
+  KinematicsParameters();
+};
+
 class Kinematics {
-  Kinematics();
+  Kinematics(gtdynamics::KinematicsParameters *parameters =
+                 boost::make_shared<const gtdynamics::KinematicsParameters>());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
