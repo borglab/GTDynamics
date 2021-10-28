@@ -25,6 +25,9 @@ class ConstraintSpec {
   public:
     /// GTSAM-style print, pure virtual here
     virtual void print(const std::string &s) const = 0;
+    
+    // destructor
+    virtual ~ConstraintSpec() = default;
 };
 
 
