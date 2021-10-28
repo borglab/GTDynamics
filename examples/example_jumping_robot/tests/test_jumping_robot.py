@@ -48,8 +48,8 @@ class TestJumpingRobot(unittest.TestCase):
         qs = [-theta, 2 * theta, -theta, -theta, 2 * theta, -theta]
         for joint in self.jr.robot.joints():
             j = joint.id()
-            gtd.InsertJointAngleDouble(values, j, k, qs[j])
-            gtd.InsertJointVelDouble(values, j, k, 0.)
+            gtd.InsertJointAngle(values, j, k, qs[j])
+            gtd.InsertJointVel(values, j, k, 0.)
 
         fk_results = self.jr.robot.forwardKinematics(values, k)
         torso_i = self.jr.robot.link("torso").id()

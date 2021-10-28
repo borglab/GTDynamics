@@ -45,7 +45,7 @@ class TestRobot(GtsamTestCase):
             11: -1.852,
         }
         for i, angle in angles.items():
-            gtd.InsertJointAngleDouble(self.joint_angles, i, 0, angle)
+            gtd.InsertJointAngle(self.joint_angles, i, 0, angle)
 
     def test_forward_kinematics_factor(self):
         """Test if forward kinematics are correct."""

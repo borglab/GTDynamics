@@ -29,10 +29,10 @@ class TestCdprPlanar(GtsamTestCase):
         class DummyController(CdprControllerBase):
             def update(self, values, k):
                 tau = gtsam.Values()
-                gtd.InsertTorqueDouble(tau, 0, k, 1.)
-                gtd.InsertTorqueDouble(tau, 1, k, 1.)
-                gtd.InsertTorqueDouble(tau, 2, k, 0.)
-                gtd.InsertTorqueDouble(tau, 3, k, 0.)
+                gtd.InsertTorque(tau, 0, k, 1.)
+                gtd.InsertTorque(tau, 1, k, 1.)
+                gtd.InsertTorque(tau, 2, k, 0.)
+                gtd.InsertTorque(tau, 3, k, 0.)
                 return tau
         Tf = 1
         dt = 0.1

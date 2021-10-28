@@ -108,8 +108,7 @@ TEST(PoseFactor, breaking_rr) {
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
-  auto j1 = boost::dynamic_pointer_cast<gtdynamics::ScrewJointBase>(
-      robot.joint("j1"));
+  const auto& j1 = robot.joint("j1");
 
   Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);

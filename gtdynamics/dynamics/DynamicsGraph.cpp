@@ -269,12 +269,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
                                      gtsam::Z_6x1, opt_.ba_cost_model);
   for (auto &&joint : robot.joints())
     graph.emplace_shared<TwistAccelFactor>(
-      internal::TwistKey(joint->child()->id(), t),
-      internal::TwistAccelKey(joint->parent()->id(), t),
-      internal::TwistAccelKey(joint->child()->id(), t),
-      internal::JointAngleKey(joint->id(), t), internal::JointVelKey(joint->id(), t),
-      internal::JointAccelKey(joint->id(), t), opt_.a_cost_model,
-      boost::static_pointer_cast<const JointTyped>(joint));
+        internal::TwistKey(joint->child()->id(), t),
+        internal::TwistAccelKey(joint->parent()->id(), t),
+        internal::TwistAccelKey(joint->child()->id(), t),
+        internal::JointAngleKey(joint->id(), t),
+        internal::JointVelKey(joint->id(), t),
+        internal::JointAccelKey(joint->id(), t), opt_.a_cost_model, joint);
 
   // Add contact factors.
   if (contact_points) {
@@ -351,7 +351,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   // TODO(frank): sort out const shared ptr mess
   for (auto &&joint : robot.joints()) {
     auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = boost::static_pointer_cast<const JointTyped>(joint);
+    auto const_joint = joint;
     graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
                                                   const_joint, k);
     graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, k);
