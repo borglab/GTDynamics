@@ -24,8 +24,14 @@ using gtsam::SharedNoiseModel;
 const boost::shared_ptr<const FootContactConstraintSpec>
 castFootContactConstraintSpec(
     const boost::shared_ptr<const ConstraintSpec> &constraint_spec) {
-  return boost::static_pointer_cast<const FootContactConstraintSpec>(
-      constraint_spec);
+  boost::shared_ptr<const FootContactConstraintSpec> foot_contact_spec =
+      boost::dynamic_pointer_cast<const FootContactConstraintSpec>(
+          constraint_spec);
+  if (!foot_contact_spec) {
+    throw std::runtime_error(
+        "constraint_spec is not a FootContactConstraintSpec, could not cast");
+  }
+  return foot_contact_spec;
 }
 
 void WalkCycle::addPhaseContactPoints(const Phase &phase) {
