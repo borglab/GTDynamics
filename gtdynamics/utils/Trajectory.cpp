@@ -80,7 +80,6 @@ Values Trajectory::multiPhaseInitialValues(const Robot &robot,
                                         gaussian_noise, phaseContactPoints());
 }
 
-///////This function creates a WalkCycle object from all phases in the trajectory and uses WalkCycle functionality
 NonlinearFactorGraph Trajectory::contactPointObjectives(
     const Robot &robot, const SharedNoiseModel &cost_model, const Point3 &step, double ground_height) const {
   NonlinearFactorGraph factors;

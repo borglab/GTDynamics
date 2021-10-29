@@ -152,7 +152,7 @@ class Kinematics : public Optimizer {
    * @param interval Interval instance
    * @param robot Robot specification from URDF/SDF.
    * @param contact_goals1 goals for contact points for interval.k_start
-   * @param contact_goals1 goals for contact points for interval.k_end
+   * @param contact_goals2 goals for contact points for interval.k_end
    * All results are return in values.
    */
   template <class CONTEXT>

@@ -824,11 +824,21 @@ class Phase {
 #include <gtdynamics/utils/WalkCycle.h>
 class WalkCycle {
   WalkCycle();
+  WalkCycle(const std::vector<gtdynamics::Phase> &phase_vector);
+  WalkCycle(const gtdynamics::FootContactVector &states,
+            const std::vector<size_t> &phase_lengths);
+  const gtdynamics::PointOnLinks& contactPoints() const;
+  std::vector<gtdynamics::PointOnLinks> allPhasesContactPoints() const;
+  std::vector<gtdynamics::PointOnLinks> transitionContactPoints() const;
   const gtdynamics::Phase& phase(size_t p);
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
+  size_t numTimeSteps() const;
+  gtdynamics::ContactPointGoals initContactPointGoal(
+      const gtdynamics::Robot &robot, double ground_height) const;
   void print(const string& s = "") const;
   std::vector<string> getPhaseSwingLinks(size_t p) const;
+  const gtdynamics::PointOnLinks getPhaseContactPoints(size_t p) const;
 };
 
 #include <gtdynamics/utils/Trajectory.h>
