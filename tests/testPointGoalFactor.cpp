@@ -45,14 +45,18 @@ TEST(PointGoalFactor, error) {
   // Initialize factor with goal point.
   Point3 goal_point(0, 0, 2), point_com(0, 0, 1);
   PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
-
+  
+  std::cout << "point1" << std::endl;
   // Test the goal pose error against the robot's various nominal poses.
   EXPECT(assert_equal(Vector3(0, 0, 0),
                       factor.evaluateError(robot.link("l1")->bMcom())));
 
+  std::cout << "point2" << std::endl;
+
   EXPECT(assert_equal(Vector3(0, 0, 2),
                       factor.evaluateError(robot.link("l2")->bMcom())));
-
+  
+  std::cout << "point3" << std::endl;
   // Make sure linearization is correct
   Values values;
   Pose3 pose(Rot3::RzRyRx(M_PI / 4, 0.4932, 9.81), Point3(-12, 5, 16));
@@ -69,12 +73,16 @@ TEST(PointGoalFactor, optimization) {
 
   LabeledSymbol pose_key('P', 0, 0);
 
+  std::cout << "point4" << std::endl;
+
   // Initialize factor with goal point.
   Point3 goal_point(2, 15, 6), point_com(0, 0, 1);
   PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Initial link pose.
   Pose3 pose_init = robot.link("l1")->bMcom();
+  
+  std::cout << "point5" << std::endl;
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -86,11 +94,16 @@ TEST(PointGoalFactor, optimization) {
   params.setVerbosityLM("SILENT");
   params.setAbsoluteErrorTol(1e-12);
 
+  std::cout << "point6" << std::endl;
+
   // Optimize the initial link twist to ensure no linear velocity
   // at the contact point.
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
   optimizer.optimize();
   Values results = optimizer.values();
+
+  std::cout << "point7" << std::endl;
+
   Pose3 pose_optimized = results.at<Pose3>(pose_key);
   EXPECT(assert_equal(factor.evaluateError(pose_optimized), Vector3::Zero(),
                       1e-4));
