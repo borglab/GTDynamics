@@ -68,7 +68,7 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   //regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
-                             cp_goals["tarsus_2_L2"], 1e-5));
+                              cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
   vector<Values> transition_graph_init =

@@ -76,15 +76,13 @@ Values Kinematics::inverse<Trajectory>(
   return results;
 }
 
-template <>
-Values Kinematics::interpolate<Trajectory>(
-    const Trajectory& trajectory, const Robot& robot,
-    const ContactGoals& contact_goals1,
-    const ContactGoals& contact_goals2) const {
+template<>
+Values Kinematics::interpolate<Trajectory>(const Trajectory& trajectory, const Robot& robot,
+                               const ContactGoals& contact_goals1,
+                               const ContactGoals& contact_goals2) const {
   Values results;
   for (auto&& phase : trajectory.phases()) {
-    results.insert(
-        interpolate<Interval>(phase, robot, contact_goals1, contact_goals2));
+    results.insert(interpolate<Interval>(phase, robot, contact_goals1, contact_goals2));
   }
   return results;
 }
