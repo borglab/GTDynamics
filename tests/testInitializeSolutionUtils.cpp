@@ -43,8 +43,6 @@ TEST(InitializeSolutionUtils, Interpolation) {
 
   // We will interpolate from 0->10s, in 1 second increments.
   double T_i = 0, T_f = 10, dt = 1;
-  
-  std::cout << "point1" << std::endl;
 
   gtsam::Values init_vals =
       InitializeSolutionInterpolation(robot, "link_0", wTb_i, wTb_f, T_i, T_f,
@@ -53,8 +51,6 @@ TEST(InitializeSolutionUtils, Interpolation) {
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
   size_t id = 0;
-  
-  std::cout << "point2" << std::endl;
 
   // Check start pose.
   EXPECT(assert_equal(wTb_i, Pose(init_vals, id)));
@@ -86,8 +82,6 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
       Pose3(Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2), Point3(2, 1, 1))};
   std::vector<double> ts = {5, 10};
   double dt = 1;
-  
-  std::cout << "point3" << std::endl;
 
   gtsam::Values init_vals = InitializeSolutionInterpolationMultiPhase(
       robot, "l1", wTb_i, wTb_t, ts, dt);
@@ -98,8 +92,6 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   pose = Pose(init_vals, l2->id());
   EXPECT(assert_equal(Pose3(Rot3::RzRyRx(M_PI / 2, 0, 0), Point3(0, -1, 1)),
                       pose, 1e-3));
-  
-  std::cout << "point4" << std::endl;
 
   pose = Pose(init_vals, l1->id(), 5);
   EXPECT(assert_equal(wTb_t[0], pose));
@@ -129,14 +121,13 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
       gtsam::noiseModel::Isotropic::Sigma(6, kNoiseSigma);
   gtsam::Sampler sampler(sampler_noise_model);
   std::vector<Pose3> wTl_dt;
-  std::cout << "point5" << std::endl;
+
   auto actual = InitializePosesAndJoints(robot, wTb_i, wTb_t, l2->name(), t_i,
                                          timesteps, dt, sampler, &wTl_dt);
   gtsam::Values expected;
   InsertPose(&expected, 0, Pose3(Rot3(), Point3(0, 0, 1)));
   InsertPose(&expected, 1, Pose3(Rot3(), Point3(0, 0, 3)));
   InsertJointAngle(&expected, 0, 0.0);
-  std::cout << "point6" << std::endl;
   EXPECT(assert_equal(expected, actual, 1e-6));
   EXPECT_LONGS_EQUAL(18, wTl_dt.size());
 }
@@ -153,8 +144,6 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
   std::vector<double> ts = {10};
   double dt = 1;
-  
-  std::cout << "point7" << std::endl;
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
@@ -191,8 +180,6 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    */
   gtsam::Values init_vals = InitializeSolutionInverseKinematics(
       robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
-  
-  std::cout << "point8" << std::endl;
 
   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 
@@ -201,8 +188,6 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
   double joint_angle = JointAngle(init_vals, robot.joint("j1")->id());
   EXPECT(assert_equal(0.0, joint_angle, 1e-3));
-  
-  std::cout << "point9" << std::endl;
 
   size_t T = std::roundl(ts[0] / dt);
   for (size_t t = 0; t <= T; t++) {
@@ -213,7 +198,6 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
   pose = Pose(init_vals, l2->id(), T);
   EXPECT(assert_equal(wTb_t[0], pose, 1e-3));
   pose = Pose(init_vals, l1->id(), T) * oTc_l1;
-  std::cout << "point10" << std::endl;
   EXPECT(assert_equal(0.0, pose.translation().z(), 1e-3));
 }
 
@@ -225,7 +209,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   auto l2 = robot.link("l2");
 
   Pose3 wTb_i = l2->bMcom();
-  std::cout << "point11" << std::endl;
+
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
@@ -242,7 +226,6 @@ TEST(InitializeSolutionUtils, ZeroValues) {
     joint_angle = JointAngle(init_vals, joint->id());
     EXPECT(assert_equal(0.0, joint_angle));
   }
-  std::cout << "point12" << std::endl;
 }
 
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
@@ -256,7 +239,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
-  std::cout << "point13" << std::endl;
+
   gtsam::Values init_vals =
       ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
 
@@ -270,7 +253,6 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
       EXPECT(assert_equal(0.0, joint_angle));
     }
   }
-  std::cout << "point14" << std::endl;
 }
 
 TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
@@ -301,7 +283,7 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   wTb_t.push_back(Pose3(Rot3(), Point3(1, 0, 0.2)));
 
   ts.push_back(3 * steps_per_phase);
-  std::cout << "point15" << std::endl;
+
   // Initial values for transition graphs.
   std::vector<gtsam::Values> transition_graph_init;
   transition_graph_init.push_back(
@@ -335,7 +317,6 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
     Pose3 wTc = wTol1 * oTc_l1;
     EXPECT(assert_equal(0.0, wTc.translation().z(), 1e-3));
   }
-  std::cout << "point16" << std::endl;
 }
 
 int main() {

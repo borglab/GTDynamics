@@ -43,9 +43,6 @@ void WalkCycle::addPhaseContactPoints(const Phase &phase) {
       if (link_count == 0) contact_points_.push_back(kv);
     }
   }
-  else {
-    std::cout << "WalkCycle::addPhaseContactPoints issue" << std::endl;
-  }
 }
 
 const Phase &WalkCycle::phase(size_t p) const {
@@ -81,9 +78,6 @@ ContactPointGoals WalkCycle::initContactPointGoal(const Robot &robot,
         }
       }
     }
-    else {
-      std::cout << "WalkCycle::initContactPointGoal issue" << std::endl;
-    }
   }
 
   return cp_goals;
@@ -109,9 +103,6 @@ NonlinearFactorGraph WalkCycle::contactPointObjectives(
 
       // update the start time step for the next phase
       k_start += phase.numTimeSteps();
-    }
-    else {
-      std::cout << "WalkCycle::contactPointObjectives issue" << std::endl;
     }
   }
 
@@ -139,10 +130,6 @@ std::vector<std::string> WalkCycle::getPhaseSwingLinks(size_t p) const {
       }
     }
   }
-  else {
-    std::cout << "WalkCycle::getPhaseSwingLinks issue" << std::endl;
-  }
-  
   return phase_swing_links;
 }
 
@@ -152,9 +139,6 @@ const PointOnLinks WalkCycle::getPhaseContactPoints(size_t p) const {
     castFootContactConstraintSpec(phases_[p].constraintSpec());
   if (foot_contact_spec) {
     cp = foot_contact_spec->contactPoints();
-  }
-  else {
-    std::cout << "WalkCycle::getPhaseContactPoints issue" << std::endl;
   }
   return cp;
 }
@@ -166,9 +150,6 @@ std::vector<PointOnLinks> WalkCycle::allPhasesContactPoints() const {
         castFootContactConstraintSpec(phase.constraintSpec());
     if (foot_contact_spec) {
       phase_cps.push_back(foot_contact_spec->contactPoints());
-    }
-    else {
-      std::cout << "WalkCycle::allPhasesContactPoints issue" << std::endl;
     }
   }
   return phase_cps;
@@ -189,15 +170,8 @@ std::vector<PointOnLinks> WalkCycle::transitionContactPoints() const {
     if (foot_contact_spec1) {
       phase_1_cps = foot_contact_spec1->contactPoints();
     }
-    else {
-      std::cout << "WalkCycle::transitionContactPoints issue" << std::endl;
-    }
-    
     if (foot_contact_spec2) {
       phase_2_cps = foot_contact_spec2->contactPoints();
-    }
-    else {
-      std::cout << "WalkCycle::transitionContactPoints issue" << std::endl;
     }
 
     PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
