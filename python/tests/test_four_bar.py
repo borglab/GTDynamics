@@ -85,11 +85,11 @@ class TestFourBar(unittest.TestCase):
         joint_vels = np.array([0, 0, 0, 0])
         torques = np.array([1, 0, 0, 0])
         for idx, joint in enumerate(robot.joints()):
-            gtd.InsertJointAngleDouble(known_values, joint.id(), 0,
+            gtd.InsertJointAngle(known_values, joint.id(), 0,
                                        joint_angles[idx])
-            gtd.InsertJointVelDouble(known_values, joint.id(), 0,
+            gtd.InsertJointVel(known_values, joint.id(), 0,
                                      joint_vels[idx])
-            gtd.InsertTorqueDouble(known_values, joint.id(), 0, torques[idx])
+            gtd.InsertTorque(known_values, joint.id(), 0, torques[idx])
 
         prior_graph = graph_builder.forwardDynamicsPriors(
             robot, 0, known_values)
