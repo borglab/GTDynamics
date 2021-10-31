@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testScrewJoint.cpp
- * @brief Test ScrewJoint class.
+ * @file  testHelicalJoint.cpp
+ * @brief Test HelicalJoint class.
  * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela, and Yetong Zhang
  */
 
@@ -17,7 +17,7 @@
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/ScrewJoint.h"
+#include "gtdynamics/universal_robot/HelicalJoint.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -40,7 +40,7 @@ TEST(Joint, params_constructor) {
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  auto j1 = boost::make_shared<ScrewJoint>(
+  auto j1 = boost::make_shared<HelicalJoint>(
       123, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
       gtsam::Vector3(1, 0, 0), 0.5, parameters);
 
@@ -75,10 +75,6 @@ TEST(Joint, params_constructor) {
   Pose3 T_21com(Rot3::Rx(M_PI / 2), Point3(0.125, 1, -1));
   EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, -M_PI / 2)));
   EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, -M_PI / 2)));
-
-  // should throw error
-  CHECK_EXCEPTION(j1->relativePoseOf(l2, gtsam::Values()),
-                  gtsam::ValuesKeyDoesNotExist);
 
   // links
   auto links = j1->links();

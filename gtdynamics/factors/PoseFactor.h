@@ -106,8 +106,9 @@ class PoseFactor : public gtsam::NoiseModelFactor {
     boost::optional<gtsam::Matrix &> wTc_hat_H_q_ref;
     if (H) wTc_hat_H_q_ref = wTc_hat_H_q;
 
-    auto wTc_hat = joint_->poseOf(joint_->child(), wTp, x, t_,
-                                  H ? &wTc_hat_H_wTp : 0, wTc_hat_H_q_ref);
+    auto wTc_hat =
+        joint_->poseOf(joint_->child(), wTp, JointAngle(x, joint_->id(), t_),
+                       H ? &wTc_hat_H_wTp : 0, wTc_hat_H_q_ref);
     gtsam::Vector6 error =
         wTc.logmap(wTc_hat, H ? &H_wTc : 0, H ? &H_wTc_hat : 0);
     if (H) {

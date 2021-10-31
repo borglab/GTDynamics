@@ -46,7 +46,7 @@ class TestRobot(GtsamTestCase):
 
         for idx, joint in enumerate(joints):
             th[joint] = joint_angles[idx]
-            gtd.InsertJointAngleDouble(joint_angles_values,
+            gtd.InsertJointAngle(joint_angles_values,
                                        robot.joint(joint).id(),
                                        joint_angles[idx])
 

@@ -74,9 +74,9 @@ class TestJRSimulator(unittest.TestCase):
         k = 0
         for joint in self.robot().joints():
             j = joint.id()
-            gtd.InsertTorqueDouble(values, j, k, torques[j])
-            gtd.InsertJointAngleDouble(values, j, k, qs[j])
-            gtd.InsertJointVelDouble(values, j, k, vs[j])
+            gtd.InsertTorque(values, j, k, torques[j])
+            gtd.InsertJointAngle(values, j, k, qs[j])
+            gtd.InsertJointVel(values, j, k, vs[j])
         torso_pose = gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 0.55))
         torso_i = self.robot().link("torso").id()
         gtd.InsertPose(values, torso_i, k, torso_pose)
@@ -114,7 +114,7 @@ class TestJRSimulator(unittest.TestCase):
         torques = []
         for actuator in self.jr_simulator.jr.actuators:
             j = actuator.j
-            torque = gtd.TorqueDouble(values, j, k)
+            torque = gtd.Torque(values, j, k)
             torques.append(torque)
             self.assertAlmostEqual(torque, 0, places=7)
         # TODO(yetong): check torques, pressures, etc

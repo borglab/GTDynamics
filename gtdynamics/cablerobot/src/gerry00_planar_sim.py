@@ -26,10 +26,10 @@ class DummyController(CdprControllerBase):
         self.N = N
     def update(self, values, t):
         tau = gtsam.Values()
-        gtd.InsertTorqueDouble(tau, 0, t, 3 * np.cos(2. * t / self.N * np.pi))
-        gtd.InsertTorqueDouble(tau, 1, t, 3 * np.cos(2. * t / self.N * np.pi + np.pi/2))
-        gtd.InsertTorqueDouble(tau, 2, t, 3 * np.cos(2. * t / self.N * np.pi + np.pi))
-        gtd.InsertTorqueDouble(tau, 3, t, 3 * np.cos(2. * t / self.N * np.pi + 3*np.pi/2))
+        gtd.InsertTorque(tau, 0, t, 3 * np.cos(2. * t / self.N * np.pi))
+        gtd.InsertTorque(tau, 1, t, 3 * np.cos(2. * t / self.N * np.pi + np.pi/2))
+        gtd.InsertTorque(tau, 2, t, 3 * np.cos(2. * t / self.N * np.pi + np.pi))
+        gtd.InsertTorque(tau, 3, t, 3 * np.cos(2. * t / self.N * np.pi + 3*np.pi/2))
         return tau
 
 def main():

@@ -232,8 +232,8 @@ class JRValues:
             v_key = gtd.internal.JointVelKey(j, k).key()
             JRValues.copy_value(values, init_values, q_key)
             JRValues.copy_value(values, init_values, v_key)
-            gtd.InsertJointAccelDouble(
-                init_values, j, k, gtd.JointAccelDouble(values, j, k-1))
+            gtd.InsertJointAccel(
+                init_values, j, k, gtd.JointAccel(values, j, k-1))
             i1 = joint.parent().id()
             i2 = joint.child().id()
             gtd.InsertWrench(init_values, i1, j, k,
@@ -300,17 +300,17 @@ class JRValues:
                 v = values.atDouble(v_key)
             init_values.insert(q_key, q)
             init_values.insert(v_key, v)
-            gtd.InsertJointAccelDouble(init_values, j, k, 0.0)
+            gtd.InsertJointAccel(init_values, j, k, 0.0)
             i1 = joint.parent().id()
             i2 = joint.child().id()
             gtd.InsertWrench(init_values, i1, j, k, np.zeros(6))
             gtd.InsertWrench(init_values, i2, j, k, np.zeros(6))
             torque_key = gtd.internal.TorqueKey(j, k).key()
             if values.exists(torque_key):
-                gtd.InsertTorqueDouble(
+                gtd.InsertTorque(
                     init_values, j, k, values.atDouble(torque_key))
             else:
-                gtd.InsertTorqueDouble(init_values, j, k, 0.0)
+                gtd.InsertTorque(init_values, j, k, 0.0)
 
         return init_values
 
@@ -319,13 +319,13 @@ class JRValues:
         """ Integrate joint angle and velocity and add to values. """
         for joint in jr.robot.joints():
             j = joint.id()
-            q_prev = gtd.JointAngleDouble(values, j, k-1)
-            v_prev = gtd.JointVelDouble(values, j, k-1)
-            a_prev = gtd.JointAccelDouble(values, j, k-1)
+            q_prev = gtd.JointAngle(values, j, k-1)
+            v_prev = gtd.JointVel(values, j, k-1)
+            a_prev = gtd.JointAccel(values, j, k-1)
             v_curr = v_prev + a_prev * dt
             q_curr = q_prev + v_prev * dt + 0.5 * a_prev * dt * dt
-            gtd.InsertJointAngleDouble(values, j, k, q_curr)
-            gtd.InsertJointVelDouble(values, j, k, v_curr)
+            gtd.InsertJointAngle(values, j, k, q_curr)
+            gtd.InsertJointVel(values, j, k, v_curr)
 
     @staticmethod
     def integrate_torso(jr, values, k, dt):

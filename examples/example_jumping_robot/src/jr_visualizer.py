@@ -119,9 +119,9 @@ def make_plot(values, jr, num_steps):
     for k in range(num_steps):
         for name in joint_names:
             j = jr.robot.joint(name).id()
-            qs_dict[name].append(gtd.JointAngleDouble(values, j, k))
-            vs_dict[name].append(gtd.JointVelDouble(values, j, k))
-            torques_dict[name].append(gtd.TorqueDouble(values, j, k))
+            qs_dict[name].append(gtd.JointAngle(values, j, k))
+            vs_dict[name].append(gtd.JointVel(values, j, k))
+            torques_dict[name].append(gtd.Torque(values, j, k))
             pressures_dict[name].append(values.atDouble(Actuator.PressureKey(j, k)))
             masses_dict[name].append(values.atDouble(Actuator.MassKey(j, k)))
             mdots_dict[name].append(values.atDouble(Actuator.MassRateActualKey(j, k)))

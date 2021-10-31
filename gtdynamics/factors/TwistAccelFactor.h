@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -32,20 +32,14 @@ namespace gtdynamics {
  * between acceleration on previous link and this link.
  */
 class TwistAccelFactor
-    : public gtsam::NoiseModelFactor6<
-          gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
-          JointTyped::JointCoordinate, JointTyped::JointVelocity,
-          JointTyped::JointAcceleration> {
+    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
+                                      gtsam::Vector6, double, double, double> {
  private:
-  using JointCoordinate = JointTyped::JointCoordinate;
-  using JointVelocity = JointTyped::JointVelocity;
-  using JointAcceleration = JointTyped::JointVelocity;
   using This = TwistAccelFactor;
   using Base = gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                        gtsam::Vector6, JointCoordinate,
-                                        JointVelocity, JointAcceleration>;
-  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
-  JointTypedConstSharedPtr joint_;
+                                        gtsam::Vector6, double,
+                                        double, double>;
+  JointConstSharedPtr joint_;
 
  public:
   /**
@@ -61,7 +55,7 @@ class TwistAccelFactor
                    gtsam::Key twistAccel_key_c, gtsam::Key q_key,
                    gtsam::Key qVel_key, gtsam::Key qAccel_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointTypedConstSharedPtr joint)
+                   JointConstSharedPtr joint)
       : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
              qVel_key, qAccel_key),
         joint_(joint) {}
@@ -80,8 +74,8 @@ class TwistAccelFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_c, const gtsam::Vector6 &twistAccel_p,
-      const gtsam::Vector6 &twistAccel_c, const JointCoordinate &q,
-      const JointAcceleration &qVel, const JointAcceleration &qAccel,
+      const gtsam::Vector6 &twistAccel_c, const double &q,
+      const double &qVel, const double &qAccel,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_c = boost::none,
