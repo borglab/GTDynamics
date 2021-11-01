@@ -29,22 +29,7 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
-  size_t repeat_;         ///< Number of repetitions of walk cycle
-  WalkCycle walk_cycle_;  ///< Walk Cycle
-
-  /// Gets the intersection between two PointOnLinks objects
-  static PointOnLinks getIntersection(const PointOnLinks &cps1,
-                                      const PointOnLinks &cps2) {
-    PointOnLinks intersection;
-    for (auto &&cp1 : cps1) {
-      for (auto &&cp2 : cps2) {
-        if (cp1 == cp2) {
-          intersection.push_back(cp1);
-        }
-      }
-    }
-    return intersection;
-  }
+  std::vector<Phase> phases_; ///< All phases in the trajectory
 
  public:
   /// Default Constructor (for serialization)
@@ -52,28 +37,36 @@ class Trajectory {
 
   /**
    * Construct trajectory from WalkCycle and specified number of gait
-   * repetitions.
+   * repetitions. phases from walk_cycle will be added to Trajectory phases_
+   * for repeat times. contact points from all phases then will be added to
+   * contact_points_.
    *
    * @param walk_cycle  The Walk Cycle for the robot.
    * @param repeat      The number of repetitions for each phase of the gait.
    */
-  Trajectory(const WalkCycle &walk_cycle, size_t repeat)
-      : repeat_(repeat), walk_cycle_(walk_cycle) {}
+  Trajectory(const WalkCycle &walk_cycle, size_t repeat) {
+    // Get phases of walk_cycle.
+    auto phases_i = walk_cycle.phases();
+    // Loop over `repeat` walk cycles W_i
+    for (size_t i = 0; i < repeat; i++) {
+      // Append phases_i of walk_cycle to phases_ vector member.
+      phases_.insert(phases_.end(), phases_i.begin(), phases_i.end());
+    }
+  }
+
+  /// Returns vector of phases in the trajectory
+  const std::vector<Phase>& phases() const { return phases_; }
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all phases after
-   * applying repetition on the walk cycle.
+   * applying repetition on the walk cycle. 
+   * This function returns all contact points from all phases
+   * and may have repetitions, as opposed to contact_points_.
    * @return Phase CPs.
    */
   std::vector<PointOnLinks> phaseContactPoints() const {
-    std::vector<PointOnLinks> phase_cps;
-    const auto &phases = walk_cycle_.phases();
-    for (size_t i = 0; i < repeat_; i++) {
-      for (auto &&phase : phases) {
-        phase_cps.push_back(phase.contactPoints());
-      }
-    }
-    return phase_cps;
+    WalkCycle wc = WalkCycle(phases_);
+    return wc.allPhasesContactPoints();
   }
 
   /**
@@ -82,34 +75,8 @@ class Trajectory {
    * @return Transition CPs.
    */
   std::vector<PointOnLinks> transitionContactPoints() const {
-    std::vector<PointOnLinks> trans_cps_orig;
-
-    auto phases = walk_cycle_.phases();
-    PointOnLinks phase_1_cps;
-    PointOnLinks phase_2_cps;
-
-    for (size_t p = 0; p < walk_cycle_.numPhases(); p++) {
-      phase_1_cps = phases[p].contactPoints();
-      if (p == walk_cycle_.numPhases() - 1) {
-        phase_2_cps = phases[0].contactPoints();
-      } else {
-        phase_2_cps = phases[p + 1].contactPoints();
-      }
-
-      PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
-      trans_cps_orig.push_back(intersection);
-    }
-
-    // Copy the original transition contact point sequence
-    // `repeat_` number of times.
-    std::vector<PointOnLinks> trans_cps(trans_cps_orig);
-    for (size_t i = 0; i < repeat_ - 1; i++) {
-      trans_cps.insert(trans_cps.end(), trans_cps_orig.begin(),
-                       trans_cps_orig.end());
-    }
-    trans_cps.pop_back();
-
-    return trans_cps;
+    WalkCycle wc = WalkCycle(phases_);
+    return wc.transitionContactPoints();
   }
 
   /**
@@ -119,9 +86,7 @@ class Trajectory {
    */
   std::vector<int> phaseDurations() const {
     std::vector<int> phase_durations;
-    const auto &phases = walk_cycle_.phases();
-    for (size_t i = 0; i < repeat_; i++) {
-      for (auto &&phase : phases)
+    for (auto &&phase : phases_) { 
         phase_durations.push_back(phase.numTimeSteps());
     }
     return phase_durations;
@@ -131,7 +96,7 @@ class Trajectory {
    * @fn Returns the number of phases.
    * @return Number of phases.
    */
-  size_t numPhases() const { return walk_cycle_.numPhases() * repeat_; }
+  size_t numPhases() const { return phases_.size(); }
 
   /**
    * @fn Builds vector of Transition Graphs.
@@ -181,25 +146,12 @@ class Trajectory {
   std::vector<int> finalTimeSteps() const {
     int final_timestep = 0;
     std::vector<int> final_timesteps;
-    auto phases = walk_cycle_.phases();
-    for (size_t i = 0; i < numPhases(); i++) {
-      int phase_timestep = phases[i % walk_cycle_.numPhases()].numTimeSteps();
+    for (size_t i = 0; i < phases_.size(); i++) {
+      int phase_timestep = phases_[i].numTimeSteps();
       final_timestep += phase_timestep;
       final_timesteps.push_back(final_timestep);
     }
     return final_timesteps;
-  }
-
-  /**
-   * @fn Return phase index for given phase number p.
-   * @param[in] p    Phase number \in [0..repeat * numPhases()[.
-   * @return Phase instance.
-   */
-  size_t phaseIndex(size_t p) const {
-    if (p >= numPhases()) {
-      throw std::invalid_argument("Trajectory:phase: no such phase");
-    }
-    return p % walk_cycle_.numPhases();
   }
 
   /**
@@ -208,7 +160,7 @@ class Trajectory {
    * @return Phase instance.
    */
   const Phase &phase(size_t p) const {
-    return walk_cycle_.phase(phaseIndex(p));
+    return phases_[p];
   }
 
   /**
@@ -231,24 +183,6 @@ class Trajectory {
   int getEndTimeStep(size_t p) const { return finalTimeSteps()[p]; }
 
   /**
-   * @fn Returns the contact links for a given phase.
-   * @param[in] p    Phase number.
-   * @return Vector of contact links.
-   */
-  const PointOnLinks &getPhaseContactLinks(size_t p) const {
-    return phase(p).contactPoints();
-  }
-
-  /**
-   * @fn Returns the swing links for a given phase.
-   * @param[in] p    Phase number.
-   * @return Vector of swing links.
-   */
-  std::vector<std::string> getPhaseSwingLinks(size_t p) const {
-    return walk_cycle_.swingLinks(phaseIndex(p));
-  }
-
-  /**
    * @fn Generates a PointGoalFactor object
    * @param[in] robot             Robot specification from URDF/SDF.
    * @param[in] link_name         concerned link
@@ -269,6 +203,8 @@ class Trajectory {
 
   /**
    * @fn Create desired stance and swing trajectories for all contact links.
+   * @fn This function creates a WalkCycle object from all phases in the trajectory
+   * @fn and uses WalkCycle functionality
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model
    * @param[in] step The 3D vector the foot moves in a step.
@@ -277,7 +213,7 @@ class Trajectory {
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
       const Robot &robot, const gtsam::SharedNoiseModel &cost_model,
-      const gtsam::Point3 &step, double ground_height = 0) const;
+      const gtsam::Point3 &step, double ground_height = {}) const;
 
   /**
    * @fn Add minimum torque objectives.

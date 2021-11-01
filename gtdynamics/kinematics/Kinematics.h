@@ -137,6 +137,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
+   * @fn This fuction does inverse kinematics seperately on each slice.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
    * @param contact_goals goals for contact points
@@ -148,13 +149,14 @@ class Kinematics : public Optimizer {
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
-   * @param interval Interval instance
+   * @param context Interval instance
    * @param robot Robot specification from URDF/SDF.
-   * @param contact_goals1 goals for contact points for interval.k_start
-   * @param contact_goals1 goals for contact points for interval.k_end
+   * @param contact_goals1 goals for contact points for context.k_start
+   * @param contact_goals2 goals for contact points for context.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values interpolate(const CONTEXT& context, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };
