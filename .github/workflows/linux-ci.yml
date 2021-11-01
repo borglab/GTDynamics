@@ -17,7 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        #name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9] #issues with clang-9, commented out for now
+#        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9] #issues with clang-9, commented out for now
         name: [ubuntu-18.04-gcc-9]
 
         build_type: [Debug, Release]
@@ -28,11 +28,11 @@ jobs:
             compiler: gcc
             version: "9"
 
-            # issues with clang-9, commented out for now
-          - #name: ubuntu-18.04-clang-9
-            #os: ubuntu-18.04
-            #compiler: clang
-            #version: "9"
+ #           issues with clang-9, commented out for now
+ #         - name: ubuntu-18.04-clang-9
+ #           os: ubuntu-18.04
+ #           compiler: clang
+ #           version: "9"
 
     steps:
       - name: Setup Compiler
