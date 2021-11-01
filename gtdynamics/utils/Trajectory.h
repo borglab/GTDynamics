@@ -45,10 +45,11 @@ class Trajectory {
    * @param repeat      The number of repetitions for each phase of the gait.
    */
   Trajectory(const WalkCycle &walk_cycle, size_t repeat) {
+    // Get phases of walk_cycle.
+    auto phases_i = walk_cycle.phases();
     // Loop over `repeat` walk cycles W_i
     for (size_t i = 0; i < repeat; i++) {
-      // Creating the phases for the ith walk cycle, and append them phases_.
-      auto phases_i = walk_cycle.phases();
+      // Append phases_i of walk_cycle to phases_ vector member.
       phases_.insert(phases_.end(), phases_i.begin(), phases_i.end());
     }
   }
