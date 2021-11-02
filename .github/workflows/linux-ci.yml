@@ -17,7 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-11]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10]
 
         build_type: [Debug, Release]
         include:
@@ -26,10 +26,10 @@ jobs:
             compiler: gcc
             version: "9"
 
-          - name: ubuntu-18.04-clang-11
+          - name: ubuntu-18.04-clang-10
             os: ubuntu-18.04
             compiler: clang
-            version: "11"
+            version: "10"
 
     steps:
       - name: Setup Compiler
@@ -59,7 +59,7 @@ jobs:
           git clone https://github.com/borglab/gtsam.git
           cd gtsam
           mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_WITH_TBB=OFF ..
           sudo make -j$(nproc) install
           sudo ldconfig
           cd ../../ # go back to home directory
