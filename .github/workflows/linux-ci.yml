@@ -17,7 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -27,10 +27,10 @@ jobs:
             compiler: gcc
             version: "9"
 
-         - name: ubuntu-18.04-clang-9
+         - name: ubuntu-18.04-clang-10
            os: ubuntu-18.04
            compiler: clang
-           version: "9"
+           version: "10"
 
     steps:
       - name: Setup Compiler
@@ -54,14 +54,6 @@ jobs:
           sudo apt-get -y update
 
           sudo apt-get -y install libtbb-dev libsdformat10-dev
-
-          # Install CMake v3.12.4
-          sudo apt-get -y install build-essential libssl-dev
-          wget https://github.com/Kitware/CMake/releases/download/v3.12.4/cmake-3.12.4.tar.gz
-          tar -zxvf cmake-3.12.4.tar.gz
-          cd cmake-3.12.4
-          ./bootstrap && make -j$(nproc) && make -j$(nproc) install
-          cd ../
 
       - name: GTSAM
         run: |
