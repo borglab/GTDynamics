@@ -32,44 +32,27 @@ using gtsam::Vector1;
 using gtsam::Vector2;
 using gtsam::Vector2_;
 
-/** First cost function. */
-double cost1(const double &x1, const double &x2,
-             gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-             gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 + exp(-x2);
-  if (H_x1) H_x1->setConstant(1.0);
-  if (H_x2) H_x2->setConstant(-exp(-x2));
+double exp_func(const double& x,
+                gtsam::OptionalJacobian<1, 1> H1 = boost::none) {
+  double result = exp(x);
+  if (H1) H1->setConstant(result);
   return result;
 }
 
-/** Second cost function. */
-double cost2(const double &x1, const double &x2,
-             gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-             gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 * x1 + 2 * x2 + 1;
-  if (H_x1) H_x1->setConstant(2 * x1);
-  if (H_x2) H_x2->setConstant(2.0);
-  return result;
-}
-
-/** Constraint function g(x). */
-double constraint1(const double &x1, const double &x2,
-                   gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-                   gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 + x1 * x1 * x1 + x2 + x2 * x2;
-  if (H_x1) H_x1->setConstant(1 + 3 * x1 * x1);
-  if (H_x2) H_x2->setConstant(1 + 2 * x2);
-  return result;
-}
+class ExpExpression : public Double_ {
+ public:
+  explicit ExpExpression(const Double_& e) : Double_(exp_func, e) {}
+};
 
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
 
 Double_ x1_expr(x1_key);
 Double_ x2_expr(x2_key);
-Double_ cost1_expr(cost1, x1_expr, x2_expr);
-Double_ cost2_expr(cost2, x1_expr, x2_expr);
-Double_ constraint1_expr(constraint1, x1_expr, x2_expr);
+Double_ cost1_expr = x1_expr + ExpExpression(Double_(0.0) - x2_expr);
+Double_ cost2_expr = x1_expr * x1_expr + 2.0 * x2_expr + Double_(1.0);
+Double_ constraint1_expr =
+    x1_expr + x1_expr * x1_expr * x1_expr + x2_expr + x2_expr * x2_expr;
 
 /// A 2-dimensional function that adds up 2 Vector2.
 Vector2_ x1_vec_expr(x1_key);
