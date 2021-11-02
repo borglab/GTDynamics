@@ -17,8 +17,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-#        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9] #issued with clang-9 on CI, commented out for now.
-        name: [ubuntu-18.04-gcc-9]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
@@ -28,11 +27,10 @@ jobs:
             compiler: gcc
             version: "9"
 
-############ issues with clang-9 on CI, commented out for now
-#          - name: ubuntu-18.04-clang-9
-#            os: ubuntu-18.04
-#            compiler: clang
-#            version: "9"
+         - name: ubuntu-18.04-clang-10
+           os: ubuntu-18.04
+           compiler: clang
+           version: "10"
 
     steps:
       - name: Setup Compiler
@@ -55,7 +53,7 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+          sudo apt-get -y install libtbb-dev libsdformat10-dev
 
       - name: GTSAM
         run: |
