@@ -17,6 +17,7 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/assign/list_of.hpp>
@@ -37,10 +38,10 @@ using boost::assign::cref_list_of;
  * Given the joint model, this factor optimizes for the underlying joint axis
  * and the corresponding poses of the parent and child links.
  */
-class PoseFactor : public gtsam::NoiseModelFactor {
+class PoseFactor : public gtsam::ExpressionFactor<gtsam::Vector6> {
  private:
   using This = PoseFactor;
-  using Base = gtsam::NoiseModelFactor;
+  using Base = gtsam::ExpressionFactor<gtsam::Vector6>;
 
   int t_;
   JointConstSharedPtr joint_;
@@ -55,11 +56,7 @@ class PoseFactor : public gtsam::NoiseModelFactor {
    */
   PoseFactor(const gtsam::SharedNoiseModel &cost_model,
              const JointConstSharedPtr &joint, int time)
-      : Base(cost_model,
-             cref_list_of<3>(
-                 internal::PoseKey(joint->parent()->id(), time).key())(
-                 internal::PoseKey(joint->child()->id(), time).key())(
-                 internal::JointAngleKey(joint->id(), time).key())),
+      : Base(cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time)),
         t_(time),
         joint_(joint) {}
 
@@ -78,52 +75,11 @@ class PoseFactor : public gtsam::NoiseModelFactor {
              DynamicsSymbol q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
              JointConstSharedPtr joint)
-      : Base(cost_model,
-             cref_list_of<3>(wTp_key.key())(wTc_key.key())(q_key.key())),
+      : Base(cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(wTp_key.time())),
         t_(wTp_key.time()),
         joint_(joint) {}
 
   virtual ~PoseFactor() {}
-
-  /**
-   * Evaluate link pose errors
-   * @param x Values containing:
-   *  wTp - previous (parent) link CoM pose
-   *  wTc - this (child) link CoM pose
-   *  q - joint angle
-   */
-  gtsam::Vector unwhitenedError(const gtsam::Values &x,
-                                boost::optional<std::vector<gtsam::Matrix> &>
-                                    H = boost::none) const override {
-    if (!this->active(x)) return gtsam::Vector6::Zero();
-
-    const gtsam::Pose3 wTp = x.at<gtsam::Pose3>(keys_[0]),
-                       wTc = x.at<gtsam::Pose3>(keys_[1]);
-    // TODO(frank): logmap derivative is close to identity when error is small
-    gtsam::Matrix6 wTc_hat_H_wTp, H_wTc_hat, H_wTc;
-    // TODO(gerry): figure out how to make this work better for dynamic matrices
-    gtsam::Matrix wTc_hat_H_q;
-    boost::optional<gtsam::Matrix &> wTc_hat_H_q_ref;
-    if (H) wTc_hat_H_q_ref = wTc_hat_H_q;
-
-    auto wTc_hat =
-        joint_->poseOf(joint_->child(), wTp, JointAngle(x, joint_->id(), t_),
-                       H ? &wTc_hat_H_wTp : 0, wTc_hat_H_q_ref);
-    gtsam::Vector6 error =
-        wTc.logmap(wTc_hat, H ? &H_wTc : 0, H ? &H_wTc_hat : 0);
-    if (H) {
-      (*H)[0] = H_wTc_hat * wTc_hat_H_wTp;
-      (*H)[1] = H_wTc;
-      (*H)[2] = H_wTc_hat * wTc_hat_H_q;
-    }
-    return error;
-  }
-
-  //// @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
-        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
-  }
 
   /// print contents
   void print(const std::string &s = "",

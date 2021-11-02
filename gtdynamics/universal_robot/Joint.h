@@ -19,6 +19,7 @@
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -365,6 +366,13 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     return isChildLink(link) ? parentPoseTwist(wTl, Vl, q, q_dot)
                              : childPoseTwist(wTl, Vl, q, q_dot);
   }
+
+  /**
+   * @brief Create expression that constraint the pose of two links imposed by
+   * the joint angle.
+   */
+  gtsam::Expression<gtsam::Vector6> poseConstraint(uint64_t t) const;
+
 };
 
 }  // namespace gtdynamics

@@ -14,6 +14,8 @@
  * @brief Absract representation of a robot joint.
  */
 
+#include <gtsam/slam/expressions.h>
+
 #include "gtdynamics/universal_robot/Joint.h"
 
 #include <iostream>
@@ -293,6 +295,27 @@ std::ostream &operator<<(std::ostream &os, const Joint &j) {
 /* ************************************************************************* */
 std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
   return j->to_stream(os);
+}
+
+/* ************************************************************************* */
+gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
+    uint64_t t) const {
+  using gtsam::Expression;
+  using gtsam::Pose3;
+  using gtsam::Pose3_;
+  using namespace std::placeholders;
+
+  // Get an expression for parent pose.
+  Pose3_ wTp(internal::PoseKey(parent()->id(), t));
+  Pose3_ wTc(internal::PoseKey(child()->id(), t));
+  gtsam::Double_ q(internal::JointAngleKey(id(), t));
+
+  // Compute the expected pose of the child link.
+  Pose3_ pTc(std::bind(&Joint::parentTchild, this, _1, _2), q);
+  Pose3_ wTc_hat = compose(wTp, pTc);
+
+  // Return the error in tangent space
+  return logmap(wTc, wTc_hat);
 }
 
 }  // namespace gtdynamics
