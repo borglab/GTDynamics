@@ -41,8 +41,8 @@ jobs:
 
           else
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
-            echo "CC=clang" >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
+            echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
           fi
 
       - name: Install Dependencies
