@@ -71,6 +71,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   friend class Robot;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   Link() {}
 
   /**

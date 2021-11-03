@@ -82,7 +82,6 @@ struct JointParams {
 
 /// Joint is the base class for a joint connecting two Link objects.
 class Joint : public boost::enable_shared_from_this<Joint> {
-
   /// Robot class should have access to the internals of its joints.
   friend class Robot;
 
@@ -126,6 +125,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   bool isChildLink(const LinkSharedPtr &link) const;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   Joint() {}
 
   /**
@@ -329,7 +330,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @param[in] t   The timestep for which to generate joint limit factors.
    * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @return joint limit factors.
-   * 
+   *
    * TODO(gerry): remove this out of Joint and into DynamicsGraph
    */
   gtsam::NonlinearFactorGraph jointLimitFactors(
@@ -343,8 +344,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Calculate pose/twist of child given parent pose/twist
   std::pair<gtsam::Pose3, gtsam::Vector6> childPoseTwist(
-      const gtsam::Pose3 &wTp, const gtsam::Vector6 &Vp,
-      double q, double q_dot) const {
+      const gtsam::Pose3 &wTp, const gtsam::Vector6 &Vp, double q,
+      double q_dot) const {
     const gtsam::Pose3 pTc = parentTchild(q);
     return {wTp * pTc, pTc.inverse().Adjoint(Vp) + childTwist(q_dot)};
   }
@@ -354,8 +355,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       const gtsam::Pose3 &wTc, const gtsam::Vector6 &Vc, double q,
       double q_dot) const {
     const gtsam::Pose3 pTc = parentTchild(q);
-    return {wTc * pTc.inverse(),
-            pTc.Adjoint(Vc) + parentTwist(q_dot)};
+    return {wTc * pTc.inverse(), pTc.Adjoint(Vc) + parentTwist(q_dot)};
   }
 
   /// Given link pose/twist, calculate pose/twist of other link

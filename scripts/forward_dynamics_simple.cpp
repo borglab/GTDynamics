@@ -12,7 +12,6 @@
  * @author Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

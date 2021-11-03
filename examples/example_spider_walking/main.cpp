@@ -12,7 +12,6 @@
  * Gandhi, Varun Agrawal
  */
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Trajectory.h>
