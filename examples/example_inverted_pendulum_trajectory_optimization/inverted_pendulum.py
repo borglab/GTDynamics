@@ -42,7 +42,7 @@ def torqueKey(id_, t=0):
     return gtd.internal.TorqueKey(id_, t).key()
 
 
-URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "urdfs")
+URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "models", "urdfs")
 
 
 def run(args):

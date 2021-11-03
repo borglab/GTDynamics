@@ -25,7 +25,7 @@ class TestLink(GtsamTestCase):
     """Test Simulator Class"""
 
     URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                         "urdfs")
+                         "models", "urdfs")
 
     def test_simulator(self):
         """Test simulating two steps on a simple one-link robot."""
