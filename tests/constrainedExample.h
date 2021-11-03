@@ -32,6 +32,7 @@ using gtsam::Vector1;
 using gtsam::Vector2;
 using gtsam::Vector2_;
 
+/// Exponential function e^x.
 double exp_func(const double& x,
                 gtsam::OptionalJacobian<1, 1> H1 = boost::none) {
   double result = exp(x);
@@ -39,20 +40,44 @@ double exp_func(const double& x,
   return result;
 }
 
-class ExpExpression : public Double_ {
+/// Exponential expression e^x.
+Double_ exp(const Double_& x) { return Double_(exp_func, x); }
+
+/// Pow functor used for pow function.
+class PowFunctor {
+ private:
+  double c_;
+
  public:
-  explicit ExpExpression(const Double_& e) : Double_(exp_func, e) {}
+  PowFunctor(const double& c) : c_(c) {}
+
+  double operator()(const double& x,
+                    gtsam::OptionalJacobian<1, 1> H1 = boost::none) const {
+    if (H1) H1->setConstant(c_ * pow(x, c_ - 1));
+    return pow(x, c_);
+  }
 };
+
+/// Pow function.
+Double_ pow(const Double_& x, const double& c) {
+  PowFunctor pow_functor(c);
+  return Double_(pow_functor, x);
+}
+
+/// Plus between Double expression and double.
+Double_ operator+(const Double_& x, const double& d) { return x + Double_(d); }
+
+/// Negative sign operator.
+Double_ operator-(const Double_& x) { return Double_(0.0) - x; }
 
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
 
-Double_ x1_expr(x1_key);
-Double_ x2_expr(x2_key);
-Double_ cost1_expr = x1_expr + ExpExpression(Double_(0.0) - x2_expr);
-Double_ cost2_expr = x1_expr * x1_expr + 2.0 * x2_expr + Double_(1.0);
-Double_ constraint1_expr =
-    x1_expr + x1_expr * x1_expr * x1_expr + x2_expr + x2_expr * x2_expr;
+/// Create cost and constraint expressions.
+Double_ x1(x1_key), x2(x2_key);
+Double_ cost1_expr = x1 + exp(-x2);
+Double_ cost2_expr = pow(x1, 2.0) + 2.0 * x2 + 1.0;
+Double_ constraint1_expr = x1 + pow(x1, 3) + x2 + pow(x2, 2);
 
 /// A 2-dimensional function that adds up 2 Vector2.
 Vector2_ x1_vec_expr(x1_key);
