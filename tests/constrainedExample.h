@@ -32,44 +32,52 @@ using gtsam::Vector1;
 using gtsam::Vector2;
 using gtsam::Vector2_;
 
-/** First cost function. */
-double cost1(const double &x1, const double &x2,
-             gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-             gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 + exp(-x2);
-  if (H_x1) H_x1->setConstant(1.0);
-  if (H_x2) H_x2->setConstant(-exp(-x2));
+/// Exponential function e^x.
+double exp_func(const double& x,
+                gtsam::OptionalJacobian<1, 1> H1 = boost::none) {
+  double result = exp(x);
+  if (H1) H1->setConstant(result);
   return result;
 }
 
-/** Second cost function. */
-double cost2(const double &x1, const double &x2,
-             gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-             gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 * x1 + 2 * x2 + 1;
-  if (H_x1) H_x1->setConstant(2 * x1);
-  if (H_x2) H_x2->setConstant(2.0);
-  return result;
+/// Exponential expression e^x.
+Double_ exp(const Double_& x) { return Double_(exp_func, x); }
+
+/// Pow functor used for pow function.
+class PowFunctor {
+ private:
+  double c_;
+
+ public:
+  PowFunctor(const double& c) : c_(c) {}
+
+  double operator()(const double& x,
+                    gtsam::OptionalJacobian<1, 1> H1 = boost::none) const {
+    if (H1) H1->setConstant(c_ * pow(x, c_ - 1));
+    return pow(x, c_);
+  }
+};
+
+/// Pow function.
+Double_ pow(const Double_& x, const double& c) {
+  PowFunctor pow_functor(c);
+  return Double_(pow_functor, x);
 }
 
-/** Constraint function g(x). */
-double constraint1(const double &x1, const double &x2,
-                   gtsam::OptionalJacobian<1, 1> H_x1 = boost::none,
-                   gtsam::OptionalJacobian<1, 1> H_x2 = boost::none) {
-  double result = x1 + x1 * x1 * x1 + x2 + x2 * x2;
-  if (H_x1) H_x1->setConstant(1 + 3 * x1 * x1);
-  if (H_x2) H_x2->setConstant(1 + 2 * x2);
-  return result;
-}
+/// Plus between Double expression and double.
+Double_ operator+(const Double_& x, const double& d) { return x + Double_(d); }
+
+/// Negative sign operator.
+Double_ operator-(const Double_& x) { return Double_(0.0) - x; }
 
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
 
-Double_ x1_expr(x1_key);
-Double_ x2_expr(x2_key);
-Double_ cost1_expr(cost1, x1_expr, x2_expr);
-Double_ cost2_expr(cost2, x1_expr, x2_expr);
-Double_ constraint1_expr(constraint1, x1_expr, x2_expr);
+/// Create cost and constraint expressions.
+Double_ x1(x1_key), x2(x2_key);
+Double_ cost1_expr = x1 + exp(-x2);
+Double_ cost2_expr = pow(x1, 2.0) + 2.0 * x2 + 1.0;
+Double_ constraint1_expr = x1 + pow(x1, 3) + x2 + pow(x2, 2);
 
 /// A 2-dimensional function that adds up 2 Vector2.
 Vector2_ x1_vec_expr(x1_key);
