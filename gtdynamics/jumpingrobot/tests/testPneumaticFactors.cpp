@@ -33,7 +33,9 @@ using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
 
 namespace example {
 auto cost_model = Isotropic::Sigma(1, 0.001);
-gtsam::Symbol p_key('p', 0), v_key('v', 0), m_key('m', 0), t_key('t', 0), to_key('t', 1), tc_key('t', 2), mdot_key('m', 1), true_mdot_key('m',2), pa_key('p', 1), ps_key('p', 2);
+gtsam::Symbol p_key('p', 0), v_key('v', 0), m_key('m', 0), t_key('t', 0),
+    to_key('t', 1), tc_key('t', 2), mdot_key('m', 1), true_mdot_key('m', 2),
+    pa_key('p', 1), ps_key('p', 2);
 }  // namespace example
 
 TEST(GasLawFactor, Factor) {
@@ -42,7 +44,8 @@ TEST(GasLawFactor, Factor) {
   double v = 5e-5;
   double m = 3;
 
-  GasLawFactor factor(example::p_key, example::v_key, example::m_key, example::cost_model, c);
+  GasLawFactor factor(example::p_key, example::v_key, example::m_key,
+                      example::cost_model, c);
 
   Vector1 actual_errors, expected_errors;
 
@@ -77,9 +80,9 @@ TEST(MassFlowRateFactor, Factor) {
   Vector1 actual_errors, expected_errors;
 
   actual_errors = factor.evaluateError(pa, ps, mdot);
-  expected_errors << -3.7545348620656125e-07;
+  expected_errors << 0.000623547;
 
-  // EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
   // Make sure linearization is correct
   Values values;
   values.insert(example::pa_key, pa);
@@ -107,9 +110,9 @@ TEST(MassFlowRateFactor, Negative) {
   Vector1 actual_errors, expected_errors;
 
   actual_errors = factor.evaluateError(pa, ps, mdot);
-  expected_errors << 3.7545348620656125e-07;
+  expected_errors << -0.000623547;
 
-  // EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-5));
   // Make sure linearization is correct
   Values values;
   values.insert(example::pa_key, pa);
@@ -127,7 +130,8 @@ TEST(ValveControlFactor, Factor) {
   double true_mdot = 1.5;
   double ct = 0.1;
 
-  ValveControlFactor factor(example::t_key, example::to_key, example::tc_key, example::mdot_key, example::true_mdot_key,
+  ValveControlFactor factor(example::t_key, example::to_key, example::tc_key,
+                            example::mdot_key, example::true_mdot_key,
                             example::cost_model, ct);
 
   Vector1 actual_errors, expected_errors;
