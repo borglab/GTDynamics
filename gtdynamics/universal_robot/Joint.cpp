@@ -298,10 +298,17 @@ std::ostream &operator<<(std::ostream &os, const JointSharedPtr &j) {
 }
 
 /* ************************************************************************* */
+// TODO(yetong): Remove the logmap and use the one in gtsam/slam/expressions.h.
+template <typename T>
+gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
+    const gtsam::Expression<T> &x1, const gtsam::Expression<T> &x2) {
+  return gtsam::Expression<typename gtsam::traits<T>::TangentVector>(
+      gtsam::traits<T>::Logmap, between(x1, x2));
+}
+
+/* ************************************************************************* */
 gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
     uint64_t t) const {
-  using gtsam::Expression;
-  using gtsam::Pose3;
   using gtsam::Pose3_;
   using namespace std::placeholders;
 
@@ -312,10 +319,10 @@ gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
 
   // Compute the expected pose of the child link.
   Pose3_ pTc(std::bind(&Joint::parentTchild, this, _1, _2), q);
-  Pose3_ wTc_hat = compose(wTp, pTc);
+  Pose3_ wTc_hat = wTp * pTc;
 
   // Return the error in tangent space
-  return logmap(wTc, wTc_hat);
+  return gtdynamics::logmap(wTc, wTc_hat);
 }
 
 }  // namespace gtdynamics

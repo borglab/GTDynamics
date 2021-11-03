@@ -32,71 +32,44 @@ namespace gtdynamics {
 using boost::assign::cref_list_of;
 
 /**
+ * Create single factor relating this link's pose (COM) with previous one.
+ * Note: this function is provided for BW compatibility only, and will in time
+ * be replaced with EqualityConstraint.
+ *
  * PoseFactor is a three-way nonlinear factor between a joint's parent link
  * pose, child link pose, and the joint angle relating the two poses.
  *
  * Given the joint model, this factor optimizes for the underlying joint axis
  * and the corresponding poses of the parent and child links.
+ *
+ * @param cost_model The noise model for this factor.
+ * @param joint The joint connecting the two poses.
+ * @param time The timestep at which this factor is defined.
  */
-class PoseFactor : public gtsam::ExpressionFactor<gtsam::Vector6> {
- private:
-  using This = PoseFactor;
-  using Base = gtsam::ExpressionFactor<gtsam::Vector6>;
-
-  int t_;
-  JointConstSharedPtr joint_;
-
- public:
-  /**
-   * Create single factor relating this link's pose (COM) with previous one.
-   *
-   * @param cost_model The noise model for this factor.
-   * @param joint The joint connecting the two poses.
-   * @param time The timestep at which this factor is defined.
-   */
-  PoseFactor(const gtsam::SharedNoiseModel &cost_model,
-             const JointConstSharedPtr &joint, int time)
-      : Base(cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time)),
-        t_(time),
-        joint_(joint) {}
+inline gtsam::ExpressionFactor<gtsam::Vector6> PoseFactor(const gtsam::SharedNoiseModel &cost_model,
+             const JointConstSharedPtr &joint, int time) {
+  return gtsam::ExpressionFactor<gtsam::Vector6>(
+      cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time));
+}
 
   /**
    * Create single factor relating this link's pose (COM) with previous one.
-   *
-   * Please use the joint based constructor above if possible.
-   *
+   * Note: this function is provided for BW compatibility only, and will in time
+   * be replaced with EqualityConstraint.
+   * 
    * @param wTp_key Key for parent link's CoM pose in world frame.
    * @param wTc_key Key for child link's CoM pose in world frame.
    * @param q_key Key for joint value.
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses
    */
-  PoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
+inline gtsam::ExpressionFactor<gtsam::Vector6>  PoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
              DynamicsSymbol q_key,
              const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             JointConstSharedPtr joint)
-      : Base(cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(wTp_key.time())),
-        t_(wTp_key.time()),
-        joint_(joint) {}
-
-  virtual ~PoseFactor() {}
-
-  /// print contents
-  void print(const std::string &s = "",
-             const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
-    std::cout << (s.empty() ? s : s + " ") << "Pose Factor" << std::endl;
-    Base::print("", keyFormatter);
-  }
-
- private:
-  /// Serialization function
-  friend class boost::serialization::access;
-  template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
-    ar &boost::serialization::make_nvp(
-        "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
-  }
-};
+             JointConstSharedPtr joint) {
+  return gtsam::ExpressionFactor<gtsam::Vector6>(
+             cost_model, gtsam::Vector6::Zero(),
+             joint->poseConstraint(wTp_key.time()));
+}
 
 }  // namespace gtdynamics
