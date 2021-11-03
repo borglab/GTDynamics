@@ -11,26 +11,25 @@ jobs:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      GTSAM_BUILD_UNSTABLE: ${{ matrix.build_unstable }}
+
     strategy:
       fail-fast: false
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-9]
+        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10]
 
         build_type: [Debug, Release]
-        build_unstable: [ON]
         include:
           - name: ubuntu-18.04-gcc-9
             os: ubuntu-18.04
             compiler: gcc
             version: "9"
 
-          - name: ubuntu-18.04-clang-9
+          - name: ubuntu-18.04-clang-10
             os: ubuntu-18.04
             compiler: clang
-            version: "9"
+            version: "10"
 
     steps:
       - name: Setup Compiler
@@ -42,8 +41,8 @@ jobs:
 
           else
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
-            echo "CC=clang" >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
+            echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
           fi
 
       - name: Install Dependencies
@@ -60,7 +59,7 @@ jobs:
           git clone https://github.com/borglab/gtsam.git
           cd gtsam
           mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_WITH_TBB=OFF ..
           sudo make -j$(nproc) install
           sudo ldconfig
           cd ../../ # go back to home directory
