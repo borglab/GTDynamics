@@ -310,7 +310,6 @@ gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
 gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
     uint64_t t) const {
   using gtsam::Pose3_;
-  using namespace std::placeholders;
 
   // Get an expression for parent pose.
   Pose3_ wTp(internal::PoseKey(parent()->id(), t));
@@ -318,7 +317,9 @@ gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
   gtsam::Double_ q(internal::JointAngleKey(id(), t));
 
   // Compute the expected pose of the child link.
-  Pose3_ pTc(std::bind(&Joint::parentTchild, this, _1, _2), q);
+  Pose3_ pTc(std::bind(&Joint::parentTchild, this, std::placeholders::_1,
+                       std::placeholders::_2),
+             q);
   Pose3_ wTc_hat = wTp * pTc;
 
   // Return the error in tangent space
