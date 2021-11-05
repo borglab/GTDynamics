@@ -29,7 +29,9 @@ using gtsam::Pose3;
 
 sdf::Model GetSdf(const std::string &sdf_file_path,
                   const std::string &model_name) {
-  auto sdf = sdf::readFile(sdf_file_path);
+  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
+  if (sdf==nullptr)
+    throw std::runtime_error("SDF library could not parse " + sdf_file_path);
 
   sdf::Model model = sdf::Model();
   model.Load(sdf->Root()->GetElement("model"));
