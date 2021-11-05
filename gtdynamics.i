@@ -694,17 +694,17 @@ class DynamicsSymbol {
 };
 
 namespace internal {
-  gtdynamics::DynamicsSymbol JointAngleKey(int j, int t);
-  gtdynamics::DynamicsSymbol JointVelKey(int j, int t);
-  gtdynamics::DynamicsSymbol JointAccelKey(int j, int t);
-  gtdynamics::DynamicsSymbol TorqueKey(int j, int t);
-  gtdynamics::DynamicsSymbol TwistKey(int i, int t);
-  gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t);
-  gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t);
-  gtdynamics::DynamicsSymbol PoseKey(int i, int t);
+  gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
+  gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
+  gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
+  gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
+  gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
+  gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
+  gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
+  gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
 }
 
-gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t);
+gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t=0);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);
 
@@ -713,63 +713,63 @@ void InsertJointAngle(gtsam::Values@ values, int j, int t, double value);
 
 void InsertJointAngle(gtsam::Values @values, int j, double value);
 
-gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t=0);
 
-double JointAngle(const gtsam::Values &values, int j, int t);
+double JointAngle(const gtsam::Values &values, int j, int t=0);
 
 void InsertJointVel(gtsam::Values @values, int j, int t, double value);
 
 void InsertJointVel(gtsam::Values @values, int j, double value);
 
-gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t=0);
 
-double JointVel(const gtsam::Values &values, int j, int t);
+double JointVel(const gtsam::Values &values, int j, int t=0);
 
 void InsertJointAccel(gtsam::Values @values, int j, int t, double value);
 
 void InsertJointAccel(gtsam::Values @values, int j, double value);
 
-gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t=0);
 
-double JointAccel(const gtsam::Values &values, int j, int t);
+double JointAccel(const gtsam::Values &values, int j, int t=0);
 
 void InsertTorque(gtsam::Values @values, int j, int t, double value);
 
 void InsertTorque(gtsam::Values @values, int j, double value);
 
-gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t=0);
 
-double Torque(const gtsam::Values &values, int j, int t);
+double Torque(const gtsam::Values &values, int j, int t=0);
 
 void InsertPose(gtsam::Values @values, int i, int t, gtsam::Pose3 value);
 
 void InsertPose(gtsam::Values @values, int i, gtsam::Pose3 value);
 
-gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t);
+gtsam::Pose3 Pose(const gtsam::Values &values, int i, int t=0);
 
 void InsertTwist(gtsam::Values @values, int j, int t, gtsam::Vector6 value);
 
 void InsertTwist(gtsam::Values @values, int j, gtsam::Vector6 value);
 
-gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector Twist(const gtsam::VectorValues &values, int j, int t=0);
 
-gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t);
+gtsam::Vector6 Twist(const gtsam::Values &values, int j, int t=0);
 
 void InsertTwistAccel(gtsam::Values @values, int j, int t, gtsam::Vector6 value);
 
 void InsertTwistAccel(gtsam::Values @values, int j, gtsam::Vector6 value);
 
-gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t);
+gtsam::Vector TwistAccel(const gtsam::VectorValues &values, int j, int t=0);
 
-gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t);
+gtsam::Vector6 TwistAccel(const gtsam::Values &values, int j, int t=0);
 
 void InsertWrench(gtsam::Values @values, int i, int j, int t, gtsam::Vector6 value);
 
 void InsertWrench(gtsam::Values @values, int i, int j, gtsam::Vector6 value);
 
-gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t);
+gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j, int t=0);
 
-gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t);
+gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t=0);
 
 /********************** Simulator **********************/
 #include <gtdynamics/dynamics/Simulator.h>
