@@ -10,7 +10,8 @@
 """
 
 # pylint: disable=no-name-in-module, import-error, no-member
-import os.path as osp
+from pathlib import Path
+import unittest
 
 import numpy as np
 import gtsam
@@ -22,11 +23,12 @@ import gtdynamics as gtd
 
 class TestRobot(GtsamTestCase):
     """Tests related to specific robot config."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
-        self.robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
+        model_file = Path(gtd.URDF_PATH) / "a1.urdf"
+        self.robot = gtd.CreateRobotFromFile(str(model_file))
         self.base_name = "trunk"
 
         self.joint_angles = gtsam.Values()
@@ -75,3 +77,7 @@ class TestRobot(GtsamTestCase):
         graph = gtsam.NonlinearFactorGraph()
         graph.push_back(factor)
         np.testing.assert_almost_equal(graph.error(values), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
