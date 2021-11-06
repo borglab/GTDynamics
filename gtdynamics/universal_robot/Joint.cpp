@@ -50,38 +50,33 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
 
 
 /* ************************************************************************* */
-Pose3 Joint::parentTchild(
-    double q, gtsam::OptionalJacobian<6, 1> pMc_H_q) const {
-  // Calculate pose of child in parent link, at rest.
-  // TODO(dellaert): store `pMj_` rather than `jMp_`.
-  // NOTE(dellaert): Only if this is called more often than childTparent.
-  const Pose3 pMc = jMp_.inverse() * jMc_;
-
+Pose3 Joint::parentTchild(double q,
+                          gtsam::OptionalJacobian<6, 1> pTc_H_q) const {
   // Multiply screw axis with joint angle to get a finite 6D screw.
   const Vector6 screw = cScrewAxis_ * q;
 
   // Calculate the actual relative pose taking into account the joint angle.
   // TODO(dellaert): use formula `pMj_ * screw_around_Z * jMc_`.
   gtsam::Matrix6 exp_H_screw;
-  const Pose3 exp = Pose3::Expmap(screw, pMc_H_q ? &exp_H_screw : 0);
-  if (pMc_H_q) {
-    *pMc_H_q = exp_H_screw * cScrewAxis_;
+  const Pose3 exp = Pose3::Expmap(screw, pTc_H_q ? &exp_H_screw : 0);
+  if (pTc_H_q) {
+    *pTc_H_q = exp_H_screw * cScrewAxis_;
   }
-  return pMc * exp;  // Note: derivative of compose in exp is identity.
+  return pMc() * exp;  // Note: derivative of compose in exp is identity.
 }
 
 /* ************************************************************************* */
-Pose3 Joint::childTparent(
-    double q, gtsam::OptionalJacobian<6, 1> cMp_H_q) const {
+Pose3 Joint::childTparent(double q,
+                          gtsam::OptionalJacobian<6, 1> cTp_H_q) const {
   // TODO(frank): don't go via inverse, specialize in base class
-  Vector6 pMc_H_q;
-  Pose3 pMc = parentTchild(q, cMp_H_q ? &pMc_H_q : 0);  // pMc(q)    ->  pMc_H_q
-  gtsam::Matrix6 cMp_H_pMc;
-  Pose3 cMp = pMc.inverse(cMp_H_q ? &cMp_H_pMc : 0);  // cMp(pMc)  ->  cMp_H_pMc
-  if (cMp_H_q) {
-    *cMp_H_q = cMp_H_pMc * pMc_H_q;
+  Vector6 pTc_H_q;
+  Pose3 pTc = parentTchild(q, cTp_H_q ? &pTc_H_q : 0);  // pTc(q) ->  pTc_H_q
+  gtsam::Matrix6 cTp_H_pTc;
+  Pose3 cTp = pTc.inverse(cTp_H_q ? &cTp_H_pTc : 0);  // cTp(pTc) ->  cTp_H_pTc
+  if (cTp_H_q) {
+    *cTp_H_q = cTp_H_pTc * pTc_H_q;
   }
-  return cMp;
+  return cTp;
 }
 
 /* ************************************************************************* */
