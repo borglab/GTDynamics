@@ -47,6 +47,18 @@ class Serial():
             result = result.expmap(axis_j * q_j)
         return result.compose(self.sTe)
 
+    def joint_from_ee(self, q: np.ndarray, j=0, J: Optional[np.ndarray] = None):
+        """ Calculate jTe, the pose of the end-effector in joint frame j.
+
+        Arguments:
+            q (np.ndarray): joint angles for all joints.
+            j (int): base 1 joint index, where j==0 signified base frame.
+            J: optionally, the manipulator Jacobian.
+        Returns:
+            jTe (Pose3)
+        """
+        return Pose3()
+
 
 class TestSerial(GtsamTestCase):
     """Test Serial FK in GTD context."""
@@ -63,6 +75,18 @@ class TestSerial(GtsamTestCase):
         # Create serial sub-system
         self.serial = Serial(self.robot, self.base_name)
 
+    def test_joint_from_ee(self):
+        """Test forward kinematics with random configuration."""
+        q = [0.0]*7  # [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+        joint_angles = self.JointAngles(q)
+
+        # Conventional FK with GTSAM.
+        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+
+        # FK with POE.
+        poe_sT7 = self.serial.joint_from_ee(q=np.array(q))
+        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+
     @staticmethod
     def JointAngles(q: list):
         """Create Values with joint angles."""
@@ -71,67 +95,67 @@ class TestSerial(GtsamTestCase):
             gtd.InsertJointAngle(joint_angles, j, q_j)
         return joint_angles
 
-    def test_forward_kinematics_at_rest(self):
-        """Test forward kinematics at rest."""
+    # def test_forward_kinematics_at_rest(self):
+    #     """Test forward kinematics at rest."""
 
-        # First check link 0 is fixed:
-        self.assertTrue(self.robot.link("link0").isFixed())
+    #     # First check link 0 is fixed:
+    #     self.assertTrue(self.robot.link("link0").isFixed())
 
-        # Check FK at rest, Conventional FK with GTSAM.
-        joint_angles = self.JointAngles(np.zeros((7,)))
-        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
-        # Use this to print: fk.print("fk", gtd.GTDKeyFormatter)
-        sR7 = Rot3([
-            [1, 0, 0],
-            [0, -1, 0],
-            [0, 0, -1]
-        ])
-        expected_sT7 = Pose3(sR7, Point3(0.0882972, 0.00213401, 0.933844))
-        actual_sT7 = gtd.Pose(fk, 7)
-        self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
+    #     # Check FK at rest, Conventional FK with GTSAM.
+    #     joint_angles = self.JointAngles(np.zeros((7,)))
+    #     fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+    #     # Use this to print: fk.print("fk", gtd.GTDKeyFormatter)
+    #     sR7 = Rot3([
+    #         [1, 0, 0],
+    #         [0, -1, 0],
+    #         [0, 0, -1]
+    #     ])
+    #     expected_sT7 = Pose3(sR7, Point3(0.0882972, 0.00213401, 0.933844))
+    #     actual_sT7 = gtd.Pose(fk, 7)
+    #     self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
 
-        # Check end-effector at rest in serial sub-system.
-        self.gtsamAssertEquals(self.serial.sTe, expected_sT7, tol=1e-3)
+    #     # Check end-effector at rest in serial sub-system.
+    #     self.gtsamAssertEquals(self.serial.sTe, expected_sT7, tol=1e-3)
 
-        # FK with POE.
-        poe_sT7 = self.serial.poe(q=np.zeros((7,)))
-        self.gtsamAssertEquals(poe_sT7, expected_sT7, tol=1e-3)
+    #     # FK with POE.
+    #     poe_sT7 = self.serial.poe(q=np.zeros((7,)))
+    #     self.gtsamAssertEquals(poe_sT7, expected_sT7, tol=1e-3)
 
-    def test_forward_kinematics_joint0(self):
-        """Test forward kinematics with non-zero joint0 angle."""
-        q = [np.pi/2, 0, 0, 0, 0, 0, 0]
-        joint_angles = self.JointAngles(q)
+    # def test_forward_kinematics_joint0(self):
+    #     """Test forward kinematics with non-zero joint0 angle."""
+    #     q = [np.pi/2, 0, 0, 0, 0, 0, 0]
+    #     joint_angles = self.JointAngles(q)
 
-        # Conventional FK with GTSAM.
-        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+    #     # Conventional FK with GTSAM.
+    #     fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
 
-        # FK with POE.
-        poe_sT7 = self.serial.poe(q=np.array(q))
-        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+    #     # FK with POE.
+    #     poe_sT7 = self.serial.poe(q=np.array(q))
+    #     self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
 
-    def test_forward_kinematics_middle(self):
-        """Test forward kinematics with middle joint rotated."""
-        q = [0, 0, 0, 0, np.pi/2, 0, 0]
-        joint_angles = self.JointAngles(q)
+    # def test_forward_kinematics_middle(self):
+    #     """Test forward kinematics with middle joint rotated."""
+    #     q = [0, 0, 0, 0, np.pi/2, 0, 0]
+    #     joint_angles = self.JointAngles(q)
 
-        # Conventional FK with GTSAM.
-        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+    #     # Conventional FK with GTSAM.
+    #     fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
 
-        # FK with POE.
-        poe_sT7 = self.serial.poe(q=np.array(q))
-        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+    #     # FK with POE.
+    #     poe_sT7 = self.serial.poe(q=np.array(q))
+    #     self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
 
-    def test_forward_kinematics_random(self):
-        """Test forward kinematics with random configuration."""
-        q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
-        joint_angles = self.JointAngles(q)
+    # def test_forward_kinematics_random(self):
+    #     """Test forward kinematics with random configuration."""
+    #     q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+    #     joint_angles = self.JointAngles(q)
 
-        # Conventional FK with GTSAM.
-        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+    #     # Conventional FK with GTSAM.
+    #     fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
 
-        # FK with POE.
-        poe_sT7 = self.serial.poe(q=np.array(q))
-        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+    #     # FK with POE.
+    #     poe_sT7 = self.serial.poe(q=np.array(q))
+    #     self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
 
 
 if __name__ == "__main__":
