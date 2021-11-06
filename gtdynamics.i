@@ -246,6 +246,12 @@ virtual class Joint {
   uint8_t id() const;
   const gtsam::Pose3 &jMp() const;
   const gtsam::Pose3 &jMc() const;
+  gtsam::Pose3 pMc() const;
+  string name() const;
+  const Vector& pScrewAxis() const;
+  const Vector& cScrewAxis() const;
+  Vector screwAxis(const gtdynamics::Link *link) const;
+  gtsam::Key key() const;
   string name() const;
   gtdynamics::Link* otherLink(const gtdynamics::Link* link);
   std::vector<gtdynamics::Link*> links() const;

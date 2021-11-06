@@ -159,14 +159,23 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Get the joint's ID.
   uint8_t id() const { return id_; }
 
-  /// Transform from the joint frame to the parent's center of mass.
+  /// Return (unchanging) pose of the parent link's COM in the joint frame.
   const Pose3 &jMp() const { return jMp_; }
 
-  /// Transform from the joint frame to the child's center of mass.
+  /// Return (unchanging) pose of the child link's COM in the joint frame.
   const Pose3 &jMc() const { return jMc_; }
 
-  /// Return screw axis expressed in the specified link frame
-  const Vector6 screwAxis(const LinkSharedPtr &link) const {
+  /// Return pose of child in parent link, at rest.
+  Pose3 pMc() const { return jMp_.between(jMc_); }
+
+  /// Return screw axis in parent link frame.
+  const Vector6 &pScrewAxis() const { return pScrewAxis_; }
+
+  /// Return screw axis in child link frame.
+  const Vector6 &cScrewAxis() const { return cScrewAxis_; }
+
+  /// Return screw axis expressed in the specified link frame.
+  Vector6 screwAxis(const LinkSharedPtr &link) const {
     return isChildLink(link) ? cScrewAxis_ : pScrewAxis_;
   }
 
