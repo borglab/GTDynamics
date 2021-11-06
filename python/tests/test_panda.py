@@ -50,4 +50,5 @@ class TestSerial(GtsamTestCase):
         self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
 
 
-unittest.main(argv=[''], verbosity=1, exit=False)
+if __name__ == "__main__":
+    unittest.main()
