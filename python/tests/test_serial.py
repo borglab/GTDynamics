@@ -24,28 +24,54 @@ class Serial():
 
     def __init__(self, robot: gtd.Robot, base_name: str):
         """Initialize from a robot with given base link"""
+        joints = robot.joints()
+        base_link = robot.link(base_name)
+
         # Calculate all joint screw axes at rest, in base frame:
-        self.axes = []
-        sTl = robot.link(base_name).bMcom()
-        for joint in robot.joints():
+        self.s_axes = []
+        sTl = base_link.bMcom()
+        for joint in joints:
             # Calculate next link, at rest:
             sTl = sTl.compose(joint.pMc())
-            # Translate joint axis, expressed in child frame, to base.
-            axis_j = sTl.Adjoint(joint.cScrewAxis())
-            self.axes.append(axis_j)
+            # Translate joint axis, expressed in child frame, to base_link.
+            s_axis_j = sTl.Adjoint(joint.cScrewAxis())
+            self.s_axes.append(s_axis_j)
 
-        # end-effector (for now) is just last link
+        # End-effector (for now) is just last link.
         self.sTe = sTl
+
+        # Calculate all axes in their own frame:
+        self.axes = [joint.jMc().Adjoint(joint.cScrewAxis())
+                     for joint in joints]
+
+        # Calculate transforms between joints.
+        # First is 0T1, from base frame to joint 1 frame
+        self.next = [base_link.bMcom().compose(joints[0].jMp().inverse())]
+        # Then we add 1T2, 2T3, 3T4, 4T5, 5T6, 6T7 for a 7 DOF arm:
+        for joint1, joint2 in zip(joints[:-1], joints[1:]):
+            self.next.append(joint1.jMc().compose(joint2.jMp().inverse()))
+        # We then add one more to get 7TE
+        self.next.append(joints[-1].jMc())
 
     def poe(self, q: np.ndarray):
         """ Forward kinematics.
             Takes numpy array of joint angles, in radians.
         """
-        assert q.shape == (len(self.axes),), f"q has wrong shape {q.shape}"
+        assert q.shape == (len(self.s_axes),), f"q has wrong shape {q.shape}"
         result = Pose3()
-        for axis_j, q_j in zip(self.axes, q):
+        for axis_j, q_j in zip(self.s_axes, q):
             result = result.expmap(axis_j * q_j)
         return result.compose(self.sTe)
+
+    def joint_from_next(self, q: np.ndarray, j=0):
+        """Return pose of next joint j+1 in this joint's frame.
+
+        Arguments:
+            q (np.ndarray): joint angles for all joints.
+            j (int): base 1 joint index, where j==0 signified base frame.
+        """
+        assert j >= 0 and j <= len(q)
+        return self.next[j].expmap(self.axes[j] * q[j])
 
     def joint_from_ee(self, q: np.ndarray, j=0, J: Optional[np.ndarray] = None):
         """ Calculate jTe, the pose of the end-effector in joint frame j.
@@ -57,7 +83,17 @@ class Serial():
         Returns:
             jTe (Pose3)
         """
-        return Pose3()
+        assert(type(q) == np.ndarray)
+        assert(type(j) == int)
+        num_joints = len(q)
+        assert q.shape == (num_joints,)
+        assert J is None or J.shape == (6, num_joints)
+
+        jTe = self.next[-1] if j == num_joints else \
+            self.joint_from_next(q, j).compose(self.joint_from_ee(q, j+1, J))
+        if j != 0 and J is not None:
+            J[:, j-1] = jTe.inverse().Adjoint(self.axes[j-1])
+        return jTe
 
 
 class TestSerial(GtsamTestCase):
@@ -76,16 +112,32 @@ class TestSerial(GtsamTestCase):
         self.serial = Serial(self.robot, self.base_name)
 
     def test_joint_from_ee(self):
-        """Test forward kinematics with random configuration."""
-        q = [0.0]*7  # [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+        """Test joint_from_ee at rest."""
+        q = [0.0]*7
         joint_angles = self.JointAngles(q)
 
         # Conventional FK with GTSAM.
         fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
 
         # FK with POE.
-        poe_sT7 = self.serial.joint_from_ee(q=np.array(q))
+        J = np.ones((6, 7))
+        poe_sT7 = self.serial.joint_from_ee(np.array(q), 0, J)
         self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+        print("J:\n", np.round(J, 3))
+
+    def test_joint_from_ee_random(self):
+        """Test joint_from_ee with random configuration."""
+        q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+        joint_angles = self.JointAngles(q)
+
+        # Conventional FK with GTSAM.
+        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+
+        # FK with POE.
+        J = np.full((6, 7), np.NaN, float)
+        poe_sT7 = self.serial.joint_from_ee(np.array(q), 0, J)
+        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+        print("J:\n", np.round(J, 3))
 
     @staticmethod
     def JointAngles(q: list):
