@@ -22,13 +22,14 @@ import gtdynamics as gtd
 
 class TestRobot(GtsamTestCase):
     """Tests for the Robot class."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
         self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
 
     def test_forward_kinematics(self):
-        """Test if forward kinematics are correct via comparison to a 3rd party library."""
+        """Test if FK is correct via comparison to a 3rd party library."""
         robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
 
         th = {}
@@ -47,14 +48,14 @@ class TestRobot(GtsamTestCase):
         for idx, joint in enumerate(joints):
             th[joint] = joint_angles[idx]
             gtd.InsertJointAngle(joint_angles_values,
-                                       robot.joint(joint).id(),
-                                       joint_angles[idx])
+                                 robot.joint(joint).id(),
+                                 joint_angles[idx])
 
         # Forward kinematics via GTDynamics.
         fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")
 
-        # Transform from lower link CoM frame to CoM of combined lower+toe link.
-        # Lower and toe links are combined since they are connected by a fixed joint.
+        # Transform from lower link CoM to CoM of combined lower+toe link.
+        # Lower + toe links are combined as they are connected by fixed joint.
         lowerTcom = Pose3(Rot3(), Point3(-0.00170571, 4.63725e-07, -0.0245871))
 
         # Dict of link-transforms where the transform is
