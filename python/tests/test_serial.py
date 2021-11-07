@@ -123,7 +123,13 @@ class TestSerial(GtsamTestCase):
         J = np.ones((6, 7))
         poe_sT7 = self.serial.joint_from_ee(np.array(q), 0, J)
         self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
-        print("J:\n", np.round(J, 3))
+
+        # Check derivative
+        q[0]+=0.01
+        poe_sT7_plus = self.serial.joint_from_ee(np.array(q), 0, J)
+        delta = poe_sT7.logmap(poe_sT7_plus)/0.01
+        np.testing.assert_allclose(J[:,0], delta, atol=0.01)
+
 
     def test_joint_from_ee_random(self):
         """Test joint_from_ee with random configuration."""
@@ -137,8 +143,13 @@ class TestSerial(GtsamTestCase):
         J = np.full((6, 7), np.NaN, float)
         poe_sT7 = self.serial.joint_from_ee(np.array(q), 0, J)
         self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
-        print("J:\n", np.round(J, 3))
 
+        # Check derivative
+        q[0]+=0.01
+        poe_sT7_plus = self.serial.joint_from_ee(np.array(q), 0, J)
+        delta = poe_sT7.logmap(poe_sT7_plus)/0.01
+        np.testing.assert_allclose(J[:,0], delta)
+        
     @staticmethod
     def JointAngles(q: list):
         """Create Values with joint angles."""
