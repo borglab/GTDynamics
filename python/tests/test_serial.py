@@ -11,7 +11,7 @@
 
 import unittest
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import gtdynamics as gtd
 import numpy as np
@@ -19,18 +19,10 @@ from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
 
 
-def compose(A, B):
-    """Monoid operation for pose,Jacobian pairs"""
+def compose(A: Tuple[Pose3, np.ndarray], B: Tuple[Pose3, np.ndarray]):
+    """Monoid operation for pose,Jacobian pairs."""
     aTb, bJa = A
     bTs, sJb = B
-    assert isinstance(aTb, Pose3)
-    assert isinstance(bTs, Pose3)
-    assert isinstance(bJa, np.ndarray), f"bJa: {type(bJa)}"
-    assert isinstance(sJb, np.ndarray), f"sJb: {type(sJb)}"
-    assert len(bJa.shape) == 2, f"bJa not 2 {bJa.shape}, {sJb.shape}"
-    assert len(sJb.shape) == 2, f"sJb not 2 {bJa.shape}, {sJb.shape}"
-    assert bJa.shape[0] == 6, f"bJa not 6 {bJa.shape}, {sJb.shape}"
-    assert sJb.shape[0] == 6, f"sJb not 6 {bJa.shape}, {sJb.shape}"
     s_Ad_b = bTs.inverse().AdjointMap()
     return aTb.compose(bTs), np.hstack((s_Ad_b @ bJa, sJb))
 
@@ -183,8 +175,8 @@ class TestSerial(GtsamTestCase):
 
         # Check derivatives
         q[0] += 0.01
-        poe_sT7_plus = self.serial.poe(np.array(q))
-        xi_0 = poe_sT7.logmap(poe_sT7_plus)/0.01
+        T_plus = self.serial.poe(np.array(q))
+        xi_0 = expected.logmap(T_plus)/0.01
         np.testing.assert_allclose(poe_J[:, 0], xi_0, atol=0.01)
         np.testing.assert_allclose(g_J[:, 0], xi_0, atol=0.01)
 
@@ -203,6 +195,39 @@ class TestSerial(GtsamTestCase):
     def test_forward_kinematics_random(self):
         """Test forward kinematics with random configuration."""
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7])
+
+    def test_panda_decomposition(self):
+        """Test composition of Panda as shoulder and arm"""
+        q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+        joint_angles = self.JointAngles(q)
+
+        # Conventional FK with GTSAM.
+        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+        expected = gtd.Pose(fk, 7)
+
+        # FK with monoid.
+        q = np.array(q)
+        A = np.vstack(self.serial.axes)
+        shoulder = self.serial.f(A[:3], q[:3])
+        arm = self.serial.f(A[3:], q[3:])
+        f_7Ts = shoulder.compose(arm).compose(self.serial.sTe)
+        self.gtsamAssertEquals(f_7Ts, expected, tol=1e-3)
+
+        # FK + Jacobian with monoid.
+        shoulder = self.serial.g(A[:3], q[:3])
+        print(f"shoulder J:\n{np.round(shoulder[1],3)}")
+        arm = self.serial.g(A[3:], q[3:])
+        print(f"arm J:\n{np.round(arm[1],3)}")
+        g_7Ts, g_J = compose(compose(shoulder, arm),
+                             (self.serial.sTe, np.zeros((6, 0))))
+        print(f"panda J:\n{np.round(g_J,3)}")
+        self.gtsamAssertEquals(g_7Ts, expected, tol=1e-3)
+
+        # Check derivatives
+        q[0] += 0.01
+        T_plus = self.serial.poe(np.array(q))
+        xi_0 = expected.logmap(T_plus)/0.01
+        np.testing.assert_allclose(g_J[:, 0], xi_0, atol=0.01)
 
 
 if __name__ == "__main__":
