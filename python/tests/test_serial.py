@@ -36,14 +36,17 @@ class Serial():
         base_link = robot.link(base_name)
 
         # Calculate all joint screw axes at rest, in base frame:
-        self.axes = []
+        axes = []
         sTl = base_link.bMcom()
         for joint in joints:
             # Calculate next link, at rest:
             sTl = sTl.compose(joint.pMc())
             # Translate joint axis, expressed in child frame, to base_link.
             s_axis_j = sTl.Adjoint(joint.cScrewAxis())
-            self.axes.append(s_axis_j)
+            axes.append(s_axis_j)
+
+        # Store axes as an array
+        self.A = np.vstack(axes)
 
         # End-effector (for now) is just last link.
         self.sTe = sTl
@@ -61,17 +64,17 @@ class Serial():
         Returns:
             jTe (Pose3)
         """
-        j = len(q)  # joint number counting from last, base 1.
-        if j == 0:
-            # no more joints, return end-effector pose:
-            return sTe if sTe is not None else self.sTe
-        # Do recursive call and then transform according to this joint.
-        axis = self.axes[-j]
-        T = Pose3.Expmap(axis * q[0]).compose(self.poe(q[1:], sTe=sTe, J=J))
-        # Fill in optional Jacobian, if asked.
-        if J is not None:
-            J[:, -j] = T.inverse().Adjoint(axis)
-        return T
+        if sTe is None:
+            sTe = self.sTe
+        if J is None:
+            # FK with monoid.
+            return self.f(self.A, q).compose(sTe)
+        else:
+            # FK + Jacobian with monoid.
+            sTeJ = sTe, np.zeros((6, 0))
+            T, G = compose(self.g(self.A, q), sTeJ)
+            J[:, :] = G
+            return T
 
     @staticmethod
     def f(A: np.ndarray, q: np.ndarray):
@@ -150,9 +153,10 @@ class TestSerial(GtsamTestCase):
         actual_sT7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
 
-    def check_poe(self, q):
+    def check_poe(self, q_list):
         """Test FK with POE"""
-        joint_angles = self.JointAngles(q)
+        joint_angles = self.JointAngles(q_list)
+        q = np.array(q_list)
 
         # Conventional FK with GTSAM.
         fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
@@ -160,22 +164,24 @@ class TestSerial(GtsamTestCase):
 
         # FK with POE.
         poe_J = np.zeros((6, 7))
-        poe_sT7 = self.serial.poe(q=np.array(q), J=poe_J)
+        poe_sT7 = self.serial.poe(q=q, J=poe_J)
         self.gtsamAssertEquals(poe_sT7, expected, tol=1e-3)
 
         # FK with monoid.
-        A = np.vstack(self.serial.axes)
-        f_7Ts = self.serial.f(A, np.array(q)).compose(self.serial.sTe)
+        A = self.serial.A
+        f_7Ts = self.serial.f(A, q).compose(self.serial.sTe)
         self.gtsamAssertEquals(f_7Ts, expected, tol=1e-3)
 
         # FK + Jacobian with monoid.
-        g_7Ts, g_J = compose(self.serial.g(A, np.array(q)),
+        g_7Ts, g_J = compose(self.serial.g(A, q),
                              (self.serial.sTe, np.zeros((6, 0))))
         self.gtsamAssertEquals(g_7Ts, expected, tol=1e-3)
 
         # Check derivatives
-        q[0] += 0.01
-        T_plus = self.serial.poe(np.array(q))
+        q_list[0] += 0.01
+        q = np.array(q_list)
+        # q[0] += 0.01 # TODO(dellaert): why does this not work?
+        T_plus = self.serial.poe(q)
         xi_0 = expected.logmap(T_plus)/0.01
         np.testing.assert_allclose(poe_J[:, 0], xi_0, atol=0.01)
         np.testing.assert_allclose(g_J[:, 0], xi_0, atol=0.01)
@@ -207,7 +213,7 @@ class TestSerial(GtsamTestCase):
 
         # FK with monoid.
         q = np.array(q)
-        A = np.vstack(self.serial.axes)
+        A = self.serial.A
         shoulder = self.serial.f(A[:3], q[:3])
         arm = self.serial.f(A[3:], q[3:])
         f_7Ts = shoulder.compose(arm).compose(self.serial.sTe)
