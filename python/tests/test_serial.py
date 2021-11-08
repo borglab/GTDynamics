@@ -19,6 +19,22 @@ from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
 
 
+def compose(A, B):
+    """Monoid operation for pose,Jacobian pairs"""
+    aTb, bJa = A
+    bTs, sJb = B
+    assert isinstance(aTb, Pose3)
+    assert isinstance(bTs, Pose3)
+    assert isinstance(bJa, np.ndarray), f"bJa: {type(bJa)}"
+    assert isinstance(sJb, np.ndarray), f"sJb: {type(sJb)}"
+    assert len(bJa.shape) == 2, f"bJa not 2 {bJa.shape}, {sJb.shape}"
+    assert len(sJb.shape) == 2, f"sJb not 2 {bJa.shape}, {sJb.shape}"
+    assert bJa.shape[0] == 6, f"bJa not 6 {bJa.shape}, {sJb.shape}"
+    assert sJb.shape[0] == 6, f"sJb not 6 {bJa.shape}, {sJb.shape}"
+    s_Ad_b = bTs.inverse().AdjointMap()
+    return aTb.compose(bTs), np.hstack((s_Ad_b @ bJa, sJb))
+
+
 class Serial():
     """Three-link arm class."""
 
@@ -40,7 +56,7 @@ class Serial():
         # End-effector (for now) is just last link.
         self.sTe = sTl
 
-    def poe(self, q: np.ndarray, 
+    def poe(self, q: np.ndarray,
             sTe: Optional[Pose3] = None,
             J: Optional[np.ndarray] = None):
         """ Perform forward kinematics given q, return Pose of end-effector.
@@ -53,7 +69,7 @@ class Serial():
         Returns:
             jTe (Pose3)
         """
-        j = len(q) # joint number counting from last, base 1.
+        j = len(q)  # joint number counting from last, base 1.
         if j == 0:
             # no more joints, return end-effector pose:
             return sTe if sTe is not None else self.sTe
@@ -65,25 +81,60 @@ class Serial():
             J[:, -j] = T.inverse().Adjoint(axis)
         return T
 
+    @staticmethod
+    def f(A: np.ndarray, q: np.ndarray):
+        """ Perform forward kinematics given q.
+
+        Arguments:
+            A (np.ndarray): joint axes.
+            q (np.ndarray): joint angles.
+        Returns:
+            qTs (Pose3): map from spatial to actuated frame.
+        """
+        if len(q) == 0:
+            return Pose3()
+        T = Pose3.Expmap(A[0, :] * q[0])
+        return T if len(q) == 1 else \
+            T.compose(Serial.f(A[1:, :], q[1:]))
+
+    @staticmethod
+    def g(A: np.ndarray, q: np.ndarray):
+        """ Perform forward kinematics given q, with Jacobian.
+
+        Arguments:
+            A (np.ndarray): joint axes.
+            q (np.ndarray): joint angles.
+        Returns:
+            qTs (Pose3): map from spatial to actuated frame.
+            J (np.ndarray): manipulator Jacobian for this arm.
+        """
+        if len(q) == 0:
+            return Pose3(), np.zeros((6, 0))
+        A0 = np.expand_dims(A[0, :], 1)
+        T = Pose3.Expmap(A0 * q[0])
+        return (T, A0) if len(q) == 1 else \
+            compose((T, A0), Serial.g(A[1:, :], q[1:]))
+
+
 class TestSerial(GtsamTestCase):
     """Test Serial FK in GTD context."""
 
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        model_file=Path(gtd.URDF_PATH) / "panda" / "panda.urdf"
-        self.base_name="link0"
+        model_file = Path(gtd.URDF_PATH) / "panda" / "panda.urdf"
+        self.base_name = "link0"
         # Crucial to fix base link or FK gives wrong result
-        self.robot=gtd.CreateRobotFromFile(
+        self.robot = gtd.CreateRobotFromFile(
             str(model_file)).fixLink(self.base_name)
 
         # Create serial sub-system
-        self.serial=Serial(self.robot, self.base_name)
+        self.serial = Serial(self.robot, self.base_name)
 
     @ staticmethod
     def JointAngles(q: list):
         """Create Values with joint angles."""
-        joint_angles=Values()
+        joint_angles = Values()
         for j, q_j in enumerate(q):
             gtd.InsertJointAngle(joint_angles, j, q_j)
         return joint_angles
@@ -107,23 +158,35 @@ class TestSerial(GtsamTestCase):
         actual_sT7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
 
-    def check_poe(self,q):
+    def check_poe(self, q):
         """Test FK with POE"""
-        joint_angles=self.JointAngles(q)
+        joint_angles = self.JointAngles(q)
 
         # Conventional FK with GTSAM.
-        fk=self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+        fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
+        expected = gtd.Pose(fk, 7)
 
         # FK with POE.
-        J=np.zeros((6, 7))
-        poe_sT7=self.serial.poe(q=np.array(q), J=J)
-        self.gtsamAssertEquals(poe_sT7, gtd.Pose(fk, 7), tol=1e-3)
+        poe_J = np.zeros((6, 7))
+        poe_sT7 = self.serial.poe(q=np.array(q), J=poe_J)
+        self.gtsamAssertEquals(poe_sT7, expected, tol=1e-3)
 
-        # Check derivative
+        # FK with monoid.
+        A = np.vstack(self.serial.axes)
+        f_7Ts = self.serial.f(A, np.array(q)).compose(self.serial.sTe)
+        self.gtsamAssertEquals(f_7Ts, expected, tol=1e-3)
+
+        # FK + Jacobian with monoid.
+        g_7Ts, g_J = compose(self.serial.g(A, np.array(q)),
+                             (self.serial.sTe, np.zeros((6, 0))))
+        self.gtsamAssertEquals(g_7Ts, expected, tol=1e-3)
+
+        # Check derivatives
         q[0] += 0.01
-        poe_sT7_plus=self.serial.poe(np.array(q))
-        delta=poe_sT7.logmap(poe_sT7_plus)/0.01
-        np.testing.assert_allclose(J[:, 0], delta, atol=0.01)
+        poe_sT7_plus = self.serial.poe(np.array(q))
+        xi_0 = poe_sT7.logmap(poe_sT7_plus)/0.01
+        np.testing.assert_allclose(poe_J[:, 0], xi_0, atol=0.01)
+        np.testing.assert_allclose(g_J[:, 0], xi_0, atol=0.01)
 
     def test_forward_kinematics_at_rest(self):
         """Test forward kinematics at rest."""
@@ -140,6 +203,7 @@ class TestSerial(GtsamTestCase):
     def test_forward_kinematics_random(self):
         """Test forward kinematics with random configuration."""
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7])
+
 
 if __name__ == "__main__":
     unittest.main()
