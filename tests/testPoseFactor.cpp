@@ -53,8 +53,8 @@ TEST(PoseFactor, error) {
   auto joint = make_joint(cMp, screw_axis);
 
   // Create factor
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
+                           example::cost_model, joint);
 
   // call unwhitenedError
   Values values;
@@ -79,8 +79,8 @@ TEST(PoseFactor, breaking) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
+                           example::cost_model, joint);
 
   // check prediction at zero joint angle
   {
@@ -113,8 +113,8 @@ TEST(PoseFactor, breaking_rr) {
   Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
+                           example::cost_model, joint);
 
   // unwhitenedError
   Values values;
@@ -131,8 +131,8 @@ TEST(PoseFactor, nonzero_rest) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(cMp, screw_axis);
-  PoseFactor factor(example::wTp_key, example::wTc_key, example::q_key,
-                    example::cost_model, joint);
+  auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
+                           example::cost_model, joint);
 
   double jointAngle;
   Pose3 pose_p, pose_c;
@@ -182,7 +182,7 @@ TEST(PoseFactor, ForwardKinematics) {
   graph.addPrior<gtsam::Pose3>(link0_key, base_link->bMcom());
 
   for (auto&& joint : robot.joints()) {
-    graph.emplace_shared<PoseFactor>(pose_model, joint, t);
+    graph.add(PoseFactor(pose_model, joint, t));
     graph.addPrior<double>(internal::JointAngleKey(joint->id(), t), angle,
                            joint_angle_model);
   }
