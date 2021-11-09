@@ -40,6 +40,18 @@ class Serial():
         self.sMb = sMb
         self.axes = axes
 
+    @classmethod
+    def compose(cls, *components):
+        """Create from a variable number of other Serial instances."""
+        spec = components[0].spec()
+        for component in components[1:]:
+            spec = compose(spec, component.spec())
+        return cls(*spec)
+
+    def spec(self):
+        """Return end-effector at rest and Jacobian."""
+        return self.sMb, self.axes
+
     # @classmethod
     # def from_robot(cls, robot: gtd.Robot, base_name: str):
     #     """Initialize from a robot with given base link"""
@@ -63,7 +75,7 @@ class Serial():
     #     self.fTe = sTl
 
     def poe(self, q: np.ndarray,
-            fTe: Optional[Pose3] = Pose3(),
+            fTe: Optional[Pose3] = None,
             J: Optional[np.ndarray] = None):
         """ Perform forward kinematics given q, return Pose of end-effector.
             When q is smaller than #joints, actuates last joints in chain.
@@ -75,13 +87,16 @@ class Serial():
         Returns:
             jTe (Pose3)
         """
+        sMe = self.sMb if fTe is None else self.sMb.compose(fTe)
         if J is None:
             # FK with monoid.
-            return self.sMb.compose(fTe).compose(self.f(self.axes, q))
+            poe = self.f(self.axes, q)
+            return sMe.compose(poe)
         else:
             # FK + Jacobian with monoid.
-            sTeJ = self.sMb.compose(fTe), np.zeros((6, 0))
-            T, G = compose(sTeJ, self.g(self.axes, q))
+            assert J.shape == (6, len(q)), f"Needs 6x{len(q)} J."
+            sMeJ = sMe, np.zeros((6, 0))
+            T, G = compose(sMeJ, self.g(self.axes, q))
             J[:, :] = G
             return T
 
@@ -99,7 +114,7 @@ class Serial():
             return Pose3()
         T = Pose3.Expmap(A[:, 0] * q[0])
         return T if len(q) == 1 else \
-            Serial.f(A[1:, :], q[1:]).compose(T)
+            Serial.f(A[:, 1:], q[1:]).compose(T)
 
     @staticmethod
     def g(A: np.ndarray, q: np.ndarray):
@@ -117,7 +132,7 @@ class Serial():
         A0 = np.expand_dims(A[:, 0], 1)
         T = Pose3.Expmap(A0 * q[0])
         return (T, A0) if len(q) == 1 else \
-            compose((T, A0), Serial.g(A[1:, :], q[1:]))
+            compose((T, A0), Serial.g(A[:, 1:], q[1:]))
 
 
 # load example robot
@@ -143,25 +158,56 @@ class TestSerial(GtsamTestCase):
 
     def test_one_link(self):
         """Test creating just one link."""
-        sTb, Jb = Pose3(Rot3(), Point3(5, 0, 0)), axis(0, 0, 1, 0, 5, 0)
+        sMb, Jb = Pose3(Rot3(), Point3(5, 0, 0)), axis(0, 0, 1, 0, 5, 0)
         self.assertEqual(Jb.shape, (6, 1))
-        joint1 = Serial(sTb, Jb)
+        joint1 = Serial(sMb, Jb)
         self.assertIsInstance(joint1, Serial)
-        self.gtsamAssertEquals(joint1.poe([0]), sTb)
-        expected = Pose3(Rot3.Rz(np.pi/2), Point3(0, 5, 0))
-        self.gtsamAssertEquals(joint1.poe([np.pi/2]), expected)
+
+        # FK at rest
+        self.gtsamAssertEquals(joint1.poe([0]), sMb)
+        sTb = Pose3(Rot3.Rz(np.pi/2), Point3(0, 5, 0))
+
+        # FK not at rest
+        q = [np.pi/2]
+        self.gtsamAssertEquals(joint1.poe(q), sTb)
         J = np.zeros((6, 1))
-        self.gtsamAssertEquals(joint1.poe([np.pi/2], J=J), expected)
+        self.gtsamAssertEquals(joint1.poe(q, J=J), sTb)
         np.testing.assert_allclose(J, Jb)
 
-    # def test_three_link(self):
-    #     """Test creating a two-link arm in SE(2)."""
-    #     aTb, Jb = Pose2(5, 0, 0)
-    #     joint1 = Serial(aTb, Jb)
-    #     joint2 = Serial(aTb, Jb)
-    #     joint3 = Serial(aTb, Jb)
-    #     three_links = Serial.Compose([joint1, joint2, joint3])
-    #     self.assertIsInstance(three_links, Serial)
+    def test_three_link(self):
+        """Test creating a two-link arm in SE(2)."""
+        sMb, Jb = Pose3(Rot3(), Point3(5, 0, 0)), axis(0, 0, 1, 0, 5, 0)
+        joint1 = Serial(sMb, Jb)
+        joint2 = Serial(sMb, Jb)
+        joint3 = Serial(sMb, Jb)
+        three_links = Serial.compose(joint1, joint2, joint3)
+        self.assertIsInstance(three_links, Serial)
+        sM3, J3 = three_links.spec()
+        expected = Pose3(Rot3(), Point3(15, 0, 0))
+        self.gtsamAssertEquals(sM3, expected)
+        expected_J3 = np.array(
+            [[0, 0, 1, 0, 15, 0],
+             [0, 0, 1, 0, 10,  0],
+             [0, 0, 1, 0, 5,  0]]).transpose()
+        np.testing.assert_allclose(J3, expected_J3)
+
+        # FK at rest
+        self.assertIsInstance(three_links.spec(), tuple)
+        self.gtsamAssertEquals(three_links.poe([0, 0, 0]), expected)
+
+        # FK not at rest
+        q = np.array([0, 0, np.pi/2])
+        sT3 = Pose3(Rot3.Rz(np.pi/2), Point3(10, 5, 0))
+        self.gtsamAssertEquals(three_links.poe(q), sT3)
+        expected_J1 = sT3.inverse().Adjoint(axis(0, 0, 1, 0, 0, 0))
+        np.testing.assert_allclose(expected_J1, [0, 0, 1, 10, 5, 0])
+        expected_J = np.array(
+            [expected_J1,
+             [0, 0, 1, 5, 5,  0],
+             [0, 0, 1, 0, 5,  0]]).transpose()
+        J = np.zeros((6, 3))
+        self.gtsamAssertEquals(three_links.poe(q, J=J), sT3)
+        np.testing.assert_allclose(J, expected_J)
 
     # @ staticmethod
     # def JointAngles(q: list):
