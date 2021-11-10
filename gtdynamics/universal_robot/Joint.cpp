@@ -359,7 +359,6 @@ gtsam::Vector6_ Joint::twistConstraint(uint64_t t) const {
                 std::placeholders::_6),
       q, qVel, twist_p);
 
-  // Return the error in tangent space
   return twist_c_hat - twist_c;
 }
 
@@ -375,7 +374,6 @@ gtsam::Vector6_ Joint::wrenchEquivalenceConstraint(uint64_t t) const {
                 std::placeholders::_4),
       q, wrench_c);
 
-  // Return the error in tangent space
   return wrench_p + wrench_c_hat;
 }
 
@@ -390,7 +388,6 @@ gtsam::Double_ Joint::torqueConstraint(uint64_t t) const {
                 std::placeholders::_1, std::placeholders::_2),
       wrench);
 
-  // Return the error in tangent space
   return torque_hat - torque;
 }
 
