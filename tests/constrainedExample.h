@@ -70,19 +70,10 @@ Double_ operator+(const Double_& x, const double& d) { return x + Double_(d); }
 /// Negative sign operator.
 Double_ operator-(const Double_& x) { return Double_(0.0) - x; }
 
+/// Keys for creating expressions.
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
-
-/// Create cost and constraint expressions.
 Double_ x1(x1_key), x2(x2_key);
-Double_ cost1_expr = x1 + exp(-x2);
-Double_ cost2_expr = pow(x1, 2.0) + 2.0 * x2 + 1.0;
-Double_ constraint1_expr = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-
-/// A 2-dimensional function that adds up 2 Vector2.
-Vector2_ x1_vec_expr(x1_key);
-Vector2_ x2_vec_expr(x2_key);
-Vector2_ constraint_sum_vector2_expr = x1_vec_expr + x2_vec_expr;
 
 }  // namespace constrained_example
 
