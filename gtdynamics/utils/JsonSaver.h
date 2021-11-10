@@ -199,10 +199,10 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      auto joint = f->getJoint();
-      ss << GetVector(joint->screwAxis(joint->child()).transpose());
-    } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
+    // if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
+      // auto joint = f->getJoint();
+      // ss << GetVector(joint->screwAxis(joint->child()).transpose());
+    if (const gtsam::PriorFactor<gtsam::Vector3>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
                        &(*factor))) {
       ss << GetVector(f->prior().transpose());
@@ -229,16 +229,16 @@ class JsonSaver {
       return "Wrench";
     // } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
     //   return "Pose";
-    } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
-      return "Twist";
+    // } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
+    //   return "Twist";
     } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
       return "TwistAccel";
-    } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      return "Torque";
+    // } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
+    //   return "Torque";
     } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
-      return "WrenchEq";
+    // } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
+    //   return "WrenchEq";
     } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";
     } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(

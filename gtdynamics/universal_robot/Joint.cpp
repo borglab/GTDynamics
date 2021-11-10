@@ -14,14 +14,14 @@
  * @brief Absract representation of a robot joint.
  */
 
-#include <gtsam/slam/expressions.h>
-
 #include "gtdynamics/universal_robot/Joint.h"
+
+#include <gtsam/slam/expressions.h>
 
 #include <iostream>
 
-#include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/factors/JointLimitFactor.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 using gtsam::Pose3;
 using gtsam::Vector6;
@@ -49,7 +49,6 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
                              " is not connected to this joint " + name_);
   return link == child_link_;
 }
-
 
 /* ************************************************************************* */
 Pose3 Joint::parentTchild(
@@ -118,8 +117,7 @@ Vector6 Joint::transformTwistAccelTo(
     const LinkSharedPtr &link, double q, double q_dot, double q_ddot,
     boost::optional<Vector6> this_twist,
     boost::optional<Vector6> other_twist_accel,
-    gtsam::OptionalJacobian<6, 1> H_q,
-    gtsam::OptionalJacobian<6, 1> H_q_dot,
+    gtsam::OptionalJacobian<6, 1> H_q, gtsam::OptionalJacobian<6, 1> H_q_dot,
     gtsam::OptionalJacobian<6, 1> H_q_ddot,
     gtsam::OptionalJacobian<6, 6> H_this_twist,
     gtsam::OptionalJacobian<6, 6> H_other_twist_accel) const {
@@ -155,6 +153,28 @@ Vector6 Joint::transformTwistAccelTo(
   }
 
   return this_twist_accel;
+}
+
+/* ************************************************************************* */
+Vector6 Joint::transformWrenchCoordinate(
+      const LinkSharedPtr &link, double q, const gtsam::Vector6 &wrench,
+      gtsam::OptionalJacobian<6, 1> H_q,
+      gtsam::OptionalJacobian<6, 6> H_wrench) const {
+
+    auto other = otherLink(link);
+    gtsam::Pose3 T_21 = relativePoseOf(other, q);
+    gtsam::Matrix6 Ad_21_T = T_21.AdjointMap().transpose();
+    gtsam::Vector6 transformed_wrench = Ad_21_T * wrench;
+
+    if (H_wrench) {
+      *H_wrench = Ad_21_T;
+    }
+    if (H_q) {
+      // TODO(frank): really, child? Double-check derivatives
+      *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0),
+                                 screwAxis(link)).transpose() * wrench;
+    }
+    return transformed_wrench;
 }
 
 /* ************************************************************************* */
@@ -307,8 +327,7 @@ gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
 }
 
 /* ************************************************************************* */
-gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
-    uint64_t t) const {
+gtsam::Vector6_ Joint::poseConstraint(uint64_t t) const {
   using gtsam::Pose3_;
 
   // Get an expression for parent pose.
@@ -324,6 +343,55 @@ gtsam::Expression<gtsam::Vector6> Joint::poseConstraint(
 
   // Return the error in tangent space
   return gtdynamics::logmap(wTc, wTc_hat);
+}
+
+/* ************************************************************************* */
+gtsam::Vector6_ Joint::twistConstraint(uint64_t t) const {
+  gtsam::Vector6_ twist_p(internal::TwistKey(parent()->id(), t));
+  gtsam::Vector6_ twist_c(internal::TwistKey(child()->id(), t));
+  gtsam::Double_ q(internal::JointAngleKey(id(), t));
+  gtsam::Double_ qVel(internal::JointVelKey(id(), t));
+
+  gtsam::Vector6_ twist_c_hat(
+      std::bind(&Joint::transformTwistTo, this, child(), std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4, std::placeholders::_5,
+                std::placeholders::_6),
+      q, qVel, twist_p);
+
+  // Return the error in tangent space
+  return twist_c_hat - twist_c;
+}
+
+/* ************************************************************************* */
+gtsam::Vector6_ Joint::wrenchEquivalenceConstraint(uint64_t t) const {
+  gtsam::Vector6_ wrench_p(internal::WrenchKey(parent()->id(), id(), t));
+  gtsam::Vector6_ wrench_c(internal::WrenchKey(child()->id(), id(), t));
+  gtsam::Double_ q(internal::JointAngleKey(id(), t));
+
+  gtsam::Vector6_ wrench_c_hat(
+      std::bind(&Joint::transformWrenchCoordinate, this, child(), std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4),
+      q, wrench_c);
+
+  // Return the error in tangent space
+  return wrench_p + wrench_c_hat;
+}
+
+/* ************************************************************************* */
+gtsam::Double_ Joint::torqueConstraint(uint64_t t) const {
+  using gtsam::Pose3_;
+
+  gtsam::Double_ torque(internal::TorqueKey(id(), t));
+  gtsam::Vector6_ wrench(internal::WrenchKey(child()->id(), id(), t));
+  gtsam::Double_ torque_hat(
+      std::bind(&Joint::transformWrenchToTorque, this, child(),
+                std::placeholders::_1, std::placeholders::_2),
+      wrench);
+
+  // Return the error in tangent space
+  return torque_hat - torque;
 }
 
 }  // namespace gtdynamics

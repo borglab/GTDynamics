@@ -20,6 +20,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/Expression.h>
+#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -286,6 +287,15 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none,
       gtsam::OptionalJacobian<6, 6> H_other_twist_accel = boost::none) const;
 
+  /**
+   * Express the same wrench in the coordinate frame of the other link. (This
+   * function is used for wrench equivalence constraint.)
+   */
+  gtsam::Vector6 transformWrenchCoordinate(
+      const LinkSharedPtr &link, double q, const gtsam::Vector6 &wrench,
+      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
+      gtsam::OptionalJacobian<6, 6> H_wrench = boost::none) const;
+
   /// Return the torque on this joint given the wrench
   double transformWrenchToTorque(
       const LinkSharedPtr &link,
@@ -371,7 +381,26 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @brief Create expression that constraint the pose of two links imposed by
    * the joint angle.
    */
-  gtsam::Expression<gtsam::Vector6> poseConstraint(uint64_t t = 0) const;
+  gtsam::Vector6_ poseConstraint(uint64_t t = 0) const;
+
+  /**
+   * @brief Create expression that constraint the twist of two links imposed by
+   * the joint angle and velocity.
+   */
+  gtsam::Vector6_ twistConstraint(uint64_t t = 0) const;
+
+  /**
+   * @brief Create expression that constraint the relation between wrench
+   * expressed in two link frames.
+   */
+  gtsam::Vector6_ wrenchEquivalenceConstraint(uint64_t t = 0) const;
+
+  /**
+   * @brief Create expression that constraint the relation between
+   * wrench and torque on each link.
+   */
+  gtsam::Double_ torqueConstraint(uint64_t t=0) const;
+
 };
 
 }  // namespace gtdynamics

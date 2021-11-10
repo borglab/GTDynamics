@@ -53,23 +53,23 @@ TEST(WrenchEquivalenceFactor, error_1) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(kMj, screw_axis);
-  WrenchEquivalenceFactor factor(example::cost_model, joint, 777);
+  auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
   double q = 0;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
   wrench_k = (Vector(6) << 0, 0, 19.6, 0, -9.8, 0).finished();
-  Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
-  expected_errors << 0, 0, 0, 0, 0, 0;
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-
-  // Make sure linearization is correct.
   Values values;
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
+  Vector6 expected_errors,
+      actual_errors = factor.unwhitenedError(values);
+  expected_errors << 0, 0, 0, 0, 0, 0;
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+
+  // Make sure linearization is correct.
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
@@ -81,23 +81,24 @@ TEST(WrenchEquivalenceFactor, error_2) {
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
   auto joint = make_joint(kMj, screw_axis);
-  WrenchEquivalenceFactor factor(example::cost_model, joint, 777);
+  auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
   double q = -M_PI_2;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 0, 0, 0, 0, 9.8, 0).finished();
   wrench_k = (Vector(6) << 0, 0, 9.8, 9.8, 0, 0).finished();
-  Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
-  expected_errors << 0, 0, 0, 0, 0, 0;
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  
-  // Make sure linearization is correct.
   Values values;
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
+  Vector6 expected_errors,
+      actual_errors = factor.unwhitenedError(values);
+  expected_errors << 0, 0, 0, 0, 0, 0;
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+  
+  // Make sure linearization is correct.
+
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
@@ -109,23 +110,23 @@ TEST(WrenchEquivalenceFactor, error_3) {
   Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
   auto joint = make_joint(kMj, screw_axis);
-  WrenchEquivalenceFactor factor(example::cost_model, joint, 777);
+  auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
   double q = 0;
   Vector wrench_j, wrench_k;
   wrench_j = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
   wrench_k = (Vector(6) << -1, 0, 0, 0, 0, 0).finished();
-  Vector6 expected_errors,
-      actual_errors = factor.evaluateError(wrench_j, wrench_k, q);
-  expected_errors << 0, 0, 0, 0, 0, 0;
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-
-  // Make sure linearization is correct.
   gtsam::Values values;
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
+  Vector6 expected_errors,
+      actual_errors = factor.unwhitenedError(values);
+  expected_errors << 0, 0, 0, 0, 0, 0;
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+
+  // Make sure linearization is correct.
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }

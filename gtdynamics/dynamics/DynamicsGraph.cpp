@@ -240,11 +240,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
                                      gtsam::Z_6x1, opt_.bv_cost_model);
 
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistFactor>(internal::TwistKey(joint->parent()->id(), t),
-                                    internal::TwistKey(joint->child()->id(), t),
-                                    internal::JointAngleKey(joint->id(), t),
-                                    internal::JointVelKey(joint->id(), t),
-                                    opt_.v_cost_model, joint);
+    graph.add(TwistFactor(opt_.v_cost_model, joint, t));
 
   // Add contact factors.
   if (contact_points) {
@@ -352,9 +348,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   for (auto &&joint : robot.joints()) {
     auto j = joint->id(), child_id = joint->child()->id();
     auto const_joint = joint;
-    graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
-                                                  const_joint, k);
-    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, k);
+    graph.add(WrenchEquivalenceFactor(opt_.f_cost_model,
+                                                  const_joint, k));
+    graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
     if (planar_axis_)
       graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
                                                *planar_axis_, const_joint, k);
