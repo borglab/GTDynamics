@@ -71,19 +71,35 @@ class Serial():
         return f"Serial\n: {self.sMb}\n{np.round(self.axes,3)}\n"
 
     @classmethod
-    def from_robot(cls, robot: gtd.Robot, base_name: str):
-        """Initialize from a robot with given base link"""
-        # Create offset to first link parent
-        base_link = robot.link(base_name)
-        sM0 = base_link.bMcom()
-        offset = Serial(sM0, np.zeros((6, 0)))
+    def from_robot(cls, robot: gtd.Robot,
+                   base_name: Optional[str] = None,
+                   joint_range: Optional[Tuple[int, int]] = None):
+        """Initialize from a robot.
 
-        # Convert all joints into Serial instances
-        joints = [offset]+[cls(joint.pMc(),
-                               joint.cScrewAxis()) for joint in robot.joints()]
+        Arguments:
+            robot: a GTDynamics Robot instance
+            base_name: add offset for base link, if given
+            joint_range: a range of joint indices (base 0)
+        """
+        # Get desired joints from robot instance.
+        if joint_range is None:
+            joint_range = 0, robot.numJoints()
+        joints = robot.joints()[joint_range[0]:joint_range[1]]
+
+        # Convert all joints into pose/Jacobian pairs.
+        pairs = [cls(joint.pMc(), joint.cScrewAxis()) for joint in joints]
+
+        if base_name is not None:
+            # Create offset to first link parent.
+            assert joint_range is None or joint_range[0] == 0, \
+                "Cannot have base name if first joint is not 0"
+            base_link = robot.link(base_name)
+            sM0 = base_link.bMcom()
+            offset = Serial(sM0, np.zeros((6, 0)))
+            pairs = [offset] + pairs
 
         # Now, let compose do the work!
-        return cls.compose(*joints)
+        return cls.compose(*pairs)
 
     def poe(self, q: np.ndarray,
             fTe: Optional[Pose3] = None,
@@ -111,7 +127,7 @@ class Serial():
             J[:, :] = G
             return T
 
-    @staticmethod
+    @ staticmethod
     def f(A: np.ndarray, q: np.ndarray):
         """ Perform forward kinematics given q.
 
@@ -127,7 +143,7 @@ class Serial():
         return T if len(q) == 1 else \
             T.compose(Serial.f(A[:, 1:], q[1:]))
 
-    @staticmethod
+    @ staticmethod
     def g(A: np.ndarray, q: np.ndarray):
         """ Perform forward kinematics given q, with Jacobian.
 
@@ -224,7 +240,7 @@ class TestPanda(GtsamTestCase):
         # Create serial sub-system
         self.serial = Serial.from_robot(ROBOT, BASE_NAME)
 
-    @staticmethod
+    @ staticmethod
     def JointAngles(q: list):
         """Create Values with joint angles."""
         joint_angles = Values()
@@ -312,38 +328,24 @@ class TestPanda(GtsamTestCase):
         """Test forward kinematics with random configuration."""
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7])
 
-    # def test_panda_decomposition(self):
-    #     """Test composition of Panda as shoulder and arm"""
-    #     q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
-    #     joint_angles = self.JointAngles(q)
+    def test_panda_decomposition(self):
+        """Test composition of Panda as shoulder and arm"""
+        # Construct Panda arm with compose
+        shoulder = Serial.from_robot(ROBOT, BASE_NAME, (0, 3))
+        arm = Serial.from_robot(ROBOT, joint_range=(3, 6))
+        wrist = Serial.from_robot(ROBOT, joint_range=(6, 7))
+        panda = Serial.compose(shoulder, arm, wrist)
+        self.assertEqual(panda.axes.shape, (6, 7))
 
-    #     # Conventional FK with GTSAM.
-    #     fk = ROBOT.forwardKinematics(joint_angles, 0, BASE_NAME)
-    #     expected = gtd.Pose(fk, 7)
+        # Conventional FK with GTSAM.
+        q = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]
+        joint_angles = self.JointAngles(q)
+        fk = ROBOT.forwardKinematics(joint_angles, 0, BASE_NAME)
+        sTb = gtd.Pose(fk, 7)
 
-    #     # FK with monoid.
-    #     q = np.array(q)
-    #     A = self.serial.A
-    #     shoulder = self.serial.f(A[:3], q[:3])
-    #     arm = self.serial.f(A[3:], q[3:])
-    #     f_7Ts = shoulder.compose(arm).compose(self.serial.fTe)
-    #     self.gtsamAssertEquals(f_7Ts, expected, tol=1e-3)
-
-    #     # FK + Jacobian with monoid.
-    #     shoulder = self.serial.g(A[:3], q[:3])
-    #     print(f"shoulder J:\n{np.round(shoulder[1],3)}")
-    #     arm = self.serial.g(A[3:], q[3:])
-    #     print(f"arm J:\n{np.round(arm[1],3)}")
-    #     g_7Ts, g_J = compose(compose(shoulder, arm),
-    #                          (self.serial.fTe, np.zeros((6, 0))))
-    #     print(f"panda J:\n{np.round(g_J,3)}")
-    #     self.gtsamAssertEquals(g_7Ts, expected, tol=1e-3)
-
-    #     # Check derivatives
-    #     q[0] += 0.01
-    #     T_plus = self.serial.poe(np.array(q))
-    #     xi_0 = expected.logmap(T_plus)/0.01
-    #     np.testing.assert_allclose(g_J[:, 0], xi_0, atol=0.01)
+        # FK with POE.
+        poe_sTb = panda.poe(q)
+        self.gtsamAssertEquals(poe_sTb, sTb, tol=1e-7)
 
 
 if __name__ == "__main__":
