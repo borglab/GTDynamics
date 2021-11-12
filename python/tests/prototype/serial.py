@@ -20,7 +20,7 @@ def compose(A: Tuple[Pose3, np.ndarray], B: Tuple[Pose3, np.ndarray]):
     """Monoid operation for pose,Jacobian pairs."""
     aTb, Jb = A
     bTc, Jc = B
-    assert Jb.shape[0] == 6 and Jc.shape[0] == 6
+    assert Jb.shape[0] == 6 and Jc.shape[0] == 6, f"{Jb.shape} and {Jc.shape}"
 
     # Compose poses
     aTc = aTb.compose(bTc)
@@ -111,49 +111,28 @@ class Serial():
         Returns:
             jTe (Pose3)
         """
+        # Check input.
+        n = len(q)
+        A = self.axes
+        assert n == A.shape[1]
+
+        # Calculate end-effector pose at rest.
         sMe = self.sMb if fTe is None else self.sMb.compose(fTe)
+
+        # Calculate exponentials.
+        exp = [Pose3.Expmap(A[:, j] * q[j]) for j in range(n)]
+
         if J is None:
-            # FK with monoid.
-            poe = self.f(self.axes, q)
-            return sMe.compose(poe)
+            # Just do product.
+            poe = sMe
+            for T_j in exp:
+                poe = poe.compose(T_j)
+            return poe
         else:
-            # FK + Jacobian with monoid.
+            # Compute FK + Jacobian with monoid compose.
             assert J.shape == (6, len(q)), f"Needs 6x{len(q)} J."
-            sMeJ = sMe, np.zeros((6, 0))
-            T, G = compose(sMeJ, self.g(self.axes, q))
-            J[:, :] = G
-            return T
-
-    @ staticmethod
-    def f(A: np.ndarray, q: np.ndarray):
-        """ Perform forward kinematics given q.
-
-        Arguments:
-            A (np.ndarray): joint axes.
-            q (np.ndarray): joint angles.
-        Returns:
-            sTb (Pose3): map from body to spatial frame.
-        """
-        if len(q) == 0:
-            return Pose3()
-        T = Pose3.Expmap(A[:, 0] * q[0])
-        return T if len(q) == 1 else \
-            T.compose(Serial.f(A[:, 1:], q[1:]))
-
-    @ staticmethod
-    def g(A: np.ndarray, q: np.ndarray):
-        """ Perform forward kinematics given q, with Jacobian.
-
-        Arguments:
-            A (np.ndarray): joint axes.
-            q (np.ndarray): joint angles.
-        Returns:
-            sTb (Pose3): map from body to spatial frame.
-            J (np.ndarray): manipulator Jacobian for this arm.
-        """
-        if len(q) == 0:
-            return Pose3(), np.zeros((6, 0))
-        A0 = np.expand_dims(A[:, 0], 1)
-        T = Pose3.Expmap(A0 * q[0])
-        return (T, A0) if len(q) == 1 else \
-            compose((T, A0), Serial.g(A[:, 1:], q[1:]))
+            pair = sMe, np.zeros((6, 0))
+            for j in range(n):
+                pair = compose(pair, (exp[j], np.expand_dims(A[:, j], 1)))
+            poe, J[:, :] = pair
+            return poe
