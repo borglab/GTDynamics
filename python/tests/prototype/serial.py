@@ -116,23 +116,23 @@ class Serial():
         A = self.axes
         assert n == A.shape[1]
 
-        # Calculate end-effector pose at rest.
-        sMe = self.sMb if fTe is None else self.sMb.compose(fTe)
-
         # Calculate exponentials.
         exp = [Pose3.Expmap(A[:, j] * q[j]) for j in range(n)]
 
         if J is None:
             # Just do product.
-            poe = sMe
+            poe = self.sMb
             for T_j in exp:
                 poe = poe.compose(T_j)
-            return poe
+            return poe if fTe is None else poe.compose(fTe)
         else:
             # Compute FK + Jacobian with monoid compose.
             assert J.shape == (6, len(q)), f"Needs 6x{len(q)} J."
-            pair = sMe, np.zeros((6, 0))
+            Empty = np.zeros((6, 0))
+            pair = self.sMb, Empty
             for j in range(n):
                 pair = compose(pair, (exp[j], np.expand_dims(A[:, j], 1)))
+            if fTe is not None:
+                pair = compose(pair, (fTe, Empty))  # Adjoints Jacobian to E!
             poe, J[:, :] = pair
             return poe

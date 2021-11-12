@@ -141,7 +141,7 @@ class TestPanda(GtsamTestCase):
             [0,    0,    1,     0.002,  0,    0]]).transpose()
         np.testing.assert_allclose(J7, expected_J7, atol=0.001)
 
-    def check_poe(self, q_list):
+    def check_poe(self, q_list, fTe=None):
         """Test FK with POE"""
         joint_angles = self.JointAngles(q_list)
         q = np.array(q_list)
@@ -149,24 +149,28 @@ class TestPanda(GtsamTestCase):
         # Conventional FK with GTSAM.
         fk = ROBOT.forwardKinematics(joint_angles, 0, BASE_NAME)
         sT7 = gtd.Pose(fk, 7)
+        if fTe is not None:
+            sT7 = sT7.compose(fTe)
 
         # FK with POE.
-        poe_sT7 = self.serial.poe(q)
+        poe_sT7 = self.serial.poe(q, fTe=fTe)
         self.gtsamAssertEquals(poe_sT7, sT7, tol=1e-7)
 
         # FK with POE and Jacobians
         poe_J = np.zeros((6, 7))
-        poe_sT7 = self.serial.poe(q, J=poe_J)
+        poe_sT7 = self.serial.poe(q, fTe=fTe, J=poe_J)
         self.gtsamAssertEquals(poe_sT7, sT7, tol=1e-7)
 
-        # Check that last column in Jacobian is unchanged, because that twist
-        # affects the end-effector one on one.
-        np.testing.assert_allclose(poe_J[:, 6], self.serial.axes[:, 6])
+        # Unless we apply an extra transform at the end, check that last column
+        # in the Jacobian is unchanged from the axes, because that twist affects
+        # the end-effector one on one.
+        if fTe is None:
+            np.testing.assert_allclose(poe_J[:, 6], self.serial.axes[:, 6])
 
         # Check derivatives
         q_list[6] += 0.00001
         q = np.array(q_list)
-        sT7_plus = self.serial.poe(q)
+        sT7_plus = self.serial.poe(q, fTe=fTe)
         xi = sT7.logmap(sT7_plus)/0.00001
         np.testing.assert_allclose(poe_J[:, 6], xi, atol=0.01)
 
@@ -174,9 +178,19 @@ class TestPanda(GtsamTestCase):
         """Test forward kinematics at rest."""
         self.check_poe([0, 0, 0, 0, 0, 0, 0])
 
+    def test_forward_kinematics_at_rest_with_offset(self):
+        """FK at rest, with offset."""
+        fTe = Pose3(Rot3.Ry(0.1), Point3(1, 2, 3))
+        self.check_poe([0, 0, 0, 0, 0, 0, 0], fTe)
+
     def test_forward_kinematics_joint0(self):
         """Test forward kinematics with non-zero joint0 angle."""
         self.check_poe([np.pi/2, 0, 0, 0, 0, 0, 0])
+
+    def test_forward_kinematics_joint0_with_offset(self):
+        """FK with non-zero joint0, with offset."""
+        fTe = Pose3(Rot3.Ry(0.1), Point3(1, 2, 3))
+        self.check_poe([np.pi/2, 0, 0, 0, 0, 0, 0], fTe)
 
     def test_forward_kinematics_middle(self):
         """Test forward kinematics with middle joint rotated."""
@@ -185,6 +199,11 @@ class TestPanda(GtsamTestCase):
     def test_forward_kinematics_random(self):
         """Test forward kinematics with random configuration."""
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7])
+
+    def test_forward_kinematics_random(self):
+        """FK with random configuration, plus offset."""
+        fTe = Pose3(Rot3.Ry(0.1), Point3(1, 2, 3))
+        self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7], fTe)
 
     def test_panda_decomposition(self):
         """Test composition of Panda as shoulder and arm"""
