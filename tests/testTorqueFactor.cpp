@@ -42,7 +42,7 @@ TEST(TorqueFactor, error) {
 
   // Create factor.
   auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
-  TorqueFactor factor(cost_model, joint, 777);
+  auto factor = TorqueFactor(cost_model, joint, 777);
 
   // Check keys.
   const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777),
@@ -53,14 +53,14 @@ TEST(TorqueFactor, error) {
   // Check evaluateError.
   double torque = 20;
   gtsam::Vector wrench = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
-  gtsam::Vector1 actual_errors = factor.evaluateError(wrench, torque);
+  gtsam::Values values;
+  values.insert(wrench_key, wrench);
+  values.insert(torque_key, torque);
+  gtsam::Vector1 actual_errors = factor.unwhitenedError(values);
   gtsam::Vector1 expected_errors(0);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
-  gtsam::Values values;
-  values.insert(wrench_key, wrench);
-  values.insert(torque_key, torque);
   double diffDelta = 1e-7;
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-7);
 }

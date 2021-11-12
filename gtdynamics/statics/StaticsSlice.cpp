@@ -33,8 +33,8 @@ gtsam::NonlinearFactorGraph Statics::wrenchEquivalenceFactors(
     const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.emplace_shared<WrenchEquivalenceFactor>(p_->f_cost_model, joint,
-                                                  slice.k);
+    graph.add(WrenchEquivalenceFactor(p_->f_cost_model, joint,
+                                                  slice.k));
   }
   return graph;
 }
@@ -43,7 +43,7 @@ gtsam::NonlinearFactorGraph Statics::torqueFactors(const Slice& slice,
                                                    const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.emplace_shared<TorqueFactor>(p_->t_cost_model, joint, slice.k);
+    graph.add(TorqueFactor(p_->t_cost_model, joint, slice.k));
   }
   return graph;
 }
