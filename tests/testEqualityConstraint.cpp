@@ -26,13 +26,15 @@
 using namespace gtdynamics;
 using namespace gtsam;
 using constrained_example::x1_key, constrained_example::x2_key;
+using constrained_example::x1, constrained_example::x2;
+using constrained_example::pow;
 
 // Test methods of DoubleExpressionEquality.
 TEST(EqualityConstraint, DoubleExpressionEquality) {
   // create constraint from double expression
   // g(x1, x2) = x1 + x1^3 + x2 + x2^2, from Vanderbergh slides
   double tolerance = 0.1;
-  auto g = constrained_example::constraint1_expr;
+  auto g = x1 + pow(x1, 3) + x2 + pow(x2, 2);;
   auto constraint = DoubleExpressionEquality(g, tolerance);
 
   // Create 2 sets of values for testing.
@@ -86,7 +88,9 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
 // Test methods of VectorExpressionEquality.
 TEST(EqualityConstraint, VectorExpressionEquality) {
   // g(v1, v2) = v1 + v2, our own example.
-  auto g = constrained_example::constraint_sum_vector2_expr;
+  Vector2_ x1_vec_expr(x1_key);
+  Vector2_ x2_vec_expr(x2_key);
+  auto g = x1_vec_expr + x2_vec_expr;
   auto tolerance = Vector2(0.1, 0.5);
   auto constraint = VectorExpressionEquality<2>(g, tolerance);
 
