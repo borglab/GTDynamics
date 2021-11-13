@@ -5,7 +5,7 @@
  * See LICENSE for the license information
  *
  * @file  serial.py
- * @brief Ptototype Serial class for serial manipulators.
+ * @brief Prototype Serial class for serial manipulators.
  * @author Frank Dellaert
 """
 
@@ -22,18 +22,11 @@ def compose(A: Tuple[Pose3, np.ndarray], B: Tuple[Pose3, np.ndarray]):
     bTc, Jc = B
     assert Jb.shape[0] == 6 and Jc.shape[0] == 6, f"{Jb.shape} and {Jc.shape}"
 
-    # Compose poses
+    # Compose poses:
     aTc = aTb.compose(bTc)
 
-    # Check if one of specs is an offset:
-    if Jb.shape[1] == 0:
-        return aTc, Jc
-
+    # Adjoint the first Jacobian to the new end-effector frame C:
     c_Ad_b = bTc.inverse().AdjointMap()
-    if Jc.shape[1] == 0:
-        return aTc, c_Ad_b @ Jb
-
-    # if not, do normal case:
     return aTc, np.hstack((c_Ad_b @ Jb, Jc))
 
 
@@ -102,12 +95,11 @@ class Serial():
             fTe: Optional[Pose3] = None,
             J: Optional[np.ndarray] = None):
         """ Perform forward kinematics given q, return Pose of end-effector.
-            When q is smaller than #joints, actuates last joints in chain.
 
         Arguments:
             q (np.ndarray): joint angles for all joints.
-            fTe: optionally, the end-effector pose with respect to final link.
-            J: optionally, the manipulator Jacobian.
+            fTe (optional): the end-effector pose with respect to final link.
+            J   (in/out):   optionally, the manipulator Jacobian.
         Returns:
             jTe (Pose3)
         """

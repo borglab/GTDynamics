@@ -129,7 +129,7 @@ class TestPanda(GtsamTestCase):
         sM7, J7 = self.serial.spec()
         self.gtsamAssertEquals(sM7, expected_sM7, tol=1e-3)
 
-        # Check Panda twsist in end-effector frame
+        # Check Panda twist in end-effector frame
         self.assertEqual(J7.shape, (6, 7))
         expected_J7 = np.array([
             [0,   0,   -1,    -0.002, -0.088,  0],
