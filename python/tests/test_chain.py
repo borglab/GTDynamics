@@ -4,20 +4,19 @@
  * All Rights Reserved
  * See LICENSE for the license information
  *
- * @file  test_serial.py
- * @brief Test Serial class with Panda robot.
+ * @file  test_chain.py
+ * @brief Test Chain class with Panda robot.
  * @author Frank Dellaert
 """
 
 import unittest
 from pathlib import Path
-from typing import Optional, Tuple
 
 import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
-from prototype.serial import Serial
+from prototype.chain import Chain
 
 
 def axis(*A):
@@ -25,15 +24,15 @@ def axis(*A):
     return np.array([list(A)], dtype=float).transpose()
 
 
-class TestSerial(GtsamTestCase):
-    """Test Serial FK in GTD context."""
+class TestChain(GtsamTestCase):
+    """Test Chain FK in GTD context."""
 
     def test_one_link(self):
         """Test creating just one link."""
         sMb, Jb = Pose3(Rot3(), Point3(5, 0, 0)), axis(0, 0, 1, 0, 5, 0)
         self.assertEqual(Jb.shape, (6, 1))
-        joint1 = Serial(sMb, Jb)
-        self.assertIsInstance(joint1, Serial)
+        joint1 = Chain(sMb, Jb)
+        self.assertIsInstance(joint1, Chain)
 
         # FK at rest
         self.gtsamAssertEquals(joint1.poe([0]), sMb)
@@ -49,11 +48,11 @@ class TestSerial(GtsamTestCase):
     def test_three_link(self):
         """Test creating a two-link arm in SE(2)."""
         sMb, Jb = Pose3(Rot3(), Point3(5, 0, 0)), axis(0, 0, 1, 0, 5, 0)
-        joint1 = Serial(sMb, Jb)
-        joint2 = Serial(sMb, Jb)
-        joint3 = Serial(sMb, Jb)
-        three_links = Serial.compose(joint1, joint2, joint3)
-        self.assertIsInstance(three_links, Serial)
+        joint1 = Chain(sMb, Jb)
+        joint2 = Chain(sMb, Jb)
+        joint3 = Chain(sMb, Jb)
+        three_links = Chain.compose(joint1, joint2, joint3)
+        self.assertIsInstance(three_links, Chain)
         sM3, J3 = three_links.spec()
         expected = Pose3(Rot3(), Point3(15, 0, 0))
         self.gtsamAssertEquals(sM3, expected)
@@ -90,13 +89,13 @@ ROBOT = gtd.CreateRobotFromFile(str(MODEL_FILE)).fixLink(BASE_NAME)
 
 
 class TestPanda(GtsamTestCase):
-    """Test Serial FK applied to Panda."""
+    """Test Chain FK applied to Panda."""
 
     def setUp(self):
         """Set up the fixtures."""
 
-        # Create serial sub-system
-        self.serial = Serial.from_robot(ROBOT, BASE_NAME)
+        # Create chain sub-system
+        self.chain = Chain.from_robot(ROBOT, BASE_NAME)
 
     @ staticmethod
     def JointAngles(q: list):
@@ -125,8 +124,8 @@ class TestPanda(GtsamTestCase):
         actual_sM7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sM7, expected_sM7, tol=1e-3)
 
-        # Check that Serial can be constructed from robot
-        sM7, J7 = self.serial.spec()
+        # Check that Chain can be constructed from robot
+        sM7, J7 = self.chain.spec()
         self.gtsamAssertEquals(sM7, expected_sM7, tol=1e-3)
 
         # Check Panda twist in end-effector frame
@@ -153,24 +152,24 @@ class TestPanda(GtsamTestCase):
             sT7 = sT7.compose(fTe)
 
         # FK with POE.
-        poe_sT7 = self.serial.poe(q, fTe=fTe)
+        poe_sT7 = self.chain.poe(q, fTe=fTe)
         self.gtsamAssertEquals(poe_sT7, sT7, tol=1e-7)
 
         # FK with POE and Jacobians
         poe_J = np.zeros((6, 7))
-        poe_sT7 = self.serial.poe(q, fTe=fTe, J=poe_J)
+        poe_sT7 = self.chain.poe(q, fTe=fTe, J=poe_J)
         self.gtsamAssertEquals(poe_sT7, sT7, tol=1e-7)
 
         # Unless we apply an extra transform at the end, check that last column
-        # in the Jacobian is unchanged from the axes, because that twist affects
-        # the end-effector one on one.
+        # in the Jacobian is unchanged from the axes, because that twist
+        # affects the end-effector one on one.
         if fTe is None:
-            np.testing.assert_allclose(poe_J[:, 6], self.serial.axes[:, 6])
+            np.testing.assert_allclose(poe_J[:, 6], self.chain.axes[:, 6])
 
         # Check derivatives
         q_list[6] += 0.00001
         q = np.array(q_list)
-        sT7_plus = self.serial.poe(q, fTe=fTe)
+        sT7_plus = self.chain.poe(q, fTe=fTe)
         xi = sT7.logmap(sT7_plus)/0.00001
         np.testing.assert_allclose(poe_J[:, 6], xi, atol=0.01)
 
@@ -200,7 +199,7 @@ class TestPanda(GtsamTestCase):
         """Test forward kinematics with random configuration."""
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7])
 
-    def test_forward_kinematics_random(self):
+    def test_forward_kinematics_random_offset(self):
         """FK with random configuration, plus offset."""
         fTe = Pose3(Rot3.Ry(0.1), Point3(1, 2, 3))
         self.check_poe([0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7], fTe)
@@ -208,10 +207,10 @@ class TestPanda(GtsamTestCase):
     def test_panda_decomposition(self):
         """Test composition of Panda as shoulder and arm"""
         # Construct Panda arm with compose
-        shoulder = Serial.from_robot(ROBOT, BASE_NAME, (0, 3))
-        arm = Serial.from_robot(ROBOT, joint_range=(3, 6))
-        wrist = Serial.from_robot(ROBOT, joint_range=(6, 7))
-        panda = Serial.compose(shoulder, arm, wrist)
+        shoulder = Chain.from_robot(ROBOT, BASE_NAME, (0, 3))
+        arm = Chain.from_robot(ROBOT, joint_range=(3, 6))
+        wrist = Chain.from_robot(ROBOT, joint_range=(6, 7))
+        panda = Chain.compose(shoulder, arm, wrist)
         self.assertEqual(panda.axes.shape, (6, 7))
 
         # Conventional FK with GTSAM.

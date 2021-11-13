@@ -4,8 +4,8 @@
  * All Rights Reserved
  * See LICENSE for the license information
  *
- * @file  serial.py
- * @brief Prototype Serial class for serial manipulators.
+ * @file  chain.py
+ * @brief Prototype Chain class for chain manipulators.
  * @author Frank Dellaert
 """
 
@@ -16,22 +16,23 @@ import numpy as np
 from gtsam import Pose3
 
 
-def compose(A: Tuple[Pose3, np.ndarray], B: Tuple[Pose3, np.ndarray]):
-    """Monoid operation for pose,Jacobian pairs."""
-    aTb, Jb = A
-    bTc, Jc = B
-    assert Jb.shape[0] == 6 and Jc.shape[0] == 6, f"{Jb.shape} and {Jc.shape}"
+def compose(aSbj: Tuple[Pose3, np.ndarray], bSck: Tuple[Pose3, np.ndarray]):
+    """Monoid operation for chains, i.e., pose,Jacobian pairs."""
+    aTb, bAj = aSbj
+    bTc, cAk = bSck
+    assert bAj.shape[0] == 6 and cAk.shape[0] == 6,\
+        f"Jaocobains should have 6 rows, sapes are {bAj.shape} and {cAk.shape}"
 
     # Compose poses:
     aTc = aTb.compose(bTc)
 
     # Adjoint the first Jacobian to the new end-effector frame C:
     c_Ad_b = bTc.inverse().AdjointMap()
-    return aTc, np.hstack((c_Ad_b @ Jb, Jc))
+    return aTc, np.hstack((c_Ad_b @ bAj, cAk))
 
 
-class Serial():
-    """Three-link arm class."""
+class Chain():
+    """Serial kinematic chain."""
 
     def __init__(self, sMb, axes: np.ndarray):
         """Create from end-effector at rest and Jacobian.
@@ -47,7 +48,7 @@ class Serial():
 
     @classmethod
     def compose(cls, *components):
-        """Create from a variable number of other Serial instances."""
+        """Create from a variable number of other Chain instances."""
         spec = components[0].spec()
         for component in components[1:]:
             spec = compose(spec, component.spec())
@@ -58,7 +59,7 @@ class Serial():
         return self.sMb, self.axes
 
     def __repr__(self):
-        return f"Serial\n: {self.sMb}\n{np.round(self.axes,3)}\n"
+        return f"Chain\n: {self.sMb}\n{np.round(self.axes,3)}\n"
 
     @classmethod
     def from_robot(cls, robot: gtd.Robot,
@@ -85,7 +86,7 @@ class Serial():
                 "Cannot have base name if first joint is not 0"
             base_link = robot.link(base_name)
             sM0 = base_link.bMcom()
-            offset = Serial(sM0, np.zeros((6, 0)))
+            offset = Chain(sM0, np.zeros((6, 0)))
             pairs = [offset] + pairs
 
         # Now, let compose do the work!
