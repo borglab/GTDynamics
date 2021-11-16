@@ -44,7 +44,6 @@ class Joint;  // forward declaration
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
 
-
 /**
  * @class Base class for links taking different format of parameters.
  */

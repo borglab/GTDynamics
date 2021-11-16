@@ -36,7 +36,6 @@ Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
     H_wTcom->setZero();
     H_wTcom->bottomLeftCorner<3, 3>() = mass * H_unrotate;
   }
-  // std::cout << "gravity:\n" << wrench;
   return wrench;
 }
 
