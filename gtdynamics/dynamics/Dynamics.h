@@ -24,4 +24,8 @@ gtsam::Vector6 Coriolis(const gtsam::Matrix6 &inertia,
                         const gtsam::Vector6 &twist,
                         gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
 
+gtsam::Vector6 matrixMult(const gtsam::Matrix6 &inertia,
+                        const gtsam::Vector6 &twist,
+                        gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
+
 }  // namespace gtdynamics

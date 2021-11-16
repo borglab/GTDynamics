@@ -18,7 +18,9 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <boost/enable_shared_from_this.hpp>
@@ -29,7 +31,6 @@
 #include <vector>
 
 #include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/utils.h"
@@ -42,6 +43,13 @@ class Joint;  // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
+
+// gtsam::Vector6_ operator*(const gtsam::Matrix6& m, const gtsam::Vector6_& v) {
+//   return gtsam::Vector6_(
+//       std::bind(&matrixMult, m, std::placeholders::_1,
+//                 std::placeholders::_2),
+//       v);
+// }
 
 /**
  * @class Base class for links taking different format of parameters.
@@ -197,6 +205,13 @@ class Link : public boost::enable_shared_from_this<Link> {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
 
+
+  /**
+   * @brief Create expression that constraint the wrench balance on the link.
+   */
+  gtsam::Vector6_ wrenchConstraint(
+      const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
  private:
   /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {

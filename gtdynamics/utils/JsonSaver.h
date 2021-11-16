@@ -225,13 +225,13 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
-      return "Wrench";
+    // if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
+    //   return "Wrench";
     // } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
     //   return "Pose";
     // } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
     //   return "Twist";
-    } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
+    if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
       return "TwistAccel";
     // } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
     //   return "Torque";

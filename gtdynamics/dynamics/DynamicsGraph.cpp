@@ -335,11 +335,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       }
 
       // add wrench factor for link
-      graph.emplace_shared<WrenchFactor>(
-          internal::TwistKey(link->id(), k),
-          internal::TwistAccelKey(link->id(), k), wrench_keys,
-          internal::PoseKey(link->id(), k), opt_.fa_cost_model,
-          link->inertiaMatrix(), gravity);
+      graph.add(WrenchFactor(
+        opt_.fa_cost_model, link, wrench_keys, k, gravity));
     }
   }
 
