@@ -356,6 +356,8 @@ class OptimizationParameters {
 class ContactGoal {
   ContactGoal(const gtdynamics::PointOnLink &point_on_link,
               const gtsam::Point3 &goal_point);
+  gtdynamics::PointOnLink point_on_link;
+  gtsam::Point3 goal_point;
   gtdynamics::Link *link() const;
   gtsam::Point3 &contactInCoM() const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
@@ -642,6 +644,15 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
     const gtdynamics::Robot &robot,
     const gtsam::SharedNoiseModel &joint_velocity_model,
     const gtsam::SharedNoiseModel &joint_acceleration_model, int k = 0);
+
+class PointGoalFactor : gtsam::NonlinearFactor {
+  PointGoalFactor(gtsam::Key pose_key,                 //
+                  gtsam::SharedNoiseModel cost_model,  //
+                  gtsam::Point3 point_com,             //
+                  gtsam::Point3 goal_point);
+
+  gtsam::Point3 goalPoint();
+};
 
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
