@@ -112,15 +112,10 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/WrenchFactor.h>
-class WrenchFactor : gtsam::NonlinearFactor {
-  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
-                gtsam::Key pose_key,
-                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
+gtsam::NonlinearFactor WrenchFactor(
+    const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
+    const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
+    const boost::optional<gtsam::Vector3> &gravity);
 
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 gtsam::NonlinearFactor WrenchEquivalenceFactor(

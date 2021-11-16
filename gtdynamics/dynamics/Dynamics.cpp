@@ -37,19 +37,14 @@ Vector6 Coriolis(const Matrix6 &inertia, const Vector6 &twist,
                    .finished();
   }
   auto result = gtsam::Pose3::adjointTranspose(twist, inertia * twist);
-//   std::cout << "inertia:\n" << inertia << "\n";
-//   std::cout << "Coriolis:\n" << result << "\n";
   return result;
 }
 
-Vector6 matrixMult(const Matrix6 &inertia, const Vector6 &twist,
+Vector6 MatVecMult(const Matrix6 &inertia, const Vector6 &twist,
                  gtsam::OptionalJacobian<6, 6> H_twist) {
   if (H_twist) {
       *H_twist = inertia;
       }
-//   std::cout << "matrix:\n" << inertia << "\n";
-//   std::cout << "twistAccel:\n" << twist;
-//   std::cout << "accel:\n" << inertia * twist;
   auto result = inertia * twist;
   return result;
 }

@@ -44,12 +44,6 @@ class Joint;  // forward declaration
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
 
-// gtsam::Vector6_ operator*(const gtsam::Matrix6& m, const gtsam::Vector6_& v) {
-//   return gtsam::Vector6_(
-//       std::bind(&matrixMult, m, std::placeholders::_1,
-//                 std::placeholders::_2),
-//       v);
-// }
 
 /**
  * @class Base class for links taking different format of parameters.
@@ -208,10 +202,14 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /**
    * @brief Create expression that constraint the wrench balance on the link.
+   * @param wrench_keys Keys for external wrenches acting on the link.
+   * @param t Time step.
+   * @param gravity Gravitional constant.
    */
   gtsam::Vector6_ wrenchConstraint(
       const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
       const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
+
  private:
   /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {

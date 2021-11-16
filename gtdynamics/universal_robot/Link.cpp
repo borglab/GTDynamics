@@ -43,11 +43,10 @@ gtsam::Vector6_ Link::wrenchConstraint(
   const gtsam::Matrix6 neg_inertia = -inertiaMatrix();
   gtsam::Vector6_ twistAccel(internal::TwistAccelKey(id(), t));
   gtsam::Vector6_ wrench_momentum(
-      std::bind(matrixMult, neg_inertia, std::placeholders::_1,
+      std::bind(MatVecMult, neg_inertia, std::placeholders::_1,
                 std::placeholders::_2),
       twistAccel);
   wrenches.push_back(wrench_momentum);
-
 
   // External wrenches.
   for (const auto& key : wrench_keys) {
