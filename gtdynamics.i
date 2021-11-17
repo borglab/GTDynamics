@@ -86,16 +86,9 @@ gtsam::NonlinearFactor TwistFactor(const gtsam::noiseModel::Base *cost_model,
                                    size_t t = 0);
 
 #include <gtdynamics/factors/TwistAccelFactor.h>
-class TwistAccelFactor : gtsam::NonlinearFactor {
-  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
-                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
-                   gtsam::Key qVel_key, gtsam::Key qAccel_key,
-                   const gtsam::noiseModel::Base *cost_model,
-                   const gtdynamics::Joint *joint);
-
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
+gtsam::NonlinearFactor TwistAccelFactor(const gtsam::noiseModel::Base *cost_model,
+                                    const gtdynamics::Joint *joint,
+                                    size_t k = 0);
 
 #include <gtdynamics/factors/TorqueFactor.h>
 gtsam::NonlinearFactor TorqueFactor(const gtsam::noiseModel::Base *cost_model,

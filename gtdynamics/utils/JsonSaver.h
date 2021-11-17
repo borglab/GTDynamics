@@ -231,11 +231,11 @@ class JsonSaver {
     //   return "Pose";
     // } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
     //   return "Twist";
-    if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
-      return "TwistAccel";
+    // if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
+    //   return "TwistAccel";
     // } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
     //   return "Torque";
-    } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
+    if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
       return "WrenchPlanar";
     // } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
     //   return "WrenchEq";

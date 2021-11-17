@@ -264,13 +264,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
       graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(link->id(), t),
                                      gtsam::Z_6x1, opt_.ba_cost_model);
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistAccelFactor>(
-        internal::TwistKey(joint->child()->id(), t),
-        internal::TwistAccelKey(joint->parent()->id(), t),
-        internal::TwistAccelKey(joint->child()->id(), t),
-        internal::JointAngleKey(joint->id(), t),
-        internal::JointVelKey(joint->id(), t),
-        internal::JointAccelKey(joint->id(), t), opt_.a_cost_model, joint);
+    graph.add(TwistAccelFactor(opt_.a_cost_model, joint, t));
 
   // Add contact factors.
   if (contact_points) {
