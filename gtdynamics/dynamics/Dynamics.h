@@ -29,4 +29,9 @@ gtsam::Vector6 MatVecMult(const gtsam::Matrix6 &inertia,
                         const gtsam::Vector6 &twist,
                         gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
 
+/// Matrix vector multiplication.
+gtsam::Vector3 MatVecMult36(const gtsam::Matrix36 &mat,
+                            const gtsam::Vector6 &vec,
+                            gtsam::OptionalJacobian<3, 6> H_vec = boost::none);
+
 }  // namespace gtdynamics

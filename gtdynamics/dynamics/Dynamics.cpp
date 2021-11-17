@@ -49,5 +49,13 @@ Vector6 MatVecMult(const Matrix6 &inertia, const Vector6 &twist,
   return result;
 }
 
+gtsam::Vector3 MatVecMult36(const gtsam::Matrix36 &mat, const Vector6 &vec,
+                 gtsam::OptionalJacobian<3, 6> H_vec) {
+  if (H_vec) {
+      *H_vec = mat;
+      }
+  auto result = mat * vec;
+  return result;
+}
 
 }  // namespace gtdynamics

@@ -343,8 +343,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
                                                   const_joint, k));
     graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
     if (planar_axis_)
-      graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
-                                               *planar_axis_, const_joint, k);
+      graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
+                                   const_joint, k));
   }
   return graph;
 }

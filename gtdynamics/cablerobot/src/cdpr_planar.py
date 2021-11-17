@@ -159,7 +159,7 @@ class Cdpr:
                         gtd.internal.WrenchKey(self.ee_id(), 2, k),
                         gtd.internal.WrenchKey(self.ee_id(), 3, k)
                     ],
-                    gravity = elf.params.gravity)
+                    gravity = self.params.gravity)
             dfg.push_back(wf)
             for ji in range(4):
                 dfg.push_back(

@@ -53,8 +53,8 @@ gtsam::NonlinearFactorGraph Statics::wrenchPlanarFactors(
   gtsam::NonlinearFactorGraph graph;
   if (p_->planar_axis)
     for (auto&& joint : robot.joints()) {
-      graph.emplace_shared<WrenchPlanarFactor>(
-          p_->planar_cost_model, *p_->planar_axis, joint, slice.k);
+      graph.add(WrenchPlanarFactor(p_->planar_cost_model, *p_->planar_axis,
+                                   joint, slice.k));
     }
   return graph;
 }

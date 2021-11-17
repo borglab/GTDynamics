@@ -116,12 +116,9 @@ gtsam::NonlinearFactor WrenchEquivalenceFactor(
     size_t k = 0);
 
 #include <gtdynamics/factors/WrenchPlanarFactor.h>
-class WrenchPlanarFactor : gtsam::NonlinearFactor {
-  WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis, gtdynamics::Joint *joint, size_t k=0);
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
+gtsam::NonlinearFactor WrenchPlanarFactor(
+    const gtsam::noiseModel::Base *cost_model, Vector planar_axis,
+    gtdynamics::Joint *joint, size_t k = 0);
 
 #include <gtdynamics/factors/CollocationFactors.h>
 class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
