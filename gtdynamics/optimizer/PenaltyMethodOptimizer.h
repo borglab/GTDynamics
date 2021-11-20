@@ -50,7 +50,9 @@ class PenaltyMethodOptimizer : public ConstrainedOptimizer {
   /// Run optimization.
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
                          const EqualityConstraints& constraints,
-                         const gtsam::Values& initial_values) const override;
+                         const gtsam::Values& initial_values,
+                         boost::optional<ConstrainedOptResult&> opt_result =
+                             boost::none) const override;
 };
 
 }  // namespace gtdynamics
