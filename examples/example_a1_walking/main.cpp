@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
   gttoc_(optimization);
   gttoc_(start);
 
-  tictoc_print_();
+  tictoc_print();
   // Write results to traj file
   trajectory.writeToFile(robot, "a1_traj.csv", results);
 
