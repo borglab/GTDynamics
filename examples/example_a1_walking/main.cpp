@@ -62,7 +62,7 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
 
 int main(int argc, char** argv) {
 
-  gttic_(start);
+  gttic_(start); //need to build gtsam with timing for this
 
   // Load Unitree A1 robot urdf.
   auto robot =
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
   gttoc_(optimization);
   gttoc_(start);
 
-  tictoc_print();
+  gtsam::tictoc_print_(); //need to build gtsam with timing for this
   // Write results to traj file
   trajectory.writeToFile(robot, "a1_traj.csv", results);
 
