@@ -162,7 +162,7 @@ def make_plot(values, jr, num_steps):
 
 
 if __name__ == "__main__":
-    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+    yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
     jr = JumpingRobot(yaml_file_path, JumpingRobot.create_init_config())
 
     values = gtsam.Values()

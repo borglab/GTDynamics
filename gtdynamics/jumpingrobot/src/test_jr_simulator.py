@@ -34,7 +34,7 @@ from src.robot_graph_builder import RobotGraphBuilder
 class TestJRSimulator(unittest.TestCase):
     def setUp(self):
         """ Set up the simulator. """
-        self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        self.yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
         self.init_config = JumpingRobot.create_init_config()
         self.jr_simulator = JRSimulator(self.yaml_file_path, self.init_config)
 

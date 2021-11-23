@@ -359,7 +359,7 @@ class JRSimulator:
 
 def example_simulate():
     """ Show an example robot jumping trajectory """
-    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+    yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
 
     theta = np.pi/3
     rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
