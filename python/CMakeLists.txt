@@ -79,6 +79,9 @@ PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
 endif()
+if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
+  PYTHON_UNIT_TEST_SUITE(jumpingrobot ${PROJECT_SOURCE_DIR}/gtdynamics/jumpingrobot/src)
+endif()
 
 # Custom make command to run all Python tests
 add_custom_target(
