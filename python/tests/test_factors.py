@@ -42,6 +42,7 @@ class TestJointMeasurementFactor(TestFactors):
 class TestPoseFactor(TestFactors):
     """Test suite for various versions of the JointMeasurementFactor."""
     def test_constructor(self):
+        """Test constructor."""
         joint = self.robot.joint("joint_1")
         joint_key = gtd.internal.JointAngleKey(joint.id(), self.k).key()
         pose_model = gtsam.noiseModel.Isotropic.Sigma(6, 0.1)
