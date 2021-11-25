@@ -7,7 +7,7 @@
 
 /**
  * @file  main.cpp
- * @brief Spider trajectory optimization with pre-specified footholds.
+ * @brief Unitree A1 trajectory optimization with pre-specified footholds.
  * @author: Dan Barladeanu
  */
 
@@ -37,7 +37,7 @@ using gtsam::noiseModel::Unit;
 
 using namespace gtdynamics;
 
-// Returns a Trajectory object for a single spider walk cycle.
+// Returns a Trajectory object for a single a1 walk cycle.
 Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   vector<LinkSharedPtr> rlfr = {robot.link("RL_lower"),robot.link("FR_lower")};
   vector<LinkSharedPtr> rrfl = {robot.link("RR_lower"),robot.link("FL_lower")};
