@@ -30,6 +30,13 @@ struct ConstrainedOptimizationParameters {
   ConstrainedOptimizationParameters() {}
 };
 
+/// Intermediate results for constrained optimization process.
+struct ConstrainedOptResult {
+  std::vector<gtsam::Values> intermediate_values;  // values after each inner loop
+  std::vector<int> num_iters;   // number of LM iterations for each inner loop
+  std::vector<double> mu_values;  // penalty parameter for each inner loop
+};
+
 /// Base class for constrained optimizer.
 class ConstrainedOptimizer {
 
@@ -45,10 +52,13 @@ class ConstrainedOptimizer {
    * @param graph A Nonlinear factor graph representing cost.
    * @param cosntraints All the constraints.
    * @param initial_values Initial values for all variables.
+   * @param intermediate_result (optional) intermediate results during optimization.
    * @return Values The result of the constrained optimization.
    */
-  virtual gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
-                                 const EqualityConstraints& constraints,
-                                 const gtsam::Values& initial_values) const = 0;
+  virtual gtsam::Values optimize(
+      const gtsam::NonlinearFactorGraph& graph,
+      const EqualityConstraints& constraints,
+      const gtsam::Values& initial_values,
+      ConstrainedOptResult* intermediate_result = nullptr) const = 0;
 };
 }  // namespace gtdynamics
