@@ -305,6 +305,12 @@ class Robot {
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t,
       const boost::optional<string> &prior_link_name) const;
+
+  // enabling serialization functionality
+  void serialize() const;
+
+  // enable pickling in python
+  void pickle() const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
