@@ -135,7 +135,33 @@ class VectorExpressionEquality : public EqualityConstraint {
 };
 
 /// Container of EqualityConstraint.
-typedef std::vector<EqualityConstraint::shared_ptr> EqualityConstraints;
+// typedef std::vector<EqualityConstraint::shared_ptr> EqualityConstraints;
+
+class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
+ private:
+  typedef std::vector<EqualityConstraint::shared_ptr> Base;
+
+  template <typename DERIVEDCONSTRAINT>
+  using IsDerived = typename std::enable_if<
+      std::is_base_of<EqualityConstraint, DERIVEDCONSTRAINT>::value>::type;
+
+ public:
+  EqualityConstraints() : Base() {}
+
+  /**
+   * Add a constraint by value, will be copy-constructed (use push_back with a
+   * shared_ptr to avoid the copy).
+   */
+  template <class DERIVEDCONSTRAINT>
+  IsDerived<DERIVEDCONSTRAINT> add(const DERIVEDCONSTRAINT& constraint) {
+    push_back(boost::allocate_shared<DERIVEDCONSTRAINT>(
+            Eigen::aligned_allocator<DERIVEDCONSTRAINT>(), constraint));
+  }
+
+  void add (const EqualityConstraints& other) {
+    insert(end(), other.begin(), other.end());
+  }
+};
 
 }  // namespace gtdynamics
 

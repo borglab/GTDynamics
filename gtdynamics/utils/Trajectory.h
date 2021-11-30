@@ -191,7 +191,7 @@ class Trajectory {
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
-  PointGoalFactor pointGoalFactor(const Robot &robot,
+  gtsam::ExpressionFactor<gtsam::Vector3> pointGoalFactor(const Robot &robot,
                                   const std::string &link_name,
                                   const PointOnLink &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,

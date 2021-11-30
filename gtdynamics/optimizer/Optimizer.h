@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
@@ -26,6 +27,13 @@ namespace gtdynamics {
 
 /// Optimization parameters shared between all solvers
 struct OptimizationParameters {
+  enum Method {
+    UNCONSTRAINED = 0,
+    PENALTY = 1,
+    AUGMENTED_LAGRANGIAN = 2
+  };
+
+  Method method = Method::UNCONSTRAINED; // optimization method
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
   OptimizationParameters() {
     lm_parameters.setlambdaInitial(1e7);
@@ -53,6 +61,17 @@ class Optimizer {
    * @return Values The result of the optimization.
    */
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
+                         const gtsam::Values& initial_values) const;
+
+  /**
+   * @brief optimize with constraints using optimizer settings.
+   *
+   * @param graph a Nonlinear factor graph built by derived class
+   * @param initial_values Initial values for all variables.
+   * @return Values The result of the optimization.
+   */
+  gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
+                         const EqualityConstraints& constraints,
                          const gtsam::Values& initial_values) const;
 };
 }  // namespace gtdynamics

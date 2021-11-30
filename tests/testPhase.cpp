@@ -58,7 +58,7 @@ TEST(Phase, All) {
 
   // contactPointObjectives
   const Point3 step(0, 0.4, 0);
-  const gtsam::SharedNoiseModel cost_model = nullptr;
+  const gtsam::SharedNoiseModel cost_model = gtsam::noiseModel::Unit::Create(3);
   Point3 goal(1, 2, 3);
   const size_t k_start = 777;
   ContactPointGoals cp_goals = {{"tarsus_2_L2", goal},

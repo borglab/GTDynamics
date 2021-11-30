@@ -37,6 +37,7 @@ TEST(Interval, InverseKinematics) {
 
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
+  parameters->method = OptimizationParameters::Method::UNCONSTRAINED;
   Kinematics kinematics(parameters);
 
   auto graph = kinematics.graph(interval, robot);
@@ -69,6 +70,7 @@ TEST(Interval, Interpolate) {
 
   // Create expected values for start and end times
   auto parameters = boost::make_shared<KinematicsParameters>();
+  parameters->method = OptimizationParameters::Method::UNCONSTRAINED;
   Kinematics kinematics(parameters);
   auto result1 = kinematics.inverse(Slice(5), robot, contact_goals);
   auto result2 = kinematics.inverse(Slice(9), robot, contact_goals);

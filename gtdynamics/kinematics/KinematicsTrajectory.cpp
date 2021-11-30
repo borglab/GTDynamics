@@ -35,6 +35,16 @@ NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
 }
 
 template <>
+EqualityConstraints Kinematics::constraints<Trajectory>(const Trajectory& trajectory,
+                                                   const Robot& robot) const {
+  EqualityConstraints constraints;
+  for (auto&& phase : trajectory.phases()) {
+    constraints.add(this->constraints<Interval>(phase, robot));
+  }
+  return constraints;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
     const Trajectory& trajectory, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
@@ -42,6 +52,16 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
     graph.add(pointGoalObjectives<Interval>(phase, contact_goals));
   }
   return graph;
+}
+
+template <>
+EqualityConstraints Kinematics::pointGoalConstraints<Trajectory>(
+    const Trajectory& trajectory, const ContactGoals& contact_goals) const {
+  EqualityConstraints constraints;
+  for (auto&& phase : trajectory.phases()) {
+    constraints.add(pointGoalConstraints<Interval>(phase, contact_goals));
+  }
+  return constraints;
 }
 
 template <>
@@ -68,10 +88,12 @@ Values Kinematics::initialValues<Trajectory>(const Trajectory& trajectory,
 template <>
 Values Kinematics::inverse<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
-    const ContactGoals& contact_goals) const {
+    const ContactGoals& contact_goals,
+    bool contact_goals_as_constraints) const {
   Values results;
   for (auto&& phase : trajectory.phases()) {
-    results.insert(inverse<Interval>(phase, robot, contact_goals));
+    results.insert(inverse<Interval>(phase, robot, contact_goals,
+                                     contact_goals_as_constraints));
   }
   return results;
 }

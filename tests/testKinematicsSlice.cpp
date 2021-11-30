@@ -33,6 +33,7 @@ TEST(Slice, InverseKinematics) {
 
   // Instantiate kinematics algorithms
   auto parameters = boost::make_shared<KinematicsParameters>();
+  parameters->method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
 
   // Create initial values
@@ -74,7 +75,7 @@ TEST(Slice, InverseKinematics) {
   // GTD_PRINT(*factor);
 
   // Check that goals are achieved
-  constexpr double tol = 0.01;
+  constexpr double tol = 1e-5;
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));
   }
