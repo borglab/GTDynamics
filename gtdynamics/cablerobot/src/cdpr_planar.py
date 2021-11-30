@@ -151,7 +151,7 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            wf = gtd.WrenchFactor(
+            gtd.addWrenchFactor(dfg,
                     self.costmodel_wrench, self.eelink(),
                     [
                         gtd.internal.WrenchKey(self.ee_id(), 0, k),
@@ -159,7 +159,6 @@ class Cdpr:
                         gtd.internal.WrenchKey(self.ee_id(), 2, k),
                         gtd.internal.WrenchKey(self.ee_id(), 3, k)
                     ], k, self.params.gravity)
-            dfg.push_back(wf)
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(

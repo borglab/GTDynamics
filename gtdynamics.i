@@ -110,6 +110,12 @@ gtsam::NonlinearFactor WrenchFactor(
     const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
     const boost::optional<gtsam::Vector3> &gravity);
 
+void addWrenchFactor(
+    gtsam::NonlinearFactorGraph &graph,
+    const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
+    const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
+    const boost::optional<gtsam::Vector3> &gravity);
+
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 gtsam::NonlinearFactor WrenchEquivalenceFactor(
     const gtsam::noiseModel::Base *cost_model, gtdynamics::Joint *joint,

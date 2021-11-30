@@ -25,11 +25,10 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/Link.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -51,6 +50,20 @@ inline gtsam::ExpressionFactor<gtsam::Vector6> WrenchFactor(
   return gtsam::ExpressionFactor<gtsam::Vector6>(
       cost_model, gtsam::Vector6::Zero(),
       link->wrenchConstraint(wrench_keys, time, gravity));
+}
+
+/**
+ * Function to use for Python wrapper to add WrenchFactor, since
+ * ExpressionFactors cannot currently be used in Python.
+ */
+inline void addWrenchFactor(
+    gtsam::NonlinearFactorGraph &graph,
+    const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
+    const std::vector<DynamicsSymbol> &wrench_keys, int time,
+    const boost::optional<gtsam::Vector3> &gravity = boost::none) {
+  graph.add(gtsam::ExpressionFactor<gtsam::Vector6>(
+      cost_model, gtsam::Vector6::Zero(),
+      link->wrenchConstraint(wrench_keys, time, gravity)));
 }
 
 }  // namespace gtdynamics
