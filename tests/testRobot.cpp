@@ -16,8 +16,14 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
 
+#include <boost/serialization/export.hpp>
+
+#include "gtdynamics/universal_robot/HelicalJoint.h"
+#include "gtdynamics/universal_robot/PrismaticJoint.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/Robot.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/sdf.h"
@@ -229,6 +235,31 @@ TEST(ForwardKinematics, FourBar) {
   Values wrong_vels = values;
   InsertJointVel(&wrong_vels, 0, 1.0);
   THROWS_EXCEPTION(robot.forwardKinematics(wrong_vels));
+}
+
+TEST(Robot, Equality) {
+  Robot robot1 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+  Robot robot2 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  // EXPECT(robot1 == robot2);
+  // EXPECT(robot1.equals(robot2));
+}
+
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
+BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
+
+TEST(Robot, Serialization) {
+  Robot robot = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsObj(robot));
+  // EXPECT(equalsXML(robot));
+  // EXPECT(equalsBinary(robot));
 }
 
 int main() {
