@@ -52,12 +52,13 @@ class ConstrainedOptimizer {
    * @param graph A Nonlinear factor graph representing cost.
    * @param cosntraints All the constraints.
    * @param initial_values Initial values for all variables.
+   * @param opt_result (optional) intermediate results during optimization.
    * @return Values The result of the constrained optimization.
    */
   virtual gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
                                  const EqualityConstraints& constraints,
                                  const gtsam::Values& initial_values,
-                                 boost::optional<ConstrainedOptResult&>
+                                 boost::optional<ConstrainedOptResult*>
                                      opt_result = boost::none) const = 0;
 };
 }  // namespace gtdynamics

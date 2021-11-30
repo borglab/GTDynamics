@@ -51,13 +51,13 @@ int main(int argc, char** argv) {
   gtdynamics::PenaltyMethodOptimizer penalty_optimizer;
   gtdynamics::ConstrainedOptResult penalty_info;
   Values penalty_results =
-      penalty_optimizer.optimize(graph, constraints, init_values, penalty_info);
+      penalty_optimizer.optimize(graph, constraints, init_values, &penalty_info);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
   gtdynamics::AugmentedLagrangianOptimizer augl_optimizer;
   gtdynamics::ConstrainedOptResult augl_info;
   Values augl_results =
-      augl_optimizer.optimize(graph, constraints, init_values, augl_info);
+      augl_optimizer.optimize(graph, constraints, init_values, &augl_info);
 
   /// Function to evaluate constraint violation.
   auto evaluate_constraint = [&constraints](const gtsam::Values& values) {

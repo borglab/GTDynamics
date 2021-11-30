@@ -17,9 +17,8 @@ namespace gtdynamics {
 
 gtsam::Values PenaltyMethodOptimizer::optimize(
     const gtsam::NonlinearFactorGraph& graph,
-    const EqualityConstraints& constraints,
-    const gtsam::Values& initial_values,
-    boost::optional<ConstrainedOptResult&> opt_result) const {
+    const EqualityConstraints& constraints, const gtsam::Values& initial_values,
+    boost::optional<ConstrainedOptResult*> opt_result) const {
   gtsam::Values values = initial_values;
   double mu = p_->initial_mu;
 
@@ -44,9 +43,9 @@ gtsam::Values PenaltyMethodOptimizer::optimize(
 
     /// Store intermediate results.
     if (opt_result) {
-      opt_result->values_list.push_back(values);
-      opt_result->num_iters.push_back(optimizer.getInnerIterations());
-      opt_result->mu_list.push_back(mu);
+      (*opt_result)->values_list.push_back(values);
+      (*opt_result)->num_iters.push_back(optimizer.getInnerIterations());
+      (*opt_result)->mu_list.push_back(mu);
     }
   }
   return values;

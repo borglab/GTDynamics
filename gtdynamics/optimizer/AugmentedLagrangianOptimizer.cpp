@@ -48,7 +48,7 @@ gtsam::Values AugmentedLagrangianOptimizer::optimize(
     const gtsam::NonlinearFactorGraph& graph,
     const EqualityConstraints& constraints,
     const gtsam::Values& initial_values,
-    boost::optional<ConstrainedOptResult&> opt_result) const {
+    boost::optional<ConstrainedOptResult*> opt_result) const {
   gtsam::Values values = initial_values;
 
   // Set initial values for penalty parameter and Lagrangian multipliers.
@@ -85,9 +85,9 @@ gtsam::Values AugmentedLagrangianOptimizer::optimize(
 
     /// Store intermediate results.
     if (opt_result) {
-      opt_result->values_list.push_back(values);
-      opt_result->num_iters.push_back(optimizer.getInnerIterations());
-      opt_result->mu_list.push_back(mu);
+      (*opt_result)->values_list.push_back(values);
+      (*opt_result)->num_iters.push_back(optimizer.getInnerIterations());
+      (*opt_result)->mu_list.push_back(mu);
     }
   }
   return values;
