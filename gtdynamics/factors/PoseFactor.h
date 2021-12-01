@@ -32,7 +32,8 @@ namespace gtdynamics {
 using boost::assign::cref_list_of;
 
 /**
- * \deprecated NOTE This factor has been deprecated and will be removed in the future.
+ * \deprecated NOTE This factor has been deprecated and will be removed in the
+ * future.
  *
  * PoseFactor is a three-way nonlinear factor between a joint's parent link
  * pose, child link pose, and the joint angle relating the two poses.
@@ -40,9 +41,9 @@ using boost::assign::cref_list_of;
  * Given the joint model, this factor optimizes for the underlying joint axis
  * and the corresponding poses of the parent and child links.
  */
-class PoseFactor : public gtsam::NoiseModelFactor {
+class TempPoseFactor : public gtsam::NoiseModelFactor {
  private:
-  using This = PoseFactor;
+  using This = TempPoseFactor;
   using Base = gtsam::NoiseModelFactor;
 
   int t_;
@@ -56,8 +57,8 @@ class PoseFactor : public gtsam::NoiseModelFactor {
    * @param joint The joint connecting the two poses.
    * @param time The timestep at which this factor is defined.
    */
-  PoseFactor(const gtsam::SharedNoiseModel &cost_model,
-             const JointConstSharedPtr &joint, int time)
+  TempPoseFactor(const gtsam::SharedNoiseModel &cost_model,
+                 const JointConstSharedPtr &joint, int time)
       : Base(cost_model,
              cref_list_of<3>(
                  internal::PoseKey(joint->parent()->id(), time).key())(
@@ -77,16 +78,16 @@ class PoseFactor : public gtsam::NoiseModelFactor {
    * @param cost_model The noise model for this factor.
    * @param joint The joint connecting the two poses
    */
-  PoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
-             DynamicsSymbol q_key,
-             const gtsam::noiseModel::Base::shared_ptr &cost_model,
-             JointConstSharedPtr joint)
+  TempPoseFactor(DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
+                 DynamicsSymbol q_key,
+                 const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                 JointConstSharedPtr joint)
       : Base(cost_model,
              cref_list_of<3>(wTp_key.key())(wTc_key.key())(q_key.key())),
         t_(wTp_key.time()),
         joint_(joint) {}
 
-  virtual ~PoseFactor() {}
+  virtual ~TempPoseFactor() {}
 
   /**
    * Evaluate link pose errors
@@ -161,10 +162,10 @@ class PoseFactor : public gtsam::NoiseModelFactor {
  * @param joint The joint connecting the two poses.
  * @param time The timestep at which this factor is defined.
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6> PoseExpressionFactor(
+inline gtsam::ExpressionFactor<gtsam::Vector6>::shared_ptr PoseFactor(
     const gtsam::SharedNoiseModel &cost_model, const JointConstSharedPtr &joint,
     int time) {
-  return gtsam::ExpressionFactor<gtsam::Vector6>(
+  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time));
 }
 
@@ -179,11 +180,11 @@ inline gtsam::ExpressionFactor<gtsam::Vector6> PoseExpressionFactor(
  * @param cost_model The noise model for this factor.
  * @param joint The joint connecting the two poses
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6> PoseExpressionFactor(
+inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     DynamicsSymbol wTp_key, DynamicsSymbol wTc_key, DynamicsSymbol q_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     JointConstSharedPtr joint) {
-  return gtsam::ExpressionFactor<gtsam::Vector6>(
+  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
       joint->poseConstraint(wTp_key.time()));
 }
