@@ -43,7 +43,7 @@ namespace gtdynamics {
  * @param joint The joint connecting the two poses.
  * @param time The timestep at which this factor is defined.
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6>::shared_ptr PoseFactor(
+inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     const gtsam::SharedNoiseModel &cost_model, const JointConstSharedPtr &joint,
     int time) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(

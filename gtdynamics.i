@@ -35,6 +35,9 @@ gtsam::NonlinearFactor* PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
                                   const gtsam::noiseModel::Base *cost_model,
                                   const gtdynamics::Joint *joint);
 
+gtsam::NonlinearFactor *PoseFactor(const gtsam::noiseModel::Base *cost_model,
+                                   const gtdynamics::Joint *joint, size_t k);
+
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
@@ -106,12 +109,6 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
 
 #include <gtdynamics/factors/WrenchFactor.h>
 gtsam::NonlinearFactor* WrenchFactor(
-    const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
-    const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
-    const boost::optional<gtsam::Vector3> &gravity);
-
-void addWrenchFactor(
-    gtsam::NonlinearFactorGraph &graph,
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
     const boost::optional<gtsam::Vector3> &gravity);

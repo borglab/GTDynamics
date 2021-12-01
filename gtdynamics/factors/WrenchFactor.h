@@ -52,17 +52,4 @@ inline gtsam::NoiseModelFactor::shared_ptr WrenchFactor(
       link->wrenchConstraint(wrench_keys, time, gravity));
 }
 
-/**
- * Function to use for Python wrapper to add WrenchFactor, since
- * ExpressionFactors cannot currently be used in Python.
- */
-inline void addWrenchFactor(
-    gtsam::NonlinearFactorGraph &graph,
-    const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
-    const std::vector<DynamicsSymbol> &wrench_keys, int time,
-    const boost::optional<gtsam::Vector3> &gravity = boost::none) {
-  // TODO(yetong): use argument forwarding.
-  graph.add(WrenchFactor(cost_model, link, wrench_keys, time, gravity));
-}
-
 }  // namespace gtdynamics
