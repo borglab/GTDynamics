@@ -225,6 +225,7 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
+    // TODO(yetong): use RTTI to detect run-time factor type.
     if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";
     } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(

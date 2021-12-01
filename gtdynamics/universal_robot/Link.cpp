@@ -33,6 +33,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
 
   // Coriolis forces.
   gtsam::Vector6_ twist(internal::TwistKey(id(), t));
+  // TODO(yetong): make Coriolis a functor and get rid of placeholders.
   gtsam::Vector6_ wrench_coriolis(
       std::bind(Coriolis, inertiaMatrix(), std::placeholders::_1,
                 std::placeholders::_2),
@@ -43,7 +44,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
   const gtsam::Matrix6 neg_inertia = -inertiaMatrix();
   gtsam::Vector6_ twistAccel(internal::TwistAccelKey(id(), t));
   gtsam::Vector6_ wrench_momentum(
-      std::bind(MatVecMult, neg_inertia, std::placeholders::_1,
+      std::bind(MatVecMult<6, 6>, neg_inertia, std::placeholders::_1,
                 std::placeholders::_2),
       twistAccel);
   wrenches.push_back(wrench_momentum);
@@ -68,7 +69,6 @@ gtsam::Vector6_ Link::wrenchConstraint(
   for (const auto& wrench : wrenches) {
     error += wrench;
   }
-
   return error;
 }
 

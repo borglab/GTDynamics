@@ -61,13 +61,13 @@ TEST(TwistFactor, error) {
   values.insert(example::twist_c_key, twist_c);
 
   gtsam::Vector6 actual_errors, expected_errors;
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
 
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

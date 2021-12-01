@@ -65,13 +65,13 @@ TEST(WrenchEquivalenceFactor, error_1) {
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
   Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+      actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench equivalence factor
@@ -93,14 +93,14 @@ TEST(WrenchEquivalenceFactor, error_2) {
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
   Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+      actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   
   // Make sure linearization is correct.
 
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench equivalence factor
@@ -122,13 +122,13 @@ TEST(WrenchEquivalenceFactor, error_3) {
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
   Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+      actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

@@ -40,22 +40,4 @@ Vector6 Coriolis(const Matrix6 &inertia, const Vector6 &twist,
   return result;
 }
 
-Vector6 MatVecMult(const Matrix6 &inertia, const Vector6 &twist,
-                 gtsam::OptionalJacobian<6, 6> H_twist) {
-  if (H_twist) {
-      *H_twist = inertia;
-      }
-  auto result = inertia * twist;
-  return result;
-}
-
-gtsam::Vector3 MatVecMult36(const gtsam::Matrix36 &mat, const Vector6 &vec,
-                 gtsam::OptionalJacobian<3, 6> H_vec) {
-  if (H_vec) {
-      *H_vec = mat;
-      }
-  auto result = mat * vec;
-  return result;
-}
-
 }  // namespace gtdynamics

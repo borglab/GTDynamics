@@ -47,8 +47,11 @@ inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
 
   auto wrench_key = internal::WrenchKey(joint->child()->id(), joint->id(), k);
   gtsam::Vector6_ wrench(wrench_key);
-  gtsam::Vector3_ error(std::bind(MatVecMult36, H_wrench, std::placeholders::_1,
-                                  std::placeholders::_2),
+  // TODO(yetong): maybe can be done easily with a functor, and/or
+  // linearexpression (re-written with functor), and maybe this same pattern
+  // could be used to clean up scalar multiply in Expression.h
+  gtsam::Vector3_ error(std::bind(MatVecMult<3, 6>, H_wrench,
+                                  std::placeholders::_1, std::placeholders::_2),
                         wrench);
   return error;
 }
@@ -57,11 +60,11 @@ inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
  * WrenchPlanarFactor is a one-way nonlinear factor which enforces the
  * wrench to be planar
  */
-inline gtsam::ExpressionFactor<gtsam::Vector3> WrenchPlanarFactor(
+inline gtsam::NoiseModelFactor::shared_ptr WrenchPlanarFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     gtsam::Vector3 planar_axis, const JointConstSharedPtr &joint,
     size_t k = 0) {
-  return gtsam::ExpressionFactor<gtsam::Vector3>(
+  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
       cost_model, gtsam::Vector3::Zero(),
       WrenchPlanarConstraint(planar_axis, joint, k));
 }

@@ -25,13 +25,15 @@ gtsam::Vector6 Coriolis(const gtsam::Matrix6 &inertia,
                         gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
 
 /// Matrix vector multiplication.
-gtsam::Vector6 MatVecMult(const gtsam::Matrix6 &inertia,
-                        const gtsam::Vector6 &twist,
-                        gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
-
-/// Matrix vector multiplication.
-gtsam::Vector3 MatVecMult36(const gtsam::Matrix36 &mat,
-                            const gtsam::Vector6 &vec,
-                            gtsam::OptionalJacobian<3, 6> H_vec = boost::none);
+template <int M, int N>
+inline Eigen::Matrix<double, M, 1> MatVecMult(
+    const Eigen::Matrix<double, M, N> &constant_matrix,
+    const Eigen::Matrix<double, N, 1> &vector,
+    gtsam::OptionalJacobian<M, N> H_vector) {
+  if (H_vector) {
+    *H_vector = constant_matrix;
+  }
+  return constant_matrix * vector;
+}
 
 }  // namespace gtdynamics

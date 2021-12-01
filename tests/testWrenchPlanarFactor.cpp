@@ -47,20 +47,20 @@ TEST(WrenchPlanarFactor, x_axis) {
       WrenchPlanarFactor(example::cost_model, planar_axis, example::joint, 777);
 
   // Check key.
-  EXPECT(assert_equal(example::wrench_key, factor.keys()[0]));
+  EXPECT(assert_equal(example::wrench_key, factor->keys()[0]));
 
   // Check evaluateError.
   gtsam::Vector wrench = (gtsam::Vector(6) << 1, 2, 3, 4, 5, 6).finished();
   gtsam::Vector3 actual_errors, expected_errors;
   gtsam::Values values;
   values.insert(example::wrench_key, wrench);
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 2, 3, 4;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench planar factor for y-axis
@@ -76,13 +76,13 @@ TEST(WrenchPlanarFactor, y_axis) {
   gtsam::Vector3 actual_errors, expected_errors;
   gtsam::Values values;
   values.insert(example::wrench_key, wrench);
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 1, 3, 5;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench planar factor for z-axis
@@ -98,13 +98,13 @@ TEST(WrenchPlanarFactor, z_axis) {
   gtsam::Vector3 actual_errors, expected_errors;
   gtsam::Values values;
   values.insert(example::wrench_key, wrench);
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 1, 2, 6;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

@@ -43,11 +43,11 @@ namespace gtdynamics {
  *  wrench balance, Equation 8.48, page 293
  * @param gravity (optional) Create gravity wrench in link COM frame.
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6> WrenchFactor(
+inline gtsam::NoiseModelFactor::shared_ptr WrenchFactor(
     const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
     const std::vector<DynamicsSymbol> &wrench_keys, int time,
     const boost::optional<gtsam::Vector3> &gravity = boost::none) {
-  return gtsam::ExpressionFactor<gtsam::Vector6>(
+  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
       link->wrenchConstraint(wrench_keys, time, gravity));
 }
@@ -61,9 +61,8 @@ inline void addWrenchFactor(
     const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
     const std::vector<DynamicsSymbol> &wrench_keys, int time,
     const boost::optional<gtsam::Vector3> &gravity = boost::none) {
-  graph.add(gtsam::ExpressionFactor<gtsam::Vector6>(
-      cost_model, gtsam::Vector6::Zero(),
-      link->wrenchConstraint(wrench_keys, time, gravity)));
+  // TODO(yetong): use argument forwarding.
+  graph.add(WrenchFactor(cost_model, link, wrench_keys, time, gravity));
 }
 
 }  // namespace gtdynamics

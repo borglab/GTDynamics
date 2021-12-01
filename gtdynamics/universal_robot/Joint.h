@@ -282,29 +282,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
       gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none) const;
 
   /**
-   * Return the twist acceleration of the other link given this link's twist
-   * accel and a Values object containing this joint's angle Value and
-   * derivatives.
-   */
-  gtsam::Vector6 transformTwistAccelTo1(
-      const LinkSharedPtr &link, double q,
-      boost::optional<gtsam::Vector6> other_twist_accel = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_other_twist_accel = boost::none) const;
-
-  /**
-   * Return the twist acceleration of the other link given this link's twist
-   * accel and a Values object containing this joint's angle Value and
-   * derivatives.
-   */
-  gtsam::Vector6 transformTwistAccelTo2(
-      const LinkSharedPtr &link, double q_dot, double q_ddot,
-      boost::optional<gtsam::Vector6> this_twist = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q_ddot = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_this_twist = boost::none) const;
-
-  /**
    * Express the same wrench in the coordinate frame of the other link. (This
    * function is used for wrench equivalence constraint.)
    */

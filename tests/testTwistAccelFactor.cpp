@@ -69,14 +69,14 @@ TEST(TwistAccelFactor, error) {
   values.insert(example::twistKey, twist);
   values.insert(example::twistAccel_p_key, twistAccel_p);
   values.insert(example::twistAccel_c_key, twistAccel_c);
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test twistAccel factor for stationary case
@@ -102,14 +102,14 @@ TEST(TwistAccelFactor, error_1) {
   values.insert(example::twistKey, twist);
   values.insert(example::twistAccel_p_key, twistAccel_p);
   values.insert(example::twistAccel_c_key, twistAccel_c);
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
 
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {
