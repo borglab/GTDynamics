@@ -22,19 +22,18 @@ TEST(PandaIKFast, Forward) {
   // Create PandaIKFast object
   PandaIKFast pandarobot = PandaIKFast();
 
-  // Should I put this in two different tests?
+  // Should this be put this into two different tests?
   // Simple case: all joints with value 0
   Vector7 joints_simple = (Vector7() << 0, 0, 0, 0, 0, 0, 0).finished();
 
-  Rot3 test_bRe_simple =
+  Rot3 expected_bRe_simple =
       Rot3((Matrix3() << 1, 0, 0, 0, -1, 0, 0, 0, -1).finished());
-  Point3 test_bte_simple = (Point3() << 0.088, 0, 1.033).finished();
-  Pose3 test_bTe_simple(test_bRe_simple, test_bte_simple);
+  Point3 expected_bte_simple = (Point3() << 0.088, 0, 1.033).finished();
+  Pose3 expected_bTe_simple(expected_bRe_simple, expected_bte_simple);
 
-  Pose3 bTe_simple = pandarobot.forward(joints_simple);
+  Pose3 actual_bTe_simple = pandarobot.forward(joints_simple);
 
-  // compare with solution with EXPECT
-  EXPECT(assert_equal(test_bTe_simple, bTe_simple, 1e-5))
+  EXPECT(assert_equal(expected_bTe_simple, actual_bTe_simple, 1e-5))
 
   // Complex case: random joint values
   Vector7 joints = (Vector7() << -1.9205802374693666, -0.07431401149295525,
@@ -52,7 +51,6 @@ TEST(PandaIKFast, Forward) {
 
   Pose3 actual_bTe = pandarobot.forward(joints);
 
-  // compare with solution with EXPECT
   EXPECT(assert_equal(expected_bTe, actual_bTe, 1e-5))
 }
 
@@ -63,7 +61,7 @@ TEST(PandaIKFast, Inverse) {
   Rot3 bRe = Rot3((Matrix3() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished());
   Point3 bte = (Point3() << 0, 0, 0.25).finished();
   Pose3 bTe(bRe, bte);
-  double joint7 = 0.3;
+  double theta7 = 0.3;
 
   vector<Vector7> expected_solutions(8);
   expected_solutions[0] << 2.84159, 0.581145, 3.14159, 2.3909, -3.14159,
@@ -82,8 +80,11 @@ TEST(PandaIKFast, Inverse) {
   expected_solutions[7] << 2.84159, -1.69965, 3.14159, 2.95828, 3.14159,
       -1.88296, 0.3;
 
-  vector<Vector7> actual_solutions = pandarobot.inverse(bTe, joint7);
+  vector<Vector7> actual_solutions = pandarobot.inverse(bTe, theta7);
 
+  EXPECT(assert_equal(8,actual_solutions.size()));
+
+  // Check for every solution if they are equal
   for (size_t i = 0; i < 8; ++i) {
     EXPECT(assert_equal(expected_solutions[i], actual_solutions[i], 1e-5));
   }

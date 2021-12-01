@@ -29,7 +29,7 @@ using IKFAST_NAMESPACE::IkReal;
 
 namespace gtdynamics {
 
-// Wrapper for IKFast functions for panda robot.
+// Wrapper of IKFast functions for panda robot.
 class PandaIKFast {
  private:
   using Pose3 = gtsam::Pose3;
@@ -87,7 +87,7 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
   // default eigen matrix storage is column major, while the ikfast uses a
   // rowmajor one, rotation matrix needs to be transposed before getting the
   // data pointer
-  Matrix3 bRe = bTe.rotation().matrix().transpose();
+  const Matrix3 bRe = bTe.rotation().matrix().transpose();
 
   // Ikfast class where solutions are stored
   IkSolutionList<IkReal> solutions;
@@ -102,7 +102,6 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
 
   int num_sols = (int)solutions.GetNumSolutions();
 
-  // This will be changed once completely integrated
   std::vector<Vector7> joint_values(num_sols, Vector7());
   for (size_t i = 0, j = 0; i < num_sols; ++i) {
     const IkSolutionBase<IkReal>& sol = solutions.GetSolution(i);
