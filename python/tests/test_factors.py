@@ -18,7 +18,10 @@ import numpy as np
 
 
 class TestFactors(unittest.TestCase):
-    """Test suite for various versions of the JointMeasurementFactor."""
+    """
+    Base class for testing various factors.
+    Provides needed fixtures and common functions.
+    """
     def setUp(self):
         self.k = 0
         self.wTp_key = gtd.internal.PoseKey(0, self.k).key()
@@ -41,12 +44,22 @@ class TestJointMeasurementFactor(TestFactors):
 
 class TestTempPoseFactor(TestFactors):
     """Test suite for various versions of the JointMeasurementFactor."""
-    def test_constructor(self):
+    def test_temp_pose_factor_constructor(self):
         """Test constructor."""
         joint = self.robot.joint("joint_1")
         joint_key = gtd.internal.JointAngleKey(joint.id(), self.k).key()
         pose_model = gtsam.noiseModel.Isotropic.Sigma(6, 0.1)
         pose_factor = gtd.TempPoseFactor(self.wTp_key, self.wTc_key, joint_key,
-                                     pose_model, joint)
+                                         pose_model, joint)
 
         self.assertIsInstance(pose_factor, gtd.TempPoseFactor)
+
+    def test_pose_factor_constructor(self):
+        """Test constructor."""
+        joint = self.robot.joint("joint_1")
+        joint_key = gtd.internal.JointAngleKey(joint.id(), self.k).key()
+        pose_model = gtsam.noiseModel.Isotropic.Sigma(6, 0.1)
+        pose_factor = gtd.PoseFactor(self.wTp_key, self.wTc_key, joint_key,
+                                         pose_model, joint)
+
+        self.assertIsInstance(pose_factor, gtd.PoseFactor)
