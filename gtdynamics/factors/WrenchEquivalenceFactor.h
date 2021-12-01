@@ -38,7 +38,7 @@ namespace gtdynamics {
  * Wrench eq factor, enforce same wrench expressed in different link frames.
  * @param joint JointConstSharedPtr to the joint
  */
-inline inline gtsam::NoiseModelFactor::shared_ptr
+inline gtsam::NoiseModelFactor::shared_ptr
 WrenchEquivalenceFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
                         const JointConstSharedPtr &joint, size_t k = 0) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
