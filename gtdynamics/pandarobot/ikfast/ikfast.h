@@ -33,7 +33,7 @@
 #include <cmath>
 
 #ifndef IKFAST_NAMESPACE
-#define IKFAST_NAMESPACE pandainternal
+#define IKFAST_NAMESPACE panda_internal
 #endif
 
 #ifndef IKFAST_HEADER_COMMON
