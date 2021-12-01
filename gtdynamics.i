@@ -30,10 +30,12 @@ class JointMeasurementFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/PoseFactor.h>
-class PoseFactor : gtsam::NonlinearFactor {
-  PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
-             const gtsam::noiseModel::Base *cost_model,
-             const gtdynamics::Joint *joint);
+class TempPoseFactor : gtsam::NonlinearFactor {
+  TempPoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
+                 const gtsam::noiseModel::Base *cost_model,
+                 const gtdynamics::Joint *joint);
+  TempPoseFactor(const gtsam::noiseModel::Base *cost_model,
+                 const gtdynamics::Joint *joint, int time);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
@@ -41,7 +43,7 @@ class PoseFactor : gtsam::NonlinearFactor {
   gtsam::Vector unwhitenedError(const gtsam::Values &x) const;
 };
 
-gtsam::NonlinearFactor PoseExpressionFactor(
+gtsam::NonlinearFactor* PoseFactor(
     gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Joint *joint);
 
