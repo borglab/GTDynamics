@@ -82,7 +82,7 @@ TEST(PandaIKFast, Inverse) {
 
   vector<Vector7> actual_solutions = pandarobot.inverse(bTe, theta7);
 
-  EXPECT(assert_equal(8,actual_solutions.size()));
+  EXPECT(assert_equal(8, actual_solutions.size()));
 
   // Check for every solution if they are equal
   for (size_t i = 0; i < 8; ++i) {

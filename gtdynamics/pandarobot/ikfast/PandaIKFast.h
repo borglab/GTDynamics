@@ -41,16 +41,13 @@ class PandaIKFast {
  public:
   PandaIKFast();
 
-  // The robot's number of joints
-  static size_t kNumJoints;
+  // The robot's number of joints, for the panda it's 7
+  static constexpr size_t kNumJoints = 7;
 
   static Pose3 forward(const Vector7& joint_values);
 
   static std::vector<Vector7> inverse(const Pose3& bRe, double theta7);
 };
-
-// For the panda robot, it is equal to 7
-size_t PandaIKFast::kNumJoints = IKFAST_NAMESPACE::GetNumJoints();
 
 PandaIKFast::PandaIKFast() {}
 
@@ -61,14 +58,15 @@ PandaIKFast::PandaIKFast() {}
  * @return gtsam::Pose3 -- Resulting 3D Pose with the guven joint angles
  */
 gtsam::Pose3 PandaIKFast::forward(const Vector7& joint_values) {
-  IkReal bRe_array[9], bte_array[3];
-  IKFAST_NAMESPACE::ComputeFk(joint_values.data(), bte_array, bRe_array);
+  // Arrays where solution for orientation and position will be stored
+  IkReal orientation[9], position[3];
+  IKFAST_NAMESPACE::ComputeFk(joint_values.data(), position, orientation);
 
-  // Join rotation matrix and position vector into pose vector
-  // default eigen matrix storage is column major, while the ikfast plugin is
-  // rowmajor, a transpose is necessary
-  Rot3 bRe(Matrix3::Map(&bRe_array[0]).transpose());
-  Point3 bte(Point3::Map(&bte_array[0]));
+  // Transform array solutions to gtsam types.
+  // default eigen matrix storage is column major (used in Map), while the
+  // ikfast plugin is rowmajor, a transpose is necessary
+  Rot3 bRe(Matrix3::Map(&orientation[0]).transpose());
+  Point3 bte(Point3::Map(&position[0]));
 
   return Pose3(bRe, bte);
 }
@@ -92,6 +90,7 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
   // Ikfast class where solutions are stored
   IkSolutionList<IkReal> solutions;
 
+  // The inputs (except "solutions") have to be arrays
   bool success = IKFAST_NAMESPACE::ComputeIk(bTe.translation().data(),
                                              bRe.data(), &theta7, solutions);
 
@@ -100,7 +99,7 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
     return std::vector<Vector7>();
   }
 
-  int num_sols = (int)solutions.GetNumSolutions();
+  unsigned int num_sols = (int)solutions.GetNumSolutions();
 
   std::vector<Vector7> joint_values(num_sols, Vector7());
   for (size_t i = 0, j = 0; i < num_sols; ++i) {
