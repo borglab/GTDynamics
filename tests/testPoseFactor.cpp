@@ -61,7 +61,7 @@ TEST(PoseFactor, error) {
   InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
   InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
   InsertJointAngle(&values, 1, 0.0);
-  auto actual_errors = factor->unwhitenedError(values);
+  auto actual_errors = factor.unwhitenedError(values);
 
   // check value
   auto expected_errors = (Vector6() << 0, 0, 0, 0, 0, 0).finished();
@@ -69,7 +69,7 @@ TEST(PoseFactor, error) {
 
   // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
 // Test breaking case
@@ -88,7 +88,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
     InsertJointAngle(&values, 1, 0.0);
-    EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
   }
 
   // check prediction at half PI
@@ -97,7 +97,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
     InsertJointAngle(&values, 1, M_PI / 2);
-    EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
   }
 }
 
@@ -121,7 +121,7 @@ TEST(PoseFactor, breaking_rr) {
   InsertPose(&values, 1, Pose3());
   InsertPose(&values, 2, j1->relativePoseOf(l2, M_PI / 4));
   InsertJointAngle(&values, 1, M_PI / 4);
-  EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+  EXPECT(assert_equal(Z_6x1, factor.unwhitenedError(values), 1e-6));
 }
 
 // Test non-zero cMp rotation case
@@ -147,7 +147,7 @@ TEST(PoseFactor, nonzero_rest) {
     InsertPose(&values, 2, pose_c);
     InsertJointAngle(&values, 1, jointAngle);
     double diffDelta = 1e-7;
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
+    EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
   }
 
   // half PI
@@ -160,7 +160,7 @@ TEST(PoseFactor, nonzero_rest) {
     InsertPose(&values, 2, pose_c);
     InsertJointAngle(&values, 1, jointAngle);
     double diffDelta = 1e-7;
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
+    EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
   }
 }
 
@@ -201,8 +201,7 @@ TEST(PoseFactor, ForwardKinematics) {
   InsertJointAngle(&known_values, 1, t, angle);
   InsertPose(&known_values, 0, t, robot.links()[0]->bMcom());
 
-  Values expected =
-      robot.forwardKinematics(known_values, t, base_link->name());
+  Values expected = robot.forwardKinematics(known_values, t, base_link->name());
 
   EXPECT(assert_equal(Pose(result, 0, t), Pose(expected, 0, t)));
   EXPECT(assert_equal(Pose(result, 1, t), Pose(expected, 1, t)));

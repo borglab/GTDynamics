@@ -162,10 +162,10 @@ class TempPoseFactor : public gtsam::NoiseModelFactor {
  * @param joint The joint connecting the two poses.
  * @param time The timestep at which this factor is defined.
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6>::shared_ptr PoseFactor(
+inline gtsam::ExpressionFactor<gtsam::Vector6> PoseFactor(
     const gtsam::SharedNoiseModel &cost_model, const JointConstSharedPtr &joint,
     int time) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+  return gtsam::ExpressionFactor<gtsam::Vector6>(
       cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time));
 }
 
@@ -180,11 +180,11 @@ inline gtsam::ExpressionFactor<gtsam::Vector6>::shared_ptr PoseFactor(
  * @param cost_model The noise model for this factor.
  * @param joint The joint connecting the two poses
  */
-inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
+inline gtsam::ExpressionFactor<gtsam::Vector6> PoseFactor(
     DynamicsSymbol wTp_key, DynamicsSymbol wTc_key, DynamicsSymbol q_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     JointConstSharedPtr joint) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+  return gtsam::ExpressionFactor<gtsam::Vector6>(
       cost_model, gtsam::Vector6::Zero(),
       joint->poseConstraint(wTp_key.time()));
 }
