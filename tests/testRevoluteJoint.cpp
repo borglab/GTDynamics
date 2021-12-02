@@ -24,7 +24,21 @@
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
 
-using namespace gtsam;
+using gtsam::assert_equal;
+using gtsam::Matrix;
+using gtsam::Matrix61;
+using gtsam::Matrix66;
+using gtsam::numericalDerivative11;
+using gtsam::numericalDerivative21;
+using gtsam::numericalDerivative22;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::Vector3;
+using gtsam::Vector6;
+
 using namespace gtdynamics;
 
 auto robot = simple_urdf::getRobot();

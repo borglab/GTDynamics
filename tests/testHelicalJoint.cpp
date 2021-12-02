@@ -24,7 +24,10 @@
 #include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
-using namespace gtsam;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
 
 /**
  * Construct a Screw joint via Parameters and ensure all values are as

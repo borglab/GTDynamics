@@ -243,8 +243,8 @@ TEST(Robot, Equality) {
   Robot robot2 = CreateRobotFromFile(
       kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
 
-  // EXPECT(robot1 == robot2);
-  // EXPECT(robot1.equals(robot2));
+  EXPECT(robot1 == robot2);
+  EXPECT(robot1.equals(robot2));
 }
 
 // Declaration needed for serialization of derived class.
@@ -258,8 +258,8 @@ TEST(Robot, Serialization) {
 
   using namespace gtsam::serializationTestHelpers;
   EXPECT(equalsObj(robot));
-  // EXPECT(equalsXML(robot));
-  // EXPECT(equalsBinary(robot));
+  EXPECT(equalsXML(robot));
+  EXPECT(equalsBinary(robot));
 }
 
 int main() {

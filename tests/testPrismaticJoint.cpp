@@ -23,7 +23,10 @@
 #include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
-using namespace gtsam;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
 
 /**
  * Construct a Prismatic joint via JointParams and ensure all values are as
