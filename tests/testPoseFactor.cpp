@@ -201,8 +201,7 @@ TEST(PoseFactor, ForwardKinematics) {
   InsertJointAngle(&known_values, 1, t, angle);
   InsertPose(&known_values, 0, t, robot.links()[0]->bMcom());
 
-  Values expected =
-      robot.forwardKinematics(known_values, t, base_link->name());
+  Values expected = robot.forwardKinematics(known_values, t, base_link->name());
 
   EXPECT(assert_equal(Pose(result, 0, t), Pose(expected, 0, t)));
   EXPECT(assert_equal(Pose(result, 1, t), Pose(expected, 1, t)));
