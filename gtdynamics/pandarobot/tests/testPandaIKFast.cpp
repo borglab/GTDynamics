@@ -63,7 +63,7 @@ TEST(PandaIKFast, Inverse) {
   Pose3 bTe(bRe, bte);
   double theta7 = 0.3;
 
-  vector<Vector7> expected_solutions(8);
+  std::vector<Vector7> expected_solutions(8);
   expected_solutions[0] << 2.84159, 0.581145, 3.14159, 2.3909, -3.14159,
       -0.169549, 0.3;
   expected_solutions[1] << -0.3, -0.581145, -3.55271e-15, 2.3909, -3.14159,
@@ -80,7 +80,7 @@ TEST(PandaIKFast, Inverse) {
   expected_solutions[7] << 2.84159, -1.69965, 3.14159, 2.95828, 3.14159,
       -1.88296, 0.3;
 
-  vector<Vector7> actual_solutions = pandarobot.inverse(bTe, theta7);
+  std::vector<Vector7> actual_solutions = pandarobot.inverse(bTe, theta7);
 
   EXPECT(assert_equal(8, actual_solutions.size()));
 
