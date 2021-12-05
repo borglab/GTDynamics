@@ -28,9 +28,15 @@
 
 namespace gtdynamics {
 
+using gtsam::Matrix3;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
+using gtsam::Vector7;
+
 PandaIKFast::PandaIKFast() {}
 
-gtsam::Pose3 PandaIKFast::forward(const gtsam::Vector7& joint_values) {
+Pose3 PandaIKFast::forward(const Vector7& joint_values) {
   // Arrays where solution for orientation and position will be stored
   panda_internal::IkReal orientation[9], position[3];
   panda_internal::ComputeFk(joint_values.data(), position, orientation);
@@ -38,34 +44,33 @@ gtsam::Pose3 PandaIKFast::forward(const gtsam::Vector7& joint_values) {
   // Transform array solutions to gtsam types.
   // default eigen matrix storage is column major (used in Map), while the
   // ikfast plugin is rowmajor, a transpose is necessary
-  gtsam::Rot3 bRe(gtsam::Matrix3::Map(&orientation[0]).transpose());
-  gtsam::Point3 bte(gtsam::Point3::Map(&position[0]));
+  Rot3 bRe(Matrix3::Map(&orientation[0]).transpose());
+  Point3 bte(Point3::Map(&position[0]));
 
-  return gtsam::Pose3(bRe, bte);
+  return Pose3(bRe, bte);
 }
 
-std::vector<gtsam::Vector7> PandaIKFast::inverse(const gtsam::Pose3& bTe,
-                                                 double theta7) {
+std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
   // default eigen matrix storage is column major, while the ikfast uses a
   // rowmajor one, rotation matrix needs to be transposed before getting the
   // data pointer
-  const gtsam::Matrix3 bRe = bTe.rotation().matrix().transpose();
+  const Matrix3 bRe = bTe.rotation().matrix().transpose();
 
   // Ikfast class where solutions are stored
   ikfast::IkSolutionList<panda_internal::IkReal> solutions;
 
   // The inputs (except "solutions") have to be arrays
-  bool success = panda_internal::ComputeIk(bTe.translation().data(),
-                                             bRe.data(), &theta7, solutions);
+  bool success = panda_internal::ComputeIk(bTe.translation().data(), bRe.data(),
+                                           &theta7, solutions);
 
   if (!success) {
     fprintf(stderr, "Error: (inverse PandaIKFast) failed to get ik solution\n");
-    return std::vector<gtsam::Vector7>();
+    return std::vector<Vector7>();
   }
 
-  unsigned int num_sols = (int)solutions.GetNumSolutions();
+  unsigned int num_sols = (unsigned int)solutions.GetNumSolutions();
 
-  std::vector<gtsam::Vector7> joint_values(num_sols, gtsam::Vector7());
+  std::vector<Vector7> joint_values(num_sols, Vector7());
   for (size_t i = 0, j = 0; i < num_sols; ++i) {
     const ikfast::IkSolutionBase<panda_internal::IkReal>& sol =
         solutions.GetSolution(i);
