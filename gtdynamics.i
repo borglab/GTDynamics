@@ -84,6 +84,8 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
+/// TODO(yetong): remove the wrapper for WrenchFactor once EqualityConstraint is
+/// wrapped (Issue #319).
 #include <gtdynamics/factors/WrenchFactor.h>
 gtsam::NonlinearFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
