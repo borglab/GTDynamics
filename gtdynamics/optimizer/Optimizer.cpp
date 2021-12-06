@@ -41,14 +41,12 @@ Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
     return optimize(merit_graph, initial_values);
   }
   else if (p_->method == OptimizationParameters::Method::PENALTY) {
-    auto params = boost::make_shared<PenaltyMethodParameters>();
-    params->lm_parameters = p_->lm_parameters;
+    auto params = boost::make_shared<PenaltyMethodParameters>(p_->lm_parameters);
     PenaltyMethodOptimizer optimizer(params);
     return optimizer.optimize(graph, constraints, initial_values);
   }
   else if (p_->method == OptimizationParameters::Method::AUGMENTED_LAGRANGIAN) {
-    auto params = boost::make_shared<AugmentedLagrangianParameters>();
-    params->lm_parameters = p_->lm_parameters;
+    auto params = boost::make_shared<AugmentedLagrangianParameters>(p_->lm_parameters);
     AugmentedLagrangianOptimizer optimizer(params);
     return optimizer.optimize(graph, constraints, initial_values);
   }

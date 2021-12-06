@@ -20,11 +20,15 @@ namespace gtdynamics {
 /// Parameters for Augmented Lagrangian method
 struct AugmentedLagrangianParameters
     : public ConstrainedOptimizationParameters {
+  using Base = ConstrainedOptimizationParameters;
   size_t num_iterations;
 
-  AugmentedLagrangianParameters() : num_iterations(12) {
-    lm_parameters = gtsam::LevenbergMarquardtParams();
-  }
+  AugmentedLagrangianParameters()
+      : Base(gtsam::LevenbergMarquardtParams()), num_iterations(12) {}
+
+  AugmentedLagrangianParameters(
+      const gtsam::LevenbergMarquardtParams& _lm_parameters)
+      : Base(_lm_parameters), num_iterations(12) {}
 };
 
 /// Augmented Lagrangian method only considering equality constraints.
