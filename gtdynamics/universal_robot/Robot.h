@@ -115,6 +115,7 @@ class Robot {
   /// Overload equality operator.
   bool operator==(const Robot &other) const {
     // Define comparators for easy std::map equality checking
+    // Needed since we are storing shared pointers as the values.
     auto link_comparator = [](decltype(*this->name_to_link_.begin()) a,
                               decltype(a) b) {
       // compare the key name and the underlying shared_ptr object

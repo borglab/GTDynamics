@@ -61,6 +61,17 @@ struct JointScalarLimit {
   double value_lower_limit = -M_PI_2;
   double value_upper_limit = M_PI_2;
   double value_limit_threshold = 1e-9;
+
+  JointScalarLimit() {}
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(value_lower_limit);
+    ar &BOOST_SERIALIZATION_NVP(value_upper_limit);
+    ar &BOOST_SERIALIZATION_NVP(value_limit_threshold);
+  }
 };
 
 /**
@@ -85,6 +96,8 @@ struct JointParams {
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(effort_type);
+    ar &BOOST_SERIALIZATION_NVP(scalar_limits);
     ar &BOOST_SERIALIZATION_NVP(velocity_limit);
     ar &BOOST_SERIALIZATION_NVP(velocity_limit_threshold);
     ar &BOOST_SERIALIZATION_NVP(acceleration_limit);

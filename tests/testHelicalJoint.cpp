@@ -99,7 +99,6 @@ TEST(Joint, params_constructor) {
 }
 
 BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
-BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
 TEST(HelicalJoint, Serialization) {
   auto robot = simple_urdf::getRobot();

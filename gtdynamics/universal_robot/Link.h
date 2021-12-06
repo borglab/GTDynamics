@@ -227,7 +227,6 @@ class Link : public boost::enable_shared_from_this<Link> {
     ar &BOOST_SERIALIZATION_NVP(bMlink_);
     ar &BOOST_SERIALIZATION_NVP(is_fixed_);
     ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
-    ar &BOOST_SERIALIZATION_NVP(joints_);
   }
 
   /// @}
