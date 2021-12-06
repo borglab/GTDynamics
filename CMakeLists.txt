@@ -52,6 +52,7 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
 
 add_subdirectory(gtdynamics)
 
