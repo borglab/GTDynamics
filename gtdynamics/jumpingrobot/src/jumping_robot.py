@@ -111,7 +111,7 @@ class JumpingRobot:
     def load_file(yaml_file_path: str):
         """ Load jumping robot params from yaml file. """
         with open(yaml_file_path) as file:
-            params = yaml.load(file, Loader=yaml.FullLoader)
+            params = yaml.safe_load(file)
             return params
 
     @staticmethod

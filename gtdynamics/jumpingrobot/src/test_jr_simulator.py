@@ -26,7 +26,6 @@ from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
 from src.jr_simulator import JRSimulator
 from src.jr_values import JRValues
-from src.jr_visualizer import visualize_jr
 from src.jumping_robot import Actuator, JumpingRobot
 from src.robot_graph_builder import RobotGraphBuilder
 
