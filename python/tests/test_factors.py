@@ -12,14 +12,16 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import gtsam
 import numpy as np
 
-import gtdynamics as gtd
 
-
-class TestJointMeasurementFactor(unittest.TestCase):
-    """Test suite for various versions of the JointMeasurementFactor."""
+class TestFactors(unittest.TestCase):
+    """
+    Base class for testing various factors.
+    Provides needed fixtures and common functions.
+    """
     def setUp(self):
         self.k = 0
         self.wTp_key = gtd.internal.PoseKey(0, self.k).key()
@@ -28,13 +30,26 @@ class TestJointMeasurementFactor(unittest.TestCase):
         ROBOT_FILE = osp.join(gtd.SDF_PATH, "test", "simple_rr.sdf")
         self.robot = gtd.CreateRobotFromFile(str(ROBOT_FILE), "simple_rr_sdf")
 
+
+class TestJointMeasurementFactor(TestFactors):
+    """Test suite for various versions of the JointMeasurementFactor."""
     def test_revolute_joint_measurement_factor(self):
         """Test RevoluteJointMeasurementFactor."""
-        factor = gtd.JointMeasurementFactor(gtsam.noiseModel.Isotropic.Sigma(6, 0.1),
-                                            self.robot.joint("joint_1"), np.pi / 4, self.k)
+        factor = gtd.JointMeasurementFactor(
+            gtsam.noiseModel.Isotropic.Sigma(6, 0.1),
+            self.robot.joint("joint_1"), np.pi / 4, self.k)
 
-        self.assertTrue(isinstance(factor, gtd.JointMeasurementFactor))
+        self.assertIsInstance(factor, gtd.JointMeasurementFactor)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestTempPoseFactor(TestFactors):
+    """Test suite for various versions of the JointMeasurementFactor."""
+    def test_temp_pose_factor_constructor(self):
+        """Test constructor."""
+        joint = self.robot.joint("joint_1")
+        joint_key = gtd.internal.JointAngleKey(joint.id(), self.k).key()
+        pose_model = gtsam.noiseModel.Isotropic.Sigma(6, 0.1)
+        pose_factor = gtd.TempPoseFactor(self.wTp_key, self.wTc_key, joint_key,
+                                         pose_model, joint)
+
+        self.assertIsInstance(pose_factor, gtd.TempPoseFactor)

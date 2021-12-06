@@ -29,6 +29,7 @@ class JointMeasurementFactor : gtsam::NonlinearFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
