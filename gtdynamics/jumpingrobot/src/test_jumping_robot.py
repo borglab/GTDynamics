@@ -24,7 +24,6 @@ import gtdynamics as gtd
 import gtsam
 import numpy as np
 
-from src.jr_visualizer import visualize_jr
 from src.jumping_robot import Actuator, JumpingRobot
 
 
@@ -58,8 +57,6 @@ class TestJumpingRobot(unittest.TestCase):
         expected_torso_pose = gtsam.Pose3(gtsam.Rot3(),
                                           gtsam.Point3(0, 0, 0.55))
         self.assertTrue(torso_pose.equals(expected_torso_pose, tol=1e-5))
-
-        # visualize_jr(fk_results, self.jr, k)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,6 @@ import numpy as np
 from helpers import mergeValues
 from jr_graph_builder import JRGraphBuilder
 from jr_values import JRValues
-from jr_visualizer import make_plot, visualize_jr_trajectory
 from jumping_robot import Actuator, JumpingRobot
 
 
@@ -384,6 +383,7 @@ def example_simulate():
     # values, step_phases = jr_simulator.simulate_with_torque_seq(
     #     num_steps, dt, torques_seq)
 
+    from jr_visualizer import make_plot, visualize_jr_trajectory
     make_plot(values, jr_simulator.jr, num_steps)
     # visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
 
