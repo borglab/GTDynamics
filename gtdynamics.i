@@ -29,15 +29,6 @@ class JointMeasurementFactor : gtsam::NonlinearFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/PoseFactor.h>
-gtsam::NonlinearFactor* PoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
-                                  gtsam::Key q_key,
-                                  const gtsam::noiseModel::Base *cost_model,
-                                  const gtdynamics::Joint *joint);
-
-gtsam::NonlinearFactor *PoseFactor(const gtsam::noiseModel::Base *cost_model,
-                                   const gtdynamics::Joint *joint, size_t k);
-
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
@@ -83,21 +74,6 @@ class ContactPointFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/TwistFactor.h>
-gtsam::NonlinearFactor* TwistFactor(const gtsam::noiseModel::Base *cost_model,
-                                   const gtdynamics::Joint *joint,
-                                   size_t t = 0);
-
-#include <gtdynamics/factors/TwistAccelFactor.h>
-gtsam::NonlinearFactor* TwistAccelFactor(const gtsam::noiseModel::Base *cost_model,
-                                    const gtdynamics::Joint *joint,
-                                    size_t k = 0);
-
-#include <gtdynamics/factors/TorqueFactor.h>
-gtsam::NonlinearFactor* TorqueFactor(const gtsam::noiseModel::Base *cost_model,
-                                    const gtdynamics::Joint *joint,
-                                    size_t k = 0);
-
 #include <gtdynamics/factors/MinTorqueFactor.h>
 class MinTorqueFactor : gtsam::NonlinearFactor {
   MinTorqueFactor(gtsam::Key torque_key,
@@ -112,16 +88,6 @@ gtsam::NonlinearFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
     const boost::optional<gtsam::Vector3> &gravity);
-
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-gtsam::NonlinearFactor* WrenchEquivalenceFactor(
-    const gtsam::noiseModel::Base *cost_model, gtdynamics::Joint *joint,
-    size_t k = 0);
-
-#include <gtdynamics/factors/WrenchPlanarFactor.h>
-gtsam::NonlinearFactor* WrenchPlanarFactor(
-    const gtsam::noiseModel::Base *cost_model, Vector planar_axis,
-    gtdynamics::Joint *joint, size_t k = 0);
 
 #include <gtdynamics/factors/CollocationFactors.h>
 class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
