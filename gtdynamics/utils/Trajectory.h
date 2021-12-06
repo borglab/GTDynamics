@@ -191,11 +191,10 @@ class Trajectory {
    * @param[in] cost_model        Noise model
    * @param[in] goal_point        target goal point
    */
-  gtsam::ExpressionFactor<gtsam::Vector3> pointGoalFactor(const Robot &robot,
-                                  const std::string &link_name,
-                                  const PointOnLink &cp, int k,
-                                  const gtsam::SharedNoiseModel &cost_model,
-                                  const gtsam::Point3 &goal_point) const {
+  gtsam::ExpressionFactor<gtsam::Vector3> pointGoalFactor(
+      const Robot &robot, const std::string &link_name, const PointOnLink &cp,
+      int k, const gtsam::SharedNoiseModel &cost_model,
+      const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link = robot.link(link_name);
     gtsam::Key pose_key = internal::PoseKey(link->id(), k);
     return PointGoalFactor(pose_key, cost_model, cp.point, goal_point);

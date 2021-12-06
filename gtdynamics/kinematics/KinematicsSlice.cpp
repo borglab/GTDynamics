@@ -60,7 +60,8 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
   for (auto&& joint : robot.joints()) {
     auto constraint_expr = joint->poseConstraint(slice.k);
     gtsam::Vector6 tolerance = p_->p_cost_model->sigmas();
-    constraints.add(VectorExpressionEquality<6>(constraint_expr, tolerance));
+    constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
+                                                            tolerance);
   }
 
   return constraints;
@@ -93,7 +94,8 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     auto constraint_expr =
         PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
     gtsam::Vector3 tolerance = p_->g_cost_model->sigmas();
-    constraints.add(VectorExpressionEquality<3>(constraint_expr, tolerance));
+    constraints.emplace_shared<VectorExpressionEquality<3>>(constraint_expr,
+                                                            tolerance);
   }
   return constraints;
 }

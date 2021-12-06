@@ -100,11 +100,13 @@ TEST(Phase, AddGoals) {
                        StanceTrajectory(stance_point, num_stance_steps), id, k);
   EXPECT_LONGS_EQUAL(num_stance_steps, factors.size());
 
-  // auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
-  // EXPECT(assert_equal(stance_point, f->goalPoint(), 1e-5));
+  auto f = boost::dynamic_pointer_cast<PointGoalFactor>(factors.back());
+  EXPECT(assert_equal(stance_point, f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
-  // EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(LF->bMcom())));
+  gtsam::Values values;
+  values.insert(internal::PoseKey(id, k + num_stance_steps - 1), LF->bMcom());
+  EXPECT(assert_equal(Vector3(0, 0, 0), f->unwhitenedError(values)));
 
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps
@@ -114,15 +116,15 @@ TEST(Phase, AddGoals) {
       SimpleSwingTrajectory(stance_point, step, num_swing_steps), id);
   EXPECT_LONGS_EQUAL(num_swing_steps, swing_factors.size());
 
-  // // Last goal point should have moved just in front of stance_point
-  // auto g = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.front());
-  // EXPECT(assert_equal<Point3>(stance_point + Point3(0.01, 0, 0.035588),
-  //                             g->goalPoint(), 1e-5));
+  // Last goal point should have moved just in front of stance_point
+  auto g = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.front());
+  EXPECT(assert_equal<Point3>(stance_point + Point3(0.01, 0, 0.035588),
+                              g->goalPoint(), 1e-5));
 
-  // // Last goal point should have moved just shy of stance_point + step
-  // auto h = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.back());
-  // EXPECT(assert_equal<Point3>(stance_point + step + Point3(-0.01, 0, 0.055228),
-  //                             h->goalPoint(), 1e-5));
+  // Last goal point should have moved just shy of stance_point + step
+  auto h = boost::dynamic_pointer_cast<PointGoalFactor>(swing_factors.back());
+  EXPECT(assert_equal<Point3>(stance_point + step + Point3(-0.01, 0, 0.055228),
+                              h->goalPoint(), 1e-5));
 }
 
 int main() {

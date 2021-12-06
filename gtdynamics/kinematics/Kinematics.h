@@ -72,6 +72,7 @@ struct KinematicsParameters : public OptimizationParameters {
       g_cost_model,                            // goal point
       prior_q_cost_model;                      // joint angle prior factor
 
+  // TODO(yetong): replace noise model with tolerance.
   KinematicsParameters()
       : p_cost_model(Isotropic::Sigma(6, 1e-4)),
         g_cost_model(Isotropic::Sigma(3, 0.01)),

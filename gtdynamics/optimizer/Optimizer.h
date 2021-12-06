@@ -28,12 +28,12 @@ namespace gtdynamics {
 /// Optimization parameters shared between all solvers
 struct OptimizationParameters {
   enum Method {
-    UNCONSTRAINED = 0,
+    SOFT_CONSTRAINTS = 0,
     PENALTY = 1,
     AUGMENTED_LAGRANGIAN = 2
   };
 
-  Method method = Method::UNCONSTRAINED; // optimization method
+  Method method = Method::SOFT_CONSTRAINTS; // optimization method
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
   OptimizationParameters() {
     lm_parameters.setlambdaInitial(1e7);

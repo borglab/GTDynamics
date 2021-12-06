@@ -44,7 +44,7 @@ TEST(PointGoalFactor, error) {
 
   // Initialize factor with goal point.
   Point3 goal_point(0, 0, 2), point_com(0, 0, 1);
-  auto factor = PointGoalFactor(pose_key, cost_model, point_com, goal_point);
+  PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
   Values values1;
@@ -73,7 +73,7 @@ TEST(PointGoalFactor, optimization) {
 
   // Initialize factor with goal point.
   Point3 goal_point(2, 15, 6), point_com(0, 0, 1);
-  auto factor = PointGoalFactor(pose_key, cost_model, point_com, goal_point);
+  PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Initial link pose.
   Pose3 pose_init = robot.link("l1")->bMcom();

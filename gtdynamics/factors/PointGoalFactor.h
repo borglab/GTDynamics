@@ -36,8 +36,6 @@ namespace gtdynamics {
 inline gtsam::Vector3_ PointGoalConstraint(gtsam::Key pose_key,
                   const gtsam::Point3 &point_com,
                   const gtsam::Point3 &goal_point) {
-  // const Point3 point_world = wTcom.transformFrom(point_com_, H_pose);
-
   gtsam::Vector3_ point_com_expr(point_com); 
   gtsam::Pose3_ wTcom_expr(pose_key);
   gtsam::Vector3_ point_world_expr(wTcom_expr, &gtsam::Pose3::transformFrom, point_com_expr);
@@ -47,21 +45,39 @@ inline gtsam::Vector3_ PointGoalConstraint(gtsam::Key pose_key,
   return error;
 }
 
-/**
- * Constructor from goal point.
- * @param pose_key key for COM pose of the link
- * @param cost_model noise model
- * @param point_com point on link, in COM coordinate frame
- * @param goal_point end effector goal point, in world coordinates
- */
-inline gtsam::ExpressionFactor<gtsam::Vector3> PointGoalFactor(gtsam::Key pose_key,
+class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
+ private:
+  using This = PointGoalFactor;
+  using Base = gtsam::ExpressionFactor<gtsam::Vector3>;
+  gtsam::Point3 goal_point_;
+
+ public:
+  /**
+   * Constructor from goal point.
+   * @param pose_key key for COM pose of the link
+   * @param cost_model noise model
+   * @param point_com point on link, in COM coordinate frame
+   * @param goal_point end effector goal point, in world coordinates
+   */
+  PointGoalFactor(gtsam::Key pose_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
                   const gtsam::Point3 &point_com,
-                  const gtsam::Point3 &goal_point) {
-  return gtsam::ExpressionFactor<gtsam::Vector3>(
-             cost_model, gtsam::Vector3::Zero(),
-             PointGoalConstraint(pose_key, point_com, goal_point));
-}
+                  const gtsam::Point3 &goal_point)
+      : Base(cost_model, gtsam::Vector3::Zero(), PointGoalConstraint(pose_key, point_com, goal_point)),
+        goal_point_(goal_point) {}
+
+   /// Return goal point.
+   const gtsam::Point3 &goalPoint() const { return goal_point_; }
+
+ private:
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
+    ar &boost::serialization::make_nvp(
+        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+  }
+};
 
 /**
  * Construct many PointGoalFactors from goal trajectory.

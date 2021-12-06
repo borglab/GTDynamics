@@ -151,16 +151,14 @@ TEST(EqualityConstraint, Container) {
 
   double tolerance1 = 0.1;
   auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);;
-  auto constraint1 = DoubleExpressionEquality(g1, tolerance1);
 
   Vector2_ x1_vec_expr(x1_key);
   Vector2_ x2_vec_expr(x2_key);
   auto g2 = x1_vec_expr + x2_vec_expr;
   auto tolerance2 = Vector2(0.1, 0.5);
-  auto constraint2 = VectorExpressionEquality<2>(g2, tolerance2);
 
-  constraints.add(constraint1);
-  constraints.add(constraint2);
+  constraints.emplace_shared<DoubleExpressionEquality>(g1, tolerance1);
+  constraints.emplace_shared<VectorExpressionEquality<2>>(g2, tolerance2);
 
   EXPECT_LONGS_EQUAL(2, constraints.size());
 }
