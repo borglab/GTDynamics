@@ -38,10 +38,10 @@ namespace gtdynamics {
  *
  * @param joint a Joint
  */
-inline gtsam::ExpressionFactor<gtsam::Vector6> TwistFactor(
+inline gtsam::NoiseModelFactor::shared_ptr TwistFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     JointConstSharedPtr joint, int time) {
-  return gtsam::ExpressionFactor<gtsam::Vector6>(
+  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(), joint->twistConstraint(time));
 }
 

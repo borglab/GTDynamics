@@ -264,13 +264,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
       graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(link->id(), t),
                                      gtsam::Z_6x1, opt_.ba_cost_model);
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistAccelFactor>(
-        internal::TwistKey(joint->child()->id(), t),
-        internal::TwistAccelKey(joint->parent()->id(), t),
-        internal::TwistAccelKey(joint->child()->id(), t),
-        internal::JointAngleKey(joint->id(), t),
-        internal::JointVelKey(joint->id(), t),
-        internal::JointAccelKey(joint->id(), t), opt_.a_cost_model, joint);
+    graph.add(TwistAccelFactor(opt_.a_cost_model, joint, t));
 
   // Add contact factors.
   if (contact_points) {
@@ -335,11 +329,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       }
 
       // add wrench factor for link
-      graph.emplace_shared<WrenchFactor>(
-          internal::TwistKey(link->id(), k),
-          internal::TwistAccelKey(link->id(), k), wrench_keys,
-          internal::PoseKey(link->id(), k), opt_.fa_cost_model,
-          link->inertiaMatrix(), gravity);
+      graph.add(WrenchFactor(
+        opt_.fa_cost_model, link, wrench_keys, k, gravity));
     }
   }
 
@@ -352,8 +343,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
                                                   const_joint, k));
     graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
     if (planar_axis_)
-      graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
-                                               *planar_axis_, const_joint, k);
+      graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
+                                   const_joint, k));
   }
   return graph;
 }

@@ -36,10 +36,11 @@ namespace example {
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key qKey = gtsam::Symbol('q', 0), qVelKey = gtsam::Symbol('j', 0),
-           qAccelKey = gtsam::Symbol('a', 0), twistKey = gtsam::Symbol('V', 0),
-           twistAccel_p_key = gtsam::Symbol('T', 0),
-           twistAccel_c_key = gtsam::Symbol('T', 1);
+
+gtsam::Key qKey = internal::JointAngleKey(1), qVelKey = internal::JointVelKey(1),
+           qAccelKey = internal::JointAccelKey(1), twistKey = internal::TwistKey(2),
+           twistAccel_p_key = internal::TwistAccelKey(1),
+           twistAccel_c_key = internal::TwistAccelKey(2);
 }  // namespace example
 
 // Test twistAccel factor for stationary case
@@ -52,10 +53,7 @@ TEST(TwistAccelFactor, error) {
   auto joint = make_joint(cMp, screw_axis);
 
   // create factor
-  TwistAccelFactor factor(example::twistKey, example::twistAccel_p_key,
-                          example::twistAccel_c_key, example::qKey,
-                          example::qVelKey, example::qAccelKey,
-                          example::cost_model, joint);
+  auto factor = TwistAccelFactor(example::cost_model, joint, 0);
   double q = M_PI / 4, qVel = 10, qAccel = 10;
   gtsam::Vector twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -64,12 +62,6 @@ TEST(TwistAccelFactor, error) {
       (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
   gtsam::Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twistAccel_p, twistAccel_c, q, qVel, qAccel);
-  expected_errors << 0, 0, 0, 0, 0, 0;
-
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  // Make sure linearization is correct
   gtsam::Values values;
   values.insert(example::qKey, q);
   values.insert(example::qVelKey, qVel);
@@ -77,8 +69,14 @@ TEST(TwistAccelFactor, error) {
   values.insert(example::twistKey, twist);
   values.insert(example::twistAccel_p_key, twistAccel_p);
   values.insert(example::twistAccel_c_key, twistAccel_c);
+  actual_errors = factor->unwhitenedError(values);
+  expected_errors << 0, 0, 0, 0, 0, 0;
+
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+
+  // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test twistAccel factor for stationary case
@@ -89,10 +87,7 @@ TEST(TwistAccelFactor, error_1) {
 
   auto joint = make_joint(cMp, screw_axis);
 
-  TwistAccelFactor factor(example::twistKey, example::twistAccel_p_key,
-                          example::twistAccel_c_key, example::qKey,
-                          example::qVelKey, example::qAccelKey,
-                          example::cost_model, joint);
+  auto factor = TwistAccelFactor(example::cost_model, joint, 0);
   double q = 0, qVel = 0, qAccel = -9.8;
   gtsam::Vector6 twist, twistAccel_p, twistAccel_c;
   twist = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
@@ -100,12 +95,6 @@ TEST(TwistAccelFactor, error_1) {
   twistAccel_c = (gtsam::Vector(6) << 0, 0, -9.8, 0, 0, 0).finished();
   gtsam::Vector6 actual_errors, expected_errors;
 
-  actual_errors =
-      factor.evaluateError(twist, twistAccel_p, twistAccel_c, q, qVel, qAccel);
-  expected_errors = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-
-  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  // Make sure linearization is correct
   gtsam::Values values;
   values.insert(example::qKey, q);
   values.insert(example::qVelKey, qVel);
@@ -113,8 +102,14 @@ TEST(TwistAccelFactor, error_1) {
   values.insert(example::twistKey, twist);
   values.insert(example::twistAccel_p_key, twistAccel_p);
   values.insert(example::twistAccel_c_key, twistAccel_c);
+  actual_errors = factor->unwhitenedError(values);
+  expected_errors = (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
+
+  EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
+
+  // Make sure linearization is correct
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

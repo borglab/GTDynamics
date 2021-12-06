@@ -88,28 +88,6 @@ class ContactPointFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/TwistFactor.h>
-gtsam::NonlinearFactor TwistFactor(const gtsam::noiseModel::Base *cost_model,
-                                   const gtdynamics::Joint *joint,
-                                   size_t t = 0);
-
-#include <gtdynamics/factors/TwistAccelFactor.h>
-class TwistAccelFactor : gtsam::NonlinearFactor {
-  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
-                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
-                   gtsam::Key qVel_key, gtsam::Key qAccel_key,
-                   const gtsam::noiseModel::Base *cost_model,
-                   const gtdynamics::Joint *joint);
-
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
-
-#include <gtdynamics/factors/TorqueFactor.h>
-gtsam::NonlinearFactor TorqueFactor(const gtsam::noiseModel::Base *cost_model,
-                                    const gtdynamics::Joint *joint,
-                                    size_t k = 0);
-
 #include <gtdynamics/factors/MinTorqueFactor.h>
 class MinTorqueFactor : gtsam::NonlinearFactor {
   MinTorqueFactor(gtsam::Key torque_key,
@@ -119,29 +97,13 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
 };
 
+/// TODO(yetong): remove the wrapper for WrenchFactor once EqualityConstraint is
+/// wrapped (Issue #319).
 #include <gtdynamics/factors/WrenchFactor.h>
-class WrenchFactor : gtsam::NonlinearFactor {
-  WrenchFactor(gtsam::Key twist_key, gtsam::Key twistAccel_key,
-                const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, 
-                gtsam::Key pose_key,
-                const gtsam::noiseModel::Base *cost_model, const Matrix inertia,
-                const boost::optional<gtsam::Vector3> &gravity);
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
-
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-gtsam::NonlinearFactor WrenchEquivalenceFactor(
-    const gtsam::noiseModel::Base *cost_model, gtdynamics::Joint *joint,
-    size_t k = 0);
-
-#include <gtdynamics/factors/WrenchPlanarFactor.h>
-class WrenchPlanarFactor : gtsam::NonlinearFactor {
-  WrenchPlanarFactor(const gtsam::noiseModel::Base *cost_model,
-                     Vector planar_axis, gtdynamics::Joint *joint, size_t k=0);
-  void print(const string &s="",
-             const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-};
+gtsam::NonlinearFactor* WrenchFactor(
+    const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
+    const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
+    const boost::optional<gtsam::Vector3> &gravity);
 
 #include <gtdynamics/factors/CollocationFactors.h>
 class EulerPoseCollocationFactor : gtsam::NonlinearFactor {

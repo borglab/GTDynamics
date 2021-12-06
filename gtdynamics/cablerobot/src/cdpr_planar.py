@@ -151,18 +151,14 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            wf = gtd.WrenchFactor(
-                    gtd.internal.TwistKey(self.ee_id(), k).key(),
-                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
+            # TODO(yetong): Use EqualityConstraint.createFactor when wrapped.
+            dfg.add(gtd.WrenchFactor(self.costmodel_wrench, self.eelink(),
                     [
                         gtd.internal.WrenchKey(self.ee_id(), 0, k),
                         gtd.internal.WrenchKey(self.ee_id(), 1, k),
                         gtd.internal.WrenchKey(self.ee_id(), 2, k),
                         gtd.internal.WrenchKey(self.ee_id(), 3, k)
-                    ],
-                    gtd.internal.PoseKey(self.ee_id(), k).key(),
-                    self.costmodel_wrench, self.eelink().inertiaMatrix(), self.params.gravity)
-            dfg.push_back(wf)
+                    ], k, self.params.gravity))
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(

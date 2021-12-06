@@ -47,8 +47,8 @@ TEST(TorqueFactor, error) {
   // Check keys.
   const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777),
                        torque_key = internal::TorqueKey(1, 777);
-  EXPECT(assert_equal(wrench_key, factor.keys()[0]));
-  EXPECT(assert_equal(torque_key, factor.keys()[1]));
+  EXPECT(assert_equal(wrench_key, factor->keys()[0]));
+  EXPECT(assert_equal(torque_key, factor->keys()[1]));
 
   // Check evaluateError.
   double torque = 20;
@@ -56,13 +56,13 @@ TEST(TorqueFactor, error) {
   gtsam::Values values;
   values.insert(wrench_key, wrench);
   values.insert(torque_key, torque);
-  gtsam::Vector1 actual_errors = factor.unwhitenedError(values);
+  gtsam::Vector1 actual_errors = factor->unwhitenedError(values);
   gtsam::Vector1 expected_errors(0);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-7);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-7);
 }
 
 int main() {

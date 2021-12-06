@@ -42,11 +42,11 @@ namespace gtdynamics {
  *
  * @param joint JointConstSharedPtr to the joint
  */
-inline gtsam::ExpressionFactor<double> TorqueFactor(
+inline gtsam::NoiseModelFactor::shared_ptr TorqueFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const JointConstSharedPtr &joint, size_t k = 0) {
-  return gtsam::ExpressionFactor<double>(cost_model, 0.0,
-                                         joint->torqueConstraint(k));
+  return boost::make_shared<gtsam::ExpressionFactor<double>>(
+      cost_model, 0.0, joint->torqueConstraint(k));
 }
 
 }  // namespace gtdynamics
