@@ -20,6 +20,7 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <boost/assign/list_of.hpp>
 #include <memory>
 #include <string>
 
@@ -27,6 +28,8 @@
 #include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
+
+using boost::assign::cref_list_of;
 
 /**
  * \deprecated NOTE This factor has been deprecated and will be removed in the
