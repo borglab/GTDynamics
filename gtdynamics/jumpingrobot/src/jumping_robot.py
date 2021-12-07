@@ -318,8 +318,9 @@ class JumpingRobot:
     def construct_link(link_id: int, link_name: str, mass: float, length: float, radius: float, pose: Pose3):
         """ Construct a link. """
         lTcom = Pose3(Rot3(), Point3(0, length/2, 0))
+        bMcom = pose.compose(lTcom)
         inertia = JumpingRobot.compute_link_inertia(mass, length, radius)
-        return gtd.Link(link_id, link_name, mass, inertia, pose, lTcom, False)
+        return gtd.Link(link_id, link_name, mass, inertia, bMcom, pose, False)
 
     @staticmethod
     def compute_link_inertia(mass: float, length: float, radius: float):
