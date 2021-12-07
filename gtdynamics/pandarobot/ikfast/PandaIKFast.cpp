@@ -10,7 +10,6 @@
 //----------------------------------------------------------------------------//
 
 #define IKFAST_HAS_LIBRARY  // Build IKFast with API functions
-#define IKFAST_NO_MAIN      // Don't include main() from IKFast
 #define IKFAST_NAMESPACE panda_internal
 
 #define IK_VERSION 61
