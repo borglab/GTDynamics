@@ -9,16 +9,19 @@
  * @author Yetong Zhang
 """
 
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
+import inspect
+import os.path as osp
+import sys
+
+currentdir = osp.dirname(osp.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = osp.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 sys.path.insert(0,currentdir) 
 
 import gtdynamics as gtd
 import gtsam
-from gtsam import noiseModel, NonlinearFactorGraph
 import numpy as np
+from gtsam import NonlinearFactorGraph, noiseModel
 
 from jumping_robot import Actuator, JumpingRobot
 

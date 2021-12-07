@@ -9,27 +9,30 @@
  * @author Yetong Zhang
 """
 
+import inspect
+import os.path as osp
+import sys
 import unittest
-import gtsam
+
 import gtdynamics as gtd
+import gtsam
 import numpy as np
 
-import os, sys, inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
+currentdir = osp.dirname(osp.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = osp.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from src.jumping_robot import Actuator, JumpingRobot
-from src.robot_graph_builder import RobotGraphBuilder
 from src.actuation_graph_builder import ActuationGraphBuilder
 from src.jr_graph_builder import JRGraphBuilder
+from src.jumping_robot import Actuator, JumpingRobot
+from src.robot_graph_builder import RobotGraphBuilder
 
 
 class TestJRGraphBuilder(unittest.TestCase):
     """ Tests for JRGraphBuilder. """
     def setUp(self):
         """ Set up the graph builder and jumping robot. """
-        self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        self.yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
         self.init_config = JumpingRobot.create_init_config()
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
         self.jr_graph_builder = JRGraphBuilder()

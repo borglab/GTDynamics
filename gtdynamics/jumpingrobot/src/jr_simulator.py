@@ -9,9 +9,12 @@
  * @author Yetong Zhang
 """
 
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
+import inspect
+import os.path as osp
+import sys
+
+currentdir = osp.dirname(osp.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = osp.dirname(currentdir)
 sys.path.insert(0, parentdir)
 sys.path.insert(0, currentdir)
 
@@ -20,10 +23,9 @@ import gtsam
 import numpy as np
 
 from helpers import mergeValues
-from jumping_robot import Actuator, JumpingRobot
 from jr_graph_builder import JRGraphBuilder
 from jr_values import JRValues
-from jr_visualizer import visualize_jr_trajectory, make_plot
+from jumping_robot import Actuator, JumpingRobot
 
 
 class JRSimulator:
@@ -356,7 +358,7 @@ class JRSimulator:
 
 def example_simulate():
     """ Show an example robot jumping trajectory """
-    yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+    yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
 
     theta = np.pi/3
     rest_angles = [-theta, 2 * theta, -theta, -theta, 2*theta, -theta]
@@ -381,6 +383,7 @@ def example_simulate():
     # values, step_phases = jr_simulator.simulate_with_torque_seq(
     #     num_steps, dt, torques_seq)
 
+    from jr_visualizer import make_plot, visualize_jr_trajectory
     make_plot(values, jr_simulator.jr, num_steps)
     # visualize_jr_trajectory(values, jr_simulator.jr, num_steps, step=1)
 

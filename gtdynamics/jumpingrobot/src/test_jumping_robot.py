@@ -10,12 +10,12 @@
 """
 
 import inspect
-import os
+import os.path as osp
 import sys
 
-currentdir = os.path.dirname(
-    os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
+currentdir = osp.dirname(
+    osp.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = osp.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 import unittest
@@ -23,7 +23,7 @@ import unittest
 import gtdynamics as gtd
 import gtsam
 import numpy as np
-from src.jr_visualizer import visualize_jr
+
 from src.jumping_robot import Actuator, JumpingRobot
 
 
@@ -31,7 +31,7 @@ class TestJumpingRobot(unittest.TestCase):
     """ Tests for jumping robot. """
     def setUp(self):
         """ Set up the jumping robot. """
-        self.yaml_file_path = "examples/example_jumping_robot/yaml/robot_config.yaml"
+        self.yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
         self.init_config = JumpingRobot.create_init_config()
         self.jr = JumpingRobot(self.yaml_file_path, self.init_config)
 
@@ -57,8 +57,6 @@ class TestJumpingRobot(unittest.TestCase):
         expected_torso_pose = gtsam.Pose3(gtsam.Rot3(),
                                           gtsam.Point3(0, 0, 0.55))
         self.assertTrue(torso_pose.equals(expected_torso_pose, tol=1e-5))
-
-        # visualize_jr(fk_results, self.jr, k)
 
 
 if __name__ == "__main__":

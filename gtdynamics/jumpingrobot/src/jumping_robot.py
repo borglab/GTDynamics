@@ -111,7 +111,7 @@ class JumpingRobot:
     def load_file(yaml_file_path: str):
         """ Load jumping robot params from yaml file. """
         with open(yaml_file_path) as file:
-            params = yaml.load(file, Loader=yaml.FullLoader)
+            params = yaml.safe_load(file)
             return params
 
     @staticmethod
@@ -318,8 +318,9 @@ class JumpingRobot:
     def construct_link(link_id: int, link_name: str, mass: float, length: float, radius: float, pose: Pose3):
         """ Construct a link. """
         lTcom = Pose3(Rot3(), Point3(0, length/2, 0))
+        bMcom = pose.compose(lTcom)
         inertia = JumpingRobot.compute_link_inertia(mass, length, radius)
-        return gtd.Link(link_id, link_name, mass, inertia, pose, lTcom, False)
+        return gtd.Link(link_id, link_name, mass, inertia, bMcom, pose, False)
 
     @staticmethod
     def compute_link_inertia(mass: float, length: float, radius: float):
