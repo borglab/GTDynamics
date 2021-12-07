@@ -28,6 +28,11 @@ struct ConstrainedOptimizationParameters {
 
   /// Constructor.
   ConstrainedOptimizationParameters() {}
+
+  /// Constructor with LM parameters.
+  ConstrainedOptimizationParameters(
+      const gtsam::LevenbergMarquardtParams& _lm_parameters)
+      : lm_parameters(_lm_parameters) {}
 };
 
 /// Intermediate results for constrained optimization process.

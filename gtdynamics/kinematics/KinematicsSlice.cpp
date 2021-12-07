@@ -52,6 +52,23 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
 }
 
 template <>
+EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
+                                              const Robot& robot) const {
+  EqualityConstraints constraints;
+
+  // Constrain kinematics at joints.
+  gtsam::Vector6 tolerance = p_->p_cost_model->sigmas();
+  for (auto&& joint : robot.joints()) {
+    auto constraint_expr = joint->poseConstraint(slice.k);
+    constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
+                                                            tolerance);
+  }
+
+  return constraints;
+}
+
+
+template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
@@ -64,6 +81,23 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   }
 
   return graph;
+}
+
+template <>
+EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
+    const Slice& slice, const ContactGoals& contact_goals) const {
+  EqualityConstraints constraints;
+
+  // Add objectives.
+  gtsam::Vector3 tolerance = p_->g_cost_model->sigmas();
+  for (const ContactGoal& goal : contact_goals) {
+    const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
+    auto constraint_expr =
+        PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
+    constraints.emplace_shared<VectorExpressionEquality<3>>(constraint_expr,
+                                                            tolerance);
+  }
+  return constraints;
 }
 
 template <>
@@ -105,11 +139,22 @@ Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
 
 template <>
 Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
-                                  const ContactGoals& contact_goals) const {
-  auto graph = this->graph(slice, robot);
+                                  const ContactGoals& contact_goals,
+                                  bool contact_goals_as_constraints) const {
 
-  // Add objectives.
-  graph.add(pointGoalObjectives(slice, contact_goals));
+  // Robot kinematics constraints
+  auto constraints = this->constraints(slice, robot);
+  NonlinearFactorGraph graph;
+
+  // Contact goals
+  if (contact_goals_as_constraints) {
+    constraints.add(this->pointGoalConstraints(slice, contact_goals));
+  }
+  else {
+    graph.add(pointGoalObjectives(slice, contact_goals));
+  }
+
+  // Traget joint angles.
   graph.add(jointAngleObjectives(slice, robot));
 
   // TODO(frank): allo pose prior as well.
@@ -118,6 +163,6 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 
   auto initial_values = initialValues(slice, robot);
 
-  return optimize(graph, initial_values);
+  return optimize(graph, constraints, initial_values);
 }
 }  // namespace gtdynamics

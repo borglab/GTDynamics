@@ -102,7 +102,7 @@ TEST(WalkCycle, objectives) {
   EXPECT(gtsam::assert_equal(goal_RH, cp_goals["lower3"], 1e-6));
 
   const Point3 step(0, 0.4, 0);
-  const gtsam::SharedNoiseModel cost_model = nullptr;
+  const gtsam::SharedNoiseModel cost_model = gtsam::noiseModel::Unit::Create(3);
 
   // Check creation of PointGoalFactors.
   gtsam::NonlinearFactorGraph factors =

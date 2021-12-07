@@ -824,7 +824,7 @@ class Trajectory {
   const Phase &phase(size_t p) const;
   size_t getStartTimeStep(size_t p) const;
   size_t getEndTimeStep(size_t p) const;
-  PointGoalFactor pointGoalFactor(const gtdynamics::Robot &robot,
+  gtsam::NonlinearFactor pointGoalFactor(const gtdynamics::Robot &robot,
                                   const string &link_name,
                                   const gtdynamics::PointOnLink &cp, size_t k,
                                   const gtsam::SharedNoiseModel &cost_model,
