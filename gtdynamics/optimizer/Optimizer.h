@@ -60,6 +60,7 @@ class Optimizer {
    * @param initial_values Initial values for all variables.
    * @return Values The result of the optimization.
    */
+  // TODO(yetong): remove after discussing with team
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
                          const gtsam::Values& initial_values) const;
 

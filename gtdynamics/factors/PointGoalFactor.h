@@ -38,7 +38,8 @@ inline gtsam::Vector3_ PointGoalConstraint(gtsam::Key pose_key,
                   const gtsam::Point3 &goal_point) {
   gtsam::Vector3_ point_com_expr(point_com); 
   gtsam::Pose3_ wTcom_expr(pose_key);
-  gtsam::Vector3_ point_world_expr(wTcom_expr, &gtsam::Pose3::transformFrom, point_com_expr);
+  gtsam::Vector3_ point_world_expr(wTcom_expr, &gtsam::Pose3::transformFrom,
+                                   point_com_expr);
 
   gtsam::Vector3_ goal_point_expr(goal_point);
   gtsam::Vector3_ error = point_world_expr - goal_point_expr;
@@ -63,11 +64,12 @@ class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
                   const gtsam::Point3 &point_com,
                   const gtsam::Point3 &goal_point)
-      : Base(cost_model, gtsam::Vector3::Zero(), PointGoalConstraint(pose_key, point_com, goal_point)),
+      : Base(cost_model, gtsam::Vector3::Zero(),
+             PointGoalConstraint(pose_key, point_com, goal_point)),
         goal_point_(goal_point) {}
 
-   /// Return goal point.
-   const gtsam::Point3 &goalPoint() const { return goal_point_; }
+  /// Return goal point.
+  const gtsam::Point3 &goalPoint() const { return goal_point_; }
 
  private:
   /// Serialization function
@@ -97,7 +99,7 @@ inline gtsam::NonlinearFactorGraph PointGoalFactors(
     const std::vector<gtsam::Point3> &goal_trajectory) {
   gtsam::NonlinearFactorGraph factors;
   for (auto &&goal_point : goal_trajectory) {
-    factors.add(PointGoalFactor(first_key, cost_model, point_com, goal_point));
+    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com, goal_point);
     first_key += 1;
   }
   return factors;

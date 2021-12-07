@@ -57,9 +57,9 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
   EqualityConstraints constraints;
 
   // Constrain kinematics at joints.
+  gtsam::Vector6 tolerance = p_->p_cost_model->sigmas();
   for (auto&& joint : robot.joints()) {
     auto constraint_expr = joint->poseConstraint(slice.k);
-    gtsam::Vector6 tolerance = p_->p_cost_model->sigmas();
     constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
                                                             tolerance);
   }
@@ -76,8 +76,8 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
-    graph.add(PointGoalFactor(pose_key, p_->g_cost_model,
-                                          goal.contactInCoM(), goal.goal_point));
+    graph.emplace_shared<PointGoalFactor>(pose_key, p_->g_cost_model,
+                                          goal.contactInCoM(), goal.goal_point);
   }
 
   return graph;
@@ -89,11 +89,11 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
   EqualityConstraints constraints;
 
   // Add objectives.
+  gtsam::Vector3 tolerance = p_->g_cost_model->sigmas();
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
     auto constraint_expr =
         PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
-    gtsam::Vector3 tolerance = p_->g_cost_model->sigmas();
     constraints.emplace_shared<VectorExpressionEquality<3>>(constraint_expr,
                                                             tolerance);
   }

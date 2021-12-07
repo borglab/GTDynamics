@@ -27,8 +27,9 @@ struct AugmentedLagrangianParameters
       : Base(gtsam::LevenbergMarquardtParams()), num_iterations(12) {}
 
   AugmentedLagrangianParameters(
-      const gtsam::LevenbergMarquardtParams& _lm_parameters)
-      : Base(_lm_parameters), num_iterations(12) {}
+      const gtsam::LevenbergMarquardtParams& _lm_parameters,
+      const size_t& _num_iterations = 12)
+      : Base(_lm_parameters), num_iterations(_num_iterations) {}
 };
 
 /// Augmented Lagrangian method only considering equality constraints.
