@@ -23,11 +23,7 @@ set(GTSAM_LIBS gtsam)
 
 find_package(GTSAMCMakeTools)
 include(GtsamMakeConfigFile)
-
-option(GTDYNAMICS_BUILD_WITH_MARCH_NATIVE  "Enable/Disable building with all instructions supported by native architecture (binary may not be portable!)" ON)
-set(GTSAM_BUILD_WITH_MARCH_NATIVE ${GTDYNAMICS_BUILD_WITH_MARCH_NATIVE})
 include(GtsamBuildTypes)
-
 include(GtsamTesting)
 
 # For unit tests and scripts.
@@ -91,7 +87,7 @@ message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD
 if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
 endif()
-message(STATUS "Build march=native                          : ${GTDYNAMICS_BUILD_WITH_MARCH_NATIVE}")
+message(STATUS "Build march=native                          : ${GTSAM_BUILD_WITH_MARCH_NATIVE}")
 message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
 message(STATUS "Build Examples                              : ${GTDYNAMICS_BUILD_EXAMPLES}")
 message(STATUS "===============================================================")
