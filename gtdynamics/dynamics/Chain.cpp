@@ -15,102 +15,85 @@
 
 namespace gtdynamics {
 
-void Chain::monoidOperation(const Pose3 &aTb, const Matrix &bAj,
-                            const Pose3 &bTc, const Matrix &cAk, 
-                            Pose3 &aTc, Matrix &cAjk) {
-    
-    // expect 6 rows in jacobians
-    if (bAj.rows() != 6 || cAk.rows() != 6) {
-      throw std::runtime_error(
-          "Jacobians should have 6 rows in SE(3)");
-    }
+Chain operator*(const Chain &chainA, const Chain &chainB) {
+  // expect 6 rows in jacobians
+  if (chainA.axes().rows() != 6 || chainB.axes().rows() != 6) {
+    throw std::runtime_error("Jacobians should have 6 rows in SE(3)");
+  }
 
-    // Compose poses:
-    aTc = aTb.compose(bTc);
-    
-    // Adjoint the first Jacobian to the new end-effector frame C:
-    Matrix c_Ad_b = bTc.inverse().AdjointMap();
+  // Compose poses:
+  Pose3 aTb = chainA.sMb();
+  Pose3 bTc = chainB.sMb();
+  Pose3 aTc = aTb.compose(bTc);
 
-    // Multiply with first chain screw axes:
-    Matrix mult = c_Ad_b * bAj;
+  // Adjoint the first Jacobian to the new end-effector frame C:
+  Matrix c_Ad_b = bTc.inverse().AdjointMap();
 
-    // Create Matrix with correct number of columns:
-    Matrix out(mult.rows(), mult.cols() + cAk.cols());
-    
-    // Fill Matrix: 
-    out.leftCols(mult.cols()) = mult;
-    out.rightCols(cAk.cols()) = cAk;
-    
-    cAjk = out;
+  // Multiply with first chain screw axes:
+  Matrix mult = c_Ad_b * chainA.axes();
+
+  // Create Matrix with correct number of columns:
+  Matrix out(mult.rows(), mult.cols() + chainB.axes().cols());
+
+  // Fill Matrix:
+  out << mult, chainB.axes();
+
+  return Chain(aTc, out);
 }
 
-Chain Chain::compose(std::vector<Chain> &chain_vector){
-    Pose3 T, Ti, Tres;
-    Matrix A, Ai, Ares;
+Chain Chain::compose(std::vector<Chain> &chain_vector) {
+  // Initialize total chain
+  Matrix emptyMat(6, 0);
+  Pose3 emptyPose;
+  Chain chain_total(emptyPose, emptyMat);
 
-    // Initialize from first chain in vector
-    T = chain_vector[0].sMb();
-    A = chain_vector[0].axes();
-    int i = 1 ;
-    for (i ; i < chain_vector.size() ; ++i) {
-      // Get pose and screw axes from chain
-      Ti = chain_vector[i].sMb();
-      Ai = chain_vector[i].axes();
-
-      // Perform monoid operation with composed chain we have
-      monoidOperation(T,A,Ti,Ai,Tres,Ares);
-      T = Tres;
-      A = Ares;
-    }
-    return Chain(T,A);
+  // Perform monoid operations
+  for (auto &&chain : chain_vector) {
+    chain_total = chain_total * chain;
+  }
+  return chain_total;
 }
 
 Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
-          boost::optional<Matrix &> J) {
-    // Check that input has good size    
-    if (q.size() != axes_.cols()) {
-      throw std::runtime_error(
-          "number of angles in q different from number of cols in axes");
-      }
+                 gtsam::OptionalJacobian<-1, -1> J) {
+  // Check that input has good size
+  if (q.size() != axes_.cols()) {
+    throw std::runtime_error(
+        "number of angles in q different from number of cols in axes");
+  }
 
-    // Build vector of exponential maps to use in poe
-    std::vector<Pose3> exp;
-    for (int i = 0; i < q.size(); ++i) {
-      exp.push_back(Pose3::Expmap(axes_.col(i) * q(i)));
+  // Build vector of exponential maps to use in poe
+  std::vector<Pose3> exp;
+  for (int i = 0; i < q.size(); ++i) {
+    exp.push_back(Pose3::Expmap(axes_.col(i) * q(i)));
+  }
+
+  Pose3 poe;
+  if (!J) {
+    // If J is not given, compute regular poe
+    poe = sMb_;
+    for (auto &expmap : exp) {
+      poe = poe.compose(expmap);
     }
-
-
-    Pose3 poe;
-    if (!J) {
-      // If J is not given, compute regular poe
-      poe = sMb_;
-      for (auto &expmap : exp){
-        poe = poe.compose(expmap);
-      }
-      if (fTe) {
-        poe = poe.compose(*fTe);
-      }
+    if (fTe) {
+      poe = poe.compose(*fTe);
     }
-    else {
-      // Compute FK + Jacobian with monoid compose.
-      Matrix Empty(6, 0), A, Ares;
-      Pose3 T, Tres;
-      T = sMb_;
-      A = Empty;
-      for (int j = 0; j < q.size(); ++j) {
-        monoidOperation(T,A,exp[j],axes_.col(j), Tres, Ares);
-        T = Tres;
-        A = Ares;
-      }
-      if (fTe) {
-        monoidOperation(T,A,*fTe,Empty, Tres, Ares);
-        T = Tres;
-        A = Ares;
-      }
-      poe = T;
-      *J = A;
-
+  } else {
+    // Compute FK + Jacobian with monoid compose.
+    Matrix Empty(6, 0);
+    Chain chain_total(sMb_, Empty);
+    for (int j = 0; j < q.size(); ++j) {
+      Matrix axes_it(axes_.col(j));
+      Pose3 pose_it(exp[j]);
+      Chain chain_it(pose_it, axes_it);
+      chain_total = chain_total * chain_it;
     }
-    return poe;
+    if (fTe) {
+      chain_total = chain_total * Chain(*fTe, Empty);
+    }
+    poe = chain_total.sMb();
+    *J = chain_total.axes();
+  }
+  return poe;
 }
-}
+}  // namespace gtdynamics
