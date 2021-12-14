@@ -76,6 +76,7 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
       poe = poe.compose(expmap);
     }
     if (fTe) {
+      // compose end-effector pose
       poe = poe.compose(*fTe);
     }
   } else {
@@ -83,12 +84,14 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
     Matrix Empty(6, 0);
     Chain chain_total(sMb_, Empty);
     for (int j = 0; j < q.size(); ++j) {
+      // compose chain pose and screw axes to build poe and Jacobian
       Matrix axes_it(axes_.col(j));
       Pose3 pose_it(exp[j]);
       Chain chain_it(pose_it, axes_it);
       chain_total = chain_total * chain_it;
     }
     if (fTe) {
+      // compose end-effector pose
       chain_total = chain_total * Chain(*fTe, Empty);
     }
     poe = chain_total.sMb();
