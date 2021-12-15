@@ -31,7 +31,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactHeightFactor, Error) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
@@ -45,19 +45,22 @@ TEST(ContactHeightFactor, Error) {
                              gtsam::Vector3(0, 0, -9.8), 0);
 
   // Leg oriented upwards with contact away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(3)));
+  gtsam::Values values1;
+  values1.insert(pose_key,
+                 gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values1), gtsam::Vector1(3)));
 
   // Leg oriented down with contact 1m away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(1)));
+  gtsam::Values values2;
+  values2.insert(
+      pose_key, gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values2), gtsam::Vector1(1)));
 
   // Contact touching the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      gtsam::Vector1(0)));
+  gtsam::Values values3;
+  values3.insert(
+      pose_key, gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values3), gtsam::Vector1(0)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
@@ -84,7 +87,7 @@ TEST(ContactHeightFactor, Error) {
 }
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactHeightFactor, ErrorWithHeight) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
@@ -100,19 +103,22 @@ TEST(ContactHeightFactor, ErrorWithHeight) {
                              gtsam::Vector3(0, 0, -9.8), -1.0);
 
   // Leg oriented upwards with contact away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(4)));
+  gtsam::Values values1;
+  values1.insert(pose_key,
+                 gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values1), gtsam::Vector1(4)));
 
   // Leg oriented down with contact 1m away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(2)));
+  gtsam::Values values2;
+  values2.insert(
+      pose_key, gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values2), gtsam::Vector1(2)));
 
   // Contact touching the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      gtsam::Vector1(1)));
+  gtsam::Values values3;
+  values3.insert(
+      pose_key, gtsam::Pose3(gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values3), gtsam::Vector1(1)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
@@ -177,16 +183,16 @@ TEST(ContactHeightFactor, Optimization) {
   std::cout << link_pose_init << std::endl;
 
   std::cout << "Initial Pose Error: " << std::endl;
-  std::cout << factor.evaluateError(link_pose_init) << std::endl;
+  std::cout << factor.unwhitenedError(init_values) << std::endl;
 
   std::cout << "Optimized Pose: " << std::endl;
   std::cout << link_pose_optimized << std::endl;
 
   std::cout << "Optimized Pose Error: " << std::endl;
-  std::cout << factor.evaluateError(link_pose_optimized) << std::endl;
+  std::cout << factor.unwhitenedError(results) << std::endl;
 
-  EXPECT(assert_equal(factor.evaluateError(link_pose_optimized),
-                      gtsam::Vector1(0), 1e-3));
+  EXPECT(
+      assert_equal(factor.unwhitenedError(results), gtsam::Vector1(0), 1e-3));
 }
 
 int main() {

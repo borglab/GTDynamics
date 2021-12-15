@@ -31,7 +31,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactKinematicsTwistFactor, error) {
   auto robot = simple_urdf::getRobot();
@@ -49,7 +49,9 @@ TEST(ContactKinematicsTwistFactor, error) {
   // stationary contact point.
   gtsam::Vector6 link_twist_stationary =
       (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_twist_stationary),
+  gtsam::Values values_stationary;
+  values_stationary.insert(twist_key, link_twist_stationary);
+  EXPECT(assert_equal(factor.unwhitenedError(values_stationary),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 
   // A link with only a linear velocity at its CoM should have a only a linear
@@ -57,7 +59,9 @@ TEST(ContactKinematicsTwistFactor, error) {
   // but this is a test intended for rigid links).
   gtsam::Vector6 link_twist_linear =
       (gtsam::Vector(6) << 0, 0, 0, 1, 1, 1).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_twist_linear),
+  gtsam::Values values_twist_linear;
+  values_twist_linear.insert(twist_key, link_twist_linear);
+  EXPECT(assert_equal(factor.unwhitenedError(values_twist_linear),
                       (gtsam::Vector(3) << 1, 1, 1).finished()));
 
   // A link with only an angular velocity component at the CoM should have a
@@ -66,14 +70,18 @@ TEST(ContactKinematicsTwistFactor, error) {
   // linear component v = 1.
   gtsam::Vector6 link_twist_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_twist_angular).norm(), 1.0));
+  gtsam::Values values_twist_angular;
+  values_twist_angular.insert(twist_key, link_twist_angular);
+  EXPECT(assert_equal(factor.unwhitenedError(values_twist_angular).norm(), 1.0));
 
   // A link with both angular velocity and linear velocity at the CoM should
   // have a linear velocity at the contact point (unless they cancel each other
   // out).
   gtsam::Vector6 link_twist_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_twist_angular_linear).norm(),
+  gtsam::Values values_twist_angular_linear;
+  values_twist_angular_linear.insert(twist_key, link_twist_angular_linear);
+  EXPECT(assert_equal(factor.unwhitenedError(values_twist_angular_linear).norm(),
                       std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
@@ -119,9 +127,8 @@ TEST(ContactKinematicsTwistFactor, optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Vector6 twist_optimized = results.at<gtsam::Vector6>(twist_key);
 
-  EXPECT(assert_equal(factor.evaluateError(twist_optimized),
+  EXPECT(assert_equal(factor.unwhitenedError(results),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 }
 
