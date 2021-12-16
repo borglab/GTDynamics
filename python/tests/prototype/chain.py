@@ -21,7 +21,7 @@ def compose(aSbj: Tuple[Pose3, np.ndarray], bSck: Tuple[Pose3, np.ndarray]):
     aTb, bAj = aSbj
     bTc, cAk = bSck
     assert bAj.shape[0] == 6 and cAk.shape[0] == 6,\
-        f"Jaocobains should have 6 rows, sapes are {bAj.shape} and {cAk.shape}"
+        f"Jacobians should have 6 rows, shapes are {bAj.shape} and {cAk.shape}"
 
     # Compose poses:
     aTc = aTb.compose(bTc)
