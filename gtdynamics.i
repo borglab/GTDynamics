@@ -142,8 +142,6 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
-
-  gtsam::Vector evaluateError(const gtsam::Pose3 &sTl) const;
 };
 
 /********************** link **********************/
