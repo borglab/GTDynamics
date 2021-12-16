@@ -16,11 +16,6 @@
 namespace gtdynamics {
 
 Chain operator*(const Chain &chainA, const Chain &chainB) {
-  // expect 6 rows in jacobians
-  if (chainA.axes().rows() != 6 || chainB.axes().rows() != 6) {
-    throw std::runtime_error("Jacobians should have 6 rows in SE(3)");
-  }
-
   // Compose poses:
   Pose3 aTb = chainA.sMb();
   Pose3 bTc = chainB.sMb();
@@ -29,35 +24,31 @@ Chain operator*(const Chain &chainA, const Chain &chainB) {
   // Adjoint the first Jacobian to the new end-effector frame C:
   Matrix c_Ad_b = bTc.inverse().AdjointMap();
 
-  // Multiply with first chain screw axes:
-  Matrix mult = c_Ad_b * chainA.axes();
-
   // Create Matrix with correct number of columns:
-  Matrix out(mult.rows(), mult.cols() + chainB.axes().cols());
+  size_t length = chainA.length() + chainB.length();
+  Matrix axes(6, length);
 
   // Fill Matrix:
-  out << mult, chainB.axes();
+  axes << c_Ad_b * chainA.axes(), chainB.axes();
 
-  return Chain(aTc, out);
+  return Chain(aTc, axes);
 }
 
-Chain Chain::compose(std::vector<Chain> &chain_vector) {
+Chain Chain::compose(std::vector<Chain> &chains) {
   // Initialize total chain
-  Matrix emptyMat(6, 0);
-  Pose3 emptyPose;
-  Chain chain_total(emptyPose, emptyMat);
+  Chain total_chain;
 
   // Perform monoid operations
-  for (auto &&chain : chain_vector) {
-    chain_total = chain_total * chain;
+  for (auto &&chain : chains) {
+    total_chain = total_chain * chain;
   }
-  return chain_total;
+  return total_chain;
 }
 
 Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
                  gtsam::OptionalJacobian<-1, -1> J) {
   // Check that input has good size
-  if (q.size() != axes_.cols()) {
+  if (q.size() != length()) {
     throw std::runtime_error(
         "number of angles in q different from number of cols in axes");
   }
@@ -81,21 +72,16 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
     }
   } else {
     // Compute FK + Jacobian with monoid compose.
-    Matrix Empty(6, 0);
-    Chain chain_total(sMb_, Empty);
+    Chain chain(sMb_);
     for (int j = 0; j < q.size(); ++j) {
-      // compose chain pose and screw axes to build poe and Jacobian
-      Matrix axes_it(axes_.col(j));
-      Pose3 pose_it(exp[j]);
-      Chain chain_it(pose_it, axes_it);
-      chain_total = chain_total * chain_it;
+      chain = chain * Chain(exp[j], axes_.col(j));
     }
     if (fTe) {
       // compose end-effector pose
-      chain_total = chain_total * Chain(*fTe, Empty);
+      chain = chain * Chain(*fTe);
     }
-    poe = chain_total.sMb();
-    *J = chain_total.axes();
+    poe = chain.sMb();
+    *J = chain.axes();
   }
   return poe;
 }

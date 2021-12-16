@@ -37,8 +37,19 @@ class Chain {
       axes_;  // screw axes of all joints in the chain expressed in body frame.
 
  public:
+  /// Default Constructor
+  Chain() : sMb_(Pose3()), axes_(Matrix(6, 0)) {}
+
   /// Constructor
-  Chain(Pose3 &sMb, Matrix &axes) : sMb_(sMb), axes_(axes) {}
+  Chain(const Pose3 &sMb, const Matrix &axes)
+      : sMb_(sMb),
+        axes_(axes.rows() == 6 ? axes
+                               : throw std::runtime_error(
+                                     "Jacobians should have 6 rows in SE(3)")) {
+  }
+
+  /// Construct only with sMb, set axes_ to empty Matrix
+  Chain(const Pose3 &sMb) : sMb_(sMb), axes_(Matrix(6, 0)) {}
 
   /**
    * The * operator here composes two chains using the monoid operation on pose
@@ -56,13 +67,16 @@ class Chain {
    * @param chain_vector ........... Vector containing chains to compose
    * @return ....................... Composed chain
    */
-  static Chain compose(std::vector<Chain> &chain_vector);
+  static Chain compose(std::vector<Chain> &chains);
 
   // Return sMb.
   inline const Pose3 &sMb() const { return sMb_; }
 
   // Return screw axes.
   inline const Matrix &axes() const { return axes_; }
+
+  // Return number of columns in axes_ matrix
+  const size_t length() const { return axes_.cols(); }
 
   /**
    * Perform forward kinematics given q, return Pose of end-effector and
