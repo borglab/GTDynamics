@@ -27,13 +27,9 @@ namespace gtdynamics {
 
 /// Optimization parameters shared between all solvers
 struct OptimizationParameters {
-  enum Method {
-    SOFT_CONSTRAINTS = 0,
-    PENALTY = 1,
-    AUGMENTED_LAGRANGIAN = 2
-  };
+  enum Method { SOFT_CONSTRAINTS = 0, PENALTY = 1, AUGMENTED_LAGRANGIAN = 2 };
 
-  Method method = Method::SOFT_CONSTRAINTS; // optimization method
+  Method method = Method::SOFT_CONSTRAINTS;       // optimization method
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
   OptimizationParameters() {
     lm_parameters.setlambdaInitial(1e7);
@@ -44,13 +40,13 @@ struct OptimizationParameters {
 /// Base class for GTDynamics optimizer hierarchy.
 class Optimizer {
  protected:
-  boost::shared_ptr<const OptimizationParameters> p_;
+  const OptimizationParameters p_;
 
  public:
   /**
    * @fn Constructor.
    */
-  Optimizer(const boost::shared_ptr<const OptimizationParameters>& parameters)
+  Optimizer(const OptimizationParameters& parameters = OptimizationParameters())
       : p_(parameters) {}
 
   /**

@@ -21,7 +21,7 @@ namespace gtdynamics {
 struct PenaltyMethodParameters : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
   size_t num_iterations;
-  double initial_mu;  // initial penalty parameter
+  double initial_mu;        // initial penalty parameter
   double mu_increase_rate;  // increase rate of penalty parameter
 
   /** Constructor. */
@@ -44,18 +44,16 @@ struct PenaltyMethodParameters : public ConstrainedOptimizationParameters {
 /// Penalty method only considering equality constraints.
 class PenaltyMethodOptimizer : public ConstrainedOptimizer {
  protected:
-  boost::shared_ptr<const PenaltyMethodParameters> p_;
+  const PenaltyMethodParameters p_;
 
  public:
   /** Default constructor. */
-  PenaltyMethodOptimizer()
-      : p_(boost::make_shared<const PenaltyMethodParameters>()) {}
+  PenaltyMethodOptimizer() : p_(PenaltyMethodParameters()) {}
 
   /**
    * Construct from parameters.
    */
-  PenaltyMethodOptimizer(
-      const boost::shared_ptr<const PenaltyMethodParameters>& parameters)
+  PenaltyMethodOptimizer(const PenaltyMethodParameters& parameters)
       : p_(parameters) {}
 
   /// Run optimization.
