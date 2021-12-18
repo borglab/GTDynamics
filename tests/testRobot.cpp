@@ -245,6 +245,14 @@ TEST(Robot, Equality) {
 
   EXPECT(robot1 == robot2);
   EXPECT(robot1.equals(robot2));
+
+  // Check if not-equal works as expecred
+  JointSharedPtr j = robot1.joints()[0];
+  // Set the joint's parent link to default
+  *(j->parent()) = Link();
+
+  // robot1 should no longer equal robot2
+  EXPECT(!robot1.equals(robot2));
 }
 
 // Declaration needed for serialization of derived class.
