@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testStaticsSlice.cpp
- * @brief Test Statics in single time slice.
+ * @file  StaticsSlice.cpp
+ * @brief Statics in single time slice.
  * @author: Frank Dellaert
  */
 

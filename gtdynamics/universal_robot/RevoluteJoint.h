@@ -36,6 +36,9 @@ class RevoluteJoint : public Joint {
   }
 
  public:
+  /// Constructor for serialization
+  RevoluteJoint() {}
+
   /**
    * @brief Create RevoluteJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
@@ -57,6 +60,27 @@ class RevoluteJoint : public Joint {
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const final override { return Type::Revolute; }
+
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::RevoluteJoint>
+    : public Testable<gtdynamics::RevoluteJoint> {};
+
+}  // namespace gtsam
