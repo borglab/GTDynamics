@@ -308,9 +308,6 @@ class Robot {
 
   // enabling serialization functionality
   void serialize() const;
-
-  // enable pickling in python
-  void pickle() const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
