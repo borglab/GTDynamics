@@ -50,10 +50,10 @@ int main(int argc, char** argv) {
   // Pose and twist priors. Assume robot initially stationary.
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.addPrior(internal::PoseKey(i, 0), link->bMcom(),
+    prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
-        internal::TwistKey(i, 0), gtsam::Z_6x1,
+        TwistKey(i, 0), gtsam::Z_6x1,
         gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   // Add min torque factor to each joint. This factor minimizes torque squared.
   for (auto joint : robot.joints())
     graph.add(
-        MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
+        MinTorqueFactor(TorqueKey(joint->id(), 0),
                         gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
