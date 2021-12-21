@@ -36,8 +36,8 @@ auto kModel = noiseModel::Isotropic::Sigma(3, 0.1);
 auto robot = simple_rr::getRobot();
 
 TEST(ContactPointFactor, Constructor) {
-  Key link_pose_key = gtdynamics::internal::PoseKey(0, 0),
-      point_key = gtdynamics::internal::PoseKey(1, 0);
+  Key link_pose_key = gtdynamics::PoseKey(0, 0),
+      point_key = gtdynamics::PoseKey(1, 0);
   Point3 lPc(0, 0, 1);
   ContactPointFactor(link_pose_key, point_key, kModel, lPc);
 
@@ -49,7 +49,7 @@ TEST(ContactPointFactor, Error) {
   LinkSharedPtr end_link = robot.links()[0];
   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
 
-  Key point_key = gtdynamics::internal::PoseKey(1, 0);
+  Key point_key = gtdynamics::PoseKey(1, 0);
   Point3 wPc(0, 0, 1);
 
   ContactPointFactor factor(point_on_link, point_key, kModel, 0);
@@ -67,7 +67,7 @@ TEST(ContactPointFactor, Jacobians) {
   auto end_link = robot.links()[0];
   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
 
-  Key point_key = gtdynamics::internal::PoseKey(1, 0);
+  Key point_key = gtdynamics::PoseKey(1, 0);
   Point3 wPc(0, 0, 1);
 
   ContactPointFactor factor(point_on_link, point_key, kModel, 0);

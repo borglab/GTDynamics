@@ -105,7 +105,7 @@ TEST(Phase, AddGoals) {
 
   // Check that prediction error is zero.
   gtsam::Values values;
-  values.insert(internal::PoseKey(id, k + num_stance_steps - 1), LF->bMcom());
+  values.insert(PoseKey(id, k + num_stance_steps - 1), LF->bMcom());
   EXPECT(assert_equal(Vector3(0, 0, 0), f->unwhitenedError(values)));
 
   // Call AddSwingGoals function, creating 3 factors

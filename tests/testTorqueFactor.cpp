@@ -45,8 +45,8 @@ TEST(TorqueFactor, error) {
   auto factor = TorqueFactor(cost_model, joint, 777);
 
   // Check keys.
-  const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777),
-                       torque_key = internal::TorqueKey(1, 777);
+  const DynamicsSymbol wrench_key = WrenchKey(2, 1, 777),
+                       torque_key = TorqueKey(1, 777);
   EXPECT(assert_equal(wrench_key, factor->keys()[0]));
   EXPECT(assert_equal(torque_key, factor->keys()[1]));
 

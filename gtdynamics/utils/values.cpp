@@ -33,138 +33,137 @@ const char *KeyDoesNotExist::what() const noexcept {
 
 /* ************************************************************************* */
 void InsertJointAngle(Values *values, int j, int t, double value) {
-  values->insert(internal::JointAngleKey(j, t), value);
+  values->insert(JointAngleKey(j, t), value);
 }
 
 void InsertJointAngle(Values *values, int j, double value) {
-  values->insert(internal::JointAngleKey(j), value);
+  values->insert(JointAngleKey(j), value);
 }
 
 Vector JointAngle(const VectorValues &values, int j, int t) {
-  return values.at(internal::JointAngleKey(j, t));
+  return values.at(JointAngleKey(j, t));
 }
 
 double JointAngle(const Values &values, int j, int t) {
-  return internal::at<double>(values, internal::JointAngleKey(j, t));
+  return at<double>(values, JointAngleKey(j, t));
 }
 
 /* ************************************************************************* */
 void InsertJointVel(Values *values, int j, int t, double value) {
-  values->insert(internal::JointVelKey(j, t), value);
+  values->insert(JointVelKey(j, t), value);
 }
 
 void InsertJointVel(Values *values, int j, double value) {
-  values->insert(internal::JointVelKey(j), value);
+  values->insert(JointVelKey(j), value);
 }
 
 Vector JointVel(const VectorValues &values, int j, int t) {
-  return values.at(internal::JointVelKey(j, t));
+  return values.at(JointVelKey(j, t));
 }
 
 double JointVel(const Values &values, int j, int t) {
-  return internal::at<double>(values, internal::JointVelKey(j, t));
+  return at<double>(values, JointVelKey(j, t));
 }
 
 /* ************************************************************************* */
 void InsertJointAccel(Values *values, int j, int t, double value) {
-  values->insert(internal::JointAccelKey(j, t), value);
+  values->insert(JointAccelKey(j, t), value);
 }
 
 void InsertJointAccel(Values *values, int j, double value) {
-  values->insert(internal::JointAccelKey(j), value);
+  values->insert(JointAccelKey(j), value);
 }
 
 Vector JointAccel(const VectorValues &values, int j, int t) {
-  return values.at(internal::JointAccelKey(j, t));
+  return values.at(JointAccelKey(j, t));
 }
 
 double JointAccel(const Values &values, int j, int t) {
-  return internal::at<double>(values, internal::JointAccelKey(j, t));
+  return at<double>(values, JointAccelKey(j, t));
 }
-
 
 /* ************************************************************************* */
 void InsertTorque(Values *values, int j, int t, double value) {
-  values->insert(internal::TorqueKey(j, t), value);
+  values->insert(TorqueKey(j, t), value);
 }
 
 void InsertTorque(Values *values, int j, double value) {
-  values->insert(internal::TorqueKey(j), value);
+  values->insert(TorqueKey(j), value);
 }
 
 Vector Torque(const VectorValues &values, int j, int t) {
-  return values.at(internal::TorqueKey(j, t));
+  return values.at(TorqueKey(j, t));
 };
 
 double Torque(const Values &values, int j, int t) {
-  return internal::at<double>(values, internal::TorqueKey(j, t));
+  return at<double>(values, TorqueKey(j, t));
 };
 
 /* ************************************************************************* */
 /// Insert pose for i-th link at time t.
 void InsertPose(Values *values, int i, int t, Pose3 value) {
-  values->insert(internal::PoseKey(i, t), value);
+  values->insert(PoseKey(i, t), value);
 }
 
 /// Insert pose for i-th link at time t.
 void InsertPose(Values *values, int i, Pose3 value) {
-  values->insert(internal::PoseKey(i), value);
+  values->insert(PoseKey(i), value);
 }
 
 /// Retrieve pose for i-th link at time t.
 Pose3 Pose(const Values &values, int i, int t) {
-  return internal::at<Pose3>(values, internal::PoseKey(i, t));
+  return at<Pose3>(values, PoseKey(i, t));
 };
 
 /* ************************************************************************* */
 void InsertTwist(Values *values, int j, int t, Vector6 value) {
-  values->insert(internal::TwistKey(j, t), value);
+  values->insert(TwistKey(j, t), value);
 }
 
 void InsertTwist(Values *values, int j, Vector6 value) {
-  values->insert(internal::TwistKey(j), value);
+  values->insert(TwistKey(j), value);
 }
 
 Vector Twist(const VectorValues &values, int j, int t) {
-  return values.at(internal::TwistKey(j, t));
+  return values.at(TwistKey(j, t));
 }
 
 Vector6 Twist(const Values &values, int j, int t) {
-  return internal::at<Vector6>(values, internal::TwistKey(j, t));
+  return at<Vector6>(values, TwistKey(j, t));
 }
 
 /* ************************************************************************* */
 void InsertTwistAccel(Values *values, int j, int t, Vector6 value) {
-  values->insert(internal::TwistAccelKey(j, t), value);
+  values->insert(TwistAccelKey(j, t), value);
 }
 
 void InsertTwistAccel(Values *values, int j, Vector6 value) {
-  values->insert(internal::TwistAccelKey(j), value);
+  values->insert(TwistAccelKey(j), value);
 }
 
 Vector TwistAccel(const VectorValues &values, int j, int t) {
-  return values.at(internal::TwistAccelKey(j, t));
+  return values.at(TwistAccelKey(j, t));
 }
 
 Vector6 TwistAccel(const Values &values, int j, int t) {
-  return internal::at<Vector6>(values, internal::TwistAccelKey(j, t));
+  return at<Vector6>(values, TwistAccelKey(j, t));
 }
 
 /* ************************************************************************* */
 void InsertWrench(Values *values, int i, int j, int t, Vector6 value) {
-  values->insert(internal::WrenchKey(i, j, t), value);
+  values->insert(WrenchKey(i, j, t), value);
 }
 
 void InsertWrench(Values *values, int i, int j, Vector6 value) {
-  values->insert(internal::WrenchKey(i, j), value);
+  values->insert(WrenchKey(i, j), value);
 }
 
 Vector Wrench(const VectorValues &values, int i, int j, int t) {
-  return values.at(internal::WrenchKey(i, j, t));
+  return values.at(WrenchKey(i, j, t));
 }
 
 Vector6 Wrench(const Values &values, int i, int j, int t) {
-  return internal::at<Vector6>(values, internal::WrenchKey(i, j, t));
+  return at<Vector6>(values, WrenchKey(i, j, t));
 }
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

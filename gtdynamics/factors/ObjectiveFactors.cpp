@@ -42,7 +42,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
 gtsam::NonlinearFactorGraph PointGoalFactors(
     const SharedNoiseModel& cost_model, const Point3& point_com,
     const std::vector<Point3>& goal_trajectory, unsigned char i, size_t k) {
-  gtsam::Key key = internal::PoseKey(i, k);
+  gtsam::Key key = PoseKey(i, k);
   return PointGoalFactors(key, cost_model, point_com, goal_trajectory);
 }
 

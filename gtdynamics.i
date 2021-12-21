@@ -639,17 +639,14 @@ class DynamicsSymbol {
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
-namespace internal {
-  gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
-  gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
-  gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
-  gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
-}
-
+gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
+gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
+gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
+gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
+gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
+gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
+gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
+gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
 gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t=0);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);

@@ -32,8 +32,8 @@ using namespace gtsam;
 using gtsam::assert_equal;
 
 const size_t i1 = 0, i2 = 2;
-const Key key1 = gtdynamics::internal::PoseKey(i1),
-          key2 = gtdynamics::internal::PoseKey(i2);
+const Key key1 = gtdynamics::PoseKey(i1),
+          key2 = gtdynamics::PoseKey(i2);
 
 auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
 

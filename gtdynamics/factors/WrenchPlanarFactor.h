@@ -45,7 +45,7 @@ inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
     H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
   }
 
-  auto wrench_key = internal::WrenchKey(joint->child()->id(), joint->id(), k);
+  auto wrench_key = WrenchKey(joint->child()->id(), joint->id(), k);
   gtsam::Vector6_ wrench(wrench_key);
   // TODO(yetong): maybe can be done easily with a functor, and/or
   // linearexpression (re-written with functor), and maybe this same pattern

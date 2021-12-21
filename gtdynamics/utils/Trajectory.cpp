@@ -81,17 +81,20 @@ Values Trajectory::multiPhaseInitialValues(const Robot &robot,
 }
 
 NonlinearFactorGraph Trajectory::contactPointObjectives(
-    const Robot &robot, const SharedNoiseModel &cost_model, const Point3 &step, double ground_height) const {
+    const Robot &robot, const SharedNoiseModel &cost_model, const Point3 &step,
+    double ground_height) const {
   NonlinearFactorGraph factors;
 
   // Create a walk cycle using all phases of trajectory
   WalkCycle walk_cycle = WalkCycle(phases_);
 
   // Initialize contact point goals.
-  ContactPointGoals cp_goals = walk_cycle.initContactPointGoal(robot, ground_height);
+  ContactPointGoals cp_goals =
+      walk_cycle.initContactPointGoal(robot, ground_height);
 
   size_t k_start = 0;
-  factors = walk_cycle.contactPointObjectives(step, cost_model, k_start, &cp_goals);
+  factors =
+      walk_cycle.contactPointObjectives(step, cost_model, k_start, &cp_goals);
 
   return factors;
 }
@@ -132,8 +135,7 @@ void Trajectory::addMinimumTorqueFactors(
   for (auto &&joint : robot.joints()) {
     auto j = joint->id();
     for (int k = 0; k <= K; k++) {
-      graph->emplace_shared<MinTorqueFactor>(internal::TorqueKey(j, k),
-                                             cost_model);
+      graph->emplace_shared<MinTorqueFactor>(TorqueKey(j, k), cost_model);
     }
   }
 }

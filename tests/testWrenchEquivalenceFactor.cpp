@@ -37,9 +37,9 @@ namespace example {
 // Noise model.
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-const DynamicsSymbol wrench_j_key = internal::WrenchKey(1, 1, 777),
-                     wrench_k_key = internal::WrenchKey(2, 1, 777),
-                     qKey = internal::JointAngleKey(1, 777);
+const DynamicsSymbol wrench_j_key = WrenchKey(1, 1, 777),
+                     wrench_k_key = WrenchKey(2, 1, 777),
+                     qKey = JointAngleKey(1, 777);
 
 gtsam::Key twist_key = gtsam::Symbol('V', 1),
            twist_accel_key = gtsam::Symbol('T', 1),
