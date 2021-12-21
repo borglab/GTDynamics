@@ -36,8 +36,8 @@ TEST(Interval, InverseKinematics) {
   const Interval interval(0, num_time_steps - 1);
 
   // Instantiate kinematics algorithms
-  auto parameters = boost::make_shared<KinematicsParameters>();
-  parameters->method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
 
   auto graph = kinematics.graph(interval, robot);
@@ -69,8 +69,8 @@ TEST(Interval, Interpolate) {
   contact_goals2[2] = {{RF, contact_in_com}, {0.4, -0.16, -0.2}};
 
   // Create expected values for start and end times
-  auto parameters = boost::make_shared<KinematicsParameters>();
-  parameters->method = OptimizationParameters::Method::SOFT_CONSTRAINTS;
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::SOFT_CONSTRAINTS;
   Kinematics kinematics(parameters);
   auto result1 = kinematics.inverse(Slice(5), robot, contact_goals);
   auto result2 = kinematics.inverse(Slice(9), robot, contact_goals);

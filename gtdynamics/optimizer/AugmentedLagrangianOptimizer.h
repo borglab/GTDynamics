@@ -35,15 +35,14 @@ struct AugmentedLagrangianParameters
 /// Augmented Lagrangian method only considering equality constraints.
 class AugmentedLagrangianOptimizer : public ConstrainedOptimizer {
  protected:
-  boost::shared_ptr<const AugmentedLagrangianParameters> p_;
+  const AugmentedLagrangianParameters p_;
 
  public:
-  AugmentedLagrangianOptimizer()
-      : p_(boost::make_shared<const AugmentedLagrangianParameters>()) {}
+  /// Default constructor
+  AugmentedLagrangianOptimizer() : p_(AugmentedLagrangianParameters()) {}
 
-  /* Construct from parameters. */
-  AugmentedLagrangianOptimizer(
-      const boost::shared_ptr<const AugmentedLagrangianParameters>& parameters)
+  /// Construct from parameters.
+  AugmentedLagrangianOptimizer(const AugmentedLagrangianParameters& parameters)
       : p_(parameters) {}
 
   /// Run optimization.

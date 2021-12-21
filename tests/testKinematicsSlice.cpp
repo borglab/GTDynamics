@@ -32,8 +32,8 @@ TEST(Slice, InverseKinematics) {
   const Slice slice(k);
 
   // Instantiate kinematics algorithms
-  auto parameters = boost::make_shared<KinematicsParameters>();
-  parameters->method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
 
   // Create initial values

@@ -42,10 +42,10 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
   // Constrain kinematics at joints.
   for (auto&& joint : robot.joints()) {
     const auto j = joint->id();
-    graph.add(PoseFactor(
-        internal::PoseKey(joint->parent()->id(), slice.k),
-        internal::PoseKey(joint->child()->id(), slice.k),
-        internal::JointAngleKey(j, slice.k), p_->p_cost_model, joint));
+    graph.add(PoseFactor(internal::PoseKey(joint->parent()->id(), slice.k),
+                         internal::PoseKey(joint->child()->id(), slice.k),
+                         internal::JointAngleKey(j, slice.k), p_.p_cost_model,
+                         joint));
   }
 
   return graph;
@@ -53,11 +53,11 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
 
 template <>
 EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
-                                              const Robot& robot) const {
+                                                   const Robot& robot) const {
   EqualityConstraints constraints;
 
   // Constrain kinematics at joints.
-  gtsam::Vector6 tolerance = p_->p_cost_model->sigmas();
+  gtsam::Vector6 tolerance = p_.p_cost_model->sigmas();
   for (auto&& joint : robot.joints()) {
     auto constraint_expr = joint->poseConstraint(slice.k);
     constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
@@ -67,7 +67,6 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
   return constraints;
 }
 
-
 template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {
@@ -76,7 +75,7 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
-    graph.emplace_shared<PointGoalFactor>(pose_key, p_->g_cost_model,
+    graph.emplace_shared<PointGoalFactor>(pose_key, p_.g_cost_model,
                                           goal.contactInCoM(), goal.goal_point);
   }
 
@@ -89,7 +88,7 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
   EqualityConstraints constraints;
 
   // Add objectives.
-  gtsam::Vector3 tolerance = p_->g_cost_model->sigmas();
+  gtsam::Vector3 tolerance = p_.g_cost_model->sigmas();
   for (const ContactGoal& goal : contact_goals) {
     const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
     auto constraint_expr =
@@ -108,7 +107,7 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
   // Minimize the joint angles.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = internal::JointAngleKey(joint->id(), slice.k);
-    graph.addPrior<double>(key, 0.0, p_->prior_q_cost_model);
+    graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
   }
 
   return graph;
@@ -141,7 +140,6 @@ template <>
 Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
                                   const ContactGoals& contact_goals,
                                   bool contact_goals_as_constraints) const {
-
   // Robot kinematics constraints
   auto constraints = this->constraints(slice, robot);
   NonlinearFactorGraph graph;
@@ -149,8 +147,7 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
   // Contact goals
   if (contact_goals_as_constraints) {
     constraints.add(this->pointGoalConstraints(slice, contact_goals));
-  }
-  else {
+  } else {
     graph.add(pointGoalObjectives(slice, contact_goals));
   }
 

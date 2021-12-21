@@ -20,11 +20,11 @@ gtsam::Values PenaltyMethodOptimizer::optimize(
     const EqualityConstraints& constraints, const gtsam::Values& initial_values,
     ConstrainedOptResult* intermediate_result) const {
   gtsam::Values values = initial_values;
-  double mu = p_->initial_mu;
+  double mu = p_.initial_mu;
 
   // Solve the constrained optimization problem by solving a sequence of
   // unconstrained optimization problems.
-  for (int i = 0; i < p_->num_iterations; i++) {
+  for (int i = 0; i < p_.num_iterations; i++) {
     gtsam::NonlinearFactorGraph merit_graph = graph;
 
     // Create factors corresponding to penalty terms of constraints.
@@ -34,12 +34,12 @@ gtsam::Values PenaltyMethodOptimizer::optimize(
 
     // Run optimization.
     gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
-                                                 p_->lm_parameters);
+                                                 p_.lm_parameters);
     auto result = optimizer.optimize();
 
     // Save results and update parameters.
     values = result;
-    mu *= p_->mu_increase_rate;
+    mu *= p_.mu_increase_rate;
 
     /// Store intermediate results.
     if (intermediate_result != nullptr) {
