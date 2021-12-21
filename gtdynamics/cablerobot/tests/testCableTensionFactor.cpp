@@ -5,16 +5,13 @@
  * @author Gerry Chen
  */
 
-#include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
-
-#include <gtdynamics/utils/values.h>
-
-#include <gtsam/base/Vector.h>
-#include <gtsam/inference/Symbol.h>
-
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
@@ -22,7 +19,6 @@
 using namespace std;
 using namespace gtsam;
 using namespace gtdynamics;
-using namespace gtdynamics::internal;
 
 /**
  * Test cable factor
@@ -59,8 +55,8 @@ TEST(CableTensionFactor, error) {
   expected_errors = (Vector6() << 0, 1 + 0.15 * sqrt(2), 0,  //
                      1.1 - 1 / sqrt(2), 0, 1.2 + 1 / sqrt(2))
                         .finished();
-  actual_errors = factor.evaluateError(
-      Torque(values, jid), Pose(values, lid), Wrench(values, lid, jid));
+  actual_errors = factor.evaluateError(Torque(values, jid), Pose(values, lid),
+                                       Wrench(values, lid, jid));
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-4));
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 
