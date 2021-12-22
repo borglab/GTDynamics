@@ -84,28 +84,36 @@ $ make check
 ```
 
 ## Running Examples
+The `examples` directory contains various example projects where the entire project is contained inside the gtdynamics repo.  Use these as templates when your project is relatively simple and can live inside your gtdynamics directory.
 
-The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
+Run these examples with
+```sh
+$ make example_XXX.run
+```
+where `XXX` corresponds to a folder name in `examples`.  For example, `make example_forward_dynamics.run`.
+
+## Using GTDynamics in an external project with cmake
+The `/examples/cmake_project_example` directory contains an example cmake project that demonstrates how to include GTDynamics in your application.  Use this as a template when you want your project to be not inside the gtdynamics directory (e.g. separate git repo, ROS, personal libraries, etc).  To test building the project:
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
-```sh
-cd GTDynamics/examples/example_forward_dynamics
-mkdir build; cd build
-```
+    ```sh
+    cd GTDynamics/examples/cmake_project_example
+    mkdir build; cd build
+    ```
 
 2. Make the example.
 
-If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
+    If GTDynamics was installed to `~/JohnDoe/GTDynamics/install`, then run the cmake command with:
 
-```sh
-cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
-make
-```
+    ```sh
+    cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/GTDynamics/install ..
+    make
+    ```
 
 3. Run the example!
-```sh
-./exec
-```
+    ```sh
+    ./example
+    ```
 
 ## Python Wrapper (Recommended use case)
 
