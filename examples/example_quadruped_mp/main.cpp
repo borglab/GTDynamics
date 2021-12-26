@@ -19,6 +19,7 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -130,10 +131,11 @@ Pose3 compute_hermite_pose(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
 }
 
 /** Compute the target footholds for each support phase. */
-TargetFootholds compute_target_footholds(
-    const CoeffMatrix &coeffs, const Vector3 &x_0_p, const Pose3 &wTb_i,
-    const double horizon, const double t_support,
-    const std::map<std::string, Pose3> &bTfs) {
+TargetFootholds
+compute_target_footholds(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
+                         const Pose3 &wTb_i, const double horizon,
+                         const double t_support,
+                         const std::map<std::string, Pose3> &bTfs) {
   TargetFootholds target_footholds;
 
   double t_swing = t_support / 4.0; // Time for each swing foot trajectory.
@@ -145,6 +147,7 @@ TargetFootholds compute_target_footholds(
     std::map<std::string, Pose3> target_footholds_i;
     for (auto &&bTf : bTfs) {
       Pose3 wTf = wTb * bTf.second;
+      // TODO(frank): #179 make sure height is handled correctly.
       Pose3 wTf_gh(wTf.rotation(), Point3(wTf.translation()[0],
                                           wTf.translation()[1], GROUND_HEIGHT));
       target_footholds_i.emplace(bTf.first, wTf_gh);
@@ -238,7 +241,7 @@ struct CsvWriter {
   }
 
   void writerow(const TargetPoses &tposes, const gtsam::Values &results,
-                int ti) {
+                int k) {
     auto body = tposes.at("body").translation();
     pose_file << body[0] << "," << body[1] << "," << body[2];
     for (auto &&leg_name : swing_sequence) {
@@ -246,15 +249,15 @@ struct CsvWriter {
       pose_file << "," << leg[0] << "," << leg[1] << "," << leg[2];
     }
     for (auto &&joint : robot.joints())
-      pose_file << "," << JointAngle(results, joint->id(), ti);
+      pose_file << "," << JointAngle(results, joint->id(), k);
     pose_file << "\n";
   }
 };
 
 int main(int argc, char **argv) {
-  // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
+  // Load the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  Robot vision60 = CreateRobotFromFile("../vision60.urdf");
+  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
   // Coordinate system:
   //  z
@@ -266,12 +269,12 @@ int main(int argc, char **argv) {
   //  ‾‾‾‾‾‾‾‾‾‾‾‾‾ x
 
   cout << "\033[1;32;7;4mParsed Robot:\033[0m" << endl;
-  vision60.print();
+  robot.print();
   cout << "-------------" << endl;
 
   // Compute coefficients for cubic spline from current robot position
   // to final position using hermite parameterization.
-  Pose3 wTb_i = vision60.link("body")->wTcom();
+  Pose3 wTb_i = robot.link("body")->bMcom();
   Pose3 wTb_f = Pose3(Rot3(), Point3(3, 0, 0.1));
   Point3 x_0_p(1, 0, 0);
   Point3 x_0_p_traj(1, 0, 0.4);
@@ -299,11 +302,10 @@ int main(int argc, char **argv) {
   std::map<std::string, Pose3> bTfs;
   Pose3 comTfoot =
       Pose3(Rot3(), Point3(0.14, 0, 0)); // Foot is 14cm along X in COM
-  Pose3 bTw_i = wTb_i.inverse();
   for (auto &&leg : swing_sequence) {
-    const Pose3 bTfoot = bTw_i * vision60.link(leg)->wTcom() * comTfoot;
+    const Pose3 bTfoot = robot.link(leg)->bMcom() * comTfoot;
     bTfs.emplace(leg, bTfoot);
-  }
+  } 
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -311,19 +313,26 @@ int main(int argc, char **argv) {
 
   // Iteratively solve the inverse kinematics problem to obtain joint angles.
   double dt = 1. / 240., curr_t = 0.0;
-  int ti = 0; // The time index.
+  int k = 0; // The time index.
   auto dgb = DynamicsGraph();
 
   // Initialize values.
   gtsam::Values values;
-  for (auto &&link : vision60.links())
-    InsertPose(&values, link->id(), link->wTcom());
-  for (auto &&joint : vision60.joints())
+  for (auto &&link : robot.links())
+    InsertPose(&values, link->id(), link->bMcom());
+  for (auto &&joint : robot.joints())
     InsertJointAngle(&values, joint->id(), 0.0);
 
   // Write body,foot poses and joint angles to csv file.
-  CsvWriter writer("../traj.csv", swing_sequence, vision60);
+  CsvWriter writer("traj.csv", swing_sequence, robot);
   writer.writeheader();
+
+  // Set parameters for optimizer
+  gtsam::LevenbergMarquardtParams params;
+  params.setMaxIterations(50);
+  params.setlambdaInitial(1e5);
+
+  // params.setVerbosityLM("SUMMARY");
 
   while (curr_t < horizon) {
     const TargetPoses tposes =
@@ -331,36 +340,40 @@ int main(int argc, char **argv) {
                              swing_sequence, coeffs, x_0_p, wTb_i);
 
     // Create factor graph of kinematics constraints.
-    gtsam::NonlinearFactorGraph kfg = dgb.qFactors(vision60, ti);
+    gtsam::NonlinearFactorGraph kfg = dgb.qFactors(robot, k);
 
     // Constrain the base pose using trajectory value.
-    kfg.addPrior(internal::PoseKey(vision60.link("body")->id(), ti),
+    kfg.addPrior(internal::PoseKey(robot.link("body")->id(), k),
                  tposes.at("body"), gtsam::noiseModel::Constrained::All(6));
 
     // Constrain the footholds.
     auto model3 = gtsam::noiseModel::Constrained::All(3);
     for (auto &&leg : swing_sequence) {
-      kfg.add(PointGoalFactor(internal::PoseKey(vision60.link(leg)->id(), ti),
-                              model3, comTfoot, tposes.at(leg).translation()));
+      kfg.add(PointGoalFactor(internal::PoseKey(robot.link(leg)->id(), k),
+                              model3, comTfoot.translation(),
+                              tposes.at(leg).translation()));
     }
 
+    // gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values, params);
     gtsam::GaussNewtonOptimizer optimizer(kfg, values);
     gtsam::Values results = optimizer.optimize();
 
-    if ((ti % 100) == 0)
-      cout << "iter: " << ti << ", err: " << kfg.error(results) << endl;
+    if ((k % 100) == 0)
+      cout << "iter: " << k << ", err: " << kfg.error(results) << endl;
 
     // Update the values for next iteration.
     values.clear();
-    for (auto &&link : vision60.links())
-      InsertPose(&values, link->id(), ti + 1, Pose(results, link->id(), ti));
-    for (auto &&joint : vision60.joints())
-      InsertJointAngle(&values, joint->id(), ti + 1,
-                       JointAngle(results, joint->id(), ti));
 
-    writer.writerow(tposes, results, ti);
+    for (auto &&link : robot.links())
+      InsertPose(&values, link->id(), k + 1, Pose(results, link->id(), k));
+
+    for (auto &&joint : robot.joints())
+      InsertJointAngle(&values, joint->id(), k + 1,
+                       JointAngle(results, joint->id(), k));
+
+    writer.writerow(tposes, results, k);
     curr_t = curr_t + dt;
-    ti = ti + 1;
+    k = k + 1;
   }
 
   return 0;

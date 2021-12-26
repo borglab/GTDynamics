@@ -12,7 +12,6 @@
  * @author Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -28,14 +27,14 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::planar_axis;
-  using simple_urdf::robot;
-  robot.fixLink("l1");
+  auto robot = simple_urdf::getRobot().fixLink("l1");
+
+  gtsam::Vector3 gravity(0, 0, -9.8);
 
   // Build a factor graph with all the kinodynamics constraints.
-  DynamicsGraph dg_builder = DynamicsGraph();
-  gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+  DynamicsGraph dg_builder = DynamicsGraph(gravity, planar_axis);
   gtsam::NonlinearFactorGraph dfg =
-      dg_builder.dynamicsFactorGraph(robot, 0, gravity, planar_axis);
+      dg_builder.dynamicsFactorGraph(robot, 0);
 
   // Specify the priors and add them to the factor graph.
   gtsam::Values known_values;

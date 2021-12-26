@@ -7,12 +7,14 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
+#include <pybind11/functional.h>
+#include <pybind11/iostream.h>
 
 #include <boost/optional.hpp>
 
 #include "gtsam/config.h"
 #include "gtsam/base/serialization.h"
-#include "gtsam/nonlinear/utilities.h"  // for RedirectCout.
+#include "gtsam/base/utilities.h"  // for RedirectCout.
 
 {includes}
 #include <boost/serialization/export.hpp>
@@ -22,18 +24,21 @@
 {holder_type}
 
 // Preamble for STL classes
-#include "python/preamble.h"
+#include "python/preamble/{module_name}.h"
 
 using namespace std;
 
 namespace py = pybind11;
 
-PYBIND11_MODULE({module_name}, m_) {{
+{submodules}
+
+{module_def} {{
     m_.doc() = "pybind11 wrapper of {module_name}";
 
-    {wrapped_namespace}
+{submodules_init}
 
+    {wrapped_namespace}
 // Specializations for STL classes
-#include "python/specializations.h"
+#include "python/specializations/{module_name}.h"
 
 }}

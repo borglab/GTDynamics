@@ -8,81 +8,49 @@
 /**
  * @file  Phase.h
  * @brief Utility methods for generating Phase objects.
- * @author: Disha Das
+ * @author: Disha Das, Frank Dellaert
  */
 
 #pragma once
 
-#include <algorithm>
-#include <boost/algorithm/string/join.hpp>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/ConstraintSpec.h>
+#include <gtdynamics/utils/Interval.h>
+#include <gtdynamics/utils/FootContactConstraintSpec.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
+#include <iosfwd>
 
 namespace gtdynamics {
 /**
  * @class Phase class stores information about a robot stance
  * and its duration.
  */
-class Phase {
+
+class Phase : public Interval {
  protected:
-  Robot robot_configuration_;     ///< Robot configuration of this stance
-  ContactPoints contact_points_;  ///< Contact Points
-  int num_time_steps_;            ///< Number of time steps in this phase
+  boost::shared_ptr<ConstraintSpec> constraint_spec_;
 
  public:
   /// Constructor
-  Phase(const Robot& robot_configuration, const int& num_time_steps)
-      : robot_configuration_(robot_configuration),
-        num_time_steps_(num_time_steps) {}
+  Phase(size_t k_start, size_t k_end,
+        const boost::shared_ptr<ConstraintSpec> &constraint_spec)
+      : Interval(k_start, k_end), constraint_spec_(constraint_spec) {}
 
-  /** @fn Adds a contact point in the phase.
-   *
-   * @param[in] link             Name of link in the robot_configuration.
-   * @param[in] point            Point of contact on link.
-   * @param[in] contact_height   Height of contact point from ground.
-   */
-  void addContactPoint(const std::string& link, const gtsam::Point3& point,
-                       double contact_height) {
-    // Check if link exists in the robot
-    robot_configuration_.link(link);
-
-    auto ret =
-        contact_points_.emplace(link, ContactPoint{point, 0, contact_height});
-    if (!ret.second)
-      throw std::runtime_error("Multiple contact points for link " + link +
-                               " !");
+  ///Return Constraint Spec pointer
+  const boost::shared_ptr<const ConstraintSpec> constraintSpec() const {
+    return constraint_spec_;
   }
 
-  /**
-   * @fn Add multiple contact points.
-   *
-   * @param[in] links            List of links.
-   * @param[in] point            Point of contact on link.
-   * @param[in] contact_height   Height of contact point from ground.
-   */
-  void addContactPoints(const std::vector<std::string>& links,
-                        const gtsam::Point3& point, double contact_height) {
-    for (auto&& link : links) {
-      addContactPoint(link, point, contact_height);
-    }
-  }
+  /// Print to stream.
+  friend std::ostream &operator<<(std::ostream &os, const Phase &phase);
 
-  /// Returns the robot configuration of the stance
-  Robot getRobotConfiguration() const { return robot_configuration_; }
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string &s) const;
 
-  /// Returns all the contact points in the stance
-  ContactPoints getAllContactPoints() const { return contact_points_; }
-
-  /// Returns the contact point object of link.
-  const ContactPoint getContactPointAtLink(const std::string& link) {
-    if (contact_points_.find(link) == contact_points_.end()) {
-      throw std::runtime_error("Link " + link + " has no contact point!");
-    }
-    return contact_points_[link];
-  }
-
-  /// Returns the number of time steps in this phase
-  const int numTimeSteps() const { return num_time_steps_; }
+  /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
+  gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
+                            size_t k = 0,
+                            boost::optional<double> dt = boost::none) const;
 };
 }  // namespace gtdynamics

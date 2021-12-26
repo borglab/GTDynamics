@@ -13,32 +13,33 @@
 
 #pragma once
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gtdynamics/dynamics/OptimizerSetting.h"
+#include "gtdynamics/universal_robot/RobotTypes.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/utils.h"
+#include "gtdynamics/utils/values.h"
+
 namespace gtdynamics {
 
-class Link; // forward declaration
-class Joint; // forward declaration
+class Link;   // forward declaration
+class Joint;  // forward declaration
 
 LINK_TYPEDEF_CLASS_POINTER(Link);
 LINK_TYPEDEF_CLASS_POINTER(Joint);
@@ -48,7 +49,7 @@ LINK_TYPEDEF_CLASS_POINTER(Joint);
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
-  unsigned char id_;
+  uint8_t id_;
   std::string name_;
 
   /// Inertial elements.
@@ -57,8 +58,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   gtsam::Matrix3 inertia_;
 
   /// SDF Elements.
-  gtsam::Pose3 wTl_;    // Link frame defined in the world frame.
-  gtsam::Pose3 lTcom_;  // CoM frame defined in the link frame.
+  gtsam::Pose3 bMcom_;   // CoM frame defined in the base frame at rest.
+  gtsam::Pose3 bMlink_;  // link frame defined in the base frame at rest.
 
   /// Option to fix the link, used for ground link
   bool is_fixed_;
@@ -67,21 +68,35 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// Joints connected to the link
   std::vector<JointSharedPtr> joints_;
 
+  /// Robot class should have access to the internals of its links.
+  friend class Robot;
+
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   Link() {}
 
-
   /**
-   * Initialize Link's inertial properties with a LinkParams instance.
+   * @brief Construct a new Link object.
    *
-   * @param params LinkParams object containing link information.
+   * @param id Link ID
+   * @param name The name of the link as defined in the SDF/URDF file.
+   * @param mass The mass of the link.
+   * @param inertia The inertial matrix of the link.
+   * @param bMcom The pose of the link CoM relative to the base frame.
+   * @param bMlink The pose of the link frame relative to the base frame.
+   * @param is_fixed Flag indicating if the link is fixed.
    */
-  Link(unsigned char id, const std::string &name, const double mass,
-       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &wTl,
-       const gtsam::Pose3 &lTcom, bool is_fixed = false)
-      : id_(id), name_(name), mass_(mass), inertia_(inertia), wTl_(wTl),
-        lTcom_(lTcom), is_fixed_(is_fixed) {}
+  Link(uint8_t id, const std::string &name, const double mass,
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom,
+       const gtsam::Pose3 &bMlink, bool is_fixed = false)
+      : id_(id),
+        name_(name),
+        mass_(mass),
+        inertia_(inertia),
+        bMcom_(bMcom),
+        bMlink_(bMlink),
+        is_fixed_(is_fixed) {}
 
   /** destructor */
   virtual ~Link() = default;
@@ -90,51 +105,45 @@ class Link : public boost::enable_shared_from_this<Link> {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
             this->mass_ == other.mass_ &&
             this->centerOfMass_.equals(other.centerOfMass_) &&
-            this->inertia_ == other.inertia_ && this->wTl_.equals(other.wTl_) &&
-            this->lTcom_.equals(other.lTcom_) &&
+            this->inertia_ == other.inertia_ &&
+            this->bMcom_.equals(other.bMcom_) &&
+            this->bMlink_.equals(other.bMlink_) &&
             this->is_fixed_ == other.is_fixed_ &&
             this->fixed_pose_.equals(other.fixed_pose_));
   }
 
   bool operator!=(const Link &other) const { return !(*this == other); }
 
+  bool equals(const Link &other, double tol = 0) const {
+    return *this == other;
+  }
+
   /// return a shared pointer of the link
   LinkSharedPtr shared(void) { return shared_from_this(); }
 
   /// remove the joint
-  void removeJoint(const JointSharedPtr& joint) {
+  void removeJoint(const JointSharedPtr &joint) {
     joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
   }
 
   /// return ID of the link
-  unsigned char id() const { return id_; }
+  uint8_t id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(const JointSharedPtr& joint) { joints_.push_back(joint); }
+  void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
 
-  /// transform from link to world frame
-  const gtsam::Pose3 &wTl() const { return wTl_; }
+  /// Relative pose at rest from link’s COM to the base frame.
+  inline const gtsam::Pose3 &bMcom() const { return bMcom_; }
 
-  /// transform from link CoM frame to link frame
-  const gtsam::Pose3 &lTcom() const { return lTcom_; }
-
-  /// transform from link CoM frame to world frame
-  inline const gtsam::Pose3 wTcom() const { return wTl() * lTcom(); }
+  /// Relative pose at rest from link frame to the base frame. mainly for
+  /// interoperability uses
+  inline const gtsam::Pose3 bMlink() const { return bMlink_; }
 
   /// the fixed pose of the link
   const gtsam::Pose3 &getFixedPose() const { return fixed_pose_; }
 
   /// whether the link is fixed
   bool isFixed() const { return is_fixed_; }
-
-  /// fix the link to fixed_pose. If fixed_pose is not specified, use wTcom.
-  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
-    is_fixed_ = true;
-    fixed_pose_ = fixed_pose ? *fixed_pose : wTcom();
-  }
-
-  /// Unfix the link
-  void unfix() { is_fixed_ = false; }
 
   /// return all joints of the link
   const std::vector<JointSharedPtr> &joints() const { return joints_; }
@@ -143,7 +152,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   size_t numJoints() const { return joints_.size(); }
 
   /// Return link name.
-  std::string name() const { return name_; }
+  const std::string &name() const { return name_; }
 
   /// Return link mass.
   double mass() const { return mass_; }
@@ -162,6 +171,26 @@ class Link : public boost::enable_shared_from_this<Link> {
     return gtsam::diag(gmm);
   }
 
+  /// Functional way to fix a link
+  static Link fix(
+      const Link &link,
+      const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+    // Copy construct
+    Link fixed_link(link);
+    // Fix the link
+    fixed_link.fix(fixed_pose);
+    return fixed_link;
+  }
+
+  /// Functional way to unfix a link
+  static Link unfix(const Link &link) {
+    // Copy construct
+    Link unfixed_link(link);
+    // unfix the link
+    unfixed_link.unfix();
+    return unfixed_link;
+  }
+
   /// Print to ostream
   friend std::ostream &operator<<(std::ostream &os, const Link &l) {
     os << l.name();
@@ -169,6 +198,57 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// Helper print function
-  void print() const { std::cout << *this; }
+  void print(const std::string &s = "") const {
+    std::cout << (s.empty() ? s : s + " ") << *this;
+  }
+
+
+  /**
+   * @brief Create expression that constraint the wrench balance on the link.
+   * @param wrench_keys Keys for external wrenches acting on the link.
+   * @param t Time step.
+   * @param gravity Gravitional constant.
+   */
+  gtsam::Vector6_ wrenchConstraint(
+      const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
+
+ private:
+  /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
+  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+    is_fixed_ = true;
+    fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
+  }
+
+  /// Unfix the link
+  void unfix() { is_fixed_ = false; }
+
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(id_);
+    ar &BOOST_SERIALIZATION_NVP(name_);
+    ar &BOOST_SERIALIZATION_NVP(mass_);
+    ar &BOOST_SERIALIZATION_NVP(centerOfMass_);
+    ar &BOOST_SERIALIZATION_NVP(inertia_);
+    ar &BOOST_SERIALIZATION_NVP(bMcom_);
+    ar &BOOST_SERIALIZATION_NVP(bMlink_);
+    ar &BOOST_SERIALIZATION_NVP(is_fixed_);
+    ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
+  }
+
+  /// @}
 };
+
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Link> : public Testable<gtdynamics::Link> {};
+
+}  // namespace gtsam

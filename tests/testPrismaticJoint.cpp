@@ -14,6 +14,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/universal_robot/PrismaticJoint.h"
@@ -22,14 +23,17 @@
 #include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
-using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
 
 /**
  * Construct a Prismatic joint via JointParams and ensure all values are as
  * expected.
  */
 TEST(Joint, params_constructor_prismatic) {
-  using simple_urdf_prismatic::robot;
+  auto robot = simple_urdf_prismatic::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -39,11 +43,11 @@ TEST(Joint, params_constructor_prismatic) {
   parameters.scalar_limits.value_upper_limit = 2;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  const gtsam::Vector3 j1_axis = (gtsam::Vector(3) << 0, 0, 1).finished();
+  const gtsam::Vector3 j1_axis(0, 0, 1);
 
   auto j1 = boost::make_shared<PrismaticJoint>(
-      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2,
-      parameters, j1_axis);
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
+      parameters);
 
   // get shared ptr
   EXPECT(j1->shared() == j1);
@@ -96,6 +100,26 @@ TEST(Joint, params_constructor_prismatic) {
                       j1->parameters().scalar_limits.value_upper_limit));
   EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold,
                       j1->parameters().scalar_limits.value_limit_threshold));
+}
+
+BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
+
+TEST(PrismaticJoint, Serialization) {
+  auto robot = simple_urdf_prismatic::getRobot();
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
+
+  JointParams parameters;
+  const gtsam::Vector3 j1_axis(0, 0, 1);
+
+  auto j1 = boost::make_shared<PrismaticJoint>(
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
+      parameters);
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsDereferenced(j1));
+  EXPECT(equalsDereferencedXML(j1));
+  EXPECT(equalsDereferencedBinary(j1));
 }
 
 int main() {

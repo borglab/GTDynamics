@@ -33,22 +33,22 @@ class Cdpr:
     def __init__(self, params=CdprParams()):
         self.params = params
         ee = gtd.Link(1, "ee", params.mass, params.inertia, Pose3(), Pose3())
-        self.robot = gtd.Robot({'ee' : ee}, {})
-        self.costmodel_l = gtsam.noiseModel.Constrained.All(1)
-        self.costmodel_ldot = gtsam.noiseModel.Constrained.All(1)
-        self.costmodel_wrench = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_torque = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_twistcollo = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_posecollo = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_prior_l = gtsam.noiseModel.Constrained.All(1)
-        self.costmodel_prior_ldot = gtsam.noiseModel.Constrained.All(1)
-        self.costmodel_prior_tau = gtsam.noiseModel.Constrained.All(1)
-        self.costmodel_prior_pose = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_prior_twist = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_prior_twistaccel = gtsam.noiseModel.Constrained.All(6)
-        self.costmodel_planar_pose = gtsam.noiseModel.Constrained.All(3)
-        self.costmodel_planar_twist = gtsam.noiseModel.Constrained.All(3)
-        self.costmodel_dt = gtsam.noiseModel.Constrained.All(1)
+        self.robot = gtd.Robot({'ee': ee}, {})
+        self.costmodel_l = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        self.costmodel_ldot = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        self.costmodel_wrench = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_torque = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_twistcollo = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_posecollo = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_prior_l = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        self.costmodel_prior_ldot = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        self.costmodel_prior_tau = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        self.costmodel_prior_pose = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_prior_twist = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_prior_twistaccel = gtsam.noiseModel.Isotropic.Sigma(6, 0.001)
+        self.costmodel_planar_pose = gtsam.noiseModel.Isotropic.Sigma(3, 0.001)
+        self.costmodel_planar_twist = gtsam.noiseModel.Isotropic.Sigma(3, 0.001)
+        self.costmodel_dt = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
 
     def eelink(self):
         """Link object for the end-effector
@@ -62,7 +62,7 @@ class Cdpr:
 
         Returns:
             int: The end effector's link id
-        """        
+        """
         return self.eelink().id()
 
     def all_factors(self, N, dt):
@@ -77,7 +77,7 @@ class Cdpr:
 
         Returns:
             gtsam.NonlinearFactorGraph: the factor graph
-        """        
+        """
         fg = gtsam.NonlinearFactorGraph()
         fg.push_back(self.kinematics_factors(ks=range(N)))
         fg.push_back(self.dynamics_factors(ks=range(N)))
@@ -151,18 +151,14 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            wf = gtd.WrenchFactor(
-                    gtd.internal.TwistKey(self.ee_id(), k).key(),
-                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
+            # TODO(yetong): Use EqualityConstraint.createFactor when wrapped.
+            dfg.add(gtd.WrenchFactor(self.costmodel_wrench, self.eelink(),
                     [
                         gtd.internal.WrenchKey(self.ee_id(), 0, k),
                         gtd.internal.WrenchKey(self.ee_id(), 1, k),
                         gtd.internal.WrenchKey(self.ee_id(), 2, k),
                         gtd.internal.WrenchKey(self.ee_id(), 3, k)
-                    ],
-                    gtd.internal.PoseKey(self.ee_id(), k).key(),
-                    self.costmodel_wrench, self.eelink().inertiaMatrix(), self.params.gravity)
-            dfg.push_back(wf)
+                    ], k, self.params.gravity))
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(
@@ -188,13 +184,13 @@ class Cdpr:
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
             dfg.push_back(
-                gtd.EulerPoseColloFactor(
+                gtd.EulerPoseCollocationFactor(
                     gtd.internal.PoseKey(self.ee_id(), k).key(),
                     gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
                     gtd.internal.TwistKey(self.ee_id(), k).key(), 0,
                     self.costmodel_posecollo))
             dfg.push_back(
-                gtd.EulerTwistColloFactor(
+                gtd.EulerTwistCollocationFactor(
                     gtd.internal.TwistKey(self.ee_id(), k).key(),
                     gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
                     gtd.internal.TwistAccelKey(self.ee_id(), k).key(), 0,
@@ -285,7 +281,7 @@ class Cdpr:
         """
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
-            graph.push_back(gtsam.PriorFactorVector6(
+            graph.push_back(gtd.PriorFactorVector6(
                 gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
                 VA, self.costmodel_prior_twistaccel))
         return graph

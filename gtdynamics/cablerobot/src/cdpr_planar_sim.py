@@ -76,8 +76,8 @@ class CdprSimulator:
                            Vs=[gtd.Twist(x, cdpr.ee_id(), k)]))
         # IK initial estimate
         for j in range(4):
-            gtd.InsertJointAngleDouble(x, j, k, 0)
-            gtd.InsertJointVelDouble(x, j, k, 0)
+            gtd.InsertJointAngle(x, j, k, 0)
+            gtd.InsertJointVel(x, j, k, 0)
         # IK solve
         result = gtsam.LevenbergMarquardtOptimizer(fg, x).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
@@ -108,10 +108,10 @@ class CdprSimulator:
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
         # ID priors (torque inputs)
         fg.push_back(
-            cdpr.priors_id(ks=[k], torquess=[[gtd.TorqueDouble(u, ji, k) for ji in range(4)]]))
+            cdpr.priors_id(ks=[k], torquess=[[gtd.Torque(u, ji, k) for ji in range(4)]]))
         # ID initial guess
         for ji in range(4):
-            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(u, ji, k))
+            gtd.InsertTorque(x, ji, k, gtd.Torque(u, ji, k))
             gtd.InsertWrench(x, cdpr.ee_id(), ji, k, np.zeros(6))
         gtd.InsertPose(x, cdpr.ee_id(), k+1, gtsam.Pose3(gtsam.Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(x, cdpr.ee_id(), k+1, np.zeros(6))
@@ -140,11 +140,11 @@ class CdprSimulator:
                 *gtd.Pose(self.x, self.cdpr.ee_id(), self.k).translation()), end='  --  ')
         self.update_kinematics(self.cdpr, self.fg, self.x, self.k)
         if self.k == 0:
-            self.x.insertDouble(0, self.dt)
+            self.x.insert(0, self.dt)
         u = self.controller.update(self.x, self.k)
         if verbose:
             print('control torques: {:.2e},   {:.2e},   {:.2e},   {:.2e}'.format(
-                *[gtd.TorqueDouble(u, ji, self.k) for ji in range(4)]))
+                *[gtd.Torque(u, ji, self.k) for ji in range(4)]))
         self.update_dynamics(self.cdpr, self.fg, self.x, u, self.k, self.dt)
         self.k += 1
         return self.x

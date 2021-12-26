@@ -31,28 +31,25 @@
 #include <string>
 #include <utility>
 
-#define GROUND_HEIGHT -0.191839
 using namespace gtdynamics;
 
 int main(int argc, char** argv) {
-  // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
+  // Load the Vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 = CreateRobotFromFile("../vision60.urdf");
+  auto vision60 =
+      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   double mu = 2.0;
 
   // Contact points at feet.
-  ContactPoints contact_points;
-  contact_points.emplace(
-      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0, GROUND_HEIGHT});
-  contact_points.emplace(
-      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1, GROUND_HEIGHT});
-  contact_points.emplace(
-      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2, GROUND_HEIGHT});
-  contact_points.emplace(
-      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3, GROUND_HEIGHT});
+  PointOnLinks contact_points;
+  gtsam::Point3 contact_in_com(0.14, 0, 0);
+  contact_points.emplace_back(vision60.link("lower0"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower1"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower2"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower3"), contact_in_com);
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)
@@ -63,7 +60,7 @@ int main(int argc, char** argv) {
   double sigma_objectives = 1e-3;  // Variance of additional objectives.
 
   // Specify boundary conditions for base and joints.
-  gtsam::Pose3 base_pose_init = vision60.link("body")->wTcom();
+  gtsam::Pose3 base_pose_init = vision60.link("body")->bMcom();
   gtsam::Vector6 base_twist_init = gtsam::Z_6x1,
                  base_twist_final = gtsam::Z_6x1,
                  base_accel_init = gtsam::Z_6x1,
@@ -130,8 +127,8 @@ int main(int argc, char** argv) {
   opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   auto graph_builder = DynamicsGraph(opt, gravity);
   gtsam::NonlinearFactorGraph graph = graph_builder.trajectoryFG(
-      vision60, t_steps, dt, DynamicsGraph::CollocationScheme::Trapezoidal,
-      contact_points, mu);
+      vision60, t_steps, dt, CollocationScheme::Trapezoidal, contact_points,
+      mu);
 
   auto base_link = vision60.link("body");
   gtsam::NonlinearFactorGraph objective_factors;
@@ -241,7 +238,7 @@ int main(int argc, char** argv) {
   for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
   std::string jnames_str = boost::algorithm::join(jnames, ",");
   std::ofstream traj_file;
-  traj_file.open("../traj.csv");
+  traj_file.open("traj.csv");
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
             << jnames_str << ",gol_x"

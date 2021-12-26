@@ -1,0 +1,127 @@
+"""Run kinematic motion planning using GTDynamics outputs."""
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pybullet as p
+import pybullet_data
+
+import gtdynamics as gtd
+
+# pylint: disable=I1101, C0103
+
+_ = p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
+p.setGravity(0, 0, -9.8)
+planeId = p.loadURDF("plane.urdf")
+p.changeDynamics(planeId, -1, lateralFriction=1)
+quad_id = p.loadURDF("vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
+                     False)
+
+joint_to_jid_map = {}
+for i in range(p.getNumJoints(quad_id)):
+    jinfo = p.getJointInfo(quad_id, i)
+    joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
+
+
+df = pd.read_csv('traj.csv')
+print(df.columns)
+
+input("Press ENTER to continue.")
+
+pos, orn = p.getBasePositionAndOrientation(quad_id)
+
+print("Init Base\n\tPos: {}\n\tOrn: {}".format(pos,
+                                               p.getEulerFromQuaternion(orn)))
+
+debug_iters = 20
+
+max_traj_replays = 5
+num_traj_replays = 0
+
+t = 0
+t_f = None
+ts = []
+all_pos_sim = []
+
+i=0
+while True:
+
+    if num_traj_replays == max_traj_replays:
+        break
+
+    if (i == 1260):
+        i = 135
+        if num_traj_replays == 0:
+            t_f = t
+        num_traj_replays += 1
+
+    jangles = df.loc[i][[str(i) for i in range(12)]]
+    jvels = df.loc[i][[str(i) + '.1' for i in range(12)]]
+    jaccels = df.loc[i][[str(i) + '.2' for i in range(12)]]
+    jtorques = df.loc[i][[str(i) + '.3' for i in range(12)]]
+
+    gtd.sim.set_joint_angles(p, quad_id, joint_to_jid_map, jangles, jvels)
+
+    # Update body CoM coordinate frame.
+    new_pos, new_orn = p.getBasePositionAndOrientation(quad_id)
+    new_pos = np.array(new_pos)
+    new_R = np.array(p.getMatrixFromQuaternion(new_orn)).reshape(3, 3)
+
+    if (i % debug_iters) == 0:
+        print("\tIter {} Base\n\t\tPos: {}\n\t\tOrn: {}".format(
+            i, new_pos, p.getEulerFromQuaternion(new_orn)))
+
+        if (num_traj_replays == 0):
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[1, 0, 1], lineWidth=2.5)
+        else:
+            p.addUserDebugLine(pos, new_pos, lineColorRGB=[0, 1, 1], lineWidth=2.5)
+        pos, orn = new_pos, new_orn
+
+        bod_debug_line_x = p.addUserDebugLine(
+            np.array([0, 0, 0]) + new_pos,
+            np.matmul(new_R, np.array([0.05, 0, 0])) + new_pos,
+            lineColorRGB=[1, 0, 1], lineWidth=1, lifeTime=1.5)
+        bod_debug_line_y = p.addUserDebugLine(
+            np.array([0, 0, 0]) + new_pos,
+            np.matmul(new_R, np.array([0, 0.05, 0])) + new_pos,
+            lineColorRGB=[1, 0, 1], lineWidth=1, lifeTime=1.5)
+        bod_debug_line_z = p.addUserDebugLine(
+            np.array([0, 0, 0]) + new_pos,
+            np.matmul(new_R, np.array([0, 0, 0.05])) + new_pos,
+            lineColorRGB=[1, 0, 1], lineWidth=1, lifeTime=1.5)
+
+    p.stepSimulation()
+    time.sleep(1. / 240.)
+
+    ts.append(t)
+    t += 1. / 240.
+    all_pos_sim.append(new_pos)
+    i+=1
+
+
+pos, orn = p.getBasePositionAndOrientation(quad_id)
+print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
+                                                p.getEulerFromQuaternion(orn)))
+
+fig, axs = plt.subplots(3, 1, sharex=True)
+fig.subplots_adjust(hspace=0)
+
+axs[0].plot(ts, [p[0] for p in all_pos_sim])
+axs[0].axvline(x=t_f, color='k', linestyle='--')
+axs[0].set_ylabel('x (m.)')
+
+axs[1].plot(ts, [p[1] for p in all_pos_sim])
+axs[1].axvline(x=t_f, color='k', linestyle='--')
+axs[1].set_ylabel('y (m.)')
+
+axs[2].plot(ts, [p[2] for p in all_pos_sim])
+axs[2].axvline(x=t_f, color='k', linestyle='--')
+axs[2].set_ylabel('z (m.)')
+
+plt.xlabel("time (s.)")
+
+plt.show()
+
+p.disconnect()

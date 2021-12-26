@@ -45,10 +45,10 @@ class TestCdprPlanar(GtsamTestCase):
                 print(('k: {:d}  --  des: {:.3f}, {:.3f}, {:.3f}  --  act: {:.3f}, {:.3f}, {:.3f}' +
                        '  --  u: {:.3e},   {:.3e},   {:.3e},   {:.3e}').format(
                            k, *des.translation(), *act.translation(),
-                           *[gtd.TorqueDouble(result, ji, k) for ji in range(4)]))
+                           *[gtd.Torque(result, ji, k) for ji in range(4)]))
 
         for k, (des, act) in enumerate(zip(x_des, pAct)):
-            self.gtsamAssertEquals(des, act)
+            self.gtsamAssertEquals(des, act, tol=1e-2)
 
 if __name__ == "__main__":
     unittest.main()

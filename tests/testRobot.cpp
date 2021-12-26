@@ -16,9 +16,16 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
 
+#include <boost/serialization/export.hpp>
+
+#include "gtdynamics/universal_robot/HelicalJoint.h"
+#include "gtdynamics/universal_robot/PrismaticJoint.h"
+#include "gtdynamics/universal_robot/RevoluteJoint.h"
 #include "gtdynamics/universal_robot/Robot.h"
+#include "gtdynamics/universal_robot/RobotModels.h"
 #include "gtdynamics/universal_robot/sdf.h"
 #include "gtdynamics/utils/utils.h"
 
@@ -32,60 +39,59 @@ using gtsam::Vector6;
 
 TEST(Robot, four_bar_sdf) {
   // Initialize Robot instance from a file.
-  Robot four_bar =
-      CreateRobotFromFile(SDF_PATH + "/test/four_bar_linkage.sdf");
+  Robot robot =
+      CreateRobotFromFile(kSdfPath + std::string("test/four_bar_linkage.sdf"));
 
   // Check that number of links and joints in the Robot instance is
   // correct.
-  EXPECT(assert_equal(5, four_bar.links().size()));
-  EXPECT(assert_equal(5, four_bar.joints().size()));
+  EXPECT(assert_equal(5, robot.links().size()));
+  EXPECT(assert_equal(5, robot.joints().size()));
 
   // Test link(...) and joint(...)
-  EXPECT(assert_equal("l0", four_bar.link("l0")->name()));
-  EXPECT(assert_equal("l1", four_bar.link("l1")->name()));
-  EXPECT(assert_equal("l2", four_bar.link("l2")->name()));
-  EXPECT(assert_equal("l3", four_bar.link("l3")->name()));
-  EXPECT(assert_equal("l4", four_bar.link("l4")->name()));
-  EXPECT(assert_equal("j0", four_bar.joint("j0")->name()));
-  EXPECT(assert_equal("j1", four_bar.joint("j1")->name()));
-  EXPECT(assert_equal("j2", four_bar.joint("j2")->name()));
-  EXPECT(assert_equal("j3", four_bar.joint("j3")->name()));
-  EXPECT(assert_equal("j4", four_bar.joint("j4")->name()));
+  EXPECT(assert_equal("l0", robot.link("l0")->name()));
+  EXPECT(assert_equal("l1", robot.link("l1")->name()));
+  EXPECT(assert_equal("l2", robot.link("l2")->name()));
+  EXPECT(assert_equal("l3", robot.link("l3")->name()));
+  EXPECT(assert_equal("l4", robot.link("l4")->name()));
+  EXPECT(assert_equal("j0", robot.joint("j0")->name()));
+  EXPECT(assert_equal("j1", robot.joint("j1")->name()));
+  EXPECT(assert_equal("j2", robot.joint("j2")->name()));
+  EXPECT(assert_equal("j3", robot.joint("j3")->name()));
+  EXPECT(assert_equal("j4", robot.joint("j4")->name()));
 }
 
 TEST(Robot, simple_rr_sdf) {
   // Initialize Robot instance from a file.
-  Robot simple_rr = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rr.sdf", "simple_rr_sdf");
+  auto robot = simple_rr::getRobot();
 
   // // Check that number of links and joints in the Robot instance is
   // correct.
-  EXPECT(assert_equal(3, simple_rr.links().size()));
-  EXPECT(assert_equal(2, simple_rr.joints().size()));
+  EXPECT(assert_equal(3, robot.links().size()));
+  EXPECT(assert_equal(2, robot.joints().size()));
 
   // Test link(...) and joint(...)
-  EXPECT(assert_equal("link_0", simple_rr.link("link_0")->name()));
-  EXPECT(assert_equal("link_1", simple_rr.link("link_1")->name()));
-  EXPECT(assert_equal("link_2", simple_rr.link("link_2")->name()));
+  EXPECT(assert_equal("link_0", robot.link("link_0")->name()));
+  EXPECT(assert_equal("link_1", robot.link("link_1")->name()));
+  EXPECT(assert_equal("link_2", robot.link("link_2")->name()));
 
-  EXPECT(assert_equal("joint_1", simple_rr.joint("joint_1")->name()));
-  EXPECT(assert_equal("joint_2", simple_rr.joint("joint_2")->name()));
+  EXPECT(assert_equal("joint_1", robot.joint("joint_1")->name()));
+  EXPECT(assert_equal("joint_2", robot.joint("joint_2")->name()));
 }
 
 TEST(Robot, removeLink) {
   // Initialize Robot instance from a file.
-  Robot four_bar = CreateRobotFromFile(SDF_PATH +
-                                       "/test/four_bar_linkage_pure.sdf");
-  four_bar.removeLink(four_bar.link("l2"));
-  EXPECT(four_bar.numLinks() == 3);
-  EXPECT(four_bar.numJoints() == 2);
-  EXPECT(four_bar.link("l1")->joints().size() == 1);
-  EXPECT(four_bar.link("l3")->joints().size() == 1);
+  auto robot = four_bar_linkage_pure::getRobot();
+
+  robot.removeLink(robot.link("l2"));
+  EXPECT(robot.numLinks() == 3);
+  EXPECT(robot.numJoints() == 2);
+  EXPECT(robot.link("l1")->joints().size() == 1);
+  EXPECT(robot.link("l3")->joints().size() == 1);
 }
 
-TEST(Robot, forwardKinematics) {
+TEST(Robot, ForwardKinematics) {
   Robot robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   Values values;
 
@@ -93,11 +99,14 @@ TEST(Robot, forwardKinematics) {
   THROWS_EXCEPTION(robot.forwardKinematics(values));
 
   // test fk at rest
-  robot.link("l1")->fix();
+  // Values are empty but will default to 0 joint angles.
+  robot = robot.fixLink("l1");
   Values results = robot.forwardKinematics(values);
 
+  // The CoM frames at rest are:
   Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 1));
   Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 3));
+  // At rest, all the twists are 0:
   Vector6 V_l1_rest, V_l2_rest;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
   V_l2_rest << 0, 0, 0, 0, 0, 0;
@@ -109,12 +118,13 @@ TEST(Robot, forwardKinematics) {
 
   // test fk with moving joint and fixed base
   Values values2;
-  InsertJointAngle(&values2, 0, M_PI_2);
-  InsertJointVel(&values2, 0, 1.0);
+  InsertJointAngle(&values2, 0, M_PI_2);  // rotate joint by 90 degrees
+  InsertJointVel(&values2, 0, 1.0);       // joint velocity is 1 rad/s.
 
   Values results2 = robot.forwardKinematics(values2);
 
-  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));
+  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));  // link1 stays put
+  // link2 is rotated by 90 degrees and now points along -Y axis.
   Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
   Vector6 V_l1_move, V_l2_move;
   V_l1_move << 0, 0, 0, 0, 0, 0;
@@ -125,7 +135,7 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_move, Twist(results2, 1)));
 
   // test fk with moving joint and moving base
-  robot.link("l1")->unfix();
+  robot = robot.unfixLink("l1");
   Pose3 T_wl1_float(Rot3::Rx(-M_PI_2), Point3(0, 1, 1));
   Pose3 T_wl2_float(Rot3::Rx(0), Point3(0, 2, 2));
   Vector6 V_l1_float, V_l2_float;
@@ -144,14 +154,14 @@ TEST(Robot, forwardKinematics) {
   EXPECT(assert_equal(V_l2_float, Twist(results3, 1)));
 }
 
-TEST(Robot, forwardKinematics_rpr) {
+TEST(Robot, ForwardKinematicsRPR) {
   Robot robot = CreateRobotFromFile(
-      SDF_PATH + "/test/simple_rpr.sdf", "simple_rpr_sdf");
+      kSdfPath + std::string("test/simple_rpr.sdf"), "simple_rpr_sdf");
 
   Values values;
 
   // test fk at rest
-  robot.link("link_0")->fix();
+  robot = robot.fixLink("link_0");
   Values fk_results = robot.forwardKinematics(values);
 
   Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
@@ -201,13 +211,13 @@ TEST(Robot, forwardKinematics_rpr) {
 }
 
 // test fk for a four bar linkage (loopy)
-TEST(forwardKinematics, four_bar) {
-  Robot four_bar = CreateRobotFromFile(SDF_PATH +
-                                       "/test/four_bar_linkage_pure.sdf");
-  four_bar.link("l1")->fix();
+TEST(ForwardKinematics, FourBar) {
+  Robot robot = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+  robot = robot.fixLink("l1");
 
   Values values;
-  Values fk_results = four_bar.forwardKinematics(values);
+  Values fk_results = robot.forwardKinematics(values);
 
   Vector6 V_4;
   V_4 << 0, 0, 0, 0, 0, 0;
@@ -219,12 +229,45 @@ TEST(forwardKinematics, four_bar) {
   // incorrect specficiation of joint angles.
   Values wrong_angles = values;
   InsertJointAngle(&wrong_angles, 0, 1.0);
-  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_angles));
+  THROWS_EXCEPTION(robot.forwardKinematics(wrong_angles));
 
   // incorrect specficiation of joint velocites.
   Values wrong_vels = values;
   InsertJointVel(&wrong_vels, 0, 1.0);
-  THROWS_EXCEPTION(four_bar.forwardKinematics(wrong_vels));
+  THROWS_EXCEPTION(robot.forwardKinematics(wrong_vels));
+}
+
+TEST(Robot, Equality) {
+  Robot robot1 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+  Robot robot2 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  EXPECT(robot1 == robot2);
+  EXPECT(robot1.equals(robot2));
+
+  // Check if not-equal works as expecred
+  JointSharedPtr j = robot1.joints()[0];
+  // Set the joint's parent link to default
+  *(j->parent()) = Link();
+
+  // robot1 should no longer equal robot2
+  EXPECT(!robot1.equals(robot2));
+}
+
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
+BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
+
+TEST(Robot, Serialization) {
+  Robot robot = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsObj(robot));
+  EXPECT(equalsXML(robot));
+  EXPECT(equalsBinary(robot));
 }
 
 int main() {

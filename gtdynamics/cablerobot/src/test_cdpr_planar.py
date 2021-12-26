@@ -32,16 +32,16 @@ class TestCdprPlanar(GtsamTestCase):
         def zeroValues():
             values = gtsam.Values()
             for j in range(4):
-                gtd.InsertJointAngleDouble(values, j, 0, 3.0)
-                gtd.InsertJointVelDouble(values, j, 0, 17.0 + np.random.rand(1))
+                gtd.InsertJointAngle(values, j, 0, 3.0)
+                gtd.InsertJointVel(values, j, 0, 17.0 + np.random.rand(1))
             gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3())
             gtd.InsertTwist(values, cdpr.ee_id(), 0, (0,0,0,0,0,1.4142))
             return values
         # things needed to define FK
         values = gtsam.Values()
         for j, l, ldot in zip(range(4), [1.35 * np.sqrt(2),]*4, [-1, 1, 1, -1.]):
-            gtd.InsertJointAngleDouble(values, j, 0, l)
-            gtd.InsertJointVelDouble(values, j, 0, ldot)
+            gtd.InsertJointAngle(values, j, 0, l)
+            gtd.InsertJointVel(values, j, 0, ldot)
         # things needed to define IK
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
@@ -56,8 +56,8 @@ class TestCdprPlanar(GtsamTestCase):
         # try optimizing FK
         fkgraph = gtsam.NonlinearFactorGraph(kfg)
         fkgraph.push_back(cdpr.priors_fk([0],
-                                         [[gtd.JointAngleDouble(values, ji, 0) for ji in range(4)]],
-                                         [[gtd.JointVelDouble(values, ji, 0) for ji in range(4)]]))
+                                         [[gtd.JointAngle(values, ji, 0) for ji in range(4)]],
+                                         [[gtd.JointVel(values, ji, 0) for ji in range(4)]]))
         params = gtsam.LevenbergMarquardtParams()
         params.setAbsoluteErrorTol(1e-20)  # FK less sensitive so we need to decrease the tolerance
         fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), params).optimize()
@@ -74,7 +74,7 @@ class TestCdprPlanar(GtsamTestCase):
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
         # things needed to define ID
         for j, tau in zip(range(4), [1, 0, 0, 1]):
-            gtd.InsertTorqueDouble(values, j, 0, tau)
+            gtd.InsertTorque(values, j, 0, tau)
         # things needed to define FD
         gtd.InsertTwistAccel(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
         # things needed intermediaries
@@ -102,7 +102,7 @@ class TestCdprPlanar(GtsamTestCase):
         init = gtsam.Values(values)
         for ji in range(4):
             init.erase(gtd.internal.TorqueKey(ji, 0).key())
-            gtd.InsertTorqueDouble(init, ji, 0, -1)
+            gtd.InsertTorque(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)
 
@@ -123,12 +123,12 @@ class TestCdprPlanar(GtsamTestCase):
         fg.push_back(cdpr.priors_id(ks=[0, 1, 2], torquess=[[1,1,0,0],]*3))
         # construct initial guess
         init = gtsam.Values()
-        init.insertDouble(0, 0.01)
+        init.insert(0, 0.01)
         for t in range(3):
             for j in range(4):
-                gtd.InsertJointAngleDouble(init, j, t, 1)
-                gtd.InsertJointVelDouble(init, j, t, 1)
-                gtd.InsertTorqueDouble(init, j, t, 1)
+                gtd.InsertJointAngle(init, j, t, 1)
+                gtd.InsertJointVel(init, j, t, 1)
+                gtd.InsertTorque(init, j, t, 1)
                 gtd.InsertWrench(init, cdpr.ee_id(), j, t, np.ones(6))
             gtd.InsertPose(init, cdpr.ee_id(), t, Pose3(Rot3(), (1.5, 1, 1.5)))
             gtd.InsertTwist(init, cdpr.ee_id(), t, np.ones(6))

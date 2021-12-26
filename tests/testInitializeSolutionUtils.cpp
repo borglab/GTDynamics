@@ -33,46 +33,46 @@ using gtsam::Rot3;
 
 double kNoiseSigma = 1e-8;
 
-// TODO(frank): #117 Fix test, which attempts to change a fixed link.
-// TEST(InitializeSolutionUtils, Interpolation) {
-//   using simple_urdf::robot;
-//   robot.print();
+TEST(InitializeSolutionUtils, Interpolation) {
+  Robot robot = simple_rr::getRobot();
 
-//   // Set initial and final values.
-//   Pose3 wTb_i;
-//   Rot3 wRb_f = Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2);
-//   Pose3 wTb_f(wRb_f, Point3(1, 1, 1));
+  // Set initial and final values.
+  Pose3 wTb_i;
+  Rot3 wRb_f = Rot3::RzRyRx(M_PI, M_PI / 4, M_PI / 2);
+  Pose3 wTb_f(wRb_f, Point3(1, 1, 1));
 
-//   // We will interpolate from 0->10s, in 1 second increments.
-//   double T_i = 0, T_f = 10, dt = 1;
+  // We will interpolate from 0->10s, in 1 second increments.
+  double T_i = 0, T_f = 10, dt = 1;
 
-//   gtsam::Values init_vals =
-//       InitializeSolutionInterpolation(robot, "l1", wTb_i, wTb_f, T_i, T_f, dt);
+  gtsam::Values init_vals =
+      InitializeSolutionInterpolation(robot, "link_0", wTb_i, wTb_f, T_i, T_f,
+      dt);
 
-//   int n_steps_final = static_cast<int>(std::round(T_f / dt));
+  int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
-//   size_t id = 0;
+  size_t id = 0;
 
-//   // Check start pose.
-//   EXPECT(assert_equal(wTb_i, Pose(init_vals, id)));
+  // Check start pose.
+  EXPECT(assert_equal(wTb_i, Pose(init_vals, id)));
 
-//   // Check middle of trajectory.
-//   EXPECT(assert_equal(Pose3(wTb_i.rotation().slerp(0.5, wRb_f),
-//                             Point3(0.136439103437, 0.863560896563, 0.5)),
-//                       Pose(init_vals, id, 5)));
+  // Check middle of trajectory.
+  EXPECT(assert_equal(Pose3(wTb_i.rotation().slerp(0.5, wRb_f),
+                            Point3(0.136439103437, 0.863560896563, 0.5)),
+                      Pose(init_vals, id, 5)));
 
-//   // Check penultimate pose.
-//   EXPECT(
-//       assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
-//                          Point3(0.794193007439, 1.03129011851, 0.961521708273)),
-//                    Pose(init_vals, id, n_steps_final - 1)));
+  // Check penultimate pose.
+  EXPECT(
+      assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
+                         Point3(0.794193007439, 1.03129011851,
+                         0.961521708273)),
+                   Pose(init_vals, id, n_steps_final - 1)));
 
-//   // Check end pose.
-//   EXPECT(assert_equal(wTb_f, Pose(init_vals, id, n_steps_final)));
-// }
+  // Check end pose.
+  EXPECT(assert_equal(wTb_f, Pose(init_vals, id, n_steps_final)));
+}
 
 TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
-  using simple_urdf_eq_mass::robot;
+  auto robot = simple_urdf_eq_mass::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -107,11 +107,11 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
 
 TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->wTcom();
+  Pose3 wTb_i = l2->bMcom();
   std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5)),
                               Pose3(Rot3(), Point3(2, 0, 2.5))};
   double t_i = 0.0;
@@ -134,20 +134,19 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
 
 TEST(InitializeSolutionUtils, InverseKinematics) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->wTcom();
+  Pose3 wTb_i = l2->bMcom();
   std::vector<Pose3> wTb_t = {Pose3(Rot3(), Point3(1, 0, 2.5))};
 
   std::vector<double> ts = {10};
   double dt = 1;
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   /**
    * The aim of this test is to initialize a trajectory for the simple two-link
@@ -155,7 +154,7 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    * the y direction all the while ensuring that the end of link l1 remains in
    * contact with the ground. When initialized in it's upright position, the
    * two link robot is in a singular state. This is because the gradients of
-   * the ContactKinematicsPoseFactor with respect to the x and y are equally 0.
+   * the ContactHeightFactor with respect to the x and y are equally 0.
    * This prevents link 1 from rotating about the revolute joint as to remain
    * in contact with the ground. This problem is addressed by adding a small
    * amount of gaussian noise to the initial solution, which prevents it from
@@ -204,16 +203,15 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
 
 TEST(InitializeSolutionUtils, ZeroValues) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->wTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   gtsam::Values init_vals = ZeroValues(robot, 0, 0.0, contact_points);
 
@@ -221,7 +219,7 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   double joint_angle;
   for (auto &&link : robot.links()) {
     pose = Pose(init_vals, link->id());
-    EXPECT(assert_equal(link->wTcom(), pose));
+    EXPECT(assert_equal(link->bMcom(), pose));
   }
 
   for (auto &&joint : robot.joints()) {
@@ -232,16 +230,15 @@ TEST(InitializeSolutionUtils, ZeroValues) {
 
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
-  Pose3 wTb_i = l2->wTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
-  ContactPoints contact_points = {
-      {l1->name(), ContactPoint{oTc_l1.translation(), 1, 0.0}}};
+  PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
   gtsam::Values init_vals =
       ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
@@ -249,7 +246,7 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   double joint_angle;
   for (size_t t = 0; t <= 100; t++) {
     for (auto &&link : robot.links()) {
-      EXPECT(assert_equal(link->wTcom(), Pose(init_vals, link->id(), t)));
+      EXPECT(assert_equal(link->bMcom(), Pose(init_vals, link->id(), t)));
     }
     for (auto &&joint : robot.joints()) {
       joint_angle = JointAngle(init_vals, joint->id(), t);
@@ -260,44 +257,44 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
 
 TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   auto robot =
-      CreateRobotFromFile(URDF_PATH + "/test/simple_urdf.urdf");
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
 
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
 
-  ContactPoint c = ContactPoint{oTc_l1.translation(), 1, 0.0};
-  ContactPoints p0{{l1->name(), c}};
-  ContactPoints p1{};
-  ContactPoints p2{{l1->name(), c}};
+  Point3 c = oTc_l1.translation();
+  PointOnLinks p0{{l1, c}};
+  PointOnLinks p1{};
+  PointOnLinks p2{{l1, c}};
 
-  std::vector<gtdynamics::ContactPoints> phase_contact_points = {p0, p1, p2};
-  std::vector<gtdynamics::Robot> robots(3, robot);
+  std::vector<PointOnLinks> phase_contact_points = {p0, p1, p2};
 
   // Number of descretized timesteps for each phase.
   int steps_per_phase = 100;
   std::vector<int> phase_steps(3, steps_per_phase);
 
-  Pose3 wTb_i = l2->wTcom();
+  Pose3 wTb_i = l2->bMcom();
 
   std::vector<Pose3> wTb_t;
   std::vector<double> ts;
 
   wTb_t.push_back(Pose3(Rot3(), Point3(1, 0, 0.2)));
+
   ts.push_back(3 * steps_per_phase);
 
   // Initial values for transition graphs.
   std::vector<gtsam::Values> transition_graph_init;
   transition_graph_init.push_back(
-      gtdynamics::ZeroValues(robots[0], 1 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroValues(robot, 1 * steps_per_phase, kNoiseSigma, p0));
   transition_graph_init.push_back(
-      gtdynamics::ZeroValues(robots[1], 2 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroValues(robot, 2 * steps_per_phase, kNoiseSigma, p0));
 
   double dt = 1.0;
 
-  gtsam::Values init_vals = gtdynamics::MultiPhaseInverseKinematicsTrajectory(
-      robots, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
+  gtsam::Values init_vals = MultiPhaseInverseKinematicsTrajectory(
+      robot, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
       dt, kNoiseSigma, phase_contact_points);
 
   Pose3 pose = Pose(init_vals, l2->id());

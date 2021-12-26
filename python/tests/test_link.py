@@ -26,7 +26,7 @@ class TestLink(GtsamTestCase):
         """Set up the fixtures."""
         # load example robot
         SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                            "sdfs")
+                            "models", "sdfs")
         self.simple_rr = gtd.CreateRobotFromFile(
             osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
 
@@ -36,17 +36,9 @@ class TestLink(GtsamTestCase):
         l0 = self.simple_rr.link("link_0")
         l1 = self.simple_rr.link("link_1")
 
-        # Both link frames are defined in the world frame.
-        self.gtsamAssertEquals(l0.wTl(), Pose3())
-        self.gtsamAssertEquals(l1.wTl(), Pose3())
-
-        # Verify center of mass defined in the link frame is correct.
-        self.gtsamAssertEquals(l0.lTcom(), Pose3(Rot3(), Point3(0, 0, 0.1)))
-        self.gtsamAssertEquals(l1.lTcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
-
         # Verify center of mass defined in the world frame is correct.
-        self.gtsamAssertEquals(l0.wTcom(), Pose3(Rot3(), Point3(0, 0, 0.1)))
-        self.gtsamAssertEquals(l1.wTcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
+        self.gtsamAssertEquals(l0.bMcom(), Pose3(Rot3(), Point3(0, 0, 0.1)))
+        self.gtsamAssertEquals(l1.bMcom(), Pose3(Rot3(), Point3(0, 0, 0.5)))
 
         # Verify that mass is correct.
         self.assertEqual(l0.mass(), 0.01)
