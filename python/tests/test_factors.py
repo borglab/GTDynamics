@@ -34,10 +34,9 @@ class TestFactors(unittest.TestCase):
 class TestJointMeasurementFactor(TestFactors):
     """Test suite for various versions of the JointMeasurementFactor."""
     def test_revolute_joint_measurement_factor(self):
-        """Test RevoluteJointMeasurementFactor."""
+        """Test JointMeasurementFactor for revolute joint."""
         factor = gtd.JointMeasurementFactor(
             gtsam.noiseModel.Isotropic.Sigma(6, 0.1),
             self.robot.joint("joint_1"), np.pi / 4, self.k)
 
         self.assertIsInstance(factor, gtd.JointMeasurementFactor)
-
