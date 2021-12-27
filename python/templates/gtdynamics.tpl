@@ -24,7 +24,7 @@
 {holder_type}
 
 // Preamble for STL classes
-#include "python/preamble/{module_name}.h"
+#include "python/gtdynamics/preamble/{module_name}.h"
 
 using namespace std;
 
@@ -39,6 +39,6 @@ namespace py = pybind11;
 
     {wrapped_namespace}
 // Specializations for STL classes
-#include "python/specializations/{module_name}.h"
+#include "python/gtdynamics/specializations/{module_name}.h"
 
 }}

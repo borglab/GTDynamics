@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
   /// Write results to files for plotting.
   std::ofstream penalty_file;
   penalty_file.open("penalty_data.txt");
-  for (int i = 0; i < penalty_info.num_iters.size(); i++) {
+  for (size_t i = 0; i < penalty_info.num_iters.size(); i++) {
     penalty_file << penalty_info.num_iters[i] << " " << penalty_info.mu_values[i]
                  << " " << evaluate_constraint(penalty_info.intermediate_values[i])
                  << " " << evaluate_cost(penalty_info.intermediate_values[i]) << "\n";
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
 
   std::ofstream augl_file;
   augl_file.open("augl_data.txt");
-  for (int i = 0; i < augl_info.num_iters.size(); i++) {
+  for (size_t i = 0; i < augl_info.num_iters.size(); i++) {
     augl_file << augl_info.num_iters[i] << " " << augl_info.mu_values[i] << " "
               << evaluate_constraint(augl_info.intermediate_values[i]) << " "
               << evaluate_cost(augl_info.intermediate_values[i]) << "\n";
