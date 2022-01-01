@@ -30,18 +30,6 @@ class JointMeasurementFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/PoseFactor.h>
-class TempPoseFactor : gtsam::NonlinearFactor {
-  TempPoseFactor(gtsam::Key wTp_key, gtsam::Key wTc_key, gtsam::Key q_key,
-                 const gtsam::noiseModel::Base *cost_model,
-                 const gtdynamics::Joint *joint);
-  TempPoseFactor(const gtsam::noiseModel::Base *cost_model,
-                 const gtdynamics::Joint *joint, int time);
-
-  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
-                                       gtdynamics::GTDKeyFormatter);
-
-  gtsam::Vector unwhitenedError(const gtsam::Values &x) const;
-};
 
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
@@ -273,6 +261,9 @@ class Robot {
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t,
       const boost::optional<string> &prior_link_name) const;
+
+  // enabling serialization functionality
+  void serialize() const;
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
@@ -327,8 +318,8 @@ class KinematicsParameters : gtdynamics::OptimizationParameters {
 };
 
 class Kinematics {
-  Kinematics(gtdynamics::KinematicsParameters *parameters =
-                 boost::make_shared<const gtdynamics::KinematicsParameters>());
+  Kinematics(gtdynamics::KinematicsParameters parameters =
+                 gtdynamics::KinematicsParameters());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);

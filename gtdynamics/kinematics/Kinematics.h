@@ -15,8 +15,8 @@
 
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/PointOnLink.h>
 #include <gtdynamics/utils/Interval.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -82,14 +82,13 @@ struct KinematicsParameters : public OptimizationParameters {
 /// All things kinematics, zero velocities/twists, and no forces.
 class Kinematics : public Optimizer {
  protected:
-  boost::shared_ptr<const KinematicsParameters> p_;  // overrides Base::p_
+  const KinematicsParameters p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
-  Kinematics(const boost::shared_ptr<const KinematicsParameters>& parameters =
-                 boost::make_shared<const KinematicsParameters>())
+  Kinematics(const KinematicsParameters& parameters = KinematicsParameters())
       : Optimizer(parameters), p_(parameters) {}
 
   /**

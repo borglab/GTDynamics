@@ -39,6 +39,9 @@ class HelicalJoint : public Joint {
   }
 
  public:
+  /// Constructor for serialization
+  HelicalJoint() {}
+
   /**
    * @brief Create HelicalJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
@@ -53,17 +56,39 @@ class HelicalJoint : public Joint {
    * @param[in] parameters    JointParams struct.
    */
   HelicalJoint(uint8_t id, const std::string &name, const gtsam::Pose3 &bTj,
-             const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-             const gtsam::Vector3 &axis, double thread_pitch,
-             const JointParams &parameters = JointParams())
+               const LinkSharedPtr &parent_link,
+               const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
+               double thread_pitch,
+               const JointParams &parameters = JointParams())
       : Joint(id, name, bTj, parent_link, child_link,
               getScrewAxis(axis, thread_pitch), parameters) {}
-  
+
   /// Constructor directly from screwAxis
   using Joint::Joint;
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const final override { return Type::Screw; }
+
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::HelicalJoint>
+    : public Testable<gtdynamics::HelicalJoint> {};
+
+}  // namespace gtsam

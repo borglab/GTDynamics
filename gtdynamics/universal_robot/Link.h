@@ -114,6 +114,10 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   bool operator!=(const Link &other) const { return !(*this == other); }
 
+  bool equals(const Link &other, double tol = 0) const {
+    return *this == other;
+  }
+
   /// return a shared pointer of the link
   LinkSharedPtr shared(void) { return shared_from_this(); }
 
@@ -218,6 +222,33 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /// Unfix the link
   void unfix() { is_fixed_ = false; }
+
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(id_);
+    ar &BOOST_SERIALIZATION_NVP(name_);
+    ar &BOOST_SERIALIZATION_NVP(mass_);
+    ar &BOOST_SERIALIZATION_NVP(centerOfMass_);
+    ar &BOOST_SERIALIZATION_NVP(inertia_);
+    ar &BOOST_SERIALIZATION_NVP(bMcom_);
+    ar &BOOST_SERIALIZATION_NVP(bMlink_);
+    ar &BOOST_SERIALIZATION_NVP(is_fixed_);
+    ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Link> : public Testable<gtdynamics::Link> {};
+
+}  // namespace gtsam

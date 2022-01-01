@@ -46,8 +46,7 @@ void update_parameters(const EqualityConstraints& constraints,
 
 gtsam::Values AugmentedLagrangianOptimizer::optimize(
     const gtsam::NonlinearFactorGraph& graph,
-    const EqualityConstraints& constraints,
-    const gtsam::Values& initial_values,
+    const EqualityConstraints& constraints, const gtsam::Values& initial_values,
     ConstrainedOptResult* intermediate_result) const {
   gtsam::Values values = initial_values;
 
@@ -60,7 +59,7 @@ gtsam::Values AugmentedLagrangianOptimizer::optimize(
 
   // Solve the constrained optimization problem by solving a sequence of
   // unconstrained optimization problems.
-  for (int i = 0; i < p_->num_iterations; i++) {
+  for (int i = 0; i < p_.num_iterations; i++) {
     // Construct merit function.
     gtsam::NonlinearFactorGraph merit_graph = graph;
 
@@ -74,7 +73,7 @@ gtsam::Values AugmentedLagrangianOptimizer::optimize(
 
     // Run LM optimization.
     gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
-                                                 p_->lm_parameters);
+                                                 p_.lm_parameters);
     auto result = optimizer.optimize();
 
     // Update parameters.

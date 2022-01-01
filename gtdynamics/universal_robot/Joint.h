@@ -20,9 +20,9 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/Expression.h>
-#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/expressions.h>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
@@ -61,6 +61,17 @@ struct JointScalarLimit {
   double value_lower_limit = -M_PI_2;
   double value_upper_limit = M_PI_2;
   double value_limit_threshold = 1e-9;
+
+  JointScalarLimit() {}
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(value_lower_limit);
+    ar &BOOST_SERIALIZATION_NVP(value_upper_limit);
+    ar &BOOST_SERIALIZATION_NVP(value_limit_threshold);
+  }
 };
 
 /**
@@ -80,6 +91,22 @@ struct JointParams {
 
   /// Constructor
   JointParams() {}
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(effort_type);
+    ar &BOOST_SERIALIZATION_NVP(scalar_limits);
+    ar &BOOST_SERIALIZATION_NVP(velocity_limit);
+    ar &BOOST_SERIALIZATION_NVP(velocity_limit_threshold);
+    ar &BOOST_SERIALIZATION_NVP(acceleration_limit);
+    ar &BOOST_SERIALIZATION_NVP(acceleration_limit_threshold);
+    ar &BOOST_SERIALIZATION_NVP(torque_limit);
+    ar &BOOST_SERIALIZATION_NVP(torque_limit_threshold);
+    ar &BOOST_SERIALIZATION_NVP(damping_coefficient);
+    ar &BOOST_SERIALIZATION_NVP(spring_coefficient);
+  }
 };
 
 /// Joint is the base class for a joint connecting two Link objects.
@@ -212,6 +239,10 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   }
 
   bool operator!=(const Joint &other) const { return !(*this == other); }
+
+  bool equals(const Joint &other, double tol = 0) const {
+    return *this == other;
+  }
 
   friend std::ostream &operator<<(std::ostream &stream, const Joint &j);
 
@@ -399,8 +430,35 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @brief Create expression that constraint the relation between
    * wrench and torque on each link.
    */
-  gtsam::Double_ torqueConstraint(uint64_t t=0) const;
+  gtsam::Double_ torqueConstraint(uint64_t t = 0) const;
 
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(name_);
+    ar &BOOST_SERIALIZATION_NVP(id_);
+    ar &BOOST_SERIALIZATION_NVP(jMp_);
+    ar &BOOST_SERIALIZATION_NVP(jMc_);
+    ar &BOOST_SERIALIZATION_NVP(parent_link_);
+    ar &BOOST_SERIALIZATION_NVP(child_link_);
+    ar &BOOST_SERIALIZATION_NVP(pScrewAxis_);
+    ar &BOOST_SERIALIZATION_NVP(cScrewAxis_);
+    ar &BOOST_SERIALIZATION_NVP(parameters_);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Joint> : public Testable<gtdynamics::Joint> {};
+
+}  // namespace gtsam
