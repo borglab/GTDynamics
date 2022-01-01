@@ -31,7 +31,7 @@ using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
- * Test the evaluateError method with various contact wrenches.
+ * Test the unwhitenedError method with various contact wrenches.
  **/
 TEST(ContactDynamicsMomentFactor, error) {
   auto robot = simple_urdf::getRobot();
@@ -49,7 +49,9 @@ TEST(ContactDynamicsMomentFactor, error) {
   // moment at the contact point.
   gtsam::Vector6 zero_wrench =
       (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(zero_wrench),
+  gtsam::Values values_zero;
+  values_zero.insert(contact_wrench_key, zero_wrench);
+  EXPECT(assert_equal(factor.unwhitenedError(values_zero),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 
   // A link with 5N contact force in the x direction (in the contact
@@ -57,13 +59,17 @@ TEST(ContactDynamicsMomentFactor, error) {
   // expressed no linear force in the com frame but the moments remain.
   gtsam::Vector6 link_wrench_linear =
       (gtsam::Vector(6) << 0, -5, 0, 5, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_wrench_linear),
+  gtsam::Values values_linear;
+  values_linear.insert(contact_wrench_key, link_wrench_linear);
+  EXPECT(assert_equal(factor.unwhitenedError(values_linear),
                       (gtsam::Vector(3) << 0, -10, 0).finished()));
 
   // Now the moment should some to zero.
   gtsam::Vector6 link_wrench_linear_2 =
       (gtsam::Vector(6) << 0, -5, 0, -5, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_wrench_linear_2),
+  gtsam::Values values_linear_2;
+  values_linear_2.insert(contact_wrench_key, link_wrench_linear_2);
+  EXPECT(assert_equal(factor.unwhitenedError(values_linear_2),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 
   // Make sure linearization is correct
@@ -117,15 +123,15 @@ TEST(ContactDynamicsMomentFactor, optimization) {
   std::cout << contact_wrench_init << std::endl;
 
   std::cout << "Initial Contact Wrench Error: " << std::endl;
-  std::cout << factor.evaluateError(contact_wrench_init) << std::endl;
+  std::cout << factor.unwhitenedError(init_values) << std::endl;
 
   std::cout << "Optimized Contact Wrench: " << std::endl;
   std::cout << contact_wrench_optimized << std::endl;
 
   std::cout << "Optimized Contact Wrench Error: " << std::endl;
-  std::cout << factor.evaluateError(contact_wrench_optimized) << std::endl;
+  std::cout << factor.unwhitenedError(results) << std::endl;
 
-  EXPECT(assert_equal(factor.evaluateError(contact_wrench_optimized),
+  EXPECT(assert_equal(factor.unwhitenedError(results),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 }
 
