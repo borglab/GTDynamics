@@ -57,7 +57,7 @@ class TestRobot(GtsamTestCase):
         end_link = self.robot.link(end_link_name)
         factor = gtd.ForwardKinematicsFactor(
             X(t),
-            gtd.internal.PoseKey(end_link.id(), t).key(),  # wTleg
+            gtd.PoseKey(end_link.id(), t).key(),  # wTleg
             self.robot,
             self.base_name,
             end_link_name,
@@ -72,7 +72,7 @@ class TestRobot(GtsamTestCase):
         end_link_pose = gtd.Pose(fk, end_link.id(), t)
 
         values.insert(
-            gtd.internal.PoseKey(end_link.id(), t).key(), end_link_pose)
+            gtd.PoseKey(end_link.id(), t).key(), end_link_pose)
 
         graph = gtsam.NonlinearFactorGraph()
         graph.push_back(factor)

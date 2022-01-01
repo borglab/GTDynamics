@@ -28,7 +28,7 @@
 
 using namespace gtdynamics;
 using namespace gtsam;
-using gtdynamics::internal::PoseKey;
+using gtdynamics::PoseKey;
 using gtsam::assert_equal;
 
 /* ************************************************************************* */

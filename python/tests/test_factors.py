@@ -24,8 +24,8 @@ class TestFactors(unittest.TestCase):
     """
     def setUp(self):
         self.k = 0
-        self.wTp_key = gtd.internal.PoseKey(0, self.k).key()
-        self.wTc_key = gtd.internal.PoseKey(1, self.k).key()
+        self.wTp_key = gtd.PoseKey(0, self.k).key()
+        self.wTc_key = gtd.PoseKey(1, self.k).key()
 
         ROBOT_FILE = osp.join(gtd.SDF_PATH, "test", "simple_rr.sdf")
         self.robot = gtd.CreateRobotFromFile(str(ROBOT_FILE), "simple_rr_sdf")

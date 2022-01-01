@@ -34,9 +34,9 @@ using gtsam::assert_equal;
 namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key twist_p_key = internal::TwistKey(1),
-           twist_c_key = internal::TwistKey(2), qKey = internal::JointAngleKey(1),
-           qVelKey = internal::JointVelKey(1);
+gtsam::Key twist_p_key = TwistKey(1),
+           twist_c_key = TwistKey(2), qKey = JointAngleKey(1),
+           qVelKey = JointVelKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case

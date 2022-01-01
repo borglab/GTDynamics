@@ -63,8 +63,8 @@ class JointMeasurementFactor
   JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr& model,
                          const JointConstSharedPtr joint,
                          double joint_coordinate, size_t k)
-      : Base(model, internal::PoseKey(joint->parent()->id(), k),
-             internal::PoseKey(joint->child()->id(), k)),
+      : Base(model, PoseKey(joint->parent()->id(), k),
+             PoseKey(joint->child()->id(), k)),
         joint_(joint),
         measured_joint_coordinate_(joint_coordinate) {}
 

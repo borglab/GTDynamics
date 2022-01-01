@@ -40,8 +40,8 @@ using gtsam::noiseModel::Gaussian;
 namespace example {
 // nosie model
 Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key wTp_key = internal::PoseKey(1), wTc_key = internal::PoseKey(2),
-           q_key = internal::JointAngleKey(1);
+gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2),
+           q_key = JointAngleKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -172,7 +172,7 @@ TEST(PoseFactor, ForwardKinematics) {
   size_t t = 0;
   double angle = M_PI_2;
 
-  auto link0_key = internal::PoseKey(0, t);
+  auto link0_key = PoseKey(0, t);
 
   auto pose_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   auto joint_angle_model = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
@@ -183,7 +183,7 @@ TEST(PoseFactor, ForwardKinematics) {
 
   for (auto&& joint : robot.joints()) {
     graph.add(PoseFactor(pose_model, joint, t));
-    graph.addPrior<double>(internal::JointAngleKey(joint->id(), t), angle,
+    graph.addPrior<double>(JointAngleKey(joint->id(), t), angle,
                            joint_angle_model);
   }
 

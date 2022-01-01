@@ -29,7 +29,7 @@ namespace gtdynamics {
  */
 class Trajectory {
  protected:
-  std::vector<Phase> phases_; ///< All phases in the trajectory
+  std::vector<Phase> phases_;  ///< All phases in the trajectory
 
  public:
   /// Default Constructor (for serialization)
@@ -55,11 +55,11 @@ class Trajectory {
   }
 
   /// Returns vector of phases in the trajectory
-  const std::vector<Phase>& phases() const { return phases_; }
+  const std::vector<Phase> &phases() const { return phases_; }
 
   /**
    * @fn Returns a vector of PointOnLinks objects for all phases after
-   * applying repetition on the walk cycle. 
+   * applying repetition on the walk cycle.
    * This function returns all contact points from all phases
    * and may have repetitions, as opposed to contact_points_.
    * @return Phase CPs.
@@ -86,8 +86,8 @@ class Trajectory {
    */
   std::vector<int> phaseDurations() const {
     std::vector<int> phase_durations;
-    for (auto &&phase : phases_) { 
-        phase_durations.push_back(phase.numTimeSteps());
+    for (auto &&phase : phases_) {
+      phase_durations.push_back(phase.numTimeSteps());
     }
     return phase_durations;
   }
@@ -159,9 +159,7 @@ class Trajectory {
    * @param[in] p    Phase number \in [0..repeat * numPhases()[.
    * @return Phase instance.
    */
-  const Phase &phase(size_t p) const {
-    return phases_[p];
-  }
+  const Phase &phase(size_t p) const { return phases_[p]; }
 
   /**
    * @fn Returns the start time step for a given phase.
@@ -196,13 +194,14 @@ class Trajectory {
       int k, const gtsam::SharedNoiseModel &cost_model,
       const gtsam::Point3 &goal_point) const {
     LinkSharedPtr link = robot.link(link_name);
-    gtsam::Key pose_key = internal::PoseKey(link->id(), k);
+    gtsam::Key pose_key = PoseKey(link->id(), k);
     return PointGoalFactor(pose_key, cost_model, cp.point, goal_point);
   }
 
   /**
    * @fn Create desired stance and swing trajectories for all contact links.
-   * @fn This function creates a WalkCycle object from all phases in the trajectory
+   * @fn This function creates a WalkCycle object from all phases in the
+   * trajectory
    * @fn and uses WalkCycle functionality
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model

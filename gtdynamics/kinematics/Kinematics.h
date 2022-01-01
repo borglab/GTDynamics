@@ -95,7 +95,7 @@ class Kinematics : public Optimizer {
    * @fn Create graph with kinematics cost factors.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
-   * @returns factor graph..
+   * @returns factor graph.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph graph(const CONTEXT& context,

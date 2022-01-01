@@ -38,7 +38,6 @@ class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {
 /* *************************************************************************
   Key definitions.
  ************************************************************************* */
-namespace internal {
 /// Shorthand for q_j_t, for j-th joint angle at time t.
 inline DynamicsSymbol JointAngleKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("q", j, t);
@@ -88,8 +87,6 @@ T at(const gtsam::Values &values, size_t key) {
     throw KeyDoesNotExist("at", e.key());
   }
 }
-
-}  // namespace internal
 
 /* *************************************************************************
   Functions for Joint Angles.
@@ -212,7 +209,7 @@ void InsertJointAccel(gtsam::Values *values, int j, double value);
  * @return gtsam::Vector
  */
 gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t = 0);
- 
+
 /**
  * @brief Retrieve j-th joint acceleration at time t.
  *

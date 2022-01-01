@@ -28,10 +28,6 @@
 #include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
-using internal::PoseKey;
-using internal::TwistAccelKey;
-using internal::TwistKey;
-using internal::WrenchKey;
 using namespace gtsam;
 
 namespace example {
