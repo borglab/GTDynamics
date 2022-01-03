@@ -37,6 +37,8 @@ class Chain {
       axes_;  // screw axes of all joints in the chain expressed in body frame.
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /// Default Constructor
   Chain() : sMb_(Pose3()), axes_(Matrix(6, 0)) {}
 
