@@ -31,6 +31,14 @@ class FixedJoint : public Joint {
     return params;
   }
 
+ protected:
+  /// Returns the screw axis in the joint frame given the joint axis
+  gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
+    gtsam::Vector6 screw_axis;
+    screw_axis << axis, 0, 0, 0;
+    return screw_axis;
+  }
+
  public:
   /**
    * @brief Create FixedJoint using joint name, joint pose in
@@ -41,12 +49,12 @@ class FixedJoint : public Joint {
    * @param[in] bTj           joint pose expressed in the base frame
    * @param[in] parent_link   Shared pointer to the parent Link.
    * @param[in] child_link    Shared pointer to the child Link.
-   * @param[in] jScrewAxis   Screw axis in the joint frame
+   * @param[in] axis          Screw axis in the joint frame
    */
   FixedJoint(unsigned char id, const std::string &name, const gtsam::Pose3 &bTj,
              const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
-             const Vector6 &jScrewAxis)
-      : Joint(id, name, bTj, parent_link, child_link, jScrewAxis,
+             const gtsam::Vector3 &axis)
+      : Joint(id, name, bTj, parent_link, child_link, getScrewAxis(axis),
               fixedJointParams()) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.

@@ -13,11 +13,10 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
-
-import gtdynamics as gtd
 
 
 class TestRobot(GtsamTestCase):
@@ -26,7 +25,11 @@ class TestRobot(GtsamTestCase):
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
+        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1/a1.urdf")
+
+    def test_fixed_joint(self):
+          robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
+          print(robot)
 
     def test_forward_kinematics(self):
         """Test if FK is correct via comparison to a 3rd party library."""

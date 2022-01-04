@@ -723,5 +723,18 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
+
+  <gazebo reference="FR_toe_fixed">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
+  <gazebo reference="FL_toe_fixed">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
+  <gazebo reference="RR_toe_fixed">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
+  <gazebo reference="RL_toe_fixed">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
 </robot>
 

@@ -11,17 +11,19 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
-#include "gtdynamics/universal_robot/sdf.h"
+#include <gtdynamics/universal_robot/FixedJoint.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/PrismaticJoint.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/universal_robot/sdf_internal.h>
 
 #include <fstream>
+// #include <sdf/Error.hh>
+// #include <sdf/ParserConfig.hh>
 #include <sdf/parser.hh>
 #include <sdf/sdf.hh>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/PrismaticJoint.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/HelicalJoint.h"
-#include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
 
@@ -29,8 +31,11 @@ using gtsam::Pose3;
 
 sdf::Model GetSdf(const std::string &sdf_file_path,
                   const std::string &model_name) {
+  // sdf::ParserConfig config;
+  // sdf::Errors errors;
+  // sdf::SDFPtr sdf = sdf::readFile(sdf_file_path, config, errors);
   sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
-  if (sdf==nullptr)
+  if (sdf == nullptr)
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
 
   sdf::Model model = sdf::Model();
@@ -75,7 +80,7 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 
 // Get Link pose in base frame from sdf::Link object
 Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
-// Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  // Call SemanticPose::Resolve so the pose is resolved to the correct frame
   /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
   // Get non-const pose of link in the frame of the joint it is connect to
   // (http://wiki.ros.org/urdf/XML/link).
@@ -97,7 +102,6 @@ Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const sdf::Link *parent_sdf_link,
                     const sdf::Link *child_sdf_link) {
-
   // Name of the coordinate frame the joint's pose is relative to.
   // Specified by `relative_to` in the SDF file.
   std::string frame_name = sdf_joint.PoseRelativeTo();
@@ -111,11 +115,12 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
     // the joint frame is relative to the child link. So to get the joint pose
     // in the base frame, we pre-multiply by the child link's frame.
 
-    // The child link frame here is not COM of the link, 
+    // The child link frame here is not COM of the link,
     // it is the pose of the link as described in the sdf file.
     // This is done here once in order to avoid saving the bTl transform
     // as part of the Link class.
-    // We need the bTl here because the joint is defined in the link frame in the sdf.
+    // We need the bTl here because the joint is defined in the link frame in
+    // the sdf.
     const Pose3 bTcl = GetSdfLinkFrame(child_sdf_link);
     return bTcl * lTj;
 
@@ -193,6 +198,10 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
           id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
       break;
+    case sdf::JointType::FIXED:
+      joint = boost::make_shared<FixedJoint>(
+          id, name, bMj, parent_link, child_link, gtsam::Vector3::Zero());
+      break;
     default:
       throw std::runtime_error("Joint type for [" + name +
                                "] not yet supported");
@@ -235,7 +244,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     const sdf::Link *child_sdf_link = sdf.LinkByName(child_link_name);
 
     // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint = JointFromSdf(j, parent_link, parent_sdf_link, child_link, child_sdf_link, sdf_joint);
+    JointSharedPtr joint = JointFromSdf(j, parent_link, parent_sdf_link,
+                                        child_link, child_sdf_link, sdf_joint);
     name_to_joint.emplace(joint->name(), joint);
 
     // Update list of parent and child links/joints for each Link.
