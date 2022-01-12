@@ -84,3 +84,7 @@ jobs:
       - name: Test
         run: make -j$(nproc) check
         working-directory: ./build
+      
+      -name: Install
+        run: make -j$(nproc) install
+        working-directory: ./build

@@ -131,3 +131,8 @@ jobs:
       - name: Test
         run: make -j4 python-test
         working-directory: ./build
+
+      - name: Install
+        run: make -j4 python-install
+        working-directory: ./build
+  
