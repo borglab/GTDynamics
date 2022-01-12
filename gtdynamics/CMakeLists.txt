@@ -32,6 +32,7 @@ link_directories(${SDFormat_LIBRARY_DIRS})
 file(GLOB headers "*.h")
 file(GLOB sources "*.cpp")
 
+include(GNUInstallDirs)
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp)

@@ -73,3 +73,7 @@ jobs:
       - name: Test
         run: make -j$(sysctl -n hw.physicalcpu) check
         working-directory: ./build
+
+      - name: Install
+        run: make -j$(sysctl -n hw.physicalcpu) install
+        working-directory: ./build
