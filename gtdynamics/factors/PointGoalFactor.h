@@ -16,8 +16,12 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
+#include <gtsam/nonlinear/expressions.h>
+#include <gtsam/slam/expressions.h>
 
 #include <string>
 
@@ -26,17 +30,26 @@
 namespace gtdynamics {
 
 /**
- * PointGoalFactor is a unary factor enforcing that a point on a link
+ * PointGoalConstraint is a unary constraint enforcing that a point on a link
  * reaches a desired goal point.
  */
-class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+inline gtsam::Vector3_ PointGoalConstraint(gtsam::Key pose_key,
+                  const gtsam::Point3 &point_com,
+                  const gtsam::Point3 &goal_point) {
+  gtsam::Vector3_ point_com_expr(point_com); 
+  gtsam::Pose3_ wTcom_expr(pose_key);
+  gtsam::Vector3_ point_world_expr(wTcom_expr, &gtsam::Pose3::transformFrom,
+                                   point_com_expr);
+
+  gtsam::Vector3_ goal_point_expr(goal_point);
+  gtsam::Vector3_ error = point_world_expr - goal_point_expr;
+  return error;
+}
+
+class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
  private:
   using This = PointGoalFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
-
-  // Point, expressed in link CoM, where this factor is enforced.
-  gtsam::Point3 point_com_;
-  // Goal point in the spatial frame.
+  using Base = gtsam::ExpressionFactor<gtsam::Vector3>;
   gtsam::Point3 goal_point_;
 
  public:
@@ -51,33 +64,12 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
                   const gtsam::Point3 &point_com,
                   const gtsam::Point3 &goal_point)
-      : Base(cost_model, pose_key),
-        point_com_(point_com),
+      : Base(cost_model, gtsam::Vector3::Zero(),
+             PointGoalConstraint(pose_key, point_com, goal_point)),
         goal_point_(goal_point) {}
-
-  virtual ~PointGoalFactor() {}
 
   /// Return goal point.
   const gtsam::Point3 &goalPoint() const { return goal_point_; }
-
-  /**
-   * Error function
-   * @param wTcom -- The link pose.
-   */
-  gtsam::Vector evaluateError(
-      const gtsam::Pose3 &wTcom,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override;
-
-  //// @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
-        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
-  }
-
-  /// print contents
-  void print(const std::string &s = "",
-             const gtsam::KeyFormatter &keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override;
 
  private:
   /// Serialization function
@@ -101,9 +93,16 @@ class PointGoalFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  * @param point_com point on link, in COM coordinate frame
  * @param goal_trajectory end effector goal trajectory, in world coordinates
  */
-gtsam::NonlinearFactorGraph PointGoalFactors(
+inline gtsam::NonlinearFactorGraph PointGoalFactors(
     gtsam::Key first_key, const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const gtsam::Point3 &point_com,
-    const std::vector<gtsam::Point3> &goal_trajectory);
+    const std::vector<gtsam::Point3> &goal_trajectory) {
+  gtsam::NonlinearFactorGraph factors;
+  for (auto &&goal_point : goal_trajectory) {
+    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com, goal_point);
+    first_key += 1;
+  }
+  return factors;
+}
 
 }  // namespace gtdynamics

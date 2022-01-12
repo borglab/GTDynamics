@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
   // Load the quadruped. Based on the vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
   auto robot =
-      gtdynamics::CreateRobotFromFile(kUrdfPath + string("/vision60.urdf"));
+      gtdynamics::CreateRobotFromFile(kUrdfPath + string("vision60.urdf"));
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-4;  // std of additional objectives.
@@ -96,34 +96,30 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   // All contacts.
-  auto c0 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front left.
-  auto c1 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind left.
-  auto c2 = ContactPoint{Point3(0.14, 0, 0), 0};  // Front right.
-  auto c3 = ContactPoint{Point3(0.14, 0, 0), 0};  // Hind right.
+  Point3 contact_in_com(0.14, 0, 0);
+  PointOnLink c0{robot.link("lower0"), contact_in_com},  // Front left.
+      c1{robot.link("lower1"), contact_in_com},          // Hind left.
+      c2{robot.link("lower2"), contact_in_com},          // Front right.
+      c3{robot.link("lower3"), contact_in_com};          // Hind right.
 
   // Contact points for each phase. First move one leg at a time then switch
-  // to a more dynamic gait with two legs in swing per phase.
-  using CPs = ContactPoints;
+  // to a more dynamic gait with two legs in swing per phase. Below pi are the
+  // contacts for phase i and tij=contacts for transition from phase i to j.
+  using CPs = PointOnLinks;
   // Initially stationary.
-  CPs p0 = {{"lower0", c0}, {"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
-  CPs t01 = {{"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
+  CPs p0 = {c0, c1, c2, c3}, t01 = {c1, c2, c3};
   // Front right leg swing.
-  CPs p1 = {{"lower1", c1}, {"lower2", c2}, {"lower3", c3}};
-  CPs t12 = {{"lower2", c2}, {"lower3", c3}};
+  CPs p1 = {c1, c2, c3}, t12 = {c2, c3};
   // Front left leg swing.
-  CPs p2 = {{"lower0", c0}, {"lower2", c2}, {"lower3", c3}};
-  CPs t23 = {{"lower0", c0}, {"lower3", c3}};
+  CPs p2 = {c0, c2, c3}, t23 = {c0, c3};
   // Hind right swing.
-  CPs p3 = {{"lower0", c0}, {"lower1", c1}, {"lower3", c3}};
-  CPs t34 = {{"lower0", c0}, {"lower1", c1}};
+  CPs p3 = {c0, c1, c3}, t34 = {c0, c1};
   // Hind left swing.
-  CPs p4 = {{"lower0", c0}, {"lower1", c1}, {"lower2", c2}};
-  CPs t45 = {{"lower1", c1}, {"lower2", c2}};
+  CPs p4 = {c0, c1, c2}, t45 = {c1, c2};
   // Front left leg and hind right swing.
-  CPs p5 = {{"lower1", c1}, {"lower2", c2}};
-  CPs t56 = {};
+  CPs p5 = {c1, c2}, t56 = {};
   // Front right leg and hind left swing.
-  CPs p6 = {{"lower0", c0}, {"lower3", c3}};
+  CPs p6 = {c0, c3};
 
   // Define contact points for each phase, transition contact points,
   // and phase durations.
@@ -176,15 +172,13 @@ int main(int argc, char** argv) {
 
   // Compute the centroid of the contacts.
   auto centroid = Point3(0, 0, 0);
-  for (auto&& link : links)
-    centroid +=
-        (link_map[link]->wTcom() * Pose3(Rot3(), c0.point)).translation();
+  for (auto&& link : links) centroid += link_map[link]->bMcom() * c0.point;
   centroid = centroid / 4;
 
   std::map<string, double> centroid_contact_dist;
   std::map<string, double> prev_theta;
   for (auto&& link : links) {
-    auto cp = (link_map[link]->wTcom() * Pose3(Rot3(), c0.point)).translation();
+    auto cp = link_map[link]->bMcom() * c0.point;
     auto delta = cp - centroid;
     centroid_contact_dist.insert(std::make_pair(link, delta.norm()));
     prev_theta.insert(std::make_pair(link, std::atan2(delta.y(), delta.x())));
@@ -202,8 +196,8 @@ int main(int argc, char** argv) {
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
-    for (auto&& kv : phase_cps[p]) {
-      phase_contact_links.push_back(kv.first);
+    for (auto&& cp : phase_cps[p]) {
+      phase_contact_links.push_back(cp.link->name());
     }
 
     vector<string> phase_swing_links;
@@ -228,9 +222,9 @@ int main(int argc, char** argv) {
                                                 std::sin(prev_theta[pcl]),
                              GROUND_HEIGHT - 0.03);
 
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
-            c0.point, new_cp));
+        objective_factors.add(
+            gtdynamics::PointGoalFactor(PoseKey(link_map[pcl]->id(), t),
+                                        objectives_model_3, c0.point, new_cp));
       }
 
       double h = GROUND_HEIGHT +
@@ -243,9 +237,9 @@ int main(int argc, char** argv) {
                                                 std::sin(prev_theta[psl]),
                              h);
 
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[psl]->id(), t), objectives_model_3,
-            c0.point, new_cp));
+        objective_factors.add(
+            gtdynamics::PointGoalFactor(PoseKey(link_map[psl]->id(), t),
+                                        objectives_model_3, c0.point, new_cp));
       }
     }
   }
@@ -258,35 +252,34 @@ int main(int argc, char** argv) {
        sigma_objectives * 100, 10000, sigma_objectives, sigma_objectives)
           .finished());
   for (int t = 0; t <= t_f; t++)
-    objective_factors.addPrior(internal::PoseKey(base_link->id(), t),
-                               base_pose_goal, base_pose_model);
+    objective_factors.addPrior(PoseKey(base_link->id(), t), base_pose_goal,
+                               base_pose_model);
 
   // Add link boundary conditions to FG.
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
-    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->wTcom(),
+    objective_factors.addPrior(PoseKey(link->id(), 0), link->bMcom(),
                                dynamics_model_6);
-    objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), 0),
+    objective_factors.addPrior<Vector6>(TwistKey(link->id(), 0),
                                         Vector6::Zero(), dynamics_model_6);
 
     // Final link twists, accelerations.
-    objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), t_f),
+    objective_factors.addPrior<Vector6>(TwistKey(link->id(), t_f),
                                         Vector6::Zero(), objectives_model_6);
-    objective_factors.addPrior<Vector6>(
-        internal::TwistAccelKey(link->id(), t_f), Vector6::Zero(),
-        objectives_model_6);
+    objective_factors.addPrior<Vector6>(TwistAccelKey(link->id(), t_f),
+                                        Vector6::Zero(), objectives_model_6);
   }
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : robot.joints()) {
-    objective_factors.addPrior(internal::JointAngleKey(joint->id(), 0), 0.0,
+    objective_factors.addPrior(JointAngleKey(joint->id(), 0), 0.0,
                                dynamics_model_1);
-    objective_factors.addPrior(internal::JointVelKey(joint->id(), 0), 0.0,
+    objective_factors.addPrior(JointVelKey(joint->id(), 0), 0.0,
                                dynamics_model_1);
 
-    objective_factors.addPrior(internal::JointVelKey(joint->id(), t_f), 0.0,
+    objective_factors.addPrior(JointVelKey(joint->id(), t_f), 0.0,
                                objectives_model_1);
-    objective_factors.addPrior(internal::JointAccelKey(joint->id(), t_f), 0.0,
+    objective_factors.addPrior(JointAccelKey(joint->id(), t_f), 0.0,
                                objectives_model_1);
   }
 
@@ -300,7 +293,7 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);

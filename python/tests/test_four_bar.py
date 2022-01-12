@@ -33,10 +33,10 @@ class TestFourBar(unittest.TestCase):
         l4_pose = Pose3(Rot3.Rz(np.pi * 3 / 2), (0, 2, 0))
         com = Pose3(Rot3(), (1, 0, 0))
 
-        link1 = gtd.Link(1, "l1", 1, inertia, l1_pose, com)
-        link2 = gtd.Link(2, "l2", 1, inertia, l2_pose, com)
-        link3 = gtd.Link(3, "l3", 1, inertia, l3_pose, com)
-        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose, com, True)
+        link1 = gtd.Link(1, "l1", 1, inertia, l1_pose*com, l1_pose)
+        link2 = gtd.Link(2, "l2", 1, inertia, l2_pose*com, l2_pose)
+        link3 = gtd.Link(3, "l3", 1, inertia, l3_pose*com, l3_pose)
+        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose*com, l4_pose, True)
 
         links = {"l1": link1, "l2": link2, "l3": link3, "l4": link4}
 
@@ -85,11 +85,11 @@ class TestFourBar(unittest.TestCase):
         joint_vels = np.array([0, 0, 0, 0])
         torques = np.array([1, 0, 0, 0])
         for idx, joint in enumerate(robot.joints()):
-            gtd.InsertJointAngleDouble(known_values, joint.id(), 0,
+            gtd.InsertJointAngle(known_values, joint.id(), 0,
                                        joint_angles[idx])
-            gtd.InsertJointVelDouble(known_values, joint.id(), 0,
+            gtd.InsertJointVel(known_values, joint.id(), 0,
                                      joint_vels[idx])
-            gtd.InsertTorqueDouble(known_values, joint.id(), 0, torques[idx])
+            gtd.InsertTorque(known_values, joint.id(), 0, torques[idx])
 
         prior_graph = graph_builder.forwardDynamicsPriors(
             robot, 0, known_values)
@@ -100,7 +100,7 @@ class TestFourBar(unittest.TestCase):
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
         result = optimizer.optimize()
 
-        a1_key = gtd.internal.JointAccelKey(1, 0).key()
+        a1_key = gtd.JointAccelKey(1, 0).key()
         a1 = result.atDouble(a1_key)
         self.assertAlmostEqual(a1, 0.125, 5)  # regression. Show work!
 

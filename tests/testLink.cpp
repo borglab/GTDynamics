@@ -14,6 +14,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
 
 #include "gtdynamics/universal_robot/Link.h"
@@ -27,10 +28,12 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 
+using namespace gtsam::serializationTestHelpers;
+
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
-  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(), Pose3(),
-          Pose3(Rot3(), Point3(0, 0, 1)));
+  Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+          Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
 
   // name
   EXPECT(assert_equal("l1", l1.name()));
@@ -39,7 +42,7 @@ TEST(Link, params_constructor) {
   EXPECT(assert_equal(100, l1.mass()));
 
   // Check center of mass.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check inertia.
   EXPECT(assert_equal(
@@ -54,14 +57,14 @@ TEST(Link, params_constructor) {
       l1.inertiaMatrix()));
 
   // Assert correct center of mass in link frame.
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.lTcom()));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)), l1.bMcom()));
 
   // Check that no child links/joints have yet been added.
   EXPECT(assert_equal(0, l1.joints().size()));
 }
 
 TEST(Link, NumJoints) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
 
@@ -73,6 +76,24 @@ TEST(Link, NumJoints) {
 
   l1->addJoint(j2);
   EXPECT_LONGS_EQUAL(2, l1->numJoints());
+}
+
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+
+TEST(Link, Serialization) {
+  Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+            Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+  EXPECT(equalsObj(link));
+  EXPECT(equalsXML(link));
+  EXPECT(equalsBinary(link));
+
+  // Test link with joints
+  auto robot = simple_urdf::getRobot();
+  auto l1 = robot.link("l1");
+  EXPECT(equalsDereferenced(l1));
+  EXPECT(equalsDereferencedXML(l1));
+  EXPECT(equalsDereferencedBinary(l1));
 }
 
 int main() {

@@ -33,32 +33,42 @@ using std::vector;
 
 using namespace gtdynamics;
 
+#define EXPECT_DOUBLES_SIMILAR(expected, actual, rtol) \
+  EXPECT_DOUBLES_EQUAL(expected, actual, rtol* expected)
+
 // Returns a Trajectory object for a single robot walk cycle.
 Trajectory getTrajectory(const Robot &robot, size_t repeat) {
-  vector<string> odd_links{"tarsus_1_L1", "tarsus_3_L3", "tarsus_5_R4",
-                           "tarsus_7_R2"};
-  vector<string> even_links{"tarsus_2_L2", "tarsus_4_L4", "tarsus_6_R3",
-                            "tarsus_8_R1"};
-  auto links = odd_links;
-  links.insert(links.end(), even_links.begin(), even_links.end());
+  // Label which feet are what...
+  vector<LinkSharedPtr> odd_feet = {
+      robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
+      robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
+  vector<LinkSharedPtr> even_feet = {
+      robot.link("tarsus_2_L2"), robot.link("tarsus_4_L4"),
+      robot.link("tarsus_6_R3"), robot.link("tarsus_8_R1")};
+  auto all_feet = odd_feet;
+  all_feet.insert(all_feet.end(), even_feet.begin(), even_feet.end());
 
+  // Create three different FootContactConstraintSpecs, one for all the feet on the
+  // ground, one with even feet on the ground, one with odd feet in contact..
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
-      even(2, even_links, contact_in_com);
+  auto stationary = boost::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
+  auto odd = boost::make_shared<FootContactConstraintSpec>(odd_feet, contact_in_com);
+  auto even = boost::make_shared<FootContactConstraintSpec>(even_feet, contact_in_com);
+  
+  FootContactVector states = {stationary, even, stationary, odd};
+  std::vector<size_t> phase_lengths = {1,2,1,2};
 
-  WalkCycle walk_cycle;
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(even);
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(odd);
+  WalkCycle walk_cycle(states, phase_lengths);
 
-  return Trajectory(robot, walk_cycle, repeat);
+  // TODO(issue #257): Trajectory should *be* a vector of phases, so rather that
+  // store the walkcycle and repeat, it should store the phases.
+  return Trajectory(walk_cycle, repeat);
 }
 
 TEST(testSpiderWalking, WholeEnchilada) {
   // Load Stephanie's robot robot (alt version, created by Tarushree/Disha).
   Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("/spider_alt.sdf"), "spider");
+      CreateRobotFromFile(kSdfPath + std::string("spider_alt.sdf"), "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
   double sigma_objectives = 1e-6;  // std of additional objectives.
@@ -82,14 +92,15 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
-  auto graph = trajectory.multiPhaseFactorGraph(graph_builder, collocation, mu);
+  auto graph =
+      trajectory.multiPhaseFactorGraph(robot, graph_builder, collocation, mu);
   EXPECT_LONGS_EQUAL(3557, graph.size());
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step, 0);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
@@ -97,6 +108,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
+  EXPECT_LONGS_EQUAL(12, K);  // TODO(frank): why not 11?
 
   // Add base goal objectives to the factor graph.
   auto base_link = robot.link("body");
@@ -108,7 +120,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   }
 
   // Add link and joint boundary conditions to FG.
-  trajectory.addBoundaryConditions(&objectives, dynamics_model_6,
+  trajectory.addBoundaryConditions(&objectives, robot, dynamics_model_6,
                                    dynamics_model_6, objectives_model_6,
                                    objectives_model_1, objectives_model_1);
 
@@ -117,11 +129,11 @@ TEST(testSpiderWalking, WholeEnchilada) {
   trajectory.addIntegrationTimeFactors(&objectives, desired_dt, 1e-30);
 
   // Add min torque objectives.
-  trajectory.addMinimumTorqueFactors(&objectives, Unit::Create(1));
+  trajectory.addMinimumTorqueFactors(&objectives, robot, Unit::Create(1));
 
   // Add prior on hip joint angles (spider specific)
   auto prior_model = Isotropic::Sigma(1, 1.85e-4);
-  for (auto &&joint : robot.joints())
+  for (auto&& joint : robot.joints())
     if (joint->name().find("hip2") == 0)
       for (int k = 0; k <= K; k++)
         objectives.add(JointObjectives(joint->id(), k).angle(2.5, prior_model));
@@ -136,16 +148,76 @@ TEST(testSpiderWalking, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(3847, graph.keys().size());
 
   // Initialize solution.
-  double gaussian_noise = 1e-5;
+  double gaussian_noise = 0.0;
   Values init_vals =
-      trajectory.multiPhaseInitialValues(gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
+
+  // Compare error for all factors with expected values in file.
+  // Note, expects space after comma in csv or won't work.
+  std::string key, comm;
+  double expected;
+  std::string filename = kTestPath + std::string("testSpiderWalking.csv");
+  std::ifstream is(filename.c_str());
+  is >> key >> expected;
+  double actual = graph.error(init_vals);
+  const double tol = 1.0, rtol = 0.01;
+  EXPECT_DOUBLES_SIMILAR(expected, actual, rtol);
+
+  // If there is an error, create a file errors.csv with all error comparisons.
+  if (fabs(actual - expected) > tol) {
+    std::ofstream os("errors.csv");
+    os << "total, " << actual << "\n";
+    for (size_t i = 0; i < graph.size(); i++) {
+      is >> key >> expected;
+      const auto& factor = graph[i];
+      const double actual = factor->error(init_vals);
+      bool equal = fabs(actual - expected) < std::max(tol, rtol * expected);
+      auto bare_ptr = factor.get();
+      if (!equal) {
+        // Print to stdout for CI.
+        std::cout << typeid(*bare_ptr).name() << ", " << actual << ", "
+                  << expected << ", " << equal << "\n";
+      }
+      os << typeid(*bare_ptr).name() << ", " << actual << ", " << expected
+         << ", " << equal << "\n";
+    }
+  }
 
   // Optimize!
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals);
   auto results = optimizer.optimize();
 
-  // TODO(frank): test whether it works
+  // Regression!
+  EXPECT_DOUBLES_SIMILAR(986944306277409, graph.error(init_vals), rtol);
+  EXPECT_DOUBLES_SIMILAR(349267962507918, graph.error(results), rtol);
+
+  // Add regressions on initial values.
+  auto body = robot.link("body");
+  EXPECT(gtsam::assert_equal(Pose3(), Pose(init_vals, body->id(), 0), 1e-3));
+
+  // Still at the identity as this is a zero values initialization.
+  EXPECT(gtsam::assert_equal(Pose3(), Pose(init_vals, body->id(), K), 1e-3));
+
+  auto foot = robot.link("tarsus_1_L1");
+  EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
+                             Pose(init_vals, foot->id(), 0).translation(),
+                             1e-3));
+
+  // TODO(frank): why did this not move?
+  EXPECT(gtsam::assert_equal(Point3(-1.08497, 1.27372, 0),
+                             Pose(init_vals, foot->id(), K).translation(),
+                             1e-3));
+
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointAngle(init_vals, 31, K), 1e-7);
+
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 0, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 31, 0), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 0, K), 1e-7);
+  EXPECT_DOUBLES_EQUAL(0, JointVel(init_vals, 31, K), 1e-7);
 }
 
 int main() {

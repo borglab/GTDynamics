@@ -53,7 +53,7 @@ using namespace gtdynamics;
 
 int main(int argc, char** argv) {
   // Load Stephanie's spider robot.
-  auto robot = gtdynamics::CreateRobotFromFile(kSdfPath + string("/spider.sdf"),
+  auto robot = gtdynamics::CreateRobotFromFile(kSdfPath + string("spider.sdf"),
                                                "spider");
 
   double sigma_dynamics = 1e-5;    // std of dynamics constraints.
@@ -100,33 +100,23 @@ int main(int argc, char** argv) {
 
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
 
-  // All contacts.
-  const Point3 contact_in_com(0, 0.19, 0);
-  auto c1 = ContactPoint{contact_in_com, 0};  // Front left.
-  auto c2 = ContactPoint{contact_in_com, 0};  // Hind left.
-  auto c3 = ContactPoint{contact_in_com, 0};  // Front right.
-  auto c4 = ContactPoint{contact_in_com, 0};  // Hind right.
-  auto c5 = ContactPoint{contact_in_com, 0};  // Front left.
-  auto c6 = ContactPoint{contact_in_com, 0};  // Hind left.
-  auto c7 = ContactPoint{contact_in_com, 0};  // Front right.
-  auto c8 = ContactPoint{contact_in_com, 0};  // Hind right.
-
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
                           "tarsus_7_R2", "tarsus_8_R1"};
-
-  auto cp1 = std::make_pair("tarsus_1_L1", c1);
-  auto cp2 = std::make_pair("tarsus_2_L2", c2);
-  auto cp3 = std::make_pair("tarsus_3_L3", c3);
-  auto cp4 = std::make_pair("tarsus_4_L4", c4);
-  auto cp5 = std::make_pair("tarsus_5_R4", c5);
-  auto cp6 = std::make_pair("tarsus_6_R3", c6);
-  auto cp7 = std::make_pair("tarsus_7_R2", c7);
-  auto cp8 = std::make_pair("tarsus_8_R1", c8);
+  // All contacts.
+  const Point3 contact_in_com(0, 0.19, 0);
+  PointOnLink cp1(robot.link("tarsus_1_L1"), contact_in_com);  // Front left.
+  PointOnLink cp2(robot.link("tarsus_2_L2"), contact_in_com);  // Hind left.
+  PointOnLink cp3(robot.link("tarsus_3_L3"), contact_in_com);  // Front right.
+  PointOnLink cp4(robot.link("tarsus_4_L4"), contact_in_com);  // Hind right.
+  PointOnLink cp5(robot.link("tarsus_5_R4"), contact_in_com);  // Front left.
+  PointOnLink cp6(robot.link("tarsus_6_R3"), contact_in_com);  // Hind left.
+  PointOnLink cp7(robot.link("tarsus_7_R2"), contact_in_com);  // Front right.
+  PointOnLink cp8(robot.link("tarsus_8_R1"), contact_in_com);  // Hind right.
 
   // Contact points for each phase.
   // This gait moves one leg at a time.
-  using CPs = ContactPoints;
+  using CPs = PointOnLinks;
   CPs t00 = {cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8};
   // Initially stationary.
   CPs p0 = {cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8};
@@ -213,9 +203,7 @@ int main(int argc, char** argv) {
   // Previous contact point goal.
   std::map<string, Point3> prev_cp;
   for (auto&& link : links) {
-    prev_cp.insert(std::make_pair(
-        link,
-        (link_map[link]->wTcom() * Pose3(Rot3(), c1.point)).translation()));
+    prev_cp.insert(std::make_pair(link, link_map[link]->bMcom() * cp1.point));
   }
 
   // Distance to move contact point per time step during swing.
@@ -233,8 +221,8 @@ int main(int argc, char** argv) {
 
     // Obtain the contact links and swing links for this phase.
     vector<string> phase_contact_links;
-    for (auto&& kv : phase_cps[p]) {
-      phase_contact_links.push_back(kv.first);
+    for (auto&& cp : phase_cps[p]) {
+      phase_contact_links.push_back(cp.link->name());
     }
     vector<string> phase_swing_links;
     for (auto&& l : links) {
@@ -252,8 +240,8 @@ int main(int argc, char** argv) {
         // TODO(aescontrela): Use correct contact point for each link.
         // TODO(frank): #179 make sure height is handled correctly.
         objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[pcl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), c1.point,
+            PoseKey(link_map[pcl]->id(), t), Isotropic::Sigma(3, 1e-7),
+            cp1.point,
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
       }
 
@@ -262,9 +250,8 @@ int main(int argc, char** argv) {
 
       for (auto&& psl : phase_swing_links) {
         objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[psl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), c1.point,
-            Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+            PoseKey(link_map[psl]->id(), t), Isotropic::Sigma(3, 1e-7),
+            cp1.point, Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
       }
 
       // Update the goal point for the swing links.
@@ -287,7 +274,7 @@ int main(int argc, char** argv) {
   // Add base goal objectives to the factor graph.
   for (int t = 0; t <= t_f; t++) {
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        internal::PoseKey(base_link->id(), t),
+        PoseKey(base_link->id(), t),
         gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),
         Isotropic::Sigma(6, 6e-5)));  // 6.2e-5
   }
@@ -296,17 +283,15 @@ int main(int argc, char** argv) {
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        internal::PoseKey(link->id(), 0), link->wTcom(), dynamics_model_6));
+        PoseKey(link->id(), 0), link->bMcom(), dynamics_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        internal::TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
+        TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
 
     // Final link twists, accelerations.
-    objective_factors.add(
-        gtsam::PriorFactor<Vector6>(internal::TwistKey(link->id(), t_f),
-                                    Vector6::Zero(), objectives_model_6));
-    objective_factors.add(
-        gtsam::PriorFactor<Vector6>(internal::TwistAccelKey(link->id(), t_f),
-                                    Vector6::Zero(), objectives_model_6));
+    objective_factors.add(gtsam::PriorFactor<Vector6>(
+        TwistKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
+    objective_factors.add(gtsam::PriorFactor<Vector6>(
+        TwistAccelKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
   }
 
   // Add joint boundary conditions to FG.
@@ -315,27 +300,26 @@ int main(int argc, char** argv) {
     for (int t = 0; t <= t_f; t++) {
       if (joint->name().find("hip_") == 0) {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0, dynamics_model_1_2));
       } else if (joint->name().find("hip2") == 0) {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0.9, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0.9, dynamics_model_1_2));
       } else if (joint->name().find("knee") == 0) {
-        objective_factors.add(
-            gtsam::PriorFactor<double>(internal::JointAngleKey(joint->id(), t),
-                                       -1.22, dynamics_model_1_2));
+        objective_factors.add(gtsam::PriorFactor<double>(
+            JointAngleKey(joint->id(), t), -1.22, dynamics_model_1_2));
       } else {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0.26, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0.26, dynamics_model_1_2));
       }
     }
 
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
+        JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
 
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
+        JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
+        JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
   }
 
   // Add prior factor constraining all Phase keys to have duration of 1 / 240.
@@ -348,7 +332,7 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);

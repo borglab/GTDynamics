@@ -19,7 +19,7 @@
 namespace gtdynamics {
 namespace contact_goals_example {
 const Robot robot =
-    CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+    CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
 const gtsam::Point3 contact_in_com(0.14, 0, 0);
 const LinkSharedPtr LH = robot.link("lower1"), LF = robot.link("lower0"),

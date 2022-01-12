@@ -12,16 +12,19 @@ See LICENSE for the license information
 
 import gtdynamics as gtd
 import gtsam
-from gtsam import Pose3, Rot3
 import numpy as np
+from gtsam import Pose3, Rot3
+
 
 class CdprParams:
     """Parameters relevant to cable robot geometry and properties
     """
     def __init__(self):
-        self.a_locs = np.array([[3., 0., 0.], [3., 0., 3.], [0., 0., 3.], [0., 0., 0.]])
+        self.a_locs = np.array([[3., 0., 0.], [3., 0., 3.], [0., 0., 3.],
+                                [0., 0., 0.]])
         s = 0.15
-        self.b_locs = np.array([[s, 0., -s], [s, 0., s], [-s, 0., s], [-s, 0, -s]])
+        self.b_locs = np.array([[s, 0., -s], [s, 0., s], [-s, 0., s],
+                                [-s, 0, -s]])
         self.mass = 1.0
         self.inertia = np.eye(3)
         self.gravity = np.zeros((3, 1))
@@ -32,6 +35,7 @@ class CdprParams:
                                             staticFriction=0,
                                             viscousFriction=0)
         self.collocation_mode = 0
+
 
 
 class Cdpr:
@@ -68,6 +72,7 @@ class Cdpr:
             gtd.Link: End effector
         """
         return self.robot.link('ee')
+
     def ee_id(self):
         """id for the end-effector
 
@@ -92,7 +97,7 @@ class Cdpr:
         fg = gtsam.NonlinearFactorGraph()
         fg.push_back(self.kinematics_factors(ks=range(N)))
         fg.push_back(self.dynamics_factors(ks=range(N)))
-        fg.push_back(self.collocation_factors(ks=range(N-1), dt=dt))
+        fg.push_back(self.collocation_factors(ks=range(N - 1), dt=dt))
         return fg
 
     def kinematics_factors(self, ks=[]):
@@ -114,36 +119,38 @@ class Cdpr:
             for ji in range(4):
                 kfg.push_back(
                     gtd.CableLengthFactor(
-                        gtd.internal.JointAngleKey(ji, k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),  #
+                        gtd.JointAngleKey(ji, k).key(),
+                        gtd.PoseKey(self.ee_id(), k).key(),  #
                         self.costmodel_l,
                         self.params.a_locs[ji],
                         self.params.b_locs[ji]))
                 kfg.push_back(
                     gtd.CableVelocityFactor(
-                        gtd.internal.JointVelKey(ji, k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),  #
+                        gtd.JointVelKey(ji, k).key(),
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.TwistKey(self.ee_id(), k).key(),  #
                         self.costmodel_ldot,
                         self.params.a_locs[ji],
                         self.params.b_locs[ji]))
             # constrain out-of-plane movements
-            zeroT = gtsam.Values(); gtd.InsertPose(zeroT, self.ee_id(), k, Pose3())
-            kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
-                gtd.internal.PoseKey(self.ee_id(), k).key(),
-                np.array([[1, 0, 0, 0, 0, 0],
-                          [0, 0, 1, 0, 0, 0],
-                          [0, 0, 0, 0, 1, 0.]]),
-                np.zeros(3),
-                self.costmodel_planar_pose), zeroT))
-            zeroV = gtsam.Values(); gtd.InsertTwist(zeroV, self.ee_id(), k, np.zeros(6))
-            kfg.push_back(gtsam.LinearContainerFactor(gtsam.JacobianFactor(
-                gtd.internal.TwistKey(self.ee_id(), k).key(),
-                np.array([[1, 0, 0, 0, 0, 0],
-                          [0, 0, 1, 0, 0, 0],
-                          [0, 0, 0, 0, 1, 0.]]),
-                np.zeros(3),
-                self.costmodel_planar_twist), zeroV))
+            zeroT = gtsam.Values()
+            gtd.InsertPose(zeroT, self.ee_id(), k, Pose3())
+            kfg.push_back(
+                gtsam.LinearContainerFactor(
+                    gtsam.JacobianFactor(
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
+                                  [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
+                        self.costmodel_planar_pose), zeroT))
+            zeroV = gtsam.Values()
+            gtd.InsertTwist(zeroV, self.ee_id(), k, np.zeros(6))
+            kfg.push_back(
+                gtsam.LinearContainerFactor(
+                    gtsam.JacobianFactor(
+                        gtd.TwistKey(self.ee_id(), k).key(),
+                        np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
+                                  [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
+                        self.costmodel_planar_twist), zeroV))
         return kfg
 
     def dynamics_factors(self, ks=[]):
@@ -162,38 +169,34 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            wf = gtd.WrenchFactor(
-                    gtd.internal.TwistKey(self.ee_id(), k).key(),
-                    gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
-                    [
-                        gtd.internal.WrenchKey(self.ee_id(), 0, k),
-                        gtd.internal.WrenchKey(self.ee_id(), 1, k),
-                        gtd.internal.WrenchKey(self.ee_id(), 2, k),
-                        gtd.internal.WrenchKey(self.ee_id(), 3, k)
-                    ],
-                    gtd.internal.PoseKey(self.ee_id(), k).key(),
-                    self.costmodel_wrench, self.eelink().inertiaMatrix(), self.params.gravity)
-            dfg.push_back(wf)
+            # TODO(yetong): Use EqualityConstraint.createFactor when wrapped.
+            dfg.add(
+                gtd.WrenchFactor(self.costmodel_wrench, self.eelink(), [
+                    gtd.WrenchKey(self.ee_id(), 0, k),
+                    gtd.WrenchKey(self.ee_id(), 1, k),
+                    gtd.WrenchKey(self.ee_id(), 2, k),
+                    gtd.WrenchKey(self.ee_id(), 3, k)
+                ], k, self.params.gravity))
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(
                         gtd.cinternal.TensionKey(ji, k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        gtd.internal.WrenchKey(self.ee_id(), ji, k).key(),
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.WrenchKey(self.ee_id(), ji, k).key(),
                         self.costmodel_torque, self.params.a_locs[ji], self.params.b_locs[ji]))
                 dfg.push_back(
                     gtd.CableAccelerationFactor(
-                        gtd.internal.JointAccelKey(ji, k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),
-                        gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
+                        gtd.JointAccelKey(ji, k).key(),
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.TwistKey(self.ee_id(), k).key(),
+                        gtd.TwistAccelKey(self.ee_id(), k).key(),
                         self.costmodel_lddot, self.params.a_locs[ji], self.params.b_locs[ji]))
                 dfg.push_back(
                     gtd.WinchFactor(
-                        gtd.internal.TorqueKey(ji, k).key(),
+                        gtd.TorqueKey(ji, k).key(),
                         gtd.cinternal.TensionKey(ji, k).key(),
-                        gtd.internal.JointVelKey(ji, k).key(),
-                        gtd.internal.JointAccelKey(ji, k).key(),
+                        gtd.JointVelKey(ji, k).key(),
+                        gtd.JointAccelKey(ji, k).key(),
                         self.costmodel_winch, self.params.winch_params
                     )
                 )
@@ -217,33 +220,33 @@ class Cdpr:
             for k in ks:
                 dfg.push_back(
                     gtd.TrapezoidalPoseCollocationFactor(
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),  #
-                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),  #
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.PoseKey(self.ee_id(), k + 1).key(),
+                        gtd.TwistKey(self.ee_id(), k).key(),  #
+                        gtd.TwistKey(self.ee_id(), k + 1).key(),  #
                         0,
                         self.costmodel_posecollo))
                 dfg.push_back(
                     gtd.EulerTwistCollocationFactor(
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
-                        gtd.internal.TwistAccelKey(self.ee_id(), k).key(),  #
+                        gtd.TwistKey(self.ee_id(), k).key(),
+                        gtd.TwistKey(self.ee_id(), k + 1).key(),
+                        gtd.TwistAccelKey(self.ee_id(), k).key(),  #
                         0,
                         self.costmodel_twistcollo))
         else:
             for k in ks:
                 dfg.push_back(
                     gtd.EulerPoseCollocationFactor(
-                        gtd.internal.PoseKey(self.ee_id(), k).key(),
-                        gtd.internal.PoseKey(self.ee_id(), k + 1).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k).key(), #
+                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.PoseKey(self.ee_id(), k + 1).key(),
+                        gtd.TwistKey(self.ee_id(), k).key(), #
                         0,
                         self.costmodel_posecollo))
                 dfg.push_back(
                     gtd.EulerTwistCollocationFactor(
-                        gtd.internal.TwistKey(self.ee_id(), k).key(),
-                        gtd.internal.TwistKey(self.ee_id(), k + 1).key(),
-                        gtd.internal.TwistAccelKey(self.ee_id(), k).key(),  #
+                        gtd.TwistKey(self.ee_id(), k).key(),
+                        gtd.TwistKey(self.ee_id(), k + 1).key(),
+                        gtd.TwistAccelKey(self.ee_id(), k).key(),  #
                         0,
                         self.costmodel_twistcollo))
         dfg.push_back(gtd.PriorFactorDouble(0, dt, self.costmodel_dt))
@@ -271,10 +274,14 @@ class Cdpr:
         graph = gtsam.NonlinearFactorGraph()
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
-                graph.push_back(gtd.PriorFactorDouble(gtd.internal.JointAngleKey(ji, k).key(),
-                                                      lval, self.costmodel_prior_l))
-                graph.push_back(gtd.PriorFactorDouble(gtd.internal.JointVelKey(ji, k).key(),
-                                                      ldotval, self.costmodel_prior_ldot))
+                graph.push_back(
+                    gtd.PriorFactorDouble(
+                        gtd.JointAngleKey(ji, k).key(), lval,
+                        self.costmodel_prior_l))
+                graph.push_back(
+                    gtd.PriorFactorDouble(
+                        gtd.JointVelKey(ji, k).key(), ldotval,
+                        self.costmodel_prior_ldot))
         return graph
 
     def priors_ik(self, ks=[], Ts=[], Vs=[], values=None):
@@ -297,10 +304,14 @@ class Cdpr:
             Vs = [gtd.Twist(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, T, V in zip(ks, Ts, Vs):
-            graph.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(self.ee_id(), k).key(),
-                                                   T, self.costmodel_prior_pose))
-            graph.push_back(gtd.PriorFactorVector6(gtd.internal.TwistKey(self.ee_id(), k).key(),
-                                                   V, self.costmodel_prior_twist))
+            graph.push_back(
+                gtsam.PriorFactorPose3(
+                    gtd.PoseKey(self.ee_id(), k).key(), T,
+                    self.costmodel_prior_pose))
+            graph.push_back(
+                gtd.PriorFactorVector6(
+                    gtd.TwistKey(self.ee_id(), k).key(), V,
+                    self.costmodel_prior_twist))
         return graph
 
     # priors_fd solves for joint accel given torques
@@ -324,8 +335,10 @@ class Cdpr:
         graph = gtsam.NonlinearFactorGraph()
         for k, torques in zip(ks, torquess):
             for ji, torque in enumerate(torques):
-                graph.push_back(gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(),
-                                                      torque, self.costmodel_prior_tau))
+                graph.push_back(
+                    gtd.PriorFactorDouble(
+                        gtd.TorqueKey(ji, k).key(), torque,
+                        self.costmodel_prior_tau))
         return graph
 
     def priors_id(self, ks=[], lddotss=[[]], values=None):
@@ -371,7 +384,8 @@ class Cdpr:
             VAs = [gtd.TwistAccel(values, self.ee_id(), k) for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
-            graph.push_back(gtd.PriorFactorVector6(
-                gtd.internal.TwistAccelKey(self.ee_id(), k).key(),
-                VA, self.costmodel_prior_twistaccel))
+            graph.push_back(
+                gtd.PriorFactorVector6(
+                    gtd.TwistAccelKey(self.ee_id(), k).key(), VA,
+                    self.costmodel_prior_twistaccel))
         return graph

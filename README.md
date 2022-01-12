@@ -21,12 +21,12 @@ GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot des
 
 ### Homebrew
 
-If you are on a Mac, using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
+Using Homebrew is the easiest way to get SDFormat installed and it also makes switching versions straightforward.
 
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-$ # Download sdformat to your preferred location.
+$ # Set up the tap ind install sdformat10
 $ brew tap osrf/simulation
 $ brew install sdformat10
 ```
@@ -40,10 +40,15 @@ We provide an Ubuntu-based process below. Please reference [this tutorial](http:
 
 ```sh
 # Install basic dependencies
-sudo apt-get install ruby-dev build-essential libtinyxml-dev libboost-all-dev cmake pkg-config
+sudo apt-get install -y ruby-dev build-essential libboost-all-dev cmake pkg-config wget lsb-release
 
-# sdformat requires libignition-math
-sudo apt-get install libignition-math4-dev
+# Setup the repo
+sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
+sudo apt-get update
+
+# Install SDFormat dependencies
+sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev
 
 # Set the version to install
 export GTD_SDFormat_VERSION="10.5.0"
@@ -56,7 +61,7 @@ tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 cd sdformat-${GTD_SDFormat_VERSION}
 mkdir build && cd build
 
-cmake -DCMAKE_INSTALL_PREFIX ../install ..
+cmake -DCMAKE_INSTALL_PREFIX=../install ..
 make -j4
 sudo make install
 ```

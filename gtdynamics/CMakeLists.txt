@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors kinematics statics dynamics)
+set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -12,6 +12,12 @@ endif()
 # Include jumping robot stuff
 if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
   add_subdirectory(jumpingrobot)
+  set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
+endif()
+
+# Include panda robot stuff
+if(GTDYNAMICS_BUILD_PANDA_ROBOT)
+  add_subdirectory(pandarobot)
   set(ADDITIONAL_INTERFACE_FILES ${ADDITIONAL_INTERFACE_FILES} PARENT_SCOPE)
 endif()
 

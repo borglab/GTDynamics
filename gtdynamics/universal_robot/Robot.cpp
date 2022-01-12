@@ -21,7 +21,6 @@
 
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
 
@@ -82,8 +81,20 @@ Robot Robot::fixLink(const std::string &name) {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
-  name_to_link_.at(name)->fix();
-  return *this;
+
+  Robot fixed_robot = Robot(*this);
+  fixed_robot.name_to_link_.at(name)->fix();
+  return fixed_robot;
+}
+
+Robot Robot::unfixLink(const std::string &name) {
+  if (name_to_link_.find(name) == name_to_link_.end()) {
+    throw std::runtime_error("no link named " + name);
+  }
+
+  Robot unfixed_robot = Robot(*this);
+  unfixed_robot.name_to_link_.at(name)->unfix();
+  return unfixed_robot;
 }
 
 JointSharedPtr Robot::joint(const std::string &name) const {
@@ -113,10 +124,8 @@ void Robot::print(const std::string &s) const {
   for (const auto &link : sorted_links) {
     std::string fixed = link->isFixed() ? " (fixed)" : "";
     cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
-    cout << "\tlink pose: " << link->wTl().rotation().rpy().transpose() << ", "
-         << link->wTl().translation().transpose() << "\n";
-    cout << "\tcom pose: " << link->wTcom().rotation().rpy().transpose() << ", "
-         << link->wTcom().translation().transpose() << "\n";
+    cout << "\tcom pose: " << link->bMcom().rotation().rpy().transpose() << ", "
+         << link->bMcom().translation().transpose() << "\n";
     cout << "\tjoints: ";
     for (const auto &joint : link->joints()) {
       cout << joint->name() << " ";
@@ -135,10 +144,7 @@ void Robot::print(const std::string &s) const {
   for (const auto &joint : sorted_joints) {
     cout << joint << endl;
 
-    gtsam::Values joint_angles;
-    InsertJointAngle(&joint_angles, joint->id(), 0.0);
-
-    auto pTc = joint->parentTchild(joint_angles);
+    auto pTc = joint->parentTchild(0.0);
     cout << "\tpMc: " << pTc.rotation().rpy().transpose() << ", "
          << pTc.translation().transpose() << "\n";
   }
@@ -185,7 +191,6 @@ static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
 // Add zero default values for joint angles and joint velocities.
 // if they do not yet exist
 static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
-  using namespace internal;
   for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
     if (!values->exists(key)) {
       values->insertDouble(key, 0.0);
@@ -202,8 +207,8 @@ static bool InsertWithCheck(size_t i, size_t t,
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
-  auto pose_key = internal::PoseKey(i, t);
-  auto twist_key = internal::TwistKey(i, t);
+  auto pose_key = PoseKey(i, t);
+  auto twist_key = TwistKey(i, t);
   const bool exists = values->exists(pose_key);
   if (!exists) {
     values->insert(pose_key, pose);
@@ -228,10 +233,10 @@ gtsam::Values Robot::forwardKinematics(
   const auto root_link = findRootLink(values, prior_link_name);
   InsertFixedLinks(links(), t, &values);
 
-  if (!values.exists(internal::PoseKey(root_link->id(), t))) {
+  if (!values.exists(PoseKey(root_link->id(), t))) {
     InsertPose(&values, root_link->id(), t, gtsam::Pose3());
   }
-  if (!values.exists(internal::TwistKey(root_link->id(), t))) {
+  if (!values.exists(TwistKey(root_link->id(), t))) {
     InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
   }
 
@@ -249,7 +254,9 @@ gtsam::Values Robot::forwardKinematics(
     // Loop through all joints to find the pose and twist of child links.
     for (auto &&joint : link1->joints()) {
       InsertZeroDefaults(joint->id(), t, &values);
-      const auto poseTwist = joint->otherPoseTwist(link1, T_w1, V_1, values, t);
+      const auto poseTwist = joint->otherPoseTwist(
+          link1, T_w1, V_1, JointAngle(values, joint->id(), t),
+          JointVel(values, joint->id(), t));
       const auto link2 = joint->otherLink(link1);
       if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
         q.push(link2);

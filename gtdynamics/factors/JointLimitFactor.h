@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
+#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 
@@ -32,13 +32,11 @@ namespace gtdynamics {
  * JointLimitFactor is a class which enforces joint angle, velocity,
  * acceleration and torque value to be within limi
  */
-class JointLimitFactor
-    : public gtsam::NoiseModelFactor1<JointTyped::JointCoordinateType> {
+class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
  private:
-  using JointCoordinateType = JointTyped::JointCoordinateType;
   using This = JointLimitFactor;
-  using Base = gtsam::NoiseModelFactor1<JointCoordinateType>;
-  JointCoordinateType low_, high_;
+  using Base = gtsam::NoiseModelFactor1<double>;
+  double low_, high_;
 
  public:
   /**
@@ -51,9 +49,8 @@ class JointLimitFactor
    */
   JointLimitFactor(gtsam::Key q_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointCoordinateType lower_limit,
-                   JointCoordinateType upper_limit,
-                   JointCoordinateType limit_threshold)
+                   double lower_limit, double upper_limit,
+                   double limit_threshold)
       : Base(cost_model, q_key),
         low_(lower_limit + limit_threshold),
         high_(upper_limit - limit_threshold) {}
@@ -72,7 +69,7 @@ class JointLimitFactor
    * @param q joint value
    */
   gtsam::Vector evaluateError(
-      const JointCoordinateType &q,
+      const double &q,
       boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
     if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;

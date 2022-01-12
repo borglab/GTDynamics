@@ -82,8 +82,23 @@ class Robot {
   /// Return the link corresponding to the input string.
   LinkSharedPtr link(const std::string &name) const;
 
-  /// Fix the link corresponding to the input string.
+  /**
+   * @brief Return a copy of this robot with the link corresponding to the input
+   * string as a fixed link.
+   *
+   * @param name The name of the link to fix.
+   * @return Robot
+   */
   Robot fixLink(const std::string &name);
+
+  /**
+   * @brief Return a copy of this robot after unfixing the link corresponding to
+   * the input string.
+   *
+   * @param name The name of the link to unfix.
+   * @return Robot
+   */
+  Robot unfixLink(const std::string &name);
 
   /// Return the joint corresponding to the input string.
   JointSharedPtr joint(const std::string &name) const;
@@ -96,6 +111,33 @@ class Robot {
 
   /// Print links and joints of the robot, for debug purposes
   void print(const std::string &s = "") const;
+
+  /// Overload equality operator.
+  bool operator==(const Robot &other) const {
+    // Define comparators for easy std::map equality checking
+    // Needed since we are storing shared pointers as the values.
+    auto link_comparator = [](decltype(*this->name_to_link_.begin()) a,
+                              decltype(a) b) {
+      // compare the key name and the underlying shared_ptr object
+      return a.first == b.first && (*a.second) == (*b.second);
+    };
+    auto joint_comparator = [](decltype(*this->name_to_joint_.begin()) a,
+                               decltype(a) b) {
+      // compare the key name and the underlying shared_ptr object
+      return a.first == b.first && (*a.second) == (*b.second);
+    };
+
+    return (this->name_to_link_.size() == other.name_to_link_.size() &&
+            std::equal(this->name_to_link_.begin(), this->name_to_link_.end(),
+                       other.name_to_link_.begin(), link_comparator) &&
+            this->name_to_joint_.size() == other.name_to_joint_.size() &&
+            std::equal(this->name_to_joint_.begin(), this->name_to_joint_.end(),
+                       other.name_to_joint_.begin(), joint_comparator));
+  }
+
+  bool equals(const Robot &other, double tol = 0) const {
+    return *this == other;
+  }
 
   /**
    * Calculate forward kinematics by performing BFS in the link-joint graph
@@ -121,5 +163,25 @@ class Robot {
   LinkSharedPtr findRootLink(
       const gtsam::Values &values,
       const boost::optional<std::string> &prior_link_name) const;
+
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(name_to_link_);
+    ar &BOOST_SERIALIZATION_NVP(name_to_joint_);
+  }
+
+  /// @}
 };
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Robot> : public Testable<gtdynamics::Robot> {};
+
+}  // namespace gtsam

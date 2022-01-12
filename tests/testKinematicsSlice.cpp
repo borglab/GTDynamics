@@ -23,7 +23,7 @@ using gtsam::Point3;
 using std::map;
 using std::string;
 
-TEST(Phase, InverseKinematics) {
+TEST(Slice, InverseKinematics) {
   // Load robot and establish contact/goal pairs
   using namespace contact_goals_example;
 
@@ -33,11 +33,11 @@ TEST(Phase, InverseKinematics) {
 
   // Instantiate kinematics algorithms
   KinematicsParameters parameters;
-  // parameters.lm_parameters.setVerbosityLM("SUMMARY");
-  Kinematics kinematics(robot, parameters);
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
 
   // Create initial values
-  auto values = kinematics.initialValues(slice, 0.0);
+  auto values = kinematics.initialValues(slice, robot, 0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
@@ -48,7 +48,7 @@ TEST(Phase, InverseKinematics) {
   // Do forward kinematics
   const std::string root_link_name("body");
   const auto root_link_id = robot.link(root_link_name)->id();
-  EXPECT(values.exists(internal::PoseKey(root_link_id, k)));
+  EXPECT(values.exists(PoseKey(root_link_id, k)));
   auto fk = robot.forwardKinematics(values, k, std::string(root_link_name));
 
   // Check goals with FK solution
@@ -56,16 +56,16 @@ TEST(Phase, InverseKinematics) {
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
-  auto graph = kinematics.graph(slice);
+  auto graph = kinematics.graph(slice, robot);
   EXPECT_LONGS_EQUAL(12, graph.size());
 
   auto objectives = kinematics.pointGoalObjectives(slice, contact_goals);
   EXPECT_LONGS_EQUAL(4, objectives.size());
 
-  auto objectives2 = kinematics.jointAngleObjectives(slice);
+  auto objectives2 = kinematics.jointAngleObjectives(slice, robot);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  auto result = kinematics.inverse(slice, contact_goals);
+  auto result = kinematics.inverse(slice, robot, contact_goals);
 
   // Check that well-determined
   graph.add(objectives);
@@ -75,7 +75,7 @@ TEST(Phase, InverseKinematics) {
   // GTD_PRINT(*factor);
 
   // Check that goals are achieved
-  constexpr double tol = 0.01;
+  constexpr double tol = 1e-5;
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));
   }

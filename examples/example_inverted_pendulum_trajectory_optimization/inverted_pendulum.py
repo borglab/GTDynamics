@@ -13,36 +13,36 @@ import argparse
 import math
 import os.path as osp
 
+import gtdynamics as gtd
 import gtsam
 import numpy as np
 import pandas as pd
-
-import gtdynamics as gtd
 
 Isotropic = gtsam.noiseModel.Isotropic
 
 
 def jointAngleKey(id_, t=0):
     """Get joint angle key."""
-    return gtd.internal.JointAngleKey(id_, t).key()
+    return gtd.JointAngleKey(id_, t).key()
 
 
 def jointVelKey(id_, t=0):
     """Get joint velocity key."""
-    return gtd.internal.JointVelKey(id_, t).key()
+    return gtd.JointVelKey(id_, t).key()
 
 
 def jointAccelKey(id_, t=0):
     """Get joint acceleration key."""
-    return gtd.internal.JointAccelKey(id_, t).key()
+    return gtd.JointAccelKey(id_, t).key()
 
 
 def torqueKey(id_, t=0):
     """Get torque key."""
-    return gtd.internal.TorqueKey(id_, t).key()
+    return gtd.TorqueKey(id_, t).key()
 
 
-URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "urdfs")
+URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "models",
+                     "urdfs")
 
 
 def run(args):
@@ -51,7 +51,7 @@ def run(args):
     ip = gtd.CreateRobotFromFile(osp.join(URDF_PATH, "inverted_pendulum.urdf"),
                                  "inverted_pendulum")
     j1_id = ip.joint("j1").id()
-    ip.fixLink("l1")
+    ip = ip.fixLink("l1")
 
     T = 3.0  # seconds
     dt = 1. / 100  # Time horizon (s) and timestep duration (s).
@@ -112,10 +112,10 @@ def run(args):
         key: [fn(results, j1_id, t) for t in range(t_steps + 1)]
         for (key, fn) in [
             ("t", time),  #
-            ("theta", gtd.JointAngleDouble),
-            ("dtheta", gtd.JointVelDouble),
-            ("ddtheta", gtd.JointAccelDouble),
-            ("tau", gtd.TorqueDouble)
+            ("theta", gtd.JointAngle),
+            ("dtheta", gtd.JointVel),
+            ("ddtheta", gtd.JointAccel),
+            ("tau", gtd.Torque)
         ]
     }
     df = pd.DataFrame(data)

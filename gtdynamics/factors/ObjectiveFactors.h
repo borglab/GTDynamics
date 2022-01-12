@@ -56,7 +56,7 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
    */
   LinkObjectives& pose(gtsam::Pose3 pose,
                        const gtsam::SharedNoiseModel& pose_model = nullptr) {
-    addPrior<gtsam::Pose3>(internal::PoseKey(i_, k_), pose, pose_model);
+    addPrior<gtsam::Pose3>(PoseKey(i_, k_), pose, pose_model);
     return *this;
   }
   /**
@@ -66,7 +66,7 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
    */
   LinkObjectives& twist(gtsam::Vector6 twist,
                         const gtsam::SharedNoiseModel& twist_model = nullptr) {
-    addPrior<gtsam::Vector6>(internal::TwistKey(i_, k_), twist, twist_model);
+    addPrior<gtsam::Vector6>(TwistKey(i_, k_), twist, twist_model);
     return *this;
   }
   /**
@@ -77,7 +77,7 @@ class LinkObjectives : public gtsam::NonlinearFactorGraph {
   LinkObjectives& twistAccel(
       gtsam::Vector6 twistAccel,
       const gtsam::SharedNoiseModel& twistAccel_model = nullptr) {
-    addPrior<gtsam::Vector6>(internal::TwistAccelKey(i_, k_), twistAccel,
+    addPrior<gtsam::Vector6>(TwistAccelKey(i_, k_), twistAccel,
                              twistAccel_model);
     return *this;
   }
@@ -115,7 +115,7 @@ class JointObjectives : public gtsam::NonlinearFactorGraph {
    */
   JointObjectives& angle(double angle,
                          const gtsam::SharedNoiseModel& angle_model = nullptr) {
-    addPrior<double>(internal::JointAngleKey(j_, k_),  //
+    addPrior<double>(JointAngleKey(j_, k_),  //
                      angle, angle_model);
     return *this;
   }
@@ -127,7 +127,7 @@ class JointObjectives : public gtsam::NonlinearFactorGraph {
   JointObjectives& velocity(
       double velocity,
       const gtsam::SharedNoiseModel& velocity_model = nullptr) {
-    addPrior<double>(internal::JointVelKey(j_, k_),  //
+    addPrior<double>(JointVelKey(j_, k_),  //
                      velocity, velocity_model);
     return *this;
   }
@@ -139,7 +139,7 @@ class JointObjectives : public gtsam::NonlinearFactorGraph {
   JointObjectives& acceleration(
       double acceleration,
       const gtsam::SharedNoiseModel& acceleration_model = nullptr) {
-    addPrior<double>(internal::JointAccelKey(j_, k_),  //
+    addPrior<double>(JointAccelKey(j_, k_),  //
                      acceleration, acceleration_model);
     return *this;
   }

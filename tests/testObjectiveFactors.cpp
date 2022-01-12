@@ -32,6 +32,7 @@ using gtsam::Vector3;
 using gtsam::noiseModel::Unit;
 
 auto kModel1 = Unit::Create(1);
+auto kModel3 = Unit::Create(3);
 auto kModel6 = Unit::Create(6);
 
 TEST(ObjectiveFactors, PoseAndTwist) {
@@ -79,20 +80,19 @@ TEST(ObjectiveFactors, OptionalNoiseModels) {
 
 TEST(Phase, AddGoals) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"), "spider");
+      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"), "spider");
 
   // Foot is sphere of radius 1.1 cm, 14cm along X in COM
   Point3 point_com(0.14 + 0.011, 0, 0);
 
   // Predict goal point in world coordinates
   auto LF = robot.link("lower0");  // left forward leg
-  auto bTcom = LF->wTcom();        // world is really body
-  Point3 stance_point = bTcom.transformFrom(point_com);
+  Point3 stance_point = LF->bMcom().transformFrom(point_com);
 
   uint8_t id = LF->id();
   constexpr size_t num_stance_steps = 10;
   constexpr size_t k = 777;
-  const gtsam::SharedNoiseModel &cost_model = nullptr;
+  const gtsam::SharedNoiseModel &cost_model = kModel3;
 
   // Call AddStanceGoals function, creating 10 factors
   auto factors =
@@ -104,7 +104,9 @@ TEST(Phase, AddGoals) {
   EXPECT(assert_equal(stance_point, f->goalPoint(), 1e-5));
 
   // Check that prediction error is zero.
-  EXPECT(assert_equal(Vector3(0, 0, 0), f->evaluateError(bTcom)));
+  gtsam::Values values;
+  values.insert(PoseKey(id, k + num_stance_steps - 1), LF->bMcom());
+  EXPECT(assert_equal(Vector3(0, 0, 0), f->unwhitenedError(values)));
 
   // Call AddSwingGoals function, creating 3 factors
   Point3 step(0.04, 0, 0);  // move by 4 centimeters in 3 steps

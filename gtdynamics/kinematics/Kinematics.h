@@ -6,16 +6,17 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  KinematicsSlice.h
- * @brief Kinematics in single time slice.
+ * @file  Kinematics.h
+ * @brief Kinematics optimizer.
  * @author: Frank Dellaert
  */
 
 #pragma once
 
+#include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/ContactPoint.h>
 #include <gtdynamics/utils/Interval.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -64,14 +65,6 @@ struct ContactGoal {
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
 
-/// Optimization parameters shared between all solvers
-struct OptimizationParameters {
-  gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
-  OptimizationParameters() {
-    lm_parameters.setlambdaInitial(1e7);
-    lm_parameters.setAbsoluteErrorTol(1e-3);
-  }
-};
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
@@ -79,6 +72,7 @@ struct KinematicsParameters : public OptimizationParameters {
       g_cost_model,                            // goal point
       prior_q_cost_model;                      // joint angle prior factor
 
+  // TODO(yetong): replace noise model with tolerance.
   KinematicsParameters()
       : p_cost_model(Isotropic::Sigma(6, 1e-4)),
         g_cost_model(Isotropic::Sigma(3, 0.01)),
@@ -86,30 +80,40 @@ struct KinematicsParameters : public OptimizationParameters {
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
-class Kinematics {
+class Kinematics : public Optimizer {
  protected:
-  Robot robot_;
-  KinematicsParameters p_;
+  const KinematicsParameters p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
-  Kinematics(const Robot& robot,
-             const KinematicsParameters& parameters = KinematicsParameters())
-      : robot_(robot), p_(parameters) {}
+  Kinematics(const KinematicsParameters& parameters = KinematicsParameters())
+      : Optimizer(parameters), p_(parameters) {}
 
   /**
-   * @fn Create graph with kinematics constraints.
-   * @param context Slice or Interval instance
-   * @returns factor graph..
+   * @fn Create graph with kinematics cost factors.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns factor graph.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph graph(const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
+                                    const Robot& robot) const;
+
+  /**
+   * @fn Create kinematics constraints.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns Equality constraints.
+   */
+  template <class CONTEXT>
+  EqualityConstraints constraints(const CONTEXT& context,
+                                  const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
    * @param contact_goals goals for contact points
    * @returns graph with point goal factors.
    */
@@ -118,45 +122,63 @@ class Kinematics {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create point goal constraints.
+   * @param context Slice or Interval instance.
+   * @param contact_goals goals for contact points
+   * @returns Equality constraints with point goal constraints.
+   */
+  template <class CONTEXT>
+  EqualityConstraints pointGoalConstraints(
+      const CONTEXT& context, const ContactGoals& contact_goals) const;
+
+  /**
    * @fn Factors that minimize joint angles.
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph jointAngleObjectives(
-      const CONTEXT& context) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context,
+                                                   const Robot& robot) const;
 
   /**
    * @fn Initialize kinematics.
    *
    * Use wTcom for poses and zero-mean noise for joint angles.
    *
-   * @param context Slice or Interval instance
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @param gaussian_noise time step to check (default 0.1).
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values initialValues(const CONTEXT& context,
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.1) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
-   * @param context Slice or Interval instance
+   * @fn This fuction does inverse kinematics seperately on each slice.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
    * @param contact_goals goals for contact points
+   * @param contact_goals_as_constraints treat contact goal as hard constraints
    * @returns values with poses and joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values inverse(const CONTEXT& context,
-                        const ContactGoals& contact_goals) const;
+  gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
+                        const ContactGoals& contact_goals,
+                        bool contact_goals_as_constraints = true) const;
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
-   * @param interval Interval instance
-   * @param contact_goals1 goals for contact points for interval.k_start
-   * @param contact_goals1 goals for contact points for interval.k_end
+   * @param context Interval instance
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_goals1 goals for contact points for context.k_start
+   * @param contact_goals2 goals for contact points for context.k_end
    * All results are return in values.
    */
-  gtsam::Values interpolate(const Interval& interval,
+  template <class CONTEXT>
+  gtsam::Values interpolate(const CONTEXT& context, const Robot& robot,
                             const ContactGoals& contact_goals1,
                             const ContactGoals& contact_goals2) const;
 };

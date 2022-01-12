@@ -36,23 +36,19 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the Vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 =
-      CreateRobotFromFile(kUrdfPath + std::string("/vision60.urdf"));
+  auto vision60 = CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   double mu = 2.0;
 
   // Contact points at feet.
-  ContactPoints contact_points;
-  contact_points.emplace(
-      "lower0", ContactPoint{gtsam::Point3(0.14, 0, 0), 0});
-  contact_points.emplace(
-      "lower1", ContactPoint{gtsam::Point3(0.14, 0, 0), 1});
-  contact_points.emplace(
-      "lower2", ContactPoint{gtsam::Point3(0.14, 0, 0), 2});
-  contact_points.emplace(
-      "lower3", ContactPoint{gtsam::Point3(0.14, 0, 0), 3});
+  PointOnLinks contact_points;
+  gtsam::Point3 contact_in_com(0.14, 0, 0);
+  contact_points.emplace_back(vision60.link("lower0"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower1"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower2"), contact_in_com);
+  contact_points.emplace_back(vision60.link("lower3"), contact_in_com);
 
   // Specify optimal control problem parameters.
   double T = 3.0;                                     // Time horizon (s.)
@@ -63,7 +59,7 @@ int main(int argc, char** argv) {
   double sigma_objectives = 1e-3;  // Variance of additional objectives.
 
   // Specify boundary conditions for base and joints.
-  gtsam::Pose3 base_pose_init = vision60.link("body")->wTcom();
+  gtsam::Pose3 base_pose_init = vision60.link("body")->bMcom();
   gtsam::Vector6 base_twist_init = gtsam::Z_6x1,
                  base_twist_final = gtsam::Z_6x1,
                  base_accel_init = gtsam::Z_6x1,
@@ -139,43 +135,43 @@ int main(int argc, char** argv) {
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
     objective_factors.addPrior(
-        internal::PoseKey(base_link->id(),
-                          static_cast<int>(std::ceil(des_poses_t[i] / dt))),
+        PoseKey(base_link->id(),
+                static_cast<int>(std::ceil(des_poses_t[i] / dt))),
         des_poses[i], des_pose_nm);
 
   // Add base boundary conditions to FG.
   objective_factors.addPrior(
-      internal::PoseKey(base_link->id(), 0), base_pose_init,
+      PoseKey(base_link->id(), 0), base_pose_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistKey(base_link->id(), 0), base_twist_init,
+      TwistKey(base_link->id(), 0), base_twist_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistAccelKey(base_link->id(), 0), base_accel_init,
+      TwistAccelKey(base_link->id(), 0), base_accel_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistKey(base_link->id(), t_steps), base_twist_final,
+      TwistKey(base_link->id(), t_steps), base_twist_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistAccelKey(base_link->id(), t_steps), base_accel_final,
+      TwistAccelKey(base_link->id(), t_steps), base_accel_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives));
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors.addPrior(
-        internal::JointAngleKey(joint->id(), 0), 0.0,
+        JointAngleKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointVelKey(joint->id(), 0), 0.0,
+        JointVelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointAccelKey(joint->id(), 0), 0.0,
+        JointAccelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointVelKey(joint->id(), t_steps), 0.0,
+        JointVelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
     objective_factors.addPrior(
-        internal::JointAccelKey(joint->id(), t_steps), 0.0,
+        JointAccelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
   }
 
@@ -183,7 +179,7 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_steps; t++) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);

@@ -13,9 +13,8 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-import gtsam
-
 import gtdynamics as gtd
+import gtsam
 
 
 class TestPrint(unittest.TestCase):
@@ -23,7 +22,7 @@ class TestPrint(unittest.TestCase):
     def test_values(self):
         """Checks that printing Values uses the GTDKeyFormatter instead of gtsam's default"""
         v = gtd.Values()
-        gtd.InsertJointAngleDouble(v, 0, 1, 2)
+        gtd.InsertJointAngle(v, 0, 1, 2)
         self.assertTrue('q(0)1' in v.__repr__())
 
     def test_nonlinear_factor_graph(self):
@@ -31,13 +30,13 @@ class TestPrint(unittest.TestCase):
         fg = gtd.NonlinearFactorGraph()
         fg.push_back(
             gtd.MinTorqueFactor(
-                gtd.internal.TorqueKey(0, 0).key(),
+                gtd.TorqueKey(0, 0).key(),
                 gtsam.noiseModel.Unit.Create(1)))
         self.assertTrue('T(0)0' in fg.__repr__())
 
     def test_key_formatter(self):
         """Tests print method with various key formatters"""
-        torqueKey = gtd.internal.TorqueKey(0, 0).key()
+        torqueKey = gtd.TorqueKey(0, 0).key()
         factor = gtd.MinTorqueFactor(torqueKey,
                                      gtsam.noiseModel.Unit.Create(1))
         with patch('sys.stdout', new=StringIO()) as fake_out:

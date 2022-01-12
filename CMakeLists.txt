@@ -3,8 +3,7 @@ enable_testing()
 project(gtdynamics
         LANGUAGES CXX C
         VERSION 1.0.0
-        DESCRIPTION "Full kinodynamics constraints for arbitrary robot configurations with factor graphs."
-        HOMEPAGE_URL "https://github.com/borglab/GTDynamics")
+        DESCRIPTION "Full kinodynamics constraints for arbitrary robot configurations with factor graphs.")
 
 add_compile_options(-faligned-new)
 
@@ -51,8 +50,9 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
-option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
 
 add_subdirectory(gtdynamics)
 
@@ -66,12 +66,12 @@ endif()
 # Process subdirectories.
 add_subdirectory(tests)
 
-option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" OFF)
+option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" ON)
 if(GTDYNAMICS_BUILD_SCRIPTS)
   add_subdirectory(scripts)
 endif()
 
-option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" OFF)
+option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 if(GTDYNAMICS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
@@ -88,6 +88,11 @@ message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD
 if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
 endif()
+message(STATUS "Build march=native                          : ${GTSAM_BUILD_WITH_MARCH_NATIVE}")
 message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
 message(STATUS "Build Examples                              : ${GTDYNAMICS_BUILD_EXAMPLES}")
+message(STATUS "Build Robots")
+message(STATUS "  Cable Robot                               : ${GTDYNAMICS_BUILD_CABLE_ROBOT}")
+message(STATUS "  Jumping Robot                             : ${GTDYNAMICS_BUILD_JUMPING_ROBOT}")
+message(STATUS "  Panda Robot                               : ${GTDYNAMICS_BUILD_PANDA_ROBOT}")
 message(STATUS "===============================================================")

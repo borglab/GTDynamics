@@ -37,7 +37,7 @@ using gtsam::noiseModel::Unit;
 
 // Test the evaluateError method with various link poses.
 TEST(PointGoalFactor, error) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
 
   auto cost_model = Unit::Create(3);
   LabeledSymbol pose_key('P', 0, 0);
@@ -47,11 +47,13 @@ TEST(PointGoalFactor, error) {
   PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Test the goal pose error against the robot's various nominal poses.
-  EXPECT(assert_equal(Vector3(0, 0, 0),
-                      factor.evaluateError(robot.link("l1")->wTcom())));
+  Values values1;
+  values1.insert(pose_key, robot.link("l1")->bMcom());
+  EXPECT(assert_equal(Vector3(0, 0, 0), factor.unwhitenedError(values1)));
 
-  EXPECT(assert_equal(Vector3(0, 0, 2),
-                      factor.evaluateError(robot.link("l2")->wTcom())));
+  Values values2;
+  values2.insert(pose_key, robot.link("l2")->bMcom());
+  EXPECT(assert_equal(Vector3(0, 0, 2), factor.unwhitenedError(values2)));
 
   // Make sure linearization is correct
   Values values;
@@ -63,7 +65,7 @@ TEST(PointGoalFactor, error) {
 
 // Test the optimization of a link pose to ensure goal point is reached.
 TEST(PointGoalFactor, optimization) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
 
   auto cost_model = Constrained::All(3);
 
@@ -74,7 +76,7 @@ TEST(PointGoalFactor, optimization) {
   PointGoalFactor factor(pose_key, cost_model, point_com, goal_point);
 
   // Initial link pose.
-  Pose3 pose_init = robot.link("l1")->wTcom();
+  Pose3 pose_init = robot.link("l1")->bMcom();
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -92,8 +94,7 @@ TEST(PointGoalFactor, optimization) {
   optimizer.optimize();
   Values results = optimizer.values();
   Pose3 pose_optimized = results.at<Pose3>(pose_key);
-  EXPECT(assert_equal(factor.evaluateError(pose_optimized), Vector3::Zero(),
-                      1e-4));
+  EXPECT(assert_equal(factor.unwhitenedError(results), Vector3::Zero(), 1e-4));
 }
 
 int main() {

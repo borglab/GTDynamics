@@ -12,7 +12,6 @@
  * @author Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -28,8 +27,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the simple robot and fix the first link's pose.
   using simple_urdf::planar_axis;
-  using simple_urdf::robot;
-  robot.fixLink("l1");
+  auto robot = simple_urdf::getRobot().fixLink("l1");
 
   gtsam::Vector3 gravity(0, 0, -9.8);
 

@@ -41,21 +41,19 @@ TEST(Statics, OneMovingLink) {
                       Fg_B, kTol));
 
   // Create base and link
-  // TODO(frank): #207 should not have to provide wTl to Link constructor
-  const Pose3 wTl;  // we don't care!
-  const Pose3 lTcom(Rot3(), Point3(L / 2, 0, 0));
+  const Pose3 bMcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
   auto base =
       boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3(), true);
-  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, wTl, lTcom);
+  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bMcom, Pose3());
 
   // Create joint
   constexpr unsigned char id = 22;
   // TODO(frank): #206 should not have to provide wTj to the joint constructor.
-  const Pose3 wTj;
+  const Pose3 bMj;
   const Vector3 axis(0, 0, 1);
   auto joint =
-      boost::make_shared<RevoluteJoint>(id, "joint1", wTj, base, link, axis);
+      boost::make_shared<RevoluteJoint>(id, "joint1", bMj, base, link, axis);
 
   // Create mechanism.
   // TODO(frank): specifying name is redundant and failure prone!
@@ -73,8 +71,7 @@ TEST(Statics, OneMovingLink) {
 
   // Now do statics using GTD.
   StaticsParameters parameters2D(kSigmaDynamics, gravity2D);
-  // parameters2D.lm_parameters.setVerbosityLM("SUMMARY");
-  Statics statics(robot, parameters2D);
+  Statics statics(parameters2D);
   const size_t k = 777;
   const Slice slice(k);
   Values values;
@@ -85,7 +82,7 @@ TEST(Statics, OneMovingLink) {
   EXPECT(assert_equal(wTcom, Pose(fk_solution, link->id(), k), kTol));
 
   // Now solve for wrenches/torques.
-  auto result = statics.solve(slice, fk_solution);
+  auto result = statics.solve(slice, robot, fk_solution);
 
   // Check that the actual wrench on the link is the negative gravity wrench.
   const Vector6 actualWrench =
@@ -108,32 +105,32 @@ TEST(Statics, Quadruped) {
   // Instantiate statics algorithms
   const Vector3 kGravity(0, 0, -10);
   StaticsParameters parameters3D(kSigmaDynamics, kGravity);
-  Statics statics(robot, parameters3D);
+  Statics statics(parameters3D);
 
   // Get an inverse kinematics solution
   const size_t k = 1;
   const Slice slice(k);
-  auto ik_solution = statics.inverse(slice, contact_goals);
+  auto ik_solution = statics.inverse(slice, robot, contact_goals);
 
   // Test graph generation
-  auto graph = statics.graph(slice);
+  auto graph = statics.graph(slice, robot);
   EXPECT_LONGS_EQUAL(37, graph.size());
 
   // Test initialization
-  auto values = statics.initialValues(slice);
+  auto values = statics.initialValues(slice, robot);
   EXPECT_LONGS_EQUAL(36, values.size());
 
   // Solve for wrenches, with known kinematics
-  auto result = statics.solve(slice, ik_solution);
+  auto result = statics.solve(slice, robot, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
   // TODO(Varun) Issue #233
   // Regression
+  result.print("", GTDKeyFormatter);
   // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
-  auto minimal = statics.minimizeTorques(slice);
+  auto minimal = statics.minimizeTorques(slice, robot);
   EXPECT_LONGS_EQUAL(61, minimal.size());
-  // GTD_PRINT(minimal);
 }
 
 int main() {

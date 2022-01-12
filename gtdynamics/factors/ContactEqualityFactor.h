@@ -22,7 +22,7 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/ContactPoint.h"
+#include "gtdynamics/utils/PointOnLink.h"
 #include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
@@ -51,13 +51,14 @@ class ContactEqualityFactor
   ContactEqualityFactor(const PointOnLink &point_on_link,
                         const gtsam::SharedNoiseModel &model, size_t k1,
                         size_t k2)
-      : Base(model, internal::PoseKey(point_on_link.link->id(), k1),
-             internal::PoseKey(point_on_link.link->id(), k2)),
+      : Base(model, PoseKey(point_on_link.link->id(), k1),
+             PoseKey(point_on_link.link->id(), k2)),
         point_on_link_(point_on_link) {}
 
   virtual ~ContactEqualityFactor() {}
 
-  /// Generic method to compute difference between contact points and provide jacobians.
+  /// Generic method to compute difference between contact points and provide
+  /// jacobians.
   gtsam::Vector3 contactPointsDifference(
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,

@@ -25,7 +25,16 @@ using std::string;
 #include "contactGoalsExample.h"
 
 TEST(Phase, InverseKinematics) {
-  // TODO(frank): create test for Phase, derived from interval?
+  // Load robot and establish contact/goal pairs
+  using namespace contact_goals_example;
+
+  constexpr size_t num_time_steps = 5;
+  const std::vector<LinkSharedPtr> link_vec = {LH, RF};
+
+  auto constraint = boost::make_shared<FootContactConstraintSpec>(link_vec , contact_in_com);
+
+  Phase phase0(0, num_time_steps, constraint);
+  // TODO(frank): test methods producing constraints.
 }
 
 int main() {

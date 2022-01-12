@@ -32,12 +32,12 @@ using namespace gtsam;
 using gtsam::assert_equal;
 
 const size_t i1 = 0, i2 = 2;
-const Key key1 = gtdynamics::internal::PoseKey(i1),
-          key2 = gtdynamics::internal::PoseKey(i2);
+const Key key1 = gtdynamics::PoseKey(i1),
+          key2 = gtdynamics::PoseKey(i2);
 
 auto kModel = noiseModel::Isotropic::Sigma(6, 0.1);
 
-using simple_rr::robot;
+auto robot = simple_rr::getRobot();
 
 gtsam::Values zeroValues() {
   gtsam::Values joint_angles;
@@ -122,7 +122,7 @@ TEST(ForwardKinematicsFactor, Movement) {
 
 TEST(ForwardKinematicsFactor, ArbitraryTime) {
   Robot robot =
-      CreateRobotFromFile(kUrdfPath + std::string("/test/simple_urdf.urdf"));
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
   std::string base_link = "l1", end_link = "l2";
 
   size_t t = 81;

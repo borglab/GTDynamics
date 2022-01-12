@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include "gtdynamics/utils/ContactPoint.h"
+#include "gtdynamics/utils/PointOnLink.h"
 
 namespace gtdynamics {
 
@@ -68,9 +68,8 @@ class ContactPointFactor
   ContactPointFactor(const PointOnLink &point_on_link, gtsam::Key point_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
                      size_t t = 0)
-      : ContactPointFactor(
-            gtdynamics::internal::PoseKey(point_on_link.link->id(), t),
-            point_key, cost_model, point_on_link.point) {}
+      : ContactPointFactor(gtdynamics::PoseKey(point_on_link.link->id(), t),
+                           point_key, cost_model, point_on_link.point) {}
 
   virtual ~ContactPointFactor() {}
 
