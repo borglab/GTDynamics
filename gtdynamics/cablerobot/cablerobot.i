@@ -46,18 +46,13 @@ gtsam::GaussianBayesNet* BlockEliminateSequential(
     gtsam::GaussianFactorGraph graph, const gtdynamics::BlockOrdering &ordering);
 
 // Tension Key Stuff
-namespace cinternal {
-  gtdynamics::DynamicsSymbol TensionKey(int j, int t = 0);
-}
+gtdynamics::DynamicsSymbol TensionKey(int j, int t = 0);
 
-template <T = {double}>
-void InsertTension(gtsam::Values @values, int j, int t, T value);
+void InsertTension(gtsam::Values @values, int j, int t, double value);
 
-template <T = {double}>
-void InsertTension(gtsam::Values @values, int j, T value);
+void InsertTension(gtsam::Values @values, int j, double value);
 
-template <T = {double}>
-T Tension(const gtsam::Values &values, int j, int t = 0);
+double Tension(const gtsam::Values &values, int j, int t = 0);
 
 #include <gtdynamics/cablerobot/factors/WinchFactor.h>
 class WinchParams {

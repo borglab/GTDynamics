@@ -58,7 +58,7 @@ class CdprControllerIlqr(CdprControllerBase):
                 gtd.InsertPose(x_guess, cdpr.ee_id(), k, pdes_)
                 for ji in range(4):
                     l = np.linalg.norm(cdpr.params.a_locs[ji] - pdes_.translation())
-                    gtd.InsertJointAngleDouble(x_guess, ji, k, l)
+                    gtd.InsertJointAngle(x_guess, ji, k, l)
         x_guess = utils.InitValues(fg, x_guess, dt=dt)
 
         # optimize
@@ -96,7 +96,7 @@ class CdprControllerIlqr(CdprControllerBase):
         # populate into values object
         result = gtsam.Values()
         for ji in range(4):
-            gtd.InsertTorqueDouble(result, ji, t, u[ji])
+            gtd.InsertTorque(result, ji, t, u[ji])
         return result
 
     @staticmethod
@@ -128,7 +128,7 @@ class CdprControllerIlqr(CdprControllerBase):
         for k in range(N):
             for ji in range(4):
                 fg.push_back(
-                    gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), tmid,
+                    gtd.PriorFactorDouble(gtd.TorqueKey(ji, k).key(), tmid,
                                           gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
         cost_x = gtsam.noiseModel.Isotropic.Sigma(6, 0.001) if Q is None else \
@@ -136,7 +136,7 @@ class CdprControllerIlqr(CdprControllerBase):
         for k in range(N):
             fg.push_back(
                 gtsam.PriorFactorPose3(
-                    gtd.internal.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
+                    gtd.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
         return fg
 
     @staticmethod
@@ -151,24 +151,24 @@ class CdprControllerIlqr(CdprControllerBase):
             # stuff we don't care about
             ordering.append(gtsam.Ordering())
             for ji in range(4):
-                ordering[-1].push_back(gtd.internal.JointAngleKey(ji, t).key())
+                ordering[-1].push_back(gtd.JointAngleKey(ji, t).key())
             for ji in range(4):
-                ordering[-1].push_back(gtd.internal.JointVelKey(ji, t).key())
+                ordering[-1].push_back(gtd.JointVelKey(ji, t).key())
             for ji in range(4):
-                ordering[-1].push_back(gtd.internal.JointAccelKey(ji, t).key())
-            ordering[-1].push_back(gtd.internal.TwistAccelKey(lid, t).key())
+                ordering[-1].push_back(gtd.JointAccelKey(ji, t).key())
+            ordering[-1].push_back(gtd.TwistAccelKey(lid, t).key())
             for ji in range(4):
-                ordering[-1].push_back(gtd.internal.WrenchKey(lid, ji, t).key())
+                ordering[-1].push_back(gtd.WrenchKey(lid, ji, t).key())
             for ji in range(4):
-                ordering[-1].push_back(gtd.cinternal.TensionKey(ji, t).key())
+                ordering[-1].push_back(gtd.TensionKey(ji, t).key())
             # control variables
             ordering.append(gtsam.Ordering())
             for ji in range(4):
-                ordering[-1].push_back(gtd.internal.TorqueKey(ji, t).key())
+                ordering[-1].push_back(gtd.TorqueKey(ji, t).key())
             # measurement inputs
             ordering.append(gtsam.Ordering())
-            ordering[-1].push_back(gtd.internal.TwistKey(lid, t).key())
-            ordering[-1].push_back(gtd.internal.PoseKey(lid, t).key())
+            ordering[-1].push_back(gtd.TwistKey(lid, t).key())
+            ordering[-1].push_back(gtd.PoseKey(lid, t).key())
         ordering.append(gtsam.Ordering())
         ordering[-1].push_back(0)
 
@@ -220,7 +220,7 @@ class CdprControllerIlqr(CdprControllerBase):
         """
         uff = []
         for t in range(N):
-            uff.append(np.array([gtd.TorqueDouble(results, ji, t) for ji in range(4)]))
+            uff.append(np.array([gtd.Torque(results, ji, t) for ji in range(4)]))
         return uff
 
     @staticmethod

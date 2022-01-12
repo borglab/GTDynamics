@@ -180,7 +180,7 @@ class Cdpr:
             for ji in range(4):
                 dfg.push_back(
                     gtd.CableTensionFactor(
-                        gtd.cinternal.TensionKey(ji, k).key(),
+                        gtd.TensionKey(ji, k).key(),
                         gtd.PoseKey(self.ee_id(), k).key(),
                         gtd.WrenchKey(self.ee_id(), ji, k).key(),
                         self.costmodel_torque, self.params.a_locs[ji], self.params.b_locs[ji]))
@@ -194,7 +194,7 @@ class Cdpr:
                 dfg.push_back(
                     gtd.WinchFactor(
                         gtd.TorqueKey(ji, k).key(),
-                        gtd.cinternal.TensionKey(ji, k).key(),
+                        gtd.TensionKey(ji, k).key(),
                         gtd.JointVelKey(ji, k).key(),
                         gtd.JointAccelKey(ji, k).key(),
                         self.costmodel_winch, self.params.winch_params
@@ -269,8 +269,8 @@ class Cdpr:
             gtsam.NonlinearFactorGraph: The forward kinematics prior factors
         """
         if values is not None:
-            ls = [[gtd.JointAngleDouble(values, ji, k) for ji in range(4)] for k in ks]
-            ldots = [[gtd.JointVelDouble(values, ji, k) for ji in range(4)] for k in ks]
+            ls = [[gtd.JointAngle(values, ji, k) for ji in range(4)] for k in ks]
+            ldots = [[gtd.JointVel(values, ji, k) for ji in range(4)] for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
@@ -331,7 +331,7 @@ class Cdpr:
             gtsam.NonlinearFactorGraph: The forward dynamics prior factors
         """
         if values is not None:
-            torquess = [[gtd.TorqueDouble(values, ji, k) for ji in range(4)] for k in ks]
+            torquess = [[gtd.Torque(values, ji, k) for ji in range(4)] for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, torques in zip(ks, torquess):
             for ji, torque in enumerate(torques):
@@ -355,13 +355,13 @@ class Cdpr:
             gtsam.NonlinearFactorGraph: The inverse dynamics prior factors
         """
         if values is not None:
-            lddotss = [[gtd.JointAccelDouble(values, ji, k) for ji in range(4)] for k in ks]
+            lddotss = [[gtd.JointAccel(values, ji, k) for ji in range(4)] for k in ks]
         graph = gtsam.NonlinearFactorGraph()
         for k, lddots in zip(ks, lddotss):
             for ji, lddot in enumerate(lddots):
                 graph.push_back(
                     gtd.PriorFactorDouble(
-                        gtd.internal.JointAccelKey(ji, k).key(), lddot, self.costmodel_prior_lddot))
+                        gtd.JointAccelKey(ji, k).key(), lddot, self.costmodel_prior_lddot))
         return graph
 
     def priors_id_va(self, ks=[], VAs=[], values=None):

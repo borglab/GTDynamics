@@ -117,16 +117,14 @@ class TestCdprPlanar(GtsamTestCase):
         # redundancy resolution
         dfg.push_back(
             gtd.PriorFactorDouble(
-                gtd.internal.TorqueKey(1, 0).key(), -1.23,
-                gtsam.noiseModel.Unit.Create(1)))
+                gtd.TorqueKey(1, 0).key(), -1.23, gtsam.noiseModel.Unit.Create(1)))
         dfg.push_back(
             gtd.PriorFactorDouble(
-                gtd.internal.TorqueKey(2, 0).key(), -1.23,
-                gtsam.noiseModel.Unit.Create(1)))
+                gtd.TorqueKey(2, 0).key(), -1.23, gtsam.noiseModel.Unit.Create(1)))
         # initialize and solve
         init = gtsam.Values(values)
         for ji in range(4):
-            init.erase(gtd.internal.TorqueKey(ji, 0).key())
+            init.erase(gtd.TorqueKey(ji, 0).key())
             gtd.InsertTorque(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init, MyLMParams(1e-20)).optimize()
         self.gtsamAssertEquals(values, results)

@@ -132,7 +132,7 @@ class CdprControllerTensionDist(CdprControllerBase):
         else:
             fg.push_back(cdpr.priors_ik(ks=[k], values=TVnow))
         # pose constraints: must reach next pose T
-        fg.push_back(gtsam.PriorFactorPose3(gtd.internal.PoseKey(lid, k+1).key(),
+        fg.push_back(gtsam.PriorFactorPose3(gtd.PoseKey(lid, k+1).key(),
                                             Tgoal, cdpr.costmodel_prior_pose))
         # collocation: given current+next Ts, solve for current+next Vs and current VAs
         fg.push_back(cdpr.collocation_factors(ks=[k], dt=dt))
@@ -165,8 +165,10 @@ class CdprControllerTensionDist(CdprControllerBase):
         # redundancy resolution: control costs
         for ji in range(4):
             fg.push_back(
-                gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
-                                      gtsam.noiseModel.Diagonal.Precisions(R)))
+                gtd.PriorFactorDouble(
+                    gtd.TorqueKey(ji, k).key(),  #
+                    0.0,
+                    gtsam.noiseModel.Diagonal.Precisions(R)))
 
         # tmp initial guess
         xk = gtsam.Values()
@@ -174,10 +176,10 @@ class CdprControllerTensionDist(CdprControllerBase):
         utils.InsertTwist(xk, lid, k, TVnow)
         gtd.InsertTwistAccel(xk, lid, k, np.zeros(6))
         for ji in range(4):
-            gtd.InsertJointVelDouble(xk, ji, k, 0)
-            gtd.InsertJointAccelDouble(xk, ji, k, 1)
-            gtd.InsertTorqueDouble(xk, ji, k, 1)
-            gtd.InsertTensionDouble(xk, ji, k, 50)
+            gtd.InsertJointVel(xk, ji, k, 0)
+            gtd.InsertJointAccel(xk, ji, k, 1)
+            gtd.InsertTorque(xk, ji, k, 1)
+            gtd.InsertTension(xk, ji, k, 50)
             gtd.InsertWrench(xk, lid, ji, k, np.zeros(6))
 
         # optimize

@@ -81,8 +81,8 @@ class CdprSimulator:
         fg.push_back(cdpr.priors_ik(ks=[k], values=xk))
         # IK initial estimate
         for j in range(4):
-            gtd.InsertJointAngle(x, j, k, 0)
-            gtd.InsertJointVel(x, j, k, 0)
+            gtd.InsertJointAngle(xk, j, k, 0)
+            gtd.InsertJointVel(xk, j, k, 0)
         # IK solve
         result = gtsam.LevenbergMarquardtOptimizer(fg, xk, MyLMParams()).optimize()
         assert abs(fg.error(result)) < 1e-20, "inverse kinematics didn't converge"
@@ -161,9 +161,9 @@ class CdprSimulator:
 
         # update x
         for ji in range(4):
-            gtd.InsertJointAngleDouble(x, ji, k, gtd.JointAngleDouble(xk, ji, k))
-            gtd.InsertJointVelDouble(x, ji, k, gtd.JointVelDouble(xk, ji, k))
-            gtd.InsertTorqueDouble(x, ji, k, gtd.TorqueDouble(u, ji, k))
+            gtd.InsertJointAngle(x, ji, k, gtd.JointAngle(xk, ji, k))
+            gtd.InsertJointVel(x, ji, k, gtd.JointVel(xk, ji, k))
+            gtd.InsertTorque(x, ji, k, gtd.Torque(u, ji, k))
         gtd.InsertTwistAccel(x, lid, k, gtd.TwistAccel(xd, lid, k))
         gtd.InsertPose(x, lid, k + 1, gtd.Pose(xd, lid, k + 1))
         gtd.InsertTwist(x, lid, k + 1, gtd.Twist(xd, lid, k + 1))

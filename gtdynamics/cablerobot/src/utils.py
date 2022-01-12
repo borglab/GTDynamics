@@ -43,15 +43,15 @@ def zerovalues(lid, ts=[], dt=0.01):
 def InsertZeroByLabel(values, key, dt=None):
     label, l, j, t = key.label(), key.linkIdx(), key.jointIdx(), key.time()
     if label == "q":  # JointAngleKey
-        gtd.InsertJointAngleDouble(values, j, t, 0.0)
+        gtd.InsertJointAngle(values, j, t, 0.0)
     elif label == "v":  # JointVelKey
-        gtd.InsertJointVelDouble(values, j, t, 0.0)
+        gtd.InsertJointVel(values, j, t, 0.0)
     elif label == "a":  # JointAccelKey
-        gtd.InsertJointAccelDouble(values, j, t, 0.0)
+        gtd.InsertJointAccel(values, j, t, 0.0)
     elif label == "t":  # TensionKey
-        gtd.InsertTensionDouble(values, j, t, 0.0)
+        gtd.InsertTension(values, j, t, 0.0)
     elif label == "T":  # TorqueKey
-        gtd.InsertTorqueDouble(values, j, t, 0.0)
+        gtd.InsertTorque(values, j, t, 0.0)
     elif label == "p":  # PoseKey
         gtd.InsertPose(values, l, t, gtsam.Pose3())
     elif label == "V":  # TwistKey
