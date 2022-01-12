@@ -133,5 +133,5 @@ jobs:
         working-directory: ./build
 
       - name: Install
-        run: make -j4 python-install
+        run: sudo make -j4 python-install
         working-directory: ./build
