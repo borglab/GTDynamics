@@ -120,13 +120,13 @@ def InsertTwistAccel(dest, link_id, k, source):
     gtd.InsertTwistAccel(dest, link_id, k, gtd.TwistAccel(source, link_id, k))
 def InsertJointAngles(dest, k, source):
     for ji in range(4):
-        gtd.InsertJointAngleDouble(dest, ji, k, gtd.JointAngleDouble(source, ji, k))
+        gtd.InsertJointAngle(dest, ji, k, gtd.JointAngle(source, ji, k))
 def InsertJointVels(dest, k, source):
     for ji in range(4):
-        gtd.InsertJointVelDouble(dest, ji, k, gtd.JointVelDouble(source, ji, k))
+        gtd.InsertJointVel(dest, ji, k, gtd.JointVel(source, ji, k))
 def InsertTorques(dest, k, source):
     for ji in range(4):
-        gtd.InsertTorqueDouble(dest, ji, k, gtd.TorqueDouble(source, ji, k))
+        gtd.InsertTorque(dest, ji, k, gtd.Torque(source, ji, k))
 def InsertWrenches(dest, link_id, k, source):
     for ji in range(4):
         gtd.InsertWrench(dest, link_id, ji, k, gtd.Wrench(source, link_id, ji, k))
