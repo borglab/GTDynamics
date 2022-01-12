@@ -21,8 +21,7 @@ import time
 
 
 class CdprControllerIlqr(CdprControllerBase):
-    """Precomputes the open-loop trajectory
-    then just calls on that for each update.
+    """Precomputes the open-loop trajectory then just calls on that for each update.
     """
     def __init__(self,
                  cdpr,

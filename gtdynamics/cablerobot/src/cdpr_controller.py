@@ -5,8 +5,7 @@ All Rights Reserved
 See LICENSE for the license information
 
 @file  cdpr_controller.py
-@brief Optimal controller for a cable robot.  Solved by creating a factor graph and adding state
-objectives and control costs, then optimizing
+@brief Base class for a controller for a cable robot.
 @author Frank Dellaert
 @author Gerry Chen
 """

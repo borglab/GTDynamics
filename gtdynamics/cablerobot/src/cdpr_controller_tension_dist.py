@@ -5,8 +5,9 @@ All Rights Reserved
 See LICENSE for the license information
 
 @file  cdpr_controller_tension_dist.py
-@brief Optimal controller for a cable robot.  Solved by creating a factor graph and adding state
-objectives and control costs, then optimizing
+@brief Controller for a cable robot based on computing the wrench necessary to track the desired
+trajectory exactly followed by applying a tension distribution algorithm to compute the necessary
+torque to achieve said wrench.
 @author Frank Dellaert
 @author Gerry Chen
 """
@@ -19,8 +20,9 @@ from cdpr_controller import CdprControllerBase
 from cdpr_planar import Cdpr
 
 class CdprControllerTensionDist(CdprControllerBase):
-    """Precomputes the open-loop trajectory
-    then just calls on that for each update.
+    """Does whatever wrench is needed to follow the desired trajectory exactly.  Uses a simple
+    least-squares minimum effort tension distribution algorithm (using GTSAM) to find the tensions
+    necessary to enact such a wrench.
     """
     def __init__(self, cdpr, x0, pdes=[], dt=0.01, Q=None, R=np.array([1.])):
         """constructor
@@ -37,35 +39,6 @@ class CdprControllerTensionDist(CdprControllerBase):
         self.dt = dt
         self.R = R
         N = len(pdes)
-
-        # # initial guess
-        # lid = cdpr.ee_id()
-        # x_guess = gtsam.Values()
-        # x_guess.insert(0, dt)
-        # for k, T in enumerate(pdes):
-        #     gtd.InsertPose(x_guess, lid, k, T)
-        # utils.InsertTwist(x_guess, lid, 0, x0)
-        # for k in range(N-1):
-
-        #     utils.InsertJointAngles(x_guess, k, xk)
-        #     utils.InsertJointVels(x_guess, k, xk)
-        #     utils.InsertTorques(x_guess, k, xk)
-        #     utils.InsertWrenches(x_guess, lid, k, xk)
-        #     utils.InsertTwist(x_guess, lid, k+1, xk)
-        #     utils.InsertTwistAccel(x_guess, lid, k, xk)
-        # for ji in range(4):
-        #     gtd.InsertJointAngleDouble(x_guess, ji, N-1, 0)
-        #     gtd.InsertJointVelDouble(x_guess, ji, N-1, 0)
-        #     gtd.InsertTorqueDouble(x_guess, ji, N-1, 0)
-        #     gtd.InsertWrench(x_guess, lid, ji, N-1, np.zeros(6))
-        # gtd.InsertTwistAccel(x_guess, lid, N-1, np.zeros(6))
-        # # create iLQR graph
-        # fg = self.create_ilqr_fg(cdpr, x0, pdes, dt, Q, R)
-        # # optimize
-        # self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess)
-        # # self.result = self.optimizer.optimize()
-        # self.result = x_guess
-        # self.fg = fg
 
     def update(self, values, t):
         """New control: returns the entire results vector, which contains the optimal open-loop
