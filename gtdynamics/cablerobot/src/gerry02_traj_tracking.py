@@ -67,7 +67,7 @@ def xy2Pose3(traj):
         des_T.append(gtsam.Pose3(gtsam.Rot3(), (xy[0], 0, xy[1])))
     return des_T
 
-def main(fname='data/iros_logo_2.h',
+def main(fname='data/ATL.h',
          debug=False,
          Q=np.ones(6) * 1e2,
          R=np.ones(1) * 1e-2,
@@ -78,7 +78,7 @@ def main(fname='data/iros_logo_2.h',
     """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
 
     Args:
-        fname (str, optional): The trajectory filename. Defaults to 'data/iros_logo_2.h'.
+        fname (str, optional): The trajectory filename. Defaults to 'data/ATL.h'.
         debug (bool, optional): Whether to print debug information. Defaults to False.
         Q (np.ndarray, optional): Vector of weights to apply to the state objectives.  The real
         weight matrix will be diag(Q). Defaults to np.ones(6)*1e2.

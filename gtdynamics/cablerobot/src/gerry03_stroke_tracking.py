@@ -140,7 +140,7 @@ def main(fname: str = 'data/ATL_filled.h',
     """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
 
     Args:
-        fname (str, optional): The trajectory filename. Defaults to 'data/iros_logo_2.h'.
+        fname (str, optional): The trajectory filename. Defaults to 'data/ATL_filled.h'.
         Q (np.ndarray, optional): Vector of weights to apply to the state objectives.  The real
         weight matrix will be diag(Q). Defaults to np.ones(6)*1e2.
         R (np.ndarray, optional): Vector of weights to apply to the control costs.  The real weight
