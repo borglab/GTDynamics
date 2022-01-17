@@ -9,10 +9,13 @@
 
 #include <gtsam/geometry/Pose3.h>
 
+#include <string>
 #include <utility>
 #include <vector>
 
 namespace gtdynamics {
+
+struct Heuristic;
 
 class RoadMap {
  public:
@@ -27,18 +30,23 @@ class RoadMap {
   double threshold_;  // edge weight threshold (max joint distance)
   std::vector<std::vector<Edge>> adjacencylist_;
   size_t num_maxpaths_;
+  size_t num_deleted_states_;
+  size_t num_not_found_;
 
  public:
   RoadMap();
 
   // get member methods
-  const std::vector<gtsam::Pose3> getposes() { return poses_; }
-  const std::vector<gtsam::Vector7> getstatenodes() { return states_; }
-  const std::vector<std::vector<Edge>> getadjacencylist();
+  size_t getnumdeleted() const { return num_deleted_states_; }
+  size_t getnumnotfound() const { return num_not_found_; }
+  const std::vector<gtsam::Pose3>& getposes() const { return poses_; }
+  const std::vector<gtsam::Vector7>& getstatenodes() const { return states_; }
+  const std::vector<std::vector<Edge>>& getadjacencylist() const;
 
   // not direct get member methods
   size_t getPoseFromState(const size_t stateindex);
   const std::vector<size_t> getStatesFromPose(const size_t poseindex);
+  const std::vector<size_t> getStatesandThetaFromPose(const size_t poseindex);
 
   // set member methods
   void set_threshold(double threshold) { threshold_ = threshold; }
@@ -49,7 +57,9 @@ class RoadMap {
    *
    * @param poses -- poses to be added
    */
-  void addPoseNodes(const std::vector<gtsam::Pose3>& poses);
+  RoadMap& addPoseNodes(const std::vector<gtsam::Pose3>& poses);
+
+  RoadMap& addStateNodes(const std::vector<gtsam::Vector7>& states);
 
   /**
    * @brief Uses IKFast wrapper to compute solutions from internal pose list and
@@ -69,6 +79,8 @@ class RoadMap {
    *
    */
   void createGraph();
+  void createGraphFromReference(
+      const std::vector<std::vector<std::pair<size_t, size_t>>>& relationships);
 
   /**
    * @brief Get index of closest state node to a given state. The used distance
@@ -89,9 +101,19 @@ class RoadMap {
   const std::vector<size_t> findClosestNodesPose(const gtsam::Pose3& pose);
 
   /**
+   * @brief
+   *
+   * @param waypoints
+   * @return std::vector<std::vector<size_t>>
+   */
+  std::vector<std::vector<size_t>> findPath(
+      const std::vector<std::vector<size_t>>& waypoint_sets, Heuristic* h,
+      const std::string& save_path = "");
+
+  /**
    * @brief Returns a vector of shortest paths (each being a vector of
    * waypoints, i.e., vector of node indices) from a starting source state node
-   * to a set of nodes defined by one end_pose. 
+   * to a set of nodes defined by one end_pose.
    *
    * @param start_node
    * @param end_pose
@@ -99,5 +121,22 @@ class RoadMap {
    */
   std::vector<std::vector<size_t>> findWaypoints(const size_t start_node,
                                                  const size_t end_pose);
+};
+
+struct Node {
+  size_t level, idx;
+  Node(size_t l, size_t i) : level{l}, idx{i} {}
+};
+struct Heuristic {
+  virtual void preprocess(const RoadMap& roadmap,
+                          const std::vector<std::vector<size_t>>& waypoints);
+  virtual double operator()(const RoadMap& roadmap, const Node& node);
+};
+
+struct DirectDistance : Heuristic {
+  std::vector<size_t> end_nodes;
+  void preprocess(const RoadMap& roadmap,
+                  const std::vector<std::vector<size_t>>& waypoints) override;
+  double operator()(const RoadMap& roadmap, const Node& node) override;
 };
 }  // namespace gtdynamics

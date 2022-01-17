@@ -21,8 +21,7 @@ using gtsam::assert_equal;
 
 // Probably can put all these together into a single test
 
-TEST(RoadMap, createNodes) {  // put option for uniform, random and also with
-                              // list of arbitrary ones
+TEST(RoadMap, createNodes) {
   RoadMap roadmap;
 
   std::vector<Pose3> poses(3);
@@ -31,8 +30,7 @@ TEST(RoadMap, createNodes) {  // put option for uniform, random and also with
   poses[2] = Pose3(Rot3::identity(), (Point3() << 0, -0.1, 0.25).finished());
 
   // Add 3 poses
-  roadmap.addPoseNodes(poses);
-  std::vector<Pose3> result_poses = roadmap.getposes();
+  std::vector<Pose3> result_poses = roadmap.addPoseNodes(poses).getposes();
 
   // Check if poses match
   EXPECT(assert_equal(poses, result_poses, 1e-5))
@@ -82,6 +80,7 @@ TEST(RoadMap, createNodes) {  // put option for uniform, random and also with
   }
 }
 
+// test optional parameter: relationships
 TEST(RoadMap, createGraph) {
   RoadMap roadmap;
 
@@ -91,10 +90,8 @@ TEST(RoadMap, createGraph) {
   poses[2] = Pose3(Rot3::identity(), (Point3() << 0, 0.15, 0.25).finished());
 
   // Add 3 poses
-  roadmap.addPoseNodes(poses);
-
   size_t theta7_samples = 2;
-  roadmap.computeStateSolutions(theta7_samples);
+  roadmap.addPoseNodes(poses).computeStateSolutions(theta7_samples);
 
   double distance_threshold = 0.7;
   roadmap.set_threshold(distance_threshold);
@@ -219,6 +216,9 @@ TEST(RoadMap, findClosestNodesPose) {
   EXPECT(assert_equal(expectednodes, actualnodes))
 }
 
+// need to check the differentpossible paths that don't end up in the same place
+// need to create tests for the case with waypoints and levels and stuff
+// need to create tests for A* with heuristics
 TEST(RoadMap, findWaypoints) {  // find shortest path to some pose (meaning many
                                 // possible end points)
 
@@ -286,6 +286,270 @@ TEST(RoadMap, findWaypoints) {  // find shortest path to some pose (meaning many
     for (size_t i = 0; i < expected_waypoints.size(); ++i) {
       EXPECT(assert_equal(expected_waypoints[i], actual_waypoints[i]))
     }
+  }
+}
+
+TEST(RoadMap, findPath) {
+  RoadMap roadmap;
+
+  // Create graph from nodes and check if Dijsktra works
+  std::vector<Vector7> states(6);
+  states[0] << 2, 0.5, 1, 0, 0, 0, 0;
+  states[1] << 2, 0.5, 1, 0, 0.3, 0, 0.1;
+  states[2] << 2, 0.5, 1, 0, 0.6, 0.05, 0;
+  states[3] << 2, 0.5, 1, 0, 1.2, 0, 0;
+  states[4] << 2, 0.5, 1, 0, 0.3, 0, -0.15;
+  states[5] << 2, 0.5, 1, 0, 0.9, 0, 0;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(states).createGraph();
+  std::vector<std::vector<size_t>> stagepointset(2);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3};  
+
+  roadmap.set_num_maxpaths(1);
+  Heuristic h;
+  std::vector<std::vector<size_t>> paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+  std::vector<size_t> expected_path = {0, 1, 2, 5, 3};
+  EXPECT(assert_equal(expected_path, paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_path, paths[0]))
+
+  // Add more nodes and another possible end node
+  std::vector<Vector7> more_states(6);
+  more_states[0] << 2, 0.5, 1, 0, 0.3, 0, 0.5;
+  more_states[1] << 2, 0.5, 1, 0, 0.7, 0, 0.5;
+  more_states[2] << 2, 0.5, 1, 0, 1.0, 0, 0.5;
+  more_states[3] << 2, 0.5, 1, 0, 1.2, 0, 0.4;
+  more_states[4] << 2, 0.5, 1, 0, 1.0, 0.5, 0.5;
+  more_states[5] << 2, 0.5, 1, 0, 1.2, 0.4, 0.5;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(more_states).createGraph();
+  
+  stagepointset = std::vector<std::vector<size_t>>(2);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3, 11};
+
+  roadmap.set_num_maxpaths(1);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+
+  std::vector<std::vector<size_t>> expected_paths(2);
+  expected_paths[0] = {0, 1, 2, 5, 3};
+  expected_paths[1] = {0, 1, 2, 5, 9, 11};
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
+  }
+
+  // Add an intermediate stage set
+  std::vector<Vector7> some_more_states(3);
+  some_more_states[0] << 2, 0.5, 1, 0.5, 1.0, 0.5, 0.5;
+  some_more_states[1] << 2, 0.5, 1, 0.8, 1.0, 0.5, 0.5;
+  some_more_states[2] << 2, 0.5, 1, 1.1, 1.0, 0.5, 0.5;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(some_more_states).createGraph();
+
+  stagepointset = std::vector<std::vector<size_t>>(3);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3, 7};
+  stagepointset[2] = {11, 14};
+
+  roadmap.set_num_maxpaths(1);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+
+  expected_paths = std::vector<std::vector<size_t>>(2);
+  expected_paths[0] = {0, 1, 6, 7, 8, 11};
+  expected_paths[1] = {0, 1, 6, 7, 8, 10, 12, 13, 14};
+
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
+  }
+
+  // Add a new possible starting node
+  std::vector<Vector7> even_more_states(3);
+  even_more_states[0] << 2, 0.0, 1, 0, 1.2, 0, 0;
+  even_more_states[1] << 2.2, 0.0, 1, 0, 1.2, 0, 0;
+  even_more_states[2] << 2.1, 0.0, 1.4, 0, 1.2, 0, 0;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(even_more_states).createGraph();
+
+  stagepointset = std::vector<std::vector<size_t>>(3);
+  stagepointset[0] = {0, 17};
+  stagepointset[1] = {3, 7};
+  stagepointset[2] = {11, 14};
+
+  roadmap.set_num_maxpaths(1);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h);
+
+  expected_paths = std::vector<std::vector<size_t>>(2);
+  expected_paths[0] = {17, 15, 3, 9, 11};
+  expected_paths[1] = {0, 1, 6, 7, 8, 10, 12, 13, 14};
+
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = Heuristic();
+  paths = roadmap.findPath(stagepointset, &h, "~/files/dijsktra.txt");
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
+  }
+}
+
+TEST(RoadMap, DirectDistance) {
+  RoadMap roadmap;
+
+  // Create graph from nodes and check if Dijsktra works
+  std::vector<Vector7> states(6);
+  states[0] << 2, 0.5, 1, 0, 0, 0, 0;
+  states[1] << 2, 0.5, 1, 0, 0.3, 0, 0.1;
+  states[2] << 2, 0.5, 1, 0, 0.6, 0.05, 0;
+  states[3] << 2, 0.5, 1, 0, 1.2, 0, 0;
+  states[4] << 2, 0.5, 1, 0, 0.3, 0, -0.15;
+  states[5] << 2, 0.5, 1, 0, 0.9, 0, 0;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(states).createGraph();
+  std::vector<std::vector<size_t>> stagepointset(2);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3};  
+
+  roadmap.set_num_maxpaths(1);
+  DirectDistance h;
+  std::vector<std::vector<size_t>> paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+  std::vector<size_t> expected_path = {0, 1, 2, 5, 3};
+  EXPECT(assert_equal(expected_path, paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_path, paths[0]))
+
+  // Add more nodes and another possible end node
+  std::vector<Vector7> more_states(6);
+  more_states[0] << 2, 0.5, 1, 0, 0.3, 0, 0.5;
+  more_states[1] << 2, 0.5, 1, 0, 0.7, 0, 0.5;
+  more_states[2] << 2, 0.5, 1, 0, 1.0, 0, 0.5;
+  more_states[3] << 2, 0.5, 1, 0, 1.2, 0, 0.4;
+  more_states[4] << 2, 0.5, 1, 0, 1.0, 0.5, 0.5;
+  more_states[5] << 2, 0.5, 1, 0, 1.2, 0.4, 0.5;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(more_states).createGraph();
+  
+  stagepointset = std::vector<std::vector<size_t>>(2);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3, 11};
+
+  roadmap.set_num_maxpaths(1);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(1, paths.size()))
+
+  std::vector<std::vector<size_t>> expected_paths(2);
+  expected_paths[0] = {0, 1, 2, 5, 3};
+  expected_paths[1] = {0, 1, 2, 5, 9, 11};
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
+  }
+
+  // Add an intermediate stage set
+  std::vector<Vector7> some_more_states(3);
+  some_more_states[0] << 2, 0.5, 1, 0.5, 1.0, 0.5, 0.5;
+  some_more_states[1] << 2, 0.5, 1, 0.8, 1.0, 0.5, 0.5;
+  some_more_states[2] << 2, 0.5, 1, 1.1, 1.0, 0.5, 0.5;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(some_more_states).createGraph();
+
+  stagepointset = std::vector<std::vector<size_t>>(3);
+  stagepointset[0] = {0};
+  stagepointset[1] = {3, 7};
+  stagepointset[2] = {11, 14};
+
+  roadmap.set_num_maxpaths(1);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+
+  expected_paths = std::vector<std::vector<size_t>>(2);
+  expected_paths[0] = {0, 1, 6, 7, 8, 11};
+  expected_paths[1] = {0, 1, 6, 7, 8, 10, 12, 13, 14};
+
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
+  }
+
+  // Add a new possible starting node
+  std::vector<Vector7> even_more_states(3);
+  even_more_states[0] << 2, 0.0, 1, 0, 1.2, 0, 0;
+  even_more_states[1] << 2.2, 0.0, 1, 0, 1.2, 0, 0;
+  even_more_states[2] << 2.1, 0.0, 1.4, 0, 1.2, 0, 0;
+
+  roadmap.set_threshold(0.5);
+  roadmap.addStateNodes(even_more_states).createGraph();
+
+  stagepointset = std::vector<std::vector<size_t>>(3);
+  stagepointset[0] = {0, 17};
+  stagepointset[1] = {3, 7};
+  stagepointset[2] = {11, 14};
+
+  roadmap.set_num_maxpaths(1);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h);
+
+  expected_paths = std::vector<std::vector<size_t>>(2);
+  expected_paths[0] = {17, 15, 3, 9, 11};
+  expected_paths[1] = {0, 1, 6, 7, 8, 10, 12, 13, 14};
+
+  EXPECT(assert_equal(1, paths.size()))
+  EXPECT(assert_equal(expected_paths[0], paths[0]))
+
+  roadmap.set_num_maxpaths(2);
+  h = DirectDistance();
+  paths = roadmap.findPath(stagepointset, &h, "~/files/directdist.txt");
+  EXPECT(assert_equal(2, paths.size()))
+  for (size_t i = 0; i < 2; i++) {
+    EXPECT(assert_equal(expected_paths[i], paths[i]))
   }
 }
 

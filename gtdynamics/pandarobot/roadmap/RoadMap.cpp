@@ -10,8 +10,12 @@
 #include <gtdynamics/pandarobot/ikfast/PandaIKFast.h>
 #include <gtsam/geometry/Pose3.h>
 
+#include <fstream>
+#include <iostream>
 #include <limits>
 #include <queue>
+#include <string>
+#include <tuple>
 #include <vector>
 
 namespace gtdynamics {
@@ -26,9 +30,11 @@ RoadMap::RoadMap() {
   posetostates_ = std::vector<std::vector<size_t>>();
   lastupdatedpose_ = 0;
   num_maxpaths_ = 1;
+  num_deleted_states_ = 0;
+  num_not_found_ = 0;
 }
 
-void RoadMap::addPoseNodes(const std::vector<Pose3>& poses) {
+RoadMap& RoadMap::addPoseNodes(const std::vector<Pose3>& poses) {
   // concatenate previous poses with given ones
   std::vector<Pose3> concat;
   concat.reserve(poses_.size() + poses.size());  // preallocate memory
@@ -39,9 +45,36 @@ void RoadMap::addPoseNodes(const std::vector<Pose3>& poses) {
   // add new pose indices to posetostates_
   std::vector<std::vector<size_t>> newposetostates(poses_.size() +
                                                    poses.size());
-  newposetostates.insert(newposetostates.end(), posetostates_.begin(),
+  newposetostates.insert(newposetostates.begin(), posetostates_.begin(),
                          posetostates_.end());
   posetostates_ = newposetostates;
+
+  return *this;
+}
+
+RoadMap& RoadMap::addStateNodes(const std::vector<Vector7>& states) {
+  // concatenate previous nodes with given ones
+  //! check boundaries missing
+  std::vector<Vector7> concat;
+  concat.reserve(states_.size() + states.size());  // preallocate memory
+  concat.insert(concat.end(), states_.begin(), states_.end());
+  concat.insert(concat.end(), states.begin(), states.end());
+  states_ = concat;
+
+  return *this;
+}
+
+bool checkLimits(const Vector7& joint_state) {
+  Vector7 lim_inf, lim_sup;
+  lim_sup << 2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
+  lim_inf << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
+  for (size_t i = 0; i < 7; i++) {
+    // Check if value is within boundaries
+    if (lim_inf[i] > joint_state[i] || joint_state[i] > lim_sup[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -50,6 +83,8 @@ void RoadMap::addPoseNodes(const std::vector<Pose3>& poses) {
  *    1) jointindex -> solution : in states_
  *    2) joint_index -> pose_index : in statetopose_
  *    3) pose_index -> [joint_index] : in posetostates_
+ * If this is changed, every vector of posetostates_ should still be ordered
+ * ascendently by the theta7 value
  */
 void RoadMap::computeStateSolutions(const size_t theta7_samples) {
   // Get the possible different values for theta7
@@ -57,23 +92,30 @@ void RoadMap::computeStateSolutions(const size_t theta7_samples) {
   double theta7_l_lim = -2.8973, theta7_r_lim = 2.8973;
   double interval = theta7_r_lim - theta7_l_lim;
   std::vector<double> theta7_values(theta7_samples);
-  for (size_t i = 1; i <= theta7_samples; ++i)
-    theta7_values[i] = theta7_l_lim + i * interval / (theta7_samples + 1);
+  for (size_t i = 0; i < theta7_samples; ++i)
+    theta7_values[i] = theta7_l_lim + double((i + 1)) * interval /
+                                          double((theta7_samples + 1));
 
   for (size_t idx_pose = lastupdatedpose_; idx_pose < poses_.size();
        ++idx_pose) {
     posetostates_[idx_pose] = std::vector<size_t>();
 
-    for (size_t j = 1; j <= theta7_samples; j++) {
+    for (size_t j = 0; j < theta7_samples; j++) {
       std::vector<Vector7> solutions =
           PandaIKFast::inverse(poses_[idx_pose], theta7_values[j]);
 
       size_t n_sols = solutions.size();
+      if (n_sols == 0) num_not_found_++;
       size_t start = states_.size();
       for (size_t sol_idx = 0; sol_idx < n_sols; ++sol_idx) {
-        states_.push_back(solutions[sol_idx]);
-        statetopose_.push_back(idx_pose);
-        posetostates_[idx_pose].push_back(sol_idx + start);
+        // check boundaries and add to counter if deleted
+        if (checkLimits(solutions[sol_idx])) {
+          states_.push_back(solutions[sol_idx]);
+          statetopose_.push_back(idx_pose);
+          posetostates_[idx_pose].push_back(states_.size());
+        } else {
+          ++num_deleted_states_;
+        }
       }
     }
   }
@@ -84,8 +126,7 @@ size_t RoadMap::getPoseFromState(const size_t stateindex) {
   return statetopose_[stateindex];
 }
 
-const std::vector<size_t> RoadMap::getStatesFromPose(
-    const size_t poseindex) {
+const std::vector<size_t> RoadMap::getStatesFromPose(const size_t poseindex) {
   return posetostates_[poseindex];
 }
 
@@ -95,18 +136,60 @@ void RoadMap::createGraph() {
   // than threshold add edge between the nodes
   adjacencylist_ = std::vector<std::vector<RoadMap::Edge>>(states_.size());
   for (size_t i = 0; i < states_.size(); ++i) {
-    for (size_t j = 0; j < i; ++j) {
-      Vector7 diff = states_[i] - states_[j];
-      double distance = diff.norm();
-      if (distance < threshold_) {
-        adjacencylist_[i].push_back({distance, j});
-        adjacencylist_[j].push_back({distance, i});
+    for (size_t j = 0; j < states_.size(); ++j) {
+      if (i != j) {
+        Vector7 diff = states_[i] - states_[j];
+        double distance = diff.norm();
+        if (distance <= threshold_) {
+          adjacencylist_[i].push_back({distance, j});
+        }
+        // if (count%1000==0) std::cout << count/1000 << " i,j: " <<i << ", " <<
+        // j
+        // << std::endl;
       }
     }
   }
 }
 
-const std::vector<std::vector<RoadMap::Edge>> RoadMap::getadjacencylist() {
+void RoadMap::createGraphFromReference(
+    const std::vector<std::vector<std::pair<size_t, size_t>>>& relationships) {
+  adjacencylist_ = std::vector<std::vector<RoadMap::Edge>>(states_.size());
+  for (size_t i = 0; i < relationships.size(); i++) {
+    for (size_t j = 0; j < relationships[i].size(); ++j) {
+      for (size_t idx = relationships[i][j].first;
+           idx < relationships[i][j].second; ++idx) {
+        if (i != idx) {
+          Vector7 diff = states_[i] - states_[idx];
+          double distance = diff.norm();
+          if (distance <= threshold_) {
+            adjacencylist_[i].push_back({distance, idx});
+          }
+        }
+      }
+    }
+  }
+}
+
+/*
+void RoadMap::createGraphFromReference(
+    const std::vector<std::vector<size_t>>& relationships) {
+  adjacencylist_ = std::vector<std::vector<RoadMap::Edge>>(states_.size());
+  for (size_t i = 0; i < relationships.size(); i++) {
+    for (size_t j = 0; j < relationships[i].size(); ++j) {
+      if (i != relationships[i][j]) {
+        Vector7 diff = states_[i] - states_[relationships[i][j]];
+        double distance = diff.norm();
+        if (distance <= threshold_) {
+          adjacencylist_[i].push_back({distance, relationships[i][j]});
+        }
+      }
+    }
+  }
+}
+*/
+
+const std::vector<std::vector<RoadMap::Edge>>& RoadMap::getadjacencylist()
+    const {
   return adjacencylist_;
 }
 
@@ -155,7 +238,201 @@ const std::vector<size_t> RoadMap::findClosestNodesPose(
   }
   // return all node indices with corresponding pose being the closest pose
   // found
-  return posetostates_[argmin_node];
+  return this->getStatesFromPose(argmin_node);
+}
+/*
+struct Node {
+  size_t level, idx;
+  Node(size_t l, size_t i) : level{l}, idx{i} {}
+};*/
+
+void Heuristic::preprocess(const RoadMap& roadmap,
+                           const std::vector<std::vector<size_t>>& waypoints) {}
+double Heuristic::operator()(const RoadMap& roadmap, const Node& node) {
+  return 0;
+}
+
+void DirectDistance::preprocess(
+    const RoadMap& roadmap, const std::vector<std::vector<size_t>>& waypoints) {
+  end_nodes = waypoints.back();
+}
+double DirectDistance::operator()(const RoadMap& roadmap, const Node& node) {
+  double h = std::numeric_limits<double>::max();
+  for (size_t i = 0; i < end_nodes.size(); i++) {
+    double h_temp = (roadmap.getstatenodes()[node.idx] -
+                     roadmap.getstatenodes()[end_nodes[i]])
+                        .norm();
+    h = h_temp < h ? h_temp : h;
+  }
+
+  return h;
+}
+
+// this function is only valid for a consistent Heuristic
+// basic dijsktra is h=0
+// A* with basic h being h(n_ij, goal) = min(h(waypointset_j,goal) +
+// h(n_ij,waypointset_j)) for all points in waypointset_j, where
+// h(n_ij,waypointset_j) is just min(d(n_ij,waypointset_jk)) for all k
+// Cost for each point: len(waypointset_jk)*(cost to compute distance)
+// A* with landmarks will reduce the cost, but h might be a lower lowerbound
+// have to continue reading the paper
+std::vector<std::vector<size_t>> RoadMap::findPath(
+    const std::vector<std::vector<size_t>>& waypoints, Heuristic* h,
+    const std::string& save_path) {
+  h->preprocess(*this, waypoints);
+  size_t num_nodes = adjacencylist_.size();
+
+  // Declare map from graph node -> waypoint set . If it doesn't correspond to
+  // any waypoint, the value is waypoints.size()
+  std::vector<size_t> waypointset(num_nodes, waypoints.size());
+  for (size_t i = 0; i < waypoints.size(); i++) {
+    for (size_t j = 0; j < waypoints[i].size(); j++) {
+      waypointset[waypoints[i][j]] = i;
+    }
+  }
+
+  // Declare vector where, for each node, the shortest path distance to it from
+  // source will be stored and also the corresponding previous node (the parent
+  // node in the path)
+  std::vector<std::vector<std::pair<double, Node>>> shortest_path(
+      waypoints.size() - 1,
+      std::vector<std::pair<double, Node>>(
+          num_nodes, {std::numeric_limits<double>::max(),
+                      Node({waypoints.size() - 1, num_nodes})}));
+
+  // Initialize all source nodes with 0 distance and arbitrary impossible parent
+  // node
+  for (size_t i = 0; i < waypoints[0].size(); i++) {
+    shortest_path[0][waypoints[0][i]] = {0, Node({0, num_nodes + 1})};
+  }
+
+  bool cont = true;
+  std::vector<size_t> end_nodes_found;
+
+  struct WaypointEdge {
+    double f;
+    double g;
+    Node parent;
+    bool operator>(const WaypointEdge& r) const {
+      if (this->f == r.f) {
+        return this->g < r.g;
+      }
+      return this->f > r.g;
+    }
+  };
+
+  // A* algorithm:
+  // Use priority queue to get the minimum distance node every time
+  std::priority_queue<WaypointEdge, std::vector<WaypointEdge>,
+                      std::greater<WaypointEdge>>
+      p_queue;
+
+  // Push into queue the start nodes
+  for (size_t i = 0; i < waypoints[0].size(); i++) {
+    p_queue.push({h->operator()(*this, Node({0, waypoints[0][i]})), 0,
+                  Node({0, waypoints[0][i]})});
+  }
+
+  while (cont && not p_queue.empty()) {
+    WaypointEdge top = p_queue.top();
+    Node parent = top.parent;
+    p_queue.pop();
+
+    // check to see that it's not the
+    if (top.g == shortest_path[parent.level][parent.idx].first) {
+      if (waypointset[parent.idx] == parent.level + 1) {
+        // Out of all the possible end_nodes (that have corresponding pose equal
+        // to end_pose), store the ones with solution. The ndoes will be ordered
+        // in ascending order of path distance
+        if (waypointset[parent.idx] == waypoints.size() - 1) {
+          // Save goal node
+          end_nodes_found.push_back(parent.idx);
+
+          // total number of solutions wanted satisfied
+          cont = end_nodes_found.size() < num_maxpaths_;
+        } else {
+          // change level
+          shortest_path[parent.level + 1][parent.idx] = {
+              shortest_path[parent.level][parent.idx].first, parent};
+          p_queue.push({top.f, top.g, Node({parent.level + 1, parent.idx})});
+        }
+      } else {
+        // For each edge from parent, check if the shortest path from source
+        // to parent adding edge to a child node is shorter than the shortest
+        // path one found previously for the child node
+        for (Edge edge : adjacencylist_[parent.idx]) {
+          double w = edge.first;
+          size_t ch = edge.second;
+          if (top.g + w < shortest_path[parent.level][ch].first) {
+            shortest_path[parent.level][ch] = {
+                shortest_path[parent.level][parent.idx].first + w, parent};
+            p_queue.push(
+                {top.g + w + h->operator()(*this, Node({parent.level, ch})),
+                 top.g + w, Node({parent.level, ch})});
+          }
+        }
+      }
+    }
+  }
+  std::cout << "cont: " << (cont ? "yes" : "no") << std::endl;
+  std::cout << "queue empty? " << (p_queue.empty() ? "yes" : "no") << std::endl;
+
+  // Thanks to the priority queue, end_nodes_found is already sorted by
+  // distance value in ascending order We need to reconstruct the path
+  std::vector<std::vector<size_t>> paths(end_nodes_found.size());
+  for (size_t i = 0; i < paths.size(); ++i) {
+    size_t goal_node = end_nodes_found[i];
+    // We first get the inverse path: start from the end_node and go to the
+    // parent node defined in the distance vector
+    Node current_node = {waypoints.size() - 2, goal_node};
+    size_t counter = 0;
+    while (waypointset[current_node.idx] != 0 && counter++ < 1000) {
+      paths[i].push_back(current_node.idx);
+      current_node = shortest_path[current_node.level][current_node.idx].second;
+      if (current_node.idx == paths[i].back()) {
+        current_node =
+            shortest_path[current_node.level][current_node.idx].second;
+      }
+    }
+    paths[i].push_back(current_node.idx);
+
+    // Now we need to reverse the order:
+    std::reverse(paths[i].begin(), paths[i].end());
+  }
+
+  // change this!!!!!
+  if (not save_path.empty()) {
+    std::ofstream output(save_path);
+
+    output << "--poseindices::\n";
+    for (size_t i = 0; i < statetopose_.size(); ++i) {
+      output << statetopose_[i] << " ";
+    }
+
+    output << "\n--stagepoints::\n";
+    for (size_t i = 0; i < waypoints.size(); i++) {
+      output << i << ":";
+      for (const size_t& x : waypoints[i]) output << " " << x;
+      output << "\n";
+    }
+
+    output << "--paths::\n";
+    for (size_t i = 0; i < paths.size(); i++) {
+      output << i << ":";
+      for (size_t& x : paths[i]) output << " " << x;
+      output << "\n";
+    }
+
+    output << "--data::\n";
+    for (size_t i = 0; i < shortest_path.size(); i++) {
+      for (size_t j = 0; j < num_nodes; j++) {
+        output << shortest_path[i][j].first << " ";
+      }
+      output << "\n";
+    }
+  }
+
+  return paths;
 }
 
 // Dijkstra's algorithm
@@ -168,74 +445,14 @@ std::vector<std::vector<size_t>> RoadMap::findWaypoints(const size_t start_node,
 
   size_t num_nodes = adjacencylist_.size();
 
-  // Declare vector where, for each node, the shortest path distance to it from
-  // source will be stored and also the corresponding previous node (the parent
-  // node in the path)
-  std::vector<std::pair<double, size_t>> shortest_path(
-      num_nodes, {std::numeric_limits<double>::max(), num_nodes});
+  std::vector<std::vector<size_t>> waypoints_to_follow(2);
+  waypoints_to_follow[0] = {start_node};
+  waypoints_to_follow[1] = this->getStatesFromPose(end_pose);
+  Heuristic h;
 
-  // Initialize source node with 0 distance and arbitrary impossible parent node
-  shortest_path[start_node] = {0, num_nodes + 1};
+  std::vector<std::vector<size_t>> paths = findPath(waypoints_to_follow, &h);
 
-  bool cont = true;
-  std::vector<size_t> end_nodes_found;
-
-  // Dijkstra's algorithm:
-  // Use priority queue to get the minimum distance node every time
-  std::priority_queue<Edge, std::vector<Edge>, std::greater<Edge>> p_queue;
-  p_queue.push({0, start_node});
-  while (cont && not p_queue.empty()) {
-    double distance = p_queue.top().first;
-    size_t parent_node = p_queue.top().second;
-    p_queue.pop();
-
-    // Out of all the possible end_nodes (that have corresponding pose equal to
-    // end_pose), store the ones with solution. The ndoes will be ordered in
-    // ascending order of path distance
-    if (statetopose_[parent_node] == end_pose) {
-      end_nodes_found.push_back(parent_node);
-
-      // total number of solutions wanted satisfied
-      cont = end_nodes_found.size() < num_maxpaths;
-    }
-
-    // check to see if it's the shortest path one (to ease computation)
-    if (distance == shortest_path[parent_node].first) {
-      // For each edge from parent_node, check if the shortest path from source
-      // to parent_node adding edge to a child node is shorter than the shortest
-      // path one found previously for the child node
-      for (Edge edge : adjacencylist_[parent_node]) {
-        double w = edge.first;
-        size_t ch = edge.second;
-        if (shortest_path[ch].first > shortest_path[parent_node].first + w) {
-          shortest_path[ch] = {shortest_path[parent_node].first + w,
-                               parent_node};
-          p_queue.push({shortest_path[ch].first, ch});
-        }
-      }
-    }
-  }
-
-  // Thanks to the priority queue, end_nodes_found is already sorted by distance
-  // value in ascending order
-  // We need to reconstruct the path
-  std::vector<std::vector<size_t>> waypoints(end_nodes_found.size());
-  for (size_t i = 0; i < waypoints.size(); ++i) {
-    size_t end_node = end_nodes_found[i];
-    // We first get the inverse path: start from the end_node and go to the
-    // parent node defined in the distance vector
-    size_t current_node = end_node;
-    while (current_node != start_node) {
-      waypoints[i].push_back(current_node);
-      current_node = shortest_path[current_node].second;
-    }
-    waypoints[i].push_back(start_node);
-
-    // Now we need to reverse the order:
-    std::reverse(waypoints[i].begin(), waypoints[i].end());
-  }
-
-  return waypoints;
+  return paths;
 }
 
 }  // namespace gtdynamics
