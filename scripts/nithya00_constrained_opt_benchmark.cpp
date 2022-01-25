@@ -13,13 +13,14 @@
  * @author: Yetong Zhang
  */
 
+#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+
 #include <fstream>
 #include <iostream>
 
 #include "constrainedExample.h"
-#include "gtdynamics/optimizer/AugmentedLagrangianOptimizer.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/optimizer/PenaltyMethodOptimizer.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -50,8 +51,8 @@ int main(int argc, char** argv) {
   /// Solve the constraint problem with Penalty Method optimizer.
   gtdynamics::PenaltyMethodOptimizer penalty_optimizer;
   gtdynamics::ConstrainedOptResult penalty_info;
-  Values penalty_results =
-      penalty_optimizer.optimize(graph, constraints, init_values, &penalty_info);
+  Values penalty_results = penalty_optimizer.optimize(
+      graph, constraints, init_values, &penalty_info);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
   gtdynamics::AugmentedLagrangianOptimizer augl_optimizer;
@@ -78,9 +79,11 @@ int main(int argc, char** argv) {
   std::ofstream penalty_file;
   penalty_file.open("penalty_data.txt");
   for (size_t i = 0; i < penalty_info.num_iters.size(); i++) {
-    penalty_file << penalty_info.num_iters[i] << " " << penalty_info.mu_values[i]
-                 << " " << evaluate_constraint(penalty_info.intermediate_values[i])
-                 << " " << evaluate_cost(penalty_info.intermediate_values[i]) << "\n";
+    penalty_file << penalty_info.num_iters[i] << " "
+                 << penalty_info.mu_values[i] << " "
+                 << evaluate_constraint(penalty_info.intermediate_values[i])
+                 << " " << evaluate_cost(penalty_info.intermediate_values[i])
+                 << "\n";
   }
   penalty_file.close();
 

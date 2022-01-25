@@ -11,18 +11,17 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/universal_robot/Robot.h"
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 
 #include <algorithm>
 #include <memory>
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;

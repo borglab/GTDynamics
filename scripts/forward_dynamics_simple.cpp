@@ -12,15 +12,14 @@
  * @author Alejandro Escontrela, Stephanie McCormick, and Yetong Zhang
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using namespace gtdynamics;
 
@@ -33,8 +32,7 @@ int main(int argc, char** argv) {
 
   // Build a factor graph with all the kinodynamics constraints.
   DynamicsGraph dg_builder = DynamicsGraph(gravity, planar_axis);
-  gtsam::NonlinearFactorGraph dfg =
-      dg_builder.dynamicsFactorGraph(robot, 0);
+  gtsam::NonlinearFactorGraph dfg = dg_builder.dynamicsFactorGraph(robot, 0);
 
   // Specify the priors and add them to the factor graph.
   gtsam::Values known_values;

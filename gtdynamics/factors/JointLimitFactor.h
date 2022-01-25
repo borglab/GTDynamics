@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
@@ -23,8 +24,6 @@
 #include <limits>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 

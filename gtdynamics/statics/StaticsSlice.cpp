@@ -11,16 +11,15 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/TorqueFactor.h>             // TODO: move
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>  // TODO: move
+#include <gtdynamics/factors/WrenchPlanarFactor.h>       // TODO: move
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
-
-#include "gtdynamics/factors/TorqueFactor.h"             // TODO: move
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"  // TODO: move
-#include "gtdynamics/factors/WrenchPlanarFactor.h"       // TODO: move
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 using gtsam::assert_equal;

@@ -13,6 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
@@ -21,12 +26,6 @@
 
 #include <boost/optional.hpp>
 #include <string>
-
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 

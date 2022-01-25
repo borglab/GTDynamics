@@ -11,7 +11,7 @@
  * @author: Yetong Zhang, Frank Dellaert
  */
 
-#include "gtdynamics/optimizer/EqualityConstraint.h"
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 
 namespace gtdynamics {
 

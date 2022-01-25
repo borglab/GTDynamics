@@ -11,8 +11,16 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/JsonSaver.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -26,16 +34,6 @@
 #include <set>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
-#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
-#include "gtdynamics/factors/ContactHeightFactor.h"
-#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/JsonSaver.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Double_;
 using gtsam::ExpressionFactor;

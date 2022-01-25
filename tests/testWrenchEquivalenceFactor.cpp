@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +26,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -64,8 +64,7 @@ TEST(WrenchEquivalenceFactor, error_1) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor->unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
@@ -92,11 +91,10 @@ TEST(WrenchEquivalenceFactor, error_2) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor->unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  
+
   // Make sure linearization is correct.
 
   double diffDelta = 1e-7;
@@ -121,8 +119,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor->unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
