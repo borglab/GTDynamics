@@ -32,6 +32,8 @@ RoadMap::RoadMap() {
   num_maxpaths_ = 1;
   num_deleted_states_ = 0;
   num_not_found_ = 0;
+  for (size_t i = 0; i < 9; ++i) aftercheck_distribution[i] = 0;
+  for (size_t i = 0; i < 9; ++i) beforecheck_distribution[i] = 0;
 }
 
 RoadMap& RoadMap::addPoseNodes(const std::vector<Pose3>& poses) {
@@ -64,17 +66,39 @@ RoadMap& RoadMap::addStateNodes(const std::vector<Vector7>& states) {
   return *this;
 }
 
-bool checkLimits(const Vector7& joint_state) {
+// Return true when within limits
+bool RoadMap::checkJointLimits(const Vector7& joint_state) {
   Vector7 lim_inf, lim_sup;
   lim_sup << 2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   lim_inf << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
   for (size_t i = 0; i < 7; i++) {
     // Check if value is within boundaries
     if (lim_inf[i] > joint_state[i] || joint_state[i] > lim_sup[i]) {
+      if (joint_state[i] < lim_sup[i] - 2 * M_PI) {
+        std::cout << "Epp!!! <" << i + 1 << ": " << lim_inf[i] - 2 * M_PI
+                  << " < " << joint_state[i] << " < " << lim_sup[i] - 2 * M_PI
+                  << std::endl;
+      }
+      if (joint_state[i] > lim_inf[i] + 2 * M_PI) {
+        std::cout << "Epp!!! >" << i + 1 << ": " << lim_inf[i] + 2 * M_PI
+                  << " < " << joint_state[i] << " < " << lim_sup[i] + 2 * M_PI
+                  << std::endl;
+      }
       return false;
     }
   }
   return true;
+}
+
+std::vector<double> theta7Discretization(const size_t theta7_samples) {
+  double theta7_l_lim = -2.8973, theta7_r_lim = 2.8973;
+  double interval = theta7_r_lim - theta7_l_lim;
+  std::vector<double> theta7_values(theta7_samples);
+  for (size_t i = 0; i < theta7_samples; ++i)
+    theta7_values[i] = theta7_l_lim + double((i + 1)) * interval /
+                                          double((theta7_samples + 1));
+
+  return theta7_values;
 }
 
 /**
@@ -89,12 +113,8 @@ bool checkLimits(const Vector7& joint_state) {
 void RoadMap::computeStateSolutions(const size_t theta7_samples) {
   // Get the possible different values for theta7
   // TODO: factorize this with unittests, choose random or uniform sampling
-  double theta7_l_lim = -2.8973, theta7_r_lim = 2.8973;
-  double interval = theta7_r_lim - theta7_l_lim;
-  std::vector<double> theta7_values(theta7_samples);
-  for (size_t i = 0; i < theta7_samples; ++i)
-    theta7_values[i] = theta7_l_lim + double((i + 1)) * interval /
-                                          double((theta7_samples + 1));
+  theta7_samples_ = theta7_samples;
+  std::vector<double> theta7_values = theta7Discretization(theta7_samples);
 
   for (size_t idx_pose = lastupdatedpose_; idx_pose < poses_.size();
        ++idx_pose) {
@@ -104,18 +124,36 @@ void RoadMap::computeStateSolutions(const size_t theta7_samples) {
       std::vector<Vector7> solutions =
           PandaIKFast::inverse(poses_[idx_pose], theta7_values[j]);
 
-      size_t n_sols = solutions.size();
-      if (n_sols == 0) num_not_found_++;
+      size_t sols_size = solutions.size();
+      size_t n_sols_valid = 0;
+      if (sols_size == 0) num_not_found_++;
       size_t start = states_.size();
-      for (size_t sol_idx = 0; sol_idx < n_sols; ++sol_idx) {
+      for (size_t sol_idx = 0; sol_idx < sols_size; ++sol_idx) {
+        // change joint 6 domain from [-PI,PI] (default ikfast one) to
+        // [-0.5,-0.5+2*PI] so joint limits [-0.0175, 3.7525] are within the
+        // domain
+        if (solutions[sol_idx](5) < -0.5) {
+          solutions[sol_idx](5) += 2 * M_PI;
+        }
         // check boundaries and add to counter if deleted
-        if (checkLimits(solutions[sol_idx])) {
+        if (checkJointLimits(solutions[sol_idx])) {
           states_.push_back(solutions[sol_idx]);
           statetopose_.push_back(idx_pose);
-          posetostates_[idx_pose].push_back(states_.size());
+          posetostates_[idx_pose].push_back(states_.size() - 1);
+          n_sols_valid++;
         } else {
           ++num_deleted_states_;
         }
+      }
+      if (sols_size <= 8) {
+        beforecheck_distribution[sols_size]++;
+      } else {
+        std::cout << "what??? in computestatesolutions I got more than 8 "
+                     "solutions from ikfast at once"
+                  << std::endl;
+      }
+      if (n_sols_valid <= 8) {
+        aftercheck_distribution[n_sols_valid]++;
       }
     }
   }
@@ -151,13 +189,100 @@ void RoadMap::createGraph() {
   }
 }
 
+std::vector<size_t> indexStatesByTheta(
+    const std::vector<size_t>& states_indices,
+    const std::vector<gtsam::Vector7>& states_values,
+    const size_t theta7_samples) {
+  std::vector<double> theta7_values = theta7Discretization(theta7_samples);
+  std::vector<size_t> indexbytheta7(theta7_samples);
+  size_t theta_idx = 0;
+  for (size_t state_idx = 0; state_idx < states_indices.size(); state_idx++) {
+    while (theta_idx < theta7_samples &&
+           theta7_values[theta_idx] <=
+               states_values[states_indices[state_idx]](6)) {
+      indexbytheta7[theta_idx] = states_indices[state_idx];
+      theta_idx++;
+    }
+  }
+  while (theta_idx < theta7_samples) {
+    indexbytheta7[theta_idx] = states_indices.back() + 1;
+    theta_idx++;
+  }
+
+  return indexbytheta7;
+}
+
+// Relationships will be a list of pairs for each state node. These pairs
+// represent each a region of Example: list is [(1,4),(8,10)]. This represents:
+// [1,4) u [8,10) = {1,2,3,8,9}
+// if we had the state nodes indexed by theta7 value too this function would be
+// trivial to do, but we don't have it indexed by theta7. Our assumption is that
+// the node indices from getStatesFromPose are list of contiguous indices
+// that are also ordered ascendengly by theta7 value
+std::vector<std::vector<std::pair<size_t, size_t>>>
+RoadMap::computeStateLocality(
+    const std::vector<std::vector<size_t>>& pose_locality,
+    size_t theta_kernel_size) {
+  const std::vector<Vector7>& states = getstatenodes();
+  std::vector<std::vector<std::pair<size_t, size_t>>> states_locality(
+      states.size());
+
+  for (size_t i = 0; i < pose_locality.size(); i++) {
+    std::vector<size_t> states_i = getStatesFromPose(i);
+
+    if (states_i.size() > 0) {
+      std::vector<size_t> thetaindexed_i =
+          indexStatesByTheta(states_i, states, theta7_samples_);
+
+      for (size_t j = 0; j < pose_locality[i].size(); ++j) {
+        // For each pose sufficiently close (pose_locality), get its
+        // corresponding nodes.
+        const std::vector<size_t> states_j =
+            getStatesFromPose(pose_locality[i][j]);
+
+        if (states_j.size() > 0) {
+          std::vector<size_t> thetaindexed_j =
+              indexStatesByTheta(states_j, states, theta7_samples_);
+
+          for (size_t theta_idx = 0; theta_idx < thetaindexed_i.size();
+               theta_idx++) {
+            size_t state_l_lim = thetaindexed_i[theta_idx];
+            size_t state_r_lim =
+                (theta_idx < theta7_samples_ - 1 ? thetaindexed_i[theta_idx + 1]
+                                                 : states_i.back() + 1);
+
+            size_t theta_l_slider =
+                (theta_idx > theta_kernel_size ? theta_idx - theta_kernel_size
+                                               : 0);
+            size_t theta_r_slider = theta_idx + theta_kernel_size + 1;
+
+            size_t state_l_slider = thetaindexed_j[theta_l_slider];
+            size_t state_r_slider = (theta_r_slider < theta7_samples_
+                                         ? thetaindexed_j[theta_r_slider]
+                                         : states_j.back() + 1);
+
+            if (state_l_slider < state_r_slider) {
+              for (size_t idx = state_l_lim; idx < state_r_lim; idx++) {
+                states_locality[idx].push_back(
+                    {state_l_slider, state_r_slider});
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return states_locality;
+}
+
 void RoadMap::createGraphFromReference(
-    const std::vector<std::vector<std::pair<size_t, size_t>>>& relationships) {
+    const std::vector<std::vector<std::pair<size_t, size_t>>>& reference) {
   adjacencylist_ = std::vector<std::vector<RoadMap::Edge>>(states_.size());
-  for (size_t i = 0; i < relationships.size(); i++) {
-    for (size_t j = 0; j < relationships[i].size(); ++j) {
-      for (size_t idx = relationships[i][j].first;
-           idx < relationships[i][j].second; ++idx) {
+  for (size_t i = 0; i < reference.size(); i++) {
+    for (size_t j = 0; j < reference[i].size(); ++j) {
+      for (size_t idx = reference[i][j].first; idx < reference[i][j].second;
+           ++idx) {
         if (i != idx) {
           Vector7 diff = states_[i] - states_[idx];
           double distance = diff.norm();
@@ -430,6 +555,7 @@ std::vector<std::vector<size_t>> RoadMap::findPath(
       }
       output << "\n";
     }
+    output.close();
   }
 
   return paths;

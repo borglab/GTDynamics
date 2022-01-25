@@ -23,6 +23,12 @@ CanvasSampler::CanvasSampler(const Point3& A, const Point3& B, const Point3& C)
   Point3 normal = AB_unit.cross(AC_unit);
   bRc_ = Rot3(AB_unit, AC_unit, normal);
 }
+
+/**
+ * Contiguous poses on the vector are contiguous in the AC axis (except edge
+ * cases) Interpreting the AB direction as horizontal (rows) and the AC as 
+ * vertical (columns), poses are stored in a column-major basis.
+ */
 std::vector<Pose3> CanvasSampler::uniformSample(const size_t numABsamples,
                                                 const size_t numACsamples) {
   Point3 AB = B_ - A_;
@@ -45,35 +51,31 @@ std::vector<Pose3> CanvasSampler::randomSample(const size_t numsamples) {
   std::vector<Pose3> samples(numsamples);
   for (size_t i = 0; i < numsamples; i++) {
     Vector2 random = Vector2::Random();
-    Point3 btsample = A_ + (AB * (random(0)+1)) + (AC * (random(1)+1))/2;
+    Point3 btsample = A_ + (AB * (random(0) + 1)) + (AC * (random(1) + 1)) / 2;
     samples[i] = Pose3(bRc_, btsample);
   }
   return samples;
 }
 
-std::vector<std::vector<size_t>> uniformRelationships(size_t numABsamples, size_t numACsamples, size_t kernel_size){
-  std::vector<std::vector<size_t>> pose_relationships(numABsamples*numACsamples);
+std::vector<std::vector<size_t>> CanvasSampler::uniformPoseLocality(
+    size_t numABsamples, size_t numACsamples, size_t kernel_size) {
+  std::vector<std::vector<size_t>> pose_locality(numABsamples * numACsamples);
   for (size_t i = 0; i < numABsamples; ++i) {
     for (size_t j = 0; j < numACsamples; ++j) {
-      for (size_t kernel_i = 0;
-           kernel_i < 2 * kernel_size + 1 && kernel_i + i < numABsamples;
-           ++kernel_i) {
-        if (kernel_size <= i + kernel_i) {
-          for (size_t kernel_j = 0;
-               kernel_j < 2 * kernel_size + 1 && kernel_j + j < numACsamples;
-               ++kernel_j) {
-            if ((kernel_size <= j + kernel_j) &&
-                (kernel_size <= i + kernel_i) &&
-                !((kernel_size == kernel_i) && (kernel_size == kernel_j))) {
-              pose_relationships[numACsamples * i + j].push_back(
-                  numABsamples * (i - (kernel_size) + kernel_i) +
-                  (j - (kernel_size) + kernel_j));
-            }
-          }
+      size_t min_i = (i > kernel_size ? i : kernel_size) - kernel_size;
+      size_t max_i = (i + kernel_size + 1 < numABsamples ? i + kernel_size + 1
+                                                         : numABsamples);
+      for (size_t slide_i = min_i; slide_i < max_i; ++slide_i) {
+        size_t min_j = (j > kernel_size ? j : kernel_size) - kernel_size;
+        size_t max_j = (j + kernel_size + 1 < numACsamples ? j + kernel_size + 1
+                                                           : numACsamples);
+        for (size_t slide_j = min_j; slide_j < max_j; ++slide_j) {
+          pose_locality[numACsamples * i + j].push_back(numACsamples * slide_i +
+                                                        slide_j);
         }
       }
     }
   }
-  return pose_relationships;
+  return pose_locality;
 }
 }  // namespace gtdynamics

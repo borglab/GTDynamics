@@ -56,19 +56,52 @@ TEST(CanvasSampler, uniformSample) {
   EXPECT(assert_equal(expected_poses, actual_poses, 1e-5))
 }
 
-TEST(CanvasSampler, uniformRelationships) {
+TEST(CanvasSampler, uniformPoseLocality) {
   std::vector<std::vector<size_t>> actualrelationships =
-      uniformRelationships(2, 2, 1);
-  std::vector<std::vector<size_t>> expectedrelationships(4);
-  expectedrelationships[0] = {0, 1, 2};
-  expectedrelationships[1] = {0, 1, 4};
-  expectedrelationships[2] = {0, 2, 4};
-  expectedrelationships[3] = {1, 2, 4};
-  for (size_t i = 0; i < 4; i++) {
+      CanvasSampler::uniformPoseLocality(3, 3, 1);
+  std::vector<std::vector<size_t>> expectedrelationships(9);
+  expectedrelationships[0] = {0, 1, 3, 4};
+  expectedrelationships[1] = {0, 1, 2, 3, 4, 5};
+  expectedrelationships[2] = {1, 2, 4, 5};
+  expectedrelationships[3] = {0, 1, 3, 4, 6, 7};
+  expectedrelationships[4] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+  expectedrelationships[5] = {1, 2, 4, 5, 7, 8};
+  expectedrelationships[6] = {3, 4, 6, 7};
+  expectedrelationships[7] = {3, 4, 5, 6, 7, 8};
+  expectedrelationships[8] = {4, 5, 7, 8};
+  EXPECT(assert_equal(9, actualrelationships.size()))
+  for (size_t i = 0; i < 9; i++) {
     EXPECT(assert_equal(expectedrelationships[i], actualrelationships[i]))
   }
 
-  // maybe put another example?
+  actualrelationships = CanvasSampler::uniformPoseLocality(3, 2, 1);
+  expectedrelationships = std::vector<std::vector<size_t>>(6);
+  expectedrelationships[0] = {0, 1, 2, 3};
+  expectedrelationships[1] = {0, 1, 2, 3};
+  expectedrelationships[2] = {0, 1, 2, 3, 4, 5};
+  expectedrelationships[3] = {0, 1, 2, 3, 4, 5};
+  expectedrelationships[4] = {2, 3, 4, 5};
+  expectedrelationships[5] = {2, 3, 4, 5};
+
+  EXPECT(assert_equal(6, actualrelationships.size()))
+  for (size_t i = 0; i < 6; i++) {
+    EXPECT(assert_equal(expectedrelationships[i], actualrelationships[i]))
+  }
+
+  actualrelationships = CanvasSampler::uniformPoseLocality(2, 3, 1);
+  expectedrelationships = std::vector<std::vector<size_t>>(6);
+  expectedrelationships[0] = {0, 1, 3, 4};
+  expectedrelationships[1] = {0, 1, 2, 3, 4, 5};
+  expectedrelationships[2] = {1, 2, 4, 5};
+  expectedrelationships[3] = {0, 1, 3, 4};
+  expectedrelationships[4] = {0, 1, 2, 3, 4, 5};
+  expectedrelationships[5] = {1, 2, 4, 5};
+
+  EXPECT(assert_equal(6, actualrelationships.size()))
+  for (size_t i = 0; i < 6; i++) {
+    EXPECT(assert_equal(expectedrelationships[i], actualrelationships[i]))
+  }
+
 }
 
 TEST(CanvasSampler, randomSample) {

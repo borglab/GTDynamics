@@ -7,6 +7,7 @@
 
 //#include <gtdynamics/pandarobot/roadmap/RoadMap.h>
 #include <gtdynamics/pandarobot/ikfast/PandaIKFast.h>
+#include <gtdynamics/pandarobot/roadmap/RoadMap.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -22,7 +23,7 @@ bool checkLimits(const Vector7& joint_state) {
   lim_inf << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
   for (size_t i = 0; i < 7; i++) {
     // Check if value is within boundaries
-    if (lim_inf[i] > joint_state[i] || joint_state[i] > lim_sup[i]){
+    if (lim_inf[i] > joint_state[i] || joint_state[i] > lim_sup[i]) {
       return false;
     }
   }
@@ -106,6 +107,8 @@ int main() {
       }
       std::cout << std::endl;
     }
+    std::cout << statenodes.size() << " (to be deleted: " << num_deleted_states
+              << ") " << std::endl;
     std::cout << std::endl;
   } while (std::cin >> s);
 }

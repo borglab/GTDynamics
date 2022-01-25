@@ -30,8 +30,12 @@ class RoadMap {
   double threshold_;  // edge weight threshold (max joint distance)
   std::vector<std::vector<Edge>> adjacencylist_;
   size_t num_maxpaths_;
+  // vars used when computing solutions
+  size_t theta7_samples_;
   size_t num_deleted_states_;
   size_t num_not_found_;
+  std::array<size_t, 9> beforecheck_distribution;
+  std::array<size_t, 9> aftercheck_distribution;
 
  public:
   RoadMap();
@@ -39,6 +43,8 @@ class RoadMap {
   // get member methods
   size_t getnumdeleted() const { return num_deleted_states_; }
   size_t getnumnotfound() const { return num_not_found_; }
+  const std::array<size_t, 9> getbeforecheckdistribution() const {return beforecheck_distribution; }
+  const std::array<size_t, 9> getaftercheckdistribution() const {return aftercheck_distribution; }
   const std::vector<gtsam::Pose3>& getposes() const { return poses_; }
   const std::vector<gtsam::Vector7>& getstatenodes() const { return states_; }
   const std::vector<std::vector<Edge>>& getadjacencylist() const;
@@ -46,7 +52,6 @@ class RoadMap {
   // not direct get member methods
   size_t getPoseFromState(const size_t stateindex);
   const std::vector<size_t> getStatesFromPose(const size_t poseindex);
-  const std::vector<size_t> getStatesandThetaFromPose(const size_t poseindex);
 
   // set member methods
   void set_threshold(double threshold) { threshold_ = threshold; }
@@ -58,6 +63,8 @@ class RoadMap {
    * @param poses -- poses to be added
    */
   RoadMap& addPoseNodes(const std::vector<gtsam::Pose3>& poses);
+
+  static bool checkJointLimits(const gtsam::Vector7& joint_state);
 
   RoadMap& addStateNodes(const std::vector<gtsam::Vector7>& states);
 
@@ -76,11 +83,21 @@ class RoadMap {
    * @brief Create a Graph from state nodes found previously. It puts an edge
    * between nodes if the distance in jointspace is smaller than a threshold
    * (defined in set_threshold)
+   * It does so naively, a O(n^2) complexity with n being the number of state
+   * nodes
    *
    */
-  void createGraph();
+  void createGraph();  // createGraphNaively
+
+  // createGraph(pose_locality);
+
+  std::vector<std::vector<std::pair<size_t, size_t>>>
+  computeStateLocality(
+      const std::vector<std::vector<size_t>>& pose_locality,
+      size_t theta_kernel_size = 1);
+
   void createGraphFromReference(
-      const std::vector<std::vector<std::pair<size_t, size_t>>>& relationships);
+      const std::vector<std::vector<std::pair<size_t, size_t>>>& reference);
 
   /**
    * @brief Get index of closest state node to a given state. The used distance
@@ -139,4 +156,5 @@ struct DirectDistance : Heuristic {
                   const std::vector<std::vector<size_t>>& waypoints) override;
   double operator()(const RoadMap& roadmap, const Node& node) override;
 };
+
 }  // namespace gtdynamics
