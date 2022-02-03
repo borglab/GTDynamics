@@ -9,25 +9,23 @@
  * @author Varun Agrawal
 """
 
+import unittest
 # pylint: disable=no-name-in-module, import-error, no-member
 from pathlib import Path
-import unittest
-
-import numpy as np
-import gtsam
-from gtsam.symbol_shorthand import X
-from gtsam.utils.test_case import GtsamTestCase
 
 import gtdynamics as gtd
+import gtsam
+import numpy as np
+from gtsam.symbol_shorthand import X
+from gtsam.utils.test_case import GtsamTestCase
 
 
 class TestRobot(GtsamTestCase):
     """Tests related to specific robot config."""
-
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        model_file = Path(gtd.URDF_PATH) / "a1.urdf"
+        model_file = Path(gtd.URDF_PATH) / "a1" / "a1.urdf"
         self.robot = gtd.CreateRobotFromFile(str(model_file))
         self.base_name = "trunk"
 
@@ -71,8 +69,7 @@ class TestRobot(GtsamTestCase):
         fk = self.robot.forwardKinematics(self.joint_angles, t, self.base_name)
         end_link_pose = gtd.Pose(fk, end_link.id(), t)
 
-        values.insert(
-            gtd.PoseKey(end_link.id(), t).key(), end_link_pose)
+        values.insert(gtd.PoseKey(end_link.id(), t).key(), end_link_pose)
 
         graph = gtsam.NonlinearFactorGraph()
         graph.push_back(factor)
