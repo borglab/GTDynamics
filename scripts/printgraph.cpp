@@ -78,7 +78,7 @@ int main() {
     }
     std::cout << std::endl;
     for (size_t i = 0; i < 9; i++) {
-      std::cout << roadmap.getsoldistribution()[i] << "\t";
+      //std::cout << roadmap.getsoldistribution()[i] << "\t";
     }
     std::cout << std::endl;
   }

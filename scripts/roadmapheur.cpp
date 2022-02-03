@@ -43,6 +43,9 @@ int main() {
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
+  std::cout << "number of sols for pose " << numACsamples*17+50 << ": " << roadmap.getStatesFromPose(numACsamples*17+50).size() << std::endl;
+std::cout << "number of sols for pose " << numACsamples*16+50 << ": " << roadmap.getStatesFromPose(numACsamples*16+50).size() << std::endl;
+
   {
     std::cout << "poses: " << roadmap.getposes().size() << std::endl
               << "number of theta points: " << theta7_samples << std::endl
@@ -146,6 +149,27 @@ int main() {
       stage_nodes[i] = roadmap.findClosestNodesPose(stage_poses[i]);
     }
 
+    for (size_t i = 0; i < stage_nodes.size(); i++) {
+      size_t current_pose = roadmap.getPoseFromState(stage_nodes[i][0]);
+      std::cout << "Node " << i << ": (" << current_pose / numACsamples
+                << ", " << current_pose % numACsamples << ")" << std::endl;
+                /*
+      for (size_t j = 0; j < stage_nodes[i].size(); j++) {
+        size_t node_actual = stage_nodes[i][j];
+        std::cout << "\t" << roadmap.getstatenodes()[node_actual](6) << " -> ";
+        for (size_t k = 0; k < roadmap.getadjacencylist()[node_actual].size();
+             k++) {
+          size_t current_child =
+              roadmap.getadjacencylist()[node_actual][k].second;
+          size_t child_pose = roadmap.getPoseFromState(current_child);
+          std::cout << "(" << child_pose / numACsamples << ", "
+                    << child_pose % numACsamples << ", "
+                    << roadmap.getstatenodes()[current_child](6) << "), ";
+        }
+        std::cout << std::endl;
+      }*/
+    }
+
     roadmap.set_num_maxpaths(1);
     {
       Heuristic h;
@@ -171,17 +195,20 @@ int main() {
         std::vector<size_t>& path = paths[i];
         std::cout << "path #" << i << ": " << path.size() << std::endl;
         for (size_t j = 0; j < path.size(); ++j) {
-          std::cout << "{" << path[j] << ", ("
-                    << roadmap.getPoseFromState(path[j]) / numACsamples << ", "
-                    << roadmap.getPoseFromState(path[j]) % numACsamples << ", "
-                    << roadmap.getstatenodes()[path[j]](6) << "), "
-                    << (roadmap.getstatenodes()[path[j + 1]] -
-                        roadmap.getstatenodes()[path[j]])
-                           .norm()
-                    << "},  " << std::endl;
-          costs[i] += (roadmap.getstatenodes()[path[j + 1]] -
-                       roadmap.getstatenodes()[path[j]])
-                          .norm();
+          if (j != path.size() - 1) {
+            std::cout << "{" << path[j] << ", ("
+                      << roadmap.getPoseFromState(path[j]) / numACsamples
+                      << ", "
+                      << roadmap.getPoseFromState(path[j]) % numACsamples
+                      << ", " << roadmap.getstatenodes()[path[j]](6) << "), "
+                      << (roadmap.getstatenodes()[path[j + 1]] -
+                          roadmap.getstatenodes()[path[j]])
+                             .norm()
+                      << "},  " << std::endl;
+            costs[i] += (roadmap.getstatenodes()[path[j + 1]] -
+                         roadmap.getstatenodes()[path[j]])
+                            .norm();
+          }
           output << roadmap.getstatenodes()[path[j]].transpose() << std::endl;
 
           // Point3 pos = roadmap.getposes()[roadmap.getPoseFromState(path[j])]

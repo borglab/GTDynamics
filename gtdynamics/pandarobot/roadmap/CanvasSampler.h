@@ -21,14 +21,12 @@ class CanvasSampler {
  public:
   /**
    * @brief Construct a new Canvas Sampler object.
-   * Canvas orientation such that x_c = normalize(B_-A_), y_c = normalize(C_-A_)
+   * Canvas orientation constrained by x_c = normalize(B_-A_), y_c =
+   * normalize(C_-A_)
    *
-   * The params can be interpreted as follows, but can be in any position as
-   * long as the created vectors AB and AC are orthogonal and the normal created
-   * by AB x AC is in the points in the desired direction
-   * @param A := Upper left corner
-   * @param B := Upper right corner
-   * @param C := Lower left corner
+   * @param A := Upper left corner  (or equivalent)
+   * @param B := Upper right corner (or equivalent)
+   * @param C := Lower left corner (or equivalent)
    */
   CanvasSampler(const gtsam::Point3& A, const gtsam::Point3& B,
                 const gtsam::Point3& C);
@@ -38,14 +36,8 @@ class CanvasSampler {
    * lattice. All the poses will have the same orientation equal to the canvas
    * one (bRc_, value initialized in constructor).
    *
-   * The pose position is what is sampled, and it is computed as such:
-   *
-   * p = A_ + b/(numABsamples+1) * AB_vector + c/(numACsamples+1) * AC_vector
-   *
-   * where b & c are naturals, b in [1,numABsamples] and c in [1,numACsamples].
-   *
    * There are numABsamples different values on the AB direction, and
-   * numACsamples on the AC one.
+   * numACsamples on the AC one. The edges are not in the samples.
    *
    * @param numABsamples := number of equidistant samples on AB direction
    * @param numACsamples := number of equidistant samples on AC direction
@@ -63,13 +55,12 @@ class CanvasSampler {
    * direction counting the specified pose (kernel_size on the right, same on
    * the left, up and down). Total of (2*kernel_size+1)^2
    *
-   * This is can be then used when creating a graph from these poses, an edge
-   * can be added only to the local set poses and not the global one.
-   * More importantly, this can be used when a (quasi-)differentiable
-   * transformation is applied to the canvas space (in our case, an inverse
-   * kinematics one). When trying to find the close points in this space, one
-   * can start from the local pose set instead of naively comparing it with the
-   * global set of points.
+   * This can then be used when creating a graph from these poses: only add an
+   * edge to the local set poses and not the global one. More importantly, this
+   * can be used when a (quasi-)differentiable transformation is applied to the
+   * canvas space (in our case, an inverse kinematics one). When trying to find
+   * the close points in this space, one can start from the local pose set
+   * instead of naively comparing it with the global set of points.
    *
    * @param numABsamples := parameter used in uniformSample, number of
    * equidistant samples on AB direction

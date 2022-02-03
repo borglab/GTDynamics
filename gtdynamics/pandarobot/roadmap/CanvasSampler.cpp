@@ -26,7 +26,7 @@ CanvasSampler::CanvasSampler(const Point3& A, const Point3& B, const Point3& C)
 
 /**
  * Contiguous poses on the vector are contiguous in the AC axis (except edge
- * cases) Interpreting the AB direction as horizontal (rows) and the AC as 
+ * cases). Interpreting the AB direction as horizontal (rows) and the AC as
  * vertical (columns), poses are stored in a column-major basis.
  */
 std::vector<Pose3> CanvasSampler::uniformSample(const size_t numABsamples,
@@ -57,11 +57,21 @@ std::vector<Pose3> CanvasSampler::randomSample(const size_t numsamples) {
   return samples;
 }
 
+/**
+ * On a general case, given a pose, its locality is defined as square
+ * centered on the pose and that encompasses 2*kernel_size+1 poses in total in
+ * each direction counting the specified pose (kernel_size on the right, same on
+ * the left, up and down). Total of (2*kernel_size+1)^2
+
+ */
 std::vector<std::vector<size_t>> CanvasSampler::uniformPoseLocality(
     size_t numABsamples, size_t numACsamples, size_t kernel_size) {
   std::vector<std::vector<size_t>> pose_locality(numABsamples * numACsamples);
+
+  //For each pose in the grid we save in locality 
   for (size_t i = 0; i < numABsamples; ++i) {
     for (size_t j = 0; j < numACsamples; ++j) {
+      //
       size_t min_i = (i > kernel_size ? i : kernel_size) - kernel_size;
       size_t max_i = (i + kernel_size + 1 < numABsamples ? i + kernel_size + 1
                                                          : numABsamples);
