@@ -14,7 +14,7 @@ from pathlib import Path
 
 # pylint: disable=no-name-in-module, import-error, no-member
 import gtdynamics as gtd
-from gtsam import Pose3, Rot3, Values, Point3
+from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
 
 

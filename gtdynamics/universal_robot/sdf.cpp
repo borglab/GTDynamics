@@ -75,8 +75,9 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 
 // Get Link pose in base frame from sdf::Link object
 Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
-// Call SemanticPose::Resolve so the pose is resolved to the correct frame
-  /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+  // Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  // http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+
   // Get non-const pose of link in the frame of the joint it is connect to
   // (http://wiki.ros.org/urdf/XML/link).
   auto raw_pose = sdf_link->RawPose();

@@ -30,8 +30,7 @@ class TestPrint(unittest.TestCase):
         fg = gtd.NonlinearFactorGraph()
         fg.push_back(
             gtd.MinTorqueFactor(
-                gtd.TorqueKey(0, 0).key(),
-                gtsam.noiseModel.Unit.Create(1)))
+                gtd.TorqueKey(0, 0).key(), gtsam.noiseModel.Unit.Create(1)))
         self.assertTrue('T(0)0' in fg.__repr__())
 
     def test_key_formatter(self):
