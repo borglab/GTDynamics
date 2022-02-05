@@ -95,6 +95,7 @@ jobs:
         run: |
           # Install dependencies for gtwrap
           pip3 install -U pip setuptools numpy pyparsing pyyaml
+          pip3 install -U gtsam
 
       - name: GTwrap
         run: |
@@ -136,9 +137,6 @@ jobs:
       - name: Build
         run: make -j4
         working-directory: ./build
-
-      - name: Install GTSAM Python
-        run: pip3 install -U gtsam
 
       - name: Test
         run: make -j4 python-test
