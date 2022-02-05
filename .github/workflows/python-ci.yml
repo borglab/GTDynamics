@@ -120,10 +120,10 @@ jobs:
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
           make -j$(sysctl -n hw.physicalcpu) install && make python-install
 
-          pip3 install gtsam
-
           cd $GITHUB_WORKSPACE # go back to home directory
 
+      - name: Install GTSAM Python
+        run: pip3 install gtsam
 
       - name: Checkout
         uses: actions/checkout@v2
