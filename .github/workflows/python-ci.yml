@@ -122,9 +122,6 @@ jobs:
 
           cd $GITHUB_WORKSPACE # go back to home directory
 
-      - name: Install GTSAM Python
-        run: pip3 install gtsam
-
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -139,6 +136,9 @@ jobs:
       - name: Build
         run: make -j4
         working-directory: ./build
+
+      - name: Install GTSAM Python
+        run: pip3 install -U gtsam
 
       - name: Test
         run: make -j4 python-test
