@@ -13,20 +13,18 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
 
-import gtdynamics as gtd
-
 
 class TestRobot(GtsamTestCase):
     """Tests for the Robot class."""
-
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
+        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1", "a1.urdf")
 
     def test_forward_kinematics(self):
         """Test if FK is correct via comparison to a 3rd party library."""
@@ -48,8 +46,7 @@ class TestRobot(GtsamTestCase):
         for idx, joint in enumerate(joints):
             th[joint] = joint_angles[idx]
             gtd.InsertJointAngle(joint_angles_values,
-                                 robot.joint(joint).id(),
-                                 joint_angles[idx])
+                                 robot.joint(joint).id(), joint_angles[idx])
 
         # Forward kinematics via GTDynamics.
         fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")

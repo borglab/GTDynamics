@@ -167,6 +167,7 @@ class Link  {
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
 #include <gtdynamics/universal_robot/HelicalJoint.h>
+
 class JointParams {
   JointParams();
   double velocity_limit;
