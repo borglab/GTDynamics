@@ -16,6 +16,8 @@
 #include <gtsam/geometry/Pose3.h>
 
 #include "gtdynamics/dynamics/Chain.h"
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -128,6 +130,64 @@ TEST(Chain, InitChain) {
   // screwAxis which does not have 6 rows will throw an exception
   THROWS_EXCEPTION(Chain(sMb, screwAxis0));
   THROWS_EXCEPTION(Chain(sMb, screwAxis5));
+}
+
+// Test Chain Constraint
+TEST(Chain, ChainConstraint) {
+  // Get three link robot
+  Robot robot = CreateRobotFromFile(
+      kSdfPath + std::string("test/simple_rrr.sdf"), "simple_rrr_sdf");
+
+  // Create a single link chain using the robot joints
+  std::vector<Chain> chains;
+  for (auto&& joint : robot.joints()) {
+    Chain single_link_chain = Chain(joint->pMc(), joint->cScrewAxis());
+    chains.push_back(single_link_chain);
+  }
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+  Pose3 expected_sMb = Pose3(Rot3(), Point3(0, 0, 1.6));
+  Matrix expected_axes(6, 3);
+  expected_axes << 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0.9, 0.3, 0, 0, 0, 0, 0, 0;
+  EXPECT(assert_equal(composed.sMb(), expected_sMb, 1e-6));
+  EXPECT(assert_equal(composed.axes(), expected_axes, 1e-6));
+
+  // Get key for wrench at joint 1 on link 0 at time 0
+  const gtsam::Key wrench_key = gtdynamics::WrenchKey(0, 1, 0);
+
+  // Get expression for chain constraint using 3 link chain at time 0
+  auto expression = composed.ChainConstraint3(robot.joints(), wrench_key, 0);
+
+  // Create initial values.
+  gtsam::Values init_values;
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&init_values, joint->id(), 0, 0.0);
+    InsertTorque(&init_values, joint->id(), 0, 0.0);
+  }
+
+  // Set initial values for wrench
+  gtsam::Vector wrench(6);
+  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
+  InsertWrench(&init_values, 0, 1, 0, wrench);
+
+  // Set tolerance
+  gtsam::Vector3 tolerance(0.1, 0.1, 0.1);
+
+  // Create VectorExpressionEquality Constraint
+  auto constraint = VectorExpressionEquality<3>(expression, tolerance);
+  gtsam::Vector3 expected_values(1, 1.9, 1.3);
+  bool check = constraint.feasible(init_values);
+  Vector values = constraint(init_values);
+  EXPECT(!check);
+  EXPECT(assert_equal(values, expected_values, 1e-6));
+
+  // Create Factor same as in Optimizer for SOFT_CONSTRAINT
+  auto factor = constraint.createFactor(1.0);
+
+  // Check error
+  auto error = factor->unwhitenedError(init_values);
+  EXPECT(assert_equal(error, expected_values, 1e-6));
 }
 
 int main() {

@@ -20,6 +20,9 @@
 
 #include <boost/optional.hpp>
 
+#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/utils/values.h"
+
 using gtsam::Matrix;
 using gtsam::Pose3;
 using gtsam::Vector;
@@ -93,6 +96,46 @@ class Chain {
    */
   Pose3 poe(const Vector &q, boost::optional<Pose3 &> fTe = boost::none,
             gtsam::OptionalJacobian<-1, -1> J = boost::none);
+
+  /**
+   * This function implements the Dynamical dependency between the
+   * joint torques and the wrench applied on the body FOR A 3-LINK CHAIN (tau =
+   * J*F) The input wrench is the wrench applied on the body by the joint
+   * closest to the body. This equation is true in the case of massless links in
+   * the chain. Detailed explanation in readme (chain.md)
+   *
+   * @param wrench .................. Wrench applied on the body by the joint
+   * closest to it in the chain.
+   * @param angles .................. Angles of the joints in the chain.
+   * @param torques ................. Torques applied by the joints.
+   * @return ........................ Vector of difference.
+   */
+  Vector DynamicalEquality3(const Vector &wrench, const Vector &angles,
+                            const Vector &torques);
+
+  // Helper function to create expression with a vector, used in
+  // ChainConstraint3.
+  Vector MakeVector(const double value0, const double value1,
+                    const double value2) {
+    Vector q(3);
+    q << value0, value1, value2;
+    return q;
+  }
+
+  /**
+   * This function creates a gtsam expression of the Chain constraint FOR A
+   * 3-LINK CHAIN.
+   *
+   * @param joints ............... Vector of joints in the kinematic chain, FROM
+   * END-EFFECTOR TO BODY (first element in the vector is the joint whos child
+   * is the end-effector).
+   * @param wrench_key ........... Key of the wrench applied on the body by the
+   * joint closest to the body.
+   * @param k .................... Time slice.
+   * @return ..................... GTSAM expression of the chain constraint.
+   */
+  gtsam::Vector3_ ChainConstraint3(const std::vector<JointSharedPtr> &joints,
+                                   const gtsam::Key wrench_key, size_t k);
 };
 
 }  // namespace gtdynamics
