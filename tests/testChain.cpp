@@ -177,9 +177,9 @@ TEST(Chain, ChainConstraint) {
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
   gtsam::Vector3 expected_values(1, 1.9, 1.3);
-  bool check = constraint.feasible(init_values);
+  bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
-  EXPECT(!check);
+  EXPECT(!constraint_violation);
   EXPECT(assert_equal(values, expected_values, 1e-6));
 
   // Create Factor same as in Optimizer for SOFT_CONSTRAINT
