@@ -24,13 +24,13 @@ using gtsam::Point3;
 using std::map;
 using std::string;
 
+// Create a slice.
+static const size_t k = 777;
+static const Slice kSlice(k);
+
 TEST(Slice, InverseKinematics) {
   // Load robot and establish contact/goal pairs
   using namespace contact_goals_example;
-
-  // Create a slice.
-  const size_t k = 777;
-  const Slice slice(k);
 
   // Instantiate kinematics algorithms
   KinematicsParameters parameters;
@@ -38,7 +38,7 @@ TEST(Slice, InverseKinematics) {
   Kinematics kinematics(parameters);
 
   // Create initial values
-  auto values = kinematics.initialValues(slice, robot, 0.0);
+  auto values = kinematics.initialValues(kSlice, robot, 0.0);
   EXPECT_LONGS_EQUAL(13 + 12, values.size());
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
@@ -57,16 +57,16 @@ TEST(Slice, InverseKinematics) {
     EXPECT(goal.satisfied(fk, k, 0.05));
   }
 
-  auto graph = kinematics.graph(slice, robot);
+  auto graph = kinematics.graph(kSlice, robot);
   EXPECT_LONGS_EQUAL(12, graph.size());
 
-  auto objectives = kinematics.pointGoalObjectives(slice, contact_goals);
+  auto objectives = kinematics.pointGoalObjectives(kSlice, contact_goals);
   EXPECT_LONGS_EQUAL(4, objectives.size());
 
-  auto objectives2 = kinematics.jointAngleObjectives(slice, robot);
+  auto objectives2 = kinematics.jointAngleObjectives(kSlice, robot);
   EXPECT_LONGS_EQUAL(12, objectives2.size());
 
-  auto result = kinematics.inverse(slice, robot, contact_goals);
+  auto result = kinematics.inverse(kSlice, robot, contact_goals);
 
   // Check that well-determined
   graph.add(objectives);
@@ -82,52 +82,59 @@ TEST(Slice, InverseKinematics) {
   }
 }
 
-// Values tonisFunction(const Slice& slice, const Robot& robot,
+// Values tonisFunction(const Slice& kSlice, const Robot& robot,
 //                                   const ContactGoals& contact_goals) const {
-//   auto graph = this->graph(slice, robot);
+//   auto graph = this->graph(kSlice, robot);
 
 //   // Add prior.
-//   graph.add(jointAngleObjectives(slice, robot));
+//   graph.add(jointAngleObjectives(kSlice, robot));
 
-//   graph.addPrior<gtsam::Pose3>(PoseKey(0, slice.k),
+//   graph.addPrior<gtsam::Pose3>(PoseKey(0, k),
 //   gtsam::Pose3(), nullptr);
 
-//   auto initial_values = initialValues(slice, robot);
+//   auto initial_values = initialValues(kSlice, robot);
 
 //   return optimize(graph, initial_values);
 // }
 
-gtsam::Values ikWithPose(const Kinematics* self, const Slice& slice,
+gtsam::Values ikWithPose(const Kinematics* self, const Slice& kSlice,
                          const Robot& robot,
-                         const std::map<size_t, gtsam::Pose3> constrained_poses,
                          const std::map<size_t, gtsam::Pose3> desired_poses,
                          const gtsam::Vector7& initial) {
-  auto graph = self->graph(slice, robot);
+  auto graph = self->graph(kSlice, robot);
 
   // Add prior on joint angles to constrain the solution
-  graph.add(self->jointAngleObjectives(slice, robot));
-
-  // Add priors on link poses with constrained poses from argument
-  // TODO: do real pose constraints - ask Yetong
-  for (auto&& kv : constrained_poses) {
-    const size_t link_index = kv.first;
-    const gtsam::Pose3& constrained_pose = kv.second;
-    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, slice.k), constrained_pose,
-                                 gtsam::noiseModel::Constrained::All(6));
-  }
+  graph.add(self->jointAngleObjectives(kSlice, robot));
 
   // Add priors on link poses with desired poses from argument
   for (auto&& kv : desired_poses) {
     const size_t link_index = kv.first;
     const gtsam::Pose3& desired_pose = kv.second;
-    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, slice.k), desired_pose,
-                                 nullptr);
+    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, k), desired_pose, nullptr);
   }
 
-  // TODO: make use of initial?
-  auto initial_values = self->initialValues(slice, robot);
+  // Robot kinematics constraints
+  auto constraints = self->constraints(kSlice, robot);
 
-  return self->optimize(graph, {}, initial_values);
+  // TODO: make use of initial?
+  auto initial_values = self->initialValues(kSlice, robot);
+
+  return self->optimize(graph, constraints, initial_values);
+}
+
+TEST(Slice, panda_constraints) {
+  const Robot panda =
+      CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+  const Robot robot = panda.fixLink("link0");
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  // We should only have 7 constraints plus one for the fixed link
+  auto constraints = kinematics.constraints(kSlice, robot);
+  EXPECT_LONGS_EQUAL(8, constraints.size());
 }
 
 TEST(Slice, PandaIK) {
@@ -140,25 +147,37 @@ TEST(Slice, PandaIK) {
       CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
   const Robot robot = panda.fixLink("link0");
 
-  // Create a slice.
-  const size_t k = 777;
-  const Slice slice(k);
-
   // Instantiate kinematics algorithms
   KinematicsParameters parameters;
   parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
 
+  // We should only have 7 unknown joint angles and That is still 7 factors.
+  auto graph = kinematics.graph(kSlice, robot);
+  EXPECT_LONGS_EQUAL(7, graph.size());
+
+  // We should only have 8 unknown links and 7 unknown joint angles, i.e., 15
+  // values:
+  auto initial_values = kinematics.initialValues(kSlice, robot);
+  EXPECT_LONGS_EQUAL(15, initial_values.size());
+
   Vector7 initial = Vector7::Zero();
   Rot3 sR7({{1, 0, 0}, {0, -1, 0}, {0, 0, -1}});
   Pose3 sM7(sR7, Point3(0.0882972, 0.00213401, 0.933844));
   auto base_link = robot.link("link0");
+  auto values = ikWithPose(&kinematics, kSlice, robot, {{7, sM7}}, initial);
+
+  // Check that base link did not budge (much)
   const Pose3 sM0 = base_link->bMcom();
-  auto values =
-      ikWithPose(&kinematics, slice, robot, {{0, sM0}}, {{7, sM7}}, initial);
+  EXPECT(assert_equal(sM0, values.at<Pose3>(PoseKey(0, k))));
+
+  // Check that desired pose was achieved
+  EXPECT(assert_equal(sM7, values.at<Pose3>(PoseKey(7, k))));
+
+  // Check joint angles
   Vector7 optimal_q;
   for (size_t j = 0; j < 7; j++)
-    optimal_q[j] = values.at<double>(JointAngleKey(j, slice.k));
+    optimal_q[j] = values.at<double>(JointAngleKey(j, k));
   EXPECT(assert_equal(initial, optimal_q));
 }
 

@@ -18,6 +18,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/slam/expressions.h>
 
 namespace gtdynamics {
 
@@ -61,6 +62,26 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
     auto constraint_expr = joint->poseConstraint(slice.k);
     constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
                                                             tolerance);
+  }
+
+  // Constrain fixed links
+  for (auto&& link : robot.links()) {
+    if (link->isFixed()) {
+      using gtsam::Pose3_;
+
+      // Get an expression for the unknown link pose.
+      Pose3_ bTcom(PoseKey(link->id(), slice.k));
+
+      // Kust make sure it does not move from its original rest pose
+      Pose3_ bMcom(link->bMcom());
+
+      // Create expression to calculate the error in tangent space
+      auto constraint_expr = gtsam::logmap(bTcom, bMcom);
+
+      // Add constriant
+      constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
+                                                              tolerance);
+    }
   }
 
   return constraints;
