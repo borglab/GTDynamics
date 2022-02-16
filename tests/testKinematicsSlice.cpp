@@ -15,6 +15,7 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/linear/Sampler.h>
 
 #include "contactGoalsExample.h"
 
@@ -97,7 +98,25 @@ TEST(Slice, InverseKinematics) {
 //   return optimize(graph, initial_values);
 // }
 
-gtsam::Values ikWithPose(const Kinematics* self, const Slice& kSlice,
+gtsam::Values initialValues(const Slice& slice, const Robot& robot,
+                                        const gtsam::Vector7& initial) {
+  gtsam::Values values;
+
+  // Initialize all joint angles.
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&values, joint->id(), slice.k, initial(joint->id()));
+  }
+
+  // Initialize poses with fk of initialized values
+  auto fk = robot.forwardKinematics(values, k);  
+  for (auto&& link : robot.links()) {
+    InsertPose(&values, link->id(), slice.k, fk.at<gtsam::Pose3>(PoseKey(link->id(), k)));
+  }
+
+  return values;
+}
+
+gtsam::Values inverseWithPose(const Kinematics* self, const Slice& kSlice,
                          const Robot& robot,
                          const std::map<size_t, gtsam::Pose3> desired_poses,
                          const gtsam::Vector7& initial) {
@@ -110,16 +129,45 @@ gtsam::Values ikWithPose(const Kinematics* self, const Slice& kSlice,
   for (auto&& kv : desired_poses) {
     const size_t link_index = kv.first;
     const gtsam::Pose3& desired_pose = kv.second;
-    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, k), desired_pose, nullptr);
+    // TODO: put it as the kinematic parameters
+    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, k), desired_pose, gtsam::noiseModel::Isotropic::Sigma(6,0.00005));
   }
 
   // Robot kinematics constraints
   auto constraints = self->constraints(kSlice, robot);
 
-  // TODO: make use of initial?
-  auto initial_values = self->initialValues(kSlice, robot);
+  auto initial_values = initialValues(kSlice, robot, initial);
 
   return self->optimize(graph, constraints, initial_values);
+}
+
+TEST(Slice, initial_values) {
+
+  const Robot panda =
+    CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+  const Robot robot = panda.fixLink("link0");
+
+  gtsam::Vector7 initial;
+  initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
+
+  gtsam::Values initial_values = initialValues(kSlice, robot, initial);
+
+  // We should only have 7 values for joints and 8 for link poses
+  EXPECT_LONGS_EQUAL(15, initial_values.size())
+
+  // check that joint angles are the same
+  gtsam::Vector7 actual_initial;
+  for (size_t j = 0; j < 7; j++)
+    actual_initial[j] = initial_values.at<double>(JointAngleKey(j, k));
+  double tol = 1e-5;
+  EXPECT(assert_equal(initial, actual_initial, tol))
+
+  // check that the last fk is the same
+  gtsam::Rot3 sR7 {{ 0.98161623,  0.13223102, -0.13763916},
+       { 0.08587125, -0.9499891 , -0.30024463},
+       {-0.17045735,  0.28290575, -0.94387956}};
+  gtsam::Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
+  EXPECT(assert_equal(sT7, initial_values.at<gtsam::Pose3>(PoseKey(7,k)), tol))
 }
 
 TEST(Slice, panda_constraints) {
@@ -161,24 +209,31 @@ TEST(Slice, PandaIK) {
   auto initial_values = kinematics.initialValues(kSlice, robot);
   EXPECT_LONGS_EQUAL(15, initial_values.size());
 
-  Vector7 initial = Vector7::Zero();
-  Rot3 sR7({{1, 0, 0}, {0, -1, 0}, {0, 0, -1}});
-  Pose3 sM7(sR7, Point3(0.0882972, 0.00213401, 0.933844));
-  auto base_link = robot.link("link0");
-  auto values = ikWithPose(&kinematics, kSlice, robot, {{7, sM7}}, initial);
+  Rot3 sR7 {{ 0.98161623,  0.13223102, -0.13763916},
+       { 0.08587125, -0.9499891 , -0.30024463},
+       {-0.17045735,  0.28290575, -0.94387956}};
+  Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
+  Vector7 initial;
+  initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
+  Vector7 noise;
+  noise << 0.04, -0.1, 0.07, 0.14, -0.05, 0.02, 0.1;
+  auto values = inverseWithPose(&kinematics, kSlice, robot, {{7, sT7}}, initial+noise);
 
   // Check that base link did not budge (much)
+  auto base_link = robot.link("link0");
   const Pose3 sM0 = base_link->bMcom();
-  EXPECT(assert_equal(sM0, values.at<Pose3>(PoseKey(0, k))));
+  double tol = 1e-5;
+  EXPECT(assert_equal(sM0, values.at<Pose3>(PoseKey(0, k)), tol));
 
   // Check that desired pose was achieved
-  EXPECT(assert_equal(sM7, values.at<Pose3>(PoseKey(7, k))));
+  EXPECT(assert_equal(sT7, values.at<Pose3>(PoseKey(7, k)), tol));
 
-  // Check joint angles
+  // Check that joint angles are not too different
   Vector7 optimal_q;
   for (size_t j = 0; j < 7; j++)
     optimal_q[j] = values.at<double>(JointAngleKey(j, k));
-  EXPECT(assert_equal(initial, optimal_q));
+  tol = 0.001;
+  EXPECT(assert_equal(initial, optimal_q, tol));
 }
 
 int main() {
