@@ -86,11 +86,50 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
   return poe;
 }
 
-Vector Chain::DynamicalEquality3(const Vector &wrench, const Vector &angles,
-                                 const Vector &torques) {
+gtsam::Vector3 Chain::DynamicalEquality3(const gtsam::Vector6 &wrench,
+                                         const gtsam::Vector3 &angles,
+                                         const gtsam::Vector3 &torques,
+                                         gtsam::OptionalJacobian<3, 6> J0,
+                                         gtsam::OptionalJacobian<3, 3> J1,
+                                         gtsam::OptionalJacobian<3, 3> J2) {
   Matrix J;
   poe(angles, boost::none, J);
+  if (J0) {
+    // derivative of difference with respect to wrench
+    *J0 = J.transpose();
+  }
+  if (J1) {
+    // derivative of difference with respect to angles
+    // NOT COMPLETE
+    *J1 = gtsam::I_3x3;
+  }
+  if (J2) {
+    // derivative of difference with respect to torques
+    *J2 = -gtsam::I_3x3;
+  }
+
   return (J.transpose() * wrench - torques);
+}
+
+// Helper function to create expression with a vector, used in
+// ChainConstraint3.
+gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+                           const double &value2,
+                           gtsam::OptionalJacobian<3, 1> J0 = boost::none,
+                           gtsam::OptionalJacobian<3, 1> J1 = boost::none,
+                           gtsam::OptionalJacobian<3, 1> J2 = boost::none) {
+  gtsam::Vector3 q;
+  q << value0, value1, value2;
+  if (J0) {
+    *J0 << 1.0, 0.0, 0.0;
+  }
+  if (J1) {
+    *J1 << 0.0, 1.0, 0.0;
+  }
+  if (J2) {
+    *J2 << 0.0, 0.0, 1.0;
+  }
+  return q;
 }
 
 gtsam::Vector3_ Chain::ChainConstraint3(
@@ -100,25 +139,23 @@ gtsam::Vector3_ Chain::ChainConstraint3(
   gtsam::Vector6_ wrench(wrench_key);
 
   // Get expression for joint angles as a column vector of size 3.
-  gtsam::Vector3_ angles(
-      std::bind(&Chain::MakeVector, this, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3),
-      gtsam::Double_(JointAngleKey(joints[0]->id(), k)),
-      gtsam::Double_(JointAngleKey(joints[1]->id(), k)),
-      gtsam::Double_(JointAngleKey(joints[2]->id(), k)));
+  gtsam::Vector3_ angles(MakeVector3,
+                         gtsam::Double_(JointAngleKey(joints[0]->id(), k)),
+                         gtsam::Double_(JointAngleKey(joints[1]->id(), k)),
+                         gtsam::Double_(JointAngleKey(joints[2]->id(), k)));
 
   // Get expression for joint torques as a column vector of size 3.
-  gtsam::Vector3_ torques(
-      std::bind(&Chain::MakeVector, this, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3),
-      gtsam::Double_(TorqueKey(joints[0]->id(), k)),
-      gtsam::Double_(TorqueKey(joints[1]->id(), k)),
-      gtsam::Double_(TorqueKey(joints[2]->id(), k)));
+  gtsam::Vector3_ torques(MakeVector3,
+                          gtsam::Double_(TorqueKey(joints[0]->id(), k)),
+                          gtsam::Double_(TorqueKey(joints[1]->id(), k)),
+                          gtsam::Double_(TorqueKey(joints[2]->id(), k)));
 
   // Get expression of the dynamical equality
   gtsam::Vector3_ torque_diff(
       std::bind(&Chain::DynamicalEquality3, this, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3),
+                std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4, std::placeholders::_5,
+                std::placeholders::_6),
       wrench, angles, torques);
 
   return torque_diff;

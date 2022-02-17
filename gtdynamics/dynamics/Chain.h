@@ -110,17 +110,12 @@ class Chain {
    * @param torques ................. Torques applied by the joints.
    * @return ........................ Vector of difference.
    */
-  Vector DynamicalEquality3(const Vector &wrench, const Vector &angles,
-                            const Vector &torques);
-
-  // Helper function to create expression with a vector, used in
-  // ChainConstraint3.
-  Vector MakeVector(const double value0, const double value1,
-                    const double value2) {
-    Vector q(3);
-    q << value0, value1, value2;
-    return q;
-  }
+  gtsam::Vector3 DynamicalEquality3(
+      const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
+      const gtsam::Vector3 &torques,
+      gtsam::OptionalJacobian<3, 6> J0 = boost::none,
+      gtsam::OptionalJacobian<3, 3> J1 = boost::none,
+      gtsam::OptionalJacobian<3, 3> J2 = boost::none);
 
   /**
    * This function creates a gtsam expression of the Chain constraint FOR A
