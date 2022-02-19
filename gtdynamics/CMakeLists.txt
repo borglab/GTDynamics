@@ -82,6 +82,7 @@ target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
 ## Install library and headers.
 install(
   TARGETS gtdynamics
+  EXPORT "${PROJECT_NAME}-exports"
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin)
