@@ -17,6 +17,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/format.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
@@ -199,12 +200,12 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    // if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      // auto joint = f->getJoint();
-      // ss << GetVector(joint->screwAxis(joint->child()).transpose());
+    // if (const TorqueFactor* f = dynamic_cast<const
+    // TorqueFactor*>(&(*factor))) { auto joint = f->getJoint(); ss <<
+    // GetVector(joint->screwAxis(joint->child()).transpose());
     if (const gtsam::PriorFactor<gtsam::Vector3>* f =
-                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
-                       &(*factor))) {
+            dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
+                &(*factor))) {
       ss << GetVector(f->prior().transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector6>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector6>*>(
