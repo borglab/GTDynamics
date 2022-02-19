@@ -37,25 +37,48 @@ class ContactEqualityFactor
   using This = ContactEqualityFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
+  /// The point on the link at which to enforce equality.
   PointOnLink point_on_link_;
 
+  /**
+   * Flag to enforce the factor. If false, then factor returns zero error.
+   * Used primarily for hybrid elimination.
+   */
+  bool enforce_equality_;
+
  public:
+  // shorthand for a smart pointer to a factor
+  using shared_ptr = typename boost::shared_ptr<ContactEqualityFactor>;
+
+  /** default constructor - only use for serialization */
+  ContactEqualityFactor(){};
+
   /**
    * Constructor.
    *
-   * @param point_on_link   Point on the link at which to enforce constraint.
-   * @param model           The noise model for this factor.
-   * @param k1              First time index.
-   * @param k2              Next time index.
+   * @param point_on_link    Point on the link at which to enforce
+   * constraint.
+   * @param model            The noise model for this factor.
+   * @param k1               First time index.
+   * @param k2               Subsequent time index.
+   * @param enforce_equality Flag indicating if the equality should be
+   * enforced.
    */
   ContactEqualityFactor(const PointOnLink &point_on_link,
                         const gtsam::SharedNoiseModel &model, size_t k1,
-                        size_t k2)
+                        size_t k2, bool enforce_equality = true)
       : Base(model, PoseKey(point_on_link.link->id(), k1),
              PoseKey(point_on_link.link->id(), k2)),
-        point_on_link_(point_on_link) {}
+        point_on_link_(point_on_link),
+        enforce_equality_(enforce_equality) {}
 
-  virtual ~ContactEqualityFactor() {}
+  ~ContactEqualityFactor() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
 
   /// Generic method to compute difference between contact points and provide
   /// jacobians.
@@ -74,7 +97,11 @@ class ContactEqualityFactor
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,
       boost::optional<gtsam::Matrix &> H2 = boost::none) const override {
-    return contactPointsDifference(wT1, wT2, H1, H2);
+    if (enforce_equality_) {
+      return contactPointsDifference(wT1, wT2, H1, H2);
+    }
+    // If equality is not enforced then set error to zero.
+    return gtsam::Vector::Zero(3);
   }
 
   /// print contents
@@ -85,6 +112,22 @@ class ContactEqualityFactor
               << "," << keyFormatter(this->key2()) << ")\n";
     this->noiseModel_->print("  noise model: ");
   }
+
+  bool equals(const gtsam::NonlinearFactor &other,
+              double tol = 1e-9) const override {
+    const This *e = dynamic_cast<const This *>(&other);
+    return e != nullptr && Base::equals(*e, tol) &&
+           point_on_link_.equals(e->point_on_link_) &&
+           enforce_equality_ == e->enforce_equality_;
+  }
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::ContactEqualityFactor>
+    : public Testable<gtdynamics::ContactEqualityFactor> {};
+
+}  // namespace gtsam

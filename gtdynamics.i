@@ -57,7 +57,7 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
 class ContactEqualityFactor : gtsam::NoiseModelFactor {
   ContactEqualityFactor(const gtdynamics::PointOnLink &point_on_link,
                         const gtsam::noiseModel::Base *model, size_t k1,
-                        size_t k2);
+                        size_t k2, bool enforce_equality = true);
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
