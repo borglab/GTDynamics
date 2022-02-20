@@ -40,12 +40,6 @@ class ContactEqualityFactor
   /// The point on the link at which to enforce equality.
   PointOnLink point_on_link_;
 
-  /**
-   * Flag to enforce the factor. If false, then factor returns zero error.
-   * Used primarily for hybrid elimination.
-   */
-  bool enforce_equality_;
-
  public:
   // shorthand for a smart pointer to a factor
   using shared_ptr = typename boost::shared_ptr<ContactEqualityFactor>;
@@ -61,16 +55,13 @@ class ContactEqualityFactor
    * @param model            The noise model for this factor.
    * @param k1               First time index.
    * @param k2               Subsequent time index.
-   * @param enforce_equality Flag indicating if the equality should be
-   * enforced.
    */
   ContactEqualityFactor(const PointOnLink &point_on_link,
                         const gtsam::SharedNoiseModel &model, size_t k1,
-                        size_t k2, bool enforce_equality = true)
+                        size_t k2)
       : Base(model, PoseKey(point_on_link.link->id(), k1),
              PoseKey(point_on_link.link->id(), k2)),
-        point_on_link_(point_on_link),
-        enforce_equality_(enforce_equality) {}
+        point_on_link_(point_on_link) {}
 
   ~ContactEqualityFactor() override {}
 
@@ -97,11 +88,7 @@ class ContactEqualityFactor
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
       boost::optional<gtsam::Matrix &> H1 = boost::none,
       boost::optional<gtsam::Matrix &> H2 = boost::none) const override {
-    if (enforce_equality_) {
-      return contactPointsDifference(wT1, wT2, H1, H2);
-    }
-    // If equality is not enforced then set error to zero.
-    return gtsam::Vector::Zero(3);
+    return contactPointsDifference(wT1, wT2, H1, H2);
   }
 
   /// print contents
@@ -117,8 +104,7 @@ class ContactEqualityFactor
               double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&other);
     return e != nullptr && Base::equals(*e, tol) &&
-           point_on_link_.equals(e->point_on_link_) &&
-           enforce_equality_ == e->enforce_equality_;
+           point_on_link_.equals(e->point_on_link_);
   }
 };
 
