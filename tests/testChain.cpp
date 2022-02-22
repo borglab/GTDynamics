@@ -27,6 +27,9 @@ using gtsam::Matrix;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
+using gtsam::Vector3;
+using gtsam::Vector6;
+using namespace std::placeholders;
 
 // Test Chain class functionality with a three-joint chain - compose method
 TEST(Chain, ThreeLinksComposeMethod) {
@@ -174,11 +177,11 @@ TEST(Chain, ChainConstraint) {
   InsertWrench(&init_values, 0, 1, 0, wrench);
 
   // Set tolerance
-  gtsam::Vector3 tolerance(0.1, 0.1, 0.1);
+  Vector3 tolerance(0.1, 0.1, 0.1);
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  gtsam::Vector3 expected_values(1, 1.9, 1.3);
+  Vector3 expected_values(1, 1.9, 1.3);
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
@@ -194,33 +197,58 @@ TEST(Chain, ChainConstraint) {
 
 // Test Chain Constraint Jacobians - MakeVector3
 TEST(Chain, MakeVector3Jacobians) {
+  Matrix J0, J1, J2;
+  MakeVector3(17.0, 18.0, 19.0, J0, boost::none, boost::none);
+  MakeVector3(0.0, 0.0, 207.34567, boost::none, J1, boost::none);
+  MakeVector3(-9.0, -18.0, -1.0, boost::none, boost::none, J2);
+
+  // binded function for numerical derivative
+  auto f =
+      std::bind(MakeVector3, std::placeholders::_1, std::placeholders::_2,
+                std::placeholders::_3, boost::none, boost::none, boost::none);
+
+  auto numericalH0 =
+      gtsam::numericalDerivative31<Vector3, double, double, double>(f, 17.0,
+                                                                    18.0, 19.0);
+
   auto numericalH1 =
-      gtsam::numericalDerivative31<gtsam::Vector3, double, double, double>(
-          std::bind(MakeVector3, std::placeholders::_1, std::placeholders::_2,
-                    std::placeholders::_3, boost::none, boost::none,
-                    boost::none),
-          17.0, 18.0, 19.0);
+      gtsam::numericalDerivative32<Vector3, double, double, double>(f, 0.0, 0.0,
+                                                                    207.34567);
 
   auto numericalH2 =
-      gtsam::numericalDerivative32<gtsam::Vector3, double, double, double>(
-          std::bind(MakeVector3, std::placeholders::_1, std::placeholders::_2,
-                    std::placeholders::_3, boost::none, boost::none,
-                    boost::none),
-          0.0, 0.0, 207.34567);
+      gtsam::numericalDerivative33<Vector3, double, double, double>(
+          f, -9.0, -18.0, -1.0);
 
-  auto numericalH3 =
-      gtsam::numericalDerivative33<gtsam::Vector3, double, double, double>(
-          std::bind(MakeVector3, std::placeholders::_1, std::placeholders::_2,
-                    std::placeholders::_3, boost::none, boost::none,
-                    boost::none),
-          -9.0, -18.0, -1.0);
+  EXPECT(assert_equal(numericalH0, J0));
+  EXPECT(assert_equal(numericalH1, J1));
+  EXPECT(assert_equal(numericalH2, J2));
+}
 
-  gtsam::Vector3 h1(1, 0, 0);
-  gtsam::Vector3 h2(0, 1, 0);
-  gtsam::Vector3 h3(0, 0, 1);
-  EXPECT(assert_equal(numericalH1, h1));
-  EXPECT(assert_equal(numericalH2, h2));
-  EXPECT(assert_equal(numericalH3, h3));
+Matrix get_angles_test_cases() {
+  Matrix angles_cases(3, 10);
+  angles_cases << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, M_PI / 2, 0.0,
+      0.0, 0.0, M_PI / 8, 0.0, 0.0, 0.0, M_PI / 14, M_PI / 14, M_PI / 7, 0.0,
+      M_PI / 14, 0.0, M_PI / 7, 0.0, M_PI / 14, M_PI / 7, 0.0, M_PI / 14,
+      M_PI / 7;
+  return angles_cases;
+}
+
+Matrix get_torques_test_cases() {
+  Matrix torques_cases(3, 10);
+  torques_cases << 0.0, 0.0, 0.0, 100.0, -4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0;
+  return torques_cases;
+}
+
+Matrix get_wrench_test_cases() {
+  Matrix wrench_cases(6, 10);
+  wrench_cases << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+      0.0, 0.0, 1.0;
+  return wrench_cases;
 }
 
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_angles - first type
@@ -238,189 +266,44 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   // Compose chains
   Chain composed = Chain::compose(chains);
 
-  gtsam::Vector3 angles, torques;
+  Vector3 angles, torques;
   gtsam::Vector wrench(6);
-  Matrix J1;
+  Matrix J1, J;
 
-  // case 1
-  angles << 0.0, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  // binded function for numerical derivative
+  auto f =
+      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, boost::none,
+                boost::none, boost::none);
 
-  auto numericalH_case1 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    return gtsam::numericalDerivative32<Vector3, Vector6, Vector3, Vector3>(
+        f, wrench, angles, torques);
+  };
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
+                                boost::none);
+    return J1;
+  };
 
-  EXPECT(assert_equal(J1, numericalH_case1, 1e-5));
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
 
-  // case 2
-  angles << 0.0, 0.0, 0.0;
-  torques << 100.0, -4.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  for (int i; i < anglesMat.rows(); ++i) {
+    angles << anglesMat.row(i);
+    torques << torquesMat.row(i);
+    wrench << wrenchMat.row(i);
 
-  auto numericalH_case2 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+    auto numericalH_case1 = num_derivative(wrench, angles, torques);
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+    J = get_jacobian(wrench, angles, torques);
 
-  EXPECT(assert_equal(J1, numericalH_case2, 1e-5));
-
-  // case 3
-  angles << 0.5, 0.5, 0.5;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case3 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case3, 1e-5));
-
-  // case 4
-  angles << M_PI / 2, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case4 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case4, 1e-5));
-
-  // case 5
-  angles << 0.0, M_PI / 8, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case5 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case5, 1e-5));
-
-  // case 6
-  angles << 0.0, 0.0, M_PI / 14;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case6 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case6, 1e-5));
-
-  // case 7
-  angles << M_PI / 14, M_PI / 7, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case7 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case7, 1e-5));
-
-  // case 8
-  angles << M_PI / 14, 0.0, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case8 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case8, 1e-5));
-
-  // case 9
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case9 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case9, 1e-5));
-
-  // case 10
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0;
-
-  auto numericalH_case10 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case10, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+  }
 }
 
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_angles - second type
@@ -440,189 +323,44 @@ TEST(Chain, DynamicalEquality3_H_angles_chain2) {
   // Compose chains
   Chain composed = Chain::compose(chains);
 
-  gtsam::Vector3 angles, torques;
+  Vector3 angles, torques;
   gtsam::Vector wrench(6);
-  Matrix J1;
+  Matrix J1, J;
 
-  // case 1
-  angles << 0.0, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  // binded function for numerical derivative
+  auto f =
+      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, boost::none,
+                boost::none, boost::none);
 
-  auto numericalH_case1 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    return gtsam::numericalDerivative32<Vector3, Vector6, Vector3, Vector3>(
+        f, wrench, angles, torques);
+  };
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
+                                boost::none);
+    return J1;
+  };
 
-  EXPECT(assert_equal(J1, numericalH_case1, 1e-5));
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
 
-  // case 2
-  angles << 0.0, 0.0, 0.0;
-  torques << 100.0, -4.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  for (int i; i < anglesMat.rows(); ++i) {
+    angles << anglesMat.row(i);
+    torques << torquesMat.row(i);
+    wrench << wrenchMat.row(i);
 
-  auto numericalH_case2 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+    auto numericalH_case1 = num_derivative(wrench, angles, torques);
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+    J = get_jacobian(wrench, angles, torques);
 
-  EXPECT(assert_equal(J1, numericalH_case2, 1e-5));
-
-  // case 3
-  angles << 0.5, 0.5, 0.5;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case3 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case3, 1e-5));
-
-  // case 4
-  angles << M_PI / 2, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case4 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case4, 1e-5));
-
-  // case 5
-  angles << 0.0, M_PI / 8, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case5 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case5, 1e-5));
-
-  // case 6
-  angles << 0.0, 0.0, M_PI / 14;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case6 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case6, 1e-5));
-
-  // case 7
-  angles << M_PI / 14, M_PI / 7, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case7 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case7, 1e-5));
-
-  // case 8
-  angles << M_PI / 14, 0.0, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case8 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case8, 1e-5));
-
-  // case 9
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case9 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case9, 1e-5));
-
-  // case 10
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0;
-
-  auto numericalH_case10 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case10, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+  }
 }
 
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_angles - third type
@@ -643,189 +381,44 @@ TEST(Chain, DynamicalEquality3_H_angles_chain3) {
   // Compose chains
   Chain composed = Chain::compose(chains);
 
-  gtsam::Vector3 angles, torques;
+  Vector3 angles, torques;
   gtsam::Vector wrench(6);
-  Matrix J1;
+  Matrix J1, J;
 
-  // case 1
-  angles << 0.0, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  // binded function for numerical derivative
+  auto f =
+      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, boost::none,
+                boost::none, boost::none);
 
-  auto numericalH_case1 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    return gtsam::numericalDerivative32<Vector3, Vector6, Vector3, Vector3>(
+        f, wrench, angles, torques);
+  };
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
+                                boost::none);
+    return J1;
+  };
 
-  EXPECT(assert_equal(J1, numericalH_case1, 1e-5));
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
 
-  // case 2
-  angles << 0.0, 0.0, 0.0;
-  torques << 100.0, -4.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  for (int i; i < anglesMat.rows(); ++i) {
+    angles << anglesMat.row(i);
+    torques << torquesMat.row(i);
+    wrench << wrenchMat.row(i);
 
-  auto numericalH_case2 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+    auto numericalH_case1 = num_derivative(wrench, angles, torques);
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
+    J = get_jacobian(wrench, angles, torques);
 
-  EXPECT(assert_equal(J1, numericalH_case2, 1e-5));
-
-  // case 3
-  angles << 0.5, 0.5, 0.5;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case3 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case3, 1e-5));
-
-  // case 4
-  angles << M_PI / 2, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case4 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case4, 1e-5));
-
-  // case 5
-  angles << 0.0, M_PI / 8, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case5 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case5, 1e-5));
-
-  // case 6
-  angles << 0.0, 0.0, M_PI / 14;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case6 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case6, 1e-5));
-
-  // case 7
-  angles << M_PI / 14, M_PI / 7, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case7 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case7, 1e-5));
-
-  // case 8
-  angles << M_PI / 14, 0.0, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case8 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case8, 1e-5));
-
-  // case 9
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case9 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case9, 1e-5));
-
-  // case 10
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0;
-
-  auto numericalH_case10 =
-      gtsam::numericalDerivative32<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                              boost::none);
-
-  EXPECT(assert_equal(J1, numericalH_case10, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+  }
 }
 
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_wrench
@@ -845,189 +438,44 @@ TEST(Chain, DynamicalEquality3_H_wrench) {
   // Compose chains
   Chain composed = Chain::compose(chains);
 
-  gtsam::Vector3 angles, torques;
+  Vector3 angles, torques;
   gtsam::Vector wrench(6);
-  Matrix J0;
+  Matrix J0, J;
 
-  // case 1
-  angles << 0.0, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  // binded function for numerical derivative
+  auto f =
+      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, boost::none,
+                boost::none, boost::none);
 
-  auto numericalH_case1 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    return gtsam::numericalDerivative31<Vector3, Vector6, Vector3, Vector3>(
+        f, wrench, angles, torques);
+  };
 
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
+                                boost::none);
+    return J0;
+  };
 
-  EXPECT(assert_equal(J0, numericalH_case1, 1e-5));
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
 
-  // case 2
-  angles << 0.0, 0.0, 0.0;
-  torques << 100.0, -4.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  for (int i; i < anglesMat.rows(); ++i) {
+    angles << anglesMat.row(i);
+    torques << torquesMat.row(i);
+    wrench << wrenchMat.row(i);
 
-  auto numericalH_case2 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+    auto numericalH_case1 = num_derivative(wrench, angles, torques);
 
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
+    J = get_jacobian(wrench, angles, torques);
 
-  EXPECT(assert_equal(J0, numericalH_case2, 1e-5));
-
-  // case 3
-  angles << 0.5, 0.5, 0.5;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case3 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case3, 1e-5));
-
-  // case 4
-  angles << M_PI / 2, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case4 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case4, 1e-5));
-
-  // case 5
-  angles << 0.0, M_PI / 8, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case5 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case5, 1e-5));
-
-  // case 6
-  angles << 0.0, 0.0, M_PI / 14;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case6 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case6, 1e-5));
-
-  // case 7
-  angles << M_PI / 14, M_PI / 7, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case7 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case7, 1e-5));
-
-  // case 8
-  angles << M_PI / 14, 0.0, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case8 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case8, 1e-5));
-
-  // case 9
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case9 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case9, 1e-5));
-
-  // case 10
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0;
-
-  auto numericalH_case10 =
-      gtsam::numericalDerivative31<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                              boost::none);
-
-  EXPECT(assert_equal(J0, numericalH_case10, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+  }
 }
 
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_torques
@@ -1047,189 +495,44 @@ TEST(Chain, DynamicalEquality3_H_torques) {
   // Compose chains
   Chain composed = Chain::compose(chains);
 
-  gtsam::Vector3 angles, torques;
+  Vector3 angles, torques;
   gtsam::Vector wrench(6);
-  Matrix J2;
+  Matrix J2, J;
 
-  // case 1
-  angles << 0.0, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  // binded function for numerical derivative
+  auto f =
+      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, boost::none,
+                boost::none, boost::none);
 
-  auto numericalH_case1 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    return gtsam::numericalDerivative33<Vector3, Vector6, Vector3, Vector3>(
+        f, wrench, angles, torques);
+  };
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
+    composed.DynamicalEquality3(wrench, angles, torques, boost::none,
+                                boost::none, J2);
+    return J2;
+  };
 
-  EXPECT(assert_equal(J2, numericalH_case1, 1e-5));
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
 
-  // case 2
-  angles << 0.0, 0.0, 0.0;
-  torques << 100.0, -4.0, 0.0;
-  wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  for (int i; i < anglesMat.rows(); ++i) {
+    angles << anglesMat.row(i);
+    torques << torquesMat.row(i);
+    wrench << wrenchMat.row(i);
 
-  auto numericalH_case2 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
+    auto numericalH_case1 = num_derivative(wrench, angles, torques);
 
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
+    J = get_jacobian(wrench, angles, torques);
 
-  EXPECT(assert_equal(J2, numericalH_case2, 1e-5));
-
-  // case 3
-  angles << 0.5, 0.5, 0.5;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case3 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case3, 1e-5));
-
-  // case 4
-  angles << M_PI / 2, 0.0, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case4 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case4, 1e-5));
-
-  // case 5
-  angles << 0.0, M_PI / 8, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case5 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case5, 1e-5));
-
-  // case 6
-  angles << 0.0, 0.0, M_PI / 14;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case6 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case6, 1e-5));
-
-  // case 7
-  angles << M_PI / 14, M_PI / 7, 0.0;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case7 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case7, 1e-5));
-
-  // case 8
-  angles << M_PI / 14, 0.0, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case8 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case8, 1e-5));
-
-  // case 9
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
-
-  auto numericalH_case9 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case9, 1e-5));
-
-  // case 10
-  angles << 0.0, M_PI / 14, M_PI / 7;
-  torques << 0.0, 0.0, 0.0;
-  wrench << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0;
-
-  auto numericalH_case10 =
-      gtsam::numericalDerivative33<gtsam::Vector3, gtsam::Vector6,
-                                   gtsam::Vector3, gtsam::Vector3>(
-          std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3, boost::none,
-                    boost::none, boost::none),
-          wrench, angles, torques);
-
-  composed.DynamicalEquality3(wrench, angles, torques, boost::none, boost::none,
-                              J2);
-
-  EXPECT(assert_equal(J2, numericalH_case10, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+  }
 }
 
 // Test Chain Constraint Factor Jacobians
@@ -1272,11 +575,11 @@ TEST(Chain, ChainConstraintFactorJacobians) {
   InsertWrench(&init_values, 0, 1, 0, wrench);
 
   // Set tolerance
-  gtsam::Vector3 tolerance(0.1, 0.1, 0.1);
+  Vector3 tolerance(0.1, 0.1, 0.1);
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  gtsam::Vector3 expected_values(1, 1.9, 1.3);
+  Vector3 expected_values(1, 1.9, 1.3);
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
