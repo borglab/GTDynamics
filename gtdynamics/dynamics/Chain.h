@@ -21,6 +21,7 @@
 #include <boost/optional.hpp>
 
 #include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/utils/utils.h"
 #include "gtdynamics/utils/values.h"
 
 using gtsam::Matrix;
@@ -98,7 +99,7 @@ class Chain {
             gtsam::OptionalJacobian<-1, -1> J = boost::none);
 
   /**
-   * This function implements the Dynamical dependency between the
+   * This function implements the dynamic dependency between the
    * joint torques and the wrench applied on the body FOR A 3-LINK CHAIN (tau =
    * J*F) The input wrench is the wrench applied on the body by the joint
    * closest to the body. This equation is true in the case of massless links in
@@ -113,9 +114,9 @@ class Chain {
   gtsam::Vector3 DynamicalEquality3(
       const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
       const gtsam::Vector3 &torques,
-      gtsam::OptionalJacobian<3, 6> J0 = boost::none,
-      gtsam::OptionalJacobian<3, 3> J1 = boost::none,
-      gtsam::OptionalJacobian<3, 3> J2 = boost::none);
+      gtsam::OptionalJacobian<3, 6> H_wrench = boost::none,
+      gtsam::OptionalJacobian<3, 3> H_angles = boost::none,
+      gtsam::OptionalJacobian<3, 3> H_torques = boost::none);
 
   /**
    * This function creates a gtsam expression of the Chain constraint FOR A
@@ -132,5 +133,26 @@ class Chain {
   gtsam::Vector3_ ChainConstraint3(const std::vector<JointSharedPtr> &joints,
                                    const gtsam::Key wrench_key, size_t k);
 };
+
+// Helper function to create expression with a vector, used in
+// ChainConstraint3.
+gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+                           const double &value2,
+                           gtsam::OptionalJacobian<3, 1> J0 = boost::none,
+                           gtsam::OptionalJacobian<3, 1> J1 = boost::none,
+                           gtsam::OptionalJacobian<3, 1> J2 = boost::none) {
+  gtsam::Vector3 q;
+  q << value0, value1, value2;
+  if (J0) {
+    *J0 << 1.0, 0.0, 0.0;
+  }
+  if (J1) {
+    *J1 << 0.0, 1.0, 0.0;
+  }
+  if (J2) {
+    *J2 << 0.0, 0.0, 1.0;
+  }
+  return q;
+}
 
 }  // namespace gtdynamics

@@ -86,50 +86,54 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
   return poe;
 }
 
-gtsam::Vector3 Chain::DynamicalEquality3(const gtsam::Vector6 &wrench,
-                                         const gtsam::Vector3 &angles,
-                                         const gtsam::Vector3 &torques,
-                                         gtsam::OptionalJacobian<3, 6> J0,
-                                         gtsam::OptionalJacobian<3, 3> J1,
-                                         gtsam::OptionalJacobian<3, 3> J2) {
+gtsam::Vector3 Chain::DynamicalEquality3(
+    const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
+    const gtsam::Vector3 &torques, gtsam::OptionalJacobian<3, 6> H_wrench,
+    gtsam::OptionalJacobian<3, 3> H_angles,
+    gtsam::OptionalJacobian<3, 3> H_torques) {
   Matrix J;
   poe(angles, boost::none, J);
-  if (J0) {
+  if (H_wrench) {
     // derivative of difference with respect to wrench
-    *J0 = J.transpose();
+    *H_wrench = J.transpose();
   }
-  if (J1) {
+  if (H_angles) {
     // derivative of difference with respect to angles
-    // NOT COMPLETE
-    *J1 = gtsam::I_3x3;
+
+    // The manipulator Jacobian is built such that in every step of chain
+    // composition we multiply the existing screw axes with the adjoint map of
+    // the inverse pose of the new chain, and then stack the screw axes of the
+    // new chain horizontally in the axes matrix.
+    // This means that the first angle actually doesn't get into the matrix at
+    // all. The last column of the jacobian actually doesn't depend on the
+    // angles at all, the second column depends only on the third angle, and the
+    // first column depends on the second and third angles.
+    // This means that the 3*3 jacobian has an upper triangular structure.
+    Matrix A = gtsam::Z_3x3;
+
+    // Calculate the Adjoint and take its derivative in relation to angles
+    auto ad_J_angles1 = AdjointMapJacobianQ(angles(1), Pose3(), axes_.col(1));
+    auto ad_J_angles2 = AdjointMapJacobianQ(angles(2), Pose3(), axes_.col(2));
+
+    // Calculate the invers adjoint maps of the Poses, as we do in * operator
+    Pose3 p1 = Pose3::Expmap(axes_.col(1) * angles(1));
+    Pose3 p2 = Pose3::Expmap(axes_.col(2) * angles(2));
+    auto ad_inv_p1 = p1.inverse().AdjointMap();
+    auto ad_inv_p2 = p2.inverse().AdjointMap();
+
+    // calculate the non-zero terms
+    A(1, 2) = (ad_J_angles2 * axes_.col(1)).transpose() * wrench;
+    A(0, 2) = (ad_J_angles2 * ad_inv_p1 * axes_.col(0)).transpose() * wrench;
+    A(0, 1) = (ad_inv_p2 * ad_J_angles1 * axes_.col(0)).transpose() * wrench;
+
+    *H_angles = A;
   }
-  if (J2) {
+  if (H_torques) {
     // derivative of difference with respect to torques
-    *J2 = -gtsam::I_3x3;
+    *H_torques = -gtsam::I_3x3;
   }
 
   return (J.transpose() * wrench - torques);
-}
-
-// Helper function to create expression with a vector, used in
-// ChainConstraint3.
-gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
-                           const double &value2,
-                           gtsam::OptionalJacobian<3, 1> J0 = boost::none,
-                           gtsam::OptionalJacobian<3, 1> J1 = boost::none,
-                           gtsam::OptionalJacobian<3, 1> J2 = boost::none) {
-  gtsam::Vector3 q;
-  q << value0, value1, value2;
-  if (J0) {
-    *J0 << 1.0, 0.0, 0.0;
-  }
-  if (J1) {
-    *J1 << 0.0, 1.0, 0.0;
-  }
-  if (J2) {
-    *J2 << 0.0, 0.0, 1.0;
-  }
-  return q;
 }
 
 gtsam::Vector3_ Chain::ChainConstraint3(
@@ -139,16 +143,16 @@ gtsam::Vector3_ Chain::ChainConstraint3(
   gtsam::Vector6_ wrench(wrench_key);
 
   // Get expression for joint angles as a column vector of size 3.
-  gtsam::Vector3_ angles(MakeVector3,
-                         gtsam::Double_(JointAngleKey(joints[0]->id(), k)),
-                         gtsam::Double_(JointAngleKey(joints[1]->id(), k)),
-                         gtsam::Double_(JointAngleKey(joints[2]->id(), k)));
+  gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
+      angle1(JointAngleKey(joints[1]->id(), k)),
+      angle2(JointAngleKey(joints[2]->id(), k));
+  gtsam::Vector3_ angles(MakeVector3, angle0, angle1, angle2);
 
   // Get expression for joint torques as a column vector of size 3.
-  gtsam::Vector3_ torques(MakeVector3,
-                          gtsam::Double_(TorqueKey(joints[0]->id(), k)),
-                          gtsam::Double_(TorqueKey(joints[1]->id(), k)),
-                          gtsam::Double_(TorqueKey(joints[2]->id(), k)));
+  gtsam::Double_ torque0(TorqueKey(joints[0]->id(), k)),
+      torque1(TorqueKey(joints[1]->id(), k)),
+      torque2(TorqueKey(joints[2]->id(), k));
+  gtsam::Vector3_ torques(MakeVector3, torque0, torque1, torque2);
 
   // Get expression of the dynamical equality
   gtsam::Vector3_ torque_diff(
