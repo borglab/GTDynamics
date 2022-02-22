@@ -225,7 +225,7 @@ TEST(Chain, MakeVector3Jacobians) {
 }
 
 Matrix get_angles_test_cases() {
-  Matrix angles_cases(3, 10);
+  Matrix angles_cases(10, 3);
   angles_cases << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, M_PI / 2, 0.0,
       0.0, 0.0, M_PI / 8, 0.0, 0.0, 0.0, M_PI / 14, M_PI / 14, M_PI / 7, 0.0,
       M_PI / 14, 0.0, M_PI / 7, 0.0, M_PI / 14, M_PI / 7, 0.0, M_PI / 14,
@@ -234,7 +234,7 @@ Matrix get_angles_test_cases() {
 }
 
 Matrix get_torques_test_cases() {
-  Matrix torques_cases(3, 10);
+  Matrix torques_cases(10, 3);
   torques_cases << 0.0, 0.0, 0.0, 100.0, -4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
       0.0, 0.0, 0.0, 0.0;
@@ -242,7 +242,7 @@ Matrix get_torques_test_cases() {
 }
 
 Matrix get_wrench_test_cases() {
-  Matrix wrench_cases(6, 10);
+  Matrix wrench_cases(10, 6);
   wrench_cases << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
@@ -293,16 +293,16 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   Matrix torquesMat = get_torques_test_cases();
   Matrix wrenchMat = get_wrench_test_cases();
 
-  for (int i; i < anglesMat.rows(); ++i) {
-    angles << anglesMat.row(i);
-    torques << torquesMat.row(i);
-    wrench << wrenchMat.row(i);
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    torques = torquesMat.row(i);
+    wrench = wrenchMat.row(i);
 
-    auto numericalH_case1 = num_derivative(wrench, angles, torques);
+    auto numericalH_case = num_derivative(wrench, angles, torques);
 
     J = get_jacobian(wrench, angles, torques);
 
-    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
 }
 
@@ -350,16 +350,16 @@ TEST(Chain, DynamicalEquality3_H_angles_chain2) {
   Matrix torquesMat = get_torques_test_cases();
   Matrix wrenchMat = get_wrench_test_cases();
 
-  for (int i; i < anglesMat.rows(); ++i) {
-    angles << anglesMat.row(i);
-    torques << torquesMat.row(i);
-    wrench << wrenchMat.row(i);
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    torques = torquesMat.row(i);
+    wrench = wrenchMat.row(i);
 
-    auto numericalH_case1 = num_derivative(wrench, angles, torques);
+    auto numericalH_case = num_derivative(wrench, angles, torques);
 
     J = get_jacobian(wrench, angles, torques);
 
-    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
 }
 
@@ -408,16 +408,16 @@ TEST(Chain, DynamicalEquality3_H_angles_chain3) {
   Matrix torquesMat = get_torques_test_cases();
   Matrix wrenchMat = get_wrench_test_cases();
 
-  for (int i; i < anglesMat.rows(); ++i) {
-    angles << anglesMat.row(i);
-    torques << torquesMat.row(i);
-    wrench << wrenchMat.row(i);
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    torques = torquesMat.row(i);
+    wrench = wrenchMat.row(i);
 
-    auto numericalH_case1 = num_derivative(wrench, angles, torques);
+    auto numericalH_case = num_derivative(wrench, angles, torques);
 
     J = get_jacobian(wrench, angles, torques);
 
-    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
 }
 
@@ -465,16 +465,16 @@ TEST(Chain, DynamicalEquality3_H_wrench) {
   Matrix torquesMat = get_torques_test_cases();
   Matrix wrenchMat = get_wrench_test_cases();
 
-  for (int i; i < anglesMat.rows(); ++i) {
-    angles << anglesMat.row(i);
-    torques << torquesMat.row(i);
-    wrench << wrenchMat.row(i);
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    torques = torquesMat.row(i);
+    wrench = wrenchMat.row(i);
 
-    auto numericalH_case1 = num_derivative(wrench, angles, torques);
+    auto numericalH_case = num_derivative(wrench, angles, torques);
 
     J = get_jacobian(wrench, angles, torques);
 
-    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
 }
 
@@ -522,16 +522,16 @@ TEST(Chain, DynamicalEquality3_H_torques) {
   Matrix torquesMat = get_torques_test_cases();
   Matrix wrenchMat = get_wrench_test_cases();
 
-  for (int i; i < anglesMat.rows(); ++i) {
-    angles << anglesMat.row(i);
-    torques << torquesMat.row(i);
-    wrench << wrenchMat.row(i);
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    torques = torquesMat.row(i);
+    wrench = wrenchMat.row(i);
 
-    auto numericalH_case1 = num_derivative(wrench, angles, torques);
+    auto numericalH_case = num_derivative(wrench, angles, torques);
 
     J = get_jacobian(wrench, angles, torques);
 
-    EXPECT(assert_equal(J, numericalH_case1, 1e-5));
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
 }
 
