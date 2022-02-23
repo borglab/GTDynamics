@@ -35,7 +35,7 @@ class JointMeasurementFactor
 
  public:
   /**
-   * @brief Construct a new Link Pose Factor object
+   * @brief Construct a new Joint Measurement Factor object
    *
    * @param wTp_key Key to the parent link.
    * @param wTc_key Key to the child link.

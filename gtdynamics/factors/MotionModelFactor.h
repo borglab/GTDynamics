@@ -23,15 +23,14 @@ namespace gtdynamics {
  * @brief A 4-way factor which evaluates the motion model of a link in the
  * robot's base frame.
  */
+template<typename T>
 class MotionModelFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
-                                      gtsam::Pose3> {
+    : public gtsam::NoiseModelFactor4<T, T, T, T> {
  private:
   using This = MotionModelFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
-                                        gtsam::Pose3, gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactor4<T, T, T, T>;
 
-  gtsam::Pose3 motion_model_;
+  T motion_model_;
 
  public:
   // shorthand for a smart pointer to a factor
@@ -50,21 +49,21 @@ class MotionModelFactor
   MotionModelFactor(gtsam::Key wTb1_key, gtsam::Key wTl1_key,
                     gtsam::Key wTb2_key, gtsam::Key wTl2_key,
                     const gtsam::noiseModel::Base::shared_ptr& model,
-                    const gtsam::Pose3& motion_model_mean)
+                    const T& motion_model_mean)
       : Base(model, wTb1_key, wTl1_key, wTb2_key, wTl2_key),
         motion_model_(motion_model_mean) {}
 
-  MotionModelFactor(const gtsam::noiseModel::Base::shared_ptr& model,
-                    const LinkConstSharedPtr base,
-                    const LinkConstSharedPtr link,
-                    const gtsam::Pose3& motion_model_mean, size_t t0, size_t t1)
-      : Base(model, PoseKey(base->id(), t0), PoseKey(link->id(), t0),
-             PoseKey(base->id(), t1), PoseKey(link->id(), t1)),
-        motion_model_(motion_model_mean) {}
+  // MotionModelFactor(const gtsam::noiseModel::Base::shared_ptr& model,
+  //                   const LinkConstSharedPtr base,
+  //                   const LinkConstSharedPtr link,
+  //                   const gtsam::Pose3& motion_model_mean, size_t t0, size_t t1)
+  //     : Base(model, PoseKey(base->id(), t0), PoseKey(link->id(), t0),
+  //            PoseKey(base->id(), t1), PoseKey(link->id(), t1)),
+  //       motion_model_(motion_model_mean) {}
 
   gtsam::Vector evaluateError(
-      const gtsam::Pose3& wTb1, const gtsam::Pose3& wTl1,
-      const gtsam::Pose3& wTb2, const gtsam::Pose3& wTl2,
+      const T& wTb1, const gtsam::Pose3& wTl1,
+      const T& wTb2, const gtsam::Pose3& wTl2,
       boost::optional<gtsam::Matrix&> H_wTb1 = boost::none,
       boost::optional<gtsam::Matrix&> H_wTl1 = boost::none,
       boost::optional<gtsam::Matrix&> H_wTb2 = boost::none,
