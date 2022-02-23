@@ -11,6 +11,7 @@
  * @author: Dan Barladeanu, Frank Dellaert
  */
 
+#define BOOST_BIND_NO_PLACEHOLDERS
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -29,7 +30,9 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Vector3;
 using gtsam::Vector6;
-using namespace std::placeholders;
+using std::placeholders::_1;
+using std::placeholders::_2;
+using std::placeholders::_3;
 
 // Test Chain class functionality with a three-joint chain - compose method
 TEST(Chain, ThreeLinksComposeMethod) {
@@ -204,8 +207,7 @@ TEST(Chain, MakeVector3Jacobians) {
 
   // binded function for numerical derivative
   auto f =
-      std::bind(MakeVector3, std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3, boost::none, boost::none, boost::none);
+      std::bind(MakeVector3, _1, _2, _3, boost::none, boost::none, boost::none);
 
   auto numericalH0 =
       gtsam::numericalDerivative31<Vector3, double, double, double>(f, 17.0,
@@ -271,10 +273,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3, boost::none,
-                boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
+                     boost::none, boost::none, boost::none);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -328,10 +328,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain2) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3, boost::none,
-                boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
+                     boost::none, boost::none, boost::none);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -386,10 +384,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain3) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3, boost::none,
-                boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
+                     boost::none, boost::none, boost::none);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -443,10 +439,8 @@ TEST(Chain, DynamicalEquality3_H_wrench) {
   Matrix J0, J;
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3, boost::none,
-                boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
+                     boost::none, boost::none, boost::none);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -500,10 +494,8 @@ TEST(Chain, DynamicalEquality3_H_torques) {
   Matrix J2, J;
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(&Chain::DynamicalEquality3, composed, std::placeholders::_1,
-                std::placeholders::_2, std::placeholders::_3, boost::none,
-                boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
+                     boost::none, boost::none, boost::none);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
