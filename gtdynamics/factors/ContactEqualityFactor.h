@@ -37,16 +37,24 @@ class ContactEqualityFactor
   using This = ContactEqualityFactor;
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
+  /// The point on the link at which to enforce equality.
   PointOnLink point_on_link_;
 
  public:
+  // shorthand for a smart pointer to a factor
+  using shared_ptr = typename boost::shared_ptr<ContactEqualityFactor>;
+
+  /** default constructor - only use for serialization */
+  ContactEqualityFactor(){};
+
   /**
    * Constructor.
    *
-   * @param point_on_link   Point on the link at which to enforce constraint.
-   * @param model           The noise model for this factor.
-   * @param k1              First time index.
-   * @param k2              Next time index.
+   * @param point_on_link    Point on the link at which to enforce
+   * constraint.
+   * @param model            The noise model for this factor.
+   * @param k1               First time index.
+   * @param k2               Subsequent time index.
    */
   ContactEqualityFactor(const PointOnLink &point_on_link,
                         const gtsam::SharedNoiseModel &model, size_t k1,
@@ -55,7 +63,13 @@ class ContactEqualityFactor
              PoseKey(point_on_link.link->id(), k2)),
         point_on_link_(point_on_link) {}
 
-  virtual ~ContactEqualityFactor() {}
+  ~ContactEqualityFactor() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
 
   /// Generic method to compute difference between contact points and provide
   /// jacobians.
@@ -85,6 +99,21 @@ class ContactEqualityFactor
               << "," << keyFormatter(this->key2()) << ")\n";
     this->noiseModel_->print("  noise model: ");
   }
+
+  bool equals(const gtsam::NonlinearFactor &other,
+              double tol = 1e-9) const override {
+    const This *e = dynamic_cast<const This *>(&other);
+    return e != nullptr && Base::equals(*e, tol) &&
+           point_on_link_.equals(e->point_on_link_);
+  }
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::ContactEqualityFactor>
+    : public Testable<gtdynamics::ContactEqualityFactor> {};
+
+}  // namespace gtsam
