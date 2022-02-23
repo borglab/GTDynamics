@@ -45,6 +45,17 @@ EqualityConstraints Kinematics::constraints<Interval>(
 }
 
 template <>
+NonlinearFactorGraph Kinematics::poseGoalObjectives<Interval>(
+    const Interval& interval, const Robot& robot,
+    const gtsam::Values& goal_poses) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    graph.add(poseGoalObjectives(Slice(k), robot, goal_poses));
+  }
+  return graph;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
@@ -66,10 +77,10 @@ EqualityConstraints Kinematics::pointGoalConstraints<Interval>(
 
 template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
-    const Interval& interval, const Robot& robot) const {
+    const Interval& interval, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(jointAngleObjectives(Slice(k), robot));
+    graph.add(jointAngleObjectives(Slice(k), robot, mean));
   }
   return graph;
 }
@@ -77,10 +88,10 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
 template <>
 Values Kinematics::initialValues<Interval>(const Interval& interval,
                                            const Robot& robot,
-                                           double gaussian_noise) const {
+                                           double gaussian_noise, const gtsam::Values& joint_priors) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(initialValues(Slice(k), robot, gaussian_noise));
+    values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors));
   }
   return values;
 }

@@ -83,74 +83,32 @@ TEST(Slice, InverseKinematics) {
   }
 }
 
-// Values tonisFunction(const Slice& kSlice, const Robot& robot,
-//                                   const ContactGoals& contact_goals) const {
-//   auto graph = this->graph(kSlice, robot);
-
-//   // Add prior.
-//   graph.add(jointAngleObjectives(kSlice, robot));
-
-//   graph.addPrior<gtsam::Pose3>(PoseKey(0, k),
-//   gtsam::Pose3(), nullptr);
-
-//   auto initial_values = initialValues(kSlice, robot);
-
-//   return optimize(graph, initial_values);
-// }
-
-gtsam::Values initialValues(const Slice& slice, const Robot& robot,
-                                        const gtsam::Vector7& initial) {
-  gtsam::Values values;
-
-  // Initialize all joint angles.
-  for (auto&& joint : robot.joints()) {
-    InsertJointAngle(&values, joint->id(), slice.k, initial(joint->id()));
+gtsam::Values jointVectorToValues(const Robot& robot,
+                                  const gtsam::Vector7& joints) {
+  gtsam::Values joint_values;
+  for (auto&& j : robot.joints()) {
+    size_t joint_id = j->id();
+    joint_values.insert(JointAngleKey(joint_id, k), joints(joint_id));
   }
 
-  // Initialize poses with fk of initialized values
-  auto fk = robot.forwardKinematics(values, k);  
-  for (auto&& link : robot.links()) {
-    InsertPose(&values, link->id(), slice.k, fk.at<gtsam::Pose3>(PoseKey(link->id(), k)));
-  }
-
-  return values;
-}
-
-gtsam::Values inverseWithPose(const Kinematics* self, const Slice& kSlice,
-                         const Robot& robot,
-                         const std::map<size_t, gtsam::Pose3> desired_poses,
-                         const gtsam::Vector7& initial) {
-  auto graph = self->graph(kSlice, robot);
-
-  // Add prior on joint angles to constrain the solution
-  graph.add(self->jointAngleObjectives(kSlice, robot));
-
-  // Add priors on link poses with desired poses from argument
-  for (auto&& kv : desired_poses) {
-    const size_t link_index = kv.first;
-    const gtsam::Pose3& desired_pose = kv.second;
-    // TODO: put it as the kinematic parameters
-    graph.addPrior<gtsam::Pose3>(PoseKey(link_index, k), desired_pose, gtsam::noiseModel::Isotropic::Sigma(6,0.00005));
-  }
-
-  // Robot kinematics constraints
-  auto constraints = self->constraints(kSlice, robot);
-
-  auto initial_values = initialValues(kSlice, robot, initial);
-
-  return self->optimize(graph, constraints, initial_values);
+  return joint_values;
 }
 
 TEST(Slice, initial_values) {
-
+  // Load robot from urdf file
   const Robot panda =
-    CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+      CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
   const Robot robot = panda.fixLink("link0");
 
+  Kinematics kinematics;
+
+  // Create Values where initial joint angles are stored
   gtsam::Vector7 initial;
   initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
+  gtsam::Values initial_joints = jointVectorToValues(robot, initial);
 
-  gtsam::Values initial_values = initialValues(kSlice, robot, initial);
+  gtsam::Values initial_values =
+      kinematics.initialValues(kSlice, robot, 0.0, initial_joints);
 
   // We should only have 7 values for joints and 8 for link poses
   EXPECT_LONGS_EQUAL(15, initial_values.size())
@@ -163,11 +121,93 @@ TEST(Slice, initial_values) {
   EXPECT(assert_equal(initial, actual_initial, tol))
 
   // check that the last fk is the same
-  gtsam::Rot3 sR7 {{ 0.98161623,  0.13223102, -0.13763916},
-       { 0.08587125, -0.9499891 , -0.30024463},
-       {-0.17045735,  0.28290575, -0.94387956}};
+  gtsam::Rot3 sR7{{0.98161623, 0.13223102, -0.13763916},
+                  {0.08587125, -0.9499891, -0.30024463},
+                  {-0.17045735, 0.28290575, -0.94387956}};
   gtsam::Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
-  EXPECT(assert_equal(sT7, initial_values.at<gtsam::Pose3>(PoseKey(7,k)), tol))
+  EXPECT(assert_equal(sT7, initial_values.at<gtsam::Pose3>(PoseKey(7, k)), tol))
+}
+
+TEST(Slice, JointAngleObjectives) {
+  const Robot panda =
+      CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+  const Robot robot = panda.fixLink("link0");
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  // Priors with means at 0
+  auto joint_priors = kinematics.jointAngleObjectives(kSlice, robot);
+  EXPECT_LONGS_EQUAL(7, joint_priors.size())
+
+  // Check means at 0
+  gtsam::Vector7 means_vector;
+  means_vector << 0, 0, 0, 0, 0, 0, 0;
+  gtsam::Values expected_means = jointVectorToValues(robot, means_vector);
+  gtsam::Values initial =
+      kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  double tol = 1e-5;
+  EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
+
+  // Define some means different than 0
+  gtsam::Values means;
+  means.insert(JointAngleKey(0, k), 1.0);
+  means.insert(JointAngleKey(2, k), 1.0);
+  means.insert(JointAngleKey(4, k), 1.0);
+  means.insert(JointAngleKey(6, k), 1.0);
+  joint_priors = kinematics.jointAngleObjectives(kSlice, robot, means);
+  EXPECT_LONGS_EQUAL(7, joint_priors.size())
+
+  // check means
+  means_vector << 1, 0, 1, 0, 1, 0, 1;
+  expected_means = jointVectorToValues(robot, means_vector);
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
+
+  // Define means of all joints different than 0
+  means.insert(JointAngleKey(1, k), 0.5);
+  means.insert(JointAngleKey(3, k), -1.0);
+  means.insert(JointAngleKey(5, k), 0.5);
+  joint_priors = kinematics.jointAngleObjectives(kSlice, robot, means);
+  EXPECT_LONGS_EQUAL(7, joint_priors.size())
+
+  // check means
+  means_vector << 1, 0.5, 1, -1, 1, 0.5, 1;
+  expected_means = jointVectorToValues(robot, means_vector);
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
+}
+
+TEST(Slice, PoseGoalObjectives) {
+  const Robot panda =
+      CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+  const Robot robot = panda.fixLink("link0");
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  // Add prior to pose
+  gtsam::Rot3 sR7{{0.98161623, 0.13223102, -0.13763916},
+                  {0.08587125, -0.9499891, -0.30024463},
+                  {-0.17045735, 0.28290575, -0.94387956}};
+  gtsam::Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
+  gtsam::Values goal_poses;
+  goal_poses.insert(PoseKey(7, k), sT7);
+  auto pose_priors = kinematics.poseGoalObjectives(kSlice, robot, goal_poses);
+
+  gtsam::Vector7 initial;
+  initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
+  gtsam::Values initial_joints = jointVectorToValues(robot, initial);
+  auto initial_values =
+      kinematics.initialValues(kSlice, robot, 0.0, initial_joints);
+  double tol = 1e-4;
+  GTSAM_PRINT(initial_values.at<gtsam::Pose3>(PoseKey(7, k)));
+  EXPECT(assert_equal(sT7, initial_values.at<gtsam::Pose3>(PoseKey(7, k)), tol))
+  EXPECT_DOUBLES_EQUAL(0, pose_priors.error(initial_values), tol)
 }
 
 TEST(Slice, panda_constraints) {
@@ -204,20 +244,24 @@ TEST(Slice, PandaIK) {
   auto graph = kinematics.graph(kSlice, robot);
   EXPECT_LONGS_EQUAL(7, graph.size());
 
-  // We should only have 8 unknown links and 7 unknown joint angles, i.e., 15
-  // values:
-  auto initial_values = kinematics.initialValues(kSlice, robot);
-  EXPECT_LONGS_EQUAL(15, initial_values.size());
-
-  Rot3 sR7 {{ 0.98161623,  0.13223102, -0.13763916},
-       { 0.08587125, -0.9499891 , -0.30024463},
-       {-0.17045735,  0.28290575, -0.94387956}};
+  // Define the goal pose and add it to a values container
+  // This is the FK solution of {0.1,0.2,0.3,-0.4,0.5,0.6,0.7}
+  gtsam::Values goal_poses;
+  Rot3 sR7{{0.98161623, 0.13223102, -0.13763916},
+           {0.08587125, -0.9499891, -0.30024463},
+           {-0.17045735, 0.28290575, -0.94387956}};
   Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
-  Vector7 initial;
+  goal_poses.insert(PoseKey(7, k), sT7);
+
+  // Give a noisy estimate of the original point
+  Vector7 initial, noise;
   initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
-  Vector7 noise;
   noise << 0.04, -0.1, 0.07, 0.14, -0.05, 0.02, 0.1;
-  auto values = inverseWithPose(&kinematics, kSlice, robot, {{7, sT7}}, initial+noise);
+  gtsam::Values initial_joints = jointVectorToValues(robot, noise + initial);
+
+  // Call IK solver
+  auto values =
+      kinematics.inverseWithPose(kSlice, robot, goal_poses, initial_joints);
 
   // Check that base link did not budge (much)
   auto base_link = robot.link("link0");
@@ -232,7 +276,7 @@ TEST(Slice, PandaIK) {
   Vector7 optimal_q;
   for (size_t j = 0; j < 7; j++)
     optimal_q[j] = values.at<double>(JointAngleKey(j, k));
-  tol = 0.001;
+  tol = 0.1;
   EXPECT(assert_equal(initial, optimal_q, tol));
 }
 

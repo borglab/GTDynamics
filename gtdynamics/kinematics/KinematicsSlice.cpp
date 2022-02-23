@@ -120,22 +120,45 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
 }
 
 template <>
-NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
-    const Slice& slice, const Robot& robot) const {
-  NonlinearFactorGraph graph;
+NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
+    const Slice& slice, const Robot& robot,
+    const gtsam::Values& goal_poses) const {
+  gtsam::NonlinearFactorGraph graph;
 
-  // Minimize the joint angles.
-  for (auto&& joint : robot.joints()) {
-    const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
-    graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
+  // Add priors on link poses with desired poses from argument
+  for (auto&& link : robot.links()) {
+    auto pose_key = PoseKey(link->id(), slice.k);
+    if (goal_poses.exists(pose_key)) {
+      const gtsam::Pose3& desired_pose = goal_poses.at<gtsam::Pose3>(pose_key);
+      // TODO: use poseprior from unstable gtsam slam or create new factors, to
+      // add pose from link7
+      graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
+    }
   }
 
   return graph;
 }
 
 template <>
-Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
-                                        double gaussian_noise) const {
+NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
+    const Slice& slice, const Robot& robot, const Values& mean) const {
+  NonlinearFactorGraph graph;
+
+  // Minimize the joint angles.
+  for (auto&& joint : robot.joints()) {
+    const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    double joint_mean = 0.0;
+    if (mean.exists(key)) joint_mean = mean.at<double>(key);
+    graph.addPrior<double>(key, joint_mean, p_.prior_q_cost_model);
+  }
+
+  return graph;
+}
+
+template <>
+Values Kinematics::initialValues<Slice>(
+    const Slice& slice, const Robot& robot, double gaussian_noise,
+    const gtsam::Values& initial_joints) const {
   Values values;
 
   auto sampler_noise_model =
@@ -143,14 +166,33 @@ Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
   gtsam::Sampler sampler(sampler_noise_model);
 
   // Initialize all joint angles.
+  bool any_value = false;
   for (auto&& joint : robot.joints()) {
-    InsertJointAngle(&values, joint->id(), slice.k, sampler.sample()[0]);
+    auto key = JointAngleKey(joint->id(), slice.k);
+    double value;
+    if (initial_joints.exists(key)) {
+      value = initial_joints.at<double>(key);
+      any_value = true;
+    } else
+      value = sampler.sample()[0];
+    InsertJointAngle(&values, joint->id(), slice.k, value);
   }
 
-  // Initialize all poses.
-  for (auto&& link : robot.links()) {
-    const gtsam::Vector6 xi = sampler.sample();
-    InsertPose(&values, link->id(), slice.k, link->bMcom().expmap(xi));
+  // Maybe fk takes a long time, so only compute it if there was a given initial
+  // joint value in this slice
+  if (any_value) {
+    // Initialize poses with fk of initialized values
+    auto fk = robot.forwardKinematics(values, slice.k);
+    for (auto&& link : robot.links()) {
+      InsertPose(&values, link->id(), slice.k,
+                 fk.at<gtsam::Pose3>(PoseKey(link->id(), slice.k)));
+    }
+  } else {
+    // Initialize all poses.
+    for (auto&& link : robot.links()) {
+      const gtsam::Vector6 xi = sampler.sample();
+      InsertPose(&values, link->id(), slice.k, link->bMcom().expmap(xi));
+    }
   }
 
   return values;
@@ -181,5 +223,25 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
   auto initial_values = initialValues(slice, robot);
 
   return optimize(graph, constraints, initial_values);
+}
+
+template <>
+gtsam::Values Kinematics::inverseWithPose<Slice>(
+    const Slice& slice, const Robot& robot, const gtsam::Values& goal_poses,
+    const gtsam::Values& joint_priors) const {
+  auto graph = this->graph(slice, robot);
+
+  // Add prior on joint angles to constrain the solution
+  graph.add(this->jointAngleObjectives(slice, robot, joint_priors));
+
+  // Add priors on link poses with desired poses from argument
+  graph.add(this->poseGoalObjectives(slice, robot, goal_poses));
+
+  // Robot kinematics constraints
+  auto constraints = this->constraints(slice, robot);
+
+  auto initial_values = this->initialValues(slice, robot, 0.1, joint_priors);
+
+  return this->optimize(graph, constraints, initial_values);
 }
 }  // namespace gtdynamics

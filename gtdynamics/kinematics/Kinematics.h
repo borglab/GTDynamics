@@ -132,28 +132,48 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create pose goal objectives.
+   * @param context Slice or Interval instance.
+   * @param pose_goals goals for poses
+   * @returns graph with pose goal factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph poseGoalObjectives(
+      const CONTEXT& context, const Robot& robot,
+      const gtsam::Values& pose_goals) const;
+
+  /**
    * @fn Factors that minimize joint angles.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
+   * @param joint_priors Values where the mean of the priors is specified
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
-  gtsam::NonlinearFactorGraph jointAngleObjectives(const CONTEXT& context,
-                                                   const Robot& robot) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(
+      const CONTEXT& context, const Robot& robot,
+      const gtsam::Values& joint_priors = gtsam::Values()) const;
 
   /**
    * @fn Initialize kinematics.
    *
-   * Use wTcom for poses and zero-mean noise for joint angles.
+   * If no values in initial_joints are given, use wTcom for poses and zero-mean
+   * noise for joint angles.
+   * If values are given, initialize joints with their given values, and
+   * zero-mean noise to the ones that without a given value. Poses are
+   * initialized with their fk values.
+   *
    *
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
    * @param gaussian_noise time step to check (default 0.1).
+   * @param initial_joints initial values for joints
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
-  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
-                              double gaussian_noise = 0.1) const;
+  gtsam::Values initialValues(
+      const CONTEXT& context, const Robot& robot, double gaussian_noise = 0.1,
+      const gtsam::Values& initial_joints = gtsam::Values()) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
@@ -168,6 +188,22 @@ class Kinematics : public Optimizer {
   gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals,
                         bool contact_goals_as_constraints = true) const;
+
+  /**
+   * @fn Inverse kinematics given a set of desired poses
+   * @fn This function does inverse kinematics separately on each slice
+   * @param context Slice or Interval instance
+   * @param robot Robot specification from URDF/SDF
+   * @param goal_poses goals for EE poses
+   * @param joint_priors optional argument to put priors centered on given
+   * values. If empty, the priors will be centered on the origin
+   * @return values with poses and joint angles
+   */
+  template <class CONTEXT>
+  gtsam::Values inverseWithPose(
+      const CONTEXT& context, const Robot& robot,
+      const gtsam::Values& goal_poses,
+      const gtsam::Values& joint_priors = gtsam::Values()) const;
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
