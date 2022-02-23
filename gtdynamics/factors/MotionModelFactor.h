@@ -15,7 +15,7 @@
 
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
-#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
 
 namespace gtdynamics {
 
@@ -23,52 +23,44 @@ namespace gtdynamics {
  * @brief A 4-way factor which evaluates the motion model of a link in the
  * robot's base frame.
  */
-class MotionModelFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
+class MotionModelFactor
+    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
+                                      gtsam::Pose3> {
  private:
   using This = MotionModelFactor;
-  using Base = gtsam::BetweenFactor<gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+                                        gtsam::Pose3, gtsam::Pose3>;
+
+  gtsam::Pose3 motion_model_;
 
  public:
   // shorthand for a smart pointer to a factor
   using shared_ptr = boost::shared_ptr<MotionModelFactor>;
 
   /**
-   * @brief Construct a new motion model factor.
+   * @brief Construct a new Motion Model Factor object
    *
-   * @param wTp_key Key to the parent link.
-   * @param wTc_key Key to the child link.
-   * @param model The noise model for this factor.
-   * @param joint The joint connecting the links.
-   * @param joint_coordinate The coordinates of the joint motion.
-   * @param k The time index.
-   */
-  MotionModelFactor(gtsam::Key wTl1_key, gtsam::Key wTl2_key,
-                    const gtsam::noiseModel::Base::shared_ptr& model,
-                    const gtsam::Pose3& motion_model_mean)
-      : Base(wTl1_key, wTl2_key, motion_model_mean, model) {}
-
-  /**
-   * @brief Construct a new motion model factor.
-   *
-   * @param wTp_key Key to the parent link.
-   * @param wTc_key Key to the child link.
-   * @param model The noise model for this factor.
-   * @param joint The joint connecting the links.
-   * @param joint_coordinate The coordinates of the joint motion.
-   * @param k The time index.
+   * @param wTb1_key
+   * @param wTl1_key
+   * @param wTb2_key
+   * @param wTl2_key
+   * @param model
+   * @param motion_model_mean
    */
   MotionModelFactor(gtsam::Key wTb1_key, gtsam::Key wTl1_key,
                     gtsam::Key wTb2_key, gtsam::Key wTl2_key,
                     const gtsam::noiseModel::Base::shared_ptr& model,
                     const gtsam::Pose3& motion_model_mean)
-      : Base(wTl1_key, wTl2_key, motion_model_mean, model) {
-    // Also add the extra wTb keys
-    keys_.push_back(wTb1_key);
-    keys_.push_back(wTb2_key);
-  }
+      : Base(model, wTb1_key, wTl1_key, wTb2_key, wTl2_key),
+        motion_model_(motion_model_mean) {}
 
-  /// Evaluate error when only
-  using Base::evaluateError;
+  MotionModelFactor(const gtsam::noiseModel::Base::shared_ptr& model,
+                    const LinkConstSharedPtr base,
+                    const LinkConstSharedPtr link,
+                    const gtsam::Pose3& motion_model_mean, size_t t0, size_t t1)
+      : Base(model, PoseKey(base->id(), t0), PoseKey(link->id(), t0),
+             PoseKey(base->id(), t1), PoseKey(link->id(), t1)),
+        motion_model_(motion_model_mean) {}
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3& wTb1, const gtsam::Pose3& wTl1,
@@ -76,27 +68,29 @@ class MotionModelFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
       boost::optional<gtsam::Matrix&> H_wTb1 = boost::none,
       boost::optional<gtsam::Matrix&> H_wTl1 = boost::none,
       boost::optional<gtsam::Matrix&> H_wTb2 = boost::none,
-      boost::optional<gtsam::Matrix&> H_wTl2 = boost::none) const {
-    gtsam::Matrix6 H_b1, H_b2, H_l1, H_l2;
-    gtsam::Pose3 bTl1 =
-        wTb1.between(wTl1, H_wTb1 ? &H_b1 : nullptr, H_wTl1 ? &H_l1 : nullptr);
-    gtsam::Pose3 bTl2 =
-        wTb2.between(wTl2, H_wTb2 ? &H_b2 : nullptr, H_wTl2 ? &H_l2 : nullptr);
+      boost::optional<gtsam::Matrix&> H_wTl2 = boost::none) const override {
+    // Compute link poses in the body frame
+    gtsam::Pose3 bTl1 = wTb1.between(wTl1, H_wTb1, H_wTl1);
+    gtsam::Pose3 bTl2 = wTb2.between(wTl2, H_wTb2, H_wTl2);
+
     gtsam::Matrix6 H1, H2;
-    gtsam::Vector6 error = Base::evaluateError(bTl1, bTl2, H_wTl1, H_wTl2);
-    // gtsam::Vector6 error = Base::evaluateError(bTl1, bTl2, &H1, &H2);
+    gtsam::Pose3 l1Tl2 = bTl1.between(bTl2, (H_wTb1 || H_wTl1) ? &H1 : nullptr,
+                                      (H_wTb2 || H_wTl2) ? &H2 : nullptr);
+
+    gtsam::Vector6 error =
+        gtsam::traits<gtsam::Pose3>::Local(motion_model_, l1Tl2);
 
     if (H_wTb1) {
-      *H_wTb1 = (*H_wTl1) * H_b1;
+      *H_wTb1 = H1 * (*H_wTb1);
     }
     if (H_wTl1) {
-      *H_wTl1 = (*H_wTl1) * H_l1;
+      *H_wTl1 = H1 * (*H_wTl1);
     }
     if (H_wTb2) {
-      *H_wTb2 = (*H_wTl2) * H_b2;
+      *H_wTb2 = H2 * (*H_wTb2);
     }
     if (H_wTl2) {
-      *H_wTl2 = (*H_wTl2) * H_l2;
+      *H_wTl2 = H2 * (*H_wTl2);
     }
     return error;
   }
