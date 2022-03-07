@@ -142,7 +142,7 @@ TEST(Slice, JointAngleObjectives) {
   auto joint_priors = kinematics.jointAngleObjectives(kSlice, robot);
   EXPECT_LONGS_EQUAL(7, joint_priors.size())
 
-  // Check means at 0
+  // Check that error from priors evaluated at 0 is 0
   gtsam::Vector7 means_vector;
   means_vector << 0, 0, 0, 0, 0, 0, 0;
   gtsam::Values expected_means = jointVectorToValues(robot, means_vector);
@@ -151,7 +151,7 @@ TEST(Slice, JointAngleObjectives) {
   double tol = 1e-5;
   EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
 
-  // Define some means different than 0
+  // Define some prior means different than 0
   gtsam::Values means;
   means.insert(JointAngleKey(0, k), 1.0);
   means.insert(JointAngleKey(2, k), 1.0);
@@ -160,7 +160,11 @@ TEST(Slice, JointAngleObjectives) {
   joint_priors = kinematics.jointAngleObjectives(kSlice, robot, means);
   EXPECT_LONGS_EQUAL(7, joint_priors.size())
 
-  // check means
+  // check that error at 0 is now not 0
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  EXPECT(tol < joint_priors.error(initial))
+
+  // Check that the evaluated error at the expected means is 0
   means_vector << 1, 0, 1, 0, 1, 0, 1;
   expected_means = jointVectorToValues(robot, means_vector);
   initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
@@ -173,11 +177,45 @@ TEST(Slice, JointAngleObjectives) {
   joint_priors = kinematics.jointAngleObjectives(kSlice, robot, means);
   EXPECT_LONGS_EQUAL(7, joint_priors.size())
 
-  // check means
+  // Check that the evaluated error at the expected means is 0
   means_vector << 1, 0.5, 1, -1, 1, 0.5, 1;
   expected_means = jointVectorToValues(robot, means_vector);
   initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
   EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
+}
+
+TEST(Slice, jointAngleLimits) {
+  const Robot panda =
+      CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
+  const Robot robot = panda.fixLink("link0");
+  
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  auto jointLimits = kinematics.jointAngleLimits(kSlice, robot);
+
+  // get joint limits
+  gtsam::Vector7 lower_limits, upper_limits;
+  for(auto&& joint : robot.joints()){
+    auto scalar_values = joint->parameters().scalar_limits;
+    lower_limits(joint->id()) = scalar_values.value_lower_limit;
+    upper_limits(joint->id()) = scalar_values.value_upper_limit;
+  }
+  auto ones = gtsam::Vector7::Ones();
+
+  const double tol = 1e-5;
+  // if lower than lower_limit, error must be greater than 0
+  auto values = jointVectorToValues(robot, lower_limits-0.1*ones);
+  EXPECT(tol < jointLimits.error(values))
+
+  // if inside the limits, the error must be 0
+  values = jointVectorToValues(robot, (lower_limits+upper_limits)/2);
+  EXPECT_DOUBLES_EQUAL(0.0, jointLimits.error(values), tol)
+
+  // if upper than upper_limit, error must be greater than 0
+  values = jointVectorToValues(robot, upper_limits+0.1*ones);
+  EXPECT(tol < jointLimits.error(values))
 }
 
 TEST(Slice, PoseGoalObjectives) {

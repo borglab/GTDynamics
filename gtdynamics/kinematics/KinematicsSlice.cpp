@@ -11,6 +11,7 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
@@ -156,6 +157,20 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
 }
 
 template <>
+NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+  for (auto&& joint : robot.joints()) {
+    graph.add(JointLimitFactor(
+        JointAngleKey(joint->id(), slice.k), p_.prior_q_cost_model,
+        joint->parameters().scalar_limits.value_lower_limit,
+        joint->parameters().scalar_limits.value_upper_limit,
+        joint->parameters().scalar_limits.value_limit_threshold));
+  }
+  return graph;
+}
+
+template <>
 Values Kinematics::initialValues<Slice>(
     const Slice& slice, const Robot& robot, double gaussian_noise,
     const gtsam::Values& initial_joints) const {
@@ -236,6 +251,9 @@ gtsam::Values Kinematics::inverseWithPose<Slice>(
 
   // Add priors on link poses with desired poses from argument
   graph.add(this->poseGoalObjectives(slice, robot, goal_poses));
+
+  // Add joint angle limits factors
+  graph.add(this->jointAngleLimits(slice, robot));
 
   // Robot kinematics constraints
   auto constraints = this->constraints(slice, robot);

@@ -155,6 +155,16 @@ class Kinematics : public Optimizer {
       const gtsam::Values& joint_priors = gtsam::Values()) const;
 
   /**
+   * @fn Factors that enforce joint angle limits.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @return graph with prior factors on joint angles.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph jointAngleLimits(const CONTEXT& context,
+                                               const Robot& robot) const;
+
+  /**
    * @fn Initialize kinematics.
    *
    * If no values in initial_joints are given, use wTcom for poses and zero-mean

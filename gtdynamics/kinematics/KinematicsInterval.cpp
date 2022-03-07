@@ -86,9 +86,19 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
 }
 
 template <>
-Values Kinematics::initialValues<Interval>(const Interval& interval,
-                                           const Robot& robot,
-                                           double gaussian_noise, const gtsam::Values& joint_priors) const {
+NonlinearFactorGraph Kinematics::jointAngleLimits<Interval>(
+    const Interval& interval, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    graph.add(jointAngleLimits(Slice(k), robot));
+  }
+  return graph;
+}
+
+template <>
+Values Kinematics::initialValues<Interval>(
+    const Interval& interval, const Robot& robot, double gaussian_noise,
+    const gtsam::Values& joint_priors) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
     values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors));
