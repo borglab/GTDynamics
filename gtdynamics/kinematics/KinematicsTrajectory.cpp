@@ -78,11 +78,11 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Trajectory>(
 template <>
 Values Kinematics::initialValues<Trajectory>(
     const Trajectory& trajectory, const Robot& robot, double gaussian_noise,
-    const gtsam::Values& initial_joints) const {
+    const gtsam::Values& initial_joints, bool use_fk) const {
   Values values;
   for (auto&& phase : trajectory.phases()) {
     values.insert(
-        initialValues<Interval>(phase, robot, gaussian_noise, initial_joints));
+        initialValues<Interval>(phase, robot, gaussian_noise, initial_joints, use_fk));
   }
   return values;
 }

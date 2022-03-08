@@ -183,7 +183,7 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::Values initialValues(
       const CONTEXT& context, const Robot& robot, double gaussian_noise = 0.1,
-      const gtsam::Values& initial_joints = gtsam::Values()) const;
+      const gtsam::Values& initial_joints = gtsam::Values(), bool use_fk = false) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
@@ -210,7 +210,7 @@ class Kinematics : public Optimizer {
    * @return values with poses and joint angles
    */
   template <class CONTEXT>
-  gtsam::Values inverseWithPose(
+  gtsam::Values inverse(
       const CONTEXT& context, const Robot& robot,
       const gtsam::Values& goal_poses,
       const gtsam::Values& joint_priors = gtsam::Values()) const;

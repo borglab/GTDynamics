@@ -73,13 +73,13 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
       // Get an expression for the unknown link pose.
       Pose3_ bTcom(PoseKey(link->id(), slice.k));
 
-      // Kust make sure it does not move from its original rest pose
+      // Just make sure it does not move from its original rest pose
       Pose3_ bMcom(link->bMcom());
 
       // Create expression to calculate the error in tangent space
       auto constraint_expr = gtsam::logmap(bTcom, bMcom);
 
-      // Add constriant
+      // Add constraint
       constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
                                                               tolerance);
     }
@@ -126,13 +126,20 @@ NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
     const gtsam::Values& goal_poses) const {
   gtsam::NonlinearFactorGraph graph;
 
+  for (const gtsam::Key& key : goal_poses.keys()) {
+    const gtsam::Pose3& desired_pose = goal_poses.at<gtsam::Pose3>(key);
+    // TODO(toni): use poseprior from unstable gtsam slam or create new
+    // factors, to add pose from link7
+    graph.addPrior<gtsam::Pose3>(key, desired_pose, p_.p_cost_model);
+  }
+
   // Add priors on link poses with desired poses from argument
   for (auto&& link : robot.links()) {
     auto pose_key = PoseKey(link->id(), slice.k);
     if (goal_poses.exists(pose_key)) {
       const gtsam::Pose3& desired_pose = goal_poses.at<gtsam::Pose3>(pose_key);
-      // TODO: use poseprior from unstable gtsam slam or create new factors, to
-      // add pose from link7
+      // TODO(toni): use poseprior from unstable gtsam slam or create new
+      // factors, to add pose from link7
       graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
     }
   }
@@ -148,9 +155,8 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
   // Minimize the joint angles.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
-    double joint_mean = 0.0;
-    if (mean.exists(key)) joint_mean = mean.at<double>(key);
-    graph.addPrior<double>(key, joint_mean, p_.prior_q_cost_model);
+    graph.addPrior<double>(key, (mean.exists(key) ? mean.at<double>(key) : 0.0),
+                           p_.prior_q_cost_model);
   }
 
   return graph;
@@ -171,9 +177,10 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
 }
 
 template <>
-Values Kinematics::initialValues<Slice>(
-    const Slice& slice, const Robot& robot, double gaussian_noise,
-    const gtsam::Values& initial_joints) const {
+Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
+                                        double gaussian_noise,
+                                        const gtsam::Values& initial_joints,
+                                        bool use_fk) const {
   Values values;
 
   auto sampler_noise_model =
@@ -181,21 +188,16 @@ Values Kinematics::initialValues<Slice>(
   gtsam::Sampler sampler(sampler_noise_model);
 
   // Initialize all joint angles.
-  bool any_value = false;
   for (auto&& joint : robot.joints()) {
     auto key = JointAngleKey(joint->id(), slice.k);
-    double value;
-    if (initial_joints.exists(key)) {
-      value = initial_joints.at<double>(key);
-      any_value = true;
-    } else
-      value = sampler.sample()[0];
-    InsertJointAngle(&values, joint->id(), slice.k, value);
+    double angle = initial_joints.exists(key) ? initial_joints.at<double>(key)
+                                              : sampler.sample()[0];
+    InsertJointAngle(&values, joint->id(), slice.k, angle);
   }
 
   // Maybe fk takes a long time, so only compute it if there was a given initial
   // joint value in this slice
-  if (any_value) {
+  if (use_fk) {
     // Initialize poses with fk of initialized values
     auto fk = robot.forwardKinematics(values, slice.k);
     for (auto&& link : robot.links()) {
@@ -241,12 +243,12 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 }
 
 template <>
-gtsam::Values Kinematics::inverseWithPose<Slice>(
+gtsam::Values Kinematics::inverse<Slice>(
     const Slice& slice, const Robot& robot, const gtsam::Values& goal_poses,
     const gtsam::Values& joint_priors) const {
   auto graph = this->graph(slice, robot);
 
-  // Add prior on joint angles to constrain the solution
+  // Add prior on joint angles to prefer solution close to our initial estimates
   graph.add(this->jointAngleObjectives(slice, robot, joint_priors));
 
   // Add priors on link poses with desired poses from argument
@@ -258,7 +260,7 @@ gtsam::Values Kinematics::inverseWithPose<Slice>(
   // Robot kinematics constraints
   auto constraints = this->constraints(slice, robot);
 
-  auto initial_values = this->initialValues(slice, robot, 0.1, joint_priors);
+  auto initial_values = this->initialValues(slice, robot, 0.1, joint_priors, true);
 
   return this->optimize(graph, constraints, initial_values);
 }

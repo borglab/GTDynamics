@@ -98,10 +98,10 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Interval>(
 template <>
 Values Kinematics::initialValues<Interval>(
     const Interval& interval, const Robot& robot, double gaussian_noise,
-    const gtsam::Values& joint_priors) const {
+    const gtsam::Values& joint_priors, bool use_fk) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors));
+    values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors, use_fk));
   }
   return values;
 }

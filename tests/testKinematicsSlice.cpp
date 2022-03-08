@@ -94,7 +94,7 @@ gtsam::Values jointVectorToValues(const Robot& robot,
   return joint_values;
 }
 
-TEST(Slice, initial_values) {
+TEST(Slice, initialValues) {
   // Load robot from urdf file
   const Robot panda =
       CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
@@ -108,7 +108,7 @@ TEST(Slice, initial_values) {
   gtsam::Values initial_joints = jointVectorToValues(robot, initial);
 
   gtsam::Values initial_values =
-      kinematics.initialValues(kSlice, robot, 0.0, initial_joints);
+      kinematics.initialValues(kSlice, robot, 0.0, initial_joints, true);
 
   // We should only have 7 values for joints and 8 for link poses
   EXPECT_LONGS_EQUAL(15, initial_values.size())
@@ -147,7 +147,7 @@ TEST(Slice, JointAngleObjectives) {
   means_vector << 0, 0, 0, 0, 0, 0, 0;
   gtsam::Values expected_means = jointVectorToValues(robot, means_vector);
   gtsam::Values initial =
-      kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+      kinematics.initialValues(kSlice, robot, 0.0, expected_means, true);
   double tol = 1e-5;
   EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
 
@@ -161,13 +161,13 @@ TEST(Slice, JointAngleObjectives) {
   EXPECT_LONGS_EQUAL(7, joint_priors.size())
 
   // check that error at 0 is now not 0
-  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means, true);
   EXPECT(tol < joint_priors.error(initial))
 
   // Check that the evaluated error at the expected means is 0
   means_vector << 1, 0, 1, 0, 1, 0, 1;
   expected_means = jointVectorToValues(robot, means_vector);
-  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means, true);
   EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
 
   // Define means of all joints different than 0
@@ -180,7 +180,7 @@ TEST(Slice, JointAngleObjectives) {
   // Check that the evaluated error at the expected means is 0
   means_vector << 1, 0.5, 1, -1, 1, 0.5, 1;
   expected_means = jointVectorToValues(robot, means_vector);
-  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means);
+  initial = kinematics.initialValues(kSlice, robot, 0.0, expected_means, true);
   EXPECT_DOUBLES_EQUAL(0.0, joint_priors.error(initial), tol)
 }
 
@@ -241,7 +241,7 @@ TEST(Slice, PoseGoalObjectives) {
   initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
   gtsam::Values initial_joints = jointVectorToValues(robot, initial);
   auto initial_values =
-      kinematics.initialValues(kSlice, robot, 0.0, initial_joints);
+      kinematics.initialValues(kSlice, robot, 0.0, initial_joints, true);
   double tol = 1e-4;
   GTSAM_PRINT(initial_values.at<gtsam::Pose3>(PoseKey(7, k)));
   EXPECT(assert_equal(sT7, initial_values.at<gtsam::Pose3>(PoseKey(7, k)), tol))
@@ -299,7 +299,7 @@ TEST(Slice, PandaIK) {
 
   // Call IK solver
   auto values =
-      kinematics.inverseWithPose(kSlice, robot, goal_poses, initial_joints);
+      kinematics.inverse(kSlice, robot, goal_poses, initial_joints);
 
   // Check that base link did not budge (much)
   auto base_link = robot.link("link0");
