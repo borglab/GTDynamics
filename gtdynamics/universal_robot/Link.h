@@ -182,6 +182,12 @@ class Link : public boost::enable_shared_from_this<Link> {
     return fixed_link;
   }
 
+
+  /// Set link mass
+  void setMassValue(const double mass){
+    mass_ = mass;
+  }
+
   /// Functional way to unfix a link
   static Link unfix(const Link &link) {
     // Copy construct

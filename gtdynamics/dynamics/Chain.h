@@ -136,7 +136,7 @@ class Chain {
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
-gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+inline gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
                            const double &value2,
                            gtsam::OptionalJacobian<3, 1> J0 = boost::none,
                            gtsam::OptionalJacobian<3, 1> J1 = boost::none,

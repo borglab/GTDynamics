@@ -14,6 +14,7 @@
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Trajectory.h>
+#include <gtdynamics/dynamics/LeanDynamicsGraph.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/base/timing.h>
@@ -44,6 +45,12 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   auto all_feet = rlfr;
   all_feet.insert(all_feet.end(), rrfl.begin(), rrfl.end());
 
+  /*vector<LinkSharedPtr> all_but_rl = {robot.link("FL_lower"),robot.link("FR_lower"),robot.link("RR_lower")};
+  vector<LinkSharedPtr> all_but_rr = {robot.link("FL_lower"),robot.link("FR_lower"),robot.link("RL_lower")};
+  vector<LinkSharedPtr> all_but_fl = {robot.link("RL_lower"),robot.link("FR_lower"),robot.link("RR_lower")};
+  vector<LinkSharedPtr> all_but_fr = {robot.link("FL_lower"),robot.link("RL_lower"),robot.link("RR_lower")};
+  vector<LinkSharedPtr> all_feet = {robot.link("FL_lower"),robot.link("FR_lower"),robot.link("RR_lower"), robot.link("RL_lower")};*/
+
   // Create three different FootContactConstraintSpecs, one for all the feet on the
   // ground, one with RL and FR, one with RR and FL
   const Point3 contact_in_com(0, 0, -0.07);
@@ -51,13 +58,80 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   auto RLFR = boost::make_shared<FootContactConstraintSpec>(rlfr, contact_in_com);
   auto RRFL = boost::make_shared<FootContactConstraintSpec>(rrfl, contact_in_com);
 
+  /*const Point3 contact_in_com(0, 0, -0.07);
+  auto stationary = boost::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
+  auto rl = boost::make_shared<FootContactConstraintSpec>(all_but_rl, contact_in_com);
+  auto rr = boost::make_shared<FootContactConstraintSpec>(all_but_rr, contact_in_com);
+  auto fl = boost::make_shared<FootContactConstraintSpec>(all_but_fl, contact_in_com);
+  auto fr = boost::make_shared<FootContactConstraintSpec>(all_but_fr, contact_in_com);*/
+
   //FootContactVector states = {noRL, noRR, noFR, noFL};
   FootContactVector states = {stationary, RRFL, stationary, RLFR};
   std::vector<size_t> phase_lengths = {5, 30, 5, 30};
 
+
+  /*FootContactVector states = {stationary, rl, stationary, rr, stationary, rl, stationary, rr};
+  std::vector<size_t> phase_lengths = {15,5,15,5,15,5,15,5};*/
+
   WalkCycle walk_cycle(states, phase_lengths);
 
   return Trajectory(walk_cycle, repeat);
+}
+
+std::vector<std::vector<JointSharedPtr>> getChainJoints(const Robot& robot) {
+
+  std::vector<JointSharedPtr> FR,FL,RR,RL;
+
+  for (auto&& joint : robot.joints()) {
+    if (joint->name().find("FR") < 100) {
+      FR.emplace_back(joint);
+    }
+    if (joint->name().find("FL") < 100) {
+      FL.emplace_back(joint);
+    }
+    if (joint->name().find("RR") < 100) {
+      RR.emplace_back(joint);
+    }
+    if (joint->name().find("RL") < 100) {
+      RL.emplace_back(joint);
+    }
+  }
+
+  std::vector<std::vector<JointSharedPtr>> chain_joints{FR,FL,RR,RL};
+  
+  return chain_joints;
+}
+
+std::vector<Chain> getComposedChains(const std::vector<std::vector<JointSharedPtr>> &chain_joints) {
+
+  std::vector<Chain> fr_chain, fl_chain, rr_chain, rl_chain;
+
+  for (auto&& joint : chain_joints[0]) {
+    Chain single_link_chain(joint->pMc(), joint->cScrewAxis());
+    fr_chain.emplace_back(single_link_chain);
+  }
+  for (auto&& joint : chain_joints[1]) {
+    Chain single_link_chain(joint->pMc(), joint->cScrewAxis());
+    fl_chain.emplace_back(single_link_chain);
+  }
+  for (auto&& joint : chain_joints[2]) {
+    Chain single_link_chain(joint->pMc(), joint->cScrewAxis());
+    rr_chain.emplace_back(single_link_chain);
+  }
+  for (auto&& joint : chain_joints[3]) {
+    Chain single_link_chain(joint->pMc(), joint->cScrewAxis());
+    rl_chain.emplace_back(single_link_chain);
+  }
+
+  // Compose chains
+  Chain composed_fr = Chain::compose(fr_chain);
+  Chain composed_fl = Chain::compose(fl_chain);
+  Chain composed_rr = Chain::compose(rr_chain);
+  Chain composed_rl = Chain::compose(rl_chain);
+
+  std::vector<Chain> composed_chains{composed_fr, composed_fl, composed_rr, composed_rl};
+
+  return composed_chains;
 }
 
 int main(int argc, char** argv) {
@@ -67,6 +141,15 @@ int main(int argc, char** argv) {
   // Load Unitree A1 robot urdf.
   auto robot =
       CreateRobotFromFile(std::string("/home/dan/Desktop/Projects/GTDynamics/models/urdfs/a1/a1.urdf"), "a1");
+
+  for (auto&& link : robot.links()) {
+    if (link->name().find("trunk") > 100) {
+        link->setMassValue(0);
+        //link->setInertiaZero();
+        std::cout << link->name() << std::endl;
+    }
+  }
+
 
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-7;  // std of additional objectives.
@@ -81,11 +164,16 @@ int main(int argc, char** argv) {
   gtsam::Vector3 gravity(0, 0, -9.8);
   double mu = 1.0;
 
-  OptimizerSetting opt(sigma_dynamics);
-  DynamicsGraph graph_builder(opt, gravity);
-
   // Create the trajectory, 1 walk cycle.
   auto trajectory = getTrajectory(robot, 1);
+
+  // Prepare inputs for LeanDynamicsGraph
+  auto chain_joints = getChainJoints(robot);
+  auto composed_chains = getComposedChains(chain_joints);
+
+  OptimizerSetting opt(sigma_dynamics);
+  gtsam::Vector3 tolerance(1e-8, 1e-8, 1e-8);
+  LeanDynamicsGraph graph_builder(opt, composed_chains, chain_joints, tolerance, gravity);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
@@ -134,6 +222,18 @@ int main(int argc, char** argv) {
   graph.add(objectives);
 
   // Add prior on A1 hip joint angles
+  /*prior_model = Isotropic::Sigma(1, 1e-3);
+  for (auto&& joint : robot.joints())
+    if (joint->name().find("upper") < 100)
+      for (int k = 0; k <= K; k++) {
+        //std::cout << joint->name() << joint->name().find("hip") << std::endl;
+        objectives.add(JointObjectives(joint->id(), k).angle(1.0, prior_model));
+      }
+  // Add objectives to factor graph.
+   graph.add(objectives);*/
+
+
+  // Add prior on A1 hip joint angles
   prior_model = Isotropic::Sigma(1, 1e-7);
   for (auto&& joint : robot.joints())
     if (joint->name().find("hip") < 100)
@@ -160,6 +260,9 @@ int main(int argc, char** argv) {
   params.setAbsoluteErrorTol(1.0);
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
   auto results = optimizer.optimize();
+
+  graph_builder.saveGraphMultiSteps("/home/dan/Desktop/Projects/GTDynamics/build/factor_graph_a1.json", graph,
+                                    results, robot, 4, false);
 
   gttoc_(optimization);
   gttoc_(start);

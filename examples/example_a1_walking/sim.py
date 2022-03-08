@@ -139,7 +139,7 @@ while True:
             lineColorRGB=[1, 0, 1], lineWidth=1, lifeTime=1.5)'''
     
     p.stepSimulation()
-    time.sleep(1. / 20.)
+    time.sleep(1. / 240.)
 
     ts.append(t)
     t += 1. / 240.
