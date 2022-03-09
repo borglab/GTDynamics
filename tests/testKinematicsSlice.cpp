@@ -188,7 +188,7 @@ TEST(Slice, jointAngleLimits) {
   const Robot panda =
       CreateRobotFromFile(kUrdfPath + std::string("panda/panda.urdf"));
   const Robot robot = panda.fixLink("link0");
-  
+
   KinematicsParameters parameters;
   parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
@@ -197,7 +197,7 @@ TEST(Slice, jointAngleLimits) {
 
   // get joint limits
   gtsam::Vector7 lower_limits, upper_limits;
-  for(auto&& joint : robot.joints()){
+  for (auto&& joint : robot.joints()) {
     auto scalar_values = joint->parameters().scalar_limits;
     lower_limits(joint->id()) = scalar_values.value_lower_limit;
     upper_limits(joint->id()) = scalar_values.value_upper_limit;
@@ -206,15 +206,15 @@ TEST(Slice, jointAngleLimits) {
 
   const double tol = 1e-5;
   // if lower than lower_limit, error must be greater than 0
-  auto values = jointVectorToValues(robot, lower_limits-0.1*ones);
+  auto values = jointVectorToValues(robot, lower_limits - 0.1 * ones);
   EXPECT(tol < jointLimits.error(values))
 
   // if inside the limits, the error must be 0
-  values = jointVectorToValues(robot, (lower_limits+upper_limits)/2);
+  values = jointVectorToValues(robot, (lower_limits + upper_limits) / 2);
   EXPECT_DOUBLES_EQUAL(0.0, jointLimits.error(values), tol)
 
   // if upper than upper_limit, error must be greater than 0
-  values = jointVectorToValues(robot, upper_limits+0.1*ones);
+  values = jointVectorToValues(robot, upper_limits + 0.1 * ones);
   EXPECT(tol < jointLimits.error(values))
 }
 
@@ -233,9 +233,9 @@ TEST(Slice, PoseGoalObjectives) {
                   {0.08587125, -0.9499891, -0.30024463},
                   {-0.17045735, 0.28290575, -0.94387956}};
   gtsam::Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
-  gtsam::Values goal_poses;
-  goal_poses.insert(PoseKey(7, k), sT7);
-  auto pose_priors = kinematics.poseGoalObjectives(kSlice, robot, goal_poses);
+  PoseGoals pose_goals = {
+      {k, PoseGoal(robot.links()[7], gtsam::Pose3(), sT7)}};
+  auto pose_priors = kinematics.poseGoalObjectives(kSlice, pose_goals);
 
   gtsam::Vector7 initial;
   initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
@@ -284,13 +284,13 @@ TEST(Slice, PandaIK) {
 
   // Define the goal pose and add it to a values container
   // This is the FK solution of {0.1,0.2,0.3,-0.4,0.5,0.6,0.7}
-  gtsam::Values goal_poses;
   Rot3 sR7{{0.98161623, 0.13223102, -0.13763916},
            {0.08587125, -0.9499891, -0.30024463},
            {-0.17045735, 0.28290575, -0.94387956}};
   Pose3 sT7(sR7, Point3(0.323914, 0.167266, 0.905973));
-  goal_poses.insert(PoseKey(7, k), sT7);
-
+  PoseGoals pose_goals = {
+      {k, PoseGoal(robot.links()[7], gtsam::Pose3(), sT7)}};
+  
   // Give a noisy estimate of the original point
   Vector7 initial, noise;
   initial << 0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7;
@@ -298,8 +298,7 @@ TEST(Slice, PandaIK) {
   gtsam::Values initial_joints = jointVectorToValues(robot, noise + initial);
 
   // Call IK solver
-  auto values =
-      kinematics.inverse(kSlice, robot, goal_poses, initial_joints);
+  auto values = kinematics.inverse(kSlice, robot, pose_goals, initial_joints);
 
   // Check that base link did not budge (much)
   auto base_link = robot.link("link0");

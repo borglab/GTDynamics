@@ -17,6 +17,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/PoseOnLink.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -64,6 +65,56 @@ struct ContactGoal {
 
 ///< Map of link name to ContactGoal
 using ContactGoals = std::vector<ContactGoal>;
+
+/**
+ * Similar to the previous struct ContactGoal but with poses instead of
+ * points.
+ * Desired world pose for a end-effector pose.
+ *
+ * This simple struct stores the robot link that holds the end-effector, the
+ * end-effector's  pose in the final link's CoM frame, and a `goal_pose` in
+ * world coordinate frames. The goal is satisfied iff
+ * `pose_on_link.predict(values, k) == goal_pose`.
+ */
+struct PoseGoal {
+  LinkSharedPtr ee_link;      ///< Link that hold end-effector
+  gtsam::Pose3 comTee;  ///< In link's CoM frame.
+  gtsam::Pose3 goal_pose;  ///< In world frame.
+
+  /// Constructor
+  PoseGoal(const LinkSharedPtr& ee_link, const gtsam::Pose3& comTee,
+           const gtsam::Pose3& goal_pose)
+      : ee_link(ee_link), comTee(comTee), goal_pose(goal_pose) {}
+
+  /// Return link associated with contact pose.
+  const LinkSharedPtr& link() const { return ee_link; }
+
+  /// Return goal pose in ee_link COM frame.
+  const gtsam::Pose3& poseInCoM() const { return comTee; }
+
+  /// Return CoM pose needed to achieve goal pose.
+  const gtsam::Pose3 sTcom() const {
+    return goal_pose.compose(poseInCoM().inverse());
+  }
+
+  /// Print to stream.
+  friend std::ostream& operator<<(std::ostream& os, const PoseGoal& cg);
+
+  /// GTSAM-style print, works with wrapper.
+  void print(const std::string& s) const;
+
+  /**
+   * @fn Check that the contact goal has been achieved for given values.
+   * @param values a GTSAM Values instance that should contain link pose.
+   * @param k time step to check (default 0).
+   * @param tol tolerance in 3D (default 1e-9).
+   */
+  bool satisfied(const gtsam::Values& values, size_t k = 0,
+                 double tol = 1e-9) const;
+};
+
+///< Map of time to PoseGoal
+using PoseGoals = std::map<size_t, PoseGoal>;
 
 /// Noise models etc specific to Kinematics class
 struct KinematicsParameters : public OptimizationParameters {
@@ -132,21 +183,21 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
-   * @fn Create pose goal objectives.
+   * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
    * @param pose_goals goals for poses
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph poseGoalObjectives(
-      const CONTEXT& context, const Robot& robot,
-      const gtsam::Values& pose_goals) const;
+      const CONTEXT& context, const PoseGoals& pose_goals) const;
 
   /**
    * @fn Factors that minimize joint angles.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
-   * @param joint_priors Values where the mean of the priors is specified
+   * @param joint_priors Values where the mean of the priors is specified. The
+   * default is an empty Values, meaning that no means are specified.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -183,7 +234,8 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::Values initialValues(
       const CONTEXT& context, const Robot& robot, double gaussian_noise = 0.1,
-      const gtsam::Values& initial_joints = gtsam::Values(), bool use_fk = false) const;
+      const gtsam::Values& initial_joints = gtsam::Values(),
+      bool use_fk = false) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
@@ -204,15 +256,14 @@ class Kinematics : public Optimizer {
    * @fn This function does inverse kinematics separately on each slice
    * @param context Slice or Interval instance
    * @param robot Robot specification from URDF/SDF
-   * @param goal_poses goals for EE poses
+   * @param pose_goals goals for EE poses
    * @param joint_priors optional argument to put priors centered on given
    * values. If empty, the priors will be centered on the origin
    * @return values with poses and joint angles
    */
   template <class CONTEXT>
   gtsam::Values inverse(
-      const CONTEXT& context, const Robot& robot,
-      const gtsam::Values& goal_poses,
+      const CONTEXT& context, const Robot& robot, const PoseGoals& pose_goals,
       const gtsam::Values& joint_priors = gtsam::Values()) const;
 
   /**

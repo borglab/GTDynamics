@@ -46,11 +46,11 @@ EqualityConstraints Kinematics::constraints<Interval>(
 
 template <>
 NonlinearFactorGraph Kinematics::poseGoalObjectives<Interval>(
-    const Interval& interval, const Robot& robot,
-    const gtsam::Values& goal_poses) const {
+    const Interval& interval, 
+    const PoseGoals& pose_goals) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(poseGoalObjectives(Slice(k), robot, goal_poses));
+    graph.add(poseGoalObjectives(Slice(k), pose_goals));
   }
   return graph;
 }
