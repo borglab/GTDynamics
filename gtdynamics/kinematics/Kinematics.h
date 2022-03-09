@@ -17,7 +17,6 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
-#include <gtdynamics/utils/PoseOnLink.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -72,29 +71,26 @@ using ContactGoals = std::vector<ContactGoal>;
  * Desired world pose for a end-effector pose.
  *
  * This simple struct stores the robot link that holds the end-effector, the
- * end-effector's  pose in the final link's CoM frame, and a `goal_pose` in
+ * end-effector's pose in the final link's CoM frame, and a `goal_pose` in
  * world coordinate frames. The goal is satisfied iff
  * `pose_on_link.predict(values, k) == goal_pose`.
  */
 struct PoseGoal {
-  LinkSharedPtr ee_link;      ///< Link that hold end-effector
-  gtsam::Pose3 comTee;  ///< In link's CoM frame.
-  gtsam::Pose3 goal_pose;  ///< In world frame.
+  LinkSharedPtr ee_link;  ///< Link that hold end-effector
+  gtsam::Pose3 comTgoal;  ///< Goal pose in link's CoM frame.
+  gtsam::Pose3 wTgoal;    ///< Goal pose in world frame.
 
   /// Constructor
-  PoseGoal(const LinkSharedPtr& ee_link, const gtsam::Pose3& comTee,
-           const gtsam::Pose3& goal_pose)
-      : ee_link(ee_link), comTee(comTee), goal_pose(goal_pose) {}
+  PoseGoal(const LinkSharedPtr& ee_link, const gtsam::Pose3& comTgoal,
+           const gtsam::Pose3& wTgoal)
+      : ee_link(ee_link), comTgoal(comTgoal), wTgoal(wTgoal) {}
 
   /// Return link associated with contact pose.
   const LinkSharedPtr& link() const { return ee_link; }
 
-  /// Return goal pose in ee_link COM frame.
-  const gtsam::Pose3& poseInCoM() const { return comTee; }
-
   /// Return CoM pose needed to achieve goal pose.
-  const gtsam::Pose3 sTcom() const {
-    return goal_pose.compose(poseInCoM().inverse());
+  const gtsam::Pose3 wTcom() const {
+    return wTgoal.compose(comTgoal.inverse());
   }
 
   /// Print to stream.
@@ -197,7 +193,7 @@ class Kinematics : public Optimizer {
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
    * @param joint_priors Values where the mean of the priors is specified. The
-   * default is an empty Values, meaning that no means are specified.
+   * default is an empty Values, meaning that the means will default to 0.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>

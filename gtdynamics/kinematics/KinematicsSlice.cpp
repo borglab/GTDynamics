@@ -37,7 +37,8 @@ void ContactGoal::print(const std::string& s) const {
 }
 
 std::ostream& operator<<(std::ostream& os, const PoseGoal& pg) {
-  os << "{" << pg.link()->name() << ", [" << pg.comTee << "], [" << pg.goal_pose << "]}";
+  os << "{" << pg.link()->name() << ", [" << pg.comTgoal << "], [" << pg.wTgoal
+     << "]}";
   return os;
 }
 
@@ -47,8 +48,8 @@ void PoseGoal::print(const std::string& s) const {
 
 bool PoseGoal::satisfied(const gtsam::Values& values, size_t k,
                          double tol) const {
-  return gtsam::equal<gtsam::Pose3>(
-      Pose(values, link()->id(), k).compose(poseInCoM()), goal_pose, tol);
+  return gtsam::equal<gtsam::Pose3>(Pose(values, link()->id(), k), wTcom(),
+                                    tol);
 }
 
 template <>
@@ -140,9 +141,11 @@ NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
     const Slice& slice, const PoseGoals& pose_goals) const {
   gtsam::NonlinearFactorGraph graph;
 
-  if (pose_goals.find(slice.k) != pose_goals.end()) {
-    auto pose_key = PoseKey(pose_goals.at(slice.k).link()->id(), slice.k);
-    const gtsam::Pose3& desired_pose = pose_goals.at(slice.k).sTcom();
+  auto it = pose_goals.find(slice.k);  // short for "iterator"
+  if (it != pose_goals.end()) {
+    const auto& pose_goal = it->second;
+    auto pose_key = PoseKey(pose_goal.link()->id(), slice.k);
+    const gtsam::Pose3& desired_pose = pose_goal.wTcom();
     // TODO(toni): use poseprior from unstable gtsam slam or create new
     // factors, to add pose from link7
     graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
