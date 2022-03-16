@@ -26,6 +26,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/format.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
