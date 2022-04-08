@@ -71,8 +71,9 @@ TEST(Trajectory, error) {
                              cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
+  Initializer initializer;
   vector<Values> transition_graph_init =
-      trajectory.transitionPhaseInitialValues(robot, gaussian_noise);
+      trajectory.transitionPhaseInitialValues(robot, initializer, gaussian_noise);
   EXPECT_LONGS_EQUAL(5, transition_graph_init.size());
 
   gtsam::Vector3 gravity(0, 0, -9.8);
@@ -95,7 +96,7 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4298, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
 
-  Values init_vals = trajectory.multiPhaseInitialValues(robot, 1e-5, 1. / 240);
+  Values init_vals = trajectory.multiPhaseInitialValues(robot, initializer, 1e-5, 1. / 240);
   EXPECT_LONGS_EQUAL(4712, init_vals.size());
 
   // Test objectives for contact links.

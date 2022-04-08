@@ -149,8 +149,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Initialize solution.
   double gaussian_noise = 0.0;
+  Initializer initializer;
   Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
   // Compare error for all factors with expected values in file.

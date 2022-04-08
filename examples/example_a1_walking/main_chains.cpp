@@ -97,6 +97,10 @@ std::vector<std::vector<JointSharedPtr>> getChainJoints(const Robot& robot) {
     }
   }
 
+  std::swap(FR[1],FR[2]);
+  std::swap(FL[1],FL[2]);
+  std::swap(RR[1],RR[2]);
+  std::swap(RL[1],RL[2]);
   std::vector<std::vector<JointSharedPtr>> chain_joints{FR,FL,RR,RL};
   
   return chain_joints;
@@ -246,10 +250,22 @@ int main(int argc, char** argv) {
  
   // Initialize solution.
   double gaussian_noise = 1e-3;
+  Initializer initializer;
   gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
 
   gttic_(optimization);
+
+  std::cout << "graph size = " << graph.size() << std::endl;
+  std::cout << "graph keys size = " << graph.keys().size() << std::endl;
+  std::cout << "init vals size = " << init_vals.size() << std::endl;
+
+  /*for ( auto&& key: init_vals.keys()) {
+    auto a = graph.keys().exists(key);
+    if (a==0) { 
+      std::cout << key << std::endl;
+    }
+  }*/
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;

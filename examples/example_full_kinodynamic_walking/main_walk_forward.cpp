@@ -17,7 +17,7 @@
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -144,6 +144,9 @@ int main(int argc, char** argv) {
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
 
+// Set initializer.
+gtdynamics::Initializer initializer;
+
   // Graphs for transition between phases + their initial values.
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
   vector<Values> transition_graph_init;
@@ -151,7 +154,7 @@ int main(int argc, char** argv) {
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
-    transition_graph_init.push_back(ZeroValues(
+    transition_graph_init.push_back(initializer.ZeroValues(
         robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
@@ -278,7 +281,7 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+  init_vals = initializer.MultiPhaseZeroValuesTrajectory(
       robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
