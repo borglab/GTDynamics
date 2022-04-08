@@ -68,6 +68,15 @@ int main(int argc, char** argv) {
   auto robot =
       CreateRobotFromFile(std::string("/home/dan/.local/lib/python3.8/site-packages/pybullet_data/a1/a1.urdf"), "a1");
 
+
+  for (auto&& link : robot.links()) {
+    if (link->name().find("trunk") > 100) {
+        //link->setMassValue(0);
+        //link->setInertiaZero();
+        std::cout << link->name() << std::endl;
+    }
+  }
+
   double sigma_dynamics = 1e-6;    // std of dynamics constraints.
   double sigma_objectives = 1e-7;  // std of additional objectives.
 
@@ -146,11 +155,16 @@ int main(int argc, char** argv) {
  
   // Initialize solution.
   double gaussian_noise = 1e-3;
+ Initializer initializer;
   gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
 
   gttic_(optimization);
 
+  std::cout << "graph size = " << graph.size() << std::endl;
+  std::cout << "graph keys size = " << graph.keys().size() << std::endl;
+  std::cout << "init vals size = " << init_vals.size() << std::endl;
+  
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
   //params.setVerbosityLM("SUMMARY");

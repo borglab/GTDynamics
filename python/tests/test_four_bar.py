@@ -94,7 +94,8 @@ class TestFourBar(unittest.TestCase):
         graph.push_back(prior_graph)
 
         # construct init values and solve
-        init_values = gtd.ZeroValues(robot, 0, 0)
+        initializer = gtd.Initializer()
+        init_values = initializer.ZeroValues(robot, 0, 0)
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
         result = optimizer.optimize()
 
