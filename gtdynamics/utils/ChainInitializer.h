@@ -17,7 +17,7 @@
 
 namespace gtdynamics {
 
-class ChainInitializer : Initializer {
+class ChainInitializer : public Initializer {
 
   public:
       /**

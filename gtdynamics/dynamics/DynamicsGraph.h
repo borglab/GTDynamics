@@ -399,6 +399,9 @@ class DynamicsGraph {
 
   /// Return the optimizer setting.
   const OptimizerSetting &opt() const { return opt_; }
+
+  /// Return the gravity
+  const boost::optional<gtsam::Vector3> &gravity() const { return gravity_; }
 };
 
 }  // namespace gtdynamics

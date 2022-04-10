@@ -56,9 +56,10 @@ class LeanDynamicsGraph : public DynamicsGraph {
         const gtsam::Vector3 &tolerance,
         const boost::optional<gtsam::Vector3> &gravity = boost::none,
         const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
-        : DynamicsGraph(opt, gravity, planar_axis), composed_chains_(composed_chains), chain_joints_(chain_joints), tolerance_(tolerance) {}
+        : DynamicsGraph(opt, gravity, planar_axis), chain_joints_(chain_joints),
+         composed_chains_(composed_chains),  tolerance_(tolerance) {}
 
-    gtsam::NonlinearFactorGraph chainFactors(const int t) const;
+    gtsam::NonlinearFactorGraph chainFactors(const Robot &robot, const int t, const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 
     ~LeanDynamicsGraph() {}
 

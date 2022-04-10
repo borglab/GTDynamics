@@ -12,12 +12,20 @@
  */
 
 #include "gtdynamics/dynamics/LeanDynamicsGraph.h"
+#include "gtdynamics/factors/WrenchFactor.h"
+#include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
+#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
+#include "gtdynamics/factors/TorqueFactor.h"
+#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 
 namespace gtdynamics {
 
-gtsam::NonlinearFactorGraph LeanDynamicsGraph::chainFactors(const int t) const {
-
+gtsam::NonlinearFactorGraph LeanDynamicsGraph::chainFactors(
+    const Robot &robot, const int t,
+    const boost::optional<PointOnLinks> &contact_points) const {
   gtsam::NonlinearFactorGraph graph;
+
+  std::vector<DynamicsSymbol> wrench_keys;
 
   for (int i = 0; i < composed_chains_.size() ; ++i) {
         // Get id of hip joint on this chain
@@ -25,6 +33,9 @@ gtsam::NonlinearFactorGraph LeanDynamicsGraph::chainFactors(const int t) const {
 
         // Get key for wrench at joint hip_joint_id on link 0 at time t
         const gtsam::Key wrench_key = gtdynamics::WrenchKey(0, hip_joint_id, t);
+
+        // add wrench to wrench vector
+        wrench_keys.push_back(wrench_key);
 
         // Create expression 
         auto expression = const_cast<Chain&>(composed_chains_[i]).ChainConstraint3(chain_joints_[i], wrench_key, t);
@@ -36,7 +47,38 @@ gtsam::NonlinearFactorGraph LeanDynamicsGraph::chainFactors(const int t) const {
         auto factor = constraint.createFactor(1.0);
 
         graph.add(factor);
+  }
+
+    /*double mu_ = 1;
+    if (contact_points) {
+      int c = 0;
+      for (auto &&cp : *contact_points) {
+        //if (cp.link->name() != i) continue;
+          // TODO(frank): allow multiple contact points on one link, id = 0,1,..
+          auto wrench_key = ContactWrenchKey(0, c++, t);
+          wrench_keys.push_back(wrench_key);
+
+          // Add contact dynamics constraints.
+          graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
+              PoseKey(0, t), wrench_key, opt().cfriction_cost_model, mu_,
+             *gravity());
+
+          graph.emplace_shared<ContactDynamicsMomentFactor>(
+              wrench_key, opt().cm_cost_model,
+              gtsam::Pose3(gtsam::Rot3(), -cp.point));
       }
+    }*/
+
+      // add wrench factor for link
+  graph.add(
+     WrenchFactor(opt().fa_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
+
+  //for (auto &&joint : robot.joints()) {
+    //auto j = joint->id(), child_id = joint->child()->id();
+    //auto const_joint = joint;
+    //graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, t));
+    //graph.add(TorqueFactor(opt().t_cost_model, const_joint, t));
+  //}
 
   return graph;
 }
@@ -49,11 +91,10 @@ gtsam::NonlinearFactorGraph LeanDynamicsGraph::dynamicsFactorGraph(
       gtsam::NonlinearFactorGraph graph;
 
       graph.add(qFactors(robot, t, contact_points));
-      //graph.add(vFactors(robot, t, contact_points));
-      //graph.add(aFactors(robot, t, contact_points));
-      graph.add(dynamicsFactors(robot, t, contact_points, mu));          
-
-      graph.add(chainFactors(t));
+      graph.add(vFactors(robot, t, contact_points));
+      graph.add(aFactors(robot, t, contact_points));
+      //graph.add(dynamicsFactors(robot, t, contact_points, mu));          
+      graph.add(chainFactors(robot, t, contact_points));
 
       return graph;
     }
