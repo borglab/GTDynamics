@@ -73,10 +73,10 @@ gtsam::Values ChainInitializer::ZeroValues(const Robot& robot, const int t, doub
   // Initialize joint kinematics/dynamics to 0.
   for (auto&& joint : robot.joints()) {
     int j = joint->id();
-    if (joint->parent()->name().find("trunk") < 100) {
+    //if (joint->parent()->name().find("trunk") < 100) {
       InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
-      //InsertWrench(&values, joint->child()->id(), j, t, sampler.sample());
-    }
+      InsertWrench(&values, joint->child()->id(), j, t, sampler.sample());
+    //}
     std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
                                         JointVelKey(j, t), JointAccelKey(j, t)};
 

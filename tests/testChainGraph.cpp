@@ -116,11 +116,11 @@ gtsam::Values OldGraph(){
   auto robot =
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
-  //for (auto&& link : robot.links()) {
-    //if (link->name().find("trunk") > 100) {
-        //link->setMassValue(0);
-    //}
-  //}
+  for (auto&& link : robot.links()) {
+    if (link->name().find("trunk") > 100) {
+        link->setMassValue(0);
+    }
+  }
 
     gtsam::Vector3 gravity(0, 0, -9.8);
 
@@ -172,7 +172,7 @@ gtsam::Values NewGraph(){
   auto composed_chains = getComposedChains(chain_joints);
 
   OptimizerSetting opt(1e-6);
-  gtsam::Vector3 tolerance(1e-6, 1e-6, 1e-6);
+  gtsam::Vector3 tolerance(1e-1, 1e-1, 1e-1);
   LeanDynamicsGraph graph_builder(opt, composed_chains, chain_joints, tolerance, gravity);
 
   gtsam::NonlinearFactorGraph graph;
@@ -209,7 +209,7 @@ TEST(ChainGraph, ChainGraphEquality) {
   gtsam::Values new_vals = NewGraph();
 
   auto robot =
-      CreateRobotFromFile(std::string("/home/dan/Desktop/Projects/GTDynamics/models/urdfs/a1/a1.urdf"), "a1");
+    CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   auto trajectory = getTrajectory(robot, 1);
 
@@ -220,9 +220,9 @@ TEST(ChainGraph, ChainGraphEquality) {
       trajectory.phase(0).jointMatrix(robot, new_vals, 0);
 
   for (int i = 0; i < mat_new.cols(); ++i){
-    std::cout << "old_val = "<< mat_old(0,i) << " new val = " << mat_new(0,i) << std::endl;
+    //std::cout << "old_val = "<< mat_old(0,i) << " new val = " << mat_new(0,i) << std::endl;
     // This test should pass
-    //EXPECT(gtsam::assert_equal(mat_old(0,i), mat_new(0,i), 1e-9)); 
+    EXPECT(gtsam::assert_equal(mat_old(0,i), mat_new(0,i), 1e-9)); 
   }
 }
 

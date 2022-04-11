@@ -71,14 +71,31 @@ gtsam::NonlinearFactorGraph LeanDynamicsGraph::chainFactors(
 
       // add wrench factor for link
   graph.add(
-     WrenchFactor(opt().fa_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
+    WrenchFactor(opt().fa_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
 
-  //for (auto &&joint : robot.joints()) {
-    //auto j = joint->id(), child_id = joint->child()->id();
-    //auto const_joint = joint;
-    //graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, t));
-    //graph.add(TorqueFactor(opt().t_cost_model, const_joint, t));
-  //}
+  for (auto &&link : robot.links()) {
+    int i = link->id();
+    if (i==0) continue;
+    if (!link->isFixed()) {
+      const auto &connected_joints = link->joints();
+      std::vector<DynamicsSymbol> wrench_keys;
+
+      // Add wrench keys for joints.
+      for (auto &&joint : connected_joints)
+        wrench_keys.push_back(WrenchKey(i, joint->id(), t));
+
+      // add wrench factor for link
+      graph.add(
+          WrenchFactor(opt().fa_cost_model, link, wrench_keys, t, gravity()));
+    }
+  }
+
+  for (auto &&joint : robot.joints()) {
+    auto j = joint->id(), child_id = joint->child()->id();
+    auto const_joint = joint;
+    graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, t));
+    graph.add(TorqueFactor(opt().t_cost_model, const_joint, t));
+  }
 
   return graph;
 }
