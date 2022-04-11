@@ -114,7 +114,7 @@ std::vector<Chain> getComposedChains(const std::vector<std::vector<JointSharedPt
 
 gtsam::Values OldGraph(){
   auto robot =
-      CreateRobotFromFile(std::string("/home/dan/Desktop/Projects/GTDynamics/models/urdfs/a1/a1.urdf"), "a1");
+      CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   //for (auto&& link : robot.links()) {
     //if (link->name().find("trunk") > 100) {
@@ -157,7 +157,7 @@ gtsam::Values OldGraph(){
 
 gtsam::Values NewGraph(){
   auto robot =
-    CreateRobotFromFile(std::string("/home/dan/Desktop/Projects/GTDynamics/models/urdfs/a1/a1.urdf"), "a1");
+    CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
   
   for (auto&& link : robot.links()) {
     if (link->name().find("trunk") > 100) {
