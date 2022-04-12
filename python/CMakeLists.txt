@@ -50,7 +50,7 @@ set_target_properties(
 
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${GTD_PYTHON_BINARY_DIR}/setup.py install
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install .
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
 
