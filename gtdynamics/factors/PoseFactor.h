@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -23,9 +25,6 @@
 #include <boost/assign/list_of.hpp>
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 

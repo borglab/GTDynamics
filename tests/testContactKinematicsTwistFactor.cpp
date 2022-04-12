@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,9 +25,6 @@
 #include <math.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -72,7 +71,8 @@ TEST(ContactKinematicsTwistFactor, error) {
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
   gtsam::Values values_twist_angular;
   values_twist_angular.insert(twist_key, link_twist_angular);
-  EXPECT(assert_equal(factor.unwhitenedError(values_twist_angular).norm(), 1.0));
+  EXPECT(
+      assert_equal(factor.unwhitenedError(values_twist_angular).norm(), 1.0));
 
   // A link with both angular velocity and linear velocity at the CoM should
   // have a linear velocity at the contact point (unless they cancel each other
@@ -81,8 +81,9 @@ TEST(ContactKinematicsTwistFactor, error) {
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
   gtsam::Values values_twist_angular_linear;
   values_twist_angular_linear.insert(twist_key, link_twist_angular_linear);
-  EXPECT(assert_equal(factor.unwhitenedError(values_twist_angular_linear).norm(),
-                      std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
+  EXPECT(
+      assert_equal(factor.unwhitenedError(values_twist_angular_linear).norm(),
+                   std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
   gtsam::Values values;

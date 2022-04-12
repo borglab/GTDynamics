@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -22,10 +25,6 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
-
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

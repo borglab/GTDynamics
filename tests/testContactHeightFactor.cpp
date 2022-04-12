@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +25,6 @@
 #include <math.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/ContactHeightFactor.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

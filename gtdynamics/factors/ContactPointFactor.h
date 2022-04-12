@@ -13,14 +13,13 @@
 
 #pragma once
 
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <string>
-
-#include "gtdynamics/utils/PointOnLink.h"
 
 namespace gtdynamics {
 

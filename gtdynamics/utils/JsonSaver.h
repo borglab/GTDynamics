@@ -9,6 +9,15 @@
 
 #pragma once
 
+#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/factors/TwistAccelFactor.h>
+#include <gtdynamics/factors/TwistFactor.h>
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
+#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/factors/WrenchPlanarFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -17,6 +26,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <boost/format.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
@@ -26,16 +36,6 @@
 #include <typeinfo>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/utils.h"
 
 #define kQuote_ "\""
 

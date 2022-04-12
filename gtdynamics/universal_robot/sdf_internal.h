@@ -17,7 +17,7 @@
 #include <sdf/sdf.hh>
 #include <string>
 
-#include "gtdynamics/universal_robot/Robot.h"
+#include <gtdynamics/universal_robot/Robot.h>
 
 namespace gtdynamics {
 

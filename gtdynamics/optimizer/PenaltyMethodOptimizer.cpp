@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include "gtdynamics/optimizer/PenaltyMethodOptimizer.h"
+#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
 
 namespace gtdynamics {
 

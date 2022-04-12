@@ -12,13 +12,12 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/numericalDerivative.h>
 
 #include <boost/bind.hpp>
 #include <cmath>
-
-#include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

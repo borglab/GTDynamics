@@ -13,15 +13,14 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <boost/optional.hpp>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 /**
