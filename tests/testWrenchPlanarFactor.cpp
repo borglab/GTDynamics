@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/WrenchPlanarFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,7 +24,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;

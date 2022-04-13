@@ -11,16 +11,15 @@
  * @author Alejandro Escontrela and Yetong Zhang
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <fstream>
 #include <iostream>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/factors/MinTorqueFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/Initializer.h"
 
 using namespace gtdynamics;
 

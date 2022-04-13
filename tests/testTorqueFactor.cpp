@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,9 +26,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;

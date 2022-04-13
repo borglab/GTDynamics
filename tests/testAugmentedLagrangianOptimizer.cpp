@@ -13,10 +13,10 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 
 #include "constrainedExample.h"
-#include "gtdynamics/optimizer/AugmentedLagrangianOptimizer.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

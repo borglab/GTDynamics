@@ -12,11 +12,10 @@
  * @author: Stephanie McCormick
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/Initializer.h"
 
 using namespace gtdynamics;
 

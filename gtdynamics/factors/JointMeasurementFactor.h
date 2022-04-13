@@ -13,10 +13,9 @@
  */
 
 #pragma once
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 

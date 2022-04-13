@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,8 +25,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -40,8 +40,7 @@ using gtsam::noiseModel::Gaussian;
 namespace example {
 // nosie model
 Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2),
-           q_key = JointAngleKey(1);
+gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2), q_key = JointAngleKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case

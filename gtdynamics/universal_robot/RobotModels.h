@@ -13,11 +13,11 @@
 
 #pragma once
 
-#include <string>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
+#include <string>
 
 using gtdynamics::kSdfPath;
 using gtdynamics::kUrdfPath;

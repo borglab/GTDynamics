@@ -11,7 +11,7 @@
  * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/utils.h"
+#include <gtdynamics/utils/utils.h>
 
 #include <stdexcept>
 

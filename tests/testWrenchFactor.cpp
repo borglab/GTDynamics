@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -22,10 +25,6 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -51,9 +50,9 @@ TEST(WrenchFactor, Case1) {
   // Create all factors
   int id = 0;
   const double M = example::inertia(3, 3);
-  auto factor = WrenchFactor(example::cost_model, example::link,
-                      {WrenchKey(id, 1), WrenchKey(id, 2)},
-                       0, example::gravity);
+  auto factor =
+      WrenchFactor(example::cost_model, example::link,
+                   {WrenchKey(id, 1), WrenchKey(id, 2)}, 0, example::gravity);
   Values x;
   InsertTwist(&x, id, (Vector(6) << 0, 0, 0, 0, 0, 0).finished());
   InsertTwistAccel(&x, id,
@@ -74,9 +73,10 @@ TEST(WrenchFactor, Case2) {
   // Create all factors
   int id = 0;
   const double M = example::inertia(3, 3);
-  auto factor = WrenchFactor(example::cost_model, example::link,
-                      {WrenchKey(id, 1), WrenchKey(id, 2), WrenchKey(id, 3)},
-                      0, example::gravity);
+  auto factor =
+      WrenchFactor(example::cost_model, example::link,
+                   {WrenchKey(id, 1), WrenchKey(id, 2), WrenchKey(id, 3)}, 0,
+                   example::gravity);
   Values x;
   InsertTwist(&x, id, (Vector(6) << 0, 0, 0, 0, 0, 0).finished());
   InsertTwistAccel(&x, id, (Vector(6) << 0, 0, 0, 0, 0, 0).finished());
@@ -99,8 +99,7 @@ TEST(WrenchFactor, NonzeroTwistCase) {
   const double M = example::inertia(3, 3);
   // gravity set to zero in this case
   auto factor = WrenchFactor(example::cost_model, example::link,
-                      {WrenchKey(id, 1), WrenchKey(id, 2)},
-                      0);
+                             {WrenchKey(id, 1), WrenchKey(id, 2)}, 0);
 
   Values x;
   InsertTwist(&x, id, (Vector(6) << 0, 0, 1, 0, 1, 0).finished());

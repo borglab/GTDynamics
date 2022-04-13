@@ -14,10 +14,9 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

@@ -14,14 +14,12 @@
  * @brief Absract representation of a robot joint.
  */
 
-#include "gtdynamics/universal_robot/Link.h"
-
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 

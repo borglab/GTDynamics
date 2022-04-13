@@ -14,14 +14,12 @@
  * @brief Absract representation of a robot joint.
  */
 
-#include "gtdynamics/universal_robot/Joint.h"
-
+#include <gtdynamics/factors/JointLimitFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/JointLimitFactor.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 using gtsam::Pose3;
 using gtsam::Vector6;

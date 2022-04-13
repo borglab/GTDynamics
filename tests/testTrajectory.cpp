@@ -12,14 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/Trajectory.h>
+#include <gtdynamics/utils/WalkCycle.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/Phase.h"
-#include "gtdynamics/utils/Trajectory.h"
-#include "gtdynamics/utils/WalkCycle.h"
 #include "walkCycleExample.h"
 
 using namespace gtsam;
@@ -66,7 +66,7 @@ TEST(Trajectory, error) {
 
   auto cp_goals = walk_cycle.initContactPointGoal(robot, 0);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
-  //regression
+  // regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
                              cp_goals["tarsus_2_L2"], 1e-5));
 
@@ -109,7 +109,8 @@ TEST(Trajectory, error) {
   // // regression
   // auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
   //     contact_link_objectives.back());
-  // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151, 0.000151302),
+  // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151,
+  // 0.000151302),
   //                            last_factor->goalPoint(), 1e-5));
 
   // Test boundary conditions.

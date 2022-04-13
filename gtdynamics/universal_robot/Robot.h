@@ -13,16 +13,16 @@
 
 #pragma once
 
+#include <gtdynamics/config.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+
 #include <boost/optional.hpp>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/config.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 

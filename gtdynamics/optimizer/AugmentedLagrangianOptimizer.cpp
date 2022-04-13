@@ -11,7 +11,7 @@
  * @author: Yetong Zhang, Frank Dellaert
  */
 
-#include "gtdynamics/optimizer/AugmentedLagrangianOptimizer.h"
+#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
 
 namespace gtdynamics {
 

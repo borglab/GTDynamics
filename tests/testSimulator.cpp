@@ -12,17 +12,16 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/Simulator.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/Simulator.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
 

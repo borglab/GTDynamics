@@ -40,6 +40,7 @@ jobs:
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
 
           else
+            sudo apt-get -y clean && sudo apt-get -y update
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV

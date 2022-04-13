@@ -13,6 +13,10 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -24,11 +28,6 @@
 #include <boost/serialization/base_object.hpp>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
