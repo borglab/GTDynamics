@@ -12,6 +12,10 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -19,11 +23,6 @@
 #include <cmath>
 #include <iostream>
 #include <string>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -44,9 +43,8 @@ TEST(InitializeSolutionUtils, Interpolation) {
   // We will interpolate from 0->10s, in 1 second increments.
   double T_i = 0, T_f = 10, dt = 1;
 
-  gtsam::Values init_vals =
-      InitializeSolutionInterpolation(robot, "link_0", wTb_i, wTb_f, T_i, T_f,
-      dt);
+  gtsam::Values init_vals = InitializeSolutionInterpolation(
+      robot, "link_0", wTb_i, wTb_f, T_i, T_f, dt);
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
@@ -63,8 +61,7 @@ TEST(InitializeSolutionUtils, Interpolation) {
   // Check penultimate pose.
   EXPECT(
       assert_equal(Pose3(wTb_i.rotation().slerp(0.9, wRb_f),
-                         Point3(0.794193007439, 1.03129011851,
-                         0.961521708273)),
+                         Point3(0.794193007439, 1.03129011851, 0.961521708273)),
                    Pose(init_vals, id, n_steps_final - 1)));
 
   // Check end pose.

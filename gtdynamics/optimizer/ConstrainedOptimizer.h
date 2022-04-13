@@ -13,12 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-
-#include "gtdynamics/optimizer/EqualityConstraint.h"
 
 namespace gtdynamics {
 
@@ -37,14 +36,14 @@ struct ConstrainedOptimizationParameters {
 
 /// Intermediate results for constrained optimization process.
 struct ConstrainedOptResult {
-  std::vector<gtsam::Values> intermediate_values;  // values after each inner loop
-  std::vector<int> num_iters;   // number of LM iterations for each inner loop
+  std::vector<gtsam::Values>
+      intermediate_values;        // values after each inner loop
+  std::vector<int> num_iters;     // number of LM iterations for each inner loop
   std::vector<double> mu_values;  // penalty parameter for each inner loop
 };
 
 /// Base class for constrained optimizer.
 class ConstrainedOptimizer {
-
  public:
   /**
    * @brief Constructor.
@@ -57,7 +56,8 @@ class ConstrainedOptimizer {
    * @param graph A Nonlinear factor graph representing cost.
    * @param cosntraints All the constraints.
    * @param initial_values Initial values for all variables.
-   * @param intermediate_result (optional) intermediate results during optimization.
+   * @param intermediate_result (optional) intermediate results during
+   * optimization.
    * @return Values The result of the constrained optimization.
    */
   virtual gtsam::Values optimize(

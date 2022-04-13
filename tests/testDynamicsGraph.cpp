@@ -12,6 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,15 +32,6 @@
 #include <gtsam/slam/PriorFactor.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/factors/MinTorqueFactor.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 
@@ -236,17 +235,14 @@ TEST(collocationFactors, simple_urdf) {
   int j = robot.joints()[0]->id();
 
   NonlinearFactorGraph prior_factors;
-  prior_factors.add(
-      PriorFactor<double>(JointAngleKey(j, t), 1,
-                          graph_builder.opt().prior_q_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
   prior_factors.add(PriorFactor<double>(
       JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
-  prior_factors.add(
-      PriorFactor<double>(JointAccelKey(j, t), 1,
-                          graph_builder.opt().prior_qa_cost_model));
-  prior_factors.add(
-      PriorFactor<double>(JointAccelKey(j, t + 1), 2,
-                          graph_builder.opt().prior_qa_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
 
   Values init_values;
   InsertJointAngle(&init_values, j, t, 0.0);
@@ -461,7 +457,6 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   Values results = optimizer.optimize();
   //   std::cout << "Error: " << graph.error(results) << std::endl;
 
-
   auto contact_wrench_key = ContactWrenchKey(l0->id(), 0, 0);
   gtsam::Vector contact_wrench_optimized =
       results.at<gtsam::Vector>(contact_wrench_key);
@@ -501,11 +496,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   auto body = biped.link("body");
   prior_factors.addPrior(PoseKey(body->id(), 0), body->bMcom(),
                          graph_builder.opt().bp_cost_model);
-  prior_factors.addPrior<Vector6>(TwistKey(body->id(), 0),
-                                  gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(body->id(), 0), gtsam::Z_6x1,
                                   graph_builder.opt().bv_cost_model);
-  prior_factors.addPrior<Vector6>(TwistAccelKey(body->id(), 0),
-                                  gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistAccelKey(body->id(), 0), gtsam::Z_6x1,
                                   graph_builder.opt().ba_cost_model);
   graph.add(prior_factors);
 

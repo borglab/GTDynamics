@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TwistAccelFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +26,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;

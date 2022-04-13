@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include <gtdynamics/universal_robot/Joint.h>
 
 namespace gtdynamics {
 

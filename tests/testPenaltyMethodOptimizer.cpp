@@ -12,9 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
 
 #include "constrainedExample.h"
-#include "gtdynamics/optimizer/PenaltyMethodOptimizer.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

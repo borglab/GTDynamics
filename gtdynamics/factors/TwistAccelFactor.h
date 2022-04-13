@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -23,8 +24,6 @@
 #include <boost/optional.hpp>
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/Joint.h"
 
 namespace gtdynamics {
 

@@ -11,8 +11,8 @@
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -21,8 +21,6 @@
 
 #include <boost/optional.hpp>
 #include <vector>
-
-#include "gtdynamics/statics/Statics.h"
 
 using gtsam::Matrix;
 using gtsam::Pose3;

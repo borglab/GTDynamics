@@ -12,10 +12,10 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
 
 #include "contactGoalsExample.h"
-#include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

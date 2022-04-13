@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -22,10 +25,6 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/PointOnLink.h"
 
 namespace gtdynamics {
 

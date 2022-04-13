@@ -11,11 +11,10 @@
  * @authors Alejandro Escontrela, Yetong Zhang, Varun Agrawal
  */
 
-#include "gtdynamics/utils/initialize_solution_utils.h"
-
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>

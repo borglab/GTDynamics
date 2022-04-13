@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -20,10 +23,6 @@
 
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/PointOnLink.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
