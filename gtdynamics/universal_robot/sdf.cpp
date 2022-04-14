@@ -27,26 +27,46 @@ namespace gtdynamics {
 using gtsam::Pose3;
 
 sdf::Model GetSdf(const std::string &sdf_file_path,
-                  const std::string &model_name) {
+                  const std::string &model_name,
+                  const sdf::ParserConfig &config) {
   sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
   if (sdf == nullptr)
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
 
-  sdf::Model model = sdf::Model();
-  model.Load(sdf->Root()->GetElement("model"));
+  sdf::Root root;
+  sdf::Errors errors = root.Load(sdf, config);
+  if (errors.size() > 0) {
+    for (auto &&error : errors) {
+      std::cout << error.Message() << std::endl;
+    }
+    throw std::runtime_error("Error loading SDF file " + sdf_file_path);
+  }
 
   // Check whether this is a world file, in which case we have to first
   // access the world element then check whether one of its child models
   // corresponds to model_name.
-  if (model.Name() != "__default__") return model;
+  if (root.WorldCount() > 0) {
+    // Iterate through all the worlds and all the models in each world to find
+    // the desired model.
+    for (size_t widx = 0; widx < root.WorldCount(); widx++) {
+      const sdf::World *world = root.WorldByIndex(widx);
 
-  // Load the world element.
-  sdf::World world = sdf::World();
-  world.Load(sdf->Root()->GetElement("world"));
+      for (uint i = 0; i < world->ModelCount(); i++) {
+        const sdf::Model *curr_model = world->ModelByIndex(i);
+        if (curr_model->Name() == model_name) {
+          return *curr_model;
+        }
+      }
+    }
 
-  for (uint i = 0; i < world.ModelCount(); i++) {
-    sdf::Model curr_model = *world.ModelByIndex(i);
-    if (curr_model.Name() == model_name) return curr_model;
+  } else {
+    // There is no world element so we directly access the model element.
+    const sdf::Model *model;
+    model = root.Model();
+
+    if (model->Name() != "__default__") {
+      return *model;
+    }
   }
 
   throw std::runtime_error("Model not found in: " + sdf_file_path);
@@ -74,22 +94,26 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 
 // Get Link pose in base frame from sdf::Link object
 Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
-  // Call SemanticPose::Resolve so the pose is resolved to the correct frame
-  // http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
   // Get non-const pose of link in the frame of the joint it is connect to
   // (http://wiki.ros.org/urdf/XML/link).
   auto raw_pose = sdf_link->RawPose();
 
   // Update from joint frame to base frame in-place.
   // Base frame is denoted by "".
-  auto errors = sdf_link->SemanticPose().Resolve(raw_pose, "");
+  // Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  // http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+  auto semanticPose = sdf_link->SemanticPose();
+  auto errors = semanticPose.Resolve(raw_pose);
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
+    for (size_t i = 0; i < errors.size(); i++) {
+      std::cout << errors[i].Message() << " ==== " << std::endl;
+    }
     throw std::runtime_error(errors[0].Message());
   }
-  // Pose is updated from joint frame to base frame.
-  const auto bMl = Pose3FromIgnition(raw_pose);
 
+  // Pose is updated from joint frame to base frame.
+  const Pose3 bMl = Pose3FromIgnition(raw_pose);
   return bMl;
 }
 

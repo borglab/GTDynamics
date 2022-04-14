@@ -13,11 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Robot.h>
+
 #include <ignition/math/Pose3.hh>
 #include <sdf/sdf.hh>
 #include <string>
-
-#include <gtdynamics/universal_robot/Robot.h>
 
 namespace gtdynamics {
 
@@ -29,8 +29,9 @@ namespace gtdynamics {
  * sdf_file_path points to a world file.
  * @return SDF Model
  */
-sdf::Model GetSdf(const std::string &sdf_file_path,
-                  const std::string &model_name = "");
+sdf::Model GetSdf(
+    const std::string &sdf_file_path, const std::string &model_name = "",
+    const sdf::ParserConfig &config = sdf::ParserConfig::GlobalConfig());
 
 /**
  * @fn Construct a Link class from sdf::Link
