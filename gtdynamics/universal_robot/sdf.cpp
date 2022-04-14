@@ -106,9 +106,6 @@ Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
   auto errors = semanticPose.Resolve(raw_pose);
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
-    for (size_t i = 0; i < errors.size(); i++) {
-      std::cout << errors[i].Message() << " ==== " << std::endl;
-    }
     throw std::runtime_error(errors[0].Message());
   }
 
