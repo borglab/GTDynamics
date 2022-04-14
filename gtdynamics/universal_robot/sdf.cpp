@@ -51,8 +51,8 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
     for (size_t widx = 0; widx < root.WorldCount(); widx++) {
       const sdf::World *world = root.WorldByIndex(widx);
 
-      for (uint i = 0; i < world->ModelCount(); i++) {
-        const sdf::Model *curr_model = world->ModelByIndex(i);
+      for (uint midx = 0; midx < world->ModelCount(); midx++) {
+        const sdf::Model *curr_model = world->ModelByIndex(midx);
         if (curr_model->Name() == model_name) {
           return *curr_model;
         }
@@ -61,9 +61,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
 
   } else {
     // There is no world element so we directly access the model element.
-    const sdf::Model *model;
-    model = root.Model();
-
+    const sdf::Model *model = root.Model();
     if (model->Name() != "__default__") {
       return *model;
     }
@@ -99,11 +97,10 @@ Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
   auto raw_pose = sdf_link->RawPose();
 
   // Update from joint frame to base frame in-place.
-  // Base frame is denoted by "".
-  // Call SemanticPose::Resolve so the pose is resolved to the correct frame
+  // Call SemanticPose::Resolve so the pose is resolved to the correct frame.
+  // Default base frame is "".
   // http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
-  auto semanticPose = sdf_link->SemanticPose();
-  auto errors = semanticPose.Resolve(raw_pose);
+  auto errors = sdf_link->SemanticPose().Resolve(raw_pose);
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
     throw std::runtime_error(errors[0].Message());
