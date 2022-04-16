@@ -212,8 +212,8 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
           parameters);
       break;
     case sdf::JointType::FIXED:
-      joint = boost::make_shared<FixedJoint>(
-          id, name, bMj, parent_link, child_link, gtsam::Vector3::Zero());
+      joint = boost::make_shared<FixedJoint>(id, name, bMj, parent_link,
+                                             child_link);
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
