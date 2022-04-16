@@ -27,7 +27,6 @@ from jumping_robot import Actuator, JumpingRobot
 
 class RobotGraphBuilder:
     """ Class that constructs dynamics factor graphs for a jumping robot. """
-
     def __init__(self):
         self.graph_builder = self.construct_graph_builder()
 
@@ -74,9 +73,11 @@ class RobotGraphBuilder:
         for name in ["foot_l", "foot_r"]:
             if name in joint_names:
                 j = jr.robot.joint(name).id()
-                torque_key = gtd.internal.TorqueKey(j, k).key()
-                graph.add(gtd.PriorFactorDouble(torque_key, 0.0,
-                                                self.graph_builder.opt().t_cost_model))
+                torque_key = gtd.TorqueKey(j, k).key()
+                graph.add(
+                    gtd.PriorFactorDouble(
+                        torque_key, 0.0,
+                        self.graph_builder.opt().t_cost_model))
         return graph
 
     def collocation_graph(self, jr: JumpingRobot, step_phases: list):
@@ -92,7 +93,7 @@ class RobotGraphBuilder:
         for time_step in range(len(step_phases)):
             phase = step_phases[time_step]
             k_prev = time_step
-            k_curr = time_step+1
+            k_curr = time_step + 1
             dt_key = gtd.PhaseKey(phase).key()
 
             # collocation on joint angles
@@ -101,28 +102,36 @@ class RobotGraphBuilder:
                 for name in collo_joint_names:
                     joint = jr.robot.joint(name)
                     j = joint.id()
-                    q_col_cost_model = self.graph_builder.opt().q_col_cost_model
-                    v_col_cost_model = self.graph_builder.opt().v_col_cost_model
-                    graph.push_back(self.graph_builder.jointMultiPhaseCollocationFactors(
-                        j, k_curr, phase, collocation))
+                    q_col_cost_model = self.graph_builder.opt(
+                    ).q_col_cost_model
+                    v_col_cost_model = self.graph_builder.opt(
+                    ).v_col_cost_model
+                    graph.push_back(
+                        self.graph_builder.jointMultiPhaseCollocationFactors(
+                            j, k_curr, phase, collocation))
 
             # collocation on torso link
             link = jr.robot.link("torso")
             i = link.id()
-            pose_prev_key = gtd.internal.PoseKey(i, k_prev).key()
-            pose_curr_key = gtd.internal.PoseKey(i, k_curr).key()
-            twist_prev_key = gtd.internal.TwistKey(i, k_prev).key()
-            twist_curr_key = gtd.internal.TwistKey(i, k_curr).key()
-            twistaccel_prev_key = gtd.internal.TwistAccelKey(i, k_prev).key()
-            twistaccel_curr_key = gtd.internal.TwistAccelKey(i, k_curr).key()
+            pose_prev_key = gtd.PoseKey(i, k_prev).key()
+            pose_curr_key = gtd.PoseKey(i, k_curr).key()
+            twist_prev_key = gtd.TwistKey(i, k_prev).key()
+            twist_curr_key = gtd.TwistKey(i, k_curr).key()
+            twistaccel_prev_key = gtd.TwistAccelKey(i, k_prev).key()
+            twistaccel_curr_key = gtd.TwistAccelKey(i, k_curr).key()
 
             pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
-            graph.add(gtd.TrapezoidalPoseCollocationFactor(
-                pose_prev_key, pose_curr_key, twist_prev_key, twist_curr_key,
-                dt_key, pose_col_cost_model))
-            twist_col_cost_model = self.graph_builder.opt().twist_col_cost_model
-            graph.add(gtd.TrapezoidalPoseCollocationFactor(
-                twist_prev_key, twist_curr_key, twistaccel_prev_key,
-                twistaccel_curr_key, dt_key, twist_col_cost_model))
+            graph.add(
+                gtd.TrapezoidalPoseCollocationFactor(pose_prev_key,
+                                                     pose_curr_key,
+                                                     twist_prev_key,
+                                                     twist_curr_key, dt_key,
+                                                     pose_col_cost_model))
+            twist_col_cost_model = self.graph_builder.opt(
+            ).twist_col_cost_model
+            graph.add(
+                gtd.TrapezoidalPoseCollocationFactor(
+                    twist_prev_key, twist_curr_key, twistaccel_prev_key,
+                    twistaccel_curr_key, dt_key, twist_col_cost_model))
 
         return graph

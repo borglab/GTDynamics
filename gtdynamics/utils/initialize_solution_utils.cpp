@@ -11,11 +11,10 @@
  * @authors Alejandro Escontrela, Yetong Zhang, Varun Agrawal
  */
 
-#include "gtdynamics/utils/initialize_solution_utils.h"
-
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -203,7 +202,7 @@ Values InitializeSolutionInverseKinematics(
   DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
     auto kfg = dgb.qFactors(robot, t, contact_points);
-    kfg.addPrior(internal::PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
+    kfg.addPrior(PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
                  gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
     gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
@@ -303,7 +302,7 @@ Values MultiPhaseInverseKinematicsTrajectory(
     for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
       auto kfg = dgb.qFactors(robot, t, (*phase_contact_points)[phase]);
 
-      kfg.addPrior(internal::PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
+      kfg.addPrior(PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
                    gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
       gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
@@ -359,9 +358,8 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
     int j = joint->id();
     InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
     InsertWrench(&values, joint->child()->id(), j, t, sampler.sample());
-    std::vector<DynamicsSymbol> keys = {
-        internal::TorqueKey(j, t), internal::JointAngleKey(j, t),
-        internal::JointVelKey(j, t), internal::JointAccelKey(j, t)};
+    std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
+                                        JointVelKey(j, t), JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)
       values.insert(keys[i], sampler.sample()[0]);
   }

@@ -16,8 +16,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ConstraintSpec.h>
-#include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/FootContactConstraintSpec.h>
+#include <gtdynamics/utils/Interval.h>
 
 #include <iosfwd>
 
@@ -25,6 +25,9 @@ namespace gtdynamics {
 /**
  * @class Phase class stores information about a robot stance
  * and its duration.
+ *
+ * For example, a walking robot's leg can be in stance phase or swing phase
+ * depending on whether the foot is in contact (stance), or not (swing).
  */
 
 class Phase : public Interval {
@@ -37,7 +40,7 @@ class Phase : public Interval {
         const boost::shared_ptr<ConstraintSpec> &constraint_spec)
       : Interval(k_start, k_end), constraint_spec_(constraint_spec) {}
 
-  ///Return Constraint Spec pointer
+  /// Return Constraint Spec pointer
   const boost::shared_ptr<const ConstraintSpec> constraintSpec() const {
     return constraint_spec_;
   }

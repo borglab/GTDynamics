@@ -14,14 +14,12 @@
  * @brief Absract representation of a robot joint.
  */
 
-#include "gtdynamics/universal_robot/Link.h"
-
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 
@@ -32,7 +30,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
   std::vector<gtsam::Vector6_> wrenches;
 
   // Coriolis forces.
-  gtsam::Vector6_ twist(internal::TwistKey(id(), t));
+  gtsam::Vector6_ twist(TwistKey(id(), t));
   // TODO(yetong): make Coriolis a functor and get rid of placeholders.
   gtsam::Vector6_ wrench_coriolis(
       std::bind(Coriolis, inertiaMatrix(), std::placeholders::_1,
@@ -42,7 +40,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
 
   // Change in generalized momentum.
   const gtsam::Matrix6 neg_inertia = -inertiaMatrix();
-  gtsam::Vector6_ twistAccel(internal::TwistAccelKey(id(), t));
+  gtsam::Vector6_ twistAccel(TwistAccelKey(id(), t));
   gtsam::Vector6_ wrench_momentum(
       std::bind(MatVecMult<6, 6>, neg_inertia, std::placeholders::_1,
                 std::placeholders::_2),
@@ -56,7 +54,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
 
   // Gravity wrench.
   if (gravity) {
-    gtsam::Pose3_ pose(internal::PoseKey(id(), t));
+    gtsam::Pose3_ pose(PoseKey(id(), t));
     gtsam::Vector6_ wrench_gravity(
         std::bind(GravityWrench, *gravity, mass_, std::placeholders::_1,
                   std::placeholders::_2),

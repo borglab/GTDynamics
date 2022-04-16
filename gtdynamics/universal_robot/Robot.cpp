@@ -11,18 +11,17 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/universal_robot/Robot.h"
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 
 #include <algorithm>
 #include <memory>
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;
@@ -191,7 +190,6 @@ static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
 // Add zero default values for joint angles and joint velocities.
 // if they do not yet exist
 static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
-  using namespace internal;
   for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
     if (!values->exists(key)) {
       values->insertDouble(key, 0.0);
@@ -208,8 +206,8 @@ static bool InsertWithCheck(size_t i, size_t t,
   Pose3 pose;
   Vector6 twist;
   std::tie(pose, twist) = poseTwist;
-  auto pose_key = internal::PoseKey(i, t);
-  auto twist_key = internal::TwistKey(i, t);
+  auto pose_key = PoseKey(i, t);
+  auto twist_key = TwistKey(i, t);
   const bool exists = values->exists(pose_key);
   if (!exists) {
     values->insert(pose_key, pose);
@@ -234,10 +232,10 @@ gtsam::Values Robot::forwardKinematics(
   const auto root_link = findRootLink(values, prior_link_name);
   InsertFixedLinks(links(), t, &values);
 
-  if (!values.exists(internal::PoseKey(root_link->id(), t))) {
+  if (!values.exists(PoseKey(root_link->id(), t))) {
     InsertPose(&values, root_link->id(), t, gtsam::Pose3());
   }
-  if (!values.exists(internal::TwistKey(root_link->id(), t))) {
+  if (!values.exists(TwistKey(root_link->id(), t))) {
     InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
   }
 

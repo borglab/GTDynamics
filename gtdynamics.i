@@ -130,8 +130,6 @@ class ContactHeightFactor : gtsam::NonlinearFactor {
 
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
-
-  gtsam::Vector evaluateError(const gtsam::Pose3 &sTl) const;
 };
 
 /********************** link **********************/
@@ -169,6 +167,7 @@ class Link  {
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
 #include <gtdynamics/universal_robot/HelicalJoint.h>
+
 class JointParams {
   JointParams();
   double velocity_limit;
@@ -641,17 +640,14 @@ class DynamicsSymbol {
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
-namespace internal {
-  gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
-  gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
-  gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
-  gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
-  gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
-}
-
+gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
+gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
+gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
+gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
+gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
+gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
+gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
+gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
 gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t=0);
 gtdynamics::DynamicsSymbol PhaseKey(int k);
 gtdynamics::DynamicsSymbol TimeKey(int t);

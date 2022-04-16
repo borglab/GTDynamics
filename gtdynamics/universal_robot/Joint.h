@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/Expression.h>
@@ -30,10 +33,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
 
 namespace gtdynamics {
 

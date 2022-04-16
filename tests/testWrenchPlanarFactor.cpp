@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/WrenchPlanarFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,7 +24,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -33,7 +33,7 @@ namespace example {
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
-const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777);
+const DynamicsSymbol wrench_key = WrenchKey(2, 1, 777);
 gtsam::Pose3 kMj;  // doesn't matter
 auto joint = make_joint(kMj, gtsam::Z_6x1);
 }  // namespace example

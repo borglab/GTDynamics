@@ -11,16 +11,15 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/TorqueFactor.h>             // TODO: move
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>  // TODO: move
+#include <gtdynamics/factors/WrenchPlanarFactor.h>       // TODO: move
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
-
-#include "gtdynamics/factors/TorqueFactor.h"             // TODO: move
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"  // TODO: move
-#include "gtdynamics/factors/WrenchPlanarFactor.h"       // TODO: move
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 using gtsam::assert_equal;
@@ -72,12 +71,12 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice,
 
     // Add wrench keys for joints.
     for (auto&& joint : connected_joints)
-      wrench_keys.push_back(internal::WrenchKey(i, joint->id(), k));
+      wrench_keys.push_back(WrenchKey(i, joint->id(), k));
 
     // Add static wrench factor for link.
     graph.emplace_shared<StaticWrenchFactor>(
-        wrench_keys, internal::PoseKey(link->id(), k), p_.fs_cost_model,
-        link->mass(), p_.gravity);
+        wrench_keys, PoseKey(link->id(), k), p_.fs_cost_model, link->mass(),
+        p_.gravity);
   }
 
   /// Add a WrenchEquivalenceFactor for each joint.
@@ -123,7 +122,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
 
   // Add constraints for poses and initialize them.
   for (auto&& link : robot.links()) {
-    auto key = internal::PoseKey(link->id(), slice.k);
+    auto key = PoseKey(link->id(), slice.k);
     auto pose = configuration.at<Pose3>(key);
     graph.emplace_shared<gtsam::NonlinearEquality1<Pose3>>(pose, key);
     initial_values.insert(key, pose);
@@ -131,7 +130,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
 
   // Add constraints for joint angles and initialize them.
   for (auto&& joint : robot.joints()) {
-    auto key = internal::JointAngleKey(joint->id(), slice.k);
+    auto key = JointAngleKey(joint->id(), slice.k);
     auto q = configuration.at<double>(key);
     graph.emplace_shared<gtsam::NonlinearEquality1<double>>(q, key);
     initial_values.insert(key, q);

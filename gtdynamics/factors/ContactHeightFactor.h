@@ -16,26 +16,40 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+
+#include <gtsam/slam/expressions.h>
 
 #include <string>
 
 namespace gtdynamics {
 
 /**
+ * ContactHeightConstraint is a constraint which enforces a known ground plane
+ * height for the contact point. This factor assumes that the ground is flat and
+ * level.
+ */
+inline gtsam::Double_ ContactHeightConstraint(gtsam::Key pose_key,
+                      const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
+                      const double &ground_plane_height = 0.0) {
+  gtsam::Point3_ gravity_s_unit(gravity.normalized().cwiseAbs());
+  gtsam::Pose3_ sTl(pose_key);
+  gtsam::Point3_ sPc = gtsam::transformFrom(sTl, gtsam::Point3_(comPc));
+  gtsam::Double_ sPc_h = gtsam::dot(sPc, gravity_s_unit);
+  gtsam::Double_ error = sPc_h - gtsam::Double_(ground_plane_height);
+  return error;
+}
+
+/**
  * ContactHeightFactor is a one-way nonlinear factor which enforces a
  * known ground plane height for the contact point. This factor assumes that the
  * ground is flat and level.
  */
-class ContactHeightFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class ContactHeightFactor : public gtsam::ExpressionFactor<double> {
  private:
   using This = ContactHeightFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
-
-  gtsam::Point3 comPc_;  // The contact point in the link's COM frame.
-  gtsam::Vector1 h_;     // Height of the ground plane in the world frame.
-
-  gtsam::Matrix13 gravity_s_unit_;  // Gravity unit vector in the spatial frame.
+  using Base = gtsam::ExpressionFactor<double>;
 
  public:
   /**
@@ -53,33 +67,11 @@ class ContactHeightFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
                       const gtsam::noiseModel::Base::shared_ptr &cost_model,
                       const gtsam::Point3 &comPc, const gtsam::Vector3 &gravity,
                       const double &ground_plane_height = 0.0)
-      : Base(cost_model, pose_key), comPc_(comPc) {
-    gravity_s_unit_ = gtsam::Matrix13(gravity.normalized().cwiseAbs());
-
-    h_ = gtsam::Vector1(ground_plane_height);
-  }
+      : Base(cost_model, 0.0,
+             ContactHeightConstraint(pose_key, comPc, gravity,
+                                     ground_plane_height)) {}
 
   virtual ~ContactHeightFactor() {}
-
-  /**
-   * Evaluate contact errors.
-   * @param sTl This link's COM pose in the spatial frame.
-   */
-  gtsam::Vector evaluateError(
-      const gtsam::Pose3 &sTl,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    // Change contact from CoM to spatial reference frame.
-    gtsam::Matrix36 H_sTl;
-    gtsam::Point3 sPc = sTl.transformFrom(comPc_, H_sTl);
-
-    // Compute the error.
-    gtsam::Vector sPc_h = gtsam::Vector1(gravity_s_unit_.dot(sPc));
-    gtsam::Vector error = sPc_h - h_;
-
-    if (H_pose) *H_pose = gravity_s_unit_ * H_sTl;
-
-    return error;
-  }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

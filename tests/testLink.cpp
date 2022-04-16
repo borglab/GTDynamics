@@ -12,15 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

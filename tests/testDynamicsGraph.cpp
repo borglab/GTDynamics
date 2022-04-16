@@ -12,6 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,15 +32,6 @@
 #include <gtsam/slam/PriorFactor.h>
 
 #include <iostream>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/factors/MinTorqueFactor.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 
@@ -115,9 +114,9 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    graph.addPrior(internal::PoseKey(i, t), link->bMcom(),
+    graph.addPrior(PoseKey(i, t), link->bMcom(),
                    graph_builder.opt().bp_cost_model);
-    graph.addPrior<Vector6>(internal::TwistKey(i, t), gtsam::Z_6x1,
+    graph.addPrior<Vector6>(TwistKey(i, t), gtsam::Z_6x1,
                             graph_builder.opt().bv_cost_model);
   }
 
@@ -152,9 +151,9 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
   // still need to add pose and twist priors since no link is fixed in this case
   for (auto link : robot.links()) {
     int i = link->id();
-    prior_factors.addPrior(internal::PoseKey(i, 0), link->bMcom(),
+    prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            graph_builder.opt().bp_cost_model);
-    prior_factors.addPrior<Vector6>(internal::TwistKey(i, 0), gtsam::Z_6x1,
+    prior_factors.addPrior<Vector6>(TwistKey(i, 0), gtsam::Z_6x1,
                                     graph_builder.opt().bv_cost_model);
   }
 
@@ -236,17 +235,14 @@ TEST(collocationFactors, simple_urdf) {
   int j = robot.joints()[0]->id();
 
   NonlinearFactorGraph prior_factors;
-  prior_factors.add(
-      PriorFactor<double>(internal::JointAngleKey(j, t), 1,
-                          graph_builder.opt().prior_q_cost_model));
   prior_factors.add(PriorFactor<double>(
-      internal::JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
-  prior_factors.add(
-      PriorFactor<double>(internal::JointAccelKey(j, t), 1,
-                          graph_builder.opt().prior_qa_cost_model));
-  prior_factors.add(
-      PriorFactor<double>(internal::JointAccelKey(j, t + 1), 2,
-                          graph_builder.opt().prior_qa_cost_model));
+      JointAngleKey(j, t), 1, graph_builder.opt().prior_q_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointVelKey(j, t), 1, graph_builder.opt().prior_qv_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointAccelKey(j, t), 1, graph_builder.opt().prior_qa_cost_model));
+  prior_factors.add(PriorFactor<double>(
+      JointAccelKey(j, t + 1), 2, graph_builder.opt().prior_qa_cost_model));
 
   Values init_values;
   InsertJointAngle(&init_values, j, t, 0.0);
@@ -442,15 +438,15 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->bMcom(),
+  prior_factors.addPrior(PoseKey(l0->id(), 0), l0->bMcom(),
                          gtsam::noiseModel::Constrained::All(6));
-  prior_factors.addPrior<Vector6>(internal::TwistKey(l0->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));
   graph.add(prior_factors);
 
   // Add min torque factor.
   for (auto joint : robot.joints())
-    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
@@ -460,7 +456,6 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
   Values results = optimizer.optimize();
   //   std::cout << "Error: " << graph.error(results) << std::endl;
-
 
   auto contact_wrench_key = ContactWrenchKey(l0->id(), 0, 0);
   gtsam::Vector contact_wrench_optimized =
@@ -499,19 +494,17 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
 
   // Specify pose and twist priors for base.
   auto body = biped.link("body");
-  prior_factors.addPrior(internal::PoseKey(body->id(), 0), body->bMcom(),
+  prior_factors.addPrior(PoseKey(body->id(), 0), body->bMcom(),
                          graph_builder.opt().bp_cost_model);
-  prior_factors.addPrior<Vector6>(internal::TwistKey(body->id(), 0),
-                                  gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(body->id(), 0), gtsam::Z_6x1,
                                   graph_builder.opt().bv_cost_model);
-  prior_factors.addPrior<Vector6>(internal::TwistAccelKey(body->id(), 0),
-                                  gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistAccelKey(body->id(), 0), gtsam::Z_6x1,
                                   graph_builder.opt().ba_cost_model);
   graph.add(prior_factors);
 
   // Add min torque factor.
   for (auto joint : biped.joints())
-    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
@@ -575,15 +568,15 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(internal::PoseKey(l0->id(), 0), l0->bMcom(),
+  prior_factors.addPrior(PoseKey(l0->id(), 0), l0->bMcom(),
                          gtsam::noiseModel::Constrained::All(6));
-  prior_factors.addPrior<Vector6>(internal::TwistKey(l0->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));
   graph.add(prior_factors);
 
   // Add min torque factor.
   for (auto joint : robot.joints())
-    graph.add(MinTorqueFactor(internal::TorqueKey(joint->id(), 0),
+    graph.add(MinTorqueFactor(TorqueKey(joint->id(), 0),
                               gtsam::noiseModel::Isotropic::Sigma(1, 0.1)));
 
   // Set initial values.

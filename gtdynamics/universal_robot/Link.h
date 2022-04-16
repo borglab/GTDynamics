@@ -13,6 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -29,12 +34,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -201,7 +200,6 @@ class Link : public boost::enable_shared_from_this<Link> {
   void print(const std::string &s = "") const {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
-
 
   /**
    * @brief Create expression that constraint the wrench balance on the link.

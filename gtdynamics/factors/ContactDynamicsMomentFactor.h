@@ -13,29 +13,48 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/expressions.h>
 
 #include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
+
+
+/**
+ * ContactDynamicsMomentConstraint is a 3-dimensional constraint which enforces zero
+ * moment at the contact point for the link.
+ */
+inline gtsam::Vector3_ ContactDynamicsMomentConstraint(
+    gtsam::Key contact_wrench_key, const gtsam::Pose3 &cTcom) {
+  gtsam::Matrix36 H_contact_wrench;
+  H_contact_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0;
+
+  gtsam::Matrix36 H = H_contact_wrench * cTcom.inverse().AdjointMap().transpose();
+  gtsam::Vector6_ contact_wrench(contact_wrench_key);
+  const std::function<gtsam::Vector3(gtsam::Vector6)> f =
+      [H](const gtsam::Vector6 &F) { return H * F; };
+  gtsam::Vector3_ error = gtsam::linearExpression(f, contact_wrench, H);
+  return error;
+}
 
 /**
  * ContactDynamicsMomentFactor is unary nonlinear factor which enforces zero
  * moment at the contact point for the link.
  */
 class ContactDynamicsMomentFactor
-    : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
+    : public gtsam::ExpressionFactor<gtsam::Vector3> {
  private:
   using This = ContactDynamicsMomentFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Vector6>;
+  using Base = gtsam::ExpressionFactor<gtsam::Vector3>;
 
   gtsam::Pose3 cTcom_;
   gtsam::Matrix36 H_contact_wrench_;
@@ -52,33 +71,10 @@ class ContactDynamicsMomentFactor
       gtsam::Key contact_wrench_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom)
-      : Base(cost_model, contact_wrench_key), cTcom_(cTcom) {
-    H_contact_wrench_ = (gtsam::Matrix36() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-                         0, 0, 0, 1, 0, 0, 0)
-                            .finished();
-  }
+      : Base(cost_model, gtsam::Vector3::Zero(),
+             ContactDynamicsMomentConstraint(contact_wrench_key, cTcom)) {}
+
   virtual ~ContactDynamicsMomentFactor() {}
-
- public:
-  /**
-   * Evaluate contact point moment errors.
-   * @param contact_wrench Contact wrench on this link.
-   */
-  gtsam::Vector evaluateError(
-      const gtsam::Vector6 &contact_wrench,
-      boost::optional<gtsam::Matrix &> H_contact_wrench =
-          boost::none) const override {
-    // Transform the twist from the link COM frame to the contact frame.
-    gtsam::Vector3 error = H_contact_wrench_ *
-                           cTcom_.inverse().AdjointMap().transpose() *
-                           contact_wrench;
-
-    if (H_contact_wrench)
-      *H_contact_wrench =
-          H_contact_wrench_ * cTcom_.inverse().AdjointMap().transpose();
-
-    return error;
-  }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

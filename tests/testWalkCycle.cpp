@@ -12,13 +12,13 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/Trajectory.h>
+#include <gtdynamics/utils/WalkCycle.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/Phase.h"
-#include "gtdynamics/utils/WalkCycle.h"
-#include "gtdynamics/utils/Trajectory.h"
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
@@ -70,18 +70,23 @@ TEST(WalkCycle, objectives) {
   constexpr size_t num_time_steps = 5;
   const Point3 contact_in_com(0.14, 0, 0);
 
-  std::vector<LinkSharedPtr> phase_0_links = {robot.link("lower1"), robot.link("lower2")};
-  std::vector<LinkSharedPtr> phase_1_links = {robot.link("lower0"), robot.link("lower3")};
+  std::vector<LinkSharedPtr> phase_0_links = {robot.link("lower1"),
+                                              robot.link("lower2")};
+  std::vector<LinkSharedPtr> phase_1_links = {robot.link("lower0"),
+                                              robot.link("lower3")};
 
-  auto phase0 = boost::make_shared<FootContactConstraintSpec>(phase_0_links, contact_in_com);
-  auto phase1 = boost::make_shared<FootContactConstraintSpec>(phase_1_links, contact_in_com);
-  
+  auto phase0 = boost::make_shared<FootContactConstraintSpec>(phase_0_links,
+                                                              contact_in_com);
+  auto phase1 = boost::make_shared<FootContactConstraintSpec>(phase_1_links,
+                                                              contact_in_com);
+
   FootContactVector states = {phase0, phase1};
   std::vector<size_t> phase_lengths = {num_time_steps, num_time_steps};
 
-  auto walk_cycle = WalkCycle({phase0, phase1}, {num_time_steps, num_time_steps});
+  auto walk_cycle =
+      WalkCycle({phase0, phase1}, {num_time_steps, num_time_steps});
 
-  //check Phase swing links function
+  // check Phase swing links function
   auto swing_links0 = walk_cycle.getPhaseSwingLinks(0);
   auto swing_links1 = walk_cycle.getPhaseSwingLinks(1);
   EXPECT_LONGS_EQUAL(swing_links0.size(), 2);

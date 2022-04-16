@@ -13,12 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-
-#include "gtdynamics/kinematics/Kinematics.h"
-#include "gtdynamics/utils/Slice.h"
 
 namespace gtdynamics {
 

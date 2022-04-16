@@ -12,29 +12,30 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include "constrainedExample.h"
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
-using constrained_example::x1_key, constrained_example::x2_key;
-using constrained_example::x1, constrained_example::x2;
 using constrained_example::pow;
+using constrained_example::x1, constrained_example::x2;
+using constrained_example::x1_key, constrained_example::x2_key;
 
 // Test methods of DoubleExpressionEquality.
 TEST(EqualityConstraint, DoubleExpressionEquality) {
   // create constraint from double expression
   // g(x1, x2) = x1 + x1^3 + x2 + x2^2, from Vanderbergh slides
   double tolerance = 0.1;
-  auto g = x1 + pow(x1, 3) + x2 + pow(x2, 2);;
+  auto g = x1 + pow(x1, 3) + x2 + pow(x2, 2);
+  ;
   auto constraint = DoubleExpressionEquality(g, tolerance);
 
   // Create 2 sets of values for testing.
@@ -150,7 +151,8 @@ TEST(EqualityConstraint, Container) {
   EqualityConstraints constraints;
 
   double tolerance1 = 0.1;
-  auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);;
+  auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);
+  ;
 
   Vector2_ x1_vec_expr(x1_key);
   Vector2_ x2_vec_expr(x2_key);
