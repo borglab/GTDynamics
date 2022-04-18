@@ -31,8 +31,9 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
                   const std::string &model_name,
                   const sdf::ParserConfig &config) {
   sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
-  if (sdf == nullptr)
+  if (sdf == nullptr) {
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
+  }
 
   sdf::Root root;
   sdf::Errors errors = root.Load(sdf, config);

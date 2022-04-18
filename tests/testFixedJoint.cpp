@@ -32,7 +32,7 @@ using gtsam::Rot3;
  * Construct a Fixed joint.
  */
 TEST(FixedJoint, Constructor) {
-  using simple_urdf::robot;
+  auto robot = simple_urdf::getRobot();
   auto l1 = robot.link("l1");
   auto l2 = robot.link("l2");
   FixedJoint j(0, "j1", gtsam::Pose3(), l1, l2);

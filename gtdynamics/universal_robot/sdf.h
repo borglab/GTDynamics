@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include <string>
-
 #include <gtdynamics/universal_robot/Robot.h>
+
+#include <string>
 
 namespace gtdynamics {
 
