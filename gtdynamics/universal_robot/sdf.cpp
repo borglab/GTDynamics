@@ -30,13 +30,21 @@ using gtsam::Pose3;
 sdf::Model GetSdf(const std::string &sdf_file_path,
                   const std::string &model_name,
                   const sdf::ParserConfig &config) {
-  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
+  sdf::ParserConfig _config = config;
+  _config.URDFSetPreserveFixedJoint(true);
+
+  sdf::Errors errors;
+
+  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path, _config, errors);
   if (sdf == nullptr) {
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
   }
+  for(auto&& error: errors) {
+    std::cout << error << std::endl;
+  }
 
   sdf::Root root;
-  sdf::Errors errors = root.Load(sdf, config);
+  errors = root.Load(sdf, _config);
   if (errors.size() > 0) {
     for (auto &&error : errors) {
       std::cout << error.Message() << std::endl;
@@ -191,13 +199,20 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
-  // Generate a joint parameters struct with values from the SDF.
-  JointParams parameters = ParametersFromSdfJoint(sdf_joint);
-
   std::string name(sdf_joint.Name());
+
   Pose3 bMj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
 
-  const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
+  JointParams parameters;
+  gtsam::Vector3 axis;
+  // Fixed joints don't have parameters or an axis.
+  if(sdf_joint.Type() != sdf::JointType::FIXED) {
+    // Generate a joint parameters struct with values from the SDF.
+    parameters = ParametersFromSdfJoint(sdf_joint);
+    // Get the joint axis.
+    axis = GetSdfAxis(sdf_joint);
+  }
+
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
       joint = boost::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
