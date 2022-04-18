@@ -184,10 +184,6 @@
     <parent link="FR_lower"/>
     <child link="FR_toe"/>
   </joint>
-  <gazebo reference="FR_toe_fixed">
-    <disableFixedJointLumping>true</disableFixedJointLumping> 
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
 
   <link name="FR_toe">
     <visual>
@@ -346,10 +342,6 @@
     <parent link="FL_lower"/>
     <child link="FL_toe"/>
   </joint>
-  <gazebo reference="FL_toe_fixed">
-    <disableFixedJointLumping>true</disableFixedJointLumping> 
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
 
   <link name="FL_toe">
     <visual>
@@ -508,10 +500,6 @@
     <parent link="RR_lower"/>
     <child link="RR_toe"/>
   </joint>
-  <gazebo reference="RR_toe_fixed">
-    <disableFixedJointLumping>true</disableFixedJointLumping> 
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
   <link name="RR_toe">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -669,10 +657,6 @@
     <parent link="RL_lower"/>
     <child link="RL_toe"/>
   </joint>
-  <gazebo reference="RL_toe_fixed">
-    <disableFixedJointLumping>true</disableFixedJointLumping> 
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
 
   <link name="RL_toe">
     <visual>
