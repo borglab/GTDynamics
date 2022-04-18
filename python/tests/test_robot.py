@@ -21,6 +21,7 @@ from gtsam.utils.test_case import GtsamTestCase
 
 class TestRobot(GtsamTestCase):
     """Tests for the Robot class."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
@@ -67,32 +68,28 @@ class TestRobot(GtsamTestCase):
         # Dict of link-transforms where the transform is
         # from the link frame to the link CoM frame.
         lTcom_adjustments = {
-            "FL_hip":
-            Pose3(Rot3(), Point3(-0.003311, 0.000635, 3.1e-05)),
-            "FL_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "FL_upper":
-            Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
-            "FR_hip":
-            Pose3(Rot3(), Point3(-0.003311, -0.000635, 3.1e-05)),
-            "FR_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "FR_upper":
-            Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
-            "RL_hip":
-            Pose3(Rot3(), Point3(0.003311, 0.000635, 3.1e-05)),
-            "RL_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "RL_upper":
-            Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
-            "RR_hip":
-            Pose3(Rot3(), Point3(0.003311, -0.000635, 3.1e-05)),
-            "RR_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "RR_upper":
-            Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
-            "trunk":
-            Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515)),
+            "FL_hip": Pose3(Rot3(), Point3(-0.003311, 0.000635, 3.1e-05)),
+            "FL_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "FL_upper": Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
+            "FL_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FL_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FR_hip": Pose3(Rot3(), Point3(-0.003311, -0.000635, 3.1e-05)),
+            "FR_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "FR_upper": Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
+            "FR_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FR_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RL_hip": Pose3(Rot3(), Point3(0.003311, 0.000635, 3.1e-05)),
+            "RL_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "RL_upper": Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
+            "RL_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RL_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RR_hip": Pose3(Rot3(), Point3(0.003311, -0.000635, 3.1e-05)),
+            "RR_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "RR_upper": Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
+            "RR_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RR_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "trunk": Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515)),
+            "imu_link": Pose3()
         }
 
         # True FK poses computed using kinpy
@@ -106,6 +103,12 @@ class TestRobot(GtsamTestCase):
             "FL_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (0.170269, 0.129864, -0.000515)),
+            "FL_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.129864, -0.400515)),
+            "FL_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.125814, -0.000515)),
             "FR_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (0.170269, -0.049186, -0.000515)),
@@ -115,6 +118,13 @@ class TestRobot(GtsamTestCase):
             "FR_upper":
             Pose3(Rot3.Quaternion(0.99875026, 0.0, 0.04997917, 0.),
                   (0.170269, -0.134236, -0.000515)),
+            "FR_toe":
+            Pose3(
+                Rot3.Quaternion(0.9987502603949663, 0., 0.049979169270678324,
+                                0.), (0.130336, -0.134236, -0.398517)),
+            "FR_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, -0.130186, -0.000515)),
             "RL_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, 0.044814, -0.000515)),
@@ -124,6 +134,12 @@ class TestRobot(GtsamTestCase):
             "RL_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, 0.129864, -0.000515)),
+            "RL_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.129864, -0.400515)),
+            "RL_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.125814, -0.000515)),
             "RR_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, -0.049186, -0.000515)),
@@ -133,9 +149,17 @@ class TestRobot(GtsamTestCase):
             "RR_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, -0.134236, -0.000515)),
+            "RR_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.134236, -0.400515)),
+            "RR_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.130186, -0.000515)),
             "trunk":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.012731, -0.002186, -0.000515)),
+            "imu_link":
+            Pose3(Rot3(), Point3(-0.012731, -0.002186, -0.000515))
         }
         # Test all the links
         for link in robot.links():
