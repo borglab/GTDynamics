@@ -184,7 +184,6 @@
     <parent link="FR_lower"/>
     <child link="FR_toe"/>
   </joint>
-
   <link name="FR_toe">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -342,7 +341,6 @@
     <parent link="FL_lower"/>
     <child link="FL_toe"/>
   </joint>
-
   <link name="FL_toe">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -657,7 +655,6 @@
     <parent link="RL_lower"/>
     <child link="RL_toe"/>
   </joint>
-
   <link name="RL_toe">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -707,18 +704,5 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-
-  <gazebo reference="FR_toe_fixed">
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
-  <gazebo reference="FL_toe_fixed">
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
-  <gazebo reference="RR_toe_fixed">
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
-  <gazebo reference="RL_toe_fixed">
-    <preserveFixedJoint>true</preserveFixedJoint>
-  </gazebo>
 </robot>
 
