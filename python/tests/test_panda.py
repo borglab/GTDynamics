@@ -45,7 +45,8 @@ class TestSerial(GtsamTestCase):
             [0, -1, 0],
             [0, 0, -1]
         ])
-        expected_sT7 = Pose3(sR7, Point3(0.129315, 0.00227401, 0.88387))
+        # regression
+        expected_sT7 = Pose3(sR7, Point3(0.139535, 0.004392, 0.921429))
         actual_sT7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)
 

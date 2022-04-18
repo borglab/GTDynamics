@@ -16,6 +16,7 @@ import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
+
 from prototype.chain import Chain
 
 
@@ -120,7 +121,8 @@ class TestPanda(GtsamTestCase):
             [0, -1, 0],
             [0, 0, -1]
         ])
-        expected_sM7 = Pose3(sR7, Point3(0.0882972, 0.00213401, 0.933844))
+        #regression
+        expected_sM7 = Pose3(sR7, Point3(0.098517, 0.004252, 0.971403))
         actual_sM7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sM7, expected_sM7, tol=1e-3)
 
@@ -130,14 +132,14 @@ class TestPanda(GtsamTestCase):
 
         # Check Panda twist in end-effector frame
         self.assertEqual(J7.shape, (6, 7))
-        expected_J7 = np.array([
-            [0,   0,   -1,    -0.002, -0.088,  0],
-            [0,   -1,     0,    0.601,  0,    0.088],
-            [0,   0,   -1,    -0.002, -0.088,  0],
-            [0,    1,    0,   -0.285, 0,   -0.006],
-            [0,   0,   -1,    -0.002, -0.088,  0],
-            [0,    1,    0,    0.099, 0,   -0.088],
-            [0,    0,    1,     0.002,  0,    0]]).transpose()
+        expected_J7 = np.array([[0, 0, -1, -0.004252, -0.0985, 0],
+                                [0, -1, 0, 0.6384, 0, 0.0985],
+                                [0, 0, -1, -0.00425, -0.0985, 0],
+                                [0, 1, 0, -0.322, 0, -0.016],
+                                [0, 0, -1, -0.00425, -0.0985, 0],
+                                [0, 1, 0, 0.06159, 0, -0.0985],
+                                [0, 0, 1, 0.00425, 0.0105, 0]]).transpose()
+        #regression
         np.testing.assert_allclose(J7, expected_J7, atol=0.001)
 
     def check_poe(self, q_list, fTe=None):
