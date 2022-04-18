@@ -27,8 +27,13 @@ class TestRobot(GtsamTestCase):
         self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1", "a1.urdf")
 
     def test_fixed_joint(self):
+        """Test if the fixed joint is parsed correctly."""
         robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
-        print(robot)
+        # Try to get the fixed links
+        self.assertIsNotNone(robot.link("FR_toe"))
+        self.assertIsNotNone(robot.link("FL_toe"))
+        self.assertIsNotNone(robot.link("RR_toe"))
+        self.assertIsNotNone(robot.link("RL_toe"))
 
     def test_forward_kinematics(self):
         """Test if FK is correct via comparison to a 3rd party library."""

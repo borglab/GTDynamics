@@ -268,11 +268,9 @@ class Robot {
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
-// This version is only for URDF files.
-gtdynamics::Robot CreateRobotFromFile(const string& urdf_file_path);
-gtdynamics::Robot CreateRobotFromFile(const string& file_path, 
-                                    const string& model_name);
-
+// Only SDF files require the model_name specified..
+gtdynamics::Robot CreateRobotFromFile(const string &urdf_file_path,
+                                      const string &model_name = "");
 
 /********************** utilities **********************/
 #include <gtdynamics/utils/PointOnLink.h>
