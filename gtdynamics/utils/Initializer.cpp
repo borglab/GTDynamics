@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -37,12 +37,12 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
-Pose3 AddGaussianNoiseToPose(const Pose3& T, const Sampler& sampler) {
+Pose3 Initializer::AddGaussianNoiseToPose(const Pose3& T, const Sampler& sampler) const {
   Vector6 xi = sampler.sample();
   return T.expmap(xi);
 }
 
-std::vector<Pose3> InterpolatePoses(const Pose3& wTl_i,
+std::vector<Pose3> Initializer::InterpolatePoses(const Pose3& wTl_i,
                                     const std::vector<Pose3>& wTl_t, double t_i,
                                     const std::vector<double>& timesteps,
                                     double dt) {
@@ -68,7 +68,7 @@ std::vector<Pose3> InterpolatePoses(const Pose3& wTl_i,
   return wTl_dt;
 }
 
-Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
+Values Initializer::InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
                                 const std::vector<Pose3>& wTl_t,
                                 const std::string& link_name, double t_i,
                                 const std::vector<double>& timesteps, double dt,
@@ -104,7 +104,7 @@ Values InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
   return values;
 }
 
-Values InitializeSolutionInterpolation(
+Values Initializer::InitializeSolutionInterpolation(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const Pose3& wTl_f, double T_s, double T_f, double dt,
     double gaussian_noise,
@@ -155,7 +155,7 @@ Values InitializeSolutionInterpolation(
   return init_vals;
 }
 
-Values InitializeSolutionInterpolationMultiPhase(
+Values Initializer::InitializeSolutionInterpolationMultiPhase(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts, double dt,
     double gaussian_noise,
@@ -177,7 +177,7 @@ Values InitializeSolutionInterpolationMultiPhase(
   return init_vals;
 }
 
-Values InitializeSolutionInverseKinematics(
+Values Initializer::InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& timesteps,
     double dt, double gaussian_noise,
@@ -229,11 +229,11 @@ Values InitializeSolutionInverseKinematics(
   return init_vals;
 }
 
-Values MultiPhaseZeroValuesTrajectory(
+Values Initializer::MultiPhaseZeroValuesTrajectory(
     const Robot& robot, const std::vector<int>& phase_steps,
     std::vector<Values> transition_graph_init, double dt_i,
     double gaussian_noise,
-    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points) {
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points) const {
   Values values;
   int num_phases = phase_steps.size();
 
@@ -269,7 +269,7 @@ Values MultiPhaseZeroValuesTrajectory(
   return values;
 }
 
-Values MultiPhaseInverseKinematicsTrajectory(
+Values Initializer::MultiPhaseInverseKinematicsTrajectory(
     const Robot& robot, const std::string& link_name,
     const std::vector<int>& phase_steps, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& ts,
@@ -337,8 +337,8 @@ Values MultiPhaseInverseKinematicsTrajectory(
   return init_vals;
 }
 
-Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
-                  const boost::optional<PointOnLinks>& contact_points) {
+Values Initializer::ZeroValues(const Robot& robot, const int t, double gaussian_noise,
+                  const boost::optional<PointOnLinks>& contact_points) const{
   Values values;
 
   auto sampler_noise_model =
@@ -374,7 +374,7 @@ Values ZeroValues(const Robot& robot, const int t, double gaussian_noise,
   return values;
 }
 
-Values ZeroValuesTrajectory(
+Values Initializer::ZeroValuesTrajectory(
     const Robot& robot, const int num_steps, const int num_phases,
     double gaussian_noise,
     const boost::optional<PointOnLinks>& contact_points) {

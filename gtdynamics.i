@@ -268,11 +268,9 @@ class Robot {
 };
 
 #include <gtdynamics/universal_robot/sdf.h>
-// This version is only for URDF files.
-gtdynamics::Robot CreateRobotFromFile(const string& urdf_file_path);
-gtdynamics::Robot CreateRobotFromFile(const string& file_path, 
-                                    const string& model_name);
-
+// Only SDF files require the model_name specified..
+gtdynamics::Robot CreateRobotFromFile(const string &urdf_file_path,
+                                      const string &model_name = "");
 
 /********************** utilities **********************/
 #include <gtdynamics/utils/PointOnLink.h>
@@ -603,14 +601,18 @@ std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3 &start,
                                                  size_t num_steps);
 
 /********************** Value Initialization **********************/
-#include <gtdynamics/utils/initialize_solution_utils.h>
-gtsam::Values ZeroValues(
-    const gtdynamics::Robot& robot, const int t, double gaussian_noise);
+#include <gtdynamics/utils/Initializer.h>
+class Initializer {
+  Initializer();
 
-gtsam::Values ZeroValuesTrajectory(
-    const gtdynamics::Robot& robot, const int num_steps, const int num_phases,
-    double gaussian_noise,
-    const boost::optional<gtdynamics::PointOnLinks>& contact_points);
+  gtsam::Values ZeroValues(
+      const gtdynamics::Robot& robot, const int t, double gaussian_noise);
+
+  gtsam::Values ZeroValuesTrajectory(
+      const gtdynamics::Robot& robot, const int num_steps, const int num_phases,
+      double gaussian_noise,
+      const boost::optional<gtdynamics::PointOnLinks>& contact_points);
+};
 
 /********************** symbols **********************/
 
@@ -803,9 +805,9 @@ class Trajectory {
                         const gtdynamics::CollocationScheme collocation,
                         double mu) const;
   std::vector<gtsam::Values>
-  transitionPhaseInitialValues(const gtdynamics::Robot& robot, 
+  transitionPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
                                double gaussian_noise) const;
-  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, 
+  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
                                         double gaussian_noise, double dt) const;
   std::vector<int> finalTimeSteps() const;
   const Phase &phase(size_t p) const;

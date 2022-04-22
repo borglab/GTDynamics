@@ -14,7 +14,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 using namespace gtdynamics;
@@ -38,7 +38,8 @@ int main(int argc, char **argv) {
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = ZeroValues(robot, 0);
+  Initializer initializer;
+  auto init_values = initializer.ZeroValues(robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

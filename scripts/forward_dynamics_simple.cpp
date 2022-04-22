@@ -14,7 +14,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -47,7 +47,8 @@ int main(int argc, char** argv) {
   dfg.add(fd_priors);
 
   // Obtain solution initialization.
-  gtsam::Values init_values = ZeroValues(robot, 0);
+  Initializer initializer;
+  gtsam::Values init_values = initializer.ZeroValues(robot, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(dfg, init_values);

@@ -123,6 +123,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     Revolute = 'R',
     Prismatic = 'P',
     Screw = 'H',
+    Fixed = 'F',
   };
 
  protected:

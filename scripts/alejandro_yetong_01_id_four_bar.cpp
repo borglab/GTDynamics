@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
 
@@ -64,7 +64,8 @@ int main(int argc, char** argv) {
                         gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  gtsam::Values init_values = ZeroValues(robot, 0);
+  Initializer initializer;
+  gtsam::Values init_values = initializer.ZeroValues(robot, 0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;
   graph_builder.printGraph(graph);
