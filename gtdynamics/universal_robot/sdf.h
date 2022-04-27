@@ -29,6 +29,6 @@ namespace gtdynamics {
  */
 Robot CreateRobotFromFile(const std::string &file_path,
                           const std::string &model_name = "",
-                          bool preserve_fixed_joint = true);
+                          bool preserve_fixed_joint = false);
 
 }  // namespace gtdynamics

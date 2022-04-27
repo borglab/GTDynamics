@@ -39,7 +39,7 @@ TEST(FixedJoint, Constructor) {
 }
 
 TEST(FixedJoint, A1) {
-  Robot a1 = CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"));
+  Robot a1 = CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"), "", true);
   std::string joint_name = "FR_toe_fixed";
   EXPECT(a1.joint("FR_toe_fixed")->name() == "FR_toe_fixed");
 }

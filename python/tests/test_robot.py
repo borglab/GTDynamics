@@ -29,7 +29,7 @@ class TestRobot(GtsamTestCase):
 
     def test_fixed_joint(self):
         """Test if the fixed joint is parsed correctly."""
-        robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
+        robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL, "", True)
         # Try to get the fixed links
         self.assertIsNotNone(robot.link("FR_toe"))
         self.assertIsNotNone(robot.link("FL_toe"))
@@ -164,6 +164,9 @@ class TestRobot(GtsamTestCase):
         # Test all the links
         for link in robot.links():
             lTcom = lTcom_adjustments[link.name()]
+            if "_lower" in link.name():
+                lTcom = lTcom.compose(lowerTcom)
+
             bTl = bTl_poses[link.name()]
             expected_bTcom = bTl.compose(lTcom)
 
