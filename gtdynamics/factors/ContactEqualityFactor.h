@@ -41,7 +41,7 @@ class ContactEqualityFactor
 
  public:
   // shorthand for a smart pointer to a factor
-  using shared_ptr = typename boost::shared_ptr<ContactEqualityFactor>;
+  using shared_ptr = boost::shared_ptr<ContactEqualityFactor>;
 
   /** default constructor - only use for serialization */
   ContactEqualityFactor(){};

@@ -135,8 +135,9 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   double gaussian_noise = 1e-5;
+  Initializer initializer;
   gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;

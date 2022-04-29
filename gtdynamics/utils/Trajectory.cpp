@@ -59,23 +59,23 @@ NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
 }
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
-    const Robot &robot, double gaussian_noise) const {
+    const Robot &robot, const  Initializer & initializer, double gaussian_noise) const {
   vector<PointOnLinks> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
-    transition_graph_init.push_back(ZeroValues(
+    transition_graph_init.push_back(initializer.ZeroValues(
         robot, final_timesteps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
   return transition_graph_init;
 }
 
-Values Trajectory::multiPhaseInitialValues(const Robot &robot,
+Values Trajectory::multiPhaseInitialValues(const Robot &robot, const Initializer &initializer,
                                            double gaussian_noise,
                                            double dt) const {
   vector<Values> transition_graph_init =
-      transitionPhaseInitialValues(robot, gaussian_noise);
-  return MultiPhaseZeroValuesTrajectory(robot, phaseDurations(),
+      transitionPhaseInitialValues(robot, initializer, gaussian_noise);
+  return initializer.MultiPhaseZeroValuesTrajectory(robot, phaseDurations(),
                                         transition_graph_init, dt,
                                         gaussian_noise, phaseContactPoints());
 }

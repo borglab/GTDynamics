@@ -648,6 +648,16 @@ TEST(Sdf, sdf_constructor) {
       l1.inertia()));
 }
 
+TEST(Sdf, PreserveFixedJoint) {
+  // // Get the A1 robot with fixed joints lumped together.
+  Robot a1 = CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"));
+  EXPECT_LONGS_EQUAL(12, a1.numJoints());
+
+  Robot a1_fixed_joints =
+      CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"), "", true);
+  EXPECT_LONGS_EQUAL(21, a1_fixed_joints.numJoints());
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

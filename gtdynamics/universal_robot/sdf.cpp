@@ -11,6 +11,7 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
+#include <gtdynamics/universal_robot/FixedJoint.h>
 #include <gtdynamics/universal_robot/HelicalJoint.h>
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
@@ -29,12 +30,19 @@ using gtsam::Pose3;
 sdf::Model GetSdf(const std::string &sdf_file_path,
                   const std::string &model_name,
                   const sdf::ParserConfig &config) {
-  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
-  if (sdf == nullptr)
+  sdf::Errors errors;
+
+  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path, config, errors);
+  if (sdf == nullptr || errors.size() > 0) {
+    for (auto &&error : errors) {
+      std::cout << error << std::endl;
+    }
+
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
+  }
 
   sdf::Root root;
-  sdf::Errors errors = root.Load(sdf, config);
+  errors = root.Load(sdf, config);
   if (errors.size() > 0) {
     for (auto &&error : errors) {
       std::cout << error.Message() << std::endl;
@@ -189,13 +197,20 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
-  // Generate a joint parameters struct with values from the SDF.
-  JointParams parameters = ParametersFromSdfJoint(sdf_joint);
-
   std::string name(sdf_joint.Name());
+
   Pose3 bMj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
 
-  const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
+  JointParams parameters;
+  gtsam::Vector3 axis;
+  // Fixed joints don't have parameters or an axis.
+  if (sdf_joint.Type() != sdf::JointType::FIXED) {
+    // Generate a joint parameters struct with values from the SDF.
+    parameters = ParametersFromSdfJoint(sdf_joint);
+    // Get the joint axis.
+    axis = GetSdfAxis(sdf_joint);
+  }
+
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
       joint = boost::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
@@ -209,6 +224,10 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
       joint = boost::make_shared<HelicalJoint>(
           id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
+      break;
+    case sdf::JointType::FIXED:
+      joint = boost::make_shared<FixedJoint>(id, name, bMj, parent_link,
+                                             child_link);
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
@@ -270,10 +289,13 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
  * robot description.
  * @param[in] model_name name of the robot we care about. Must be specified in
  * case sdf_file_path points to a world file.
+ * @param[in] preserve_fixed_joint Flag indicating if the fixed joints in the
+ * URDF file should be preserved and not merged.
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
-                                          const std::string &model_name) {
+                                          const std::string &model_name,
+                                          bool preserve_fixed_joint) {
   std::ifstream is(file_path);
   if (!is.good())
     throw std::runtime_error("ExtractRobotFromFile: no file found at " +
@@ -283,17 +305,23 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
-  if (file_ext == "urdf")
-    return ExtractRobotFromSdf(GetSdf(file_path));
-  else if (file_ext == "sdf")
-    return ExtractRobotFromSdf(GetSdf(file_path, model_name));
+  sdf::ParserConfig _config = sdf::ParserConfig::GlobalConfig();
+  _config.URDFSetPreserveFixedJoint(preserve_fixed_joint);
+
+  if (file_ext == "urdf") {
+    return ExtractRobotFromSdf(GetSdf(file_path, "", _config));
+  } else if (file_ext == "sdf") {
+    return ExtractRobotFromSdf(GetSdf(file_path, model_name, _config));
+  }
 
   throw std::runtime_error("Invalid file extension.");
 }
 
 Robot CreateRobotFromFile(const std::string &file_path,
-                          const std::string &model_name) {
-  auto links_joints_pair = ExtractRobotFromFile(file_path, model_name);
+                          const std::string &model_name,
+                          bool preserve_fixed_joint) {
+  auto links_joints_pair =
+      ExtractRobotFromFile(file_path, model_name, preserve_fixed_joint);
   return Robot(links_joints_pair.first, links_joints_pair.second);
 }
 
