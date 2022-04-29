@@ -33,6 +33,9 @@ class JointMeasurementFactor
   double measured_joint_coordinate_;
 
  public:
+  // shorthand for a smart pointer to a factor
+  using shared_ptr = boost::shared_ptr<JointMeasurementFactor>;
+
   /**
    * @brief Construct a new Link Pose Factor object
    *
@@ -91,5 +94,21 @@ class JointMeasurementFactor
     gtsam::traits<double>::Print(measured_joint_coordinate_, "  measured: ");
     this->noiseModel_->print("  noise model: ");
   }
+
+  bool equals(const gtsam::NonlinearFactor& other,
+              double tol = 1e-9) const override {
+    const This* e = dynamic_cast<const This*>(&other);
+    return e != nullptr && Base::equals(*e, tol) &&
+           joint_->equals(*e->joint_) &&
+           measured_joint_coordinate_ == e->measured_joint_coordinate_;
+  }
 };
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::JointMeasurementFactor>
+    : public Testable<gtdynamics::JointMeasurementFactor> {};
+
+}  // namespace gtsam

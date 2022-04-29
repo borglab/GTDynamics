@@ -40,3 +40,15 @@ class TestJointMeasurementFactor(TestFactors):
             self.robot.joint("joint_1"), np.pi / 4, self.k)
 
         self.assertIsInstance(factor, gtd.JointMeasurementFactor)
+
+
+class TestContactEqualityFactor(TestFactors):
+    """Test suite for various versions of the ContactEqualityFactor."""
+    def test_print(self):
+        """Test ContactEqualityFactor print."""
+        point_on_link = gtd.PointOnLink(self.robot.link("link_1"),
+                                        gtsam.Point3(0, 0, 0))
+        factor = gtd.ContactEqualityFactor(
+            point_on_link, gtsam.noiseModel.Isotropic.Sigma(3, 0.1), 0, 1)
+
+        self.assertIsInstance(factor, gtd.ContactEqualityFactor)
