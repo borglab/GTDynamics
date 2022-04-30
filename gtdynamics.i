@@ -167,6 +167,7 @@ class Link  {
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/universal_robot/PrismaticJoint.h>
 #include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/FixedJoint.h>
 
 class JointParams {
   JointParams();
@@ -186,6 +187,7 @@ virtual class Joint {
   const gtsam::Pose3 &jMc() const;
   gtsam::Pose3 pMc() const;
   string name() const;
+  gtdynamics::Type type() const;
   const Vector& pScrewAxis() const;
   const Vector& cScrewAxis() const;
   Vector screwAxis(const gtdynamics::Link *link) const;
@@ -221,6 +223,13 @@ virtual class HelicalJoint : gtdynamics::Joint {
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
       const Vector &axis, double thread_pitch,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
+  void print(const string &s = "") const;
+};
+
+virtual class FixedJoint : gtdynamics::Joint {
+  FixedJoint(int id, const string &name, const gtsam::Pose3 &wTj,
+             const gtdynamics::Link *parent_link,
+             const gtdynamics::Link *child_link);
   void print(const string &s = "") const;
 };
 
