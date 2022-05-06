@@ -185,7 +185,7 @@ TEST(Chain, ChainConstraint) {
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  Vector3 expected_values(1, 1.9, 1.3);
+  Vector3 expected_values(1, 0.46, 0.82);
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
@@ -572,7 +572,7 @@ TEST(Chain, ChainConstraintFactorJacobians) {
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  Vector3 expected_values(1, 1.9, 1.3);
+  Vector3 expected_values(1, 0.46, 0.82);
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
@@ -586,70 +586,65 @@ TEST(Chain, ChainConstraintFactorJacobians) {
 }
 
 TEST(Chain, A1QuadOneLegCompare) {
-  // This test checks equality between torque calculation with and without chains.
-  // This assumes one static leg of the a1 quadruped with zero mass for the links besides the trunk.
+  // This test checks equality between torque calculation with and without
+  // chains. This assumes one static leg of the a1 quadruped with zero mass for
+  // the links besides the trunk.
 
   auto robot =
-  CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
+      CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
-  // create arranged vector of joints of FR leg
-  std::vector<JointSharedPtr> FR(3);
+  // initialize joints of FL leg
+  JointSharedPtr j0,j1,j2;
+
   for (auto&& joint : robot.joints()) {
-    if (joint->name().find("FR") < 100) {
-      if (joint->name().find("lower") < 100) {
-        FR[0] = joint;
+    if (joint->name().find("FL") != std::string::npos) {
+      if (joint->name().find("lower") != std::string::npos) {
+        j2 = joint;
       }
-      if (joint->name().find("upper") < 100) {
-        FR[1] = joint;
+      if (joint->name().find("upper") != std::string::npos) {
+        j1 = joint;
       }
-      if (joint->name().find("hip") < 100) {
-        FR[2] = joint;
+      if (joint->name().find("hip") != std::string::npos) {
+        j0 = joint;
       }
     }
   }
 
-  JointSharedPtr j1 = FR[0];
-  JointSharedPtr j2 = FR[1];
-  JointSharedPtr j3 = FR[2];
-
   // Calculate all relevant relative poses.
-  // B frame is at joint 1, C frame is at joint 2, T frame is at Trunk CoM, J3 frame is at joint 3.
-  Pose3 M_B_C = j1->jMp() * (j2->jMc().inverse());
-  Pose3 M_C_B = M_B_C.inverse();
-  Pose3 M_C_T = j2->jMp() * j3->jMc().inverse() * j3->jMp();
-  Pose3 M_T_C = M_C_T.inverse();
-  Pose3 M_B_T = M_B_C * M_C_T;
-  Pose3 M_T_B = M_B_T.inverse();
-  Pose3 M_C_J3 = j2->jMp() * j3->jMc().inverse();
-  Pose3 M_J3_C = M_C_J3.inverse();
-  Pose3 M_J3_T = j3->jMp();
-  Pose3 M_T_J3 = M_J3_T.inverse();
-  Pose3 M_B_Bcom = j1->jMp();
-  Pose3 M_C_Ccom = j2->jMp();
+  Pose3 M_T_H = j0->pMc();
+  Pose3 M_H_T = M_T_H.inverse();
+  Pose3 M_H_U = j1->pMc();
+  Pose3 M_U_H = M_H_U.inverse();
+  Pose3 M_U_L = j2->pMc();
+  Pose3 M_L_U = M_U_L.inverse();
+  Pose3 M_T_L = M_T_H * M_H_U * M_U_L;
+  Pose3 M_L_T = M_T_L.inverse();
 
   // Set Gravity Wrench
   Matrix gravity(1, 6);
   gravity << 0.0, 0.0, 0.0, 0.0, 0.0, -10.0;
-  
-  // Calculate all wrenches and torques without chains.
-  // joint pScrewAxis() method is in parent CoM frame so we need to adjoint to joint frame for torque calculation
-  Matrix F_3_T = -gravity;
-  Matrix F_3_J3 =  F_3_T * M_T_J3.AdjointMap();
-  Matrix tau3 = F_3_J3 * M_J3_T.AdjointMap() * j3->pScrewAxis();
-  EXPECT(assert_equal( tau3(0,0), -0.491855, 1e-6));
 
-  Matrix F_2_C = F_3_T * M_T_C.AdjointMap();
-  Matrix tau2 = F_2_C * M_C_Ccom.AdjointMap() * j2->pScrewAxis();
-  EXPECT(assert_equal( tau2(0,0), -1.70272, 1e-5));
-  
-  Matrix F_1_B = F_2_C * M_C_B.AdjointMap(); 
-  Matrix tau1 = F_1_B * M_B_Bcom.AdjointMap() * j1->pScrewAxis();
-  EXPECT(assert_equal( tau1(0,0), -1.70272, 1e-5));
-  
+  // Calculate all wrenches and torques without chains.
+  Matrix F_2_L = -gravity * M_T_L.AdjointMap();
+  Matrix F_1_U = F_2_L * M_L_U.AdjointMap();
+  Matrix F_0_H = F_1_U * M_U_H.AdjointMap();
+
+  // joint 0
+  Matrix tau0 = F_0_H * j0->cScrewAxis();
+  EXPECT(assert_equal(tau0(0, 0), -0.448145, 1e-6));  // regression
+
+  // joint 1
+  Matrix tau1 = F_1_U * j1->cScrewAxis();
+  EXPECT(assert_equal(tau1(0, 0), 1.70272, 1e-5));  // regression
+
+  // joint 2
+  Matrix tau2 = F_2_L * j2->cScrewAxis();
+  EXPECT(assert_equal(tau2(0, 0), 1.70272, 1e-5));  // regression
+
   // Calculate all wrenches and torques with chains.
-  Chain chain1(M_B_C, (M_C_B * M_B_Bcom).AdjointMap()*j1->pScrewAxis());
-  Chain chain2(M_C_J3, (M_J3_C * M_C_Ccom).AdjointMap()*j2->pScrewAxis());
-  Chain chain3(M_J3_T, j3->pScrewAxis());
+  Chain chain1(M_T_H, j0->cScrewAxis());
+  Chain chain2(M_H_U, j1->cScrewAxis());
+  Chain chain3(M_U_L, j2->cScrewAxis());
 
   std::vector<Chain> chains{chain1, chain2, chain3};
 
@@ -657,65 +652,64 @@ TEST(Chain, A1QuadOneLegCompare) {
   Chain composed = Chain::compose(chains);
 
   // test for same values
-  Matrix torques = F_3_T * composed.axes();
-  EXPECT(assert_equal( torques(0,2), -0.491855, 1e-5));
-  EXPECT(assert_equal( torques(0,1), -1.70272, 1e-5));
-  EXPECT(assert_equal( torques(0,0), -1.70272, 1e-5));
+  Matrix torques = F_2_L * composed.axes();
+  EXPECT(assert_equal(torques(0, 0), tau0(0, 0), 1e-6));
+  EXPECT(assert_equal(torques(0, 1), tau1(0, 0), 1e-5));
+  EXPECT(assert_equal(torques(0, 2), tau2(0, 0), 1e-5));
 }
 
 std::vector<std::vector<JointSharedPtr>> getChainJoints(const Robot& robot) {
-
   std::vector<JointSharedPtr> FR(3), FL(3), RR(3), RL(3);
 
   int loc;
   for (auto&& joint : robot.joints()) {
-    if (joint->name().find("lower") < 100) {
-      loc = 0;
-    } 
-    if (joint->name().find("upper") < 100) {
-      loc = 1;
-    } 
-    if (joint->name().find("hip") < 100) {
+    if (joint->name().find("lower") != std::string::npos) {
       loc = 2;
-    } 
-    if (joint->name().find("FR") < 100) {
+    }
+    if (joint->name().find("upper") != std::string::npos) {
+      loc = 1;
+    }
+    if (joint->name().find("hip") != std::string::npos) {
+      loc = 0;
+    }
+    if (joint->name().find("FR") != std::string::npos) {
       FR[loc] = joint;
     }
-    if (joint->name().find("FL") < 100) {
+    if (joint->name().find("FL") != std::string::npos) {
       FL[loc] = joint;
     }
-    if (joint->name().find("RR") < 100) {
+    if (joint->name().find("RR") != std::string::npos) {
       RR[loc] = joint;
     }
-    if (joint->name().find("RL") < 100) {
+    if (joint->name().find("RL") != std::string::npos) {
       RL[loc] = joint;
     }
   }
-  
-  //std::cout << RL[0] << RL[1] << RL[2] << std::endl;
-  std::vector<std::vector<JointSharedPtr>> chain_joints{FR,FL,RR,RL};
-  
+
+  std::vector<std::vector<JointSharedPtr>> chain_joints{FL, FR, RL, RR};
+
   return chain_joints;
 }
 
-Chain BuildChain(std::vector<JointSharedPtr> &joints){
+Chain BuildChain(std::vector<JointSharedPtr>& joints) {
+  auto j0 = joints[0];
+  auto j1 = joints[1];
+  auto j2 = joints[2];
 
-  auto j1 = joints[0];
-  auto j2 = joints[1];
-  auto j3 = joints[2];
+  // Calculate all relevant relative poses.
+  Pose3 M_T_H = j0->pMc();
+  Pose3 M_H_T = M_T_H.inverse();
+  Pose3 M_H_U = j1->pMc();
+  Pose3 M_U_H = M_H_U.inverse();
+  Pose3 M_U_L = j2->pMc();
+  Pose3 M_L_U = M_U_L.inverse();
+  Pose3 M_T_L = M_T_H * M_H_U * M_U_L;
+  Pose3 M_L_T = M_T_L.inverse();
 
-  Pose3 M_B_C = j1->jMp() * (j2->jMc().inverse());
-  Pose3 M_C_B = M_B_C.inverse();
-  Pose3 M_C_J3 = j2->jMp() * j3->jMc().inverse();
-  Pose3 M_J3_C = M_C_J3.inverse();
-  Pose3 M_J3_T = j3->jMp();
-  Pose3 M_T_J3 = M_J3_T.inverse();
-  Pose3 M_B_Bcom = j1->jMp();
-  Pose3 M_C_Ccom = j2->jMp();
-
-  Chain chain1(M_B_C, (M_C_B * M_B_Bcom).AdjointMap()*j1->pScrewAxis());
-  Chain chain2(M_C_J3, (M_J3_C * M_C_Ccom).AdjointMap()*j2->pScrewAxis());
-  Chain chain3(M_J3_T, j3->pScrewAxis());
+  // Create chains
+  Chain chain1(M_T_H, j0->cScrewAxis());
+  Chain chain2(M_H_U, j1->cScrewAxis());
+  Chain chain3(M_U_L, j2->cScrewAxis());
 
   std::vector<Chain> chains{chain1, chain2, chain3};
 
@@ -724,8 +718,8 @@ Chain BuildChain(std::vector<JointSharedPtr> &joints){
   return composed;
 }
 
-std::vector<Chain> getComposedChains(std::vector<std::vector<JointSharedPtr>> &chain_joints) {
-  
+std::vector<Chain> getComposedChains(
+    std::vector<std::vector<JointSharedPtr>>& chain_joints) {
   Chain composed_fr, composed_fl, composed_rr, composed_rl;
 
   composed_fr = BuildChain(chain_joints[0]);
@@ -733,7 +727,8 @@ std::vector<Chain> getComposedChains(std::vector<std::vector<JointSharedPtr>> &c
   composed_rr = BuildChain(chain_joints[2]);
   composed_rl = BuildChain(chain_joints[3]);
 
-  std::vector<Chain> composed_chains{composed_fr, composed_fl, composed_rr, composed_rl};
+  std::vector<Chain> composed_chains{composed_fr, composed_fl, composed_rr,
+                                     composed_rl};
 
   return composed_chains;
 }
@@ -744,7 +739,7 @@ TEST(Chain, A1QuadStaticChainGraph) {
   // standing still) and minimum torque constraints.
 
   auto robot =
-  CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
+      CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   // Get joint and composed chains for each leg
   auto chain_joints = getChainJoints(robot);
@@ -755,24 +750,30 @@ TEST(Chain, A1QuadStaticChainGraph) {
 
   // Hard constraint on zero angles
   double angle_tolerance = 1e-30;
-  for (int i = 0; i < 4 ; ++i){
+  for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
-      gtsam::Double_ angle(JointAngleKey(chain_joints[i][j]->id(), 0));
-      constraints.emplace_shared<DoubleExpressionEquality>(angle, angle_tolerance);
+      const int joint_id = chain_joints[i][j]->id();
+      gtsam::Double_ angle(JointAngleKey(joint_id, 0));
+      constraints.emplace_shared<DoubleExpressionEquality>(angle,
+                                                           angle_tolerance);
     }
   }
 
   // Get key for wrench at hip joints  on link 0 at time 0
-  const gtsam::Key wrench_key_fr = gtdynamics::WrenchKey(0, 3, 0); 
-  const gtsam::Key wrench_key_fl = gtdynamics::WrenchKey(0, 0, 0);
-  const gtsam::Key wrench_key_rr = gtdynamics::WrenchKey(0, 9, 0);
-  const gtsam::Key wrench_key_rl = gtdynamics::WrenchKey(0, 6, 0);    
+  const gtsam::Key wrench_key_fl =
+      gtdynamics::WrenchKey(0, 0, 0);  // fl hip joint id  = 0
+  const gtsam::Key wrench_key_fr =
+      gtdynamics::WrenchKey(0, 3, 0);  // fr hip joint id  = 3
+  const gtsam::Key wrench_key_rl =
+      gtdynamics::WrenchKey(0, 6, 0);  // rl hip joint id  = 6
+  const gtsam::Key wrench_key_rr =
+      gtdynamics::WrenchKey(0, 9, 0);  // rr hip joint id  = 9
 
   // create expressions for these wrenches
-  gtsam::Vector6_ wrench_fr(wrench_key_fr);
   gtsam::Vector6_ wrench_fl(wrench_key_fl);
-  gtsam::Vector6_ wrench_rr(wrench_key_rr);
+  gtsam::Vector6_ wrench_fr(wrench_key_fr);
   gtsam::Vector6_ wrench_rl(wrench_key_rl);
+  gtsam::Vector6_ wrench_rr(wrench_key_rr);
 
   // Set Gravity Wrench
   gtsam::Vector6 gravity;
@@ -780,24 +781,34 @@ TEST(Chain, A1QuadStaticChainGraph) {
   gtsam::Vector6_ gravity_wrench(gravity);
 
   // Create expression for wrench constraint on trunk
-  auto expression = wrench_fr + wrench_fl + wrench_rr + wrench_rl + gravity_wrench;
+  auto expression =
+      wrench_fl + wrench_fr + wrench_rl + wrench_rr + gravity_wrench;
   gtsam::Vector6 wrench_tolerance;
   wrench_tolerance << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6;
-  constraints.emplace_shared<VectorExpressionEquality<6>>(expression, wrench_tolerance);
+  constraints.emplace_shared<VectorExpressionEquality<6>>(expression,
+                                                          wrench_tolerance);
 
   // Get expressions for chains on each leg
-  auto expression_fr = composed_chains[0].ChainConstraint3(chain_joints[0], wrench_key_fr, 0);
-  auto expression_fl = composed_chains[1].ChainConstraint3(chain_joints[1], wrench_key_fl, 0);
-  auto expression_rr = composed_chains[2].ChainConstraint3(chain_joints[2], wrench_key_rr, 0);
-  auto expression_rl = composed_chains[3].ChainConstraint3(chain_joints[3], wrench_key_rl, 0);
+  auto expression_fl =
+      composed_chains[0].ChainConstraint3(chain_joints[0], wrench_key_fl, 0);
+  auto expression_fr =
+      composed_chains[1].ChainConstraint3(chain_joints[1], wrench_key_fr, 0);
+  auto expression_rl =
+      composed_chains[2].ChainConstraint3(chain_joints[2], wrench_key_rl, 0);
+  auto expression_rr =
+      composed_chains[3].ChainConstraint3(chain_joints[3], wrench_key_rr, 0);
 
   gtsam::Vector3 torque_tolerance;
   torque_tolerance << 1e-6, 1e-6, 1e-6;
 
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fr, torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fl, torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rr, torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rl, torque_tolerance);
+  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fl,
+                                                          torque_tolerance);
+  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fr,
+                                                          torque_tolerance);
+  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rl,
+                                                          torque_tolerance);
+  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rr,
+                                                          torque_tolerance);
 
   // Constrain Minimum torque in actuators
   gtsam::NonlinearFactorGraph graph;
@@ -814,32 +825,31 @@ TEST(Chain, A1QuadStaticChainGraph) {
     InsertTorque(&init_values, joint->id(), 0, 0.0);
   }
 
-  gtsam::Vector6 zero_wrench;
-  zero_wrench << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-  init_values.insert(wrench_key_fr, zero_wrench);
-  init_values.insert(wrench_key_fl, zero_wrench);
-  init_values.insert(wrench_key_rr, zero_wrench);
-  init_values.insert(wrench_key_rl, zero_wrench);
-  
+  gtsam::Vector6 wrench_zero;
+  wrench_zero << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  init_values.insert(wrench_key_fl, wrench_zero);
+  init_values.insert(wrench_key_fr, wrench_zero);
+  init_values.insert(wrench_key_rl, wrench_zero);
+  init_values.insert(wrench_key_rr, wrench_zero);
+
   /// Solve the constraint problem with LM optimizer.
   Optimizer optimizer;
   gtsam::Values results = optimizer.optimize(graph, constraints, init_values);
 
-  gtsam::Vector6 result_wrench_fr = results.at<gtsam::Vector6>(wrench_key_fr);
   gtsam::Vector6 result_wrench_fl = results.at<gtsam::Vector6>(wrench_key_fl);
-  gtsam::Vector6 result_wrench_rr = results.at<gtsam::Vector6>(wrench_key_rr);
+  gtsam::Vector6 result_wrench_fr = results.at<gtsam::Vector6>(wrench_key_fr);
   gtsam::Vector6 result_wrench_rl = results.at<gtsam::Vector6>(wrench_key_rl);
+  gtsam::Vector6 result_wrench_rr = results.at<gtsam::Vector6>(wrench_key_rr);
 
   // We expect these wrenches to be close  to 2.5 N in Z direction.
-  // The robot is not symmetric so we don't get exactly 2.5 N.
-  EXPECT(assert_equal( result_wrench_fr(5), 2.51413, 1e-5));
-  EXPECT(assert_equal( result_wrench_fl(5), 2.51489, 1e-5));
-  EXPECT(assert_equal( result_wrench_rr(5), 2.48511, 1e-5));
-  EXPECT(assert_equal( result_wrench_rl(5), 2.48586, 1e-5));
+  EXPECT(assert_equal(result_wrench_fr(5), 2.5, 1e-4));
+  EXPECT(assert_equal(result_wrench_fl(5), 2.5, 1e-4));
+  EXPECT(assert_equal(result_wrench_rr(5), 2.5, 1e-4));
+  EXPECT(assert_equal(result_wrench_rl(5), 2.5, 1e-4));
 
   for (auto&& joint : robot.joints()) {
     const int id = joint->id();
-    EXPECT(assert_equal( results.at<double>(JointAngleKey(id)), 0.0, 1e-30));
+    EXPECT(assert_equal(results.at<double>(JointAngleKey(id)), 0.0, 1e-30));
   }
 }
 
