@@ -718,6 +718,36 @@ Chain BuildChain(std::vector<JointSharedPtr>& joints) {
   return composed;
 }
 
+gtsam::Matrix16 get_joint3_screw_axis(std::vector<JointSharedPtr>& joints) {
+  Point3 contact_in_com(0.0, 0.0, -0.07);
+  Pose3 M_L_G = Pose3(Rot3(), contact_in_com);
+
+  Pose3 M_T_G = joints[0]->pMc() * joints[1]->pMc() * joints[2]->pMc() * M_L_G;
+
+  Vector6 A_G_3 = joints[2]->jMc().AdjointMap() * joints[2]->cScrewAxis();
+  return (M_T_G.AdjointMap() * A_G_3).transpose();
+}
+
+gtsam::Double_ getContactConstraint(std::vector<JointSharedPtr>& joints) {
+
+  gtsam::Matrix16 A_T_3 = get_joint3_screw_axis(joints);
+
+  const int id = joints[0]->id();
+  const gtsam::Key wrench_key =
+      gtdynamics::WrenchKey(0, id, 0); 
+
+  gtsam::Vector6_ wrench(wrench_key);
+
+  // Create an expression of the wrench on the base multiplied by the adjoint
+  // map
+  const std::function<double(Vector6)> f =
+      [A_T_3](const Vector6 &wrench) { return A_T_3 * wrench; };
+
+  gtsam::Double_ tau3 = gtsam::linearExpression(f, wrench, A_T_3);
+
+  return tau3;
+}
+
 std::vector<Chain> getComposedChains(
     std::vector<std::vector<JointSharedPtr>>& chain_joints) {
   Chain composed_fr, composed_fl, composed_rr, composed_rl;
@@ -748,9 +778,50 @@ TEST(Chain, A1QuadStaticChainGraph) {
   // Initialize Constraints
   EqualityConstraints constraints;
 
-  // Hard constraint on zero angles
+  // Set Gravity Wrench
+  gtsam::Vector6 gravity;
+  gravity << 0.0, 0.0, 0.0, 0.0, 0.0, -10.0;
+  gtsam::Vector6_ gravity_wrench(gravity);
+
+  // Create expression for wrench constraint on trunk
+  gtsam::Vector6_ trunk_wrench_constraint = gravity_wrench;
+
+  // Set torque tolerance
+  double torqueTolerance = 1e-6;
+  gtsam::Vector3 torque_tolerance;
+  torque_tolerance << torqueTolerance, torqueTolerance, torqueTolerance;
+
+  // Set Wrench tolerance
+  gtsam::Vector6 wrench_tolerance;
+  wrench_tolerance << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6;
+
+  //Set angle tolerance
   double angle_tolerance = 1e-30;
-  for (int i = 0; i < 4; ++i) {
+
+  for (int i=0; i < 4; ++i){
+    // Get key for wrench at hip joints  on link 0 at time 0
+    const gtsam::Key wrench_key = gtdynamics::WrenchKey(0, i * 3, 0);
+
+    // create expressions for these wrenches
+    gtsam::Vector6_ wrench(wrench_key);
+
+    // add wrench to trunk constraint
+    trunk_wrench_constraint += wrench;
+
+    // Get expressions for chains on each leg
+    auto expression_chain =
+        composed_chains[i].ChainConstraint3(chain_joints[i], wrench_key, 0);
+
+    // Add constraint for chain
+    constraints.emplace_shared<VectorExpressionEquality<3>>(expression_chain,
+                                                            torque_tolerance);
+
+    // constraint on zero torque of contact point
+    gtsam::Double_ tau = getContactConstraint(chain_joints[i]);
+    constraints.emplace_shared<DoubleExpressionEquality>(tau,
+                                                           torqueTolerance);
+
+    // Hard constraint on zero angles
     for (int j = 0; j < 3; ++j) {
       const int joint_id = chain_joints[i][j]->id();
       gtsam::Double_ angle(JointAngleKey(joint_id, 0));
@@ -759,56 +830,9 @@ TEST(Chain, A1QuadStaticChainGraph) {
     }
   }
 
-  // Get key for wrench at hip joints  on link 0 at time 0
-  const gtsam::Key wrench_key_fl =
-      gtdynamics::WrenchKey(0, 0, 0);  // fl hip joint id  = 0
-  const gtsam::Key wrench_key_fr =
-      gtdynamics::WrenchKey(0, 3, 0);  // fr hip joint id  = 3
-  const gtsam::Key wrench_key_rl =
-      gtdynamics::WrenchKey(0, 6, 0);  // rl hip joint id  = 6
-  const gtsam::Key wrench_key_rr =
-      gtdynamics::WrenchKey(0, 9, 0);  // rr hip joint id  = 9
-
-  // create expressions for these wrenches
-  gtsam::Vector6_ wrench_fl(wrench_key_fl);
-  gtsam::Vector6_ wrench_fr(wrench_key_fr);
-  gtsam::Vector6_ wrench_rl(wrench_key_rl);
-  gtsam::Vector6_ wrench_rr(wrench_key_rr);
-
-  // Set Gravity Wrench
-  gtsam::Vector6 gravity;
-  gravity << 0.0, 0.0, 0.0, 0.0, 0.0, -10.0;
-  gtsam::Vector6_ gravity_wrench(gravity);
-
-  // Create expression for wrench constraint on trunk
-  auto expression =
-      wrench_fl + wrench_fr + wrench_rl + wrench_rr + gravity_wrench;
-  gtsam::Vector6 wrench_tolerance;
-  wrench_tolerance << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6;
-  constraints.emplace_shared<VectorExpressionEquality<6>>(expression,
+  // Add trunk wrench constraint to constraints
+  constraints.emplace_shared<VectorExpressionEquality<6>>(trunk_wrench_constraint,
                                                           wrench_tolerance);
-
-  // Get expressions for chains on each leg
-  auto expression_fl =
-      composed_chains[0].ChainConstraint3(chain_joints[0], wrench_key_fl, 0);
-  auto expression_fr =
-      composed_chains[1].ChainConstraint3(chain_joints[1], wrench_key_fr, 0);
-  auto expression_rl =
-      composed_chains[2].ChainConstraint3(chain_joints[2], wrench_key_rl, 0);
-  auto expression_rr =
-      composed_chains[3].ChainConstraint3(chain_joints[3], wrench_key_rr, 0);
-
-  gtsam::Vector3 torque_tolerance;
-  torque_tolerance << 1e-6, 1e-6, 1e-6;
-
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fl,
-                                                          torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_fr,
-                                                          torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rl,
-                                                          torque_tolerance);
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_rr,
-                                                          torque_tolerance);
 
   // Constrain Minimum torque in actuators
   gtsam::NonlinearFactorGraph graph;
@@ -827,29 +851,49 @@ TEST(Chain, A1QuadStaticChainGraph) {
 
   gtsam::Vector6 wrench_zero;
   wrench_zero << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-  init_values.insert(wrench_key_fl, wrench_zero);
-  init_values.insert(wrench_key_fr, wrench_zero);
-  init_values.insert(wrench_key_rl, wrench_zero);
-  init_values.insert(wrench_key_rr, wrench_zero);
+  for (int i=0; i < 4; ++i){
+    init_values.insert(gtdynamics::WrenchKey(0, i * 3, 0), wrench_zero);
+  }
 
   /// Solve the constraint problem with LM optimizer.
   Optimizer optimizer;
   gtsam::Values results = optimizer.optimize(graph, constraints, init_values);
 
-  gtsam::Vector6 result_wrench_fl = results.at<gtsam::Vector6>(wrench_key_fl);
-  gtsam::Vector6 result_wrench_fr = results.at<gtsam::Vector6>(wrench_key_fr);
-  gtsam::Vector6 result_wrench_rl = results.at<gtsam::Vector6>(wrench_key_rl);
-  gtsam::Vector6 result_wrench_rr = results.at<gtsam::Vector6>(wrench_key_rr);
+  Matrix expected_wrenches(6, 4);
+  expected_wrenches << -0.101417, 0.101411, -0.0928056, 0.0928114, -0.310963,
+      -0.310967, 0.310963, 0.310967, -0.00503307, 0.00540063, 0.00365663,
+      -0.00402418, -0.361902, -0.361892, 0.361903, 0.361891, -0.0384285,
+      0.0384302, -0.034986, 0.0349843, 2.60931, 2.60931, 2.39069, 2.39069;
 
-  // We expect these wrenches to be close  to 2.5 N in Z direction.
-  EXPECT(assert_equal(result_wrench_fr(5), 2.5, 1e-4));
-  EXPECT(assert_equal(result_wrench_fl(5), 2.5, 1e-4));
-  EXPECT(assert_equal(result_wrench_rr(5), 2.5, 1e-4));
-  EXPECT(assert_equal(result_wrench_rl(5), 2.5, 1e-4));
+  for (int i=0; i < 4; ++i){
+    // get hip wrench key
+    const gtsam::Key wrench_key = gtdynamics::WrenchKey(0, i * 3, 0);
 
+    // Get result wrench for hip joints
+    gtsam::Vector6 result_wrench = results.at<gtsam::Vector6>(wrench_key);
+
+    // We expect these wrenches to be close  to 2.5 N in Z direction, but not
+    // exatly 2.5 since the robot is not symmetric
+    gtsam::Vector6 expected_wrench = expected_wrenches.col(i);
+    EXPECT(assert_equal(result_wrench, expected_wrench, 1e-1));
+
+    // Check that the torque on the contact point is zero
+    auto A_T_3 = get_joint3_screw_axis(chain_joints[i]);
+    double tau3 = A_T_3 * result_wrench;
+    EXPECT(assert_equal(tau3, 0.0, 1e-10));
+  }
+
+  Matrix expected_torques(12, 1);
+  expected_torques << 0.115727, -0.261608, -0.168418, -0.11579, -0.261605,
+      -0.168403, 0.105357, 0.238417, 0.145263, -0.10541, 0.238412, 0.145247;
+
+  //check angles and torques
+  int k = 0;
   for (auto&& joint : robot.joints()) {
     const int id = joint->id();
     EXPECT(assert_equal(results.at<double>(JointAngleKey(id)), 0.0, 1e-30));
+    EXPECT(assert_equal(results.at<double>(TorqueKey(id)), expected_torques(k,0), 1e-6));
+    ++k;
   }
 }
 
