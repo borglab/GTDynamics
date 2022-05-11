@@ -185,7 +185,7 @@ TEST(Chain, ChainConstraint) {
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  Vector3 expected_values(1, 0.46, 0.82);
+  Vector3 expected_values(1, 0.46, 0.82); //regression
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
@@ -572,7 +572,7 @@ TEST(Chain, ChainConstraintFactorJacobians) {
 
   // Create VectorExpressionEquality Constraint
   auto constraint = VectorExpressionEquality<3>(expression, tolerance);
-  Vector3 expected_values(1, 0.46, 0.82);
+  Vector3 expected_values(1, 0.46, 0.82); //regression
   bool constraint_violation = constraint.feasible(init_values);
   Vector values = constraint(init_values);
   EXPECT(!constraint_violation);
@@ -863,7 +863,7 @@ TEST(Chain, A1QuadStaticChainGraph) {
   expected_wrenches << -0.101417, 0.101411, -0.0928056, 0.0928114, -0.310963,
       -0.310967, 0.310963, 0.310967, -0.00503307, 0.00540063, 0.00365663,
       -0.00402418, -0.361902, -0.361892, 0.361903, 0.361891, -0.0384285,
-      0.0384302, -0.034986, 0.0349843, 2.60931, 2.60931, 2.39069, 2.39069;
+      0.0384302, -0.034986, 0.0349843, 2.60931, 2.60931, 2.39069, 2.39069; //regression
 
   for (int i=0; i < 4; ++i){
     // get hip wrench key
@@ -885,7 +885,7 @@ TEST(Chain, A1QuadStaticChainGraph) {
 
   Matrix expected_torques(12, 1);
   expected_torques << 0.115727, -0.261608, -0.168418, -0.11579, -0.261605,
-      -0.168403, 0.105357, 0.238417, 0.145263, -0.10541, 0.238412, 0.145247;
+      -0.168403, 0.105357, 0.238417, 0.145263, -0.10541, 0.238412, 0.145247; //regression
 
   //check angles and torques
   int k = 0;
