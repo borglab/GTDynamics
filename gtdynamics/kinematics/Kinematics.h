@@ -120,10 +120,10 @@ struct KinematicsParameters : public OptimizationParameters {
       prior_q_cost_model;                      // joint angle prior factor
 
   // TODO(yetong): replace noise model with tolerance.
-  KinematicsParameters()
-      : p_cost_model(Isotropic::Sigma(6, 1e-4)),
-        g_cost_model(Isotropic::Sigma(3, 0.01)),
-        prior_q_cost_model(Isotropic::Sigma(1, 0.5)) {}
+  KinematicsParameters(double p_cost_model_sigma = 1e-4, double g_cost_model_sigma = 1e-2, double prior_q_cost_model_sigma = 0.5)
+      : p_cost_model(Isotropic::Sigma(6, p_cost_model_sigma)),
+        g_cost_model(Isotropic::Sigma(3, g_cost_model_sigma)),
+        prior_q_cost_model(Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
