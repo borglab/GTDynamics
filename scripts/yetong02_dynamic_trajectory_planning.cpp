@@ -18,12 +18,13 @@
 #include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
+#include <gtsam/base/timing.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/base/timing.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
+using gtsam::noiseModel::Isotropic;
 
 auto robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
                  .fixLink("l0");
@@ -31,13 +32,10 @@ int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
 // cp.print();
 const gtsam::Vector3 gravity(0, 0, -9.8);
 // Noise models:
-auto dynamics_model =
-    noiseModel::Isotropic::Sigma(1, 1e-5);  // Dynamics constraints.
-auto pos_objectives_model =
-    noiseModel::Isotropic::Sigma(1, 1e-5);  // Pos objectives.
-auto objectives_model =
-    noiseModel::Isotropic::Sigma(1, 5e-3);  // Additional objectives.
-auto control_model = noiseModel::Isotropic::Sigma(1, 20);  // Controls.
+auto prior_model = Isotropic::Sigma(1, 1e-7);           // prior constraints.
+auto pos_objectives_model = Isotropic::Sigma(1, 1e-5);  // Pos objectives.
+auto objectives_model = Isotropic::Sigma(1, 5e-3);  // Additional objectives.
+auto control_model = Isotropic::Sigma(1, 20);       // Controls.
 gtsam::Vector6 X_i = gtsam::Vector6::Constant(6, 0),
                X_T = (gtsam::Vector(6) << 1, 0, 0, M_PI, 0, 0).finished();
 auto graph_builder = DynamicsGraph(gravity);
@@ -94,6 +92,7 @@ Values optimize_constraint_manifold(
 
   LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
+  // params.minModelFidelity = 0.5;
   // params.setlambdaInitial(1e2);
   // params.setlambdaUpperBound(1e10);
   auto manopt_params = boost::make_shared<ManifoldOptimizer::Params>();
@@ -122,47 +121,53 @@ Values optimize_constraint_manifold(
 NonlinearFactorGraph get_constraints_graph() {
   NonlinearFactorGraph graph;
 
-  OptimizerSetting opt;
+  // OptimizerSetting opt;
   // opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.001);
   // opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.01);
   // opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   // opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   // opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
   // opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.1);
-  auto new_graph_builder = DynamicsGraph(opt, gravity);
+  // auto new_graph_builder = DynamicsGraph(opt, gravity);
 
   // kinodynamic constraints at each step
   for (size_t k = 0; k <= num_steps; k++) {
-    graph.add(new_graph_builder.dynamicsFactorGraph(robot, k));
+    graph.add(graph_builder.dynamicsFactorGraph(robot, k));
   }
+
   // Set the pendulum joint to be unactuated.
   for (int k = 0; k <= num_steps; k++)
     graph.addPrior(TorqueKey(j1_id, k), 0.0,
-                   new_graph_builder.opt().prior_t_cost_model);
-  graph.addPrior(JointAngleKey(j0_id, 0), X_i[0], dynamics_model);
-  graph.addPrior(JointVelKey(j0_id, 0), X_i[1], dynamics_model);
-  graph.addPrior(JointAccelKey(j0_id, 0), X_i[2], dynamics_model);
-  graph.addPrior(JointAngleKey(j1_id, 0), X_i[3], dynamics_model);
-  graph.addPrior(JointVelKey(j1_id, 0), X_i[4], dynamics_model);
+                   graph_builder.opt().prior_t_cost_model);
+
+  // Initial conditions
+  graph.addPrior(JointAngleKey(j0_id, 0), X_i[0], prior_model);
+  graph.addPrior(JointVelKey(j0_id, 0), X_i[1], prior_model);
+  graph.addPrior(JointAccelKey(j0_id, 0), X_i[2], prior_model);
+  graph.addPrior(JointAngleKey(j1_id, 0), X_i[3], prior_model);
+  graph.addPrior(JointVelKey(j1_id, 0), X_i[4], prior_model);
   return graph;
 }
 
 NonlinearFactorGraph get_costs() {
   NonlinearFactorGraph graph;
+
+  // terminal pose objective
   bool apply_pos_objective_all_dt = false;
-  graph.addPrior(JointAngleKey(j0_id, num_steps), X_T[0], pos_objectives_model);
-  graph.addPrior(JointAngleKey(j1_id, num_steps), X_T[3], pos_objectives_model);
   if (apply_pos_objective_all_dt) {
     for (int k = 0; k < num_steps; k++) {
       graph.addPrior(JointAngleKey(j0_id, k), X_T[0], pos_objectives_model);
       graph.addPrior(JointAngleKey(j1_id, k), X_T[3], pos_objectives_model);
     }
   }
-
+  graph.addPrior(JointAngleKey(j0_id, num_steps), X_T[0], pos_objectives_model);
+  graph.addPrior(JointAngleKey(j1_id, num_steps), X_T[3], pos_objectives_model);
   graph.addPrior(JointVelKey(j0_id, num_steps), X_T[1], objectives_model);
   graph.addPrior(JointAccelKey(j0_id, num_steps), X_T[2], objectives_model);
   graph.addPrior(JointVelKey(j1_id, num_steps), X_T[4], objectives_model);
   graph.addPrior(JointAccelKey(j1_id, num_steps), X_T[5], objectives_model);
+
+  // control cost
   for (int k = 0; k <= num_steps; k++)
     graph.emplace_shared<MinTorqueFactor>(TorqueKey(j0_id, k), control_model);
   return graph;
@@ -191,8 +196,6 @@ Values get_init_values() {
     InsertPose(&known_values, link->id(), Pose(values0, link->id()));
     InsertTwist(&known_values, link->id(), Twist(values0, link->id()));
   }
-  // OptimizerSetting opt;
-  // auto graph_builder = DynamicsGraph(opt, gravity);
   values0 = graph_builder.linearSolveFD(robot, 0, known_values);
 
   Values values;
@@ -236,16 +239,27 @@ void dynamic_planning() {
   auto collocation_graph = get_collocation();
   auto init_values = get_init_values();
 
+  Initializer initializer;
+  auto init_values_nonfeasible =
+      initializer.ZeroValuesTrajectory(robot, num_steps, 0, 0.0);
+
   costs.add(collocation_graph);
 
   // optimize dynamics graph
-  std::cout << "dynamics graph:\n";
-  auto dfg_result =
+  std::cout << "dynamics graph with feasible initial values:\n";
+  auto dfg_result_feasible =
       optimize_dynamics_graph(constraints_graph, costs, init_values);
-  std::cout << "final cost: " << costs.error(dfg_result) << "\n";
-  std::cout << "constraint violation: " << constraints_graph.error(dfg_result)
-            << "\n";
-  print_joint_angles(dfg_result);
+  std::cout << "final cost: " << costs.error(dfg_result_feasible) << "\n";
+  std::cout << "constraint violation: "
+            << constraints_graph.error(dfg_result_feasible) << "\n";
+
+  std::cout << "dynamics graph with infeasible initial values:\n";
+  auto dfg_result_infeasible = optimize_dynamics_graph(constraints_graph, costs,
+                                                       init_values_nonfeasible);
+  std::cout << "final cost: " << costs.error(dfg_result_infeasible) << "\n";
+  std::cout << "constraint violation: "
+            << constraints_graph.error(dfg_result_infeasible) << "\n";
+  print_joint_angles(dfg_result_infeasible);
 
   // optimize constraint manifold
   std::cout << "constraint manifold:\n";
