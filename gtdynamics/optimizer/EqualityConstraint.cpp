@@ -43,4 +43,52 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
   return (gtsam::Vector(1) << result / tolerance_).finished();
 }
 
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr FactorEquality::createFactor(
+    const double mu, boost::optional<gtsam::Vector&> bias) const {
+  if (bias) {
+    std::cerr << "Factor Equality not implemented bias yet.\n";
+  }
+  auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
+  return factor_->cloneWithNewNoiseModel(noise);
+}
+
+/* ************************************************************************* */
+bool FactorEquality::feasible(const gtsam::Values& x) const {
+  auto result = factor_->unwhitenedError(x);
+  for (int i = 0; i < dim(); i++) {
+    if (abs(result[i]) > tolerance_[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* ************************************************************************* */
+gtsam::Vector FactorEquality::operator()(const gtsam::Values& x) const {
+  return factor_->unwhitenedError(x);
+}
+
+/* ************************************************************************* */
+gtsam::Vector FactorEquality::toleranceScaledViolation(
+    const gtsam::Values& x) const {
+  auto violation = factor_->unwhitenedError(x);
+  for (int i = 0; i < dim(); i++) {
+    violation(i) = violation(i) / tolerance_(i);
+  }
+  return violation;
+}
+
+/* ************************************************************************* */
+EqualityConstraints ConstraintsFromGraph(
+    const gtsam::NonlinearFactorGraph& graph) {
+  EqualityConstraints constraints;
+  for (const auto& factor : graph) {
+    auto noise_factor = boost::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
+    constraints.emplace_shared<FactorEquality>(noise_factor);
+  }
+  return constraints;
+}
+
+
 }  // namespace gtdynamics

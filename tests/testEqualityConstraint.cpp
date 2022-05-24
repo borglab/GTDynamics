@@ -19,6 +19,7 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include "constrainedExample.h"
 #include "make_joint.h"
@@ -163,6 +164,63 @@ TEST(EqualityConstraint, Container) {
   constraints.emplace_shared<VectorExpressionEquality<2>>(g2, tolerance2);
 
   EXPECT_LONGS_EQUAL(2, constraints.size());
+}
+
+// Test methods of FactorEquality.
+TEST(EqualityConstraint, FactorEquality) {
+  Key x1_key = 1;
+  Key x2_key = 2;
+  Vector tolerance = Vector2(0.5, 0.1);
+  auto noise = noiseModel::Diagonal::Sigmas(tolerance);
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<BetweenFactor<Vector2>>(x1_key, x2_key, Vector2(1, 1),
+                                                 noise);
+  auto constraints = ConstraintsFromGraph(graph);
+  auto constraint = constraints.at(0);
+
+  // Create 2 sets of values for testing.
+  Values values1, values2;
+  values1.insert(x1_key, Vector2(1, 1));
+  values1.insert(x2_key, Vector2(2, 2));
+  values2.insert(x1_key, Vector2(0, 0));
+  values2.insert(x2_key, Vector2(2, 3));
+
+  // Check that values1 are feasible.
+  EXPECT(constraint->feasible(values1));
+
+  // Check that violation evaluates as 0 at values1.
+  auto expected_violation1 = (Vector(2) << 0, 0).finished();
+  EXPECT(assert_equal(expected_violation1, (*constraint)(values1)));
+  auto expected_scaled_violation1 = (Vector(2) << 0, 0).finished();
+  EXPECT(assert_equal(expected_scaled_violation1,
+                      constraint->toleranceScaledViolation(values1)));
+
+  // Check that values2 are indeed deemed infeasible.
+  EXPECT(!constraint->feasible(values2));
+
+  // Check constraint violation is indeed g(x) at values2.
+  auto expected_violation2 = (Vector(2) << 1, 2).finished();
+  EXPECT(assert_equal(expected_violation2, (*constraint)(values2)));
+
+  // Check scaled violation is indeed g(x)/tolerance at values2.
+  auto expected_scaled_violation2 = (Vector(2) << 2, 20).finished();
+  EXPECT(assert_equal(expected_scaled_violation2,
+                      constraint->toleranceScaledViolation(values2)));
+
+  // Check dim is the dimension of the vector.
+  EXPECT(constraint->dim() == 2);
+
+  // Generate factor representing the term in merit function.
+  double mu = 4;
+  auto merit_factor = constraint->createFactor(mu);
+
+  // Check that noise model sigma == tolerance/sqrt(mu).
+  auto expected_noise = noiseModel::Diagonal::Sigmas(tolerance / sqrt(mu));
+  EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
+
+  // Check jacobian computation is correct.
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values2, 1e-7, 1e-5);
 }
 
 int main() {

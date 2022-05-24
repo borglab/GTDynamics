@@ -15,6 +15,7 @@
 
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtdynamics {
 
@@ -134,6 +135,39 @@ class VectorExpressionEquality : public EqualityConstraint {
   size_t dim() const override;
 };
 
+/** Equality constraint that force factor error to be 0. */
+class FactorEquality : public EqualityConstraint {
+ protected:
+  gtsam::NoiseModelFactor::shared_ptr factor_;
+  gtsam::Vector tolerance_;
+
+ public:
+  /**
+   * @brief Constructor.
+   *
+   * @param factor  NoiseModel factor.
+   * @param tolerance   vector representing tolerance in each dimension.
+   */
+  FactorEquality(const gtsam::NoiseModelFactor::shared_ptr& factor,
+                 const gtsam::Vector& tolerance)
+      : factor_(factor), tolerance_(tolerance) {}
+
+  FactorEquality(const gtsam::NoiseModelFactor::shared_ptr& factor)
+      : FactorEquality(factor, factor->noiseModel()->sigmas()) {}
+
+  gtsam::NoiseModelFactor::shared_ptr createFactor(
+      const double mu,
+      boost::optional<gtsam::Vector&> bias = boost::none) const override;
+
+  bool feasible(const gtsam::Values& x) const override;
+
+  gtsam::Vector operator()(const gtsam::Values& x) const override;
+
+  gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
+
+  size_t dim() const override { return factor_->dim(); }
+};
+
 /// Container of EqualityConstraint.
 class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
  private:
@@ -147,7 +181,7 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   EqualityConstraints() : Base() {}
 
   /// Add a set of equality constraints.
-  void add (const EqualityConstraints& other) {
+  void add(const EqualityConstraints& other) {
     insert(end(), other.begin(), other.end());
   }
 
@@ -158,8 +192,11 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
         Eigen::aligned_allocator<DERIVEDCONSTRAINT>(),
         std::forward<Args>(args)...));
   }
-
 };
+
+/// Create FactorEqualityConstraints from the factors of a graph.
+EqualityConstraints ConstraintsFromGraph(
+    const gtsam::NonlinearFactorGraph& graph);
 
 }  // namespace gtdynamics
 
