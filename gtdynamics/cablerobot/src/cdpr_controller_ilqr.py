@@ -31,7 +31,8 @@ class CdprControllerIlqr(CdprControllerBase):
                  Q=None,
                  R=np.array([1.]),
                  x_guess=None,
-                 debug=False):
+                 debug=False,
+                 progress=None):
         """constructor
 
         Args:
@@ -64,6 +65,12 @@ class CdprControllerIlqr(CdprControllerBase):
         params = utils.MyLMParams(None)
         # params.setRelativeErrorTol(1e-10)
         # params.setAbsoluteErrorTol(1e-10)
+        # params.setVerbosityLM('TRYLAMBDA')
+        if progress is not None:
+            def hook(iter, errorBefore, errorAfter):
+                progress.update()
+                progress.set_postfix(iter=iter, errorBefore=errorBefore, errorAfter=errorAfter)
+            params.iterationHook = hook
         self.optimizer = gtsam.LevenbergMarquardtOptimizer(fg, x_guess, params)
         def optimize(optimizer): # so this shows up in the profiler
             return optimizer.optimize()

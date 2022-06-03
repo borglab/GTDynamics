@@ -74,7 +74,8 @@ def main(fname='data/ATL.h',
          N0=0,
          N=None,
          dN=1,
-         speed_multiplier=1):
+         speed_multiplier=1,
+         progress=None):
     """Runs a simulation of the iLQR controller trying to execute a predefined trajectory.
 
     Args:
@@ -128,13 +129,13 @@ def main(fname='data/ATL.h',
     gtd.InsertTwist(x0, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, 0))
 
     # controller
-    controller = CdprControllerIlqr(cdpr, x0, des_T, dt, Q, R)
+    controller = CdprControllerIlqr(cdpr, x0, des_T, dt, Q, R, progress=progress)
     # feedforward control
     xff = np.zeros((N, 2))
     uff = np.zeros((N, 4))
     for t in range(N):
         xff[t, :] = gtd.Pose(controller.result, cdpr.ee_id(), t).translation()[[0, 2]]
-        uff[t, :] = [gtd.TorqueDouble(controller.result, ji, t) for ji in range(4)]
+        uff[t, :] = [gtd.Torque(controller.result, ji, t) for ji in range(4)]
     if debug:
         print(xff)
         print(uff)
@@ -156,7 +157,11 @@ def save_controller(fname, controller):
 
 if __name__ == '__main__':
     # cProfile.run('results = main(N=100)', sort=SortKey.TIME)
-    results = main(fname='data/ATL_filled.h', Q=np.ones(6)*1e1, R=np.ones(1)*1e-3, dN=1, debug=False, speed_multiplier=1)
+    # results = main(fname='data/ATL_filled.h', Q=np.ones(6)*1e1, R=np.ones(1)*1e-3, dN=1, debug=False, speed_multiplier=1)
+    # plot(*results)
+    # plt.show()
+    # save_controller('data/tmp.h', results[1])
+    results = main(fname='/Users/gerry/Downloads/105074147_svg_output_3mps2.h', Q=np.ones(6)*1e1, R=np.ones(1)*1e-3, dN=1, N=1000, debug=False, speed_multiplier=1)
+    save_controller('/Users/gerry/Downloads/105074147_svg_output_3mps2_controller_10s.h', results[1])
     plot(*results)
     plt.show()
-    save_controller('data/tmp.h', results[1])

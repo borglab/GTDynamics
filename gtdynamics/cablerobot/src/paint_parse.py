@@ -17,19 +17,23 @@ UINTEXPR = '([0-9]*?)'
 FLOATEXPR = '(-?[0-9]*?\.?[0-9]*?)'
 
 def ParseFile(fname):
-    with open(fname) as f:
+    with open(fname) as file:
+        f = filter(lambda line: not line.startswith('//'), file)
+        # for _ in range(4):
+        #     next(f)
+
         # painton
-        assert next(f) == 'bool painton[] = {\n', "variable `painton` not found"
+        assert next(f) == 'const bool PROGMEM painton[] = {\n', "variable `painton` not found: \n{:}\n{:}".format()
         paintons = [bool(int(e)) for e in next(f).strip().split(',')]
         assert next(f) == '};\n', "parse error on variable `painton`"
 
         # colorinds
-        assert next(f) == 'uint8_t colorinds[] = {\n', "variable `colorinds` not found"
+        assert next(f) == 'const uint8_t PROGMEM colorinds[] = {\n', "variable `colorinds` not found"
         colorinds = [int(e) for e in next(f).strip().split(',')]
         assert next(f) == '};\n', "parse error on variable `colorinds`"
 
         # colorpalette
-        assert next(f) == 'uint8_t colorpalette[][3] = {\n', "variable `colorpalette` not found"
+        assert next(f) == 'const uint8_t PROGMEM colorpalette[][3] = {\n', "variable `colorpalette` not found"
         colors = []
         while True:
             matches = re.search(f'\\{{{UINTEXPR}, {UINTEXPR}, {UINTEXPR}\\}},?', next(f))
@@ -39,7 +43,7 @@ def ParseFile(fname):
         colors = np.array(colors)
 
         # trajectory
-        assert next(f) == 'float traj[][2] = {\n', "variable `traj` not found"
+        assert next(f) == 'const float PROGMEM traj[][2] = {\n', "variable `traj` not found"
         traj = []
         while True:
             matches = re.search(f'\{{{FLOATEXPR},{FLOATEXPR}}},?',
@@ -60,20 +64,20 @@ def writeControls(fname, gains_ff):
     with open(fname, 'w') as f:
         Ks, uffs, vffs, xffs = zip(*gains_ff)
         f.write('// u = K * ([v;x]-[vff;xff]) + uff\n')
-        f.write('float xffs[][2] = {\n')
+        f.write('const float PROGMEM xffs[][2] = {\n')
         for xff in xffs:
             f.write('\t{{{:f}, {:f}}},\n'.format(*xff.translation()[[0, 2]]))
         f.write('};\n')
-        f.write('float vffs[][2] = {\n')
+        f.write('const float PROGMEM vffs[][2] = {\n')
         for vff in vffs:
             f.write('\t{{{:f}, {:f}}},\n'.format(*vff[[3, 5]]))
         f.write('};\n')
-        f.write('float uffs[][4] = {\n')
+        f.write('const float PROGMEM uffs[][4] = {\n')
         for uff in uffs:
             f.write('\t{{{:f}, {:f}, {:f}, {:f}}},\n'.format(*uff))
         f.write('};\n')
         f.write('// vx, vy, x, y\n')
-        f.write('float Ks[][4][4] = {\n\t')
+        f.write('const float PROGMEM Ks[][4][4] = {\n\t')
         for K in Ks:
             f.write('{\n')
             for Krow in K:

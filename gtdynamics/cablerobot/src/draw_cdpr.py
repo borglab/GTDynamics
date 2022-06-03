@@ -111,7 +111,7 @@ def plot_trajectory(cdpr, result, Tf, dt, N, x_des, step=1):
     act_T = [gtd.Pose(result, cdpr.ee_id(), k) for k in range(N+1)]
     act_xy = np.array([pose32xy(pose) for pose in act_T]).T
     des_xy = np.array([pose32xy(pose) for pose in x_des]).T
-    tensions = np.array([[gtd.TorqueDouble(result, ji, k) for ji in range(4)] for k in range(N)])
+    tensions = np.array([[gtd.Torque(result, ji, k) for ji in range(4)] for k in range(N)])
 
     # plot
     fig = plt.figure(1, figsize=(12,4))
