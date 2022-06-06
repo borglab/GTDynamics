@@ -21,31 +21,35 @@
 namespace gtsam {
 
 template <int P>
+/** Kinematic serial chain manifold, with the basis variables as the joint
+   angles. */
 class SerialChain {
  protected:
   boost::shared_ptr<gtdynamics::Robot> robot_;
-  std::string base_name_;
+  std::string base_name_;  // name of base link
   boost::shared_ptr<Values> values_;
 
  public:
   using VectorP = Eigen::Matrix<double, P, 1>;
   enum { dimension = P };
 
+  /** Constructor.
+   * @param robot robot representing serial chain
+   * @param base_name name of base link
+   * @param base_pose pose of base link
+   * @param joint_angles angles of all the joints.
+   */
   SerialChain(const boost::shared_ptr<gtdynamics::Robot>& robot,
               const std::string& base_name, const Pose3& base_pose,
               const Values& joint_angles)
       : robot_(robot),
         base_name_(base_name),
         values_(boost::make_shared<Values>(joint_angles)) {
-    // std::cout << "insert pose\n";
-    // gtdynamics::InsertPose(values_.get(), robot->link(base_name)->id(),
-    // base_pose); values_->print("", gtdynamics::GTDKeyFormatter); std::cout <<
-    // "fk\n";
     values_ = boost::make_shared<Values>(
         robot_->forwardKinematics(*values_, 0, base_name_));
-    // std::cout << "fk done\n";
   }
 
+  /** Constructor with new joint angles. */
   SerialChain<P> createWithNewAngles(const Values& new_joint_angles) const {
     return SerialChain(
         robot_, base_name_,
@@ -53,21 +57,23 @@ class SerialChain {
         new_joint_angles);
   }
 
+  /** return joint angle with Jacobian given joint id. */
   double joint_by_id(const size_t& id,
                      OptionalJacobian<1, P> H = boost::none) const {
     if (H) {
       H->setZero();
       (*H)(id - 1) = 1;
     }
-    return gtdynamics::JointAngle(*values_,
-                                  id);  // TODO: check start of labeling
+    return gtdynamics::JointAngle(*values_, id);
   }
 
+  /** return joint angle with Jacobian given joint name. */
   double joint(const std::string& name,
                OptionalJacobian<1, P> H = boost::none) const {
     return joint_by_id(robot_->joint(name)->id(), H);
   }
 
+  /** return link pose with Jacobian given link name. */
   Pose3 link_pose(const std::string& name,
                   OptionalJacobian<6, P> H = boost::none) const {
     Pose3 wTe = gtdynamics::Pose(*values_, robot_->link(name)->id());
@@ -77,8 +83,6 @@ class SerialChain {
       auto joint = parent_link->joints().at(0);
       // find all joints between base and this link
       while (parent_link->name() != name) {
-        // std::cout << "joint: " << int(joint->id()) << "\t" << joint->name()
-        // << "\n";
         auto child_link = joint->otherLink(parent_link);
         auto wTp = gtdynamics::Pose(*values_, parent_link->id());
         auto wTc = gtdynamics::Pose(*values_, child_link->id());

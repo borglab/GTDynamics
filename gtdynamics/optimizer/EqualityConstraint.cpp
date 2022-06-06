@@ -44,7 +44,7 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
 }
 
 /* ************************************************************************* */
-gtsam::NoiseModelFactor::shared_ptr FactorEquality::createFactor(
+gtsam::NoiseModelFactor::shared_ptr ZeroErrorFactorEquality::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
   if (bias) {
     std::cerr << "Factor Equality not implemented bias yet.\n";
@@ -54,7 +54,7 @@ gtsam::NoiseModelFactor::shared_ptr FactorEquality::createFactor(
 }
 
 /* ************************************************************************* */
-bool FactorEquality::feasible(const gtsam::Values& x) const {
+bool ZeroErrorFactorEquality::feasible(const gtsam::Values& x) const {
   auto result = factor_->unwhitenedError(x);
   for (int i = 0; i < dim(); i++) {
     if (abs(result[i]) > tolerance_[i]) {
@@ -65,12 +65,12 @@ bool FactorEquality::feasible(const gtsam::Values& x) const {
 }
 
 /* ************************************************************************* */
-gtsam::Vector FactorEquality::operator()(const gtsam::Values& x) const {
+gtsam::Vector ZeroErrorFactorEquality::operator()(const gtsam::Values& x) const {
   return factor_->unwhitenedError(x);
 }
 
 /* ************************************************************************* */
-gtsam::Vector FactorEquality::toleranceScaledViolation(
+gtsam::Vector ZeroErrorFactorEquality::toleranceScaledViolation(
     const gtsam::Values& x) const {
   auto violation = factor_->unwhitenedError(x);
   for (int i = 0; i < dim(); i++) {
@@ -85,7 +85,7 @@ EqualityConstraints ConstraintsFromGraph(
   EqualityConstraints constraints;
   for (const auto& factor : graph) {
     auto noise_factor = boost::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
-    constraints.emplace_shared<FactorEquality>(noise_factor);
+    constraints.emplace_shared<ZeroErrorFactorEquality>(noise_factor);
   }
   return constraints;
 }

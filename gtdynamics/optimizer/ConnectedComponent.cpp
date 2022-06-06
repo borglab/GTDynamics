@@ -22,15 +22,13 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-ConnectedComponent::ConnectedComponent(
-    const gtdynamics::EqualityConstraints& _constraints)
-    : constraints(_constraints) {
-  merit_graph = gtsam::NonlinearFactorGraph();
-  for (const auto& constraint : constraints) {
-    merit_graph.add(constraint->createFactor(1.0));
+NonlinearFactorGraph ConnectedComponent::construct_merit_graph(
+      const gtdynamics::EqualityConstraints& _constraints) {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto& constraint : _constraints) {
+    graph.add(constraint->createFactor(1.0));
   }
-  keys = merit_graph.keys();
+  return graph;
 }
-
 
 }  // namespace gtsam

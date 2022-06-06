@@ -1,6 +1,5 @@
-#include <gtdynamics/optimizer/SubstituteFactor.h>
-
 #include <gtdynamics/optimizer/ConstraintManifold.h>
+#include <gtdynamics/optimizer/SubstituteFactor.h>
 
 namespace gtsam {
 
@@ -115,7 +114,4 @@ Vector SubstituteFactor::unwhitenedError(
   }
 }
 
-// /* *************************************************************************
-// */ NoiseModelFactor::shared_ptr SubstituteFactor::cloneWithNewNoiseModel(
-//     const SharedNoiseModel newNoise) const override;
 }  // namespace gtsam

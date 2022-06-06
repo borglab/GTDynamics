@@ -24,16 +24,19 @@ class ConstraintManifold {
  public:
   /** Parameters for constraint manifold. */
   struct Params {
+    using shared_ptr = boost::shared_ptr<Params>;
+
     // Method to compute tangent space basis
     enum BasisType { KERNEL = 0, ELIMINATION = 1, SPECIFY_VARIABLES = 2 };
     // Method to perform retraction
     enum RetractType { UOPT = 0, PROJ = 1, PARTIAL_PROJ = 2 };
 
+    // Member variables.
     LevenbergMarquardtParams lm_params;
     RetractType retract_type;
     BasisType basis_type;
 
-    using shared_ptr = boost::shared_ptr<Params>;
+    /** Default constructor. */
     Params()
         : lm_params(),
           retract_type(RetractType::UOPT),
@@ -43,14 +46,16 @@ class ConstraintManifold {
  protected:
   Params::shared_ptr params_;
   ConnectedComponent::shared_ptr cc_;
-  size_t base_dim_;
-  size_t constraint_dim_;
-  size_t dim_;
-  gtsam::Values values_;
-  gtsam::Matrix basis_;
-  std::map<Key, size_t> var_location_;
-  std::map<Key, size_t> var_dim_;
-  KeyVector basis_keys_;
+  size_t embedding_dim_;                // dimension of embedding space
+  size_t constraint_dim_;               // dimension of constriants
+  size_t dim_;                          // dimension of constraint manifold
+  gtsam::Values values_;                // values of variables in CCC
+  gtsam::Matrix basis_;                 // basis for the tangent space
+  std::map<Key, size_t> var_location_;  // location of variables in Jacobian
+  std::map<Key, size_t> var_dim_;       // dimension of variables
+  KeyVector basis_keys_;  // (optional) manually spcified basis variables
+  // TODO(yetong): put basis_, var_dim_, var_location_, and basis_keys_ in a
+  // struct
 
  public:
   enum { dimension = Eigen::Dynamic };
@@ -62,23 +67,28 @@ class ConstraintManifold {
    * @param values  values of variable in the connected component
    * @param retract_init  whether to perform retract in initialization
    * @param construct_basis compute basis on initialization
+   * @param basis_keys (optional) manually specified basis variables
    */
   ConstraintManifold(
       const ConnectedComponent::shared_ptr& cc, const gtsam::Values& values,
       const Params::shared_ptr& params = boost::make_shared<Params>(),
-      const bool retract_init = true, const bool construct_basis = true,
+      bool retract_init = true, bool construct_basis = true,
       const boost::optional<const KeyVector&> basis_keys = boost::none)
       : params_(params), cc_(cc) {
     if (basis_keys) {
       basis_keys_ = *basis_keys;
     }
-    compute_values(values, retract_init);
+    initialize_values(values);
+    if (retract_init) {
+      values_ = retract_constraints(values_);
+    }
     if (construct_basis && dim() > 0) {
       compute_basis();
     }
   }
 
-  /** Construct new ConstraintManifold with new values. */
+  /** Construct new ConstraintManifold with new values. Note: this function
+   * indirectly calls retract_constraints. */
   ConstraintManifold createWithNewValues(const gtsam::Values& values,
                                          bool retract_init = true) const {
     return ConstraintManifold(cc_, values, params_, true, true, basis_keys_);
@@ -130,9 +140,10 @@ class ConstraintManifold {
   void compute_basis();
 
  protected:
-  /** Set the values_ of variables in CCC and compute dimension of the
-   * constraint manifold, given the initial values of the variables in CCC. */
-  void compute_values(const gtsam::Values& values, const bool retract_init);
+  /** Initialize the values_ of variables in CCC and compute dimension of the
+   * constraint manifold and compute the dimension of the constraint manifold.
+   */
+  void initialize_values(const gtsam::Values& values);
 
   /** Perform retraction by minimizing the constraint violation, e.g.,
    * ||h(x)||^2. */

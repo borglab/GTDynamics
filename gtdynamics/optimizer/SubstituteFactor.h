@@ -71,7 +71,8 @@ class SubstituteFactor : public NoiseModelFactor {
   /** Construct map from base key to key index in base factor. */
   void compute_base_key_index();
 
-  /** Classify the variables in the subsitute factor. */
+  /** Classify the variables as either constarined or unconstrained in the
+   * subsitute factor. */
   void classify_keys(const Values& fc_manifolds);
 
  public:
@@ -90,13 +91,6 @@ class SubstituteFactor : public NoiseModelFactor {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
-
-  // /**
-  //  * Creates a shared_ptr clone of the
-  //  * factor with a new noise model
-  //  */
-  // NoiseModelFactor::shared_ptr cloneWithNewNoiseModel(
-  //     const SharedNoiseModel newNoise) const override;
 
   /** Check if a variable in the base factor is substituted. */
   inline bool isReplaced(const Key& key) const {

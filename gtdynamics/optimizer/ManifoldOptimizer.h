@@ -7,7 +7,7 @@
 
 /**
  * @file  ManifoldOptimizer.h
- * @brief Optimizer that treat equality-constrained componenets as manifolds.
+ * @brief Optimizer that treat equality-constrained components as manifolds.
  * @author: Yetong Zhang
  */
 
@@ -29,20 +29,26 @@ class ManifoldOptimizer {
  public:
   using shared_ptr = boost::shared_ptr<const ManifoldOptimizer>;
 
+  /** Parameters for manifold optimizer. */
   struct Params {
-    ConstraintManifold::Params::shared_ptr cc_params;
+    ConstraintManifold::Params::shared_ptr
+        cc_params;             // Parameter for constraint-connected components
     bool retract_init = true;  // Perform retraction on constructing values for
                                // connected component.
     using shared_ptr = boost::shared_ptr<Params>;
+    
+    /** Default Constructor. */
     Params();
   };
 
  protected:
-  gtsam::NonlinearFactorGraph costs_;
-  gtdynamics::EqualityConstraints constraints_;
+  gtsam::NonlinearFactorGraph costs_;            // cost function
+  gtdynamics::EqualityConstraints constraints_;  // equality constraints
   Params::shared_ptr params_;
-  std::vector<ConnectedComponent::shared_ptr> components_;
-  BasisKeyFunc basis_key_func_;
+  std::vector<ConnectedComponent::shared_ptr>
+      components_;               // All the constraint-connected components
+  BasisKeyFunc basis_key_func_;  // ad-hoc function to manually specify the
+                                 // basis keys for each constraint manifold
 
  public:
   /** Default constructor. */
@@ -60,8 +66,10 @@ class ManifoldOptimizer {
     identify_connected_components();
   }
 
+  /** Run optimization on constraint manifold. */
   virtual const gtsam::Values& optimize() = 0;
 
+  /** Customizable print function. */
   virtual void print(
       const std::string& s = "",
       const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;

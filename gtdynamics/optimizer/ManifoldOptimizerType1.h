@@ -74,14 +74,20 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
       const std::string& s = "",
       const KeyFormatter& keyFormatter = DefaultKeyFormatter) const override;
 
+  /** Dimension of the manifold optimization problem, as factor dimension x
+   * variable dimension. */
   std::pair<size_t, size_t> problem_dimension() const;
 
  protected:
+  /** Create the underlying nonlinear optimizer for manifold optimization. */
   void construct_nonlinear_optimizer(const Values& init_values,
                                      const NonlinearOptParamsVariant& params);
 
+  /** Create initial values for the constraint manifold variables. */
   Values construct_manifold_values(const Values& init_values);
 
+  /** Create a factor graph of cost function with the constraint manifold
+   * variables. */
   NonlinearFactorGraph construct_manifold_graph(const Values& manifold_values);
 };
 

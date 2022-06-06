@@ -11,10 +11,9 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/ConstraintManifold.h>
 #include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
+#include <gtdynamics/optimizer/ConstraintManifold.h>
 #include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
-
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LinearContainerFactor.h>
@@ -22,26 +21,22 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-void ConstraintManifold::compute_values(const gtsam::Values& values,
-                                        const bool retract_init) {
+void ConstraintManifold::initialize_values(const gtsam::Values& values) {
   values_ = gtsam::Values();
-  base_dim_ = 0;
+  embedding_dim_ = 0;
   for (const gtsam::Key& key : cc_->keys) {
     const auto& value = values.at(key);
-    base_dim_ += value.dim();
+    embedding_dim_ += value.dim();
     values_.insert(key, value);
   }
   constraint_dim_ = 0;
   for (const auto& constraint : cc_->constraints) {
     constraint_dim_ += constraint->dim();
   }
-  if (base_dim_ > constraint_dim_) {
-    dim_ = base_dim_ - constraint_dim_;
+  if (embedding_dim_ > constraint_dim_) {
+    dim_ = embedding_dim_ - constraint_dim_;
   } else {
     dim_ = 0;
-  }
-  if (retract_init) {
-    values_ = retract_constraints(values_);
   }
 }
 
@@ -104,7 +99,7 @@ gtsam::Vector ConstraintManifold::localCoordinates(const ConstraintManifold& g,
   Eigen::MatrixXd basis_pinv =
       basis_.completeOrthogonalDecomposition().pseudoInverse();
   gtsam::VectorValues delta = values_.localCoordinates(g.values_);
-  gtsam::Vector xi_base = Vector::Zero(base_dim_);
+  gtsam::Vector xi_base = Vector::Zero(embedding_dim_);
   for (const auto& it : delta) {
     const Key& key = it.first;
     xi_base.middleRows(var_location_.at(key), var_dim_.at(key)) = it.second;
@@ -112,8 +107,12 @@ gtsam::Vector ConstraintManifold::localCoordinates(const ConstraintManifold& g,
   gtsam::Vector xi = basis_pinv * xi_base;
 
   // Temporarily set jacobian as 0 since they are not used for optimization.
-  if (H1) H1->setZero();
-  if (H2) H2->setZero();
+  if (H1)
+    throw std::runtime_error(
+        "ConstraintManifold localCoordinates jacobian not implmented.");
+  if (H2)
+    throw std::runtime_error(
+        "ConstraintManifold localCoordinates jacobian not implmented.");
 
   return xi;
 }
@@ -129,7 +128,6 @@ bool ConstraintManifold::equals(const ConstraintManifold& other,
                                 double tol) const {
   return values_.equals(other.values_, tol);
 }
-
 
 /* ************************************************************************* */
 gtsam::Values ConstraintManifold::retract_uopt(
@@ -157,6 +155,7 @@ gtsam::Values ConstraintManifold::retract_proj(
     auto linear_factor = boost::make_shared<JacobianFactor>(
         key, Matrix::Identity(dim, dim), Vector::Zero(dim),
         noiseModel::Unit::Create(dim));
+    // TODO(yetong): replace Unit with a tunable parameter
     Values linearization_point;
     linearization_point.insert(key, values.at(key));
     prior_graph.emplace_shared<LinearContainerFactor>(linear_factor,
@@ -191,11 +190,6 @@ gtsam::Values ConstraintManifold::retract_p_proj(
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values_cc,
                                                params_->lm_params);
   return optimizer.optimize();
-  // auto result = 
-  // if (graph.error(result) > 1e-4) {
-  //   std::cout << "cannot retract exactly tproj\n";
-  // }
-  // return result;
 }
 
 /* ************************************************************************* */
@@ -223,7 +217,7 @@ void ConstraintManifold::compute_basis_specify_variables() {
     basis_dim += values_.at(key).dim();
   }
   if (basis_dim != dim()) {
-    std::cerr << "specified basis have wrong dimensions\n";
+    throw std::runtime_error("specified basis have wrong dimensions");
   }
 
   auto linear_graph = cc_->merit_graph.linearize(values_);
@@ -270,6 +264,5 @@ void ConstraintManifold::compute_basis_specify_variables() {
     }
   }
 }
-
 
 }  // namespace gtsam
