@@ -52,28 +52,28 @@ class SubstituteFactor : public NoiseModelFactor {
                    const std::map<Key, Key>& replacement_map,
                    const Values& fc_manifolds = Values())
       : Base(base_factor->noiseModel(),
-             compute_new_keys(base_factor, replacement_map, fc_manifolds)),
+             computeNewKeys(base_factor, replacement_map, fc_manifolds)),
         base_factor_(base_factor),
         replacement_map_(replacement_map) {
     if (!check_active()) {
       return;
     }
-    compute_base_key_index();
-    classify_keys(fc_manifolds);
+    computeBaseKeyIndex();
+    classifyKeys(fc_manifolds);
   }
 
  protected:
   /** Compute keys for the new factor */
-  static KeyVector compute_new_keys(const Base::shared_ptr& base_factor,
-                                    const std::map<Key, Key>& replacement_map,
-                                    const Values& fc_manifolds);
+  static KeyVector computeNewKeys(const Base::shared_ptr& base_factor,
+                                  const std::map<Key, Key>& replacement_map,
+                                  const Values& fc_manifolds);
 
   /** Construct map from base key to key index in base factor. */
-  void compute_base_key_index();
+  void computeBaseKeyIndex();
 
   /** Classify the variables as either constarined or unconstrained in the
    * subsitute factor. */
-  void classify_keys(const Values& fc_manifolds);
+  void classifyKeys(const Values& fc_manifolds);
 
  public:
   /**

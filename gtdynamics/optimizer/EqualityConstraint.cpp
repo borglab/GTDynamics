@@ -65,7 +65,8 @@ bool ZeroErrorFactorEquality::feasible(const gtsam::Values& x) const {
 }
 
 /* ************************************************************************* */
-gtsam::Vector ZeroErrorFactorEquality::operator()(const gtsam::Values& x) const {
+gtsam::Vector ZeroErrorFactorEquality::operator()(
+    const gtsam::Values& x) const {
   return factor_->unwhitenedError(x);
 }
 
@@ -84,11 +85,11 @@ EqualityConstraints ConstraintsFromGraph(
     const gtsam::NonlinearFactorGraph& graph) {
   EqualityConstraints constraints;
   for (const auto& factor : graph) {
-    auto noise_factor = boost::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
+    auto noise_factor =
+        boost::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
     constraints.emplace_shared<ZeroErrorFactorEquality>(noise_factor);
   }
   return constraints;
 }
-
 
 }  // namespace gtdynamics

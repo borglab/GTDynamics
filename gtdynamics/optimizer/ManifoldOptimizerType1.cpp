@@ -8,11 +8,11 @@ namespace gtsam {
 /* ************************************************************************* */
 const gtsam::Values& ManifoldOptimizerType1::optimize() {
   nonlinear_optimizer_->optimize();
-  return base_values();
+  return baseValues();
 }
 
 /* ************************************************************************* */
-const Values& ManifoldOptimizerType1::base_values() {
+const Values& ManifoldOptimizerType1::baseValues() {
   base_values_ = Values();
   for (const Key& key : fc_manifolds_.keys()) {
     auto constraint_manifold = fc_manifolds_.at<ConstraintManifold>(key);
@@ -29,7 +29,7 @@ const Values& ManifoldOptimizerType1::base_values() {
 }
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::construct_manifold_values(
+Values ManifoldOptimizerType1::constructManifoldValues(
     const Values& init_values) {
   Values manifold_values;
   component_key_vec_ = KeyVector();
@@ -76,7 +76,7 @@ Values ManifoldOptimizerType1::construct_manifold_values(
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph ManifoldOptimizerType1::construct_manifold_graph(
+NonlinearFactorGraph ManifoldOptimizerType1::constructManifoldGraph(
     const Values& manifold_values) {
   // Construct base key to component map.
   std::map<Key, Key> key_component_map;
@@ -119,11 +119,11 @@ NonlinearFactorGraph ManifoldOptimizerType1::construct_manifold_graph(
 }
 
 /* ************************************************************************* */
-void ManifoldOptimizerType1::construct_nonlinear_optimizer(
+void ManifoldOptimizerType1::constructNonlinearOptimizer(
     const Values& init_values, const NonlinearOptParamsVariant& params) {
-  Values manifold_values = construct_manifold_values(init_values);
+  Values manifold_values = constructManifoldValues(init_values);
   NonlinearFactorGraph manifold_graph =
-      construct_manifold_graph(manifold_values);
+      constructManifoldGraph(manifold_values);
   if (params.type() == typeid(GaussNewtonParams)) {
     nonlinear_optimizer_ = boost::make_shared<GaussNewtonOptimizer>(
         manifold_graph, manifold_values, boost::get<GaussNewtonParams>(params));
@@ -149,7 +149,7 @@ int ManifoldOptimizerType1::getInnerIterations() const {
 }
 
 /* ************************************************************************* */
-std::pair<size_t, size_t> ManifoldOptimizerType1::problem_dimension() const {
+std::pair<size_t, size_t> ManifoldOptimizerType1::problemDimension() const {
   size_t values_dim = nonlinear_optimizer_->values().dim();
   size_t graph_dim = 0;
   for (const auto& factor : nonlinear_optimizer_->graph()) {

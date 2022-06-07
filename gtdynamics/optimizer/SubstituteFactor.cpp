@@ -4,7 +4,7 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-KeyVector SubstituteFactor::compute_new_keys(
+KeyVector SubstituteFactor::computeNewKeys(
     const Base::shared_ptr& base_factor,
     const std::map<Key, Key>& replacement_map, const Values& fc_manifolds) {
   const KeyVector& base_keys = base_factor->keys();
@@ -27,7 +27,7 @@ KeyVector SubstituteFactor::compute_new_keys(
 }
 
 /* ************************************************************************* */
-void SubstituteFactor::compute_base_key_index() {
+void SubstituteFactor::computeBaseKeyIndex() {
   const KeyVector& base_keys = base_factor_->keys();
   for (size_t key_index = 0; key_index < base_keys.size(); key_index++) {
     const Key& base_key = base_keys.at(key_index);
@@ -36,7 +36,7 @@ void SubstituteFactor::compute_base_key_index() {
 }
 
 /* ************************************************************************* */
-void SubstituteFactor::classify_keys(const Values& fc_manifolds) {
+void SubstituteFactor::classifyKeys(const Values& fc_manifolds) {
   const KeyVector& base_keys = base_factor_->keys();
   for (const Key& base_key : base_keys) {
     if (isReplaced(base_key)) {

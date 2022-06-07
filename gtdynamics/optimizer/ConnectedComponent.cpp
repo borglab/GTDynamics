@@ -11,9 +11,8 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/ConnectedComponent.h>
-
 #include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
+#include <gtdynamics/optimizer/ConnectedComponent.h>
 #include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -22,8 +21,8 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-NonlinearFactorGraph ConnectedComponent::construct_merit_graph(
-      const gtdynamics::EqualityConstraints& _constraints) {
+NonlinearFactorGraph ConnectedComponent::constructMeritGraph(
+    const gtdynamics::EqualityConstraints& _constraints) {
   gtsam::NonlinearFactorGraph graph;
   for (const auto& constraint : _constraints) {
     graph.add(constraint->createFactor(1.0));

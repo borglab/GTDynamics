@@ -58,8 +58,8 @@ class SerialChain {
   }
 
   /** return joint angle with Jacobian given joint id. */
-  double joint_by_id(const size_t& id,
-                     OptionalJacobian<1, P> H = boost::none) const {
+  double jointById(const size_t& id,
+                   OptionalJacobian<1, P> H = boost::none) const {
     if (H) {
       H->setZero();
       (*H)(id - 1) = 1;
@@ -70,12 +70,12 @@ class SerialChain {
   /** return joint angle with Jacobian given joint name. */
   double joint(const std::string& name,
                OptionalJacobian<1, P> H = boost::none) const {
-    return joint_by_id(robot_->joint(name)->id(), H);
+    return jointById(robot_->joint(name)->id(), H);
   }
 
   /** return link pose with Jacobian given link name. */
-  Pose3 link_pose(const std::string& name,
-                  OptionalJacobian<6, P> H = boost::none) const {
+  Pose3 linkPose(const std::string& name,
+                 OptionalJacobian<6, P> H = boost::none) const {
     Pose3 wTe = gtdynamics::Pose(*values_, robot_->link(name)->id());
 
     if (H) {

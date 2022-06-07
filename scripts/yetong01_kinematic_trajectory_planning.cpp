@@ -105,7 +105,7 @@ Values optimize_constraint_manifold(
   auto result = optimizer.optimize();
   gttoc_(constraint_manifold);
 
-  auto problem_dim = optimizer.problem_dimension();
+  auto problem_dim = optimizer.problemDimension();
   std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
             << "\n";
   return result;
@@ -265,7 +265,7 @@ NonlinearFactorGraph get_costs_sc() {
   // target costs
   Key last_key = num_steps;
   Expression<SerialChain<7>> last_state(last_key);
-  auto pose_func = std::bind(&SerialChain<7>::link_pose, std::placeholders::_1,
+  auto pose_func = std::bind(&SerialChain<7>::linkPose, std::placeholders::_1,
                              ee_name, std::placeholders::_2);
   Expression<Pose3> target_pose_expr(pose_func, last_state);
   costs.addExpressionFactor<Pose3>(target_noise, target_pose, target_pose_expr);

@@ -32,7 +32,7 @@ ManifoldOptimizer::Params::Params()
       retract_init(true) {}
 
 /* ************************************************************************* */
-ConnectedComponent::shared_ptr ManifoldOptimizer::dfs_find_connected_component(
+ConnectedComponent::shared_ptr ManifoldOptimizer::dfsFindConnectedComponent(
     const gtsam::Key start_key, gtsam::KeySet& keys,
     const gtsam::VariableIndex& var_index) const {
   std::set<size_t> constraint_indices;
@@ -65,7 +65,7 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::dfs_find_connected_component(
 }
 
 /* ************************************************************************* */
-void ManifoldOptimizer::identify_connected_components() {
+void ManifoldOptimizer::identifyConnectedComponents() {
   // Get all the keys in constraints.
   // TODO(yetong): create VariableIndex from EqualityConstraints
   gtsam::NonlinearFactorGraph constraint_graph;
@@ -84,7 +84,7 @@ void ManifoldOptimizer::identify_connected_components() {
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
     constraint_keys.erase(key);
-    components_.emplace_back(dfs_find_connected_component(
+    components_.emplace_back(dfsFindConnectedComponent(
         key, constraint_keys, constraint_var_index));
   }
 }

@@ -36,7 +36,7 @@ class ManifoldOptimizer {
     bool retract_init = true;  // Perform retraction on constructing values for
                                // connected component.
     using shared_ptr = boost::shared_ptr<Params>;
-    
+
     /** Default Constructor. */
     Params();
   };
@@ -63,7 +63,7 @@ class ManifoldOptimizer {
     if (basis_key_func) {
       basis_key_func_ = *basis_key_func;
     }
-    identify_connected_components();
+    identifyConnectedComponents();
   }
 
   /** Run optimization on constraint manifold. */
@@ -78,12 +78,12 @@ class ManifoldOptimizer {
   /** Perform dfs to find the connected component that contains start_key. Will
    * also erase all the keys in the connected component from keys.
    */
-  ConnectedComponent::shared_ptr dfs_find_connected_component(
+  ConnectedComponent::shared_ptr dfsFindConnectedComponent(
       const gtsam::Key start_key, gtsam::KeySet& keys,
       const gtsam::VariableIndex& var_index) const;
 
   /** Identify the connected components by constraints. */
-  void identify_connected_components();
+  void identifyConnectedComponents();
 };
 
 }  // namespace gtsam

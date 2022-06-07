@@ -276,7 +276,7 @@ TEST(ManifoldOptimizer, GaussNewtonEquality) {
     optimizer_type1.iterate();
 
     Values values_m = optimizer_m.values();
-    Values values_type1 = optimizer_type1.base_values();
+    Values values_type1 = optimizer_type1.baseValues();
 
     auto expected_rot = values_m.at<Rot2Projection>(rot_key);
     double expected_x = expected_rot.c();

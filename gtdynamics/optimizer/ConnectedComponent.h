@@ -34,11 +34,11 @@ class ConnectedComponent {
   /** Constructor from constraints. */
   ConnectedComponent(const gtdynamics::EqualityConstraints& _constraints)
       : constraints(_constraints),
-        merit_graph(construct_merit_graph(_constraints)),
+        merit_graph(constructMeritGraph(_constraints)),
                     keys(merit_graph.keys()) {}
 
  protected:
-  NonlinearFactorGraph construct_merit_graph(
+  NonlinearFactorGraph constructMeritGraph(
       const gtdynamics::EqualityConstraints& _constraints);
 };
 

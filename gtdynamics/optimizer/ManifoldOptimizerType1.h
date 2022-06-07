@@ -54,7 +54,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
           boost::make_shared<Params>(),
       boost::optional<BasisKeyFunc> basis_key_func = boost::none)
       : ManifoldOptimizer(costs, constraints, params, basis_key_func) {
-    construct_nonlinear_optimizer(init_values, nopt_params);
+    constructNonlinearOptimizer(init_values, nopt_params);
   }
 
   /** Virtual destructor. */
@@ -63,7 +63,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
   virtual const gtsam::Values& optimize() override;
 
   /// construct base values and return by reference
-  const Values& base_values();
+  const Values& baseValues();
 
   int getInnerIterations() const;
 
@@ -76,19 +76,19 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
 
   /** Dimension of the manifold optimization problem, as factor dimension x
    * variable dimension. */
-  std::pair<size_t, size_t> problem_dimension() const;
+  std::pair<size_t, size_t> problemDimension() const;
 
  protected:
   /** Create the underlying nonlinear optimizer for manifold optimization. */
-  void construct_nonlinear_optimizer(const Values& init_values,
-                                     const NonlinearOptParamsVariant& params);
+  void constructNonlinearOptimizer(const Values& init_values,
+                                   const NonlinearOptParamsVariant& params);
 
   /** Create initial values for the constraint manifold variables. */
-  Values construct_manifold_values(const Values& init_values);
+  Values constructManifoldValues(const Values& init_values);
 
   /** Create a factor graph of cost function with the constraint manifold
    * variables. */
-  NonlinearFactorGraph construct_manifold_graph(const Values& manifold_values);
+  NonlinearFactorGraph constructManifoldGraph(const Values& manifold_values);
 };
 
 }  // namespace gtsam

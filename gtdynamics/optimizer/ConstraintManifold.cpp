@@ -21,7 +21,7 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-void ConstraintManifold::initialize_values(const gtsam::Values& values) {
+void ConstraintManifold::initializeValues(const gtsam::Values& values) {
   values_ = gtsam::Values();
   embedding_dim_ = 0;
   for (const gtsam::Key& key : cc_->keys) {
@@ -41,24 +41,24 @@ void ConstraintManifold::initialize_values(const gtsam::Values& values) {
 }
 
 /* ************************************************************************* */
-Values ConstraintManifold::retract_constraints(const Values& values) const {
+Values ConstraintManifold::retractConstraints(const Values& values) const {
   if (params_->retract_type == Params::RetractType::UOPT) {
-    return retract_uopt(values);
+    return retractUopt(values);
   } else if (params_->retract_type == Params::RetractType::PROJ) {
-    return retract_proj(values);
+    return retractProj(values);
   } else if (params_->retract_type == Params::RetractType::PARTIAL_PROJ) {
-    return retract_p_proj(values);
+    return retractPProj(values);
   }
   std::cerr << "Unrecognized retraction type.\n";
   return Values();
 }
 
 /* ************************************************************************* */
-void ConstraintManifold::compute_basis() {
+void ConstraintManifold::computeBasis() {
   if (params_->basis_type == Params::BasisType::KERNEL) {
-    compute_basis_kernel();
+    computeBasisKernel();
   } else if (params_->basis_type == Params::BasisType::SPECIFY_VARIABLES) {
-    compute_basis_specify_variables();
+    computeBasisSpecifyVariables();
   }
 }
 
@@ -130,7 +130,7 @@ bool ConstraintManifold::equals(const ConstraintManifold& other,
 }
 
 /* ************************************************************************* */
-gtsam::Values ConstraintManifold::retract_uopt(
+gtsam::Values ConstraintManifold::retractUopt(
     const gtsam::Values& values) const {
   // return values;
   gtsam::Values init_values_cc;
@@ -145,7 +145,7 @@ gtsam::Values ConstraintManifold::retract_uopt(
 }
 
 /* ************************************************************************* */
-gtsam::Values ConstraintManifold::retract_proj(
+gtsam::Values ConstraintManifold::retractProj(
     const gtsam::Values& values) const {
   NonlinearFactorGraph prior_graph;
   Values init_values_cc;
@@ -170,7 +170,7 @@ gtsam::Values ConstraintManifold::retract_proj(
 }
 
 /* ************************************************************************* */
-gtsam::Values ConstraintManifold::retract_p_proj(
+gtsam::Values ConstraintManifold::retractPProj(
     const gtsam::Values& values) const {
   Values init_values_cc;
   for (const Key& key : cc_->keys) {
@@ -193,7 +193,7 @@ gtsam::Values ConstraintManifold::retract_p_proj(
 }
 
 /* ************************************************************************* */
-void ConstraintManifold::compute_basis_kernel() {
+void ConstraintManifold::computeBasisKernel() {
   auto linear_graph = cc_->merit_graph.linearize(values_);
   JacobianFactor combined(*linear_graph);
   auto augmented = combined.augmentedJacobian();
@@ -211,7 +211,9 @@ void ConstraintManifold::compute_basis_kernel() {
 }
 
 /* ************************************************************************* */
-void ConstraintManifold::compute_basis_specify_variables() {
+void ConstraintManifold::computeBasisSpecifyVariables() {
+  // Check the total dimension of basis variables should be the same as the
+  // dimension of the manifold.
   size_t basis_dim = 0;
   for (const Key& key : basis_keys_) {
     basis_dim += values_.at(key).dim();
@@ -220,6 +222,10 @@ void ConstraintManifold::compute_basis_specify_variables() {
     throw std::runtime_error("specified basis have wrong dimensions");
   }
 
+  // Partially eliminate all other variables (except for the basis variables) in
+  // the merit graph of constraints, and form a bayes net. The bays net
+  // represents how other variables depends on the basis variables, e.g., 
+  // X_other = B x X_basis.
   auto linear_graph = cc_->merit_graph.linearize(values_);
   auto full_ordering =
       Ordering::ColamdConstrainedLast(*linear_graph, basis_keys_);
@@ -230,6 +236,7 @@ void ConstraintManifold::compute_basis_specify_variables() {
   auto elim_result = linear_graph->eliminatePartialSequential(ordering);
   auto bayes_net = elim_result.first;
 
+  // Set where each variable is positioned in the Jacobian matrix.
   size_t position = 0;
   for (const Key& key : full_ordering) {
     size_t var_dim = values_.at(key).dim();
@@ -238,6 +245,7 @@ void ConstraintManifold::compute_basis_specify_variables() {
     position += var_dim;
   }
 
+  // Compute the basis matrix as [B;I].
   basis_ = Matrix::Zero(position, dim());
 
   size_t col_idx = 0;

@@ -78,17 +78,17 @@ class ConstraintManifold {
     if (basis_keys) {
       basis_keys_ = *basis_keys;
     }
-    initialize_values(values);
+    initializeValues(values);
     if (retract_init) {
-      values_ = retract_constraints(values_);
+      values_ = retractConstraints(values_);
     }
     if (construct_basis && dim() > 0) {
-      compute_basis();
+      computeBasis();
     }
   }
 
   /** Construct new ConstraintManifold with new values. Note: this function
-   * indirectly calls retract_constraints. */
+   * indirectly calls retractConstraints. */
   ConstraintManifold createWithNewValues(const gtsam::Values& values,
                                          bool retract_init = true) const {
     return ConstraintManifold(cc_, values, params_, true, true, basis_keys_);
@@ -125,7 +125,7 @@ class ConstraintManifold {
 
   /** Given values of variables in CCC that may violate the constraints, compute
    * the values that satisfy the constraints. */
-  Values retract_constraints(const Values& values) const;
+  Values retractConstraints(const Values& values) const;
 
   /// print
   void print(const std::string& s = "") const;
@@ -137,32 +137,34 @@ class ConstraintManifold {
   inline const gtsam::Matrix& basis() const { return basis_; }
 
   /** Compute the tangent space basis for the constraint manifold. */
-  void compute_basis();
+  void computeBasis();
 
  protected:
   /** Initialize the values_ of variables in CCC and compute dimension of the
    * constraint manifold and compute the dimension of the constraint manifold.
    */
-  void initialize_values(const gtsam::Values& values);
+  void initializeValues(const gtsam::Values& values);
 
   /** Perform retraction by minimizing the constraint violation, e.g.,
    * ||h(x)||^2. */
-  gtsam::Values retract_uopt(const gtsam::Values& values) const;
+  gtsam::Values retractUopt(const gtsam::Values& values) const;
 
   /** Perform retraction by performing metric projection, e.g., minimizing
    * ||dist(x,x0)||^2  s.t. h(x)=0. */
-  gtsam::Values retract_proj(const gtsam::Values& values) const;
+  gtsam::Values retractProj(const gtsam::Values& values) const;
 
   /** Perform retraction by minimizing the constraint violation while fixing the
    * specified variables, e.g., min ||h(x)||^2.  s.t. x_s=x0_s. */
-  gtsam::Values retract_p_proj(const gtsam::Values& values) const;
+  gtsam::Values retractPProj(const gtsam::Values& values) const;
 
   /** Compute the tangent space basis as the kernel of Dh(X). */
-  void compute_basis_kernel();
+  void computeBasisKernel();
 
   /** Compute the tangent space basis as the specified variables, the update on
-   * the rest of the variables will be computed through variable elimination. */
-  void compute_basis_specify_variables();
+   * the rest of the variables will be computed through variable elimination.
+   * The basis matrix will be in the form of [B;I], which means the
+   * corresponding rows to the basis variables form the identity matrix. */
+  void computeBasisSpecifyVariables();
 };
 
 // Specialize ConstraintManifold traits to use a Retract/Local

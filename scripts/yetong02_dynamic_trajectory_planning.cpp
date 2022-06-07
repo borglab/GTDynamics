@@ -111,7 +111,7 @@ Values optimize_constraint_manifold(
   auto result = optimizer.optimize();
   gttoc_(constraint_manifold);
 
-  auto problem_dim = optimizer.problem_dimension();
+  auto problem_dim = optimizer.problemDimension();
   std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
             << "\n";
   return result;
