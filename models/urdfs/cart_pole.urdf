@@ -59,6 +59,6 @@
         <parent link="l1"/>
         <child link="l2"/>
         <axis xyz="1 0 0"/>
-        <origin rpy="3.1415 0 0" xyz="0 0 0"/>
+        <origin rpy="3.141592653589793238 0 0" xyz="0 0 0"/>
     </joint>
 </robot>

@@ -77,7 +77,73 @@ TEST(ConstraintManifold, connected_poses) {
                       H_recover_x3));
 }
 
-// TODO: unit test with a kinematics/dynamics example.
+/** Dynamics manifold for cart-pole robot. */
+TEST(ConstraintManifold_retract, cart_pole_dynamics) {
+  // cart-pole robot setting
+  auto robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
+                   .fixLink("l0");
+  int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
+  int l1_id = robot.link("l1")->id(), l2_id = robot.link("l2")->id(),
+      l0_id = robot.link("l0")->id();
+  const gtsam::Vector3 gravity(0, 0, -10);
+  OptimizerSetting opt;
+  auto graph_builder = DynamicsGraph(opt, gravity);
+
+  // constraints graph
+  NonlinearFactorGraph constraints_graph;
+  constraints_graph.add(graph_builder.dynamicsFactorGraph(robot, 0));
+
+  // initial values
+  Initializer initializer;
+  Values values0 = initializer.ZeroValues(robot, 0, 0.0);
+  Values known_values;
+  for (const auto& joint : robot.joints()) {
+    InsertJointAngle(&known_values, joint->id(),
+                     JointAngle(values0, joint->id()));
+    InsertJointVel(&known_values, joint->id(), JointVel(values0, joint->id()));
+    InsertTorque(&known_values, joint->id(), 0.0);
+  }
+  for (const auto& link : robot.links()) {
+    InsertPose(&known_values, link->id(), Pose(values0, link->id()));
+    InsertTwist(&known_values, link->id(), Twist(values0, link->id()));
+  }
+  values0 = graph_builder.linearSolveFD(robot, 0, known_values);
+  Values init_values = values0;
+
+  // basis keys
+  KeyVector basis_keys;
+  basis_keys.push_back(JointAngleKey(j0_id, 0));
+  basis_keys.push_back(JointAngleKey(j1_id, 0));
+  basis_keys.push_back(JointVelKey(j0_id, 0));
+  basis_keys.push_back(JointVelKey(j1_id, 0));
+  basis_keys.push_back(JointAccelKey(j0_id, 0));
+  basis_keys.push_back(JointAccelKey(j1_id, 0));
+
+  // constraint manifold
+  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto cc_params = boost::make_shared<ConstraintManifold::Params>();
+  cc_params->retract_type =
+      ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
+  cc_params->basis_type =
+      ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
+  auto cc = boost::make_shared<ConnectedComponent>(constraints);
+  auto cm =
+      ConstraintManifold(cc, init_values, cc_params, false, true, basis_keys);
+
+  // retract
+  Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
+  auto new_cm = cm.retract(xi);
+  // Check basis variables shall get the exact update.
+  EXPECT(assert_equal(1., new_cm.recover<double>(JointAngleKey(j0_id, 0))));
+  EXPECT(assert_equal(0., new_cm.recover<double>(JointAngleKey(j1_id, 0))));
+  EXPECT(assert_equal(0., new_cm.recover<double>(JointVelKey(j0_id, 0))));
+  EXPECT(assert_equal(0., new_cm.recover<double>(JointVelKey(j1_id, 0))));
+  EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j0_id, 0))));
+  EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j1_id, 0))));
+
+  // Check that all constraints shall be satisfied after retraction.
+  EXPECT(assert_equal(0., cc->merit_graph.error(new_cm.values())));
+}
 
 int main() {
   TestResult tr;
