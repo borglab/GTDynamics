@@ -16,16 +16,15 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/universal_robot/SerialChain.h>
-#include <gtsam/base/timing.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include "manifold_opt_benchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
 
+// Kuka arm planning scenario setting.
 const size_t num_steps = 10;
 auto joint_noise = noiseModel::Isotropic::Sigma(1, 1.0);
 auto joint_limit_noise = noiseModel::Isotropic::Sigma(1, 1e-2);
@@ -41,95 +40,8 @@ auto robot =
 double joint_limit_low = -3.14;
 double joint_limit_high = 3.14;
 
-/** compute error for joint limit error, to reproduce joint limit factor in
- * expressions. */
-class JointLimitFunctor {
- protected:
-  double low_, high_;
-
- public:
-  JointLimitFunctor(const double& low, const double& high)
-      : low_(low), high_(high) {}
-
-  double operator()(const double& q,
-                    OptionalJacobian<1, 1> H_q = boost::none) const {
-    if (q < low_) {
-      if (H_q) *H_q = -gtsam::I_1x1;
-      return low_ - q;
-    } else if (q <= high_) {
-      if (H_q) *H_q = gtsam::Z_1x1;
-      return 0.0;
-    } else {
-      if (H_q) *H_q = gtsam::I_1x1;
-      return q - high_;
-    }
-  }
-};
-
-/** Kinematic trajectory optimization using dynamics factor graph. */
-Values optimize_dynamics_graph(const NonlinearFactorGraph& constraints_graph,
-                               const NonlinearFactorGraph& costs,
-                               const Values& init_values) {
-  NonlinearFactorGraph graph;
-  graph.add(constraints_graph);
-  graph.add(costs);
-
-  LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
-  gttic_(dynamic_factor_graph);
-  auto result = optimizer.optimize();
-  gttoc_(dynamic_factor_graph);
-
-  size_t graph_dim = 0;
-  for (const auto& factor : graph) {
-    graph_dim += factor->dim();
-  }
-  std::cout << "dimension: " << graph_dim << " x " << init_values.dim() << "\n";
-  return result;
-}
-
-/** Kinematic trajectory optimization using constraint manifold. */
-Values optimize_constraint_manifold(
-    const NonlinearFactorGraph& constraints_graph,
-    const NonlinearFactorGraph& costs, const Values& init_values) {
-  auto constraints = ConstraintsFromGraph(constraints_graph);
-
-  LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  // params.minModelFidelity = 0.1;
-  std::cout << "building optimizer\n";
-  ManifoldOptimizerType1 optimizer(costs, constraints, init_values, params);
-  std::cout << "optimize\n";
-  gttic_(constraint_manifold);
-  auto result = optimizer.optimize();
-  gttoc_(constraint_manifold);
-
-  auto problem_dim = optimizer.problemDimension();
-  std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
-            << "\n";
-  return result;
-}
-
-/** Kinematic trajectory optimization using manually defined serial chain
- * manifold. */
-Values optimize_serial_chain_manifold(const NonlinearFactorGraph& costs,
-                                      const Values& init_values) {
-  LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  size_t graph_dim = 0;
-  for (const auto& factor : costs) {
-    graph_dim += factor->dim();
-  }
-  std::cout << "dimension: " << graph_dim << " x " << init_values.dim() << "\n";
-  LevenbergMarquardtOptimizer optimizer(costs, init_values, params);
-  gttic_(serial_chain_manifold);
-  auto result = optimizer.optimize();
-  gttoc_(serial_chain_manifold);
-  return result;
-}
-
-/** Factor graph of all kinematic constraints. */
+/** Factor graph of all kinematic constraints. Include kinematic constraints at
+ * each time step, and the priors for the first step. */
 NonlinearFactorGraph get_constraints_graph() {
   NonlinearFactorGraph constraints_graph;
   // kinematics constraints at each step
@@ -137,7 +49,7 @@ NonlinearFactorGraph get_constraints_graph() {
   for (size_t k = 0; k <= num_steps; k++) {
     constraints_graph.add(graph_builder.qFactors(robot, k));
   }
-  // constraints_graph.print("constraints_graph", GTDKeyFormatter);
+
   // // prior constraints at first step
   size_t k0 = 0;
   for (const auto& joint : robot.joints()) {
@@ -147,7 +59,8 @@ NonlinearFactorGraph get_constraints_graph() {
   return constraints_graph;
 }
 
-/** Cost. */
+/** Cost function for planning, includes cost of rotation joints, joint limit
+ * costs, and cost for reaching target pose at end-effector. */
 NonlinearFactorGraph get_costs() {
   NonlinearFactorGraph costs;
   // rotation costs
@@ -172,11 +85,6 @@ NonlinearFactorGraph get_costs() {
   NonlinearFactorGraph target_costs;
   const auto& ee_link = robot.link(ee_name);
   costs.addPrior(PoseKey(ee_link->id(), num_steps), target_pose, target_noise);
-  // Point3 point_com(0, 0, 0.1);
-  // Point3 target_point(0.0, 0.7, 0.7);
-  // target_costs.emplace_shared<PointGoalFactor>(
-  //     PoseKey(ee_link->id(), num_steps), target_noise, point_com,
-  //     target_point);
   costs.add(rotation_costs);
   costs.add(target_costs);
   costs.add(joint_limit_costs);
@@ -222,6 +130,7 @@ Values get_init_values_sc() {
   return init_values;
 }
 
+/** Same cost function, but imposed on the serial chain manifold. */
 NonlinearFactorGraph get_costs_sc() {
   NonlinearFactorGraph costs;
   // rotation costs
@@ -272,6 +181,24 @@ NonlinearFactorGraph get_costs_sc() {
   return costs;
 }
 
+/** Kinematic trajectory optimization using manually defined serial chain
+ * manifold. */
+Values optimize_serial_chain_manifold(const NonlinearFactorGraph& costs,
+                                      const Values& init_values) {
+  LevenbergMarquardtParams params;
+  params.setVerbosityLM("SUMMARY");
+  size_t graph_dim = 0;
+  for (const auto& factor : costs) {
+    graph_dim += factor->dim();
+  }
+  std::cout << "dimension: " << graph_dim << " x " << init_values.dim() << "\n";
+  LevenbergMarquardtOptimizer optimizer(costs, init_values, params);
+  gttic_(serial_chain_manifold);
+  auto result = optimizer.optimize();
+  gttoc_(serial_chain_manifold);
+  return result;
+}
+
 /** Print joint angles for all steps. */
 void print_joint_angles(const Values& values) {
   for (size_t k = 0; k <= num_steps; k++) {
@@ -319,8 +246,9 @@ void kinematic_planning() {
 
   // optimize constraint manifold
   std::cout << "constraint manifold:\n";
+  auto constraints = ConstraintsFromGraph(constraints_graph);
   auto cm_result =
-      optimize_constraint_manifold(constraints_graph, costs, init_values);
+      optimize_constraint_manifold(constraints, costs, init_values);
   std::cout << "final cost: " << costs.error(cm_result) << "\n";
   std::cout << "constraint violation: " << constraints_graph.error(cm_result)
             << "\n";

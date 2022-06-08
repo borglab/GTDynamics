@@ -18,32 +18,31 @@
 #include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
-#include <gtsam/base/timing.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
+
+#include "manifold_opt_benchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
 using gtsam::noiseModel::Isotropic;
 
+// Cart-pole dynamic planning scenario setting.
 auto robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
                  .fixLink("l0");
 int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
-// cp.print();
-const gtsam::Vector3 gravity(0, 0, -9.8);
-// Noise models:
 auto prior_model = Isotropic::Sigma(1, 1e-7);           // prior constraints.
 auto pos_objectives_model = Isotropic::Sigma(1, 1e-5);  // Pos objectives.
 auto objectives_model = Isotropic::Sigma(1, 5e-3);  // Additional objectives.
 auto control_model = Isotropic::Sigma(1, 20);       // Controls.
 gtsam::Vector6 X_i = gtsam::Vector6::Constant(6, 0),
                X_T = (gtsam::Vector(6) << 1, 0, 0, M_PI, 0, 0).finished();
+const gtsam::Vector3 gravity(0, 0, -9.8);
 auto graph_builder = DynamicsGraph(gravity);
-
 double T = 2, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).
 int num_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
 auto collocation_scheme = CollocationScheme::Trapezoidal;
 
+/** Function to manually define the basis keys for each constraint manifold. */
 KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
   KeyVector basis_keys;
   for (const Key& key : cc->keys) {
@@ -61,75 +60,11 @@ KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
   return basis_keys;
 }
 
-/** Kinematic trajectory optimization using dynamics factor graph. */
-Values optimize_dynamics_graph(const NonlinearFactorGraph& constraints_graph,
-                               const NonlinearFactorGraph& costs,
-                               const Values& init_values) {
-  NonlinearFactorGraph graph;
-  graph.add(constraints_graph);
-  graph.add(costs);
-
-  LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
-  gttic_(dynamic_factor_graph);
-  auto result = optimizer.optimize();
-  gttoc_(dynamic_factor_graph);
-
-  size_t graph_dim = 0;
-  for (const auto& factor : graph) {
-    graph_dim += factor->dim();
-  }
-  std::cout << "dimension: " << graph_dim << " x " << init_values.dim() << "\n";
-  return result;
-}
-
-/** Kinematic trajectory optimization using constraint manifold. */
-Values optimize_constraint_manifold(
-    const NonlinearFactorGraph& constraints_graph,
-    const NonlinearFactorGraph& costs, const Values& init_values) {
-  auto constraints = ConstraintsFromGraph(constraints_graph);
-
-  LevenbergMarquardtParams params;
-  params.setVerbosityLM("SUMMARY");
-  // params.minModelFidelity = 0.5;
-  // params.setlambdaInitial(1e2);
-  // params.setlambdaUpperBound(1e10);
-  auto manopt_params = boost::make_shared<ManifoldOptimizer::Params>();
-  manopt_params->cc_params->retract_type =
-      ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
-  manopt_params->cc_params->basis_type =
-      ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
-  // manopt_params->cc_params->lm_params.setVerbosityLM("SUMMARY");
-  // params.minModelFidelity = 0.1;
-  std::cout << "building optimizer\n";
-  ManifoldOptimizerType1 optimizer(costs, constraints, init_values, params,
-                                   manopt_params, &FindBasisKeys);
-  // optimizer.print("", GTDKeyFormatter);
-  std::cout << "optimize\n";
-  gttic_(constraint_manifold);
-  auto result = optimizer.optimize();
-  gttoc_(constraint_manifold);
-
-  auto problem_dim = optimizer.problemDimension();
-  std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
-            << "\n";
-  return result;
-}
-
-/** Factor graph of all kinematic constraints. */
+/** Factor graph of all constraints, includes kinodynamic constraints at each
+ * step, pendulum joint unactuated constraint, initial condition for first step.
+ */
 NonlinearFactorGraph get_constraints_graph() {
   NonlinearFactorGraph graph;
-
-  // OptimizerSetting opt;
-  // opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.001);
-  // opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.01);
-  // opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
-  // opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
-  // opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, 0.1);
-  // opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.1);
-  // auto new_graph_builder = DynamicsGraph(opt, gravity);
-
   // kinodynamic constraints at each step
   for (size_t k = 0; k <= num_steps; k++) {
     graph.add(graph_builder.dynamicsFactorGraph(robot, k));
@@ -149,6 +84,7 @@ NonlinearFactorGraph get_constraints_graph() {
   return graph;
 }
 
+/** Cost for planning, includes terminal state objectives, control costs.*/
 NonlinearFactorGraph get_costs() {
   NonlinearFactorGraph graph;
 
@@ -173,6 +109,8 @@ NonlinearFactorGraph get_costs() {
   return graph;
 }
 
+/** Collocation between each step, benchmark will be made by either treating
+ * collocation as costs or constraints. */
 NonlinearFactorGraph get_collocation() {
   NonlinearFactorGraph graph;
   for (int k = 0; k < num_steps; k++) {
@@ -182,6 +120,7 @@ NonlinearFactorGraph get_collocation() {
   return graph;
 }
 
+/** Initial values seet as rest pose for all steps. */
 Values get_init_values() {
   Initializer initializer;
   Values values0 = initializer.ZeroValues(robot, 0, 0.0);
@@ -233,6 +172,8 @@ void print_joint_angles(const Values& values) {
   }
 }
 
+/** Cart-pole dynamic planning example benchmarking (1) dynamic factor graph (2)
+ * constraint manifold. */
 void dynamic_planning() {
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
@@ -254,8 +195,9 @@ void dynamic_planning() {
             << constraints_graph.error(dfg_result_feasible) << "\n";
 
   std::cout << "dynamics graph with infeasible initial values:\n";
-  auto dfg_result_infeasible = optimize_dynamics_graph(constraints_graph, costs,
-                                                       init_values_nonfeasible);
+  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto dfg_result_infeasible = optimize_dynamics_graph(
+      constraints_graph, costs, init_values_nonfeasible);
   std::cout << "final cost: " << costs.error(dfg_result_infeasible) << "\n";
   std::cout << "constraint violation: "
             << constraints_graph.error(dfg_result_infeasible) << "\n";
@@ -264,7 +206,7 @@ void dynamic_planning() {
   // optimize constraint manifold
   std::cout << "constraint manifold:\n";
   auto cm_result =
-      optimize_constraint_manifold(constraints_graph, costs, init_values);
+      optimize_constraint_manifold_specify_variables(constraints, costs, init_values, &FindBasisKeys);
   std::cout << "final cost: " << costs.error(cm_result) << "\n";
   std::cout << "constraint violation: " << constraints_graph.error(cm_result)
             << "\n";
