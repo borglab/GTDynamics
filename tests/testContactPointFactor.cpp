@@ -79,6 +79,61 @@ TEST(ContactPointFactor, Jacobians) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
+TEST(ContactPoseFactor, Constructor) {
+  Key link_pose_key = gtdynamics::PoseKey(0, 0),
+      point_key = gtdynamics::PoseKey(1, 0);
+  Point3 wPc(0, 0, 1);
+  Pose3 linkTcontact(Rot3(), wPc);
+  ContactPoseFactor(link_pose_key, point_key, kModel, linkTcontact);
+
+  PointOnLink point_on_link(robot.links()[0], wPc);
+  ContactPoseFactor(point_on_link, point_key, kModel, 10);
+}
+
+TEST(ContactPoseFactor, Error) {
+  LinkSharedPtr end_link = robot.links()[0];
+  Point3 wPc(0, 0, 1);
+  PointOnLink point_on_link{end_link, wPc};
+
+  Key point_key = gtdynamics::PoseKey(1, 0);
+
+  Pose3 wTcontact(Rot3(), wPc);
+
+  ContactPoseFactor factor(point_on_link, point_key, kModel, 0);
+
+  Vector error = factor.evaluateError(point_on_link.link->bMcom(), wTcontact);
+  Vector6 expected;
+  expected << 0, 0, 0, 0, 0, -0.1;
+  EXPECT(assert_equal(expected, error, 1e-9));
+
+  // Check error when contact point is not consistent
+  Point3 wPc2(1, 1, 2);
+  Pose3 wTcontact2(Rot3(), wPc2);
+  error = factor.evaluateError(point_on_link.link->bMcom(), wTcontact2);
+  Vector6 expected2;
+  expected2 << 0, 0, 0, 1.0, 1.0, 0.9;
+  EXPECT(assert_equal(expected2, error, 1e-9));
+
+  //TODO(Varun) Add tests for when there is deviation in rotation.
+}
+
+// TEST(ContactPoseFactor, Jacobians) {
+//   auto end_link = robot.links()[0];
+//   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
+
+//   Key point_key = gtdynamics::PoseKey(1, 0);
+//   Point3 wPc(0, 0, 1);
+
+//   ContactPoseFactor factor(point_on_link, point_key, kModel, 0);
+
+//   Values values;
+//   InsertPose(&values, end_link->id(), 0, point_on_link.link->bMcom());
+//   values.insert<Point3>(point_key, wPc);
+
+//   // Check Jacobians
+//   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+// }
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
