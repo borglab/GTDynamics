@@ -133,29 +133,29 @@ class ContactPoseFactor
    * Constructor.
    *
    * @param link_pose_key Key for the CoM pose of the link in contact.
-   * @param point_key Key for the contact point in the environment.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
    * @param cost_model Noise model associated with this factor.
    * @param contact_in_com Static transform from point of contact to link CoM.
    */
-  ContactPoseFactor(gtsam::Key link_pose_key, gtsam::Key point_key,
+  ContactPoseFactor(gtsam::Key link_pose_key, gtsam::Key contact_pose_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     const gtsam::Pose3 &comTcontact)
-      : Base(cost_model, link_pose_key, point_key), comTcontact_(comTcontact) {}
+      : Base(cost_model, link_pose_key, contact_pose_key), comTcontact_(comTcontact) {}
 
   /**
    * Convenience constructor which uses PointOnLink.
    *
    * @param point_on_link PointOnLink object which encapsulates the link and its
    * contact point.
-   * @param point_key Key for the contact point in the environment.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
    * @param cost_model Noise model associated with this factor.
    * @param t The time step at which to add the factor (default t=0).
    */
-  ContactPoseFactor(const PointOnLink &point_on_link, gtsam::Key point_key,
+  ContactPoseFactor(const PointOnLink &point_on_link, gtsam::Key contact_pose_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     size_t t = 0)
       : ContactPoseFactor(
-            gtdynamics::PoseKey(point_on_link.link->id(), t), point_key,
+            gtdynamics::PoseKey(point_on_link.link->id(), t), contact_pose_key,
             cost_model,
             // Contact reference frame has same rotation as the link CoM
             gtsam::Pose3(gtsam::Rot3(), point_on_link.point)) {}
