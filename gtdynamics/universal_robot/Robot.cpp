@@ -125,6 +125,8 @@ void Robot::print(const std::string &s) const {
     cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
     cout << "\tcom pose: " << link->bMcom().rotation().rpy().transpose() << ", "
          << link->bMcom().translation().transpose() << "\n";
+    cout << "\tlink pose: " << link->bMlink().rotation().rpy().transpose() << ", "
+         << link->bMlink().translation().transpose() << "\n";
     cout << "\tjoints: ";
     for (const auto &joint : link->joints()) {
       cout << joint->name() << " ";

@@ -126,6 +126,16 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     Fixed = 'F',
   };
 
+  static std::string JointTypeString(const Type &type) {
+    std::map<Type, std::string> joint_type_map = {
+        {Revolute, "Revolute"},
+        {Prismatic, "Prismatic"},
+        {Screw, "Screw"},
+        {Fixed, "Fixed"},
+    };
+    return joint_type_map[type];
+  }
+
  protected:
   /// This joint's name.
   std::string name_;
