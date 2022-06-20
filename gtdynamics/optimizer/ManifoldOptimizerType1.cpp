@@ -1,101 +1,146 @@
-#include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
-
 #include <gtdynamics/optimizer/ConstraintManifold.h>
+#include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
 #include <gtdynamics/optimizer/SubstituteFactor.h>
 
 namespace gtsam {
 
 /* ************************************************************************* */
-const gtsam::Values& ManifoldOptimizerType1::optimize() {
-  nonlinear_optimizer_->optimize();
-  return baseValues();
+Values ManifoldOptimizerType1::optimize(
+    const NonlinearFactorGraph& costs,
+    const gtdynamics::EqualityConstraints& constraints,
+    const Values& init_values,
+    gtdynamics::ConstrainedOptResult* intermediate_result) const {
+  auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
+  return optimize(mopt_problem);
 }
 
 /* ************************************************************************* */
-const Values& ManifoldOptimizerType1::baseValues() {
-  base_values_ = Values();
-  for (const Key& key : fc_manifolds_.keys()) {
-    auto constraint_manifold = fc_manifolds_.at<ConstraintManifold>(key);
-    base_values_.insert(constraint_manifold.values());
-  }
-  const Values& values = nonlinear_optimizer_->values();
-  for (const Key& key : unconstrained_keys_) {
-    base_values_.insert(key, values.at(key));
-  }
-  for (const Key& key : component_key_vec_) {
-    base_values_.insert(values.at<ConstraintManifold>(key).values());
-  }
-  return base_values_;
+Values ManifoldOptimizerType1::optimize(
+    const ManifoldOptProblem& mopt_problem) const {
+  auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
+  auto nopt_values = nonlinear_optimizer->optimize();
+  return baseValues(mopt_problem, nopt_values);
 }
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::constructManifoldValues(
-    const Values& init_values) {
-  Values manifold_values;
-  component_key_vec_ = KeyVector();
+Values ManifoldOptimizerType1::baseValues(
+    const ManifoldOptProblem& mopt_problem, const Values& nopt_values) const {
+  Values base_values;
+  for (const Key& key : mopt_problem.fixed_manifolds_.keys()) {
+    base_values.insert(
+        mopt_problem.fixed_manifolds_.at<ConstraintManifold>(key).values());
+  }
+  for (const Key& key : mopt_problem.unconstrained_keys_) {
+    base_values.insert(key, nopt_values.at(key));
+  }
+  for (const Key& key : mopt_problem.manifold_keys_) {
+    base_values.insert(nopt_values.at<ConstraintManifold>(key).values());
+  }
+  return base_values;
+}
 
-  // Construct values for constraint manifold.
-  for (size_t i = 0; i < components_.size(); i++) {
-    const auto& component = components_.at(i);
-    const Key& component_key = *component->keys.begin();
+/* ************************************************************************* */
+ManifoldOptProblem ManifoldOptimizerType1::initializeMoptProblem(
+    const gtsam::NonlinearFactorGraph& costs,
+    const gtdynamics::EqualityConstraints& constraints,
+    const gtsam::Values& init_values) const {
+  EqConsOptProblem ecopt_problem(costs, constraints, init_values);
+  return problemTransform(ecopt_problem);
+}
+
+/* ************************************************************************* */
+ManifoldOptProblem ManifoldOptimizerType1::problemTransform(
+    const EqConsOptProblem& ecopt_problem) const {
+  ManifoldOptProblem mopt_problem;
+  mopt_problem.components_ =
+      identifyConnectedComponents(ecopt_problem.constraints_);
+  constructMoptValues(ecopt_problem, mopt_problem);
+  constructMoptGraph(ecopt_problem, mopt_problem);
+  return mopt_problem;
+}
+
+/* ************************************************************************* */
+void ManifoldOptimizerType1::constructMoptValues(
+    const EqConsOptProblem& ecopt_problem,
+    ManifoldOptProblem& mopt_problem) const {
+  constructManifoldValues(ecopt_problem, mopt_problem);
+  constructUnconstrainedValues(ecopt_problem, mopt_problem);
+}
+
+/* ************************************************************************* */
+void ManifoldOptimizerType1::constructManifoldValues(
+    const EqConsOptProblem& ecopt_problem,
+    ManifoldOptProblem& mopt_problem) const {
+  for (size_t i = 0; i < mopt_problem.components_.size(); i++) {
+    // Find the values of variables in the component.
+    const auto& component = mopt_problem.components_.at(i);
+    const Key& component_key = *component->keys_.begin();
     Values component_values;
-    for (const Key& key : component->keys) {
-      component_values.insert(key, init_values.at(key));
+    for (const Key& key : component->keys_) {
+      component_values.insert(key, ecopt_problem.values_.at(key));
     }
+    // Construct manifold value
     KeyVector basis_keys;
-    if (params_->cc_params->retract_type ==
+    if (p_.cc_params->retract_type ==
             ConstraintManifold::Params::RetractType::PARTIAL_PROJ ||
-        params_->cc_params->basis_type ==
+        p_.cc_params->basis_type ==
             ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES) {
       basis_keys = (*basis_key_func_)(component);
     }
     auto constraint_manifold =
-        ConstraintManifold(component, component_values, params_->cc_params,
-                           params_->retract_init, true, basis_keys);
+        ConstraintManifold(component, component_values, p_.cc_params,
+                           p_.retract_init, true, basis_keys);
+    // check if the manifold is fully constrained
     if (constraint_manifold.dim() > 0) {
-      component_key_vec_.push_back(component_key);
-      manifold_values.insert(component_key, constraint_manifold);
+      mopt_problem.values_.insert(component_key, constraint_manifold);
+      mopt_problem.manifold_keys_.insert(component_key);
     } else {
-      fc_manifolds_.insert(component_key, constraint_manifold);
+      mopt_problem.fixed_manifolds_.insert(component_key, constraint_manifold);
     }
   }
-
-  // Add values for unconstrained keys.
-  KeySet unconstrained_keys_ = costs_.keys();
-  for (const auto& component : components_) {
-    for (const Key& key : component->keys) {
-      if (unconstrained_keys_.find(key) != unconstrained_keys_.end()) {
-        unconstrained_keys_.erase(key);
-      }
-    }
-  }
-  for (const Key& key : unconstrained_keys_) {
-    manifold_values.insert(key, init_values.at(key));
-  }
-  return manifold_values;
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph ManifoldOptimizerType1::constructManifoldGraph(
-    const Values& manifold_values) {
+void ManifoldOptimizerType1::constructUnconstrainedValues(
+    const EqConsOptProblem& ecopt_problem,
+    ManifoldOptProblem& mopt_problem) const {
+  // Find out which variables are unconstrained
+  mopt_problem.unconstrained_keys_ = ecopt_problem.costs_.keys();
+  KeySet& unconstrained_keys = mopt_problem.unconstrained_keys_;
+  for (const auto& component : mopt_problem.components_) {
+    for (const Key& key : component->keys_) {
+      if (unconstrained_keys.find(key) != unconstrained_keys.end()) {
+        unconstrained_keys.erase(key);
+      }
+    }
+  }
+  // Copy the values of unconstrained variables
+  for (const Key& key : unconstrained_keys) {
+    mopt_problem.values_.insert(key, ecopt_problem.values_.at(key));
+  }
+}
+
+/* ************************************************************************* */
+void ManifoldOptimizerType1::constructMoptGraph(
+    const EqConsOptProblem& ecopt_problem,
+    ManifoldOptProblem& mopt_problem) const {
   // Construct base key to component map.
   std::map<Key, Key> key_component_map;
-  for (const Key& cm_key : component_key_vec_) {
-    auto cm = manifold_values.at<ConstraintManifold>(cm_key);
+  for (const Key& cm_key : mopt_problem.manifold_keys_) {
+    auto cm = mopt_problem.values_.at<ConstraintManifold>(cm_key);
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
   }
-  for (const Key& cm_key : fc_manifolds_.keys()) {
-    auto cm = fc_manifolds_.at<ConstraintManifold>(cm_key);
+  for (const Key& cm_key : mopt_problem.fixed_manifolds_.keys()) {
+    auto cm = mopt_problem.fixed_manifolds_.at<ConstraintManifold>(cm_key);
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
   }
 
-  // Turn factors involved with constraint varibles into SubstituteFactor.
-  NonlinearFactorGraph manifold_graph;
-  for (const auto& factor : costs_) {
+  // Turn factors involved with constraint variables into SubstituteFactor.
+  for (const auto& factor : ecopt_problem.costs_) {
     std::map<Key, Key> replacement_map;
     for (const Key& key : factor->keys()) {
       if (key_component_map.find(key) != key_component_map.end()) {
@@ -106,78 +151,67 @@ NonlinearFactorGraph ManifoldOptimizerType1::constructManifoldGraph(
       NoiseModelFactor::shared_ptr noise_factor =
           boost::dynamic_pointer_cast<NoiseModelFactor>(factor);
       auto subs_factor = boost::make_shared<SubstituteFactor>(
-          noise_factor, replacement_map, fc_manifolds_);
+          noise_factor, replacement_map, mopt_problem.fixed_manifolds_);
       if (subs_factor->check_active()) {
-        manifold_graph.add(subs_factor);
+        mopt_problem.graph_.add(subs_factor);
       }
     } else {
-      manifold_graph.add(factor);
+      mopt_problem.graph_.add(factor);
     }
   }
-
-  return manifold_graph;
 }
 
 /* ************************************************************************* */
-void ManifoldOptimizerType1::constructNonlinearOptimizer(
-    const Values& init_values, const NonlinearOptParamsVariant& params) {
-  Values manifold_values = constructManifoldValues(init_values);
-  NonlinearFactorGraph manifold_graph =
-      constructManifoldGraph(manifold_values);
-  if (params.type() == typeid(GaussNewtonParams)) {
-    nonlinear_optimizer_ = boost::make_shared<GaussNewtonOptimizer>(
-        manifold_graph, manifold_values, boost::get<GaussNewtonParams>(params));
-  } else if (params.type() == typeid(LevenbergMarquardtParams)) {
-    nonlinear_optimizer_ = boost::make_shared<LevenbergMarquardtOptimizer>(
-        manifold_graph, manifold_values,
-        boost::get<LevenbergMarquardtParams>(params));
-  } else if (params.type() == typeid(DoglegParams)) {
-    nonlinear_optimizer_ = boost::make_shared<DoglegOptimizer>(
-        manifold_graph, manifold_values, boost::get<DoglegParams>(params));
-  }
-}
-
-/* ************************************************************************* */
-int ManifoldOptimizerType1::getInnerIterations() const {
-  if (const auto lm_pointer =
-          boost::dynamic_pointer_cast<LevenbergMarquardtOptimizer>(
-              nonlinear_optimizer_)) {
-    return lm_pointer->getInnerIterations();
+boost::shared_ptr<NonlinearOptimizer>
+ManifoldOptimizerType1::constructNonlinearOptimizer(
+    const ManifoldOptProblem& mopt_problem) const {
+  if (nopt_params_.type() == typeid(GaussNewtonParams)) {
+    return boost::make_shared<GaussNewtonOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        boost::get<GaussNewtonParams>(nopt_params_));
+  } else if (nopt_params_.type() == typeid(LevenbergMarquardtParams)) {
+    return boost::make_shared<LevenbergMarquardtOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        boost::get<LevenbergMarquardtParams>(nopt_params_));
+  } else if (nopt_params_.type() == typeid(DoglegParams)) {
+    return boost::make_shared<DoglegOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        boost::get<DoglegParams>(nopt_params_));
   } else {
-    return -1;
+    return boost::make_shared<LevenbergMarquardtOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_);
   }
 }
 
 /* ************************************************************************* */
-std::pair<size_t, size_t> ManifoldOptimizerType1::problemDimension() const {
-  size_t values_dim = nonlinear_optimizer_->values().dim();
+std::pair<size_t, size_t> ManifoldOptProblem::problemDimension() const {
+  size_t values_dim = values_.dim();
   size_t graph_dim = 0;
-  for (const auto& factor : nonlinear_optimizer_->graph()) {
+  for (const auto& factor : graph_) {
     graph_dim += factor->dim();
   }
   return std::make_pair(graph_dim, values_dim);
 }
 
 /* ************************************************************************* */
-void ManifoldOptimizerType1::print(const std::string& s,
-                                   const KeyFormatter& keyFormatter) const {
+void ManifoldOptProblem::print(const std::string& s,
+                               const KeyFormatter& keyFormatter) const {
   std::cout << s;
   std::cout << "found " << components_.size()
-            << " components: " << component_key_vec_.size() << " free, "
-            << fc_manifolds_.size() << " fixed\n";
-  size_t i = 0;
-  for (size_t i = 0; i < component_key_vec_.size(); i++) {
-    Key cm_key = component_key_vec_.at(i);
-    auto cm = nonlinear_optimizer_->values().at<ConstraintManifold>(cm_key);
-    std::cout << "component " << i << ":\tdimension " << cm.dim() << "\n";
+            << " components: " << manifold_keys_.size() << " free, "
+            << fixed_manifolds_.size() << " fixed\n";
+  for (const Key& cm_key : manifold_keys_) {
+    auto cm = values_.at<ConstraintManifold>(cm_key);
+    std::cout << "component " << keyFormatter(cm_key) << ":\tdimension "
+              << cm.dim() << "\n";
     for (const auto& key : cm.values().keys()) {
       std::cout << "\t" << keyFormatter(key);
     }
     std::cout << "\n";
   }
   std::cout << "fully constrained manifolds:\n";
-  for (const auto& cm_key : fc_manifolds_.keys()) {
-    auto cm = fc_manifolds_.at<ConstraintManifold>(cm_key);
+  for (const auto& cm_key : fixed_manifolds_.keys()) {
+    auto cm = fixed_manifolds_.at<ConstraintManifold>(cm_key);
     for (const auto& key : cm.values().keys()) {
       std::cout << "\t" << keyFormatter(key);
     }

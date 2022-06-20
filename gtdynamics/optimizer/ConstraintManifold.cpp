@@ -24,13 +24,13 @@ namespace gtsam {
 void ConstraintManifold::initializeValues(const gtsam::Values& values) {
   values_ = gtsam::Values();
   embedding_dim_ = 0;
-  for (const gtsam::Key& key : cc_->keys) {
+  for (const gtsam::Key& key : cc_->keys_) {
     const auto& value = values.at(key);
     embedding_dim_ += value.dim();
     values_.insert(key, value);
   }
   constraint_dim_ = 0;
-  for (const auto& constraint : cc_->constraints) {
+  for (const auto& constraint : cc_->constraints_) {
     constraint_dim_ += constraint->dim();
   }
   if (embedding_dim_ > constraint_dim_) {
@@ -79,14 +79,18 @@ ConstraintManifold ConstraintManifold::retract(const gtsam::Vector& xi,
   // Compute delta for each variable and perform update.
   gtsam::Vector x_xi = basis_ * xi;
   gtsam::VectorValues delta;
-  for (const Key& key : cc_->keys) {
+  for (const Key& key : cc_->keys_) {
     delta.insert(key, x_xi.middleRows(var_location_.at(key), var_dim_.at(key)));
   }
   gtsam::Values new_values = values_.retract(delta);
 
-  // Temporarily set jacobian as 0 since they are not used for optimization.
-  if (H1) H1->setZero();
-  if (H2) H2->setZero();
+  // Set jacobian as 0 since they are not used for optimization.
+  if (H1)
+    throw std::runtime_error(
+        "ConstraintManifold retract jacobian not implmented.");
+  if (H2)
+    throw std::runtime_error(
+        "ConstraintManifold retract jacobian not implmented.");
 
   // Satisfy the constraints in the connected component.
   return createWithNewValues(new_values, true);
@@ -106,7 +110,7 @@ gtsam::Vector ConstraintManifold::localCoordinates(const ConstraintManifold& g,
   }
   gtsam::Vector xi = basis_pinv * xi_base;
 
-  // Temporarily set jacobian as 0 since they are not used for optimization.
+  // Set jacobian as 0 since they are not used for optimization.
   if (H1)
     throw std::runtime_error(
         "ConstraintManifold localCoordinates jacobian not implmented.");
@@ -134,12 +138,12 @@ gtsam::Values ConstraintManifold::retractUopt(
     const gtsam::Values& values) const {
   // return values;
   gtsam::Values init_values_cc;
-  for (const Key& key : cc_->keys) {
+  for (const Key& key : cc_->keys_) {
     init_values_cc.insert(key, values.at(key));
   }
 
   // TODO: avoid copy-paste of graph, avoid constructing optimzier everytime
-  gtsam::LevenbergMarquardtOptimizer optimizer(cc_->merit_graph, init_values_cc,
+  gtsam::LevenbergMarquardtOptimizer optimizer(cc_->merit_graph_, init_values_cc,
                                                params_->lm_params);
   return optimizer.optimize();
 }
@@ -149,7 +153,7 @@ gtsam::Values ConstraintManifold::retractProj(
     const gtsam::Values& values) const {
   NonlinearFactorGraph prior_graph;
   Values init_values_cc;
-  for (const Key& key : cc_->keys) {
+  for (const Key& key : cc_->keys_) {
     init_values_cc.insert(key, values.at(key));
     size_t dim = values.at(key).dim();
     auto linear_factor = boost::make_shared<JacobianFactor>(
@@ -166,19 +170,20 @@ gtsam::Values ConstraintManifold::retractProj(
   gtdynamics::PenaltyMethodParameters al_params(params_->lm_params);
   gtdynamics::PenaltyMethodOptimizer optimizer(al_params);
 
-  return optimizer.optimize(prior_graph, cc_->constraints, init_values_cc);
+  return optimizer.optimize(prior_graph, cc_->constraints_, init_values_cc);
 }
 
 /* ************************************************************************* */
 gtsam::Values ConstraintManifold::retractPProj(
     const gtsam::Values& values) const {
   Values init_values_cc;
-  for (const Key& key : cc_->keys) {
+  for (const Key& key : cc_->keys_) {
     init_values_cc.insert(key, values.at(key));
   }
-  NonlinearFactorGraph graph = cc_->merit_graph;
+  NonlinearFactorGraph graph = cc_->merit_graph_;
   for (const Key& key : basis_keys_) {
     size_t dim = values.at(key).dim();
+    // TODO: make it a tunable parameter.
     auto linear_factor = boost::make_shared<JacobianFactor>(
         key, Matrix::Identity(dim, dim) * 1e6, Vector::Zero(dim),
         noiseModel::Unit::Create(dim));
@@ -194,7 +199,7 @@ gtsam::Values ConstraintManifold::retractPProj(
 
 /* ************************************************************************* */
 void ConstraintManifold::computeBasisKernel() {
-  auto linear_graph = cc_->merit_graph.linearize(values_);
+  auto linear_graph = cc_->merit_graph_.linearize(values_);
   JacobianFactor combined(*linear_graph);
   auto augmented = combined.augmentedJacobian();
   Matrix A = augmented.leftCols(augmented.cols() - 1);  // m x n
@@ -226,7 +231,7 @@ void ConstraintManifold::computeBasisSpecifyVariables() {
   // the merit graph of constraints, and form a bayes net. The bays net
   // represents how other variables depends on the basis variables, e.g., 
   // X_other = B x X_basis.
-  auto linear_graph = cc_->merit_graph.linearize(values_);
+  auto linear_graph = cc_->merit_graph_.linearize(values_);
   auto full_ordering =
       Ordering::ColamdConstrainedLast(*linear_graph, basis_keys_);
   Ordering ordering = full_ordering;

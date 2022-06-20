@@ -45,7 +45,7 @@ auto collocation_scheme = CollocationScheme::Trapezoidal;
 /** Function to manually define the basis keys for each constraint manifold. */
 KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
   KeyVector basis_keys;
-  for (const Key& key : cc->keys) {
+  for (const Key& key : cc->keys_) {
     auto symb = DynamicsSymbol(key);
     if (symb.label() == "q") {
       basis_keys.push_back(key);

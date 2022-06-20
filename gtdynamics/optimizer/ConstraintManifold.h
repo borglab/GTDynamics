@@ -94,31 +94,32 @@ class ConstraintManifold {
     return ConstraintManifold(cc_, values, params_, true, true, basis_keys_);
   }
 
-  /** Dimension of the constraint manifold. */
+  /// Dimension of the constraint manifold.
   inline size_t dim() const { return dim_; }
 
-  /** Base values of the CCC. */
+  /// Base values of the CCC.
   inline const Values& values() const { return values_; }
 
-  /** get base value with optional Jacobian. */
+  /// Get base value with optional Jacobian.
   const gtsam::Value& recover(const gtsam::Key key,
                               ChartJacobian H1 = boost::none) const;
 
-  /** get base value by type with optional Jacobian. */
+  /// Get base value by type with optional Jacobian.
   template <typename ValueType>
   inline ValueType recover(const gtsam::Key key,
                            ChartJacobian H1 = boost::none) const {
     return recover(key, H1).cast<ValueType>();
   }
 
-  /// Retraction of the constraint manifold, e.g., retraction required for gtsam
-  /// manifold type.
+  /** Retraction of the constraint manifold, e.g., retraction required for gtsam
+   * manifold type. Note: Jacobians are set as zero since they are not required
+   * for optimization. */
   ConstraintManifold retract(const gtsam::Vector& xi,
                              ChartJacobian H1 = boost::none,
                              ChartJacobian H2 = boost::none) const;
 
-  /// LocalCoordinates of the constraint manifold, e.g., localCoordinates
-  /// required for gtsam manifold type.
+  /** LocalCoordinates of the constraint manifold, e.g., localCoordinates
+   * required for gtsam manifold type. */
   gtsam::Vector localCoordinates(const ConstraintManifold& g,
                                  ChartJacobian H1 = boost::none,
                                  ChartJacobian H2 = boost::none) const;
@@ -133,10 +134,10 @@ class ConstraintManifold {
   /// equals
   bool equals(const ConstraintManifold& other, double tol = 1e-8) const;
 
-  /** Return the basis of the tangent space. */
+  /// Return the basis of the tangent space.
   inline const gtsam::Matrix& basis() const { return basis_; }
 
-  /** Compute the tangent space basis for the constraint manifold. */
+  /// Compute the tangent space basis for the constraint manifold.
   void computeBasis();
 
  protected:
@@ -157,7 +158,7 @@ class ConstraintManifold {
    * specified variables, e.g., min ||h(x)||^2.  s.t. x_s=x0_s. */
   gtsam::Values retractPProj(const gtsam::Values& values) const;
 
-  /** Compute the tangent space basis as the kernel of Dh(X). */
+  /// Compute the tangent space basis as the kernel of Dh(X).
   void computeBasisKernel();
 
   /** Compute the tangent space basis as the specified variables, the update on

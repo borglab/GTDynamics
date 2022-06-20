@@ -22,7 +22,29 @@
 
 #include <boost/variant.hpp>
 
+using gtdynamics::EqConsOptProblem;
+
 namespace gtsam {
+
+/// Manifold optimization problem.
+struct ManifoldOptProblem {
+  NonlinearFactorGraph graph_;  // cost function on constraint manifolds
+  std::vector<ConnectedComponent::shared_ptr>
+      components_;  // All the constraint-connected components
+  Values
+      values_;  // values for constraint manifolds and unconstrained variables
+  Values fixed_manifolds_;     // fully constrained variables
+  KeySet unconstrained_keys_;  // keys for unconstrained variables
+  KeySet manifold_keys_;       // keys for constraint manifold variables
+
+  /** Dimension of the manifold optimization problem, as factor dimension x
+   * variable dimension. */
+  std::pair<size_t, size_t> problemDimension() const;
+  
+  /// Customizable print function.
+  void print(const std::string& s = "",
+             const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;
+};
 
 /** Manifold Optimizer that replace each constraint-connected component with a
  * constraint manifold variable */
@@ -34,61 +56,76 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
       NonlinearOptParamsVariant;
 
  protected:
-  boost::shared_ptr<NonlinearOptimizer> nonlinear_optimizer_;
-  KeyVector component_key_vec_;
-  KeySet unconstrained_keys_;
-  Values fc_manifolds_;
-  Values base_values_;
+  NonlinearOptParamsVariant nopt_params_;
+  boost::optional<BasisKeyFunc>
+      basis_key_func_;  // ad-hoc function to manually specify the basis keys
+                        // for each constraint manifold
 
  public:
-  /** Default constructor. */
-  ManifoldOptimizerType1() {}
-
-  /** Constructor. */
+  /// Construct from parameters.
   ManifoldOptimizerType1(
-      const gtsam::NonlinearFactorGraph& costs,
-      const gtdynamics::EqualityConstraints& constraints,
-      const gtsam::Values& init_values,
+      const ManifoldOptimizerParameters& mopt_params,
       const NonlinearOptParamsVariant& nopt_params,
-      const ManifoldOptimizer::Params::shared_ptr& params =
-          boost::make_shared<Params>(),
       boost::optional<BasisKeyFunc> basis_key_func = boost::none)
-      : ManifoldOptimizer(costs, constraints, params, basis_key_func) {
-    constructNonlinearOptimizer(init_values, nopt_params);
-  }
+      : ManifoldOptimizer(mopt_params),
+        nopt_params_(nopt_params),
+        basis_key_func_(basis_key_func) {}
 
-  /** Virtual destructor. */
+  /// Virtual destructor.
   virtual ~ManifoldOptimizerType1() {}
 
-  virtual const gtsam::Values& optimize() override;
+  /** Run manifold optimization by substituting the constrained variables with
+   * the constraint manifold variables. */
+  virtual gtsam::Values optimize(
+      const gtsam::NonlinearFactorGraph& graph,
+      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::Values& initial_values,
+      gtdynamics::ConstrainedOptResult* intermediate_result =
+          nullptr) const override;
 
-  /// construct base values and return by reference
-  const Values& baseValues();
+  /// Optimization given manifold optimization problem.
+  gtsam::Values optimize(const ManifoldOptProblem& mopt_problem) const;
 
-  int getInnerIterations() const;
+  /// Initialize the manifold optization problem.
+  ManifoldOptProblem initializeMoptProblem(
+      const gtsam::NonlinearFactorGraph& costs,
+      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::Values& init_values) const;
 
-  /** Call iterate() of NonlinearOptimizer. */
-  void iterate() { nonlinear_optimizer_->iterate(); }
+  /// Create the underlying nonlinear optimizer for manifold optimization.
+  boost::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
+      const ManifoldOptProblem& mopt_problem) const;
 
-  virtual void print(
-      const std::string& s = "",
-      const KeyFormatter& keyFormatter = DefaultKeyFormatter) const override;
-
-  /** Dimension of the manifold optimization problem, as factor dimension x
-   * variable dimension. */
-  std::pair<size_t, size_t> problemDimension() const;
+  /// Construct values of original variables.
+  Values baseValues(const ManifoldOptProblem& mopt_problem,
+                    const Values& nopt_values) const;
 
  protected:
-  /** Create the underlying nonlinear optimizer for manifold optimization. */
-  void constructNonlinearOptimizer(const Values& init_values,
-                                   const NonlinearOptParamsVariant& params);
+  /** Create values for the manifold optimization probelm by (1) create
+   * constraint manifolds for constraint-connected components; (2) identify if
+   * the cosntraint manifold is fully constrained; (3) collect unconstrained
+   * variables.
+   */
+  void constructMoptValues(const EqConsOptProblem& ecopt_problem,
+                           ManifoldOptProblem& mopt_problem) const;
 
-  /** Create initial values for the constraint manifold variables. */
-  Values constructManifoldValues(const Values& init_values);
+  /// Create initial values for the constraint manifold variables.
+  void constructManifoldValues(const EqConsOptProblem& ecopt_problem,
+                               ManifoldOptProblem& mopt_problem) const;
+
+  /// Collect values for unconstrained variables.
+  void constructUnconstrainedValues(const EqConsOptProblem& ecopt_problem,
+                                    ManifoldOptProblem& mopt_problem) const;
 
   /** Create a factor graph of cost function with the constraint manifold
    * variables. */
-  NonlinearFactorGraph constructManifoldGraph(const Values& manifold_values);
+  void constructMoptGraph(const EqConsOptProblem& ecopt_problem,
+                          ManifoldOptProblem& mopt_problem) const;
+
+  /** Transform an equality-constrained optimization problem into a manifold
+   * optimization problem by creating constraint manifolds. */
+  ManifoldOptProblem problemTransform(
+      const EqConsOptProblem& ecopt_problem) const;
 };
 
 }  // namespace gtsam

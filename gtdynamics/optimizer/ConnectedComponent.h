@@ -25,21 +25,21 @@ namespace gtsam {
 class ConnectedComponent {
  public:
   const gtdynamics::EqualityConstraints
-      constraints;  // constraints in CCC, h(X)=0
+      constraints_;  // constraints in CCC, h(X)=0
   const gtsam::NonlinearFactorGraph
-      merit_graph;  // factor graph representing merit function ||h(X)||^2
-  const gtsam::KeySet keys;  // variables in CCC
+      merit_graph_;  // factor graph representing merit function ||h(X)||^2
+  const gtsam::KeySet keys_;  // variables in CCC
   using shared_ptr = boost::shared_ptr<ConnectedComponent>;
 
   /** Constructor from constraints. */
-  ConnectedComponent(const gtdynamics::EqualityConstraints& _constraints)
-      : constraints(_constraints),
-        merit_graph(constructMeritGraph(_constraints)),
-                    keys(merit_graph.keys()) {}
+  ConnectedComponent(const gtdynamics::EqualityConstraints& constraints)
+      : constraints_(constraints),
+        merit_graph_(constructMeritGraph(constraints)),
+                    keys_(merit_graph_.keys()) {}
 
  protected:
   NonlinearFactorGraph constructMeritGraph(
-      const gtdynamics::EqualityConstraints& _constraints);
+      const gtdynamics::EqualityConstraints& constraints);
 };
 
 }  // namespace gtsam

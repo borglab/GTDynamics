@@ -18,9 +18,9 @@
 // #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
 
+using gtsam::ConstraintManifold, gtsam::ManifoldOptimizer;
 using gtsam::LevenbergMarquardtParams, gtsam::LevenbergMarquardtOptimizer;
 using gtsam::NonlinearFactorGraph, gtsam::Values;
-using gtsam::ConstraintManifold, gtsam::ManifoldOptimizer;
 
 namespace gtdynamics {
 
@@ -55,14 +55,16 @@ Values optimize_constraint_manifold(const EqualityConstraints& constraints,
   params.setVerbosityLM("SUMMARY");
   // params.minModelFidelity = 0.1;
   std::cout << "building optimizer\n";
-  gtsam::ManifoldOptimizerType1 optimizer(costs, constraints, init_values,
-                                          params);
+  gtsam::ManifoldOptimizerParameters mopt_params;
+  gtsam::ManifoldOptimizerType1 optimizer(mopt_params, params);
+  auto mopt_problem =
+      optimizer.initializeMoptProblem(costs, constraints, init_values);
   std::cout << "optimize\n";
   gttic_(constraint_manifold);
-  auto result = optimizer.optimize();
+  auto result = optimizer.optimize(mopt_problem);
   gttoc_(constraint_manifold);
 
-  auto problem_dim = optimizer.problemDimension();
+  auto problem_dim = mopt_problem.problemDimension();
   std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
             << "\n";
   return result;
@@ -76,20 +78,21 @@ Values optimize_constraint_manifold_specify_variables(
     const Values& init_values, const gtsam::BasisKeyFunc& basis_function) {
   LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
-  auto manopt_params = boost::make_shared<ManifoldOptimizer::Params>();
-  manopt_params->cc_params->retract_type =
+  gtsam::ManifoldOptimizerParameters mopt_params;
+  mopt_params.cc_params->retract_type =
       ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
-  manopt_params->cc_params->basis_type =
+  mopt_params.cc_params->basis_type =
       ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
   std::cout << "building optimizer\n";
-  gtsam::ManifoldOptimizerType1 optimizer(costs, constraints, init_values, params,
-                                   manopt_params, basis_function);
+  gtsam::ManifoldOptimizerType1 optimizer(mopt_params, params, basis_function);
+  auto mopt_problem =
+      optimizer.initializeMoptProblem(costs, constraints, init_values);
   std::cout << "optimize\n";
   gttic_(constraint_manifold);
-  auto result = optimizer.optimize();
+  auto result = optimizer.optimize(mopt_problem);
   gttoc_(constraint_manifold);
 
-  auto problem_dim = optimizer.problemDimension();
+  auto problem_dim = mopt_problem.problemDimension();
   std::cout << "dimension: " << problem_dim.first << " x " << problem_dim.second
             << "\n";
   return result;

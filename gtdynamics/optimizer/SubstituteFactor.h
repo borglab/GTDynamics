@@ -97,7 +97,8 @@ class SubstituteFactor : public NoiseModelFactor {
     return replacement_map_.find(key) != replacement_map_.end();
   }
 
-  // if all variables are fully constrained, we can ignore the factor
+  /** Check if the factor is active. Note: if all the variables of the original
+   * factor are fully constrained, no updates can be made.*/
   inline bool check_active() const { return size() > 0; }
 
  private:

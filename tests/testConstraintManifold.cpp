@@ -83,8 +83,6 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   auto robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
                    .fixLink("l0");
   int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
-  int l1_id = robot.link("l1")->id(), l2_id = robot.link("l2")->id(),
-      l0_id = robot.link("l0")->id();
   const gtsam::Vector3 gravity(0, 0, -10);
   OptimizerSetting opt;
   auto graph_builder = DynamicsGraph(opt, gravity);
@@ -142,7 +140,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j1_id, 0))));
 
   // Check that all constraints shall be satisfied after retraction.
-  EXPECT(assert_equal(0., cc->merit_graph.error(new_cm.values())));
+  EXPECT(assert_equal(0., cc->merit_graph_.error(new_cm.values())));
 }
 
 int main() {

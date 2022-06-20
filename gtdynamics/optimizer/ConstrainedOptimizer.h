@@ -66,4 +66,17 @@ class ConstrainedOptimizer {
       const gtsam::Values& initial_values,
       ConstrainedOptResult* intermediate_result = nullptr) const = 0;
 };
+
+/// Equality-constrained optimization problem.
+struct EqConsOptProblem {
+  gtsam::NonlinearFactorGraph costs_;            // cost function
+  gtdynamics::EqualityConstraints constraints_;  // equality constraints
+  gtsam::Values values_;                         // values of all variables
+  /// Constructor.
+  EqConsOptProblem(const gtsam::NonlinearFactorGraph& costs,
+                   const gtdynamics::EqualityConstraints& constraints,
+                   const gtsam::Values& values)
+      : costs_(costs), constraints_(constraints), values_(values) {}
+};
+
 }  // namespace gtdynamics

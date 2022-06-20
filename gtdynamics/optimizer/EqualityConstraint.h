@@ -87,16 +87,21 @@ class DoubleExpressionEquality : public EqualityConstraint {
                            const double& tolerance)
       : expression_(expression), tolerance_(tolerance) {}
 
+  /** Create a factor representing the component in the merit function. */
   gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
+  /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values& x) const override;
 
+  /** Evaluate the constraint violation, g(x). */
   gtsam::Vector operator()(const gtsam::Values& x) const override;
 
+  /** Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
+  /** Return the dimension of the constraint. */
   size_t dim() const override { return 1; }
 };
 
@@ -122,16 +127,21 @@ class VectorExpressionEquality : public EqualityConstraint {
                            const VectorP& tolerance)
       : expression_(expression), tolerance_(tolerance) {}
 
+  /** Create a factor representing the component in the merit function. */
   gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
+  /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values& x) const override;
 
+  /** Evaluate the constraint violation, g(x). */
   gtsam::Vector operator()(const gtsam::Values& x) const override;
 
+  /** Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
+  /** Return the dimension of the constraint. */
   size_t dim() const override;
 };
 
@@ -156,16 +166,21 @@ class ZeroErrorFactorEquality : public EqualityConstraint {
   ZeroErrorFactorEquality(const gtsam::NoiseModelFactor::shared_ptr& factor)
       : ZeroErrorFactorEquality(factor, factor->noiseModel()->sigmas()) {}
 
+  /** Create a factor representing the component in the merit function. */
   gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu,
       boost::optional<gtsam::Vector&> bias = boost::none) const override;
 
+  /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values& x) const override;
 
+  /** Evaluate the constraint violation, g(x). */
   gtsam::Vector operator()(const gtsam::Values& x) const override;
 
+  /** Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   gtsam::Vector toleranceScaledViolation(const gtsam::Values& x) const override;
 
+  /** Return the dimension of the constraint. */
   size_t dim() const override { return factor_->dim(); }
 };
 

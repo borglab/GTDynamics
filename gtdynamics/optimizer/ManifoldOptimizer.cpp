@@ -12,27 +12,25 @@
  */
 
 #include <gtdynamics/optimizer/ManifoldOptimizer.h>
-
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-// #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
-
 #include <gtsam/linear/GaussianEliminationTree.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/SubgraphSolver.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <stack>
 
 namespace gtsam {
 
 /* ************************************************************************* */
-ManifoldOptimizer::Params::Params()
+ManifoldOptimizerParameters::ManifoldOptimizerParameters()
     : cc_params(boost::make_shared<ConstraintManifold::Params>()),
       retract_init(true) {}
 
 /* ************************************************************************* */
-ConnectedComponent::shared_ptr ManifoldOptimizer::dfsFindConnectedComponent(
+ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
+    const gtdynamics::EqualityConstraints& constraints,
     const gtsam::Key start_key, gtsam::KeySet& keys,
     const gtsam::VariableIndex& var_index) const {
   std::set<size_t> constraint_indices;
@@ -47,7 +45,7 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::dfsFindConnectedComponent(
       constraint_indices.insert(constraint_index);
       // TODO: use keys() in constraint
       auto constraint_factor =
-          constraints_.at(constraint_index)->createFactor(1.0);
+          constraints.at(constraint_index)->createFactor(1.0);
       for (const auto& neighbor_key : constraint_factor->keys()) {
         if (keys.find(neighbor_key) != keys.end()) {
           keys.erase(neighbor_key);
@@ -57,19 +55,21 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::dfsFindConnectedComponent(
     }
   }
 
-  gtdynamics::EqualityConstraints constraints;
+  gtdynamics::EqualityConstraints cc_constraints;
   for (const auto& constraint_index : constraint_indices) {
-    constraints.emplace_back(constraints_.at(constraint_index));
+    cc_constraints.emplace_back(constraints.at(constraint_index));
   }
-  return boost::make_shared<ConnectedComponent>(constraints);
+  return boost::make_shared<ConnectedComponent>(cc_constraints);
 }
 
 /* ************************************************************************* */
-void ManifoldOptimizer::identifyConnectedComponents() {
+std::vector<ConnectedComponent::shared_ptr>
+ManifoldOptimizer::identifyConnectedComponents(
+    const gtdynamics::EqualityConstraints& constraints) const {
   // Get all the keys in constraints.
   // TODO(yetong): create VariableIndex from EqualityConstraints
   gtsam::NonlinearFactorGraph constraint_graph;
-  for (const auto& constraint : constraints_) {
+  for (const auto& constraint : constraints) {
     constraint_graph.add(constraint->createFactor(1.0));
   }
   gtsam::VariableIndex constraint_var_index =
@@ -81,26 +81,14 @@ void ManifoldOptimizer::identifyConnectedComponents() {
 
   // Find connected component using algorithm from
   // https://www.geeksforgeeks.org/connected-components-in-an-undirected-graph/
+  std::vector<ConnectedComponent::shared_ptr> components;
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
     constraint_keys.erase(key);
-    components_.emplace_back(dfsFindConnectedComponent(
-        key, constraint_keys, constraint_var_index));
+    components.emplace_back(findConnectedComponent(
+        constraints, key, constraint_keys, constraint_var_index));
   }
-}
-
-void ManifoldOptimizer::print(const std::string& s,
-                              const KeyFormatter& keyFormatter) const {
-  std::cout << s;
-  std::cout << "found " << components_.size() << " components:\n";
-  for (size_t i=0; i<components_.size(); i++) {
-    const auto& component = components_.at(i);
-    std::cout << "component " << i << ":";
-    for (const auto& key : component->keys) {
-      std::cout << "\t" << keyFormatter(key);
-    }
-    std::cout << "\n";
-  }
+  return components;
 }
 
 }  // namespace gtsam

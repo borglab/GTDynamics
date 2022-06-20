@@ -55,12 +55,12 @@ void SubstituteFactor::classifyKeys(const Values& fc_manifolds) {
 }
 
 /* ************************************************************************* */
-/** insert values (for key in keys) to in_values */
-void InsertSelected(Values& in_values, const Values& values,
-                    const KeyVector& keys) {
+/** Insert values (for key in keys) to output_values */
+void InsertSelected(const Values& values, const KeyVector& keys,
+                    Values& output_values) {
   for (const Key& key : keys) {
     if (values.exists(key)) {
-      in_values.insert(key, values.at(key));
+      output_values.insert(key, values.at(key));
     }
   }
 }
@@ -75,7 +75,7 @@ Vector SubstituteFactor::unwhitenedError(
   }
   for (const Key& key : cmanifold_keys_) {
     const auto cmanifold = x.at<ConstraintManifold>(key);
-    InsertSelected(base_x, cmanifold.values(), base_factor_->keys());
+    InsertSelected(cmanifold.values(), base_factor_->keys(), base_x);
   }
 
   // compute jacobian

@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/ConstraintManifold.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
@@ -20,70 +21,49 @@
 
 namespace gtsam {
 
-/** Function to find the basis keys for constraint manifold. */
+/// Function to find the basis keys for constraint manifold.
 typedef KeyVector (*BasisKeyFunc)(const ConnectedComponent::shared_ptr&);
 
-/** Base class for manifold optimizer. */
-// TODO(yetong): make ManifoldOptimizer inherit from ConstrainedOptimizer.
-class ManifoldOptimizer {
+/// Parameters for manifold optimizer.
+struct ManifoldOptimizerParameters
+    : public gtdynamics::ConstrainedOptimizationParameters {
+  using Base = gtdynamics::ConstrainedOptimizationParameters;
+  ConstraintManifold::Params::shared_ptr
+      cc_params;             // Parameter for constraint-connected components
+  bool retract_init = true;  // Perform retraction on constructing values for
+                             // connected component.
+  /// Default Constructor.
+  ManifoldOptimizerParameters();
+};
+
+/// Base class for manifold optimizer.
+class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
  public:
   using shared_ptr = boost::shared_ptr<const ManifoldOptimizer>;
 
-  /** Parameters for manifold optimizer. */
-  struct Params {
-    ConstraintManifold::Params::shared_ptr
-        cc_params;             // Parameter for constraint-connected components
-    bool retract_init = true;  // Perform retraction on constructing values for
-                               // connected component.
-    using shared_ptr = boost::shared_ptr<Params>;
-
-    /** Default Constructor. */
-    Params();
-  };
-
  protected:
-  gtsam::NonlinearFactorGraph costs_;            // cost function
-  gtdynamics::EqualityConstraints constraints_;  // equality constraints
-  Params::shared_ptr params_;
-  std::vector<ConnectedComponent::shared_ptr>
-      components_;               // All the constraint-connected components
-  BasisKeyFunc basis_key_func_;  // ad-hoc function to manually specify the
-                                 // basis keys for each constraint manifold
+  const ManifoldOptimizerParameters p_;
 
  public:
-  /** Default constructor. */
-  ManifoldOptimizer() {}
+  /// Default constructor.
+  ManifoldOptimizer() : p_(ManifoldOptimizerParameters()) {}
 
-  /** Constructor. */
-  ManifoldOptimizer(const gtsam::NonlinearFactorGraph& costs,
-                    const gtdynamics::EqualityConstraints& constraints,
-                    const Params::shared_ptr& params,
-                    boost::optional<BasisKeyFunc> basis_key_func = boost::none)
-      : costs_(costs), constraints_(constraints), params_(params) {
-    if (basis_key_func) {
-      basis_key_func_ = *basis_key_func;
-    }
-    identifyConnectedComponents();
-  }
-
-  /** Run optimization on constraint manifold. */
-  virtual const gtsam::Values& optimize() = 0;
-
-  /** Customizable print function. */
-  virtual void print(
-      const std::string& s = "",
-      const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;
+  /// Construct from parameters.
+  ManifoldOptimizer(const ManifoldOptimizerParameters& parameters)
+      : p_(parameters) {}
 
  protected:
   /** Perform dfs to find the connected component that contains start_key. Will
    * also erase all the keys in the connected component from keys.
    */
-  ConnectedComponent::shared_ptr dfsFindConnectedComponent(
+  ConnectedComponent::shared_ptr findConnectedComponent(
+      const gtdynamics::EqualityConstraints& constraints,
       const gtsam::Key start_key, gtsam::KeySet& keys,
       const gtsam::VariableIndex& var_index) const;
 
-  /** Identify the connected components by constraints. */
-  void identifyConnectedComponents();
+  /// Identify the connected components by constraints.
+  std::vector<ConnectedComponent::shared_ptr> identifyConnectedComponents(
+      const gtdynamics::EqualityConstraints& constraints) const;
 };
 
 }  // namespace gtsam
