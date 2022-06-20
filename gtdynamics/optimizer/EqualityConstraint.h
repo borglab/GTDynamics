@@ -66,6 +66,7 @@ class EqualityConstraint {
   /** @brief return the dimension of the constraint. */
   virtual size_t dim() const = 0;
 
+  /// Return keys of variables involved in the constraint.
   virtual std::set<gtsam::Key> keys() const{
     return std::set<gtsam::Key>();
   }
