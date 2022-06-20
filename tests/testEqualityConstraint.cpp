@@ -66,6 +66,11 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
   // Check dimension is 1 for scalar g.
   EXPECT(constraint.dim() == 1);
 
+  // Check keys include x1, x2.
+  EXPECT(constraint.keys().size() == 2);
+  EXPECT(x1_key == *constraint.keys().begin());
+  EXPECT(x2_key == *constraint.keys().rbegin());
+
   // Generate factor representing the term in merit function.
   double mu = 4;
   Vector bias = Vector::Constant(1, 0.5);
