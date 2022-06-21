@@ -427,6 +427,12 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   gtsam::Vector6_ wrenchEquivalenceConstraint(uint64_t t = 0) const;
 
   /**
+   * @brief Create expression for child wrench adjoint from parent link
+   */
+  gtsam::Vector6_ childAdjointWrench(gtsam::Vector6_ &wrench_p,
+                                     uint64_t t = 0) const;
+
+  /**
    * @brief Create expression that constraint the relation between
    * wrench and torque on each link.
    */

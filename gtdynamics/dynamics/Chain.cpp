@@ -140,18 +140,16 @@ gtsam::Vector3_ Chain::ChainConstraint3(
     const std::vector<JointSharedPtr> &joints, const gtsam::Key wrench_key,
     size_t k) {
   // Get Expression for wrench
-  gtsam::Vector6_ wrench(wrench_key);
+  gtsam::Vector6_ wrench_0_T(wrench_key);
 
   // The constraint is true for the wrench exerted on the end-effector frame, so
   // we need to adjoint from base to end-effector
-  gtsam::Matrix66 Ad_B_E = sMb_.AdjointMap();
-
-  // Create an expression of the wrench on the base multiplied by the adjoint
-  // map
-  const std::function<gtsam::Vector6(gtsam::Vector6)> f =
-      [Ad_B_E](const gtsam::Vector6 &wrench) { return Ad_B_E * wrench; };
-
-  gtsam::Vector6_ adjoint_wrench = gtsam::linearExpression(f, wrench, Ad_B_E);
+  gtsam::Vector6_ wrench_0_H =
+      (-1) * joints[0]->childAdjointWrench(wrench_0_T, k);
+  gtsam::Vector6_ wrench_1_U =
+      (-1) * joints[1]->childAdjointWrench(wrench_0_H, k);
+  gtsam::Vector6_ wrench_2_L =
+      (-1) * joints[2]->childAdjointWrench(wrench_1_U, k);
 
   // Get expression for joint angles as a column vector of size 3.
   gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
@@ -171,7 +169,7 @@ gtsam::Vector3_ Chain::ChainConstraint3(
                 std::placeholders::_2, std::placeholders::_3,
                 std::placeholders::_4, std::placeholders::_5,
                 std::placeholders::_6),
-      adjoint_wrench, angles, torques);
+      wrench_2_L, angles, torques);
 
   return torque_diff;
 }
