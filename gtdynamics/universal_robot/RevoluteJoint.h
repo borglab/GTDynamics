@@ -18,15 +18,16 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
 /**
- * @class RevoluteJoint is an implementation of the Joint class which represents
- * a revolute joint and contains all necessary factor construction methods.
+ * @class RevoluteJoint is an implementation of the ScrewJointBase class
+ *  which represents a revolute joint and contains all necessary factor
+ *  construction methods.
  */
-class RevoluteJoint : public Joint {
+class RevoluteJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
@@ -52,11 +53,11 @@ class RevoluteJoint : public Joint {
                 const LinkSharedPtr &parent_link,
                 const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                 const JointParams &parameters = JointParams())
-      : Joint(id, name, bTj, parent_link, child_link, getScrewAxis(axis),
-              parameters) {}
+      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
+                       getScrewAxis(axis), parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const final override { return Type::Revolute; }
+  Type type() const override { return Type::Revolute; }
 };
 
 }  // namespace gtdynamics

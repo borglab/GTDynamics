@@ -43,7 +43,6 @@ bool Joint::isChildLink(const LinkSharedPtr &link) const {
   return link == child_link_;
 }
 
-/* ************************************************************************* */
 std::ostream &Joint::to_stream(std::ostream &os) const {
   os << name_ << "\n\tid=" << size_t(id_)
      << "\n\tparent link: " << parent()->name()

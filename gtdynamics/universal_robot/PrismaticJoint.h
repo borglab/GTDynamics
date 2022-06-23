@@ -7,7 +7,7 @@
 
 /**
  * @file  PrismaticJoint.h
- * @brief Representation of PrismaticJoint that inherits from Joint
+ * @brief Representation of PrismaticJoint that inherits from ScrewJointBase
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela
@@ -18,16 +18,16 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 
 namespace gtdynamics {
 
 /**
- * @class PrismaticJoint is an implementation of the Joint class which
- * represents a prismatic joint and contains all necessary factor construction
- * methods.
+ * @class PrismaticJoint is an implementation of the ScrewJointBase class
+ *  which represents a prismatic joint and contains all necessary factor
+ *  construction methods.
  */
-class PrismaticJoint : public Joint {
+class PrismaticJoint : public ScrewJointBase {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
@@ -53,11 +53,11 @@ class PrismaticJoint : public Joint {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                  const JointParams &parameters = JointParams())
-      : Joint(id, name, bTj, parent_link, child_link, getScrewAxis(axis),
-              parameters) {}
+      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
+                       getScrewAxis(axis), parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const final override { return Type::Prismatic; }
+  Type type() const override { return Type::Prismatic; }
 };
 
 }  // namespace gtdynamics
