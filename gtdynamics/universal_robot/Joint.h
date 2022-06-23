@@ -75,6 +75,7 @@ struct JointParams {
 
 /// Joint is the base class for a joint connecting two Link objects.
 class Joint : public boost::enable_shared_from_this<Joint> {
+
   /// Robot class should have access to the internals of its joints.
   friend class Robot;
 
@@ -213,7 +214,6 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   virtual Type type() const = 0;
 
-  /**
   /**
    * Abstract method. Return the pose of the child link CoM in the parent link
    * CoM frame, given a Values object containing the joint coordinate.
