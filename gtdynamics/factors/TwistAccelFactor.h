@@ -24,7 +24,6 @@
 #include <string>
 
 #include "gtdynamics/universal_robot/JointTyped.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 

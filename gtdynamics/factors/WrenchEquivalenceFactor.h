@@ -82,6 +82,7 @@ class WrenchEquivalenceFactor
     gtsam::Pose3 T_21 = joint_->relativePoseOf(joint_->parent(), q);
     gtsam::Matrix6 Ad_21_T = T_21.AdjointMap().transpose();
     gtsam::Vector6 error = wrench_1 + Ad_21_T * wrench_2;
+
     if (H_wrench_1) {
       *H_wrench_1 = gtsam::I_6x6;
     }
