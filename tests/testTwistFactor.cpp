@@ -11,6 +11,8 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include "make_joint.h"
+
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -25,7 +27,6 @@
 
 #include "gtdynamics/factors/TwistFactor.h"
 #include "gtdynamics/universal_robot/RobotModels.h"
-#include "make_joint.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

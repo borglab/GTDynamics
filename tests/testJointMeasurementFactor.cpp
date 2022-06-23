@@ -85,8 +85,8 @@ TEST(JointMeasurementFactor, Jacobians) {
 
   // Non-trivial joint angle
   double angle = M_PI;
-  JointMeasurementFactor<RevoluteJoint> factor(key0, key1, kModel,
-                                               robot.joints()[0], 0.0, t);
+  JointMeasurementFactor<RevoluteJoint> factor2(key0, key1, kModel,
+                                                robot.joints()[0], angle, t);
   wTl1 = Pose3(Rot3::Rz(angle), gtsam::Point3(0, 0, 0.5));
   values.clear();
   InsertPose(&values, link0->id(), wTl0);
