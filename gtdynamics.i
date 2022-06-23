@@ -282,7 +282,7 @@ virtual class PrismaticJoint : gtdynamics::ScrewJointBase {
   void print(const string &s = "") const;
 };
 
-virtual class ScrewJoint : gtdynamics::ScrewJointBase  {
+virtual class ScrewJoint : gtdynamics::ScrewJointBase {
   ScrewJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
