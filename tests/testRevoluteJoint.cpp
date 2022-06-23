@@ -159,10 +159,14 @@ TEST(Joint, ValuesRelativePoseOf) {
 
   RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
                    parameters);
+  Values values;
+  const size_t t = 777;
   // Rotating joint by -M_PI / 2
   double q = -M_PI / 2;
   Pose3 T12(Rot3::Rx(q), Point3(0, 1, 1));
   Pose3 T21(Rot3::Rx(-q), Point3(0, 1, -1));
+
+  InsertJointAngle(&values, 1, t, q);
 
   // Calculate numerical derivatives of relativePoseOf with respect to other
   // link pose.
@@ -172,8 +176,8 @@ TEST(Joint, ValuesRelativePoseOf) {
   Matrix61 numericalH2 = numericalDerivative11<Pose3, double>(f2, q);
 
   Matrix H1v, H2v;
-  EXPECT(assert_equal(T21, j1.relativePoseOf(l1, q, H1v)));
-  EXPECT(assert_equal(T12, j1.relativePoseOf(l2, q, H2v)));
+  EXPECT(assert_equal(T21, j1.relativePoseOf(l1, values, t, H1v)));
+  EXPECT(assert_equal(T12, j1.relativePoseOf(l2, values, t, H2v)));
   EXPECT(assert_equal(numericalH1, H1v));
   EXPECT(assert_equal(numericalH2, H2v));
 
@@ -207,7 +211,10 @@ TEST(RevoluteJoint, ParentTchild) {
   auto robot = simple_urdf::getRobot();
   auto j1 = robot.joint("j1");
 
-  Pose3 pTc = j1->parentTchild(M_PI_2);
+  Values joint_angles;
+  InsertJointAngle(&joint_angles, j1->id(), M_PI_2);
+
+  Pose3 pTc = j1->parentTchild(joint_angles);
   // Rotate around the x axis for arm point up.
   // This means the second link bends to the right.
   Pose3 expected_pTc(Rot3::Rx(M_PI_2), Point3(0, -1, 1));
