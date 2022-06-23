@@ -89,7 +89,7 @@ void ManifoldOptimizerType1::constructManifoldValues(
     }
     auto constraint_manifold =
         ConstraintManifold(component, component_values, p_.cc_params,
-                           p_.retract_init, true, basis_keys);
+                           p_.retract_init, true, boost::make_shared<BasisParams>(basis_keys));
     // check if the manifold is fully constrained
     if (constraint_manifold.dim() > 0) {
       mopt_problem.values_.insert(component_key, constraint_manifold);

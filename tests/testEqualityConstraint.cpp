@@ -166,8 +166,8 @@ TEST(EqualityConstraint, Container) {
   EXPECT_LONGS_EQUAL(2, constraints.size());
 }
 
-// Test methods of ZeroErrorFactorEquality.
-TEST(EqualityConstraint, ZeroErrorFactorEquality) {
+// Test methods of FactorZeroErrorConstraint.
+TEST(EqualityConstraint, FactorZeroErrorConstraint) {
   Key x1_key = 1;
   Key x2_key = 2;
   Vector tolerance = Vector2(0.5, 0.1);

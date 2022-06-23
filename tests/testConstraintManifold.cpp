@@ -40,8 +40,8 @@ TEST(ConstraintManifold, connected_poses) {
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = boost::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
-  constraints.emplace_shared<gtdynamics::ZeroErrorFactorEquality>(factor12);
-  constraints.emplace_shared<gtdynamics::ZeroErrorFactorEquality>(factor23);
+  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
+  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -125,8 +125,8 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   cc_params->basis_type =
       ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
   auto cc = boost::make_shared<ConnectedComponent>(constraints);
-  auto cm =
-      ConstraintManifold(cc, init_values, cc_params, false, true, basis_keys);
+  auto cm = ConstraintManifold(cc, init_values, cc_params, false, true,
+                               boost::make_shared<BasisParams>(basis_keys));
 
   // retract
   Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();

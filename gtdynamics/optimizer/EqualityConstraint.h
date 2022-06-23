@@ -146,7 +146,7 @@ class VectorExpressionEquality : public EqualityConstraint {
 };
 
 /** Equality constraint that force factor error to be 0. */
-class ZeroErrorFactorEquality : public EqualityConstraint {
+class FactorZeroErrorConstraint : public EqualityConstraint {
  protected:
   gtsam::NoiseModelFactor::shared_ptr factor_;
   gtsam::Vector tolerance_;
@@ -158,13 +158,13 @@ class ZeroErrorFactorEquality : public EqualityConstraint {
    * @param factor  NoiseModel factor.
    * @param tolerance   vector representing tolerance in each dimension.
    */
-  ZeroErrorFactorEquality(const gtsam::NoiseModelFactor::shared_ptr& factor,
+  FactorZeroErrorConstraint(const gtsam::NoiseModelFactor::shared_ptr& factor,
                           const gtsam::Vector& tolerance)
       : factor_(factor), tolerance_(tolerance) {}
 
   /** Constructor from a NoiseModelFactor, and use the noise model as tolerance. */
-  ZeroErrorFactorEquality(const gtsam::NoiseModelFactor::shared_ptr& factor)
-      : ZeroErrorFactorEquality(factor, factor->noiseModel()->sigmas()) {}
+  FactorZeroErrorConstraint(const gtsam::NoiseModelFactor::shared_ptr& factor)
+      : FactorZeroErrorConstraint(factor, factor->noiseModel()->sigmas()) {}
 
   /** Create a factor representing the component in the merit function. */
   gtsam::NoiseModelFactor::shared_ptr createFactor(
@@ -210,7 +210,7 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   }
 };
 
-/// Create ZeroErrorFactorEqualityConstraints from the factors of a graph.
+/// Create FactorZeroErrorConstraintConstraints from the factors of a graph.
 EqualityConstraints ConstraintsFromGraph(
     const gtsam::NonlinearFactorGraph& graph);
 

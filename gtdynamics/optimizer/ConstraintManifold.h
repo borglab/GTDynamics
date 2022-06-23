@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/optimizer/ConnectedComponent.h>
+#include <gtdynamics/optimizer/TspaceBasis.h>
 
 namespace gtsam {
 
@@ -45,17 +46,13 @@ class ConstraintManifold {
 
  protected:
   Params::shared_ptr params_;
+  BasisParams::shared_ptr basis_params_;
   ConnectedComponent::shared_ptr cc_;
   size_t embedding_dim_;                // dimension of embedding space
   size_t constraint_dim_;               // dimension of constriants
   size_t dim_;                          // dimension of constraint manifold
   gtsam::Values values_;                // values of variables in CCC
-  gtsam::Matrix basis_;                 // basis for the tangent space
-  std::map<Key, size_t> var_location_;  // location of variables in Jacobian
-  std::map<Key, size_t> var_dim_;       // dimension of variables
-  KeyVector basis_keys_;  // (optional) manually spcified basis variables
-  // TODO(yetong): put basis_, var_dim_, var_location_, and basis_keys_ in a
-  // struct
+  TspaceBasis::shared_ptr basis_;       // tangent space basis
 
  public:
   enum { dimension = Eigen::Dynamic };
@@ -73,11 +70,8 @@ class ConstraintManifold {
       const ConnectedComponent::shared_ptr& cc, const gtsam::Values& values,
       const Params::shared_ptr& params = boost::make_shared<Params>(),
       bool retract_init = true, bool construct_basis = true,
-      const boost::optional<const KeyVector&> basis_keys = boost::none)
-      : params_(params), cc_(cc) {
-    if (basis_keys) {
-      basis_keys_ = *basis_keys;
-    }
+      const BasisParams::shared_ptr& basis_params = boost::make_shared<BasisParams>())
+      : params_(params), basis_params_(basis_params), cc_(cc) {
     initializeValues(values);
     if (retract_init) {
       values_ = retractConstraints(values_);
@@ -91,7 +85,7 @@ class ConstraintManifold {
    * indirectly calls retractConstraints. */
   ConstraintManifold createWithNewValues(const gtsam::Values& values,
                                          bool retract_init = true) const {
-    return ConstraintManifold(cc_, values, params_, true, true, basis_keys_);
+    return ConstraintManifold(cc_, values, params_, true, true, basis_params_);
   }
 
   /// Dimension of the constraint manifold.
@@ -135,7 +129,7 @@ class ConstraintManifold {
   bool equals(const ConstraintManifold& other, double tol = 1e-8) const;
 
   /// Return the basis of the tangent space.
-  inline const gtsam::Matrix& basis() const { return basis_; }
+  const TspaceBasis::shared_ptr& basis() const { return basis_; }
 
   /// Compute the tangent space basis for the constraint manifold.
   void computeBasis();
@@ -157,15 +151,6 @@ class ConstraintManifold {
   /** Perform retraction by minimizing the constraint violation while fixing the
    * specified variables, e.g., min ||h(x)||^2.  s.t. x_s=x0_s. */
   gtsam::Values retractPProj(const gtsam::Values& values) const;
-
-  /// Compute the tangent space basis as the kernel of Dh(X).
-  void computeBasisKernel();
-
-  /** Compute the tangent space basis as the specified variables, the update on
-   * the rest of the variables will be computed through variable elimination.
-   * The basis matrix will be in the form of [B;I], which means the
-   * corresponding rows to the basis variables form the identity matrix. */
-  void computeBasisSpecifyVariables();
 };
 
 // Specialize ConstraintManifold traits to use a Retract/Local

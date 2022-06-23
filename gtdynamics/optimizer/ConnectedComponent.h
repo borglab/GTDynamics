@@ -19,6 +19,8 @@
 
 namespace gtsam {
 
+// TODO(yetong): change the namespace to gtdynamics
+
 /** Constraint-connected component (CCC) in a constrained optimization problem.
  * The CCC includes the variables as well as the constraints connecting them.
  * Each CCC will be repaced by a manifold variable for manifold optimization. */

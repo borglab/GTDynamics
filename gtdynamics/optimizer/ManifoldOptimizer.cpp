@@ -79,8 +79,7 @@ ManifoldOptimizer::identifyConnectedComponents(
     constraint_keys.insert(it.first);
   }
 
-  // Find connected component using algorithm from
-  // https://www.geeksforgeeks.org/connected-components-in-an-undirected-graph/
+  // Find connected component using DFS algorithm.
   std::vector<ConnectedComponent::shared_ptr> components;
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
