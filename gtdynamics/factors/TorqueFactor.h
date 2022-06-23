@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include "gtdynamics/utils/values.h"
 
@@ -31,11 +31,21 @@ namespace gtdynamics {
  * TorqueFactor is a two-way nonlinear factor which enforces relation between
  * wrench and torque on each link
  */
-class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
+class TorqueFactor
+    : public gtsam::NoiseModelFactor2<gtsam::Vector6,
+                                      typename JointTyped::JointTorque> {
  private:
+  using JointTorque = typename JointTyped::JointTorque;
   using This = TorqueFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, double>;
-  JointConstSharedPtr joint_;
+  using Base = gtsam::NoiseModelFactor2<gtsam::Vector6, JointTorque>;
+  using MyJointConstSharedPtr = boost::shared_ptr<const JointTyped>;
+  MyJointConstSharedPtr joint_;
+
+  /// Private constructor with arbitrary keys
+  TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
+               gtsam::Key wrench_key, gtsam::Key torque_key,
+               const MyJointConstSharedPtr &joint)
+      : Base(cost_model, wrench_key, torque_key), joint_(joint) {}
 
  public:
   /**
@@ -48,11 +58,10 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    * @param joint JointConstSharedPtr to the joint
    */
   TorqueFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-               const JointConstSharedPtr &joint, size_t k = 0)
-      : Base(cost_model,
-             internal::WrenchKey(joint->child()->id(), joint->id(), k),
-             internal::TorqueKey(joint->id(), k)),
-        joint_(joint) {}
+               const MyJointConstSharedPtr &joint, size_t k = 0)
+      : TorqueFactor(cost_model,
+                     internal::WrenchKey(joint->child()->id(), joint->id(), k),
+                     internal::TorqueKey(joint->id(), k), joint) {}
 
   virtual ~TorqueFactor() {}
 
@@ -63,11 +72,11 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
    * @param torque torque on this link joint
    */
   gtsam::Vector evaluateError(
-      const gtsam::Vector6 &wrench, const double &torque,
+      const gtsam::Vector6 &wrench, const JointTorque &torque,
       boost::optional<gtsam::Matrix &> H_wrench = boost::none,
       boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
     if (H_torque) {
-      *H_torque = -gtsam::Matrix1::Identity();
+      *H_torque = -JointTyped::MatrixN::Identity();
     }
     // TODO(G+S): next PR will generalize this from Vector1
     return gtsam::Vector1(
@@ -76,7 +85,7 @@ class TorqueFactor : public gtsam::NoiseModelFactor2<gtsam::Vector6, double> {
   }
 
   /// Returns the joint
-  JointConstSharedPtr getJoint() const { return joint_; }
+  MyJointConstSharedPtr getJoint() const { return joint_; }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {

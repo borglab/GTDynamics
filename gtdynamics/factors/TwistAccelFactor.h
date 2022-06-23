@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 #include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
@@ -33,14 +33,20 @@ namespace gtdynamics {
  * between acceleration on previous link and this link.
  */
 class TwistAccelFactor
-    : public gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                      gtsam::Vector6, double, double, double> {
+    : public gtsam::NoiseModelFactor6<
+          gtsam::Vector6, gtsam::Vector6, gtsam::Vector6,
+          JointTyped::JointCoordinate, JointTyped::JointVelocity,
+          JointTyped::JointAcceleration> {
  private:
+  using JointCoordinate = JointTyped::JointCoordinate;
+  using JointVelocity = JointTyped::JointVelocity;
+  using JointAcceleration = JointTyped::JointVelocity;
   using This = TwistAccelFactor;
   using Base = gtsam::NoiseModelFactor6<gtsam::Vector6, gtsam::Vector6,
-                                        gtsam::Vector6, double,
-                                        double, double>;
-  JointConstSharedPtr joint_;
+                                        gtsam::Vector6, JointCoordinate,
+                                        JointVelocity, JointAcceleration>;
+  using JointTypedConstSharedPtr = boost::shared_ptr<const JointTyped>;
+  JointTypedConstSharedPtr joint_;
 
  public:
   /**
@@ -52,15 +58,13 @@ class TwistAccelFactor
    *
    * @param joint JointConstSharedPtr to the joint
    */
-  TwistAccelFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointConstSharedPtr joint, int t)
-      : Base(cost_model,  //
-             internal::TwistKey(joint->child()->id(), t),
-             internal::TwistAccelKey(joint->parent()->id(), t),
-             internal::TwistAccelKey(joint->child()->id(), t),
-             internal::JointAngleKey(joint->id(), t),
-             internal::JointVelKey(joint->id(), t),
-             internal::JointAccelKey(joint->id(), t)),
+  TwistAccelFactor(gtsam::Key twist_key_c, gtsam::Key twistAccel_key_p,
+                   gtsam::Key twistAccel_key_c, gtsam::Key q_key,
+                   gtsam::Key qVel_key, gtsam::Key qAccel_key,
+                   const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                   JointTypedConstSharedPtr joint)
+      : Base(cost_model, twist_key_c, twistAccel_key_p, twistAccel_key_c, q_key,
+             qVel_key, qAccel_key),
         joint_(joint) {}
   virtual ~TwistAccelFactor() {}
 
@@ -77,19 +81,18 @@ class TwistAccelFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_c, const gtsam::Vector6 &twistAccel_p,
-      const gtsam::Vector6 &twistAccel_c, const double &q,
-      const double &qVel, const double &qAccel,
+      const gtsam::Vector6 &twistAccel_c, const JointCoordinate &q,
+      const JointAcceleration &qVel, const JointAcceleration &qAccel,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twistAccel_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none,
       boost::optional<gtsam::Matrix &> H_qAccel = boost::none) const override {
-    auto error =
-        joint_->transformTwistAccelTo(joint_->child(), q, qVel, qAccel,
-                                      twist_c, twistAccel_p, H_q, H_qVel,
-                                      H_qAccel, H_twist_c, H_twistAccel_p) -
-        twistAccel_c;
+    auto error = joint_->transformTwistAccelTo(
+                     joint_->child(), q, qVel, qAccel, twist_c, twistAccel_p,
+                     H_q, H_qVel, H_qAccel, H_twist_c, H_twistAccel_p) -
+                 twistAccel_c;
 
     if (H_twistAccel_c) {
       *H_twistAccel_c = -gtsam::I_6x6;

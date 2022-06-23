@@ -21,7 +21,7 @@
 #include <boost/optional.hpp>
 #include <string>
 
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/JointTyped.h"
 
 namespace gtdynamics {
 
@@ -30,14 +30,19 @@ namespace gtdynamics {
  * between twist on previous link and this link
  */
 class TwistFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double,
-                                      double> {
+    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                      typename JointTyped::JointCoordinate,
+                                      typename JointTyped::JointVelocity> {
  private:
+  using JointCoordinate = typename JointTyped::JointCoordinate;
+  using JointVelocity = typename JointTyped::JointVelocity;
   using This = TwistFactor;
-  using Base =
-      gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6, double, double>;
+  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+                                        JointCoordinate, JointVelocity>;
 
+  gtsam::Pose3 cMp_;
   JointConstSharedPtr joint_;
+  gtsam::Vector6 screw_axis_;
 
  public:
   /**
@@ -47,13 +52,11 @@ class TwistFactor
    *
    * @param joint a Joint
    */
-  TwistFactor(const gtsam::noiseModel::Base::shared_ptr &cost_model,
-              JointConstSharedPtr joint, int t)
-      : Base(cost_model,  //
-             internal::TwistKey(joint->parent()->id(), t),
-             internal::TwistKey(joint->child()->id(), t),
-             internal::JointAngleKey(joint->id(), t),
-             internal::JointVelKey(joint->id(), t)),
+  TwistFactor(gtsam::Key twistP_key, gtsam::Key twistC_key, gtsam::Key q_key,
+              gtsam::Key qVel_key,
+              const gtsam::noiseModel::Base::shared_ptr &cost_model,
+              JointConstSharedPtr joint)
+      : Base(cost_model, twistP_key, twistC_key, q_key, qVel_key),
         joint_(joint) {}
   virtual ~TwistFactor() {}
 
@@ -67,14 +70,15 @@ class TwistFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Vector6 &twist_p, const gtsam::Vector6 &twist_c,
-      const double &q, const double &qVel,
+      const JointCoordinate &q, const JointVelocity &qVel,
       boost::optional<gtsam::Matrix &> H_twist_p = boost::none,
       boost::optional<gtsam::Matrix &> H_twist_c = boost::none,
       boost::optional<gtsam::Matrix &> H_q = boost::none,
       boost::optional<gtsam::Matrix &> H_qVel = boost::none) const override {
-    auto error = joint_->transformTwistTo(joint_->child(), q, qVel, twist_p,
-                                          H_q, H_qVel, H_twist_p) -
-                 twist_c;
+    auto error =
+        boost::static_pointer_cast<const JointTyped>(joint_)->transformTwistTo(
+            joint_->child(), q, qVel, twist_p, H_q, H_qVel, H_twist_p) -
+        twist_c;
 
     if (H_twist_c) {
       *H_twist_c = -gtsam::I_6x6;

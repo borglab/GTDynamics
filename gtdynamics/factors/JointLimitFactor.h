@@ -53,7 +53,7 @@ class JointLimitFactor
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
                    JointCoordinateType lower_limit,
                    JointCoordinateType upper_limit,
-                   JointCoordinateType limit_threshold))
+                   JointCoordinateType limit_threshold)
       : Base(cost_model, q_key),
         low_(lower_limit + limit_threshold),
         high_(upper_limit - limit_threshold) {}
