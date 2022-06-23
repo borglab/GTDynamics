@@ -23,7 +23,10 @@ namespace gtdynamics {
 /**
  * @brief A 2-way factor to relate the parent and child links of a joint given
  * the joint coordinate as a measurement.
+ *
+ * @tparam JOINT The type of joint which is being constrained.
  */
+template <typename JOINT>
 class JointMeasurementFactor
     : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
  private:
@@ -31,7 +34,8 @@ class JointMeasurementFactor
   using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
 
   JointConstSharedPtr joint_;
-  double joint_angle_;
+  typename JOINT::JointCoordinate joint_coordinate_;
+  size_t k_;
 
  public:
   /**
@@ -44,13 +48,15 @@ class JointMeasurementFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
-                         const gtsam::noiseModel::Base::shared_ptr& model,
-                         const JointConstSharedPtr joint,
-                         double joint_coordinate)
+  JointMeasurementFactor(
+      gtsam::Key wTp_key, gtsam::Key wTc_key,
+      const gtsam::noiseModel::Base::shared_ptr& model,
+      const JointConstSharedPtr joint,
+      const typename JOINT::JointCoordinate& joint_coordinate, size_t k)
       : Base(model, wTp_key, wTc_key),
         joint_(joint),
-        joint_angle_(joint_coordinate) {}
+        joint_coordinate_(joint_coordinate),
+        k_(k) {}
 
   /**
    * @brief Convenience constructor
@@ -60,21 +66,26 @@ class JointMeasurementFactor
    * @param joint_coordinate The coordinates of the joint motion.
    * @param k The time index.
    */
-  JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr& model,
-                         const JointConstSharedPtr joint,
-                         double joint_coordinate, size_t k)
+  JointMeasurementFactor(
+      const gtsam::noiseModel::Base::shared_ptr& model,
+      const JointConstSharedPtr joint,
+      const typename JOINT::JointCoordinate& joint_coordinate, size_t k)
       : Base(model, internal::PoseKey(joint->parent()->id(), k),
              internal::PoseKey(joint->child()->id(), k)),
         joint_(joint),
-        joint_angle_(joint_coordinate) {}
+        joint_coordinate_(joint_coordinate),
+        k_(k) {}
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3& wTp, const gtsam::Pose3& wTc,
       boost::optional<gtsam::Matrix&> H_wTp = boost::none,
       boost::optional<gtsam::Matrix&> H_wTc = boost::none) const override {
+    gtsam::Values joint_angles;
+    InsertJointAngle(&joint_angles, joint_->id(), k_, joint_coordinate_);
+
     gtsam::Matrix6 H;
     gtsam::Pose3 wTc_hat =
-        joint_->poseOf(joint_->child(), wTp, joint_angle_, H_wTp);
+        joint_->poseOf(joint_->child(), wTp, joint_angles, k_, H_wTp);
 
     gtsam::Vector6 error = wTc.logmap(wTc_hat, H_wTc, H_wTp ? &H : 0);
     if (H_wTp) {
@@ -89,7 +100,8 @@ class JointMeasurementFactor
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "JointMeasurementFactor(" << keyFormatter(key1()) << ","
               << keyFormatter(key2()) << ")\n";
-    gtsam::traits<double>::Print(joint_angle_, "  measured: ");
+    gtsam::traits<typename JOINT::JointCoordinate>::Print(joint_coordinate_,
+                                                          "  measured: ");
     this->noiseModel_->print("  noise model: ");
   }
 };

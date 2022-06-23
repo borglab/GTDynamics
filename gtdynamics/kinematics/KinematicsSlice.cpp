@@ -42,7 +42,10 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
   // Constrain kinematics at joints.
   for (auto&& joint : robot.joints()) {
     const auto j = joint->id();
-    graph.emplace_shared<PoseFactor>(p_->p_cost_model, joint, slice.k);
+    graph.emplace_shared<PoseFactor>(
+        internal::PoseKey(joint->parent()->id(), slice.k),
+        internal::PoseKey(joint->child()->id(), slice.k),
+        internal::JointAngleKey(j, slice.k), p_->p_cost_model, joint);
   }
 
   return graph;
