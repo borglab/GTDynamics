@@ -60,9 +60,6 @@ class ScrewJoint : public ScrewJointBase {
       : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
                        getScrewAxis(axis, thread_pitch), parameters) {}
 
-  /// Constructor directly from screwAxis
-  using Joint::Joint;
-
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::Screw; }
 };

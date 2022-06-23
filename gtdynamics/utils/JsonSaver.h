@@ -34,7 +34,7 @@
 #include "gtdynamics/factors/WrenchEquivalenceFactor.h"
 #include "gtdynamics/factors/WrenchFactor.h"
 #include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
+#include "gtdynamics/universal_robot/ScrewJointBase.h"
 #include "gtdynamics/utils/utils.h"
 
 #define kQuote_ "\""
@@ -201,7 +201,9 @@ class JsonSaver {
     std::stringstream ss;
     if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
       auto joint = f->getJoint();
-      ss << GetVector(joint->screwAxis(joint->child()).transpose());
+      ss << GetVector(boost::static_pointer_cast<const ScrewJointBase>(joint)
+                          ->screwAxis(joint->child())
+                          .transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
                        &(*factor))) {
