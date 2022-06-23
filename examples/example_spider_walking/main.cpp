@@ -12,7 +12,6 @@
  * Gandhi, Varun Agrawal
  */
 
-#include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Trajectory.h>
@@ -50,14 +49,14 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   links.insert(links.end(), even_links.begin(), even_links.end());
 
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
-      even(2, even_links, contact_in_com);
+  auto stationary = boost::make_shared<FootContactConstraintSpec>(links, contact_in_com);
+  auto odd = boost::make_shared<FootContactConstraintSpec>(odd_links, contact_in_com);
+  auto even = boost::make_shared<FootContactConstraintSpec>(even_links, contact_in_com);
 
-  WalkCycle walk_cycle;
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(even);
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(odd);
+  FootContactVector states = {stationary, even, stationary, odd};
+  std::vector<size_t> phase_lengths = {1,2,1,2};
+
+  WalkCycle walk_cycle(states, phase_lengths);
 
   return Trajectory(walk_cycle, repeat);
 }
@@ -98,7 +97,7 @@ int main(int argc, char** argv) {
   double ground_height = 1.0;
   const Point3 step(0, 0.4, 0);
   gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step, ground_height);
 
   // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -136,8 +135,9 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   double gaussian_noise = 1e-5;
+  Initializer initializer;
   gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;

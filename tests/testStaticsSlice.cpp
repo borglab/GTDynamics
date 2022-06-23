@@ -12,10 +12,10 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
 
 #include "contactGoalsExample.h"
-#include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -70,8 +70,7 @@ TEST(Statics, OneMovingLink) {
   EXPECT_DOUBLES_EQUAL(expected_tau, tau, kTol);
 
   // Now do statics using GTD.
-  auto parameters2D =
-      boost::make_shared<StaticsParameters>(kSigmaDynamics, gravity2D);
+  StaticsParameters parameters2D(kSigmaDynamics, gravity2D);
   Statics statics(parameters2D);
   const size_t k = 777;
   const Slice slice(k);
@@ -105,8 +104,7 @@ TEST(Statics, Quadruped) {
 
   // Instantiate statics algorithms
   const Vector3 kGravity(0, 0, -10);
-  auto parameters3D =
-      boost::make_shared<StaticsParameters>(kSigmaDynamics, kGravity);
+  StaticsParameters parameters3D(kSigmaDynamics, kGravity);
   Statics statics(parameters3D);
 
   // Get an inverse kinematics solution

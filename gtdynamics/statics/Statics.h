@@ -13,12 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-
-#include "gtdynamics/kinematics/Kinematics.h"
-#include "gtdynamics/utils/Slice.h"
 
 namespace gtdynamics {
 
@@ -82,13 +81,13 @@ struct StaticsParameters : public KinematicsParameters {
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
 class Statics : public Kinematics {
  protected:
-  boost::shared_ptr<const StaticsParameters> p_;  // overrides Base::p_
+  const StaticsParameters p_;  // overrides Base::p_
 
  public:
   /**
    * @fn Constructor.
    */
-  Statics(const boost::shared_ptr<const StaticsParameters>& parameters)
+  Statics(const StaticsParameters& parameters = StaticsParameters())
       : Kinematics(parameters), p_(parameters) {}
 
   /// Graph with a WrenchEquivalenceFactor for each joint

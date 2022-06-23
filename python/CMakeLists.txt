@@ -50,7 +50,7 @@ set_target_properties(
 
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${GTD_PYTHON_BINARY_DIR}/setup.py install
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install .
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
 
@@ -68,7 +68,7 @@ macro(PYTHON_UNIT_TEST_SUITE suiteName directory)
     COMMAND
       ${CMAKE_COMMAND} -E env # add package to python path so no need to install
       "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
-      ${PYTHON_EXECUTABLE} -m unittest discover
+      ${PYTHON_EXECUTABLE} -m unittest discover -v -s .
     DEPENDS ${PROJECT_NAME}_py
     WORKING_DIRECTORY ${directory})
   list(APPEND python_unit_test_suites python-test.${suiteName})
@@ -78,6 +78,9 @@ PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
 
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
+endif()
+if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
+  PYTHON_UNIT_TEST_SUITE(jumpingrobot ${PROJECT_SOURCE_DIR}/gtdynamics/jumpingrobot/src)
 endif()
 
 # Custom make command to run all Python tests

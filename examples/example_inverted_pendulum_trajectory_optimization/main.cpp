@@ -15,7 +15,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -58,28 +58,24 @@ int main(int argc, char** argv) {
                                           CollocationScheme::Trapezoidal);
 
   // Add initial conditions to trajectory factor graph.
-  graph.addPrior(internal::JointAngleKey(j1_id, 0), theta_i, dynamics_model);
-  graph.addPrior(internal::JointVelKey(j1_id, 0), dtheta_i, dynamics_model);
+  graph.addPrior(JointAngleKey(j1_id, 0), theta_i, dynamics_model);
+  graph.addPrior(JointVelKey(j1_id, 0), dtheta_i, dynamics_model);
 
   // Add state and min torque objectives to trajectory factor graph.
-  graph.addPrior(internal::JointVelKey(j1_id, t_steps), dtheta_T,
-                 objectives_model);
-  graph.addPrior(internal::JointAccelKey(j1_id, t_steps), dtheta_T,
-                 objectives_model);
+  graph.addPrior(JointVelKey(j1_id, t_steps), dtheta_T, objectives_model);
+  graph.addPrior(JointAccelKey(j1_id, t_steps), dtheta_T, objectives_model);
   bool apply_theta_objective_all_dt = false;
-  graph.addPrior(internal::JointAngleKey(j1_id, t_steps), theta_T,
-                 objectives_model);
+  graph.addPrior(JointAngleKey(j1_id, t_steps), theta_T, objectives_model);
   if (apply_theta_objective_all_dt) {
     for (int t = 0; t < t_steps; t++)
-      graph.addPrior(internal::JointAngleKey(j1_id, t), theta_T,
-                     objectives_model);
+      graph.addPrior(JointAngleKey(j1_id, t), theta_T, objectives_model);
   }
   for (int t = 0; t <= t_steps; t++)
-    graph.emplace_shared<MinTorqueFactor>(internal::TorqueKey(j1_id, t),
-                                          control_model);
+    graph.emplace_shared<MinTorqueFactor>(TorqueKey(j1_id, t), control_model);
 
   // Initialize solution.
-  auto init_vals = ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
+  Initializer initializer;
+  auto init_vals = initializer.ZeroValuesTrajectory(ip, t_steps, 0, 0.0);
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_vals, params);
@@ -93,8 +89,8 @@ int main(int argc, char** argv) {
   double t_elapsed = 0;
   for (int t = 0; t <= t_steps; t++, t_elapsed += dt) {
     std::vector<gtsam::Key> keys = {
-        internal::JointAngleKey(j1_id, t), internal::JointVelKey(j1_id, t),
-        internal::JointAccelKey(j1_id, t), internal::TorqueKey(j1_id, t)};
+        JointAngleKey(j1_id, t), JointVelKey(j1_id, t), JointAccelKey(j1_id, t),
+        TorqueKey(j1_id, t)};
     std::vector<std::string> vals = {std::to_string(t_elapsed)};
     for (auto&& k : keys) vals.push_back(std::to_string(results.atDouble(k)));
     traj_file << boost::algorithm::join(vals, ",") << "\n";

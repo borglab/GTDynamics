@@ -16,7 +16,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -36,8 +36,7 @@ using namespace gtdynamics;
 int main(int argc, char** argv) {
   // Load the Vision 60 quadruped by Ghost robotics:
   // https://youtu.be/wrBNJKZKg10
-  auto vision60 =
-      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
+  auto vision60 = CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
 
   // Env parameters.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -136,43 +135,43 @@ int main(int argc, char** argv) {
   // Add certain poses to be reached.
   for (size_t i = 0; i < des_poses.size(); i++)
     objective_factors.addPrior(
-        internal::PoseKey(base_link->id(),
-                          static_cast<int>(std::ceil(des_poses_t[i] / dt))),
+        PoseKey(base_link->id(),
+                static_cast<int>(std::ceil(des_poses_t[i] / dt))),
         des_poses[i], des_pose_nm);
 
   // Add base boundary conditions to FG.
   objective_factors.addPrior(
-      internal::PoseKey(base_link->id(), 0), base_pose_init,
+      PoseKey(base_link->id(), 0), base_pose_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistKey(base_link->id(), 0), base_twist_init,
+      TwistKey(base_link->id(), 0), base_twist_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistAccelKey(base_link->id(), 0), base_accel_init,
+      TwistAccelKey(base_link->id(), 0), base_accel_init,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistKey(base_link->id(), t_steps), base_twist_final,
+      TwistKey(base_link->id(), t_steps), base_twist_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives));
   objective_factors.addPrior<gtsam::Vector6>(
-      internal::TwistAccelKey(base_link->id(), t_steps), base_accel_final,
+      TwistAccelKey(base_link->id(), t_steps), base_accel_final,
       gtsam::noiseModel::Isotropic::Sigma(6, sigma_objectives));
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : vision60.joints()) {
     objective_factors.addPrior(
-        internal::JointAngleKey(joint->id(), 0), 0.0,
+        JointAngleKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointVelKey(joint->id(), 0), 0.0,
+        JointVelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointAccelKey(joint->id(), 0), 0.0,
+        JointAccelKey(joint->id(), 0), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics));
     objective_factors.addPrior(
-        internal::JointVelKey(joint->id(), t_steps), 0.0,
+        JointVelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
     objective_factors.addPrior(
-        internal::JointAccelKey(joint->id(), t_steps), 0.0,
+        JointAccelKey(joint->id(), t_steps), 0.0,
         gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives));
   }
 
@@ -180,13 +179,14 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_steps; t++) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
 
   // Initialize solution.
   gtsam::Values init_vals;
+  Initializer initializer;
   std::string initialization_technique = "inverse_kinematics";
   if (initialization_technique == "interp")
     // TODO(aescontrela): Figure out why the linearly interpolated initial
@@ -194,13 +194,13 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = InitializeSolutionInterpolationMultiPhase(
+    init_vals = initializer.InitializeSolutionInterpolationMultiPhase(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = ZeroValuesTrajectory(vision60, t_steps, 0, 0.0, contact_points);
+    init_vals = initializer.ZeroValuesTrajectory(vision60, t_steps, 0, 0.0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = InitializeSolutionInverseKinematics(
+    init_vals = initializer.InitializeSolutionInverseKinematics(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
 

@@ -14,14 +14,19 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/PrismaticJoint.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
 
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
+#include <boost/serialization/export.hpp>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -229,6 +234,87 @@ TEST(ForwardKinematics, FourBar) {
   Values wrong_vels = values;
   InsertJointVel(&wrong_vels, 0, 1.0);
   THROWS_EXCEPTION(robot.forwardKinematics(wrong_vels));
+}
+
+TEST(ForwardKinematics, A1) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"), "", true);
+  robot = robot.fixLink("trunk");
+
+  Values values;
+  Values fk_results = robot.forwardKinematics(values);
+  // 21 joint angles, 21, joint velocities, 22 link poses, 22 link twists
+  EXPECT_LONGS_EQUAL(86, fk_results.size());
+
+  Values joint_angles;
+  // Sanity check that 0 joint angles gives us the same pose as from the URDF
+  std::vector<double> angles = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  size_t jidx = 0;
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&joint_angles, joint->id(), 0, angles[jidx]);
+    jidx += 1;
+  }
+
+  // This is the toe joint we wish to test.
+  size_t joint_id = 20;
+
+  fk_results = robot.forwardKinematics(joint_angles, 0, std::string("trunk"));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(-0.183, -0.13205, -0.4)),
+                      Pose(fk_results, joint_id, 0)));
+
+  // Joint angles from A1 simulation.
+  angles = {
+      0.000174304, 0,        0.923033, -1.83381,    0,           0.000172539,
+      0,           0.924125, -1.83302, 0,           0.000137167, 0,
+      0.878277,    -1.85284, 0,        0.000140037, 0,           0.877832,
+      -1.852,      0,        0};
+
+  jidx = 0;
+  joint_angles.clear();
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&joint_angles, joint->id(), 0, angles[jidx]);
+    jidx += 1;
+  }
+  fk_results = robot.forwardKinematics(joint_angles, 0, std::string("trunk"));
+  // regression
+  EXPECT(assert_equal(
+      Pose3(Rot3(0.638821, 0, 0.769356, 0, 1, 0, -0.769356, 0, 0.638821),
+            Point3(-0.336871, -0.13205, -0.327764)),
+      Pose(fk_results, 20, 0), 1e-6));
+}
+
+TEST(Robot, Equality) {
+  Robot robot1 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+  Robot robot2 = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  EXPECT(robot1 == robot2);
+  EXPECT(robot1.equals(robot2));
+
+  // Check if not-equal works as expecred
+  JointSharedPtr j = robot1.joints()[0];
+  // Set the joint's parent link to default
+  *(j->parent()) = Link();
+
+  // robot1 should no longer equal robot2
+  EXPECT(!robot1.equals(robot2));
+}
+
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
+BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
+
+TEST(Robot, Serialization) {
+  Robot robot = CreateRobotFromFile(
+      kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsObj(robot));
+  EXPECT(equalsXML(robot));
+  EXPECT(equalsBinary(robot));
 }
 
 int main() {

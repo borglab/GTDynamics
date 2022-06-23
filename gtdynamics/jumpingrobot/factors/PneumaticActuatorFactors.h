@@ -264,14 +264,10 @@ class SmoothActuatorFactor
 
     double k = k_coeffs_.dot(gauge_p_powers2);
     double f0 = f0_coeffs_.dot(gauge_p_powers2);
-    double j_k_p, j_f0_p;
+    double j_k_p = 0, j_f0_p = 0;
     if (H_p) {
-      j_k_p = 0;
       for (size_t i = 1; i < 2; i++) {
         j_k_p += i * k_coeffs_(i) * gauge_p_powers2(i - 1);
-      }
-      j_f0_p = 0;
-      for (size_t i = 1; i < 2; i++) {
         j_f0_p += i * f0_coeffs_(i) * gauge_p_powers2(i - 1);
       }
     }

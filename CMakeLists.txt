@@ -44,7 +44,7 @@ endif()
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # For parsing urdf/sdf files.
-set(SDFormat_VERSION 10)
+set(SDFormat_VERSION 12)
 find_package(sdformat${SDFormat_VERSION} REQUIRED)
 
 # ##############################################################################
@@ -52,6 +52,7 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
 
 add_subdirectory(gtdynamics)
 
@@ -78,6 +79,7 @@ endif()
 message(STATUS "===============================================================")
 message(STATUS "================  Configuration Options  ======================")
 message(STATUS "Project                                     : ${PROJECT_NAME}")
+message(STATUS "Build Type                                  : ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_CXX_COMPILER_ID type                  : ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CMAKE_CXX_COMPILER_VERSION                  : ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "GTSAM Version                               : ${GTSAM_VERSION}")
@@ -87,6 +89,50 @@ message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD
 if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
 endif()
+message(STATUS "Build march=native                          : ${GTSAM_BUILD_WITH_MARCH_NATIVE}")
 message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
 message(STATUS "Build Examples                              : ${GTDYNAMICS_BUILD_EXAMPLES}")
+message(STATUS "Build Robots")
+message(STATUS "  Cable Robot                               : ${GTDYNAMICS_BUILD_CABLE_ROBOT}")
+message(STATUS "  Jumping Robot                             : ${GTDYNAMICS_BUILD_JUMPING_ROBOT}")
+message(STATUS "  Panda Robot                               : ${GTDYNAMICS_BUILD_PANDA_ROBOT}")
 message(STATUS "===============================================================")
+
+# Create the export .cmake file.
+# We should use `install(EXPORT) instead of export()` so it exports the install file.
+install(EXPORT "${PROJECT_NAME}-exports"
+  FILE gtdynamics-exports.cmake
+  DESTINATION lib/cmake/gtdynamics
+)
+
+include(CMakePackageConfigHelpers)
+
+# Set the variables to be used for the cmake config file.
+if(WIN32 AND NOT CYGWIN)
+  set(INSTALL_CMAKE_DIR CMake/${PROJECT_NAME})
+else()
+  set(INSTALL_CMAKE_DIR lib/cmake/${PROJECT_NAME})
+endif()
+
+# Configure the config file that is includes the exports
+configure_package_config_file(
+  ${CMAKE_SOURCE_DIR}/Config.cmake.in
+  "${CMAKE_BINARY_DIR}/gtdynamicsConfig.cmake"
+  INSTALL_DESTINATION "${INSTALL_CMAKE_DIR}"
+  INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+
+# Generate the config file.
+write_basic_package_version_file(
+  "${PROJECT_BINARY_DIR}/gtdynamicsConfigVersion.cmake"
+  VERSION ${gtdynamics_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+
+# Install the config files.
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/gtdynamicsConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/gtdynamicsConfigVersion.cmake
+  DESTINATION lib/cmake/gtdynamics)
+
+# Include CPack *after* all flags. Needed for packaging the project.
+include(CPack)

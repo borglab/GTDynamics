@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -47,12 +47,12 @@ int main(int argc, char** argv) {
   int j1 = simple_rpr.joint("joint_1")->id(),
       j2 = simple_rpr.joint("joint_2")->id(),
       j3 = simple_rpr.joint("joint_3")->id();
-  InsertJointAngle<double>(&theta_and_theta_dot, j1, 0, 0.0);
-  InsertJointAngle<double>(&theta_and_theta_dot, j2, 0, 0.0);
-  InsertJointAngle<double>(&theta_and_theta_dot, j3, 0, 0.0);
-  InsertJointVel<double>(&theta_and_theta_dot, j1, 0, 0.3);
-  InsertJointVel<double>(&theta_and_theta_dot, j2, 0, 0.1);
-  InsertJointVel<double>(&theta_and_theta_dot, j3, 0, 0.0);
+  InsertJointAngle(&theta_and_theta_dot, j1, 0, 0.0);
+  InsertJointAngle(&theta_and_theta_dot, j2, 0, 0.0);
+  InsertJointAngle(&theta_and_theta_dot, j3, 0, 0.0);
+  InsertJointVel(&theta_and_theta_dot, j1, 0, 0.3);
+  InsertJointVel(&theta_and_theta_dot, j2, 0, 0.1);
+  InsertJointVel(&theta_and_theta_dot, j3, 0, 0.0);
 
   std::vector<gtsam::Vector> taus;
   for (int t = 0; t <= T; t++) {
@@ -63,7 +63,8 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  auto init_values = ZeroValuesTrajectory(simple_rpr, T, 0);
+  Initializer initializer;
+  auto init_values = initializer.ZeroValuesTrajectory(simple_rpr, T, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

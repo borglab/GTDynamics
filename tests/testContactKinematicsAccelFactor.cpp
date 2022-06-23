@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,14 +26,11 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-
 using namespace gtdynamics;
 using gtsam::assert_equal;
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactKinematicsAccelFactor, error) {
   auto robot = simple_urdf::getRobot();
@@ -49,7 +48,9 @@ TEST(ContactKinematicsAccelFactor, error) {
   // acceleration at the contact point.
   gtsam::Vector6 link_accel_stationary =
       (gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_accel_stationary),
+  gtsam::Values values_stationary;
+  values_stationary.insert(twist_accel_key, link_accel_stationary);
+  EXPECT(assert_equal(factor.unwhitenedError(values_stationary),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 
   // A link with only a linear acceleration at its CoM should have a only a
@@ -57,7 +58,9 @@ TEST(ContactKinematicsAccelFactor, error) {
   // instance, but this is a test intended for rigid links).
   gtsam::Vector6 link_accel_linear =
       (gtsam::Vector(6) << 0, 0, 0, 1, 1, 1).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_accel_linear),
+  gtsam::Values values_linear;
+  values_linear.insert(twist_accel_key, link_accel_linear);
+  EXPECT(assert_equal(factor.unwhitenedError(values_linear),
                       (gtsam::Vector(3) << 1, 1, 1).finished()));
 
   // A link with only an angular acceleration component at the CoM should have a
@@ -66,14 +69,18 @@ TEST(ContactKinematicsAccelFactor, error) {
   // contact r = 1, the linear component a = 1.
   gtsam::Vector6 link_accel_angular =
       (gtsam::Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_accel_angular).norm(), 1.0));
+  gtsam::Values values_angular;
+  values_angular.insert(twist_accel_key, link_accel_angular);
+  EXPECT(assert_equal(factor.unwhitenedError(values_angular).norm(), 1.0));
 
   // A link with both angular and linear acceleration at the CoM should have
   // a linear acceleration at the contact point (unless they cancel each other
   // out).
   gtsam::Vector6 link_accel_angular_linear =
       (gtsam::Vector(6) << 2, 0, 0, 0, 0, 4).finished();
-  EXPECT(assert_equal(factor.evaluateError(link_accel_angular_linear).norm(),
+  gtsam::Values values_angular_linear;
+  values_angular_linear.insert(twist_accel_key, link_accel_angular_linear);
+  EXPECT(assert_equal(factor.unwhitenedError(values_angular_linear).norm(),
                       std::sqrt(std::pow(2, 2) + std::pow(4, 2))));
 
   // Make sure linearization is correct
@@ -119,9 +126,8 @@ TEST(ContactKinematicsAccelFactor, optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Vector6 accel_optimized = results.at<gtsam::Vector6>(twist_accel_key);
 
-  EXPECT(assert_equal(factor.evaluateError(accel_optimized),
+  EXPECT(assert_equal(factor.unwhitenedError(results),
                       (gtsam::Vector(3) << 0, 0, 0).finished()));
 }
 

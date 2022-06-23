@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/CollocationFactors.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -22,9 +24,6 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/CollocationFactors.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal, gtsam::Pose3, gtsam::Vector6, gtsam::Rot3;
@@ -50,8 +49,8 @@ TEST(PoseTwistFunctor, error) {
 
   // Create factor
   EulerPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
-                              example::twist_p_key, example::dt_key,
-                              example::cost_model);
+                                    example::twist_p_key, example::dt_key,
+                                    example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_p, pose_c, twist, dt);
@@ -83,8 +82,8 @@ TEST(RandomData, EulerPose) {
 
   // Create factor
   EulerPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
-                              example::twist_p_key, example::dt_key,
-                              example::cost_model);
+                                    example::twist_p_key, example::dt_key,
+                                    example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(pose_p, pose_c, twist, dt);
@@ -114,9 +113,9 @@ TEST(RandomData, TrapezoidalPose) {
   Pose3 pose_c = pose_p * Pose3::Expmap(twistdt);
 
   // Create factor
-  TrapezoidalPoseCollocationFactor factor(example::pose_p_key, example::pose_c_key,
-                                    example::twist_p_key, example::twist_c_key,
-                                    example::dt_key, example::cost_model);
+  TrapezoidalPoseCollocationFactor factor(
+      example::pose_p_key, example::pose_c_key, example::twist_p_key,
+      example::twist_c_key, example::dt_key, example::cost_model);
 
   // call evaluateError
   auto actual_errors =
@@ -147,8 +146,8 @@ TEST(RandomData, EulerTwist) {
 
   // Create factor
   EulerTwistCollocationFactor factor(example::twist_p_key, example::twist_c_key,
-                               example::accel_p_key, example::dt_key,
-                               example::cost_model);
+                                     example::accel_p_key, example::dt_key,
+                                     example::cost_model);
 
   // call evaluateError
   auto actual_errors = factor.evaluateError(twist_p, twist_c, accel_p, dt);
@@ -177,9 +176,9 @@ TEST(RandomData, TrapezoidalTwist) {
   double dt = 0.1;
 
   // Create factor
-  TrapezoidalTwistCollocationFactor factor(example::twist_p_key, example::twist_c_key,
-                                     example::accel_p_key, example::accel_c_key,
-                                     example::dt_key, example::cost_model);
+  TrapezoidalTwistCollocationFactor factor(
+      example::twist_p_key, example::twist_c_key, example::accel_p_key,
+      example::accel_c_key, example::dt_key, example::cost_model);
 
   // call evaluateError
   auto actual_errors =

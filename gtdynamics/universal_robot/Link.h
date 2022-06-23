@@ -13,12 +13,19 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
 #include <boost/enable_shared_from_this.hpp>
@@ -27,13 +34,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -71,6 +71,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   friend class Robot;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   Link() {}
 
   /**
@@ -110,6 +112,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   bool operator!=(const Link &other) const { return !(*this == other); }
+
+  bool equals(const Link &other, double tol = 0) const {
+    return *this == other;
+  }
 
   /// return a shared pointer of the link
   LinkSharedPtr shared(void) { return shared_from_this(); }
@@ -195,6 +201,16 @@ class Link : public boost::enable_shared_from_this<Link> {
     std::cout << (s.empty() ? s : s + " ") << *this;
   }
 
+  /**
+   * @brief Create expression that constraint the wrench balance on the link.
+   * @param wrench_keys Keys for external wrenches acting on the link.
+   * @param t Time step.
+   * @param gravity Gravitional constant.
+   */
+  gtsam::Vector6_ wrenchConstraint(
+      const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
+      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
+
  private:
   /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
   void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
@@ -204,6 +220,33 @@ class Link : public boost::enable_shared_from_this<Link> {
 
   /// Unfix the link
   void unfix() { is_fixed_ = false; }
+
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(id_);
+    ar &BOOST_SERIALIZATION_NVP(name_);
+    ar &BOOST_SERIALIZATION_NVP(mass_);
+    ar &BOOST_SERIALIZATION_NVP(centerOfMass_);
+    ar &BOOST_SERIALIZATION_NVP(inertia_);
+    ar &BOOST_SERIALIZATION_NVP(bMcom_);
+    ar &BOOST_SERIALIZATION_NVP(bMlink_);
+    ar &BOOST_SERIALIZATION_NVP(is_fixed_);
+    ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Link> : public Testable<gtdynamics::Link> {};
+
+}  // namespace gtsam

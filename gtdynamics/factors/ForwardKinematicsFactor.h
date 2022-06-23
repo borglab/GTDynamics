@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -21,10 +24,6 @@
 
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/PointOnLink.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -81,8 +80,8 @@ class ForwardKinematicsFactor : public gtsam::BetweenFactor<gtsam::Pose3> {
                           const std::string &end_link_name,
                           const gtsam::Values &joint_angles,
                           const gtsam::SharedNoiseModel &model, size_t k = 0)
-      : Base(internal::PoseKey(robot.link(start_link_name)->id(), k),
-             internal::PoseKey(robot.link(end_link_name)->id(), k),
+      : Base(PoseKey(robot.link(start_link_name)->id(), k),
+             PoseKey(robot.link(end_link_name)->id(), k),
              computeRelativePose(robot, start_link_name, end_link_name,
                                  joint_angles, k),
              model) {}

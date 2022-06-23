@@ -37,26 +37,31 @@ using namespace gtdynamics;
   EXPECT_DOUBLES_EQUAL(expected, actual, rtol* expected)
 
 // Returns a Trajectory object for a single robot walk cycle.
-Trajectory getTrajectory(const Robot& robot, size_t repeat) {
-  vector<LinkSharedPtr> odd_links = {
+Trajectory getTrajectory(const Robot &robot, size_t repeat) {
+  // Label which feet are what...
+  vector<LinkSharedPtr> odd_feet = {
       robot.link("tarsus_1_L1"), robot.link("tarsus_3_L3"),
       robot.link("tarsus_5_R4"), robot.link("tarsus_7_R2")};
-  vector<LinkSharedPtr> even_links = {
+  vector<LinkSharedPtr> even_feet = {
       robot.link("tarsus_2_L2"), robot.link("tarsus_4_L4"),
       robot.link("tarsus_6_R3"), robot.link("tarsus_8_R1")};
-  auto links = odd_links;
-  links.insert(links.end(), even_links.begin(), even_links.end());
+  auto all_feet = odd_feet;
+  all_feet.insert(all_feet.end(), even_feet.begin(), even_feet.end());
 
+  // Create three different FootContactConstraintSpecs, one for all the feet on the
+  // ground, one with even feet on the ground, one with odd feet in contact..
   const Point3 contact_in_com(0, 0.19, 0);
-  Phase stationary(1, links, contact_in_com), odd(2, odd_links, contact_in_com),
-      even(2, even_links, contact_in_com);
+  auto stationary = boost::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
+  auto odd = boost::make_shared<FootContactConstraintSpec>(odd_feet, contact_in_com);
+  auto even = boost::make_shared<FootContactConstraintSpec>(even_feet, contact_in_com);
+  
+  FootContactVector states = {stationary, even, stationary, odd};
+  std::vector<size_t> phase_lengths = {1,2,1,2};
 
-  WalkCycle walk_cycle;
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(even);
-  walk_cycle.addPhase(stationary);
-  walk_cycle.addPhase(odd);
+  WalkCycle walk_cycle(states, phase_lengths);
 
+  // TODO(issue #257): Trajectory should *be* a vector of phases, so rather that
+  // store the walkcycle and repeat, it should store the phases.
   return Trajectory(walk_cycle, repeat);
 }
 
@@ -95,7 +100,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
   // Build the objective factors.
   const Point3 step(0, 0.4, 0);
   NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 1e-7), step, 0);
   // per walk cycle: 1*8 + 2*8 + 1*8 + 2*8 = 48
   // 2 repeats, hence:
   EXPECT_LONGS_EQUAL(48 * 2, objectives.size());
@@ -144,8 +149,9 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Initialize solution.
   double gaussian_noise = 0.0;
+  Initializer initializer;
   Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, gaussian_noise, desired_dt);
+      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
   // Compare error for all factors with expected values in file.

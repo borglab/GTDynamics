@@ -25,7 +25,7 @@ class TestLink(GtsamTestCase):
     """Test Simulator Class"""
 
     URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                         "urdfs")
+                         "models", "urdfs")
 
     def test_simulator(self):
         """Test simulating two steps on a simple one-link robot."""
@@ -39,7 +39,7 @@ class TestLink(GtsamTestCase):
         initial_values = Values()
 
         torques = Values()
-        gtd.InsertTorqueDouble(torques, 0, 1.0)
+        gtd.InsertTorque(torques, 0, 1.0)
 
         simulator = gtd.Simulator(robot, initial_values, gravity, planar_axis)
 
@@ -52,9 +52,9 @@ class TestLink(GtsamTestCase):
         expected_qAccel = acceleration
         expected_qVel = acceleration * dt
         expected_qAngle = acceleration * 0.5 * dt * dt
-        self.assertEqual(expected_qAngle, gtd.JointAngleDouble(results, 0, 0))
-        self.assertEqual(expected_qVel, gtd.JointVelDouble(results, 0, 0))
-        self.assertEqual(expected_qAccel, gtd.JointAccelDouble(results, 0, 0))
+        self.assertEqual(expected_qAngle, gtd.JointAngle(results, 0, 0))
+        self.assertEqual(expected_qVel, gtd.JointVel(results, 0, 0))
+        self.assertEqual(expected_qAccel, gtd.JointAccel(results, 0, 0))
 
 
 if __name__ == "__main__":

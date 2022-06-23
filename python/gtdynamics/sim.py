@@ -23,7 +23,7 @@ def set_joint_angles(pyb,
     """
     for joint_id in joint_to_jid_map.values():
         pyb.setJointMotorControl2(bodyUniqueId=robot,
-                                  jointindex=joint_id,
+                                  jointIndex=joint_id,
                                   controlMode=pyb.VELOCITY_CONTROL,
                                   force=force)
 

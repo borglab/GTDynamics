@@ -9,7 +9,6 @@
 #include "CableTensionFactor.h"
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>

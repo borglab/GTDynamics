@@ -11,12 +11,22 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/JsonSaver.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
+
+#include <boost/format.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -25,20 +35,12 @@
 #include <utility>
 #include <vector>
 
-#include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
-#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
-#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/factors/ContactHeightFactor.h"
-#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/JsonSaver.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
 using gtsam::Double_;
+using gtsam::ExpressionFactor;
 using gtsam::GaussianFactorGraph;
 using gtsam::I_1x1;
 using gtsam::I_6x6;
+using gtsam::Key;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Pose3;
 using gtsam::PriorFactor;
@@ -46,8 +48,6 @@ using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
 using gtsam::Z_6x1;
-using gtsam::Key;
-using gtsam::ExpressionFactor;
 
 namespace gtdynamics {
 
@@ -60,7 +60,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     if (link->isFixed()) {
       // prior on twist acceleration for fixed link
       // A_i = 0
-      graph.add(internal::TwistAccelKey(i, t), I_6x6, Z_6x1, all_constrained);
+      graph.add(TwistAccelKey(i, t), I_6x6, Z_6x1, all_constrained);
     } else {
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
@@ -78,17 +78,15 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
           rhs[i] += gravitational_force[i - 3];
         }
       }
-      auto accel_key = internal::TwistAccelKey(i, t);
+      auto accel_key = TwistAccelKey(i, t);
       if (connected_joints.size() == 0) {
         graph.add(accel_key, G_i, rhs, all_constrained);
       } else if (connected_joints.size() == 1) {
-        graph.add(accel_key, G_i,
-                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
-                  rhs, all_constrained);
+        graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), t),
+                  -I_6x6, rhs, all_constrained);
       } else if (connected_joints.size() == 2) {
-        graph.add(accel_key, G_i,
-                  internal::WrenchKey(i, connected_joints[0]->id(), t), -I_6x6,
-                  internal::WrenchKey(i, connected_joints[1]->id(), t), -I_6x6,
+        graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), t),
+                  -I_6x6, WrenchKey(i, connected_joints[1]->id(), t), -I_6x6,
                   rhs, all_constrained);
       }
     }
@@ -107,7 +105,8 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(
     const Robot &robot, const int t, const gtsam::Values &torques) {
   OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
-  for (auto &&joint : robot.joints()) graph += joint->linearFDPriors(t, torques, opt_);
+  for (auto &&joint : robot.joints())
+    graph += joint->linearFDPriors(t, torques, opt_);
   return graph;
 }
 
@@ -119,7 +118,7 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
     int j = joint->id();
     double accel = JointAccel(joint_accels, j, t);
     gtsam::Vector1 rhs(accel);
-    graph.add(internal::JointAccelKey(j, t), I_1x1, rhs, all_constrained);
+    graph.add(JointAccelKey(j, t), I_1x1, rhs, all_constrained);
   }
   return graph;
 }
@@ -199,15 +198,14 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
-      graph.addPrior(internal::PoseKey(link->id(), k), link->getFixedPose(),
+      graph.addPrior(PoseKey(link->id(), k), link->getFixedPose(),
                      opt_.bp_cost_model);
 
   // TODO(frank): call Kinematics::graph<Slice> instead
   for (auto &&joint : robot.joints()) {
-    graph.emplace_shared<PoseFactor>(
-        internal::PoseKey(joint->parent()->id(), k),
-        internal::PoseKey(joint->child()->id(), k),
-        internal::JointAngleKey(joint->id(), k), opt_.p_cost_model, joint);
+    graph.add(PoseFactor(
+        PoseKey(joint->parent()->id(), k), PoseKey(joint->child()->id(), k),
+        JointAngleKey(joint->id(), k), opt_.p_cost_model, joint));
   }
 
   // TODO(frank): whoever write this should clean up this mess.
@@ -221,8 +219,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
   if (contact_points) {
     for (auto &&cp : *contact_points) {
       ContactHeightFactor contact_pose_factor(
-          internal::PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point,
-          gravity);
+          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity);
       graph.add(contact_pose_factor);
     }
   }
@@ -236,21 +233,17 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
-      graph.addPrior<gtsam::Vector6>(internal::TwistKey(link->id(), t),
-                                     gtsam::Z_6x1, opt_.bv_cost_model);
+      graph.addPrior<gtsam::Vector6>(TwistKey(link->id(), t), gtsam::Z_6x1,
+                                     opt_.bv_cost_model);
 
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistFactor>(internal::TwistKey(joint->parent()->id(), t),
-                                    internal::TwistKey(joint->child()->id(), t),
-                                    internal::JointAngleKey(joint->id(), t),
-                                    internal::JointVelKey(joint->id(), t),
-                                    opt_.v_cost_model, joint);
+    graph.add(TwistFactor(opt_.v_cost_model, joint, t));
 
   // Add contact factors.
   if (contact_points) {
     for (auto &&cp : *contact_points) {
       ContactKinematicsTwistFactor contact_twist_factor(
-          internal::TwistKey(cp.link->id(), t), opt_.cv_cost_model,
+          TwistKey(cp.link->id(), t), opt_.cv_cost_model,
           gtsam::Pose3(gtsam::Rot3(), -cp.point));
       graph.add(contact_twist_factor);
     }
@@ -265,22 +258,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
-      graph.addPrior<gtsam::Vector6>(internal::TwistAccelKey(link->id(), t),
-                                     gtsam::Z_6x1, opt_.ba_cost_model);
+      graph.addPrior<gtsam::Vector6>(TwistAccelKey(link->id(), t), gtsam::Z_6x1,
+                                     opt_.ba_cost_model);
   for (auto &&joint : robot.joints())
-    graph.emplace_shared<TwistAccelFactor>(
-      internal::TwistKey(joint->child()->id(), t),
-      internal::TwistAccelKey(joint->parent()->id(), t),
-      internal::TwistAccelKey(joint->child()->id(), t),
-      internal::JointAngleKey(joint->id(), t), internal::JointVelKey(joint->id(), t),
-      internal::JointAccelKey(joint->id(), t), opt_.a_cost_model,
-      boost::static_pointer_cast<const JointTyped>(joint));
+    graph.add(TwistAccelFactor(opt_.a_cost_model, joint, t));
 
   // Add contact factors.
   if (contact_points) {
     for (auto &&cp : *contact_points) {
       ContactKinematicsAccelFactor contact_accel_factor(
-          internal::TwistAccelKey(cp.link->id(), t), opt_.ca_cost_model,
+          TwistAccelKey(cp.link->id(), t), opt_.ca_cost_model,
           gtsam::Pose3(gtsam::Rot3(), -cp.point));
       graph.add(contact_accel_factor);
     }
@@ -317,7 +304,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
-        wrench_keys.push_back(internal::WrenchKey(i, joint->id(), k));
+        wrench_keys.push_back(WrenchKey(i, joint->id(), k));
 
       // Add wrench keys for contact points.
       if (contact_points) {
@@ -329,8 +316,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
           // Add contact dynamics constraints.
           graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-              internal::PoseKey(i, k), wrench_key, opt_.cfriction_cost_model,
-              mu_, gravity);
+              PoseKey(i, k), wrench_key, opt_.cfriction_cost_model, mu_,
+              gravity);
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt_.cm_cost_model,
@@ -339,11 +326,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
       }
 
       // add wrench factor for link
-      graph.emplace_shared<WrenchFactor>(
-          internal::TwistKey(link->id(), k),
-          internal::TwistAccelKey(link->id(), k), wrench_keys,
-          internal::PoseKey(link->id(), k), opt_.fa_cost_model,
-          link->inertiaMatrix(), gravity);
+      graph.add(
+          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity));
     }
   }
 
@@ -351,13 +335,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
   // TODO(frank): sort out const shared ptr mess
   for (auto &&joint : robot.joints()) {
     auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = boost::static_pointer_cast<const JointTyped>(joint);
-    graph.emplace_shared<WrenchEquivalenceFactor>(opt_.f_cost_model,
-                                                  const_joint, k);
-    graph.emplace_shared<TorqueFactor>(opt_.t_cost_model, const_joint, k);
+    auto const_joint = joint;
+    graph.add(WrenchEquivalenceFactor(opt_.f_cost_model, const_joint, k));
+    graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
     if (planar_axis_)
-      graph.emplace_shared<WrenchPlanarFactor>(opt_.planar_cost_model,
-                                               *planar_axis_, const_joint, k);
+      graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
+                                   const_joint, k));
   }
   return graph;
 }
@@ -381,8 +364,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const boost::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t < num_steps + 1; t++) {
-    graph.add(dynamicsFactorGraph(robot, t,
-                                  contact_points, mu));
+    graph.add(dynamicsFactorGraph(robot, t, contact_points, mu));
     if (t < num_steps) {
       graph.add(collocationFactors(robot, t, dt, collocation));
     }
@@ -437,7 +419,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
 }
 
 void DynamicsGraph::addCollocationFactorDouble(
-    NonlinearFactorGraph* graph, const Key x0_key, const Key x1_key,
+    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
     const Key v0_key, const Key v1_key, const double dt,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
@@ -462,15 +444,13 @@ void DynamicsGraph::addCollocationFactorDouble(
 double multDouble(const double &d1, const double &d2,
                   gtsam::OptionalJacobian<1, 1> H1,
                   gtsam::OptionalJacobian<1, 1> H2) {
-  if (H1)
-    *H1 = gtsam::I_1x1 * d2;
-  if (H2)
-    *H2 = gtsam::I_1x1 * d1;
+  if (H1) *H1 = gtsam::I_1x1 * d2;
+  if (H2) *H2 = gtsam::I_1x1 * d1;
   return d1 * d2;
 }
 
 void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-    NonlinearFactorGraph* graph, const Key x0_key, const Key x1_key,
+    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
     const Key v0_key, const Key v1_key, const Key phase_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
@@ -486,7 +466,7 @@ void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
   } else if (collocation == CollocationScheme::Trapezoidal) {
     Double_ v1dt(multDouble, phase_expr, v1_expr);
     graph->add(ExpressionFactor(cost_model, 0.0,
-                               x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
+                                x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
   } else {
     throw std::runtime_error(
         "runge-kutta and hermite-simpson not implemented yet");
@@ -497,12 +477,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::jointCollocationFactors(
     const int j, const int t, const double dt,
     const CollocationScheme collocation) const {
   NonlinearFactorGraph graph;
-  Key q0_key = internal::JointAngleKey(j, t),
-      q1_key = internal::JointAngleKey(j, t + 1),
-      v0_key = internal::JointVelKey(j, t),
-      v1_key = internal::JointVelKey(j, t + 1),
-      a0_key = internal::JointAccelKey(j, t),
-      a1_key = internal::JointAccelKey(j, t + 1);
+  Key q0_key = JointAngleKey(j, t), q1_key = JointAngleKey(j, t + 1),
+      v0_key = JointVelKey(j, t), v1_key = JointVelKey(j, t + 1),
+      a0_key = JointAccelKey(j, t), a1_key = JointAccelKey(j, t + 1);
   addCollocationFactorDouble(&graph, q0_key, q1_key, v0_key, v1_key, dt,
                              opt_.q_col_cost_model, collocation);
   addCollocationFactorDouble(&graph, v0_key, v1_key, a0_key, a1_key, dt,
@@ -510,10 +487,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::jointCollocationFactors(
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::collocationFactors(const Robot &robot, const int t,
-                                  const double dt,
-                                  const CollocationScheme collocation) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::collocationFactors(
+    const Robot &robot, const int t, const double dt,
+    const CollocationScheme collocation) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
@@ -525,12 +501,10 @@ DynamicsGraph::collocationFactors(const Robot &robot, const int t,
 gtsam::NonlinearFactorGraph DynamicsGraph::jointMultiPhaseCollocationFactors(
     const int j, const int t, const int phase,
     const CollocationScheme collocation) const {
-  Key phase_key = PhaseKey(phase), q0_key = internal::JointAngleKey(j, t),
-      q1_key = internal::JointAngleKey(j, t + 1),
-      v0_key = internal::JointVelKey(j, t),
-      v1_key = internal::JointVelKey(j, t + 1),
-      a0_key = internal::JointAccelKey(j, t),
-      a1_key = internal::JointAccelKey(j, t + 1);
+  Key phase_key = PhaseKey(phase), q0_key = JointAngleKey(j, t),
+      q1_key = JointAngleKey(j, t + 1), v0_key = JointVelKey(j, t),
+      v1_key = JointVelKey(j, t + 1), a0_key = JointAccelKey(j, t),
+      a1_key = JointAccelKey(j, t + 1);
 
   gtsam::NonlinearFactorGraph graph;
   addMultiPhaseCollocationFactorDouble(&graph, q0_key, q1_key, v0_key, v1_key,
@@ -553,17 +527,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseCollocationFactors(
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::forwardDynamicsPriors(const Robot &robot, const int t,
-                                     const gtsam::Values &known_values) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::forwardDynamicsPriors(
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    graph.addPrior(internal::JointAngleKey(j, t),
-                   JointAngle(known_values, j, t), opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, t), JointVel(known_values, j, t),
+    graph.addPrior(JointAngleKey(j, t), JointAngle(known_values, j, t),
+                   opt_.prior_q_cost_model);
+    graph.addPrior(JointVelKey(j, t), JointVel(known_values, j, t),
                    opt_.prior_qv_cost_model);
-    graph.addPrior(internal::TorqueKey(j, t), Torque(known_values, j, t),
+    graph.addPrior(TorqueKey(j, t), Torque(known_values, j, t),
                    opt_.prior_t_cost_model);
   }
   return graph;
@@ -574,12 +547,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::inverseDynamicsPriors(
   gtsam::NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    graph.addPrior(internal::JointAngleKey(j, t),
-                   JointAngle(known_values, j, t), opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, t), JointVel(known_values, j, t),
+    graph.addPrior(JointAngleKey(j, t), JointAngle(known_values, j, t),
+                   opt_.prior_q_cost_model);
+    graph.addPrior(JointVelKey(j, t), JointVel(known_values, j, t),
                    opt_.prior_qv_cost_model);
-    graph.addPrior(internal::JointAccelKey(j, t),
-                   JointAccel(known_values, j, t), opt_.prior_qa_cost_model);
+    graph.addPrior(JointAccelKey(j, t), JointAccel(known_values, j, t),
+                   opt_.prior_qa_cost_model);
   }
   return graph;
 }
@@ -590,44 +563,41 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFDPriors(
   gtsam::NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
-    graph.addPrior(internal::JointAngleKey(j, 0),
-                   JointAngle(known_values, j, 0), opt_.prior_q_cost_model);
-    graph.addPrior(internal::JointVelKey(j, 0), JointVel(known_values, j, 0),
+    graph.addPrior(JointAngleKey(j, 0), JointAngle(known_values, j, 0),
+                   opt_.prior_q_cost_model);
+    graph.addPrior(JointVelKey(j, 0), JointVel(known_values, j, 0),
                    opt_.prior_qv_cost_model);
     for (int t = 0; t <= num_steps; t++) {
-      graph.addPrior(internal::TorqueKey(j, t), Torque(known_values, j, t),
+      graph.addPrior(TorqueKey(j, t), Torque(known_values, j, t),
                      opt_.prior_t_cost_model);
     }
   }
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::jointLimitFactors(const Robot &robot, const int t) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::jointLimitFactors(
+    const Robot &robot, const int t) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints())
     graph.add(joint->jointLimitFactors(t, opt_));
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::targetAngleFactors(const Robot &robot, const int t,
-                                  const std::string &joint_name,
-                                  const double target_angle) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::targetAngleFactors(
+    const Robot &robot, const int t, const std::string &joint_name,
+    const double target_angle) const {
   NonlinearFactorGraph graph;
   int j = robot.joint(joint_name)->id();
-  graph.addPrior(internal::JointAngleKey(j, t), target_angle,
-                 opt_.prior_q_cost_model);
+  graph.addPrior(JointAngleKey(j, t), target_angle, opt_.prior_q_cost_model);
   return graph;
 }
 
-gtsam::NonlinearFactorGraph
-DynamicsGraph::targetPoseFactors(const Robot &robot, const int t,
-                                 const std::string &link_name,
-                                 const gtsam::Pose3 &target_pose) const {
+gtsam::NonlinearFactorGraph DynamicsGraph::targetPoseFactors(
+    const Robot &robot, const int t, const std::string &link_name,
+    const gtsam::Pose3 &target_pose) const {
   NonlinearFactorGraph graph;
   int i = robot.link(link_name)->id();
-  graph.addPrior(internal::PoseKey(i, t), target_pose, opt_.bp_cost_model);
+  graph.addPrior(PoseKey(i, t), target_pose, opt_.bp_cost_model);
   return graph;
 }
 
@@ -684,8 +654,8 @@ gtsam::Vector DynamicsGraph::jointTorques(const Robot &robot,
 }
 
 JointValueMap DynamicsGraph::jointAccelsMap(const Robot &robot,
-                                          const gtsam::Values &result,
-                                          const int t) {
+                                            const gtsam::Values &result,
+                                            const int t) {
   JointValueMap joint_accels;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
@@ -696,8 +666,8 @@ JointValueMap DynamicsGraph::jointAccelsMap(const Robot &robot,
 }
 
 JointValueMap DynamicsGraph::jointVelsMap(const Robot &robot,
-                                        const gtsam::Values &result,
-                                        const int t) {
+                                          const gtsam::Values &result,
+                                          const int t) {
   JointValueMap joint_vels;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
@@ -708,8 +678,8 @@ JointValueMap DynamicsGraph::jointVelsMap(const Robot &robot,
 }
 
 JointValueMap DynamicsGraph::jointAnglesMap(const Robot &robot,
-                                          const gtsam::Values &result,
-                                          const int t) {
+                                            const gtsam::Values &result,
+                                            const int t) {
   JointValueMap joint_angles;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
@@ -720,8 +690,8 @@ JointValueMap DynamicsGraph::jointAnglesMap(const Robot &robot,
 }
 
 JointValueMap DynamicsGraph::jointTorquesMap(const Robot &robot,
-                                           const gtsam::Values &result,
-                                           const int t) {
+                                             const gtsam::Values &result,
+                                             const int t) {
   JointValueMap joint_torques;
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
@@ -782,45 +752,45 @@ JsonSaver::LocationType get_locations(const Robot &robot, const int t,
     int n = robot.numLinks();
     for (auto &&link : robot.links()) {
       int i = link->id();
-      locations[internal::PoseKey(i, t)] = radial_location(2, i, n);
-      locations[internal::TwistKey(i, t)] = radial_location(3, i, n);
-      locations[internal::TwistAccelKey(i, t)] = radial_location(4, i, n);
-    }
-
-    for (auto &&joint : robot.joints()) {
-      int j = joint->id(); 
-      locations[internal::JointAngleKey(j, t)] = corner_location(2.5, j, n);
-      locations[internal::JointVelKey(j, t)] = corner_location(3.5, j, n);
-      locations[internal::JointAccelKey(j, t)] = corner_location(4.5, j, n);
-      locations[internal::TorqueKey(j, t)] = corner_location(6, j, n);
-      int i1 = joint->parent()->id();
-      int i2 = joint->child()->id();
-      locations[internal::WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
-      locations[internal::WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
-    }
-  } else {
-    for (auto &&link : robot.links()) {
-      int i = link->id();
-      locations[internal::PoseKey(i, t)] = gtsam::Vector3(i, 0, 0);
-      locations[internal::TwistKey(i, t)] = gtsam::Vector3(i, 1, 0);
-      locations[internal::TwistAccelKey(i, t)] = gtsam::Vector3(i, 2, 0);
+      locations[PoseKey(i, t)] = radial_location(2, i, n);
+      locations[TwistKey(i, t)] = radial_location(3, i, n);
+      locations[TwistAccelKey(i, t)] = radial_location(4, i, n);
     }
 
     for (auto &&joint : robot.joints()) {
       int j = joint->id();
-      locations[internal::JointAngleKey(j, t)] =
+      locations[JointAngleKey(j, t)] = corner_location(2.5, j, n);
+      locations[JointVelKey(j, t)] = corner_location(3.5, j, n);
+      locations[JointAccelKey(j, t)] = corner_location(4.5, j, n);
+      locations[TorqueKey(j, t)] = corner_location(6, j, n);
+      int i1 = joint->parent()->id();
+      int i2 = joint->child()->id();
+      locations[WrenchKey(i1, j, t)] = corner_location(5.5, j - 0.25, n);
+      locations[WrenchKey(i2, j, t)] = corner_location(5.5, j + 0.25, n);
+    }
+  } else {
+    for (auto &&link : robot.links()) {
+      int i = link->id();
+      locations[PoseKey(i, t)] = gtsam::Vector3(i, 0, 0);
+      locations[TwistKey(i, t)] = gtsam::Vector3(i, 1, 0);
+      locations[TwistAccelKey(i, t)] = gtsam::Vector3(i, 2, 0);
+    }
+
+    for (auto &&joint : robot.joints()) {
+      int j = joint->id();
+      locations[JointAngleKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 0.5, 0).finished();
-      locations[internal::JointVelKey(j, t)] =
+      locations[JointVelKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 1.5, 0).finished();
-      locations[internal::JointAccelKey(j, t)] =
+      locations[JointAccelKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 2.5, 0).finished();
       int i1 = joint->parent()->id();
       int i2 = joint->child()->id();
-      locations[internal::WrenchKey(i1, j, t)] =
+      locations[WrenchKey(i1, j, t)] =
           (gtsam::Vector(3) << j + 0.25, 3.5, 0).finished();
-      locations[internal::WrenchKey(i2, j, t)] =
+      locations[WrenchKey(i2, j, t)] =
           (gtsam::Vector(3) << j + 0.75, 3.5, 0).finished();
-      locations[internal::TorqueKey(j, t)] =
+      locations[TorqueKey(j, t)] =
           (gtsam::Vector(3) << j + 0.5, 4.5, 0).finished();
     }
   }

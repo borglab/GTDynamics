@@ -11,10 +11,12 @@ objectives and control costs, then optimizing
 @author Gerry Chen
 """
 
-import gtsam
 import gtdynamics as gtd
+import gtsam
 import numpy as np
+
 import utils
+
 
 class CdprControllerBase:
     """Interface for cable robot controllers
@@ -34,7 +36,9 @@ class CdprControllerBase:
         Raises:
             NotImplementedError: Derived classes must override this function
         """
-        raise NotImplementedError("CdprControllers need to implement the `update` function")
+        raise NotImplementedError(
+            "CdprControllers need to implement the `update` function")
+
 
 class CdprController(CdprControllerBase):
     """Precomputes the open-loop trajectory
@@ -99,13 +103,14 @@ class CdprController(CdprControllerBase):
         for k in range(N):
             for ji in range(4):
                 fg.push_back(
-                    gtd.PriorFactorDouble(gtd.internal.TorqueKey(ji, k).key(), 0.0,
-                                          gtsam.noiseModel.Diagonal.Precisions(R)))
+                    gtd.PriorFactorDouble(
+                        gtd.TorqueKey(ji, k).key(), 0.0,
+                        gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
         cost_x = gtsam.noiseModel.Isotropic.Sigma(6, 0.001) if Q is None else \
             gtsam.noiseModel.Diagonal.Precisions(Q)
         for k in range(N):
             fg.push_back(
                 gtsam.PriorFactorPose3(
-                    gtd.internal.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
+                    gtd.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
         return fg

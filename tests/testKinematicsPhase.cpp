@@ -29,7 +29,12 @@ TEST(Phase, InverseKinematics) {
   using namespace contact_goals_example;
 
   constexpr size_t num_time_steps = 5;
-  Phase phase0(num_time_steps, {LH,RF}, contact_in_com);
+  const std::vector<LinkSharedPtr> link_vec = {LH, RF};
+
+  auto constraint =
+      boost::make_shared<FootContactConstraintSpec>(link_vec, contact_in_com);
+
+  Phase phase0(0, num_time_steps, constraint);
   // TODO(frank): test methods producing constraints.
 }
 

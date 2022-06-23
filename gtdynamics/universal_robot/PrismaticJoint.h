@@ -7,7 +7,7 @@
 
 /**
  * @file  PrismaticJoint.h
- * @brief Representation of PrismaticJoint that inherits from ScrewJointBase
+ * @brief Representation of PrismaticJoint that inherits from Joint
  * @author Frank Dellaert
  * @author Mandy Xie
  * @author Alejandro Escontrela
@@ -18,16 +18,16 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include <gtdynamics/universal_robot/Joint.h>
 
 namespace gtdynamics {
 
 /**
- * @class PrismaticJoint is an implementation of the ScrewJointBase class
- *  which represents a prismatic joint and contains all necessary factor
- *  construction methods.
+ * @class PrismaticJoint is an implementation of the Joint class which
+ * represents a prismatic joint and contains all necessary factor construction
+ * methods.
  */
-class PrismaticJoint : public ScrewJointBase {
+class PrismaticJoint : public Joint {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
@@ -37,6 +37,9 @@ class PrismaticJoint : public ScrewJointBase {
   }
 
  public:
+  /// Constructor for serialization
+  PrismaticJoint() {}
+
   /**
    * @brief Create PrismaticJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
@@ -53,11 +56,32 @@ class PrismaticJoint : public ScrewJointBase {
                  const LinkSharedPtr &parent_link,
                  const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                  const JointParams &parameters = JointParams())
-      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
-                       getScrewAxis(axis), parameters) {}
+      : Joint(id, name, bTj, parent_link, child_link, getScrewAxis(axis),
+              parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const override { return Type::Prismatic; }
+  Type type() const final override { return Type::Prismatic; }
+
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::PrismaticJoint>
+    : public Testable<gtdynamics::PrismaticJoint> {};
+
+}  // namespace gtsam

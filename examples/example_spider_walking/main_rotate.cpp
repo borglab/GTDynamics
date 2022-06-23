@@ -21,7 +21,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -177,13 +177,14 @@ int main(int argc, char** argv) {
   auto collocation = gtdynamics::CollocationScheme::Euler;
 
   // Graphs for transition between phases + their initial values.
+  Initializer initializer;
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
   for (int p = 1; p < phase_cps.size(); p++) {
     std::cout << "Creating transition graph" << std::endl;
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
     std::cout << "Creating initial values" << std::endl;
-    transition_graph_init.push_back(ZeroValues(
+    transition_graph_init.push_back(initializer.ZeroValues(
         robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
@@ -240,8 +241,8 @@ int main(int argc, char** argv) {
         // TODO(aescontrela): Use correct contact point for each link.
         // TODO(frank): #179 make sure height is handled correctly.
         objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[pcl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), cp1.point,
+            PoseKey(link_map[pcl]->id(), t), Isotropic::Sigma(3, 1e-7),
+            cp1.point,
             Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
       }
 
@@ -250,9 +251,8 @@ int main(int argc, char** argv) {
 
       for (auto&& psl : phase_swing_links) {
         objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[psl]->id(), t),
-            Isotropic::Sigma(3, 1e-7), cp1.point,
-            Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+            PoseKey(link_map[psl]->id(), t), Isotropic::Sigma(3, 1e-7),
+            cp1.point, Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
       }
 
       // Update the goal point for the swing links.
@@ -275,7 +275,7 @@ int main(int argc, char** argv) {
   // Add base goal objectives to the factor graph.
   for (int t = 0; t <= t_f; t++) {
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        internal::PoseKey(base_link->id(), t),
+        PoseKey(base_link->id(), t),
         gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0.0, 0.5)),
         Isotropic::Sigma(6, 6e-5)));  // 6.2e-5
   }
@@ -284,17 +284,15 @@ int main(int argc, char** argv) {
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
     objective_factors.add(gtsam::PriorFactor<gtsam::Pose3>(
-        internal::PoseKey(link->id(), 0), link->bMcom(), dynamics_model_6));
+        PoseKey(link->id(), 0), link->bMcom(), dynamics_model_6));
     objective_factors.add(gtsam::PriorFactor<Vector6>(
-        internal::TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
+        TwistKey(link->id(), 0), Vector6::Zero(), dynamics_model_6));
 
     // Final link twists, accelerations.
-    objective_factors.add(
-        gtsam::PriorFactor<Vector6>(internal::TwistKey(link->id(), t_f),
-                                    Vector6::Zero(), objectives_model_6));
-    objective_factors.add(
-        gtsam::PriorFactor<Vector6>(internal::TwistAccelKey(link->id(), t_f),
-                                    Vector6::Zero(), objectives_model_6));
+    objective_factors.add(gtsam::PriorFactor<Vector6>(
+        TwistKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
+    objective_factors.add(gtsam::PriorFactor<Vector6>(
+        TwistAccelKey(link->id(), t_f), Vector6::Zero(), objectives_model_6));
   }
 
   // Add joint boundary conditions to FG.
@@ -303,27 +301,26 @@ int main(int argc, char** argv) {
     for (int t = 0; t <= t_f; t++) {
       if (joint->name().find("hip_") == 0) {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0, dynamics_model_1_2));
       } else if (joint->name().find("hip2") == 0) {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0.9, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0.9, dynamics_model_1_2));
       } else if (joint->name().find("knee") == 0) {
-        objective_factors.add(
-            gtsam::PriorFactor<double>(internal::JointAngleKey(joint->id(), t),
-                                       -1.22, dynamics_model_1_2));
+        objective_factors.add(gtsam::PriorFactor<double>(
+            JointAngleKey(joint->id(), t), -1.22, dynamics_model_1_2));
       } else {
         objective_factors.add(gtsam::PriorFactor<double>(
-            internal::JointAngleKey(joint->id(), t), 0.26, dynamics_model_1_2));
+            JointAngleKey(joint->id(), t), 0.26, dynamics_model_1_2));
       }
     }
 
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
+        JointVelKey(joint->id(), 0), 0.0, dynamics_model_1));
 
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
+        JointVelKey(joint->id(), t_f), 0.0, objectives_model_1));
     objective_factors.add(gtsam::PriorFactor<double>(
-        internal::JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
+        JointAccelKey(joint->id(), t_f), 0.0, objectives_model_1));
   }
 
   // Add prior factor constraining all Phase keys to have duration of 1 / 240.
@@ -336,14 +333,14 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
 
   // Initialize solution.
   gtsam::Values init_vals;
-  init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+  init_vals = initializer.MultiPhaseZeroValuesTrajectory(
       robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 

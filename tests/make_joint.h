@@ -13,13 +13,12 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/Link.h>
 
 namespace gtdynamics {
 /// Create a joint with given rest transform cMp and screw-axis in child frame.
-boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
-                                                   gtsam::Vector6 cScrewAxis) {
+JointConstSharedPtr make_joint(gtsam::Pose3 cMp, gtsam::Vector6 cScrewAxis) {
   // create links
   std::string name = "l1";
   double mass = 100;
@@ -41,7 +40,7 @@ boost::shared_ptr<const ScrewJointBase> make_joint(gtsam::Pose3 cMp,
   gtsam::Pose3 jMc = bMj.inverse() * l2->bMcom();
   gtsam::Vector6 jScrewAxis = jMc.AdjointMap() * cScrewAxis;
 
-  return boost::make_shared<const ScrewJointBase>(ScrewJointBase(
-      1, "j1", bMj, l1, l2, jScrewAxis.head<3>(), jScrewAxis, joint_params));
+  return boost::make_shared<const HelicalJoint>(1, "j1", bMj, l1, l2,
+                                                jScrewAxis, joint_params);
 }
 }  // namespace gtdynamics

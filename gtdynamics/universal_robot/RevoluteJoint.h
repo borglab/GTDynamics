@@ -18,16 +18,15 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include <gtdynamics/universal_robot/Joint.h>
 
 namespace gtdynamics {
 
 /**
- * @class RevoluteJoint is an implementation of the ScrewJointBase class
- *  which represents a revolute joint and contains all necessary factor
- *  construction methods.
+ * @class RevoluteJoint is an implementation of the Joint class which represents
+ * a revolute joint and contains all necessary factor construction methods.
  */
-class RevoluteJoint : public ScrewJointBase {
+class RevoluteJoint : public Joint {
  protected:
   /// Returns the screw axis in the joint frame given the joint axis
   gtsam::Vector6 getScrewAxis(const gtsam::Vector3 &axis) {
@@ -37,6 +36,9 @@ class RevoluteJoint : public ScrewJointBase {
   }
 
  public:
+  /// Constructor for serialization
+  RevoluteJoint() {}
+
   /**
    * @brief Create RevoluteJoint using JointParams, joint name, joint pose in
    * world frame, screw axes, and parent and child links.
@@ -53,11 +55,32 @@ class RevoluteJoint : public ScrewJointBase {
                 const LinkSharedPtr &parent_link,
                 const LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
                 const JointParams &parameters = JointParams())
-      : ScrewJointBase(id, name, bTj, parent_link, child_link, axis,
-                       getScrewAxis(axis), parameters) {}
+      : Joint(id, name, bTj, parent_link, child_link, getScrewAxis(axis),
+              parameters) {}
 
   /// Return joint type for use in reconstructing robot from JointParams.
-  Type type() const override { return Type::Revolute; }
+  Type type() const final override { return Type::Revolute; }
+
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::RevoluteJoint>
+    : public Testable<gtdynamics::RevoluteJoint> {};
+
+}  // namespace gtsam

@@ -13,16 +13,16 @@
 
 #pragma once
 
+#include <gtdynamics/config.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+
 #include <boost/optional.hpp>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/config.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 
@@ -112,6 +112,33 @@ class Robot {
   /// Print links and joints of the robot, for debug purposes
   void print(const std::string &s = "") const;
 
+  /// Overload equality operator.
+  bool operator==(const Robot &other) const {
+    // Define comparators for easy std::map equality checking
+    // Needed since we are storing shared pointers as the values.
+    auto link_comparator = [](decltype(*this->name_to_link_.begin()) a,
+                              decltype(a) b) {
+      // compare the key name and the underlying shared_ptr object
+      return a.first == b.first && (*a.second) == (*b.second);
+    };
+    auto joint_comparator = [](decltype(*this->name_to_joint_.begin()) a,
+                               decltype(a) b) {
+      // compare the key name and the underlying shared_ptr object
+      return a.first == b.first && (*a.second) == (*b.second);
+    };
+
+    return (this->name_to_link_.size() == other.name_to_link_.size() &&
+            std::equal(this->name_to_link_.begin(), this->name_to_link_.end(),
+                       other.name_to_link_.begin(), link_comparator) &&
+            this->name_to_joint_.size() == other.name_to_joint_.size() &&
+            std::equal(this->name_to_joint_.begin(), this->name_to_joint_.end(),
+                       other.name_to_joint_.begin(), joint_comparator));
+  }
+
+  bool equals(const Robot &other, double tol = 0) const {
+    return *this == other;
+  }
+
   /**
    * Calculate forward kinematics by performing BFS in the link-joint graph
    * (will throw an error when invalid joint angle specification detected).
@@ -136,5 +163,25 @@ class Robot {
   LinkSharedPtr findRootLink(
       const gtsam::Values &values,
       const boost::optional<std::string> &prior_link_name) const;
+
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(name_to_link_);
+    ar &BOOST_SERIALIZATION_NVP(name_to_joint_);
+  }
+
+  /// @}
 };
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::Robot> : public Testable<gtdynamics::Robot> {};
+
+}  // namespace gtsam

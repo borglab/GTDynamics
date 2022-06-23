@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -25,13 +26,12 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/ContactHeightFactor.h"
-
 using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::Vector3, gtsam::Vector1, gtsam::Rot3, gtsam::Pose3, gtsam::Point3;
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactHeightFactor, Error) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
@@ -40,34 +40,33 @@ TEST(ContactHeightFactor, Error) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the robot com to the link end.
-  gtsam::Point3 comPc(0, 0, 1);
+  Point3 comPc(0, 0, 1);
   ContactHeightFactor factor(pose_key, cost_model, comPc,
                              gtsam::Vector3(0, 0, -9.8), 0);
 
   // Leg oriented upwards with contact away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(3)));
+  gtsam::Values values1;
+  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values1), Vector1(3)));
 
   // Leg oriented down with contact 1m away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(1)));
+  gtsam::Values values2;
+  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values2), Vector1(1)));
 
   // Contact touching the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      gtsam::Vector1(0)));
+  gtsam::Values values3;
+  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 1.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values3), Vector1(0)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
 
   // Rotation and translation.
   gtsam::Values values_a;
-  values_a.insert(
-      pose_key,
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
-                   gtsam::Point3(4., 3., 3.)));
+  values_a.insert(pose_key,
+                  Pose3(Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
+                        Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_a,
       1e-7,   // Step used when computing numerical derivative jacobians.
@@ -75,8 +74,7 @@ TEST(ContactHeightFactor, Error) {
 
   // Pure translation.
   gtsam::Values values_b;
-  values_b.insert(pose_key,
-                  gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
+  values_b.insert(pose_key, Pose3(Rot3(), Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
       1e-7,   // Step used when computing numerical derivative jacobians.
@@ -84,7 +82,7 @@ TEST(ContactHeightFactor, Error) {
 }
 
 /**
- * Test the evaluateError method with various link twists.
+ * Test the unwhitenedError method with various link twists.
  **/
 TEST(ContactHeightFactor, ErrorWithHeight) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
@@ -93,36 +91,35 @@ TEST(ContactHeightFactor, ErrorWithHeight) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Point3 comPc(0, 0, 1);
+  Point3 comPc(0, 0, 1);
 
   // Create a factor that establishes a ground plane at z = -1.0.
   ContactHeightFactor factor(pose_key, cost_model, comPc,
                              gtsam::Vector3(0, 0, -9.8), -1.0);
 
   // Leg oriented upwards with contact away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3(), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(4)));
+  gtsam::Values values1;
+  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values1), gtsam::Vector1(4)));
 
   // Leg oriented down with contact 1m away from the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 2.))),
-                      gtsam::Vector1(2)));
+  gtsam::Values values2;
+  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 2.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values2), gtsam::Vector1(2)));
 
   // Contact touching the ground.
-  EXPECT(assert_equal(factor.evaluateError(gtsam::Pose3(
-                          gtsam::Rot3::Rx(M_PI), gtsam::Point3(0., 0., 1.))),
-                      gtsam::Vector1(1)));
+  gtsam::Values values3;
+  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 1.)));
+  EXPECT(assert_equal(factor.unwhitenedError(values3), gtsam::Vector1(1)));
 
   // Check that Jacobian computation is correct by comparison to finite
   // differences.
 
   // Rotation and translation.
   gtsam::Values values_a;
-  values_a.insert(
-      pose_key,
-      gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
-                   gtsam::Point3(4., 3., 3.)));
+  values_a.insert(pose_key,
+                  Pose3(Rot3::RzRyRx(M_PI / 8.0, M_PI / 12.0, 5 * M_PI / 6.0),
+                        Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_a,
       1e-7,   // Step used when computing numerical derivative jacobians.
@@ -130,8 +127,7 @@ TEST(ContactHeightFactor, ErrorWithHeight) {
 
   // Pure translation.
   gtsam::Values values_b;
-  values_b.insert(pose_key,
-                  gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4., 3., 3.)));
+  values_b.insert(pose_key, Pose3(Rot3(), Point3(4., 3., 3.)));
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
       1e-7,   // Step used when computing numerical derivative jacobians.
@@ -149,13 +145,13 @@ TEST(ContactHeightFactor, Optimization) {
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
   // Transform from the contact frame to the link com.
-  gtsam::Point3 comPc(0, 0, 1);
+  Point3 comPc(0, 0, 1);
   ContactHeightFactor factor(pose_key, cost_model, comPc,
                              gtsam::Vector3(0, 0, -9.8));
 
   // Initial link pose.
-  gtsam::Pose3 link_pose_init = gtsam::Pose3(
-      gtsam::Pose3(gtsam::Rot3::Rx(3 * M_PI / 4), gtsam::Point3(0., 0., 5.)));
+  Pose3 link_pose_init =
+      Pose3(gtsam::Rot3::Rx(3 * M_PI / 4), Point3(0., 0., 5.));
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -171,22 +167,22 @@ TEST(ContactHeightFactor, Optimization) {
   optimizer.optimize();
 
   gtsam::Values results = optimizer.values();
-  gtsam::Pose3 link_pose_optimized = results.at<gtsam::Pose3>(pose_key);
+  Pose3 link_pose_optimized = results.at<Pose3>(pose_key);
 
   std::cout << "Initial Pose: " << std::endl;
   std::cout << link_pose_init << std::endl;
 
   std::cout << "Initial Pose Error: " << std::endl;
-  std::cout << factor.evaluateError(link_pose_init) << std::endl;
+  std::cout << factor.unwhitenedError(init_values) << std::endl;
 
   std::cout << "Optimized Pose: " << std::endl;
   std::cout << link_pose_optimized << std::endl;
 
   std::cout << "Optimized Pose Error: " << std::endl;
-  std::cout << factor.evaluateError(link_pose_optimized) << std::endl;
+  std::cout << factor.unwhitenedError(results) << std::endl;
 
-  EXPECT(assert_equal(factor.evaluateError(link_pose_optimized),
-                      gtsam::Vector1(0), 1e-3));
+  EXPECT(
+      assert_equal(factor.unwhitenedError(results), gtsam::Vector1(0), 1e-3));
 }
 
 int main() {

@@ -13,15 +13,14 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <boost/optional.hpp>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 /**
@@ -93,9 +92,9 @@ public:
     const double dt2 = std::pow(dt, 2);
     for (auto &&joint : robot_.joints()) {
       auto j = joint->id();
-      const double q = JointAngle<double>(current_values_, j);
-      const double v = JointVel<double>(current_values_, j);
-      const double a = JointAccel<double>(current_values_, j);
+      const double q = JointAngle(current_values_, j);
+      const double v = JointVel(current_values_, j);
+      const double a = JointAccel(current_values_, j);
 
       // TODO(frank): one could use t values and save entire simulation.
       const double v_new = v + dt * a;
