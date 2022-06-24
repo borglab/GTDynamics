@@ -140,30 +140,20 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     // This means that the 3*3 jacobian has an upper triangular structure.
     Matrix A = gtsam::Z_3x3;
 
-    // Jacobians
-    gtsam::Matrix6 H_p2_screw, H_ad_p2, H_ad_p1_x;
-
-    // Calculate the inverse adjoint maps of the Poses
-    // We take negative screw axis since that will give us the inverse directly.
-    Pose3 p1_inv = Pose3::Expmap(-axes_.col(1) * angles(1));
-    Pose3 p2_inv = Pose3::Expmap(-axes_.col(2) * angles(2), &H_p2_screw);
-
-    // Compute jacobians for Adjoint[Transpose].
-    // The jacobian wrt the wrench is the required AdjointMap
-    p1_inv.Adjoint(wrench, gtsam::OptionalJacobian<6, 6>(), &H_ad_p1_x);
-    auto adT_p2_inv = p2_inv.AdjointTranspose(wrench, &H_ad_p2);
-
-    // Compute jacobians of pose wrt joint angle
-    gtsam::Matrix61 p2_H_q2 = H_p2_screw * (-axes_.col(2));
-    gtsam::Matrix61 H_ad_angles2 = H_ad_p2 * p2_H_q2;
-
     // Calculate the Adjoint and take its derivative in relation to angles
     auto ad_J_angles1 = AdjointMapJacobianQ(angles(1), Pose3(), axes_.col(1));
+    auto ad_J_angles2 = AdjointMapJacobianQ(angles(2), Pose3(), axes_.col(2));
+
+    // Calculate the invers adjoint maps of the Poses, as we do in * operator
+    Pose3 p1_inv = Pose3::Expmap(-axes_.col(1) * angles(1));
+    Pose3 p2_inv = Pose3::Expmap(-axes_.col(2) * angles(2));
+    auto ad_inv_p1 = p1_inv.AdjointMap();
+    auto ad_inv_p2 = p2_inv.AdjointMap();
 
     // calculate the non-zero terms
-    A(1, 2) = axes_.col(1).transpose() * H_ad_angles2;
-    A(0, 2) = axes_.col(0).transpose() * H_ad_p1_x.transpose() * H_ad_angles2;
-    A(0, 1) = axes_.col(0).transpose() * ad_J_angles1.transpose() * adT_p2_inv;
+    A(1, 2) = (ad_J_angles2 * axes_.col(1)).transpose() * wrench;
+    A(0, 2) = (ad_J_angles2 * ad_inv_p1 * axes_.col(0)).transpose() * wrench;
+    A(0, 1) = (ad_inv_p2 * ad_J_angles1 * axes_.col(0)).transpose() * wrench;
 
     *H_angles = A;
   }
