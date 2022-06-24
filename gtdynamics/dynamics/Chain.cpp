@@ -86,6 +86,35 @@ Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
   return poe;
 }
 
+/**
+ * Calculate AdjointMap jacobian w.r.t. joint coordinate q
+ * @param q joint angle
+ * @param jMi this COM frame, expressed in next link's COM frame at rest
+ * @param screw_axis screw axis expressed in kth link's COM frame
+ *
+ * TODO(Varun) Perhaps move part of this to gtsam::Pose3::AdjointMap()?
+ */
+gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
+                                   const gtsam::Vector6 &screw_axis) {
+  // taking opposite value of screw_axis_ is because
+  // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
+  gtsam::Vector3 w = -screw_axis.head<3>();
+  gtsam::Vector3 v = -screw_axis.tail<3>();
+  gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis * q) * jMi;
+  auto w_skew = gtsam::skewSymmetric(w);
+  gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
+  gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
+  gtsam::Vector3 H_T =
+      H_expo * (jMi.translation() - w_skew * v) + w * w.transpose() * v;
+  gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
+                        gtsam::skewSymmetric(kTj.translation()) * H_R;
+  gtsam::Matrix6 H = gtsam::Z_6x6;
+  gtsam::insertSub(H, H_R, 0, 0);
+  gtsam::insertSub(H, H_TR, 3, 0);
+  gtsam::insertSub(H, H_R, 3, 3);
+  return H;
+}
+
 gtsam::Vector3 Chain::DynamicalEquality3(
     const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
     const gtsam::Vector3 &torques, gtsam::OptionalJacobian<3, 6> H_wrench,
@@ -111,20 +140,30 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     // This means that the 3*3 jacobian has an upper triangular structure.
     Matrix A = gtsam::Z_3x3;
 
+    // Jacobians
+    gtsam::Matrix6 H_p2_screw, H_ad_p2, H_ad_p1_x;
+
+    // Calculate the inverse adjoint maps of the Poses
+    // We take negative screw axis since that will give us the inverse directly.
+    Pose3 p1_inv = Pose3::Expmap(-axes_.col(1) * angles(1));
+    Pose3 p2_inv = Pose3::Expmap(-axes_.col(2) * angles(2), &H_p2_screw);
+
+    // Compute jacobians for Adjoint[Transpose].
+    // The jacobian wrt the wrench is the required AdjointMap
+    p1_inv.Adjoint(wrench, gtsam::OptionalJacobian<6, 6>(), &H_ad_p1_x);
+    auto adT_p2_inv = p2_inv.AdjointTranspose(wrench, &H_ad_p2);
+
+    // Compute jacobians of pose wrt joint angle
+    gtsam::Matrix61 p2_H_q2 = H_p2_screw * (-axes_.col(2));
+    gtsam::Matrix61 H_ad_angles2 = H_ad_p2 * p2_H_q2;
+
     // Calculate the Adjoint and take its derivative in relation to angles
     auto ad_J_angles1 = AdjointMapJacobianQ(angles(1), Pose3(), axes_.col(1));
-    auto ad_J_angles2 = AdjointMapJacobianQ(angles(2), Pose3(), axes_.col(2));
-
-    // Calculate the invers adjoint maps of the Poses, as we do in * operator
-    Pose3 p1 = Pose3::Expmap(axes_.col(1) * angles(1));
-    Pose3 p2 = Pose3::Expmap(axes_.col(2) * angles(2));
-    auto ad_inv_p1 = p1.inverse().AdjointMap();
-    auto ad_inv_p2 = p2.inverse().AdjointMap();
 
     // calculate the non-zero terms
-    A(1, 2) = (ad_J_angles2 * axes_.col(1)).transpose() * wrench;
-    A(0, 2) = (ad_J_angles2 * ad_inv_p1 * axes_.col(0)).transpose() * wrench;
-    A(0, 1) = (ad_inv_p2 * ad_J_angles1 * axes_.col(0)).transpose() * wrench;
+    A(1, 2) = axes_.col(1).transpose() * H_ad_angles2;
+    A(0, 2) = axes_.col(0).transpose() * H_ad_p1_x.transpose() * H_ad_angles2;
+    A(0, 1) = axes_.col(0).transpose() * ad_J_angles1.transpose() * adT_p2_inv;
 
     *H_angles = A;
   }
