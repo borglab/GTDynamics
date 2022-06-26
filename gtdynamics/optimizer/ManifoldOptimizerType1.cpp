@@ -152,7 +152,7 @@ void ManifoldOptimizerType1::constructMoptGraph(
           boost::dynamic_pointer_cast<NoiseModelFactor>(factor);
       auto subs_factor = boost::make_shared<SubstituteFactor>(
           noise_factor, replacement_map, mopt_problem.fixed_manifolds_);
-      if (subs_factor->check_active()) {
+      if (subs_factor->checkActive()) {
         mopt_problem.graph_.add(subs_factor);
       }
     } else {

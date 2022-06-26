@@ -41,16 +41,34 @@ void ConstraintManifold::initializeValues(const gtsam::Values& values) {
 }
 
 /* ************************************************************************* */
-Values ConstraintManifold::retractConstraints(const Values& values) const {
-  if (params_->retract_type == Params::RetractType::UOPT) {
-    return retractUopt(values);
-  } else if (params_->retract_type == Params::RetractType::PROJ) {
-    return retractProj(values);
-  } else if (params_->retract_type == Params::RetractType::PARTIAL_PROJ) {
-    return retractPProj(values);
+Retractor::shared_ptr ConstraintManifold::constructRetractor(
+    const Params::shared_ptr& params,
+    const BasisParams::shared_ptr& basis_params,
+    const ConnectedComponent::shared_ptr& cc) {
+  if (params->retract_type == Params::RetractType::UOPT) {
+    return boost::make_shared<UoptRetractor>(cc, params->lm_params);
+  } else if (params->retract_type == Params::RetractType::PROJ) {
+    return boost::make_shared<ProjRetractor>(cc, params->lm_params);
+  } else if (params->retract_type == Params::RetractType::PARTIAL_PROJ) {
+    return boost::make_shared<BasisRetractor>(cc, basis_params->basis_keys_,
+                                              params->lm_params);
   }
-  std::cerr << "Unrecognized retraction type.\n";
-  return Values();
+  else {
+    // Default
+    return boost::make_shared<UoptRetractor>(cc, params->lm_params);
+  }
+}
+
+/* ************************************************************************* */
+Values ConstraintManifold::retractConstraints(const Values& values) const {
+  // if (params_->retract_type == Params::RetractType::UOPT) {
+  //   return retractUopt(values);
+  // } else if (params_->retract_type == Params::RetractType::PROJ) {
+  //   return retractProj(values);
+  // } else if (params_->retract_type == Params::RetractType::PARTIAL_PROJ) {
+  //   return retractPProj(values);
+  // }
+  return retractor_->retract(values);
 }
 
 /* ************************************************************************* */
@@ -86,8 +104,7 @@ ConstraintManifold ConstraintManifold::retract(const gtsam::Vector& xi,
                                                ChartJacobian H1,
                                                ChartJacobian H2) const {
   // Compute delta for each variable and perform update.
-  gtsam::VectorValues delta = basis_->computeTangentVector(xi);
-  gtsam::Values new_values = values_.retract(delta);
+  Values new_values = basis_->retractBaseVariables(values_, xi);
 
   // Set jacobian as 0 since they are not used for optimization.
   if (H1)
@@ -130,66 +147,66 @@ bool ConstraintManifold::equals(const ConstraintManifold& other,
   return values_.equals(other.values_, tol);
 }
 
-/* ************************************************************************* */
-gtsam::Values ConstraintManifold::retractUopt(
-    const gtsam::Values& values) const {
-  // return values;
-  gtsam::Values init_values_cc;
-  for (const Key& key : cc_->keys_) {
-    init_values_cc.insert(key, values.at(key));
-  }
+// /* *************************************************************************
+// */ gtsam::Values ConstraintManifold::retractUopt(
+//     const gtsam::Values& values) const {
+//   // return values;
+//   gtsam::Values init_values_cc;
+//   for (const Key& key : cc_->keys_) {
+//     init_values_cc.insert(key, values.at(key));
+//   }
 
-  // TODO: avoid copy-paste of graph, avoid constructing optimzier everytime
-  gtsam::LevenbergMarquardtOptimizer optimizer(
-      cc_->merit_graph_, init_values_cc, params_->lm_params);
-  return optimizer.optimize();
-}
+//   // TODO: avoid copy-paste of graph, avoid constructing optimizer everytime
+//   gtsam::LevenbergMarquardtOptimizer optimizer(
+//       cc_->merit_graph_, init_values_cc, params_->lm_params);
+//   return optimizer.optimize();
+// }
 
-/* ************************************************************************* */
-gtsam::Values ConstraintManifold::retractProj(
-    const gtsam::Values& values) const {
-  NonlinearFactorGraph prior_graph;
-  Values init_values_cc;
-  for (const Key& key : cc_->keys_) {
-    init_values_cc.insert(key, values.at(key));
-    size_t dim = values.at(key).dim();
-    auto linear_factor = boost::make_shared<JacobianFactor>(
-        key, Matrix::Identity(dim, dim), Vector::Zero(dim),
-        noiseModel::Unit::Create(dim));
-    // TODO(yetong): replace Unit with a tunable parameter
-    Values linearization_point;
-    linearization_point.insert(key, values.at(key));
-    prior_graph.emplace_shared<LinearContainerFactor>(linear_factor,
-                                                      linearization_point);
-  }
-  gtdynamics::PenaltyMethodParameters al_params(params_->lm_params);
-  gtdynamics::PenaltyMethodOptimizer optimizer(al_params);
+// /* *************************************************************************
+// */ gtsam::Values ConstraintManifold::retractProj(
+//     const gtsam::Values& values) const {
+//   NonlinearFactorGraph prior_graph;
+//   Values init_values_cc;
+//   for (const Key& key : cc_->keys_) {
+//     init_values_cc.insert(key, values.at(key));
+//     size_t dim = values.at(key).dim();
+//     auto linear_factor = boost::make_shared<JacobianFactor>(
+//         key, Matrix::Identity(dim, dim), Vector::Zero(dim),
+//         noiseModel::Unit::Create(dim));
+//     // TODO(yetong): replace Unit with a tunable parameter
+//     Values linearization_point;
+//     linearization_point.insert(key, values.at(key));
+//     prior_graph.emplace_shared<LinearContainerFactor>(linear_factor,
+//                                                       linearization_point);
+//   }
+//   gtdynamics::PenaltyMethodParameters al_params(params_->lm_params);
+//   gtdynamics::PenaltyMethodOptimizer optimizer(al_params);
 
-  return optimizer.optimize(prior_graph, cc_->constraints_, init_values_cc);
-}
+//   return optimizer.optimize(prior_graph, cc_->constraints_, init_values_cc);
+// }
 
-/* ************************************************************************* */
-gtsam::Values ConstraintManifold::retractPProj(
-    const gtsam::Values& values) const {
-  Values init_values_cc;
-  for (const Key& key : cc_->keys_) {
-    init_values_cc.insert(key, values.at(key));
-  }
-  NonlinearFactorGraph graph = cc_->merit_graph_;
-  for (const Key& key : basis_params_->basis_keys_) {
-    size_t dim = values.at(key).dim();
-    // TODO: make it a tunable parameter.
-    auto linear_factor = boost::make_shared<JacobianFactor>(
-        key, Matrix::Identity(dim, dim) * 1e6, Vector::Zero(dim),
-        noiseModel::Unit::Create(dim));
-    Values linearization_point;
-    linearization_point.insert(key, values.at(key));
-    graph.emplace_shared<LinearContainerFactor>(linear_factor,
-                                                linearization_point);
-  }
-  gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values_cc,
-                                               params_->lm_params);
-  return optimizer.optimize();
-}
+// /* *************************************************************************
+// */ gtsam::Values ConstraintManifold::retractPProj(
+//     const gtsam::Values& values) const {
+//   Values init_values_cc;
+//   for (const Key& key : cc_->keys_) {
+//     init_values_cc.insert(key, values.at(key));
+//   }
+//   NonlinearFactorGraph graph = cc_->merit_graph_;
+//   for (const Key& key : basis_params_->basis_keys_) {
+//     size_t dim = values.at(key).dim();
+//     // TODO: make it a tunable parameter.
+//     auto linear_factor = boost::make_shared<JacobianFactor>(
+//         key, Matrix::Identity(dim, dim) * 1e6, Vector::Zero(dim),
+//         noiseModel::Unit::Create(dim));
+//     Values linearization_point;
+//     linearization_point.insert(key, values.at(key));
+//     graph.emplace_shared<LinearContainerFactor>(linear_factor,
+//                                                 linearization_point);
+//   }
+//   gtsam::LevenbergMarquardtOptimizer optimizer(graph, init_values_cc,
+//                                                params_->lm_params);
+//   return optimizer.optimize();
+// }
 
 }  // namespace gtsam

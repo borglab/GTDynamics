@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/optimizer/ConnectedComponent.h>
+#include <gtdynamics/optimizer/Retractor.h>
 #include <gtdynamics/optimizer/TspaceBasis.h>
 
 namespace gtsam {
@@ -48,11 +49,12 @@ class ConstraintManifold {
   Params::shared_ptr params_;
   BasisParams::shared_ptr basis_params_;
   ConnectedComponent::shared_ptr cc_;
-  size_t embedding_dim_;                // dimension of embedding space
-  size_t constraint_dim_;               // dimension of constriants
-  size_t dim_;                          // dimension of constraint manifold
-  gtsam::Values values_;                // values of variables in CCC
-  TspaceBasis::shared_ptr basis_;       // tangent space basis
+  Retractor::shared_ptr retractor_;  // retraction operation
+  size_t embedding_dim_;             // dimension of embedding space
+  size_t constraint_dim_;            // dimension of constriants
+  size_t dim_;                       // dimension of constraint manifold
+  gtsam::Values values_;             // values of variables in CCC
+  TspaceBasis::shared_ptr basis_;    // tangent space basis
 
  public:
   enum { dimension = Eigen::Dynamic };
@@ -70,22 +72,45 @@ class ConstraintManifold {
       const ConnectedComponent::shared_ptr& cc, const gtsam::Values& values,
       const Params::shared_ptr& params = boost::make_shared<Params>(),
       bool retract_init = true, bool construct_basis = true,
-      const BasisParams::shared_ptr& basis_params = boost::make_shared<BasisParams>())
-      : params_(params), basis_params_(basis_params), cc_(cc) {
+      const BasisParams::shared_ptr& basis_params =
+          boost::make_shared<BasisParams>())
+      : params_(params),
+        basis_params_(basis_params),
+        cc_(cc),
+        retractor_(constructRetractor(params, basis_params, cc)) {
     initializeValues(values);
+    if (dim() > 0) {
+      if (retract_init) {
+        values_ = retractConstraints(values_);
+      }
+      if (construct_basis) {
+        computeBasis();
+      }
+    }
+  }
+
+  /** constructor from other manifold but update the values. */
+  ConstraintManifold(const ConstraintManifold& other, const Values& values,
+                     const bool retract_init)
+      : params_(other.params_),
+        basis_params_(other.basis_params_),
+        cc_(other.cc_),
+        retractor_(other.retractor_),
+        embedding_dim_(other.embedding_dim_),
+        constraint_dim_(other.constraint_dim_),
+        dim_(other.dim_),
+        values_(values) {
     if (retract_init) {
       values_ = retractConstraints(values_);
     }
-    if (construct_basis && dim() > 0) {
-      computeBasis();
-    }
+    computeBasis();
   }
 
   /** Construct new ConstraintManifold with new values. Note: this function
    * indirectly calls retractConstraints. */
   ConstraintManifold createWithNewValues(const gtsam::Values& values,
                                          bool retract_init = true) const {
-    return ConstraintManifold(cc_, values, params_, true, true, basis_params_);
+    return ConstraintManifold(*this, values, retract_init);
   }
 
   /// Dimension of the constraint manifold.
@@ -140,17 +165,23 @@ class ConstraintManifold {
    */
   void initializeValues(const gtsam::Values& values);
 
-  /** Perform retraction by minimizing the constraint violation, e.g.,
-   * ||h(x)||^2. */
-  gtsam::Values retractUopt(const gtsam::Values& values) const;
+  static Retractor::shared_ptr constructRetractor(
+      const Params::shared_ptr& params,
+      const BasisParams::shared_ptr& basis_params,
+      const ConnectedComponent::shared_ptr& cc);
 
-  /** Perform retraction by performing metric projection, e.g., minimizing
-   * ||dist(x,x0)||^2  s.t. h(x)=0. */
-  gtsam::Values retractProj(const gtsam::Values& values) const;
+  // /** Perform retraction by minimizing the constraint violation, e.g.,
+  //  * ||h(x)||^2. */
+  // gtsam::Values retractUopt(const gtsam::Values& values) const;
 
-  /** Perform retraction by minimizing the constraint violation while fixing the
-   * specified variables, e.g., min ||h(x)||^2.  s.t. x_s=x0_s. */
-  gtsam::Values retractPProj(const gtsam::Values& values) const;
+  // /** Perform retraction by performing metric projection, e.g., minimizing
+  //  * ||dist(x,x0)||^2  s.t. h(x)=0. */
+  // gtsam::Values retractProj(const gtsam::Values& values) const;
+
+  // /** Perform retraction by minimizing the constraint violation while fixing
+  // the
+  //  * specified variables, e.g., min ||h(x)||^2.  s.t. x_s=x0_s. */
+  // gtsam::Values retractPProj(const gtsam::Values& values) const;
 };
 
 // Specialize ConstraintManifold traits to use a Retract/Local

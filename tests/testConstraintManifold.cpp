@@ -51,7 +51,13 @@ TEST(ConstraintManifold, connected_poses) {
 
   // Construct manifold.
   auto component = boost::make_shared<ConnectedComponent>(constraints);
-  ConstraintManifold manifold(component, cm_base_values);
+  auto params = boost::make_shared<ConstraintManifold::Params>();
+  params->basis_type = ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
+  params->retract_type = ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
+  KeyVector basis_keys{x3_key};
+  auto basis_params = boost::make_shared<BasisParams>(basis_keys);
+
+  ConstraintManifold manifold(component, cm_base_values, params, true, true, basis_params);
 
   // Check recover
   Values values;
@@ -75,7 +81,13 @@ TEST(ConstraintManifold, connected_poses) {
   EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
                           x3_recover_func, manifold),
                       H_recover_x3));
+  
+  Vector xi = (Vector(6)<<0,0,0,0,0,1).finished();
+  auto new_cm = manifold.retract(xi);
+  // new_cm.print();
 }
+
+
 
 /** Dynamics manifold for cart-pole robot. */
 TEST(ConstraintManifold_retract, cart_pole_dynamics) {

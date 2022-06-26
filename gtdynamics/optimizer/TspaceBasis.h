@@ -7,7 +7,8 @@
 
 /**
  * @file  TspaceBasis.h
- * @brief Basis for tangent space of constraint manifold.
+ * @brief Basis for tangent space of constraint manifold. Detailed definition of
+ * tangent space and basis are available at Boumal20book Sec.8.4.
  * @author: Yetong Zhang
  */
 
@@ -46,9 +47,14 @@ class TspaceBasis {
   /// Implementation of localCoordinate function for the constraint manifold.
   virtual Vector localCoordinates(const Values& values,
                                   const Values& values_other) const = 0;
-  
+
   /// Dimension of the basis.
   virtual const size_t& dim() const = 0;
+
+  /// Retract on the base variables.
+  virtual Values retractBaseVariables(const Values& values, const Vector& xi) {
+    return values.retract(computeTangentVector(xi));
+  }
 };
 
 /** Tangent space basis implmented using a matrix, e.g., the kernel of Dh(X),
@@ -59,6 +65,7 @@ class MatrixBasis : public TspaceBasis {
   std::map<Key, size_t> var_location_;  // location of variables in Jacobian
   std::map<Key, size_t> var_dim_;       // dimension of variables
   size_t total_basis_dim_;
+
  public:
   /** Constructor
    * @param cc constraint-connected component for the constraint manifold
@@ -76,8 +83,10 @@ class MatrixBasis : public TspaceBasis {
   Vector localCoordinates(const Values& values,
                           const Values& values_other) const override;
 
-  const size_t& dim() const override {return total_basis_dim_; }
+  /// Dimension of the basis.
+  const size_t& dim() const override { return total_basis_dim_; }
 
+  /// Basis matrix.
   const Matrix& matrix() const { return basis_; }
 };
 
@@ -111,8 +120,9 @@ class EliminationBasis : public TspaceBasis {
   /// Implmentation of localCoordinate for the constraint manifold.
   Vector localCoordinates(const Values& values,
                           const Values& values_other) const override;
-  
-  const size_t& dim() const override {return total_basis_dim_; }
+
+  /// Dimension of the basis.
+  const size_t& dim() const override { return total_basis_dim_; }
 };
 
 }  // namespace gtsam

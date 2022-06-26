@@ -67,11 +67,16 @@ class ConstrainedOptimizer {
       ConstrainedOptResult* intermediate_result = nullptr) const = 0;
 };
 
-/// Equality-constrained optimization problem.
+/** Equality-constrained optimization problem, in the form of 
+ * argmin_x ||f(X)||^2
+ * s.t.     h(X) = 0
+ * where X represents the variables, ||f(X)||^2 represents the quadratic cost
+ * functions, h(X)=0 represents the constraints.
+*/
 struct EqConsOptProblem {
-  gtsam::NonlinearFactorGraph costs_;            // cost function
-  gtdynamics::EqualityConstraints constraints_;  // equality constraints
-  gtsam::Values values_;                         // values of all variables
+  gtsam::NonlinearFactorGraph costs_;           // cost function, ||f(X)||^2
+  gtdynamics::EqualityConstraints constraints_; // equality constraints. h(X)=0
+  gtsam::Values values_;                        // values of all variables, X
   /// Constructor.
   EqConsOptProblem(const gtsam::NonlinearFactorGraph& costs,
                    const gtdynamics::EqualityConstraints& constraints,

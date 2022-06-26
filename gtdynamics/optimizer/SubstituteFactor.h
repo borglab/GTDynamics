@@ -55,7 +55,7 @@ class SubstituteFactor : public NoiseModelFactor {
              computeNewKeys(base_factor, replacement_map, fc_manifolds)),
         base_factor_(base_factor),
         replacement_map_(replacement_map) {
-    if (!check_active()) {
+    if (!checkActive()) {
       return;
     }
     computeBaseKeyIndex();
@@ -99,7 +99,7 @@ class SubstituteFactor : public NoiseModelFactor {
 
   /** Check if the factor is active. Note: if all the variables of the original
    * factor are fully constrained, no updates can be made.*/
-  inline bool check_active() const { return size() > 0; }
+  inline bool checkActive() const { return size() > 0; }
 
  private:
   /** Serialization function */
@@ -107,7 +107,7 @@ class SubstituteFactor : public NoiseModelFactor {
   template <class ARCHIVE>
   void serialize(ARCHIVE& ar, const unsigned int /*version*/) {
     ar& boost::serialization::make_nvp(
-        "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
+        "SubstituteFactor", boost::serialization::base_object<Base>(*this));
     ar& BOOST_SERIALIZATION_NVP(base_factor_);
     ar& BOOST_SERIALIZATION_NVP(replacement_map_);
     ar& BOOST_SERIALIZATION_NVP(cmanifold_keys_);
@@ -116,6 +116,6 @@ class SubstituteFactor : public NoiseModelFactor {
     ar& BOOST_SERIALIZATION_NVP(base_key_index_);
   }
 
-};  // \class NoiseModelFactor
+};  // \class SubstituteFactor
 
 }  // namespace gtsam
