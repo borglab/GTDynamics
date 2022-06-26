@@ -7,13 +7,14 @@
 
 /**
  * @file  Link.h
- * @brief only link part of a robot, does not include joint part
- * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @brief Abstract representation of a robot link.
+ * @author: Frank Dellaert, Mandy Xie, Varun Agrawal, and Alejandro Escontrela
  */
 
 #pragma once
 
 #include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/RobotTypes.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/utils.h>
@@ -37,14 +38,8 @@
 
 namespace gtdynamics {
 
-class Link;   // forward declaration
-class Joint;  // forward declaration
-
-LINK_TYPEDEF_CLASS_POINTER(Link);
-LINK_TYPEDEF_CLASS_POINTER(Joint);
-
 /**
- * @class Base class for links taking different format of parameters.
+ * @class Abstract base class for robot links.
  */
 class Link : public boost::enable_shared_from_this<Link> {
  private:
@@ -73,6 +68,7 @@ class Link : public boost::enable_shared_from_this<Link> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  /// Default constructor
   Link() {}
 
   /**
@@ -100,16 +96,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   /** destructor */
   virtual ~Link() = default;
 
-  bool operator==(const Link &other) const {
-    return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->mass_ == other.mass_ &&
-            this->centerOfMass_.equals(other.centerOfMass_) &&
-            this->inertia_ == other.inertia_ &&
-            this->bMcom_.equals(other.bMcom_) &&
-            this->bMlink_.equals(other.bMlink_) &&
-            this->is_fixed_ == other.is_fixed_ &&
-            this->fixed_pose_.equals(other.fixed_pose_));
-  }
+  bool operator==(const Link &other) const;
 
   bool operator!=(const Link &other) const { return !(*this == other); }
 
@@ -163,12 +150,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   const gtsam::Matrix3 &inertia() const { return inertia_; }
 
   /// Return general mass gtsam::Matrix
-  gtsam::Matrix6 inertiaMatrix() const {
-    std::vector<gtsam::Matrix> gmm;
-    gmm.push_back(inertia_);
-    gmm.push_back(gtsam::I_3x3 * mass_);
-    return gtsam::diag(gmm);
-  }
+  gtsam::Matrix6 inertiaMatrix() const;
 
   /// Functional way to fix a link
   static Link fix(
@@ -191,15 +173,10 @@ class Link : public boost::enable_shared_from_this<Link> {
   }
 
   /// Print to ostream
-  friend std::ostream &operator<<(std::ostream &os, const Link &l) {
-    os << l.name();
-    return os;
-  }
+  friend std::ostream &operator<<(std::ostream &os, const Link &link);
 
   /// Helper print function
-  void print(const std::string &s = "") const {
-    std::cout << (s.empty() ? s : s + " ") << *this;
-  }
+  void print(const std::string &s = "") const;
 
   /**
    * @brief Create expression that constraint the wrench balance on the link.

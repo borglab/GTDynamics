@@ -95,6 +95,17 @@ TEST(Link, Serialization) {
   EXPECT(equalsDereferencedBinary(l1));
 }
 
+TEST(Link, Print) {
+  Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+            Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+
+  std::string expected =
+    "l1, id=1:\n"
+    "	com pose:   0 -0  0, 0 0 1\n"
+    "	link pose:  0 -0  0, 0 0 0\n";
+  EXPECT(gtsam::assert_print_equal(expected, link));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
