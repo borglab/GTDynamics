@@ -106,26 +106,14 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
            ++parent) {
         const Key parent_key = *parent;
         const auto parent_dim = cg->getDim(parent);
-        if (frontal_position < 0) {
-          throw std::runtime_error("frontal_position<0: " +
-                                   std::to_string(frontal_position));
-        }
-        if (parent_position < 0) {
-          throw std::runtime_error("parent_position<0: " +
-                                   std::to_string(parent_position));
-        }
-        if (frontal_position + frontal_dim > S_mat.rows()) {
+        if (frontal_position + frontal_dim > S_mat.rows() ||
+            parent_position + parent_dim > S_mat.cols()) {
           throw std::runtime_error(
-              "frontal_position + frontal_dim > S_mat.rows(): " +
-              std::to_string(frontal_position) + ", " +
-              std::to_string(frontal_dim) + ", " +
-              std::to_string(S_mat.rows()));
-        }
-        if (parent_position + parent_dim > S_mat.cols()) {
-          throw std::runtime_error(
-              "parent_position + parent_dim > S_mat.cols(): " +
-              std::to_string(parent_position) + ", " +
-              std::to_string(parent_dim) + ", " + std::to_string(S_mat.cols()) +
+              "frontal: " + std::to_string(frontal_position) + ", " +
+              std::to_string(frontal_dim) +
+              "\tparent: " + std::to_string(parent_position) + ", " +
+              std::to_string(parent_dim) + "\tS: " +
+              std::to_string(S_mat.rows()) + std::to_string(S_mat.cols()) +
               "\tR: " + std::to_string(cg->R().cols()) + ", " +
               std::to_string(cg->R().rows()) +
               "\tS: " + std::to_string(cg->S().cols()) + ", " +
