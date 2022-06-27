@@ -125,7 +125,11 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
           throw std::runtime_error(
               "parent_position + parent_dim > S_mat.cols(): " +
               std::to_string(parent_position) + ", " +
-              std::to_string(parent_dim) + ", " + std::to_string(S_mat.cols()));
+              std::to_string(parent_dim) + ", " + std::to_string(S_mat.cols()) +
+              "\tR: " + std::to_string(cg->R().cols()) + ", " +
+              std::to_string(cg->R().rows()) +
+              "\tS: " + std::to_string(cg->S().cols()) + ", " +
+              std::to_string(cg->S().rows()));
         }
         Matrix S_parent = S_mat.block(frontal_position, parent_position,
                                       frontal_dim, parent_dim);
