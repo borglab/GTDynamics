@@ -38,7 +38,7 @@ void MultiJacobian::addJacobian(const Key& key, const Matrix& matrix) {
 
 /* ************************************************************************* */
 void MultiJacobian::addJacobianChainRule(const Matrix& H_relative,
-                                           const MultiJacobian parent_jacobian) {
+                                         const MultiJacobian parent_jacobian) {
   for (const auto& it : parent_jacobian) {
     addJacobian(it.first, H_relative * it.second);
   }
@@ -46,7 +46,7 @@ void MultiJacobian::addJacobianChainRule(const Matrix& H_relative,
 
 /* ************************************************************************* */
 void MultiJacobian::print(const std::string& s,
-                        const KeyFormatter& keyFormatter) const {
+                          const KeyFormatter& keyFormatter) const {
   std::cout << s;
   for (const auto& it : (*this)) {
     std::cout << keyFormatter(it.first) << ":\n";
@@ -106,10 +106,31 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
            ++parent) {
         const Key parent_key = *parent;
         const auto parent_dim = cg->getDim(parent);
+        if (frontal_position < 0) {
+          throw std::runtime_error("frontal_position<0: " +
+                                   std::to_string(frontal_position));
+        }
+        if (parent_position < 0) {
+          throw std::runtime_error("parent_position<0: " +
+                                   std::to_string(parent_position));
+        }
+        if (frontal_position + frontal_dim > S_mat.rows()) {
+          throw std::runtime_error(
+              "frontal_position + frontal_dim > S_mat.rows(): " +
+              std::to_string(frontal_position) + ", " +
+              std::to_string(frontal_dim) + ", " +
+              std::to_string(S_mat.rows()));
+        }
+        if (parent_position + parent_dim > S_mat.cols()) {
+          throw std::runtime_error(
+              "parent_position + parent_dim > S_mat.cols(): " +
+              std::to_string(parent_position) + ", " +
+              std::to_string(parent_dim) + ", " + std::to_string(S_mat.cols()));
+        }
         Matrix S_parent = S_mat.block(frontal_position, parent_position,
                                       frontal_dim, parent_dim);
         jacobians[frontal_key].addJacobianChainRule(S_parent,
-                                                        jacobians[parent_key]);
+                                                    jacobians[parent_key]);
         parent_position += parent_dim;
       }
       frontal_position += frontal_dim;
