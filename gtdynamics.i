@@ -182,6 +182,8 @@ class JointParams {
 };
 
 virtual class Joint {
+  enum Type { Revolute, Prismatic, Screw, Fixed };
+
   uint8_t id() const;
   const gtsam::Pose3 &jMp() const;
   const gtsam::Pose3 &jMc() const;

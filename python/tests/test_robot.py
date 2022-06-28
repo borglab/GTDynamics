@@ -173,6 +173,18 @@ class TestRobot(GtsamTestCase):
             actual_bTcom = gtd.Pose(fk, link.id(), 0)
             self.gtsamAssertEquals(actual_bTcom, expected_bTcom, tol=1e-3)
 
+    def test_joint_type(self):
+        """Test if joint.type() works"""
+        robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL, "", True)
+
+        # Test Revolute joint
+        joint = robot.joint("FL_hip_joint")
+        self.assertEqual(joint.type(), gtd.Joint.Type.Revolute)
+
+        # Test Fixed joint
+        imu_joint = robot.joint("imu_joint")
+        self.assertEqual(imu_joint.type(), gtd.Joint.Type.Fixed)
+
 
 if __name__ == "__main__":
     unittest.main()
