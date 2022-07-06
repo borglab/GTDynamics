@@ -1,4 +1,4 @@
-# add cablerobot subfolders to gtdynamics' SOURCE_SUBDIRS list
+# add pandarobot subfolders to gtdynamics' SOURCE_SUBDIRS list
 list(APPEND SOURCE_SUBDIRS pandarobot/ikfast pandarobot/gpmp)
 set(SOURCE_SUBDIRS ${SOURCE_SUBDIRS} PARENT_SCOPE)
 

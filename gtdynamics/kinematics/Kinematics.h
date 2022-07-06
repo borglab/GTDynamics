@@ -181,7 +181,8 @@ class Kinematics : public Optimizer {
   /**
    * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
-   * @param pose_goals goals for poses
+   * @param pose_goals an object of PoseGoals: map of time k to desired pose at
+   * that time, which will be used as mean of the prior
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>

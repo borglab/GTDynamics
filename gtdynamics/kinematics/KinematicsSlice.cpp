@@ -175,10 +175,10 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
     graph.add(JointLimitFactor(
-        JointAngleKey(joint->id(), slice.k), gtsam::noiseModel::Isotropic::Sigma(1, 0.00001),
+        JointAngleKey(joint->id(), slice.k), gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
         joint->parameters().scalar_limits.value_lower_limit,
         joint->parameters().scalar_limits.value_upper_limit,
-        0.04));
+        0.04));//joint->parameters().scalar_limits.value_limit_threshold));
   }
   return graph;
 }
