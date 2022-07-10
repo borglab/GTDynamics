@@ -120,16 +120,13 @@ void Robot::print(const std::string &s) const {
 
   // Print links in sorted id order.
   cout << "LINKS:" << endl;
-  for (const auto &link : sorted_links) {
-    std::string fixed = link->isFixed() ? " (fixed)" : "";
-    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
-    cout << "\tcom pose: " << link->bMcom().rotation().rpy().transpose() << ", "
-         << link->bMcom().translation().transpose() << "\n";
+  for (auto &&link : sorted_links) {
+    cout << *link;
     cout << "\tjoints: ";
-    for (const auto &joint : link->joints()) {
+    for (auto &&joint : link->joints()) {
       cout << joint->name() << " ";
     }
-    cout << "\n";
+    cout << std::endl;
   }
 
   // Sort joints by id.
@@ -140,7 +137,7 @@ void Robot::print(const std::string &s) const {
 
   // Print joints in sorted id order.
   cout << "JOINTS:" << endl;
-  for (const auto &joint : sorted_joints) {
+  for (auto &&joint : sorted_joints) {
     cout << joint << endl;
 
     auto pTc = joint->parentTchild(0.0);

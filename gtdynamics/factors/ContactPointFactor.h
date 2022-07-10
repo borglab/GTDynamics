@@ -112,4 +112,96 @@ class ContactPointFactor
   }
 };
 
+/**
+ * ContactPoseFactor is a two-way nonlinear factor which constrains a link pose
+ * and a reference frame defined at a point of contact P in the world/spatial
+ * frame.
+ *
+ * This factor is useful for implementing flat foot constraints.
+ */
+class ContactPoseFactor
+    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
+ private:
+  using This = ContactPoseFactor;
+  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
+
+  // The contact point reference frame in the link's CoM frame.
+  gtsam::Pose3 comTcontact_;
+
+ public:
+  /**
+   * Constructor.
+   *
+   * @param link_pose_key Key for the CoM pose of the link in contact.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
+   * @param cost_model Noise model associated with this factor.
+   * @param contact_in_com Static transform from point of contact to link CoM.
+   */
+  ContactPoseFactor(gtsam::Key link_pose_key, gtsam::Key contact_pose_key,
+                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                    const gtsam::Pose3 &comTcontact)
+      : Base(cost_model, link_pose_key, contact_pose_key), comTcontact_(comTcontact) {}
+
+  /**
+   * Convenience constructor which uses PointOnLink.
+   *
+   * @param point_on_link PointOnLink object which encapsulates the link and its
+   * contact point.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
+   * @param cost_model Noise model associated with this factor.
+   * @param t The time step at which to add the factor (default t=0).
+   */
+  ContactPoseFactor(const PointOnLink &point_on_link, gtsam::Key contact_pose_key,
+                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                    size_t t = 0)
+      : ContactPoseFactor(
+            gtdynamics::PoseKey(point_on_link.link->id(), t), contact_pose_key,
+            cost_model,
+            // Contact reference frame has same rotation as the link CoM
+            gtsam::Pose3(gtsam::Rot3(), point_on_link.point)) {}
+
+  virtual ~ContactPoseFactor() {}
+
+  /**
+   * Evaluate error.
+   * @param wTl The link's COM pose in the world frame.
+   * @param wTcontact The environment contact point frame in the world frame.
+   */
+  gtsam::Vector evaluateError(
+      const gtsam::Pose3 &wTl, const gtsam::Pose3 &wTcontact,
+      boost::optional<gtsam::Matrix &> H_link = boost::none,
+      boost::optional<gtsam::Matrix &> H_contact = boost::none) const override {
+    gtsam::Pose3 measured_wTcontact = wTl.compose(comTcontact_, H_link);
+    gtsam::Matrix6 H1, H2;
+    gtsam::Vector error =
+        measured_wTcontact.localCoordinates(wTcontact, H1, H2);
+    if (H_link) *H_link = H1 * (*H_link);
+    if (H_contact) *H_contact = H2;
+    return error;
+  }
+
+  //// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /// print contents
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << (s.empty() ? "" : s + " ") << "ContactPoseFactor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
+    ar &boost::serialization::make_nvp(
+        "NonlinearEquality2", boost::serialization::base_object<Base>(*this));
+  }
+};
+
 }  // namespace gtdynamics

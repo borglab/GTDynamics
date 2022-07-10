@@ -246,8 +246,8 @@ gtsam::NonlinearFactorGraph Joint::jointLimitFactors(
 
 /* ************************************************************************* */
 std::ostream &Joint::to_stream(std::ostream &os) const {
-  os << name_ << "\n\tid=" << size_t(id_)
-     << "\n\tparent link: " << parent()->name()
+  os << name_ << " (" << JointTypeString(type()) << ")"
+     << "\n\tid=" << size_t(id_) << "\n\tparent link: " << parent()->name()
      << "\n\tchild link: " << child()->name()
      << "\n\tscrew axis (parent): " << screwAxis(parent()).transpose();
   return os;
