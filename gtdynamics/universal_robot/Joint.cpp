@@ -85,23 +85,25 @@ Vector6 Joint::transformTwistTo(
     gtsam::OptionalJacobian<6, 1> H_q_dot,
     gtsam::OptionalJacobian<6, 6> H_other_twist) const {
   Vector6 other_twist_ = other_twist ? *other_twist : Vector6::Zero();
-
   auto other = otherLink(link);
-  auto this_ad_other = relativePoseOf(other, q).AdjointMap();
+
+  // Intermediate Jacobian declarations
+  gtsam::Matrix61 T_H_q;
+  gtsam::Matrix6 H_T;
+
+  // Calculations
+  auto twist_from_other =
+      relativePoseOf(other, q, H_q ? &T_H_q : nullptr)
+          .Adjoint(other_twist_, H_q ? &H_T : nullptr, H_other_twist);
 
   if (H_q) {
-    // TODO(frank): really, zero below? Check derivatives
-    *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screwAxis(link)) *
-           other_twist_;
+    *H_q = H_T * T_H_q;
   }
   if (H_q_dot) {
     *H_q_dot = screwAxis(link);
   }
-  if (H_other_twist) {
-    *H_other_twist = this_ad_other;
-  }
 
-  return this_ad_other * other_twist_ + screwAxis(link) * q_dot;
+  return twist_from_other + screwAxis(link) * q_dot;
 }
 
 /* ************************************************************************* */
@@ -110,18 +112,17 @@ Vector6 Joint::transformWrenchCoordinate(
     gtsam::OptionalJacobian<6, 1> H_q,
     gtsam::OptionalJacobian<6, 6> H_wrench) const {
   auto other = otherLink(link);
-  gtsam::Pose3 T_21 = relativePoseOf(other, q);
-  gtsam::Matrix6 Ad_21_T = T_21.AdjointMap().transpose();
-  gtsam::Vector6 transformed_wrench = Ad_21_T * wrench;
 
-  if (H_wrench) {
-    *H_wrench = Ad_21_T;
-  }
+  // Intermediate Jacobian declarations
+  gtsam::Matrix6 H_T_21;
+  gtsam::Matrix61 T_21_H_q;
+
+  gtsam::Pose3 T_21 = relativePoseOf(other, q, H_q ? &T_21_H_q : nullptr);
+  gtsam::Vector6 transformed_wrench =
+      T_21.AdjointTranspose(wrench, H_q ? &H_T_21 : nullptr, H_wrench);
+
   if (H_q) {
-    // TODO(frank): really, child? Double-check derivatives
-    *H_q = AdjointMapJacobianQ(q, relativePoseOf(other, 0.0), screwAxis(link))
-               .transpose() *
-           wrench;
+    *H_q = H_T_21 * T_21_H_q;
   }
   return transformed_wrench;
 }
@@ -319,24 +320,23 @@ gtsam::Vector6_ Joint::twistAccelConstraint(uint64_t t) const {
   gtsam::Double_ qAccel(JointAccelKey(id(), t));
 
   /// The following 2 lambda functions computes the expected twist acceleration
-  /// of the child link. (Note: we split it into 2 functions because the
-  /// expression constructor currently only support up to tenary expression.)
+  /// of the child link.
+  /// (Note: we split it this into 2 functions because the
+  /// expression constructor currently only supports atmost tenary expressions.)
   auto transformTwistAccelTo1 =
       [this](double q, const Vector6 &other_twist_accel,
              gtsam::OptionalJacobian<6, 1> H_q,
              gtsam::OptionalJacobian<6, 6> H_other_twist_accel) {
-        Pose3 jTi = relativePoseOf(parent(), q);
-        Vector6 this_twist_accel = jTi.AdjointMap() * other_twist_accel;
+        // Intermediate Jacobian declarations
+        gtsam::Matrix61 jTi_H_q;
+        gtsam::Matrix6 H_jTi;
 
-        if (H_other_twist_accel) {
-          *H_other_twist_accel = jTi.AdjointMap();
-        }
+        Pose3 jTi = relativePoseOf(parent(), q, H_q ? &jTi_H_q : nullptr);
+        Vector6 this_twist_accel = jTi.Adjoint(
+            other_twist_accel, H_q ? &H_jTi : nullptr, H_other_twist_accel);
+
         if (H_q) {
-          // TODO(frank): really, zero below? Check derivatives. Also,
-          // copy/pasta from above?
-          *H_q = AdjointMapJacobianQ(q, relativePoseOf(parent(), 0.0),
-                                     cScrewAxis_) *
-                 other_twist_accel;
+          *H_q = H_jTi * jTi_H_q;
         }
         return this_twist_accel;
       };
