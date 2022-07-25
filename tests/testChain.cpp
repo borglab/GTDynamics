@@ -14,7 +14,7 @@
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/Chain.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
@@ -661,81 +661,6 @@ TEST(Chain, A1QuadOneLegCompare) {
   EXPECT(assert_equal(torques(0, 2), tau2(0, 0), 1e-5));
 }
 
-std::vector<std::vector<JointSharedPtr>> getChainJoints(const Robot& robot) {
-  std::vector<JointSharedPtr> FR(3), FL(3), RR(3), RL(3);
-
-  int loc = 0;
-  for (auto&& joint : robot.joints()) {
-    if (joint->name().find("lower") != std::string::npos) {
-      loc = 2;
-    }
-    if (joint->name().find("upper") != std::string::npos) {
-      loc = 1;
-    }
-    if (joint->name().find("hip") != std::string::npos) {
-      loc = 0;
-    }
-    if (joint->name().find("FR") != std::string::npos) {
-      FR[loc] = joint;
-    }
-    if (joint->name().find("FL") != std::string::npos) {
-      FL[loc] = joint;
-    }
-    if (joint->name().find("RR") != std::string::npos) {
-      RR[loc] = joint;
-    }
-    if (joint->name().find("RL") != std::string::npos) {
-      RL[loc] = joint;
-    }
-  }
-
-  std::vector<std::vector<JointSharedPtr>> chain_joints{FL, FR, RL, RR};
-
-  return chain_joints;
-}
-
-Chain BuildChain(std::vector<JointSharedPtr>& joints) {
-  auto j0 = joints[0];
-  auto j1 = joints[1];
-  auto j2 = joints[2];
-
-  // Calculate all relevant relative poses.
-  Pose3 M_T_H = j0->pMc();
-  Pose3 M_H_T = M_T_H.inverse();
-  Pose3 M_H_U = j1->pMc();
-  Pose3 M_U_H = M_H_U.inverse();
-  Pose3 M_U_L = j2->pMc();
-  Pose3 M_L_U = M_U_L.inverse();
-  Pose3 M_T_L = M_T_H * M_H_U * M_U_L;
-  Pose3 M_L_T = M_T_L.inverse();
-
-  // Create chains
-  Chain chain1(M_T_H, j0->cScrewAxis());
-  Chain chain2(M_H_U, j1->cScrewAxis());
-  Chain chain3(M_U_L, j2->cScrewAxis());
-
-  std::vector<Chain> chains{chain1, chain2, chain3};
-
-  Chain composed = Chain::compose(chains);
-
-  return composed;
-}
-
-std::vector<Chain> getComposedChains(
-    std::vector<std::vector<JointSharedPtr>>& chain_joints) {
-  Chain composed_fr, composed_fl, composed_rr, composed_rl;
-
-  composed_fl = BuildChain(chain_joints[0]);
-  composed_fr = BuildChain(chain_joints[1]);
-  composed_rl = BuildChain(chain_joints[2]);
-  composed_rr = BuildChain(chain_joints[3]);
-
-  std::vector<Chain> composed_chains{composed_fl, composed_fr, composed_rl,
-                                     composed_rr};
-
-  return composed_chains;
-}
-
 gtsam::Values OldGraphOneLeg() {
   auto robot =
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
@@ -821,8 +746,8 @@ gtsam::Values NewGraphOneLeg() {
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   // Get joint and composed chains for each leg
-  auto chain_joints = getChainJoints(robot);
-  auto composed_chains = getComposedChains(chain_joints);
+  auto chain_joints = ChainDynamicsGraph::getChainJoints(robot);
+  auto composed_chains = ChainDynamicsGraph::getComposedChains(chain_joints);
 
   // Initialize Constraints
   EqualityConstraints constraints;
@@ -909,20 +834,20 @@ TEST(Chain, oneLegCompareGraphsA1) {
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   // Get joint and composed chains for each leg
-  auto chain_joints = getChainJoints(robot);
+  auto chain_joints = ChainDynamicsGraph::getChainJoints(robot);
 
   // calculate both ways
   gtsam::Values new_graph_results = NewGraphOneLeg();
   gtsam::Values old_graph_results = OldGraphOneLeg();
 
   // Get torque and angle results and compare
-  for ( int i = 0; i < 3 ; ++i) {
+  for (int i = 0; i < 3; ++i) {
     double new_torque = new_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double old_torque = old_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double new_angle =
-      new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
+        new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     double old_angle =
-      old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
+        old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     EXPECT(assert_equal(new_torque, old_torque, 1e-4));
     EXPECT(assert_equal(new_angle, old_angle, 1e-4));
   }
@@ -989,7 +914,9 @@ gtsam::Values OldGraphFourLegs() {
   }
 
   // Create Contact Point
-  std::vector<LinkSharedPtr> lower_feet = {robot.link("FL_lower"), robot.link("FR_lower"), robot.link("RL_lower"), robot.link("RR_lower")};
+  std::vector<LinkSharedPtr> lower_feet = {
+      robot.link("FL_lower"), robot.link("FR_lower"), robot.link("RL_lower"),
+      robot.link("RR_lower")};
   const Point3 contact_in_com(0, 0, -0.07);
   auto stationary =
       boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
@@ -1017,7 +944,7 @@ gtsam::Values OldGraphFourLegs() {
   // Initialize joint kinematics/dynamics to 0.
   gtsam::Values init_vals;
   for (auto&& joint : robot.joints()) {
-    const int j = joint->id(); 
+    const int j = joint->id();
     InsertWrench(&init_vals, joint->parent()->id(), j, 0, wrench_zero);
     InsertWrench(&init_vals, joint->child()->id(), j, 0, wrench_zero);
     InsertTorque(&init_vals, j, 0, 0.0);
@@ -1043,7 +970,9 @@ gtsam::Values OldGraphFourLegs() {
     gtsam::Double_ angle(JointAngleKey(joint_id, 0));
     gtsam::Double_ tor(TorqueKey(joint_id, 0));
     constraints.emplace_shared<DoubleExpressionEquality>(angle, 1e-2);
-    if ((joint_id == 2) || (joint_id == 5) || (joint_id == 8) || (joint_id == 11)) continue;
+    if ((joint_id == 2) || (joint_id == 5) || (joint_id == 8) ||
+        (joint_id == 11))
+      continue;
     constraints.emplace_shared<DoubleExpressionEquality>(tor, 1e-1);
   }
 
@@ -1055,85 +984,28 @@ gtsam::Values OldGraphFourLegs() {
 
 gtsam::Values NewGraphFourLegs() {
   // This Graph uses chain constraints for four legs of the a1 robot, a wrench
-  // constraint on the trunk and zero angles and torques at the joints constraints (robot
-  // standing still)
+  // constraint on the trunk and zero angles and torques at the joints
+  // constraints (robot standing still)
 
   auto robot =
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
-  // Get joint and composed chains for each leg
-  auto chain_joints = getChainJoints(robot);
-  auto composed_chains = getComposedChains(chain_joints);
+  std::vector<LinkSharedPtr> lower_feet = {
+      robot.link("FL_lower"), robot.link("FR_lower"), robot.link("RL_lower"),
+      robot.link("RR_lower")};
+  const Point3 contact_in_com(0, 0, -0.07);
+  auto stationary =
+      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+  auto contact_points = stationary->contactPoints();
 
-  // Initialize Constraints
-  EqualityConstraints constraints;
+  gtsam::NonlinearFactorGraph graph;
+  gtsam::Vector3 gravity(0, 0, -10.0);
 
-  // Set Gravity Wrench
-  gtsam::Vector6 gravity;
-  gravity << 0.0, 0.0, 0.0, 0.0, 0.0, -47.14;
-  gtsam::Vector6_ gravity_wrench(gravity);
+  OptimizerSetting opt;
+  ChainDynamicsGraph chain_graph(robot, opt, 1e-2, 1e-1, 1e-3, gravity);
 
-  // Create expression for wrench constraint on trunk
-  gtsam::Vector6_ trunk_wrench_constraint = gravity_wrench;
-
-  // Set tolerances
-  double angle_tolerance = 1e-2;
-  double dynamicsTolerance = 1e-3;
-  gtsam::Vector3 contact_tolerance = Vector3::Ones() * dynamicsTolerance;
-  gtsam::Vector3 torque_tolerance = Vector3::Ones() * dynamicsTolerance;
-  gtsam::Vector6 wrench_tolerance = Vector6::Ones() * dynamicsTolerance;
-
-  for (int i = 0 ; i < 4 ; ++i) {
-    // Get key for wrench at hip joint with id 0
-    const gtsam::Key wrench_key_3i_T = gtdynamics::WrenchKey(0, 3*i, 0);
-
-    // create expression for the wrench
-    gtsam::Vector6_ wrench_3i_T(wrench_key_3i_T);
-
-    // add wrench to trunk constraint
-    trunk_wrench_constraint += wrench_3i_T;
-
-    // Get expression for chain on the leg
-    auto expression_chain =
-        composed_chains[i].ChainConstraint3(chain_joints[i], wrench_key_3i_T, 0);
-
-    // Add constraint for chain
-    constraints.emplace_shared<VectorExpressionEquality<3>>(expression_chain,
-                                                            torque_tolerance);
-
-    // constraint on zero angles
-    auto cost_model = gtsam::noiseModel::Unit::Create(1);
-    for (int j = 0; j < 3; ++j) {
-      const int joint_id = chain_joints[i][j]->id();
-      gtsam::Double_ angle(JointAngleKey(joint_id, 0));
-      constraints.emplace_shared<DoubleExpressionEquality>(angle,
-                                                          angle_tolerance);
-      gtsam::Double_ tor(TorqueKey(joint_id, 0));
-      if (j<2)
-      constraints.emplace_shared<DoubleExpressionEquality>(tor,
-                                                          angle_tolerance*10);
-    }
-
-    // For contact constraint, calculate the expression for the wrench of joint 2
-    // on the lower link
-    gtsam::Vector6_ wrench_0_H =
-        (-1) * chain_joints[i][0]->childAdjointWrench(wrench_3i_T, 0);
-    gtsam::Vector6_ wrench_1_U =
-        (-1) * chain_joints[i][1]->childAdjointWrench(wrench_0_H, 0);
-    gtsam::Vector6_ wrench_2_L =
-        (-1) * chain_joints[i][2]->childAdjointWrench(wrench_1_U, 0);
-
-    // Create contact constraint
-    Point3 contact_in_com(0.0, 0.0, -0.07);
-    gtsam::Vector3_ contact_constraint = ContactDynamicsMomentConstraint(
-        wrench_2_L, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
-    constraints.emplace_shared<VectorExpressionEquality<3>>(contact_constraint,
-                                                           contact_tolerance);
-  }
-
-  // Add trunk wrench constraint to constraints
-  constraints.emplace_shared<VectorExpressionEquality<6>>(
-      trunk_wrench_constraint, wrench_tolerance);
+  // Build dynamics factors
+  graph.add(chain_graph.dynamicsFactors(robot, 0, contact_points, 1.0));
 
   // Create initial values.
   gtsam::Values init_values;
@@ -1142,15 +1014,14 @@ gtsam::Values NewGraphFourLegs() {
     InsertTorque(&init_values, joint->id(), 0, 0.0);
   }
   gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
-  for (int i = 0 ; i < 4; ++i) { 
-    init_values.insert(gtdynamics::WrenchKey(0, 3*i, 0), wrench_zero);
+  for (int i = 0; i < 4; ++i) {
+    init_values.insert(gtdynamics::WrenchKey(0, 3 * i, 0), wrench_zero);
   }
 
   /// Solve the constraint problem with LM optimizer.
-  gtsam::NonlinearFactorGraph graph;
   OptimizationParameters params;
   auto optimizer = Optimizer(params);
-  gtsam::Values results = optimizer.optimize(graph, constraints, init_values);
+  gtsam::Values results = optimizer.optimize(graph, init_values);
   return results;
 }
 
@@ -1159,20 +1030,20 @@ TEST(Chain, fourLegsCompareGraphsA1) {
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
   // Get joint and composed chains for each leg
-  auto chain_joints = getChainJoints(robot);
+  auto chain_joints = ChainDynamicsGraph::getChainJoints(robot);
 
   // calculate both ways
   gtsam::Values new_graph_results = NewGraphFourLegs();
   gtsam::Values old_graph_results = OldGraphFourLegs();
 
   // Get torque and angle results and compare
-  for ( int i = 0; i < 12 ; ++i) {
+  for (int i = 0; i < 12; ++i) {
     double new_torque = new_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double old_torque = old_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double new_angle =
-      new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
+        new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     double old_angle =
-      old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
+        old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     EXPECT(assert_equal(new_torque, old_torque, 1e-3));
     EXPECT(assert_equal(new_angle, old_angle, 1e-3));
   }
@@ -1183,14 +1054,15 @@ TEST(Chain, fourLegsCompareGraphsA1) {
     // Get new angles
     double new_angle0 =
         new_graph_results.at<double>(gtdynamics::JointAngleKey(hip_joint_id));
-    double new_angle1 =
-        new_graph_results.at<double>(gtdynamics::JointAngleKey(hip_joint_id+1));
-    double new_angle2 =
-        new_graph_results.at<double>(gtdynamics::JointAngleKey(hip_joint_id+2));
+    double new_angle1 = new_graph_results.at<double>(
+        gtdynamics::JointAngleKey(hip_joint_id + 1));
+    double new_angle2 = new_graph_results.at<double>(
+        gtdynamics::JointAngleKey(hip_joint_id + 2));
 
     // Get wrench keys
     const gtsam::Key wrench_key_0_T = gtdynamics::WrenchKey(0, hip_joint_id, 0);
-    const gtsam::Key contact_wrench_key = gtdynamics::ContactWrenchKey(hip_link_id+2, 0, 0);
+    const gtsam::Key contact_wrench_key =
+        gtdynamics::ContactWrenchKey(hip_link_id + 2, 0, 0);
 
     // Get result wrench for hip joints and compare
     gtsam::Vector6 wrench_new_0_T =
@@ -1227,8 +1099,8 @@ TEST(Chain, fourLegsCompareGraphsA1) {
     gtsam::Vector3 contact_torque_old = H_contact_wrench * wrench_old_3_G;
     EXPECT(assert_equal(contact_torque_new, zero_torque, 1e-4));
     EXPECT(assert_equal(contact_torque_old, zero_torque, 1e-4));
-    hip_joint_id +=3;
-    hip_link_id +=3;
+    hip_joint_id += 3;
+    hip_link_id += 3;
   }
 }
 

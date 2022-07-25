@@ -141,7 +141,7 @@ class DynamicsGraph {
       const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 
   /// Return dynamics-level nonlinear factor graph (wrench related factors)
-  gtsam::NonlinearFactorGraph dynamicsFactors(
+  virtual gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
       const boost::optional<PointOnLinks> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;
@@ -306,6 +306,8 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph targetPoseFactors(
       const Robot &robot, const int t, const std::string &link_name,
       const gtsam::Pose3 &target_pose) const;
+
+  inline boost::optional<gtsam::Vector3> gravity() const { return gravity_; }
 
   /**
    * Return the joint accelerations

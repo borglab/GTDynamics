@@ -96,7 +96,7 @@ class Chain {
    * Exponentials
    */
   Pose3 poe(const Vector &q, boost::optional<Pose3 &> fTe = boost::none,
-            gtsam::OptionalJacobian<-1, -1> J = boost::none);
+            gtsam::OptionalJacobian<-1, -1> J = boost::none) const;
 
   /**
    * This function implements the dynamic dependency between the
@@ -116,7 +116,7 @@ class Chain {
       const gtsam::Vector3 &torques,
       gtsam::OptionalJacobian<3, 6> H_wrench = boost::none,
       gtsam::OptionalJacobian<3, 3> H_angles = boost::none,
-      gtsam::OptionalJacobian<3, 3> H_torques = boost::none);
+      gtsam::OptionalJacobian<3, 3> H_torques = boost::none) const;
 
   /**
    * This function creates a gtsam expression of the Chain constraint FOR A
@@ -131,12 +131,12 @@ class Chain {
    * @return ..................... GTSAM expression of the chain constraint.
    */
   gtsam::Vector3_ ChainConstraint3(const std::vector<JointSharedPtr> &joints,
-                                   const gtsam::Key wrench_key, size_t k);
+                                   const gtsam::Key wrench_key, size_t k) const;
 };
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
-gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+inline gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
                            const double &value2,
                            gtsam::OptionalJacobian<3, 1> J0 = boost::none,
                            gtsam::OptionalJacobian<3, 1> J1 = boost::none,

@@ -46,7 +46,7 @@ Chain Chain::compose(std::vector<Chain> &chains) {
 }
 
 Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
-                 gtsam::OptionalJacobian<-1, -1> J) {
+                 gtsam::OptionalJacobian<-1, -1> J) const{
   // Check that input has good size
   if (q.size() != length()) {
     throw std::runtime_error(
@@ -90,7 +90,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
     const gtsam::Vector3 &torques, gtsam::OptionalJacobian<3, 6> H_wrench,
     gtsam::OptionalJacobian<3, 3> H_angles,
-    gtsam::OptionalJacobian<3, 3> H_torques) {
+    gtsam::OptionalJacobian<3, 3> H_torques) const {
   Matrix J;
   poe(angles, boost::none, J);
   if (H_wrench) {
@@ -138,7 +138,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
 
 gtsam::Vector3_ Chain::ChainConstraint3(
     const std::vector<JointSharedPtr> &joints, const gtsam::Key wrench_key,
-    size_t k) {
+    size_t k) const {
   // Get Expression for wrench
   gtsam::Vector6_ wrench_0_T(wrench_key);
 
