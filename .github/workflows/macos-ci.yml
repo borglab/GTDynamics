@@ -47,13 +47,7 @@ jobs:
           brew install sdformat12
 
       - name: GTSAM
-        run: |
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
-          mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
-          make -j$(sysctl -n hw.physicalcpu) install
-          cd ../../ # go back to home directory
+        run: brew install --HEAD borglab/core/gtsam
 
       - name: Checkout
         uses: actions/checkout@v2
