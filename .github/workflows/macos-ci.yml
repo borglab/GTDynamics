@@ -46,12 +46,6 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat12
 
-          # Install CppUnitLite.
-          git clone https://github.com/borglab/CppUnitLite.git
-          cd CppUnitLite && mkdir build && cd $_
-          cmake .. && sudo make -j4 install
-          cd ../../
-
       - name: GTSAM
         run: brew install --HEAD borglab/core/gtsam
 
@@ -63,7 +57,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
         working-directory: ./build
 
       - name: Build
