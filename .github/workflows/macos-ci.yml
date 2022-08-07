@@ -45,9 +45,10 @@ jobs:
           brew install boost
           brew tap osrf/simulation
           brew install sdformat12
+          brew tap borglab/core
 
       - name: GTSAM
-        run: brew install --HEAD borglab/core/gtsam
+        run: brew install --HEAD gtsam@latest
 
       - name: Checkout
         uses: actions/checkout@v2
