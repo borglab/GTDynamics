@@ -17,7 +17,6 @@
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/Retractor.h>
 #include <gtdynamics/manifold/TspaceBasis.h>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 
 namespace gtsam {
 

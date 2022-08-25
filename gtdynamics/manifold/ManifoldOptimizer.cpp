@@ -20,7 +20,6 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 #include <stack>
 
 namespace gtsam {

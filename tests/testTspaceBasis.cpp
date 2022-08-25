@@ -25,9 +25,6 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <boost/format.hpp>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
-
 using namespace gtsam;
 using namespace gtdynamics;
 

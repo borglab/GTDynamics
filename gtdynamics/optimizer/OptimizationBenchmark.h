@@ -22,9 +22,6 @@
 
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <iostream>
-#include <numeric>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/optional/optional.hpp>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 #include <ostream>
 
 using gtsam::Values;

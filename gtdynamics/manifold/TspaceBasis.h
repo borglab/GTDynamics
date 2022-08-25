@@ -20,7 +20,6 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 
 namespace gtsam {
 
