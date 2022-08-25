@@ -14,6 +14,7 @@
  * @author Gerry Chen
  */
 
+#include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
@@ -23,8 +24,6 @@
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
-
-#include "manifold_opt_benchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -127,34 +126,48 @@ void print_joint_angles(const Values& values) {
 /** Compare simple kinematic planning tasks of a cable robot using (1) dynamics
  * factor graph (2) constraint manifold  */
 void kinematic_planning() {
-  // problem
+  // Create constraiend optimization problem.
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
   auto init_values = get_init_values();
-
-  // optimize dynamics graph
-  std::cout << "dynamics graph:\n";
-  auto dfg_result =
-      optimize_dynamics_graph(constraints_graph, costs, init_values);
-  std::cout << "final cost: " << costs.error(dfg_result) << "\n";
-  std::cout << "constraint violation: " << constraints_graph.error(dfg_result)
-            << "\n";
-  print_joint_angles(dfg_result);
-
-  // optimize constraint manifold
-  std::cout << "constraint manifold:\n";
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto cm_result =
-      optimize_constraint_manifold(constraints, costs, init_values);
-  std::cout << "final cost: " << costs.error(cm_result) << "\n";
-  std::cout << "constraint violation: " << constraints_graph.error(cm_result)
-            << "\n";
-  print_joint_angles(cm_result);
+  auto problem = EqConsOptProblem(costs, constraints, init_values);
 
-  // timing results
-  std::cout << "Timing results:\n";
-  tictoc_finishedIteration_();
-  tictoc_print_();
+  std::ostringstream latex_os;
+  LevenbergMarquardtParams lm_params;
+
+  // optimize soft constraints
+  std::cout << "soft constraints:\n";
+  auto soft_result =
+      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+
+  // optimize penalty method
+  std::cout << "penalty method:\n";
+  PenaltyMethodParameters penalty_params;
+  penalty_params.lm_parameters = lm_params;
+  auto penalty_result =
+      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+
+  // optimize augmented lagrangian
+  std::cout << "augmented lagrangian:\n";
+  AugmentedLagrangianParameters augl_params;
+  augl_params.lm_parameters = lm_params;
+  auto augl_result =
+      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+
+  // optimize constraint manifold specify variables (feasbile)
+  std::cout << "constraint manifold basis variables (feasible):\n";
+  auto mopt_params = DefaultMoptParams();
+  auto cm_basis_result = OptimizeConstraintManifold(
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+
+  // optimize constraint manifold specify variables (infeasbile)
+  std::cout << "constraint manifold basis variables (infeasible):\n";
+  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+
+  std::cout << latex_os.str();
 }
 
 int main(int argc, char** argv) {

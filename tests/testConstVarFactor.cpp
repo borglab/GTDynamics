@@ -11,8 +11,9 @@
  * @author Yetong Zhang
  */
 
+#include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/optimizer/ConstVarFactor.h>
+#include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,7 +24,7 @@
 
 using namespace gtsam;
 
-TEST(SubstituteFactor, pose) {
+TEST(ConstVarFactor, errorAndJacobian) {
   // Keys.
   Key x1_key = 1;
   Key x2_key = 2;
@@ -61,6 +62,40 @@ TEST(SubstituteFactor, pose) {
   ConstVarFactor const_var_factor_all_fixed(base_factor, fixed_keys);
   EXPECT(!const_var_factor_all_fixed.checkActive());
 }
+
+TEST(ConstVarGraph, error) {
+  // Keys.
+  Key x1_key = 1;
+  Key x2_key = 2;
+
+  // Construct original factor graph.
+  auto noise = noiseModel::Unit::Create(6);
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<BetweenFactor<Pose3>>(x1_key, x2_key, Pose3(Rot3(), Point3(1, 0, 0)), noise);
+  graph.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
+  graph.addPrior<Pose3>(x2_key, Pose3(Rot3(), Point3(0, 0, 0)));
+
+  // fixed keys
+  KeySet fixed_keys;
+  fixed_keys.insert(x1_key);
+  Values fixed_values;
+  fixed_values.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
+
+  // Construct const var graph with fixed keys.
+  NonlinearFactorGraph new_graph;
+  ConstVarFactors const_var_factors;
+  boost::tie(new_graph, const_var_factors) = ConstVarGraph(graph, fixed_keys);
+  EXPECT_LONGS_EQUAL(2, new_graph.size());
+  EXPECT_LONGS_EQUAL(1, const_var_factors.size());
+
+  // Construct const var graph with fixed values.
+  new_graph = ConstVarGraph(graph, fixed_values);
+  EXPECT_LONGS_EQUAL(2, new_graph.size());
+  Values values;
+  values.insert(x2_key, Pose3(Rot3(), Point3(0.5, 0, 0)));
+  EXPECT_DOUBLES_EQUAL(0.25, new_graph.error(values), 1e-5);
+}
+
 
 int main() {
   TestResult tr;

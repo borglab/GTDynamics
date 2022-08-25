@@ -11,6 +11,7 @@
  * @author: Yetong Zhang, Frank Dellaert
  */
 
+#include <gtdynamics/factors/ConstBiasFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 
 namespace gtdynamics {
@@ -46,10 +47,10 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
 /* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr FactorZeroErrorConstraint::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
-  if (bias) {
-    std::cerr << "Factor Equality not implemented bias yet.\n";
-  }
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
+  if (bias) {
+    return boost::make_shared<gtsam::ConstBiasFactor>(factor_, *bias, noise);
+  }
   return factor_->cloneWithNewNoiseModel(noise);
 }
 
@@ -90,6 +91,15 @@ EqualityConstraints ConstraintsFromGraph(
     constraints.emplace_shared<FactorZeroErrorConstraint>(noise_factor);
   }
   return constraints;
+}
+
+/* ************************************************************************* */
+size_t EqualityConstraints::dim() const {
+  size_t dimension = 0;
+  for (const auto& constraint : *this) {
+      dimension += constraint->dim();
+  }
+  return dimension;
 }
 
 }  // namespace gtdynamics

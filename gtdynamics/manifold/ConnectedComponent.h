@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
@@ -25,23 +24,24 @@ namespace gtsam {
  * The CCC includes the variables as well as the constraints connecting them.
  * Each CCC will be repaced by a manifold variable for manifold optimization. */
 class ConnectedComponent {
- public:
+public:
   const gtdynamics::EqualityConstraints
-      constraints_;  // constraints in CCC, h(X)=0
+      constraints_; // constraints in CCC, h(X)=0
   const gtsam::NonlinearFactorGraph
-      merit_graph_;  // factor graph representing merit function ||h(X)||^2
-  const gtsam::KeySet keys_;  // variables in CCC
+      merit_graph_; // factor graph representing merit function ||h(X)||^2
+  const gtsam::KeySet keys_; // variables in CCC
   using shared_ptr = boost::shared_ptr<ConnectedComponent>;
 
-  /** Constructor from constraints. */
-  ConnectedComponent(const gtdynamics::EqualityConstraints& constraints)
+  /// Constructor from constraints.
+  ConnectedComponent(const gtdynamics::EqualityConstraints &constraints)
       : constraints_(constraints),
         merit_graph_(constructMeritGraph(constraints)),
-                    keys_(merit_graph_.keys()) {}
+        keys_(merit_graph_.keys()) {}
 
- protected:
-  NonlinearFactorGraph constructMeritGraph(
-      const gtdynamics::EqualityConstraints& constraints);
+protected:
+  /// Create factor graph that represents merit function ||h(X)||^2.
+  NonlinearFactorGraph
+  constructMeritGraph(const gtdynamics::EqualityConstraints &constraints);
 };
 
-}  // namespace gtsam
+} // namespace gtsam

@@ -1,3 +1,18 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  SubstituteFactor.h
+ * @brief Factor that substitute certain variables with its corresponding
+ * recover function from the constraint manifold. It is used to represent the
+ * equivalent new cost factors on manifold varaibles.
+ * @author: Yetong Zhang
+ */
+
 #pragma once
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
@@ -36,10 +51,10 @@ class SubstituteFactor : public NoiseModelFactor {
  public:
   typedef boost::shared_ptr<This> shared_ptr;
 
-  /** Default constructor for I/O only */
+  /// Default constructor for I/O only.
   SubstituteFactor() {}
 
-  /** Destructor */
+  /// Destructor.
   ~SubstituteFactor() override {}
 
   /**
@@ -63,12 +78,12 @@ class SubstituteFactor : public NoiseModelFactor {
   }
 
  protected:
-  /** Compute keys for the new factor */
+  /// Compute keys for the new factor.
   static KeyVector computeNewKeys(const Base::shared_ptr& base_factor,
                                   const std::map<Key, Key>& replacement_map,
                                   const Values& fc_manifolds);
 
-  /** Construct map from base key to key index in base factor. */
+  /// Construct map from base key to key index in base factor. 
   void computeBaseKeyIndex();
 
   /** Classify the variables as either constarined or unconstrained in the
@@ -86,13 +101,13 @@ class SubstituteFactor : public NoiseModelFactor {
       const Values& x,
       boost::optional<std::vector<Matrix>&> H = boost::none) const override;
 
-  /** Return a deep copy of this factor. */
+  /// Return a deep copy of this factor.
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-  /** Check if a variable in the base factor is substituted. */
+  /// Check if a variable in the base factor is substituted.
   inline bool isReplaced(const Key& key) const {
     return replacement_map_.find(key) != replacement_map_.end();
   }
@@ -102,7 +117,7 @@ class SubstituteFactor : public NoiseModelFactor {
   inline bool checkActive() const { return size() > 0; }
 
  private:
-  /** Serialization function */
+  /// Serialization function.
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE& ar, const unsigned int /*version*/) {

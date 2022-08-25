@@ -112,4 +112,74 @@ class ContactPointFactor
   }
 };
 
+
+
+/** Contact Point Factor with a static contact point. */
+class FixedContactPointFactor
+    : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+ private:
+  using This = FixedContactPointFactor;
+  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
+
+  // The contact point in the link's CoM frame.
+  gtsam::Point3 contact_in_world_;
+  gtsam::Point3 contact_in_com_;
+
+ public:
+  /**
+   * Constructor.
+   *
+   * @param link_pose_key Key for the CoM pose of the link in contact.
+   * @param cost_model Noise model associated with this factor.
+   * @param contacet_in_world Static contact point expressed in world frame.
+   * @param contact_in_com Static transform from point of contact to link CoM.
+   */
+  FixedContactPointFactor(gtsam::Key link_pose_key,
+                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                     const gtsam::Point3 &contact_in_world,
+                     const gtsam::Point3 &contact_in_com)
+      : Base(cost_model, link_pose_key),
+        contact_in_world_(contact_in_world), contact_in_com_(contact_in_com) {}
+
+  virtual ~FixedContactPointFactor() {}
+
+  /**
+   * Evaluate error.
+   * @param wTl The link's COM pose in the world frame.
+   * @param wPc The environment contact point in the world frame.
+   */
+  gtsam::Vector evaluateError(
+      const gtsam::Pose3 &wTl,
+      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
+    gtsam::Vector error = contact_in_world_ - wTl.transformFrom(contact_in_com_, H_pose);
+    if (H_pose) *H_pose = -gtsam::Matrix3::Identity() * (*H_pose);
+    return error;
+  }
+
+  //// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /// print contents
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << (s.empty() ? "" : s + " ") << "FixedContactPointFactor"
+              << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
+    ar &boost::serialization::make_nvp(
+        "NonlinearEquality1", boost::serialization::base_object<Base>(*this));
+  }
+};
+
+
 }  // namespace gtdynamics

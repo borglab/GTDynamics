@@ -1,5 +1,18 @@
-#include <gtdynamics/optimizer/ConstraintManifold.h>
-#include <gtdynamics/optimizer/SubstituteFactor.h>
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  SubstituteFactor.cpp
+ * @brief Substitute factor implementations.
+ * @author: Yetong Zhang
+ */
+
+#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/manifold/SubstituteFactor.h>
 
 namespace gtsam {
 
@@ -44,7 +57,7 @@ void SubstituteFactor::classifyKeys(const Values& fc_manifolds) {
       if (fc_manifolds.exists(new_key)) {
         fc_values_.insert(
             base_key,
-            fc_manifolds.at<ConstraintManifold>(new_key).recover(base_key));
+            fc_manifolds.at(new_key).cast<ConstraintManifold>().recover(base_key));
       } else {
         cmanifold_keys_.insert(new_key);
       }
@@ -74,7 +87,7 @@ Vector SubstituteFactor::unwhitenedError(
     base_x.insert(key, x.at(key));
   }
   for (const Key& key : cmanifold_keys_) {
-    const auto cmanifold = x.at<ConstraintManifold>(key);
+    const auto& cmanifold = x.at(key).cast<ConstraintManifold>();
     InsertSelected(cmanifold.values(), base_factor_->keys(), base_x);
   }
 
@@ -91,7 +104,7 @@ Vector SubstituteFactor::unwhitenedError(
       if (unconstrained_keys_.exists(key)) {
         (*H)[variable_idx] = base_H.at(base_key_index_.at(key));
       } else {
-        const auto cmanifold = x.at<ConstraintManifold>(key);
+        const auto& cmanifold = x.at(key).cast<ConstraintManifold>();
         bool H_initialized = false;
         for (const Key& base_key : cmanifold.values().keys()) {
           if (base_key_index_.find(base_key) != base_key_index_.end()) {

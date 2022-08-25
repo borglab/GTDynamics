@@ -212,11 +212,18 @@ TEST(EqualityConstraint, FactorZeroErrorConstraint) {
 
   // Generate factor representing the term in merit function.
   double mu = 4;
-  auto merit_factor = constraint->createFactor(mu);
+  Vector bias = (Vector(2) << 1, 0.5).finished();
+  auto merit_factor = constraint->createFactor(mu, bias);
 
   // Check that noise model sigma == tolerance/sqrt(mu).
   auto expected_noise = noiseModel::Diagonal::Sigmas(tolerance / sqrt(mu));
   EXPECT(expected_noise->equals(*merit_factor->noiseModel()));
+
+  // Check that error is equal to 0.5*mu*||g(x)+bias)||^2_Diag(tolerance^2).
+  double expected_error1 = 58;  // 0.5 * 4 * ||[0, 0] + [1, 0.5]||_([0.5,0.1]^2)^2
+  EXPECT(assert_equal(expected_error1, merit_factor->error(values1)));
+  double expected_error2 = 1282; // 0.5 * 4 * ||[1, 2] + [1, 0.5]||_([0.5,0.1]^2)^2
+  EXPECT(assert_equal(expected_error2, merit_factor->error(values2)));
 
   // Check jacobian computation is correct.
   EXPECT_CORRECT_FACTOR_JACOBIANS(*merit_factor, values1, 1e-7, 1e-5);

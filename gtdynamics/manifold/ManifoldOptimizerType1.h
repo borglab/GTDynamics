@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/ManifoldOptimizer.h>
+#include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -57,10 +57,6 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
 
  protected:
   NonlinearOptParamsVariant nopt_params_;
-  boost::optional<BasisKeyFunc>
-      basis_key_func_;  // ad-hoc function to manually specify the basis keys
-                        // for each constraint manifold
-
  public:
   /// Construct from parameters.
   ManifoldOptimizerType1(
@@ -68,8 +64,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
       const NonlinearOptParamsVariant& nopt_params,
       boost::optional<BasisKeyFunc> basis_key_func = boost::none)
       : ManifoldOptimizer(mopt_params),
-        nopt_params_(nopt_params),
-        basis_key_func_(basis_key_func) {}
+        nopt_params_(nopt_params) {}
 
   /// Virtual destructor.
   virtual ~ManifoldOptimizerType1() {}
@@ -84,7 +79,9 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
           nullptr) const override;
 
   /// Optimization given manifold optimization problem.
-  gtsam::Values optimize(const ManifoldOptProblem& mopt_problem) const;
+  gtsam::Values
+  optimize(const ManifoldOptProblem &mopt_problem,
+           gtdynamics::ConstrainedOptResult *intermediate_result = nullptr) const;
 
   /// Initialize the manifold optization problem.
   ManifoldOptProblem initializeMoptProblem(

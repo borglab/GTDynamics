@@ -11,15 +11,17 @@
  * @author Yetong Zhang
  */
 
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/optimizer/ConstraintManifold.h>
-#include <gtdynamics/optimizer/Retractor.h>
+#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/manifold/Retractor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/inference/Key.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -54,26 +56,32 @@ TEST(TspaceBasis, connected_poses) {
   auto component = boost::make_shared<ConnectedComponent>(constraints);
   
   // Construct retractor.
-  UoptRetractor retractor_uopt(component);
-  ProjRetractor retractor_proj(component);
+  auto params_uopt = boost::make_shared<RetractParams>();
+  params_uopt->setUopt();
+  auto params_proj = boost::make_shared<RetractParams>();
+  params_proj->setProjection();
+  auto params_fix_vars = boost::make_shared<RetractParams>();
+  params_fix_vars->setFixVars();
   KeyVector basis_keys{x3_key};
-  BasisRetractor retractor_basis(component, basis_keys);
+  UoptRetractor retractor_uopt(component, params_uopt);
+  ProjRetractor retractor_proj(component, params_proj);
+  BasisRetractor retractor_basis(component, params_fix_vars, basis_keys);
 
-  Values values_uopt = retractor_uopt.retract(base_values);
+  Values values_uopt = retractor_uopt.retractConstraints(base_values);
   Values expected_uopt;
   expected_uopt.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
   expected_uopt.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   expected_uopt.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 2)));
   EXPECT(assert_equal(expected_uopt, values_uopt));
 
-  Values values_proj = retractor_proj.retract(base_values);
+  Values values_proj = retractor_proj.retractConstraints(base_values);
   Values expected_proj;
   expected_proj.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
   expected_proj.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   expected_proj.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 2)));
   EXPECT(assert_equal(expected_proj, values_proj, 1e-4));
 
-  Values values_basis = retractor_basis.retract(base_values); 
+  Values values_basis = retractor_basis.retractConstraints(base_values); 
   Values expected_basis;
   expected_basis.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 1)));
   expected_basis.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 2)));

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <boost/assign/list_of.hpp>
 #include <boost/serialization/base_object.hpp>
@@ -87,6 +88,16 @@ class ConstVarFactor : public NoiseModelFactor {
    * factor are fully constrained, no updates can be made.*/
   inline bool checkActive() const { return size() > 0; }
 
+  const Values& fixedValues() const {return fixed_values_; }
+
 };  // \class ConstVarFactor
+
+typedef std::vector<boost::shared_ptr<ConstVarFactor>> ConstVarFactors;
+
+std::pair<NonlinearFactorGraph, ConstVarFactors>
+ConstVarGraph(const NonlinearFactorGraph &graph, const KeySet &fixed_keys);
+
+NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph &graph,
+                                   const Values &fixed_values);
 
 }  // namespace gtsam

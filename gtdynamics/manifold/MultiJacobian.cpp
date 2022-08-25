@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/MultiJacobian.h>
+#include <gtdynamics/manifold/MultiJacobian.h>
 
 namespace gtsam {
 
@@ -30,9 +30,14 @@ MultiJacobian MultiJacobian::Identity(const Key& key, const size_t& dim) {
 /* ************************************************************************* */
 void MultiJacobian::addJacobian(const Key& key, const Matrix& matrix) {
   if (find(key) == end()) {
-    emplace(key, matrix);
+    if (!matrix.isZero(1e-8)) {
+      emplace(key, matrix);
+    }
   } else {
     at(key) = at(key) + matrix;
+    if (at(key).isZero(1e-8)) {
+      erase(key);
+    }
   }
 }
 
@@ -80,6 +85,14 @@ bool MultiJacobian::equals(const MultiJacobian& other, double tol) const {
   return true;
 }
 
+KeySet MultiJacobian::keys() const {
+  KeySet jac_keys;
+  for (const auto& it : *this) {
+    jac_keys.insert(it.first);
+  }
+  return jac_keys;
+}
+
 /* ************************************************************************* */
 void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
                              const KeyVector& basis_keys,
@@ -92,8 +105,8 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
 
   // iteratively set jacobian of other variables
   for (auto cg : boost::adaptors::reverse(bn)) {
-    // const auto S_mat = -cg->R().triangularView<Eigen::Upper>().solve(cg->S());
-    const auto S_mat = -cg->R().completeOrthogonalDecomposition().pseudoInverse()*cg->S();
+    const auto S_mat = -cg->R().triangularView<Eigen::Upper>().solve(cg->S());
+    // const auto S_mat = -cg->R().completeOrthogonalDecomposition().pseudoInverse()*cg->S();
     DenseIndex frontal_position = 0;
     for (auto frontal = cg->beginFrontals(); frontal != cg->endFrontals();
          ++frontal) {

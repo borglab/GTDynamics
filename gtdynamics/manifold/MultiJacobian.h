@@ -50,6 +50,8 @@ class MultiJacobian : public std::map<Key, Matrix> {
 
   /// Check equality.
   bool equals(const MultiJacobian& other, double tol = 1e-8) const;
+
+  KeySet keys() const;
 };
 
 /** jacobian of multiple variables w.r.t. multiple variables. */

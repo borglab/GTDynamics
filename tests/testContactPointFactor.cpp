@@ -79,6 +79,43 @@ TEST(ContactPointFactor, Jacobians) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
+TEST(FixedContactPointFactor, Error) {
+  LinkSharedPtr end_link = robot.links()[0];
+  Point3 contact_in_com(0, 0, 1);
+  PointOnLink point_on_link{end_link, contact_in_com};
+
+  Key link_pose_key = gtdynamics::PoseKey(0, 0);
+  Point3 wPc(0, 0, 1);
+
+  FixedContactPointFactor factor(link_pose_key, kModel, wPc, contact_in_com);
+  Vector error = factor.evaluateError(point_on_link.link->bMcom());
+  EXPECT(assert_equal(Vector3(0, 0, -0.1), error, 1e-9));
+
+  // Check error when contact point is not consistent
+  Point3 wPc2(1, 1, 2);
+  FixedContactPointFactor factor2(link_pose_key, kModel, wPc2, contact_in_com);
+  error = factor2.evaluateError(point_on_link.link->bMcom());
+  EXPECT(assert_equal(Vector3(1.0, 1.0, 0.9), error, 1e-9));
+}
+
+TEST(FixedContactPointFactor, Jacobians) {
+  auto end_link = robot.links()[0];
+  Key link_pose_key = gtdynamics::PoseKey(0, 0);
+  Point3 contact_in_com(0, 0, 1);
+  PointOnLink point_on_link{end_link, contact_in_com};
+
+  Point3 wPc(0, 0, 1);
+
+  FixedContactPointFactor factor(link_pose_key, kModel, wPc, contact_in_com);
+
+  Values values;
+  InsertPose(&values, end_link->id(), 0, point_on_link.link->bMcom());
+
+  // Check Jacobians
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+}
+
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

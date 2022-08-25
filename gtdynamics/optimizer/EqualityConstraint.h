@@ -208,6 +208,9 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
         Eigen::aligned_allocator<DERIVEDCONSTRAINT>(),
         std::forward<Args>(args)...));
   }
+
+  /// Return the total dimension of constraints.
+  size_t dim() const;
 };
 
 /// Create FactorZeroErrorConstraintConstraints from the factors of a graph.

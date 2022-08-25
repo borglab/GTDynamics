@@ -11,24 +11,28 @@
  * @author Yetong Zhang
  */
 
+#include "gtdynamics/manifold/Retractor.h"
+#include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/optimizer/ConstraintManifold.h>
+#include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/inference/Key.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <boost/format.hpp>
+#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 
 using namespace gtsam;
 using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
-TEST(ConstraintManifold, connected_poses) {
+TEST_UNSAFE(ConstraintManifold, connected_poses) {
   Key x1_key = 1;
   Key x2_key = 2;
   Key x3_key = 3;
@@ -42,6 +46,7 @@ TEST(ConstraintManifold, connected_poses) {
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  auto component = boost::make_shared<ConnectedComponent>(constraints);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -49,44 +54,61 @@ TEST(ConstraintManifold, connected_poses) {
   cm_base_values.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
-  // Construct manifold.
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
-  auto params = boost::make_shared<ConstraintManifold::Params>();
-  params->basis_type = ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
-  params->retract_type = ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
-  KeyVector basis_keys{x3_key};
-  auto basis_params = boost::make_shared<BasisParams>(basis_keys);
+  // Create constraint manifold with various tspacebasis and retractors
+  std::vector<BasisType> basis_types{BasisType::MATRIX,
+                                     BasisType::SPECIFY_VARIABLES,
+                                     BasisType::SPARSE_MATRIX};
+  std::vector<RetractType> retract_types{RetractType::UOPT,
+                                         RetractType::FIX_VARS};
 
-  ConstraintManifold manifold(component, cm_base_values, params, true, true, basis_params);
+  BasisKeyFunc basis_key_func =
+      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+    return KeyVector{x3_key};
+  };
 
-  // Check recover
-  Values values;
-  Matrix H_recover_x2, H_recover_x3;
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
-                      manifold.recover<Pose3>(x2_key, H_recover_x2)));
-  EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 1, 1)),
-                      manifold.recover<Pose3>(x3_key, H_recover_x3)));
+  for (const auto& basis_type: basis_types) {
+    for (const auto& retract_type: retract_types) {
+      auto params = boost::make_shared<ConstraintManifold::Params>();
+      params->basis_key_func = basis_key_func;
+      params->basis_params->basis_type = basis_type;
+      params->retract_params->retract_type = retract_type;
+      if (basis_type == BasisType::SPECIFY_VARIABLES) {
+        params->basis_params->use_basis_keys = true;
+      }
+      if (retract_type == RetractType::FIX_VARS) {
+        params->retract_params->use_basis_keys = true;
+      }
+      ConstraintManifold manifold(component, cm_base_values, params, true);
 
-  // Check recover jacobian
-  std::function<Pose3(const ConstraintManifold&)> x2_recover_func =
-      std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                x2_key, boost::none);
-  EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
-                          x2_recover_func, manifold),
-                      H_recover_x2));
+      // Check recover
+      Values values;
+      Matrix H_recover_x2, H_recover_x3;
+      EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
+                          manifold.recover<Pose3>(x2_key, H_recover_x2)));
+      EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 1, 1)),
+                          manifold.recover<Pose3>(x3_key, H_recover_x3)));
 
-  std::function<Pose3(const ConstraintManifold&)> x3_recover_func =
-      std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                x3_key, boost::none);
-  EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
-                          x3_recover_func, manifold),
-                      H_recover_x3));
+      // Check recover jacobian
+      std::function<Pose3(const ConstraintManifold&)> x2_recover_func =
+          std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
+                    x2_key, boost::none);
+      EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
+                              x2_recover_func, manifold),
+                          H_recover_x2));
+
+      std::function<Pose3(const ConstraintManifold&)> x3_recover_func =
+          std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
+                    x3_key, boost::none);
+      EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
+                              x3_recover_func, manifold),
+                          H_recover_x3));
   
-  Vector xi = (Vector(6)<<0,0,0,0,0,1).finished();
-  auto new_cm = manifold.retract(xi);
-  // new_cm.print();
+      // check retract
+      Vector xi = (Vector(6)<<0,0,0,0,0,1).finished();
+      auto new_cm = manifold.retract(xi);
+    }
+  }
 }
-
 
 
 /** Dynamics manifold for cart-pole robot. */
@@ -128,17 +150,19 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointVelKey(j1_id, 0));
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
+  BasisKeyFunc basis_key_func =
+      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+    return basis_keys;
+  };
 
   // constraint manifold
   auto constraints = ConstraintsFromGraph(constraints_graph);
   auto cc_params = boost::make_shared<ConstraintManifold::Params>();
-  cc_params->retract_type =
-      ConstraintManifold::Params::RetractType::PARTIAL_PROJ;
-  cc_params->basis_type =
-      ConstraintManifold::Params::BasisType::SPECIFY_VARIABLES;
+  cc_params->retract_params->setFixVars();
+  cc_params->basis_params->setFixVars();
+  cc_params->basis_key_func = basis_key_func;
   auto cc = boost::make_shared<ConnectedComponent>(constraints);
-  auto cm = ConstraintManifold(cc, init_values, cc_params, false, true,
-                               boost::make_shared<BasisParams>(basis_keys));
+  auto cm = ConstraintManifold(cc, init_values, cc_params, true);
 
   // retract
   Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();

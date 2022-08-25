@@ -13,16 +13,14 @@
 
 #pragma once
 
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
-#include <gtdynamics/optimizer/ConstraintManifold.h>
+#include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
 namespace gtsam {
-
-/// Function to find the basis keys for constraint manifold.
-typedef KeyVector (*BasisKeyFunc)(const ConnectedComponent::shared_ptr&);
 
 /// Parameters for manifold optimizer.
 struct ManifoldOptimizerParameters

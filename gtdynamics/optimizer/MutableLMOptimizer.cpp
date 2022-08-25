@@ -121,13 +121,17 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
   auto currentState = static_cast<const State*>(state_.get());
   bool verbose = (params_.verbosityLM >= LevenbergMarquardtParams::TRYLAMBDA);
 
-#ifdef GTSAM_USING_NEW_BOOST_TIMERS
-  boost::timer::cpu_timer lamda_iteration_timer;
-  lamda_iteration_timer.start();
-#else
-  boost::timer lamda_iteration_timer;
-  lamda_iteration_timer.restart();
-#endif
+// #ifdef GTSAM_USING_NEW_BOOST_TIMERS
+//   boost::timer::cpu_timer lamda_iteration_timer;
+//   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+//     lamda_iteration_timer.start();
+//   }
+// #else
+//   boost::timer lamda_iteration_timer;
+//   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+//     lamda_iteration_timer.restart();
+//   }
+// #endif
 
   if (verbose)
     cout << "trying lambda = " << currentState->lambda << endl;
@@ -216,11 +220,12 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
 
   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
 // do timing
-#ifdef GTSAM_USING_NEW_BOOST_TIMERS
-    double iterationTime = 1e-9 * lamda_iteration_timer.elapsed().wall;
-#else
-    double iterationTime = lamda_iteration_timer.elapsed();
-#endif
+// #ifdef GTSAM_USING_NEW_BOOST_TIMERS
+//     double iterationTime = 1e-9 * lamda_iteration_timer.elapsed().wall;
+// #else
+//     double iterationTime = lamda_iteration_timer.elapsed();
+// #endif
+    double iterationTime = 0;
     if (currentState->iterations == 0)
       cout << "iter      cost      cost_change    lambda  success iter_time" << endl;
 

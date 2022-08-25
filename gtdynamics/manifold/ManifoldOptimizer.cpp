@@ -11,7 +11,8 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/ManifoldOptimizer.h>
+#include "manifold/Retractor.h"
+#include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtsam/linear/GaussianEliminationTree.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/PCGSolver.h>
@@ -19,13 +20,14 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
+#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/make_shared_object.hpp>
 #include <stack>
 
 namespace gtsam {
 
 /* ************************************************************************* */
 ManifoldOptimizerParameters::ManifoldOptimizerParameters()
-    : cc_params(boost::make_shared<ConstraintManifold::Params>()),
+    : Base(), cc_params(boost::make_shared<ConstraintManifold::Params>()),
       retract_init(true) {}
 
 /* ************************************************************************* */

@@ -6,28 +6,23 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ConnectedComponent.h
+ * @file  ConnectedComponent.cpp
  * @brief Connected component implementations.
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/optimizer/ConnectedComponent.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
-#include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/LinearContainerFactor.h>
+#include <gtdynamics/manifold/ConnectedComponent.h>
 
 namespace gtsam {
 
 /* ************************************************************************* */
 NonlinearFactorGraph ConnectedComponent::constructMeritGraph(
-    const gtdynamics::EqualityConstraints& constraints) {
+    const gtdynamics::EqualityConstraints &constraints) {
   gtsam::NonlinearFactorGraph graph;
-  for (const auto& constraint : constraints) {
+  for (const auto &constraint : constraints) {
     graph.add(constraint->createFactor(1.0));
   }
   return graph;
 }
 
-}  // namespace gtsam
+} // namespace gtsam

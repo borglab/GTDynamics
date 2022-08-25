@@ -13,13 +13,13 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/universal_robot/SerialChain.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include "manifold_opt_benchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -39,6 +39,18 @@ auto robot =
     CreateRobotFromFile(kSdfPath + std::string("kuka_world.sdf"), "lbr_iiwa");
 double joint_limit_low = -3.14;
 double joint_limit_high = 3.14;
+
+/** Function to manually define the basis keys for each constraint manifold. */
+KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
+  KeyVector basis_keys;
+  for (const Key& key : cc->keys_) {
+    auto symb = DynamicsSymbol(key);
+    if (symb.label() == "q") {
+      basis_keys.push_back(key);
+    }
+  }
+  return basis_keys;
+}
 
 /** Factor graph of all kinematic constraints. Include kinematic constraints at
  * each time step, and the priors for the first step. */
@@ -229,42 +241,58 @@ void print_joint_angles_sc(const Values& values) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // problem
+  // Create constraiend optimization problem.
   robot.fixLink(base_name);
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
   auto init_values = get_init_values();
-
-  // optimize dynamics graph
-  std::cout << "dynamics graph:\n";
-  auto dfg_result =
-      optimize_dynamics_graph(constraints_graph, costs, init_values);
-  std::cout << "final cost: " << costs.error(dfg_result) << "\n";
-  std::cout << "constraint violation: " << constraints_graph.error(dfg_result)
-            << "\n";
-  print_joint_angles(dfg_result);
-
-  // optimize constraint manifold
-  std::cout << "constraint manifold:\n";
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto cm_result =
-      optimize_constraint_manifold(constraints, costs, init_values);
-  std::cout << "final cost: " << costs.error(cm_result) << "\n";
-  std::cout << "constraint violation: " << constraints_graph.error(cm_result)
-            << "\n";
-  print_joint_angles(cm_result);
+  auto problem = EqConsOptProblem(costs, constraints, init_values);
 
-  // optimize serial chain manifold
-  std::cout << "serial chain manifold\n";
-  Values sc_init_values = get_init_values_sc();
-  auto sc_costs = get_costs_sc();
-  auto sc_result = optimize_serial_chain_manifold(sc_costs, sc_init_values);
-  std::cout << "final cost: " << sc_costs.error(sc_result) << "\n";
-  print_joint_angles_sc(sc_result);
+  std::ostringstream latex_os;
+  LevenbergMarquardtParams lm_params;
 
-  std::cout << "Timing results:\n";
-  tictoc_finishedIteration_();
-  tictoc_print_();
+  // optimize soft constraints
+  std::cout << "soft constraints:\n";
+  auto soft_result =
+      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+
+  // optimize penalty method
+  std::cout << "penalty method:\n";
+  PenaltyMethodParameters penalty_params;
+  penalty_params.lm_parameters = lm_params;
+  auto penalty_result =
+      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+
+  // optimize augmented lagrangian
+  std::cout << "augmented lagrangian:\n";
+  AugmentedLagrangianParameters augl_params;
+  augl_params.lm_parameters = lm_params;
+  auto augl_result =
+      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+
+  // optimize constraint manifold specify variables (feasbile)
+  std::cout << "constraint manifold basis variables (feasible):\n";
+  auto mopt_params = DefaultMoptParamsSV();
+  mopt_params.cc_params->basis_key_func = &FindBasisKeys;
+  auto cm_basis_result = OptimizeConstraintManifold(
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+
+  // // optimize constraint manifold specify variables (infeasbile)
+  std::cout << "constraint manifold basis variables (infeasible):\n";
+  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+
+  // // optimize serial chain manifold
+  // std::cout << "serial chain manifold\n";
+  // Values sc_init_values = get_init_values_sc();
+  // auto sc_costs = get_costs_sc();
+  // auto sc_result = optimize_serial_chain_manifold(sc_costs, sc_init_values);
+  // std::cout << "final cost: " << sc_costs.error(sc_result) << "\n";
+  // print_joint_angles_sc(sc_result);
+
+  std::cout << latex_os.str();
 }
 
 int main(int argc, char** argv) {

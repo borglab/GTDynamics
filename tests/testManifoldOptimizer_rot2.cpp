@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/optimizer/ManifoldOptimizerType1.h>
+#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -175,7 +175,6 @@ TEST(ManifoldOptProblem, SO2) {
   ManifoldOptimizerParameters mopt_params;
   ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
   auto mopt_problem = optimizer.initializeMoptProblem(*costs, *constraints, init_values);
-  mopt_problem.print();
 
   EXPECT_LONGS_EQUAL(1, mopt_problem.components_.size());
   EXPECT_LONGS_EQUAL(0, mopt_problem.unconstrained_keys_.size());
@@ -249,7 +248,7 @@ TEST(ManifoldOptimizerType1_infeasible, SO2) {
   nopt_params.minModelFidelity = 0.5;
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
-  mopt_params.cc_params->lm_params.setMaxIterations(4);
+  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(4);
   ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
   auto result = optimizer.optimize(*costs, *constraints, init_values);
   // result.print();

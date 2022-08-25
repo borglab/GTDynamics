@@ -20,9 +20,9 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/optimizer/ConstraintManifold.h>
+#include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/SubstituteFactor.h>
+#include <gtdynamics/manifold/SubstituteFactor.h>
 
 using namespace gtsam;
 
