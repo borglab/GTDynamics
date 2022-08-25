@@ -52,6 +52,27 @@ class FixedJoint : public Joint {
 
   /// Return joint type for use in reconstructing robot from JointParams.
   Type type() const override { return Type::Fixed; }
+
+ private:
+  /// @name Advanced Interface
+  /// @{
+
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
+  }
+
+  /// @}
 };
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::FixedJoint>
+    : public Testable<gtdynamics::FixedJoint> {};
+
+}  // namespace gtsam

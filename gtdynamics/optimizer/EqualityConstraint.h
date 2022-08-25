@@ -66,6 +66,11 @@ class EqualityConstraint {
 
   /** @brief return the dimension of the constraint. */
   virtual size_t dim() const = 0;
+
+  /// Return keys of variables involved in the constraint.
+  virtual std::set<gtsam::Key> keys() const{
+    return std::set<gtsam::Key>();
+  }
 };
 
 /** Equality constraint that force g(x) = 0, where g(x) is a scalar-valued
@@ -103,6 +108,10 @@ class DoubleExpressionEquality : public EqualityConstraint {
 
   /** Return the dimension of the constraint. */
   size_t dim() const override { return 1; }
+
+  std::set<gtsam::Key> keys() const override{
+    return expression_.keys();
+  }
 };
 
 /** Equality constraint that force g(x) = 0, where g(x) is a vector-valued
@@ -143,6 +152,10 @@ class VectorExpressionEquality : public EqualityConstraint {
 
   /** Return the dimension of the constraint. */
   size_t dim() const override;
+
+  std::set<gtsam::Key> keys() const override{
+    return expression_.keys();
+  }
 };
 
 /** Equality constraint that force factor error to be 0. */
