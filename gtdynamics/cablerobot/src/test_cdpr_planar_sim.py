@@ -17,11 +17,11 @@ import gtsam
 from gtsam import Pose3, Rot3
 import numpy as np
 from cdpr_planar import Cdpr
-from cdpr_planar_controller import CdprControllerBase
+from cdpr_controller import CdprControllerBase
 from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
-class TestCdprPlanar(GtsamTestCase):
+class TestCdprSimulator(GtsamTestCase):
     def testSim(self):
         """Tests the simulation: given a controller and initial state, it will run through and
         simulate the system over multiple timesteps
