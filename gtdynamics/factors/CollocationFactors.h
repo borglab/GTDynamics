@@ -30,7 +30,7 @@ namespace gtdynamics {
  *
  * @return pose_t1 link pose at next time step
  */
-gtsam::Pose3 predictPose(
+inline gtsam::Pose3 predictPose(
     const gtsam::Pose3 &pose_t0, const gtsam::Vector6 &twistdt,
     gtsam::OptionalJacobian<6, 6> H_pose_t0 = boost::none,
     gtsam::OptionalJacobian<6, 6> H_twistdt = boost::none) {
