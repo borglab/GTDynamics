@@ -22,7 +22,6 @@
 #include <gtsam/linear/Preconditioner.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/linear/ConjugateGradientSolver.h>
-#include <opt/homebrew/Cellar/boost/1.79.0_1/include/boost/smart_ptr/make_shared_object.hpp>
 
 using namespace gtsam;
 using namespace gtdynamics;
