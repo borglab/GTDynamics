@@ -66,16 +66,16 @@ void TrajectoryOptimization() {
   /// Scenario
   size_t num_steps = 30;
   double dt = 0.1;
-  Pose3 base_pose_init(Rot3::identity(), Point3(0, 0, vision60.nominal_height));
+  Pose3 base_pose_init(Rot3::Identity(), Point3(0, 0, vision60.nominal_height));
   Vector6 base_twist_init = Vector6::Zero();
 
-  // std::vector<Pose3> des_poses {Pose3(Rot3::identity(), Point3(0, 0, vision60.nominal_height + 0.1)),
+  // std::vector<Pose3> des_poses {Pose3(Rot3::Identity(), Point3(0, 0, vision60.nominal_height + 0.1)),
   // Pose3(Rot3::Rz(0.1), Point3(0, 0, vision60.nominal_height + 0.2)),
   // Pose3(Rot3::Rz(0.1), Point3(0, 0, vision60.nominal_height + 0.1))};
   
   // std::vector<double> des_poses_t {1.0, 2.0, 3.0};
   
-  std::vector<Pose3> des_poses {Pose3(Rot3::identity(), Point3(0, 0, vision60.nominal_height + 0.1))};
+  std::vector<Pose3> des_poses {Pose3(Rot3::Identity(), Point3(0, 0, vision60.nominal_height + 0.1))};
   std::vector<double> des_poses_t {3.0};
 
   /// Get constraints, costs, and initial values.

@@ -133,7 +133,7 @@ public:
 
   /// Return values of one step satisfying kinodynamic constraints.
   Values getInitValuesStep(const int t = 0,
-                           const Pose3 &base_pose = Pose3(Rot3::identity(),
+                           const Pose3 &base_pose = Pose3(Rot3::Identity(),
                                                           Point3(0, 0, 0.0)),
                            const Vector6 &base_twist = Vector6::Zero(),
                            const Vector6 &base_accel = Vector6::Zero(),

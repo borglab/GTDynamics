@@ -480,7 +480,7 @@ Values Vision60Robot::getInitValuesTrajectory(
 Values Vision60Robot::getNominalConfiguration(const double height) const {
   Values qd_values;
   qd_values.insert(PoseKey(base_id, 0),
-                   Pose3(Rot3::identity(), Point3(0, 0, height)));
+                   Pose3(Rot3::Identity(), Point3(0, 0, height)));
   for (const auto &joint : robot.joints()) {
     qd_values.insert(JointAngleKey(joint->id(), 0), 0.0);
   }
