@@ -18,7 +18,6 @@
 #include <gtdynamics/manifold/ManifoldOptimizerType1.h>
 #include <gtdynamics/manifold/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <opt/homebrew/Cellar/boost/1.79.0/include/boost/smart_ptr/intrusive_ptr.hpp>
 
 namespace gtsam {
 
