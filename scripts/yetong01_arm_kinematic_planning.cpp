@@ -275,6 +275,7 @@ void kinematic_planning() {
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParamsSV();
   mopt_params.cc_params->basis_key_func = &FindBasisKeys;
+  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   auto cm_basis_result = OptimizeConstraintManifold(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 

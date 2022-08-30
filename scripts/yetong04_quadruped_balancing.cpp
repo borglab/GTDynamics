@@ -134,21 +134,22 @@ void TrajectoryOptimization() {
   // std::cout << "constraint manifold basis variables feasible:\n";
   auto mopt_params = DefaultMoptParamsSV();
   // mopt_params.cc_params->retract_params->setDynamics(true);
-  // mopt_params.cc_params->retract_params->setProjection(true, 1.0, true);
-  mopt_params.cc_params->retract_params->setUopt();
+  mopt_params.cc_params->retract_params->setProjection(true, 1.0, true);
+  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  // mopt_params.cc_params->retract_params->setUopt();
   mopt_params.cc_params->basis_key_func = vision60.getBasisKeyFunc();
   mopt_params.cc_params->retract_params->check_feasible = true;
-  // auto cm_result =
-  //       OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
-  // EvaluateCosts(cm_result);
-  // vision60.exportTrajectory(cm_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv");
+  auto cm_result =
+        OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+  EvaluateCosts(cm_result);
+  vision60.exportTrajectory(cm_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv");
 
-  // std::cout << "constraint manifold basis variables infeasible:\n";
-  // mopt_params.cc_params->retract_params->lm_params.setMaxIterations(10);
-  // auto cm_infeas_result =
-  //       OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
-  // EvaluateCosts(cm_infeas_result);
-  // vision60.exportTrajectory(cm_infeas_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv");
+  std::cout << "constraint manifold basis variables infeasible:\n";
+  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(10);
+  auto cm_infeas_result =
+        OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+  EvaluateCosts(cm_infeas_result);
+  vision60.exportTrajectory(cm_infeas_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv");
 
 
   std::cout << latex_os.str();

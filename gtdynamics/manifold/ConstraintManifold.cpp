@@ -26,7 +26,7 @@ Values ConstraintManifold::constructValues(
     cm_values.insert(key, values.at(key));
   }
   if (retract_init) {
-    return retractor->retractConstraints(cm_values);
+    return retractor->retractConstraints(std::move(cm_values));
   } else {
     return cm_values;
   }

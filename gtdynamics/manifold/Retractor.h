@@ -103,9 +103,24 @@ public:
    * @param delta tangent vector
    * @return retracted point on the manifold
    */
+  virtual Values retract(Values &&values, const VectorValues &delta) {
+    return retractConstraints(retractBaseVariables(values, delta));
+  }
+
+  /** Retraction operation
+   * @param values base values composing the constraint manifold
+   * @param delta tangent vector
+   * @return retracted point on the manifold
+   */
   virtual Values retract(const Values &values, const VectorValues &delta) {
     return retractConstraints(retractBaseVariables(values, delta));
   }
+
+  /** Given values of variables in CCC that may violate the constraints, compute
+   * the values that satisfy the constraints. */
+  virtual Values retractConstraints(Values &&values) {
+    return retractConstraints((const Values&) values);
+  };
 
   /** Given values of variables in CCC that may violate the constraints, compute
    * the values that satisfy the constraints. */
@@ -128,6 +143,9 @@ public:
 
   /// Retraction operation.
   Values retractConstraints(const Values &values) override;
+
+  /// Retraction Inplace
+  Values retractConstraints(Values &&values) override;
 };
 
 /** Retractor with metric projection. */

@@ -101,6 +101,8 @@ public:
 
   void setGraph(const NonlinearFactorGraph& graph, const Ordering& ordering);
 
+  void setValues(Values&& values);
+
   void setValues(const Values& values);
 
   /// @name Advanced interface

@@ -17,13 +17,15 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
+#include <unordered_map>
+
 namespace gtsam {
 
 /** Class that stores the jacobian of w.r.t. multiple variables. e.g. x = f(m,
  * n, o). The class will store the jacobians of dx/dm, dx/dn, dx/do. */
-class MultiJacobian : public std::map<Key, Matrix> {
+class MultiJacobian : public std::unordered_map<Key, Matrix> {
  public:
-  using Base = std::map<Key, Matrix>;
+  using Base = std::unordered_map<Key, Matrix>;
 
   /// Default constructor.
   MultiJacobian() : Base() {}
@@ -55,7 +57,7 @@ class MultiJacobian : public std::map<Key, Matrix> {
 };
 
 /** jacobian of multiple variables w.r.t. multiple variables. */
-typedef std::map<Key, MultiJacobian> MultiJacobians;
+typedef std::unordered_map<Key, MultiJacobian> MultiJacobians;
 
 /** Given a bayes net, compute the jacobians of all variables w.r.t. basis
  * variables.

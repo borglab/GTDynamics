@@ -331,7 +331,14 @@ void MutableLMOptimizer::setGraph(const NonlinearFactorGraph& graph,
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(const Values& values) {
-  state_ = std::unique_ptr<State>(new State(values, graph_.error(values),
+  state_ = std::unique_ptr<State>(new State((values), graph_.error(values),
+                                            params_.lambdaInitial,
+                                            params_.lambdaFactor));
+}
+
+/* ************************************************************************* */
+void MutableLMOptimizer::setValues(Values&& values) {
+  state_ = std::unique_ptr<State>(new State(std::move(values), graph_.error(values),
                                             params_.lambdaInitial,
                                             params_.lambdaFactor));
 }

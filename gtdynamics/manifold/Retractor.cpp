@@ -77,6 +77,14 @@ Values UoptRetractor::retractConstraints(const Values &values) {
 }
 
 /* ************************************************************************* */
+Values UoptRetractor::retractConstraints(Values &&values) {
+  optimizer_.setValues(values);
+  auto result = optimizer_.optimize();
+  checkFeasible(cc_->merit_graph_, result);
+  return std::move(result);
+}
+
+/* ************************************************************************* */
 ProjRetractor::ProjRetractor(const ConnectedComponent::shared_ptr &cc,
                              const RetractParams::shared_ptr &params,
                              boost::optional<const KeyVector &> basis_keys)
@@ -166,7 +174,7 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   for (const Key &key : optimizer_.graph().keys()) {
     opt_values.insert(key, values.at(key));
   }
-  optimizer_.setValues(opt_values);
+  optimizer_.setValues(std::move(opt_values));
   // optimize
   Values result = optimizer_.optimize();
 

@@ -17,8 +17,12 @@
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtdynamics/utils/CartPoleUtils.h>
+#include <gtsam/linear/IterativeSolver.h>
+#include <gtsam/linear/PCGSolver.h>
+#include <gtsam/linear/Preconditioner.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
+#include <gtsam/linear/ConjugateGradientSolver.h>
+#include <opt/homebrew/Cellar/boost/1.79.0_1/include/boost/smart_ptr/make_shared_object.hpp>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -94,6 +98,7 @@ void dynamic_planning() {
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParamsSV();
   mopt_params.cc_params->retract_params->check_feasible=true;
+  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   mopt_params.cc_params->basis_key_func = cartpole.getBasisKeyFunc(true);
   auto cm_basis_result =
       OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
