@@ -276,18 +276,18 @@ gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
 
 /* ************************************************************************* */
 gtsam::Vector6_ Joint::poseConstraint(
-    uint64_t t, const boost::optional<gtsam::Key> &wTp_key,
-    const boost::optional<gtsam::Key> &wTc_key) const {
+    uint64_t t, const boost::optional<DynamicsSymbol> &wTp_key,
+    const boost::optional<DynamicsSymbol> &wTc_key) const {
   using gtsam::Pose3_;
 
   // Get an expression for parent pose.
   Pose3_ wTp(PoseKey(parent()->id(), t));
   Pose3_ wTc(PoseKey(child()->id(), t));
   if (wTp_key) {
-    wTp = Pose3_(*wTp_key);
+    wTp = Pose3_(wTp_key->key());
   }
   if (wTc_key) {
-    wTc = Pose3_(*wTc_key);
+    wTc = Pose3_(wTc_key->key());
   }
   gtsam::Double_ q(JointAngleKey(id(), t));
 
