@@ -25,6 +25,7 @@ class JointMeasurementFactor : gtsam::NonlinearFactor {
                          const gtdynamics::Joint *joint,
                          double joint_coordinate, size_t k);
 
+  double measured() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
