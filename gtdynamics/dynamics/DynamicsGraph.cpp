@@ -26,9 +26,8 @@
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/format.hpp>
-
 #include <algorithm>
+#include <boost/format.hpp>
 #include <iostream>
 #include <map>
 #include <set>

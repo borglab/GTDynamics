@@ -85,6 +85,9 @@ class JointMeasurementFactor
     return error;
   }
 
+  /// Return measurement
+  double measured() { return measured_joint_coordinate_; }
+
   /// print contents
   void print(const std::string& s = "",
              const gtsam::KeyFormatter& keyFormatter =
