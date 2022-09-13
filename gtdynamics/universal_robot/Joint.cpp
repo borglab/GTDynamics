@@ -275,21 +275,21 @@ gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
 }
 
 /* ************************************************************************* */
-gtsam::Vector6_ Joint::poseConstraint(
-    uint64_t t, const boost::optional<DynamicsSymbol> &wTp_key,
-    const boost::optional<DynamicsSymbol> &wTc_key) const {
+gtsam::Vector6_ Joint::poseConstraint(uint64_t t) const {
+  return poseConstraint(PoseKey(parent()->id(), t), PoseKey(child()->id(), t),
+                        JointAngleKey(id(), t));
+}
+
+/* ************************************************************************* */
+gtsam::Vector6_ Joint::poseConstraint(const DynamicsSymbol &wTp_key,
+                                      const DynamicsSymbol &wTc_key,
+                                      const DynamicsSymbol &q_key) const {
   using gtsam::Pose3_;
 
   // Get an expression for parent pose.
-  Pose3_ wTp(PoseKey(parent()->id(), t));
-  Pose3_ wTc(PoseKey(child()->id(), t));
-  if (wTp_key) {
-    wTp = Pose3_(wTp_key->key());
-  }
-  if (wTc_key) {
-    wTc = Pose3_(wTc_key->key());
-  }
-  gtsam::Double_ q(JointAngleKey(id(), t));
+  Pose3_ wTp(wTp_key);
+  Pose3_ wTc(wTc_key);
+  gtsam::Double_ q(q_key);
 
   // Compute the expected pose of the child link.
   Pose3_ pTc(std::bind(&Joint::parentTchild, this, std::placeholders::_1,

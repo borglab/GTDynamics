@@ -416,9 +416,16 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * @brief Create expression that constraint the pose of two links imposed by
    * the joint angle.
    */
-  gtsam::Vector6_ poseConstraint(
-      uint64_t t = 0, const boost::optional<DynamicsSymbol> &wTp = boost::none,
-      const boost::optional<DynamicsSymbol> &wTc = boost::none) const;
+  gtsam::Vector6_ poseConstraint(uint64_t t = 0) const;
+
+  /**
+   * @brief Create expression that constraint the pose of two links imposed by
+   * the joint angle. Alternative version using custom keys.
+   * TODO(Varun) Need to do the same for all other constraints below
+   */
+  gtsam::Vector6_ poseConstraint(const DynamicsSymbol &wTp_key,
+                                 const DynamicsSymbol &wTc_key,
+                                 const DynamicsSymbol &q_key) const;
 
   /**
    * @brief Create expression that constraint the twist of two links imposed by
