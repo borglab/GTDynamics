@@ -261,7 +261,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Helper print function
   void print(const std::string &s = "") const {
-    std::cout << (s.empty() ? s : s + " ") << *this;
+    std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
   }
 
   /// Helper function for overloading stream operator
