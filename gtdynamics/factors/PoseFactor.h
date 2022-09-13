@@ -68,7 +68,7 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     JointConstSharedPtr joint) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
-      joint->poseConstraint(wTp_key.time(), wTp_key, wTc_key));
+      joint->poseConstraint(wTp_key, wTc_key, q_key));
 }
 
 }  // namespace gtdynamics
