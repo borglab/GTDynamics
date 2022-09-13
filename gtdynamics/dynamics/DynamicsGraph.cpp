@@ -202,9 +202,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
   // TODO(frank): call Kinematics::graph<Slice> instead
   for (auto &&joint : robot.joints()) {
-    graph.add(PoseFactor(PoseKey(joint->parent()->id(), k),
-                         PoseKey(joint->child()->id(), k), opt_.p_cost_model,
-                         joint));
+    graph.add(PoseFactor(
+        PoseKey(joint->parent()->id(), k), PoseKey(joint->child()->id(), k),
+        JointAngleKey(joint->id(), k), opt_.p_cost_model, joint));
   }
 
   // TODO(frank): whoever write this should clean up this mess.

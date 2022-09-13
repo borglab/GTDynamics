@@ -63,7 +63,7 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
  * @param joint The joint connecting the two poses
  */
 inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
-    DynamicsSymbol wTp_key, DynamicsSymbol wTc_key,
+    DynamicsSymbol wTp_key, DynamicsSymbol wTc_key, DynamicsSymbol q_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     JointConstSharedPtr joint) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(

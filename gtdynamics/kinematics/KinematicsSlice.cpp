@@ -44,7 +44,7 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
     const auto j = joint->id();
     graph.add(PoseFactor(PoseKey(joint->parent()->id(), slice.k),
                          PoseKey(joint->child()->id(), slice.k),
-                         p_.p_cost_model, joint));
+                         JointAngleKey(j, slice.k), p_.p_cost_model, joint));
   }
 
   return graph;
