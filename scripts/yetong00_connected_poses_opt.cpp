@@ -32,9 +32,12 @@ auto odo_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
 Vector init_value_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 Vector odo_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 
-Pose2 add_noise(const Pose2 &pose, const Vector &sigmas) {
-  auto sampler_noise_model = noiseModel::Diagonal::Sigmas(sigmas);
-  Sampler sampler(sampler_noise_model);
+auto odo_noise_model = noiseModel::Diagonal::Sigmas(odo_sigma);
+auto init_value_noise_model = noiseModel::Diagonal::Sigmas(init_value_sigma);
+Sampler odo_sampler(odo_noise_model);
+Sampler init_value_sampler(init_value_noise_model);
+
+Pose2 add_noise(const Pose2 &pose, Sampler& sampler) {
   auto xi = sampler.sample();
   return pose.expmap(xi);
 }
@@ -76,8 +79,8 @@ NonlinearFactorGraph get_costs(const Values &gt) {
     Pose2 pose2_next = gt.at<Pose2>(B(k + 1));
     Pose2 rel_pose_2 = pose2_curr.inverse() * pose2_next;
 
-    rel_pose_1 = add_noise(rel_pose_1, odo_sigma);
-    rel_pose_2 = add_noise(rel_pose_2, odo_sigma);
+    rel_pose_1 = add_noise(rel_pose_1, odo_sampler);
+    rel_pose_2 = add_noise(rel_pose_2, odo_sampler);
 
     costs.emplace_shared<BetweenFactor<Pose2>>(A(k), A(k + 1), rel_pose_1,
                                                odo_noise);
@@ -102,8 +105,8 @@ Values get_init_values(const Values &gt) {
   for (size_t k = 0; k <= num_steps; k++) {
     Pose2 pose_1 = gt.at<Pose2>(A(k));
     Pose2 pose_2 = gt.at<Pose2>(B(k));
-    pose_1 = add_noise(pose_1, init_value_sigma);
-    pose_2 = add_noise(pose_2, init_value_sigma);
+    pose_1 = add_noise(pose_1, init_value_sampler);
+    pose_2 = add_noise(pose_2, init_value_sampler);
     init_values.insert(A(k), pose_1);
     init_values.insert(B(k), pose_2);
   }
