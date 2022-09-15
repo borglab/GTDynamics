@@ -58,7 +58,12 @@ Values ManifoldOptimizerType1::baseValues(
     base_values.insert(key, nopt_values.at(key));
   }
   for (const Key& key : mopt_problem.manifold_keys_) {
-    base_values.insert(nopt_values.at(key).cast<ConstraintManifold>().values());
+    if (p_.retract_final) {
+      base_values.insert(nopt_values.at(key).cast<ConstraintManifold>().feasibleValues());
+    }
+    else {
+      base_values.insert(nopt_values.at(key).cast<ConstraintManifold>().values());
+    }
   }
   return base_values;
 }

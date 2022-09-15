@@ -14,6 +14,7 @@
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtsam {
 
@@ -125,6 +126,12 @@ TspaceBasis::shared_ptr ConstraintManifold::constructTspaceBasis(
   }
   return TspaceBasis::create(params->basis_params, cc,
                              values, boost::none, manifold_dim);
+}
+
+/* ************************************************************************* */
+const Values ConstraintManifold::feasibleValues() const {
+  LevenbergMarquardtOptimizer optimizer(cc_->merit_graph_, values_);
+  return optimizer.optimize();
 }
 
 } // namespace gtsam

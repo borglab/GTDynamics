@@ -132,6 +132,8 @@ public:
   /// Return the retractor.
   const Retractor::shared_ptr &retractor() const { return retractor_; }
 
+  const Values feasibleValues() const;
+
 protected:
   /** Initialize the values_ of variables in CCC and compute dimension of the
    * constraint manifold and compute the dimension of the constraint manifold.

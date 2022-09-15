@@ -71,10 +71,11 @@ void dynamic_planning() {
   lm_params.setlambdaUpperBound(1e10);
   cartpole.exprotTrajectory(init_values, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_init.csv");
 
+  double constraint_unit_scale =1e-3;
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0, constraint_unit_scale);
   EvaluateCosts(soft_result);
   cartpole.exprotTrajectory(soft_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_soft_infeas.csv");
 
@@ -84,14 +85,14 @@ void dynamic_planning() {
   PenaltyMethodParameters penalty_params;
   penalty_params.lm_parameters = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
   AugmentedLagrangianParameters al_params;
   al_params.lm_parameters = lm_params;
   auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, al_params);
+      OptimizeAugmentedLagrangian(problem, latex_os, al_params, constraint_unit_scale);
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
@@ -100,7 +101,7 @@ void dynamic_planning() {
   mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   mopt_params.cc_params->basis_key_func = cartpole.getBasisKeyFunc(true);
   auto cm_basis_result =
-      OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+      OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   EvaluateCosts(cm_basis_result);
   cartpole.exprotTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
 
@@ -108,7 +109,7 @@ void dynamic_planning() {
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result =
-      OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+      OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
 
   std::cout << latex_os.str();
 }

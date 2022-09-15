@@ -35,7 +35,8 @@ namespace gtdynamics {
 Values OptimizeSoftConstraints(const EqConsOptProblem &problem,
                                  std::ostream &latex_os, 
                                  LevenbergMarquardtParams lm_params = LevenbergMarquardtParams(),
-                                 double mu = 100);
+                                 double mu = 100,
+                                 double constraint_unit_scale=1.0);
 
 /// Default parameters for manifold optimization.
 gtsam::ManifoldOptimizerParameters DefaultMoptParams();
@@ -49,17 +50,20 @@ Values OptimizeConstraintManifold(
     const EqConsOptProblem &problem, std::ostream &latex_os,
     gtsam::ManifoldOptimizerParameters mopt_params = DefaultMoptParams(),
     LevenbergMarquardtParams lm_params = LevenbergMarquardtParams(),
-    std::string exp_name = "Constraint Manifold");
+    std::string exp_name = "Constraint Manifold",
+    double constraint_unit_scale=1.0);
 
 /** Run constrained optimization using the penalty method. */
 Values OptimizePenaltyMethod(const EqConsOptProblem &problem,
                                std::ostream &latex_os,
-                               PenaltyMethodParameters params = PenaltyMethodParameters());
+                               PenaltyMethodParameters params = PenaltyMethodParameters(),
+                               double constraint_unit_scale=1.0);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 Values OptimizeAugmentedLagrangian(const EqConsOptProblem &problem,
                                      std::ostream &latex_os,
-                                     AugmentedLagrangianParameters params = AugmentedLagrangianParameters());
+                                     AugmentedLagrangianParameters params = AugmentedLagrangianParameters(),
+                                     double constraint_unit_scale=1.0);
 
 /** Functor version of JointLimitFactor, for creating expressions. Compute error
  * for joint limit error, to reproduce joint limit factor in expressions. */

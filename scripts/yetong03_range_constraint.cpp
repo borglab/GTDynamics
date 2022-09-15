@@ -24,10 +24,11 @@ using gtsam::symbol_shorthand::A, gtsam::symbol_shorthand::B;
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 100;
-auto range_noise = noiseModel::Isotropic::Sigma(1, 1e-3);
+double constraint_unit_scale =1e0;
+auto range_noise = noiseModel::Isotropic::Sigma(1, 1e0);
 auto prior_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
 auto odo_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
-Vector init_value_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
+Vector init_value_sigma = (Vector(3) << 0.5, 0.5, 0.5).finished();
 Vector odo_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 
 auto odo_noise_model = noiseModel::Diagonal::Sigmas(odo_sigma);
@@ -138,34 +139,34 @@ void kinematic_planning() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params);
+      OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
 
   // optimize penalty method
   std::cout << "penalty method:\n";
   PenaltyMethodParameters penalty_params;
   penalty_params.lm_parameters = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
   AugmentedLagrangianParameters augl_params;
   augl_params.lm_parameters = lm_params;
   auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+      OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
   mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   auto cm_basis_result = OptimizeConstraintManifold(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
 
   // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result = OptimizeConstraintManifold(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
 
   std::cout << latex_os.str();
 }

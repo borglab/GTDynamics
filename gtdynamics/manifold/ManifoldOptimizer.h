@@ -30,6 +30,8 @@ struct ManifoldOptimizerParameters
       cc_params;             // Parameter for constraint-connected components
   bool retract_init = true;  // Perform retraction on constructing values for
                              // connected component.
+  bool retract_final = false; // Perform retraction on manifolds after
+                              // optimization, used for infeasible methods.
   /// Default Constructor.
   ManifoldOptimizerParameters();
 };
