@@ -15,7 +15,6 @@
 
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
-#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -44,7 +43,7 @@ namespace gtdynamics {
  */
 inline gtsam::NoiseModelFactor::shared_ptr WrenchFactor(
     const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
-    const std::vector<DynamicsSymbol> &wrench_keys, int time,
+    const std::vector<gtsam::Key> &wrench_keys, int time,
     const boost::optional<gtsam::Vector3> &gravity = boost::none) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
