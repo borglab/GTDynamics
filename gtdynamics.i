@@ -91,7 +91,7 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
 #include <gtdynamics/factors/WrenchFactor.h>
 gtsam::NonlinearFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
-    const std::vector<gtdynamics::DynamicsSymbol> wrench_keys, int t = 0,
+    const std::vector<gtsam::Key> wrench_keys, int t = 0,
     const boost::optional<gtsam::Vector3> &gravity);
 
 #include <gtdynamics/factors/CollocationFactors.h>
@@ -655,17 +655,17 @@ class DynamicsSymbol {
   bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
 };
 
-gtdynamics::DynamicsSymbol JointAngleKey(int j, int t=0);
-gtdynamics::DynamicsSymbol JointVelKey(int j, int t=0);
-gtdynamics::DynamicsSymbol JointAccelKey(int j, int t=0);
-gtdynamics::DynamicsSymbol TorqueKey(int j, int t=0);
-gtdynamics::DynamicsSymbol TwistKey(int i, int t=0);
-gtdynamics::DynamicsSymbol TwistAccelKey(int i, int t=0);
-gtdynamics::DynamicsSymbol WrenchKey(int i, int j, int t=0);
-gtdynamics::DynamicsSymbol PoseKey(int i, int t=0);
-gtdynamics::DynamicsSymbol ContactWrenchKey(int i, int k, int t=0);
-gtdynamics::DynamicsSymbol PhaseKey(int k);
-gtdynamics::DynamicsSymbol TimeKey(int t);
+gtsam::Key JointAngleKey(int j, int t=0);
+gtsam::Key JointVelKey(int j, int t=0);
+gtsam::Key JointAccelKey(int j, int t=0);
+gtsam::Key TorqueKey(int j, int t=0);
+gtsam::Key TwistKey(int i, int t=0);
+gtsam::Key TwistAccelKey(int i, int t=0);
+gtsam::Key WrenchKey(int i, int j, int t=0);
+gtsam::Key PoseKey(int i, int t=0);
+gtsam::Key ContactWrenchKey(int i, int k, int t=0);
+gtsam::Key PhaseKey(int k);
+gtsam::Key TimeKey(int t);
 
 ///////////////////// Key Methods /////////////////////
 void InsertJointAngle(gtsam::Values@ values, int j, int t, double value);
