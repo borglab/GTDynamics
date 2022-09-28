@@ -25,7 +25,7 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 gtsam::Vector6_ Link::wrenchConstraint(
-    const std::vector<DynamicsSymbol>& wrench_keys, uint64_t t,
+    const std::vector<gtsam::Key>& wrench_keys, uint64_t t,
     const boost::optional<gtsam::Vector3>& gravity) const {
   // Collect wrenches to implement L&P Equation 8.48 (F = ma)
   std::vector<gtsam::Vector6_> wrenches;

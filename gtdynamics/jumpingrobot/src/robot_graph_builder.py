@@ -73,7 +73,7 @@ class RobotGraphBuilder:
         for name in ["foot_l", "foot_r"]:
             if name in joint_names:
                 j = jr.robot.joint(name).id()
-                torque_key = gtd.TorqueKey(j, k).key()
+                torque_key = gtd.TorqueKey(j, k)
                 graph.add(
                     gtd.PriorFactorDouble(
                         torque_key, 0.0,
@@ -94,7 +94,7 @@ class RobotGraphBuilder:
             phase = step_phases[time_step]
             k_prev = time_step
             k_curr = time_step + 1
-            dt_key = gtd.PhaseKey(phase).key()
+            dt_key = gtd.PhaseKey(phase)
 
             # collocation on joint angles
             if phase == 3:
@@ -113,12 +113,12 @@ class RobotGraphBuilder:
             # collocation on torso link
             link = jr.robot.link("torso")
             i = link.id()
-            pose_prev_key = gtd.PoseKey(i, k_prev).key()
-            pose_curr_key = gtd.PoseKey(i, k_curr).key()
-            twist_prev_key = gtd.TwistKey(i, k_prev).key()
-            twist_curr_key = gtd.TwistKey(i, k_curr).key()
-            twistaccel_prev_key = gtd.TwistAccelKey(i, k_prev).key()
-            twistaccel_curr_key = gtd.TwistAccelKey(i, k_curr).key()
+            pose_prev_key = gtd.PoseKey(i, k_prev)
+            pose_curr_key = gtd.PoseKey(i, k_curr)
+            twist_prev_key = gtd.TwistKey(i, k_prev)
+            twist_curr_key = gtd.TwistKey(i, k_curr)
+            twistaccel_prev_key = gtd.TwistAccelKey(i, k_prev)
+            twistaccel_curr_key = gtd.TwistAccelKey(i, k_curr)
 
             pose_col_cost_model = self.graph_builder.opt().pose_col_cost_model
             graph.add(

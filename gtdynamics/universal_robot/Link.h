@@ -185,7 +185,7 @@ class Link : public boost::enable_shared_from_this<Link> {
    * @param gravity Gravitional constant.
    */
   gtsam::Vector6_ wrenchConstraint(
-      const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
+      const std::vector<gtsam::Key> &wrench_keys, uint64_t t = 0,
       const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
 
  private:
