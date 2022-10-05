@@ -136,7 +136,7 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
     int i = link->id();
     if (!link->isFixed()) {
       const auto &connected_joints = link->joints();
-      std::vector<DynamicsSymbol> wrench_keys;
+      std::vector<gtsam::Key> wrench_keys;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
