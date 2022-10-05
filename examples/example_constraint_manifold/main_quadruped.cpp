@@ -11,6 +11,8 @@
  * @author Alejandro Escontrela
  */
 
+#include "QuadrupedUtils.h"
+
 #include <gtdynamics/utils/PointOnLink.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
@@ -45,8 +47,6 @@
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/values.h"
 #include "gtdynamics/optimizer/OptimizationBenchmark.h"
-
-#include "gtdynamics/utils/QuadrupedUtils.h"
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>

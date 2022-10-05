@@ -11,10 +11,11 @@
  * @author: Yetong Zhang
  */
 
-#include "utils/DynamicsSymbol.h"
-#include <gtdynamics/utils/QuadrupedUtils.h>
+
+#include "QuadrupedUtils.h"
 #include <gtsam/base/Vector.h>
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>

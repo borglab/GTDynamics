@@ -11,7 +11,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/utils/CartPoleUtils.h>
+#include "CartPoleUtils.h"
 #include <gtdynamics/factors/MinTorqueFactor.h>
 
 #include <boost/algorithm/string/join.hpp>

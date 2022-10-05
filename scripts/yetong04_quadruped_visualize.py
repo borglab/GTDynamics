@@ -25,7 +25,7 @@ for i in range(p.getNumJoints(quad_id)):
 
 
 #TODO(Varun) This should be passed as a cmdline argument
-df = pd.read_csv('/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv')
+df = pd.read_csv('/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv')
 print(df.columns)
 
 input("Press ENTER to continue.")
@@ -129,6 +129,8 @@ for i in range(len(df)):
     p.stepSimulation()
     time.sleep(dt)
     t += dt
+
+time.sleep(10)
 
 pos, orn = p.getBasePositionAndOrientation(quad_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,

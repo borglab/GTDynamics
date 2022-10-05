@@ -6,17 +6,21 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  range_constraint.cpp
- * @brief Two-vehicle state estimation with range constraint.
+ * @file  kinematic_trajectory_planning.cpp
+ * @brief Kinematic trajectory planning problem of reaching a target pose with a
+ * kuka arm. Benchmarking dynamic factor graph, constraint manifold, manually
+ * specified manifold.
  * @author Yetong Zhang
  */
 
+#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/sam/RangeFactor.h>
+#include <sstream>
+#include <sys/_types/_size_t.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -24,11 +28,11 @@ using gtsam::symbol_shorthand::A, gtsam::symbol_shorthand::B;
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 100;
-double constraint_unit_scale =1e0;
-auto range_noise = noiseModel::Isotropic::Sigma(1, 1e0);
+double constraint_unit_scale =1;
+auto constraint_noise = noiseModel::Isotropic::Sigma(3, 1e0);
 auto prior_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
 auto odo_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
-Vector init_value_sigma = (Vector(3) << 0.5, 0.5, 0.5).finished();
+Vector init_value_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 Vector odo_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 
 auto odo_noise_model = noiseModel::Diagonal::Sigmas(odo_sigma);
@@ -49,17 +53,62 @@ NonlinearFactorGraph get_constraints_graph(const Values &gt) {
   for (size_t k = 0; k <= num_steps; k++) {
     Pose2 pose_1 = gt.at<Pose2>(A(k));
     Pose2 pose_2 = gt.at<Pose2>(B(k));
-    double range = pose_1.range(pose_2);
-    constraints_graph.emplace_shared<RangeFactor<Pose2, Pose2>>(A(k), B(k), range,
-                                                           range_noise);
+    Pose2 rel_pose = pose_1.inverse() * pose_2;
+    constraints_graph.emplace_shared<BetweenFactor<Pose2>>(A(k), B(k), rel_pose,
+                                                           constraint_noise);
   }
+
+  // TODO: move friction cone from constraints to costs
+  // create a Vector3 representing contact force, and select as base variables (for redundency elimination)
 
   return constraints_graph;
 }
 
+double EvaluatePoseError(const Values &gt, const Values &result) {
+  double error1 = 0;
+  double error2 = 0;
+  for (size_t k=1; k<=num_steps; k++) {
+    {
+      Pose2 gt_pose = gt.at<Pose2>(A(k));
+      Pose2 est_pose = result.at<Pose2>(A(k));
+      Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
+      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      // std::cout << diff << "\n";
+      // std::cout << diff.norm() << "\n";
+      error1 += pow(diff.norm(), 2);
+    }
+    {
+      Pose2 gt_pose = gt.at<Pose2>(B(k));
+      Pose2 est_pose = result.at<Pose2>(B(k));
+      Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
+      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      error2 += pow(diff.norm(), 2);
+    }
+  }
+  std::cout << sqrt(error1 / num_steps) << "\t" << sqrt(error2 / num_steps) << "\n";
+  return sqrt(error1 / num_steps) + sqrt(error2 / num_steps);
+}
+
+std::vector<std::vector<Pose2>> GetOdoMeasurements(const Values &gt) {
+  std::vector<std::vector<Pose2>> odos;
+  for (size_t k = 0; k < num_steps; k++) {
+    Pose2 pose1_curr = gt.at<Pose2>(A(k));
+    Pose2 pose1_next = gt.at<Pose2>(A(k + 1));
+    Pose2 rel_pose_1 = pose1_curr.inverse() * pose1_next;
+    Pose2 pose2_curr = gt.at<Pose2>(B(k));
+    Pose2 pose2_next = gt.at<Pose2>(B(k + 1));
+    Pose2 rel_pose_2 = pose2_curr.inverse() * pose2_next;
+    rel_pose_1 = add_noise(rel_pose_1, odo_sampler);
+    rel_pose_2 = add_noise(rel_pose_2, odo_sampler);
+    odos.push_back(std::vector<Pose2>{rel_pose_1, rel_pose_2});
+  }
+  return odos;
+}
+
+
 /** Cost function for planning, includes cost of rotation joints, joint limit
  * costs, and cost for reaching target pose at end-effector. */
-NonlinearFactorGraph get_costs(const Values &gt) {
+NonlinearFactorGraph get_costs(const Values &gt, const std::vector<std::vector<Pose2>>& odos) {
   NonlinearFactorGraph costs;
 
   costs.emplace_shared<PriorFactor<Pose2>>(A(0), gt.at<Pose2>(A(0)),
@@ -68,19 +117,19 @@ NonlinearFactorGraph get_costs(const Values &gt) {
                                            prior_noise);
 
   for (size_t k = 0; k < num_steps; k++) {
-    Pose2 pose1_curr = gt.at<Pose2>(A(k));
-    Pose2 pose1_next = gt.at<Pose2>(A(k + 1));
-    Pose2 rel_pose_1 = pose1_curr.inverse() * pose1_next;
-    Pose2 pose2_curr = gt.at<Pose2>(B(k));
-    Pose2 pose2_next = gt.at<Pose2>(B(k + 1));
-    Pose2 rel_pose_2 = pose2_curr.inverse() * pose2_next;
+    // Pose2 pose1_curr = gt.at<Pose2>(A(k));
+    // Pose2 pose1_next = gt.at<Pose2>(A(k + 1));
+    // Pose2 rel_pose_1 = pose1_curr.inverse() * pose1_next;
+    // Pose2 pose2_curr = gt.at<Pose2>(B(k));
+    // Pose2 pose2_next = gt.at<Pose2>(B(k + 1));
+    // Pose2 rel_pose_2 = pose2_curr.inverse() * pose2_next;
 
-    rel_pose_1 = add_noise(rel_pose_1, odo_sampler);
-    rel_pose_2 = add_noise(rel_pose_2, odo_sampler);
+    // rel_pose_1 = add_noise(rel_pose_1, odo_sampler);
+    // rel_pose_2 = add_noise(rel_pose_2, odo_sampler);
 
-    costs.emplace_shared<BetweenFactor<Pose2>>(A(k), A(k + 1), rel_pose_1,
+    costs.emplace_shared<BetweenFactor<Pose2>>(A(k), A(k + 1), odos[k][0],
                                                odo_noise);
-    costs.emplace_shared<BetweenFactor<Pose2>>(B(k), B(k + 1), rel_pose_2,
+    costs.emplace_shared<BetweenFactor<Pose2>>(B(k), B(k + 1), odos[k][1],
                                                odo_noise);
   }
   return costs;
@@ -96,13 +145,15 @@ Values get_gt_values() {
 }
 
 /** Initial values specifed by 0 for all joint angles. */
-Values get_init_values(const Values &gt) {
+Values get_init_values(const Values &gt, const std::vector<std::vector<Pose2>>& odos) {
   Values init_values;
-  for (size_t k = 0; k <= num_steps; k++) {
-    Pose2 pose_1 = gt.at<Pose2>(A(k));
-    Pose2 pose_2 = gt.at<Pose2>(B(k));
-    pose_1 = add_noise(pose_1, init_value_sampler);
-    pose_2 = add_noise(pose_2, init_value_sampler);
+  init_values.insert(A(0), gt.at<Pose2>(A(0)));
+  init_values.insert(B(0), gt.at<Pose2>(B(0)));
+  for (size_t k = 1; k <= num_steps; k++) {
+    Pose2 rel_pose1 = odos[k-1][0];
+    Pose2 rel_pose2 = odos[k-1][1];
+    Pose2 pose_1 = init_values.at<Pose2>(A(k-1)).compose(rel_pose1);
+    Pose2 pose_2 = init_values.at<Pose2>(B(k-1)).compose(rel_pose2);
     init_values.insert(A(k), pose_1);
     init_values.insert(B(k), pose_2);
   }
@@ -125,21 +176,28 @@ KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // problem
+  // Create constraiend optimization problem.
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
-  auto costs = get_costs(gt);
-  auto init_values = get_init_values(gt);
+  std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
+  auto costs = get_costs(gt, odo_measurements);
+  auto init_values = get_init_values(gt, odo_measurements);
   auto constraints = ConstraintsFromGraph(constraints_graph);
+  // constraints = gtdynamics::EqualityConstraints();
   auto problem = EqConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
+  // lm_params.setVerbosityLM("SUMMARY");
+  lm_params.setlambdaUpperBound(1e10);
+
+  std::cout << "pose error: " << EvaluatePoseError(gt, init_values) << "\n";
 
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
       OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, soft_result) << "\n";
 
   // optimize penalty method
   std::cout << "penalty method:\n";
@@ -147,6 +205,7 @@ void kinematic_planning() {
   penalty_params.lm_parameters = lm_params;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
@@ -154,19 +213,23 @@ void kinematic_planning() {
   augl_params.lm_parameters = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
+  // mopt_params.cc_params->basis_key_func = &FindBasisKeys;
   mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   auto cm_basis_result = OptimizeConstraintManifold(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
 
   // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result = OptimizeConstraintManifold(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";
 
   std::cout << latex_os.str();
 }

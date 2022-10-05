@@ -6,10 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  kinematic_trajectory_planning.cpp
- * @brief Kinematic trajectory planning problem of reaching a target pose with a
- * kuka arm. Benchmarking dynamic factor graph, constraint manifold, manually
- * specified manifold.
+ * @file  range_constraint.cpp
+ * @brief Two-vehicle state estimation with range constraint.
  * @author Yetong Zhang
  */
 
@@ -18,7 +16,7 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <sstream>
+#include <gtsam/sam/RangeFactor.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -26,11 +24,11 @@ using gtsam::symbol_shorthand::A, gtsam::symbol_shorthand::B;
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 100;
-double constraint_unit_scale =1;
-auto constraint_noise = noiseModel::Isotropic::Sigma(3, 1e0);
+double constraint_unit_scale =1e0;
+auto range_noise = noiseModel::Isotropic::Sigma(1, 1e0);
 auto prior_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
 auto odo_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
-Vector init_value_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
+Vector init_value_sigma = (Vector(3) << 0.5, 0.5, 0.5).finished();
 Vector odo_sigma = (Vector(3) << 0.1, 0.1, 0.1).finished();
 
 auto odo_noise_model = noiseModel::Diagonal::Sigmas(odo_sigma);
@@ -51,13 +49,10 @@ NonlinearFactorGraph get_constraints_graph(const Values &gt) {
   for (size_t k = 0; k <= num_steps; k++) {
     Pose2 pose_1 = gt.at<Pose2>(A(k));
     Pose2 pose_2 = gt.at<Pose2>(B(k));
-    Pose2 rel_pose = pose_1.inverse() * pose_2;
-    constraints_graph.emplace_shared<BetweenFactor<Pose2>>(A(k), B(k), rel_pose,
-                                                           constraint_noise);
+    double range = pose_1.range(pose_2);
+    constraints_graph.emplace_shared<RangeFactor<Pose2, Pose2>>(A(k), B(k), range,
+                                                           range_noise);
   }
-
-  // TODO: move friction cone from constraints to costs
-  // create a Vector3 representing contact force, and select as base variables (for redundency elimination)
 
   return constraints_graph;
 }
@@ -126,11 +121,37 @@ KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
   return basis_keys;
 }
 
+
+double EvaluatePoseError(const Values &gt, const Values &result) {
+  double error1 = 0;
+  double error2 = 0;
+  for (size_t k=1; k<=num_steps; k++) {
+    {
+      Pose2 gt_pose = gt.at<Pose2>(A(k));
+      Pose2 est_pose = result.at<Pose2>(A(k));
+      Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
+      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      // std::cout << diff << "\n";
+      // std::cout << diff.norm() << "\n";
+      error1 += pow(diff.norm(), 2);
+    }
+    {
+      Pose2 gt_pose = gt.at<Pose2>(B(k));
+      Pose2 est_pose = result.at<Pose2>(B(k));
+      Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
+      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      error2 += pow(diff.norm(), 2);
+    }
+  }
+  std::cout << sqrt(error1 / num_steps) << "\t" << sqrt(error2 / num_steps) << "\n";
+  return sqrt(error1 / num_steps) + sqrt(error2 / num_steps);
+}
+
 /** Compare simple kinematic planning tasks of a robot arm using (1) dynamics
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // Create constraiend optimization problem.
+  // problem
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
   auto costs = get_costs(gt);
@@ -141,17 +162,28 @@ void kinematic_planning() {
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
 
-  // optimize soft constraints
-  std::cout << "soft constraints:\n";
-  auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
+
+  std::cout << "pose error: " << EvaluatePoseError(gt, init_values) << "\n";
+
+  // for (size_t i=0; i<10; i++) {
+    // optimize soft constraints
+    std::cout << "soft constraints:\n";
+    auto soft_result =
+        OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
+    std::cout << "pose error: " << EvaluatePoseError(gt, soft_result) << "\n";
+  // }
+  
+
 
   // optimize penalty method
   std::cout << "penalty method:\n";
   PenaltyMethodParameters penalty_params;
   penalty_params.lm_parameters = lm_params;
+  // penalty_params.num_iterations=4;
+  penalty_params.initial_mu=10000;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
@@ -159,20 +191,27 @@ void kinematic_planning() {
   augl_params.lm_parameters = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";
 
-  // optimize constraint manifold specify variables (feasbile)
-  std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParamsSV();
-  mopt_params.cc_params->basis_key_func = &FindBasisKeys;
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  auto cm_basis_result = OptimizeConstraintManifold(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+  // for (size_t i=0; i<10; i++) {
+    // optimize constraint manifold specify variables (feasbile)
+    std::cout << "constraint manifold basis variables (feasible):\n";
+    auto mopt_params = DefaultMoptParams();
+    mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    auto cm_basis_result = OptimizeConstraintManifold(
+        problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+    std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
+  // }
 
-  // optimize constraint manifold specify variables (infeasbile)
-  std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+  // for (size_t i=0; i<10; i++) {
+    // optimize constraint manifold specify variables (infeasbile)
+    std::cout << "constraint manifold basis variables (infeasible):\n";
+    // auto mopt_params = DefaultMoptParams();
+    mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+    auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+        problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+    std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";
+  // }
 
   std::cout << latex_os.str();
 }
