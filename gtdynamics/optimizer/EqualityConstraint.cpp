@@ -11,7 +11,7 @@
  * @author: Yetong Zhang, Frank Dellaert
  */
 
-#include <gtdynamics/factors/ConstBiasFactor.h>
+#include <gtdynamics/factors/BiasedFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 
 namespace gtdynamics {
@@ -49,7 +49,7 @@ gtsam::NoiseModelFactor::shared_ptr FactorZeroErrorConstraint::createFactor(
     const double mu, boost::optional<gtsam::Vector&> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   if (bias) {
-    return boost::make_shared<gtsam::ConstBiasFactor>(factor_, *bias, noise);
+    return boost::make_shared<gtsam::BiasedFactor>(factor_, *bias, noise);
   }
   return factor_->cloneWithNewNoiseModel(noise);
 }

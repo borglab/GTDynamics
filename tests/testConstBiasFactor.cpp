@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testConstBiasFactor.cpp
+ * @file  testBiasedFactor.cpp
  * @brief test const bias factor.
  * @author Yetong Zhang
  */
@@ -19,11 +19,11 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/factors/ConstBiasFactor.h>
+#include <gtdynamics/factors/BiasedFactor.h>
 
 using namespace gtsam;
 
-TEST(ConstBiasFactor, pose) {
+TEST(BiasedFactor, pose) {
   // Keys.
   Key x1_key = 1;
   Key x2_key = 2;
@@ -42,7 +42,7 @@ TEST(ConstBiasFactor, pose) {
   Vector bias = (Vector(3) << 1, 1, 0.1).finished();
 
   // Test constructor.
-  ConstBiasFactor const_bias_factor(base_factor, bias);
+  BiasedFactor const_bias_factor(base_factor, bias);
 
   // Check error.
   Vector expected_error1 = (Vector(3) << 2, 1, 0.1).finished();

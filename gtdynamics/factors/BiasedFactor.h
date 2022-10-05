@@ -7,18 +7,16 @@
 
 namespace gtsam {
 
-/** A factor that substitute certain variables of a base factor with constraint
- * manifold variables.
- * It is used for constraint manifold optimization, since the variables
- * connected with constraint factors will be replaced by constraint manifold
- * variables.
+/** A factor that adds a constant bias term to the original factor.
+ * This factor is used in augmented Lagrangian optimizer to create biased cost
+ * functions.
  * Note that the noise model is stored twice (both in base factor and the
  * noisemodel of substitute factor. The noisemodel in the base factor will be
  * ignored. */
-class ConstBiasFactor : public NoiseModelFactor {
+class BiasedFactor : public NoiseModelFactor {
 protected:
   typedef NoiseModelFactor Base;
-  typedef ConstBiasFactor This;
+  typedef BiasedFactor This;
 
   // original factor
   Base::shared_ptr base_factor_;
@@ -28,21 +26,21 @@ public:
   typedef boost::shared_ptr<This> shared_ptr;
 
   /** Default constructor for I/O only */
-  ConstBiasFactor() {}
+  BiasedFactor() {}
 
   /** Destructor */
-  ~ConstBiasFactor() override {}
+  ~BiasedFactor() override {}
 
   /**
    * Constructor
    * @param base_factor   original factor on X
    * @param bias  the bias term
    */
-  ConstBiasFactor(const Base::shared_ptr &base_factor, const Vector &bias)
+  BiasedFactor(const Base::shared_ptr &base_factor, const Vector &bias)
       : Base(base_factor->noiseModel(), base_factor->keys()),
         base_factor_(base_factor), bias_(bias) {}
 
-  ConstBiasFactor(const Base::shared_ptr &base_factor, const Vector &bias,
+  BiasedFactor(const Base::shared_ptr &base_factor, const Vector &bias,
                   const SharedNoiseModel &noise_model)
       : Base(noise_model, base_factor->keys()), base_factor_(base_factor),
         bias_(bias) {}
@@ -56,11 +54,6 @@ public:
   virtual Vector unwhitenedError(
       const Values &x,
       boost::optional<std::vector<Matrix> &> H = boost::none) const override {
-    // std::cout << "base_error:\n" << base_factor_->unwhitenedError(x) << "\n";
-    // std::cout << "bias:\n" << bias_ << "\n";
-    // Vector error = base_factor_->unwhitenedError(x, H) - bias_;
-    // std::cout << "error:\n" << error << "\n";
-    // return error;
     return base_factor_->unwhitenedError(x, H) + bias_;
   }
 
@@ -76,11 +69,11 @@ private:
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
     ar &boost::serialization::make_nvp(
-        "ConstBiasFactor", boost::serialization::base_object<Base>(*this));
+        "BiasedFactor", boost::serialization::base_object<Base>(*this));
     ar &BOOST_SERIALIZATION_NVP(base_factor_);
     ar &BOOST_SERIALIZATION_NVP(bias_);
   }
 
-}; // \class ConstBiasFactor
+}; // \class BiasedFactor
 
 } // namespace gtsam
