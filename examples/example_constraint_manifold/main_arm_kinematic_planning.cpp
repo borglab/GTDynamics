@@ -13,12 +13,13 @@
  * @author Yetong Zhang
  */
 
+#include "SerialChain.h"
+
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/universal_robot/SerialChain.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 using namespace gtsam;

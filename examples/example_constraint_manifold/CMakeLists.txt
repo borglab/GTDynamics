@@ -32,7 +32,7 @@ add_custom_target(
 
 # Arm Planning.
 set(ARM ${PROJECT_NAME}_arm)
-add_executable(${ARM} main_arm_kinematic_planning.cpp)
+add_executable(${ARM} main_arm_kinematic_planning.cpp SerialChain.h)
 target_link_libraries(${ARM} PUBLIC gtdynamics)
 target_include_directories(${ARM} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
