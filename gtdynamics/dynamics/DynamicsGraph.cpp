@@ -26,9 +26,8 @@
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/format.hpp>
-
 #include <algorithm>
+#include <boost/format.hpp>
 #include <iostream>
 #include <map>
 #include <set>
@@ -300,7 +299,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     int i = link->id();
     if (!link->isFixed()) {
       const auto &connected_joints = link->joints();
-      std::vector<DynamicsSymbol> wrench_keys;
+      std::vector<gtsam::Key> wrench_keys;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)

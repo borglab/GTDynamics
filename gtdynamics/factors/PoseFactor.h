@@ -59,7 +59,6 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
  *
  * @param wTp_key Key for parent link's CoM pose in world frame.
  * @param wTc_key Key for child link's CoM pose in world frame.
- * @param q_key Key for joint value.
  * @param cost_model The noise model for this factor.
  * @param joint The joint connecting the two poses
  */
@@ -69,7 +68,7 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     JointConstSharedPtr joint) {
   return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
-      joint->poseConstraint(wTp_key.time()));
+      joint->poseConstraint(wTp_key, wTc_key, q_key));
 }
 
 }  // namespace gtdynamics

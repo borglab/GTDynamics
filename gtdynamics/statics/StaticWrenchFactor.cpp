@@ -31,7 +31,7 @@ using gtsam::Vector6;
 namespace gtdynamics {
 
 StaticWrenchFactor::StaticWrenchFactor(
-    const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
+    const std::vector<gtsam::Key> &wrench_keys, gtsam::Key pose_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model, double mass,
     const boost::optional<gtsam::Vector3> &gravity)
     : Base(cost_model, wrench_keys), mass_(mass), gravity_(gravity) {

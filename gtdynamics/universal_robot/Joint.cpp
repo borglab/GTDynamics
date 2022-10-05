@@ -276,12 +276,20 @@ gtsam::Expression<typename gtsam::traits<T>::TangentVector> logmap(
 
 /* ************************************************************************* */
 gtsam::Vector6_ Joint::poseConstraint(uint64_t t) const {
+  return poseConstraint(PoseKey(parent()->id(), t), PoseKey(child()->id(), t),
+                        JointAngleKey(id(), t));
+}
+
+/* ************************************************************************* */
+gtsam::Vector6_ Joint::poseConstraint(const DynamicsSymbol &wTp_key,
+                                      const DynamicsSymbol &wTc_key,
+                                      const DynamicsSymbol &q_key) const {
   using gtsam::Pose3_;
 
   // Get an expression for parent pose.
-  Pose3_ wTp(PoseKey(parent()->id(), t));
-  Pose3_ wTc(PoseKey(child()->id(), t));
-  gtsam::Double_ q(JointAngleKey(id(), t));
+  Pose3_ wTp(wTp_key);
+  Pose3_ wTc(wTc_key);
+  gtsam::Double_ q(q_key);
 
   // Compute the expected pose of the child link.
   Pose3_ pTc(std::bind(&Joint::parentTchild, this, std::placeholders::_1,
