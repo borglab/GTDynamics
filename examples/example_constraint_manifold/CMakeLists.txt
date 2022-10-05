@@ -42,6 +42,17 @@ add_custom_target(
   DEPENDS ${ARM}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
 
+# Arm Planning.
+set(CABLE_ROBOT ${PROJECT_NAME}_cable_robot)
+add_executable(${CABLE_ROBOT} main_cablerobot.cpp)
+target_link_libraries(${CABLE_ROBOT} PUBLIC gtdynamics)
+target_include_directories(${CABLE_ROBOT} PUBLIC ${CMAKE_PREFIX_PATH}/include)
+
+add_custom_target(
+  ${CABLE_ROBOT}.run
+  COMMAND ./${CABLE_ROBOT}
+  DEPENDS ${CABLE_ROBOT}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
 
 # Cart pole planning.
 set(CART_POLE ${PROJECT_NAME}_cart_pole)
