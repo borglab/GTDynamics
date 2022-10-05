@@ -20,7 +20,6 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <sstream>
-#include <sys/_types/_size_t.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
