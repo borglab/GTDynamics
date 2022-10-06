@@ -36,9 +36,7 @@
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
 #include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/PoseFactor.h>
 
-#include "gtdynamics/factors/CollocationFactors.h"
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/manifold/ConnectedComponent.h"
 #include "gtdynamics/optimizer/ConstrainedOptimizer.h"
@@ -121,21 +119,21 @@ void TrajectoryOptimization() {
   EvaluateCosts(soft_result);
   vision60.exportTrajectory(soft_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/soft_traj.csv");
 
-  // optimize penalty method
-  std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
-  auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
-  EvaluateCosts(penalty_result);
+  // // optimize penalty method
+  // std::cout << "penalty method:\n";
+  // PenaltyMethodParameters penalty_params;
+  // penalty_params.lm_parameters = lm_params;
+  // auto penalty_result =
+  //     OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+  // EvaluateCosts(penalty_result);
 
-  // optimize augmented lagrangian
-  std::cout << "augmented lagrangian:\n";
-  AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
-  auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
-  EvaluateCosts(augl_result);
+  // // optimize augmented lagrangian
+  // std::cout << "augmented lagrangian:\n";
+  // AugmentedLagrangianParameters augl_params;
+  // augl_params.lm_parameters = lm_params;
+  // auto augl_result =
+  //     OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
+  // EvaluateCosts(augl_result);
 
   // std::cout << "constraint manifold basis variables feasible:\n";
   lm_params.setlambdaInitial(1e1);
