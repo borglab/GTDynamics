@@ -16,7 +16,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/manifold/ManifoldOptimizerType1.h>
-#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -31,8 +32,10 @@ namespace gtsam{
 class CartPole {
 public:
   // Cart-pole dynamic planning scenario setting.
-  gtdynamics::Robot robot = gtdynamics::CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
-                  .fixLink("l0");
+  gtdynamics::Robot robot =
+      gtdynamics::CreateRobotFromFile(gtdynamics::kUrdfPath +
+                                      std::string("cart_pole.urdf"))
+          .fixLink("l0");
   int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
   Vector6 X_i = Vector6::Constant(6, 0);
   Vector6 X_T = (Vector(6) << 1, 0, 0, M_PI, 0, 0).finished();
