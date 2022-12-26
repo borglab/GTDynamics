@@ -310,6 +310,57 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   }
 }
 
+// Test Chain Constraint Jacobians -PoeEquality3 - H_angles - first type
+// of chain
+TEST(Chain, PoeEquality3_H_angles_chain1) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(1, 1, 1));
+  Matrix screwAxis(6, 1);
+  screwAxis << 0.0, 0.0, 1.0, 0.0, 5.0, 0.0;
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis), joint2(sMb, screwAxis), joint3(sMb, screwAxis);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, _2,
+                     boost::none, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
+    return gtsam::numericalDerivative21<Vector6, Vector3, Vector6>(
+        f, angles, wrench_body);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
+    composed.PoeEquality3(angles, wrench_body, J1, boost::none);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    wrench_body = wrenchMat.row(i);
+
+    auto numericalH_case = num_derivative(angles, wrench_body);
+
+    J = get_jacobian(angles, wrench_body);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
 // Test Chain Constraint Jacobians - DynamicalEquality3 - H_angles - second type
 // of chain
 TEST(Chain, DynamicalEquality3_H_angles_chain2) {
@@ -687,7 +738,7 @@ gtsam::Values OldGraphOneLeg() {
 
   gtsam::Vector3 gravity(0, 0, -10.0);
 
-  OptimizerSetting opt(1e-3, 1e-3, 1e-3, 1e-1);
+  OptimizerSetting opt(1e-4, 1e-4, 1e-4, 1e-4);
   DynamicsGraph graph_builder(opt, gravity);
 
   gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
@@ -702,6 +753,7 @@ gtsam::Values OldGraphOneLeg() {
   graph.addPrior(TwistAccelKey(0, 0), wrench_zero, bp_cost_model);
 
   // Build dynamics factors
+  //graph.add(graph_builder.qFactors(robot, 0));//, contact_points));
   graph.add(graph_builder.dynamicsFactors(robot, 0, contact_points, 1.0));
 
   // Initialize joint kinematics/dynamics to 0.
@@ -714,7 +766,7 @@ gtsam::Values OldGraphOneLeg() {
     InsertJointAngle(&init_vals, j, 0, 0.0);
   }
   for (auto&& link : robot.links()) {
-    // graph.addPrior(PoseKey(link->id(), 0), link->bMcom(), bp_cost_model);
+    //graph.addPrior(PoseKey(link->id(), 0), link->bMcom(), bp_cost_model);
     InsertTwist(&init_vals, link->id(), 0, wrench_zero);
     InsertTwistAccel(&init_vals, link->id(), 0, wrench_zero);
     InsertPose(&init_vals, link->id(), 0, link->bMcom());
@@ -728,7 +780,7 @@ gtsam::Values OldGraphOneLeg() {
   for (auto&& joint : robot.joints()) {
     const int joint_id = joint->id();
     gtsam::Double_ angle(JointAngleKey(joint_id, 0));
-    eqs.emplace_shared<DoubleExpressionEquality>(angle, 1e-1);
+    //eqs.emplace_shared<DoubleExpressionEquality>(angle, 1e-1);
   }
 
   /// Solve the constraint problem with LM optimizer.
@@ -761,10 +813,8 @@ gtsam::Values NewGraphOneLeg() {
   gtsam::Vector6_ trunk_wrench_constraint = gravity_wrench;
 
   // Set tolerances
-  double angle_tolerance = 1e-1;
-  double dynamicsTolerance = 1e-3;
+  double dynamicsTolerance = 6.2*(1e-5);
   gtsam::Vector3 contact_tolerance = Vector3::Ones() * dynamicsTolerance;
-  gtsam::Vector3 torque_tolerance = Vector3::Ones() * dynamicsTolerance;
   gtsam::Vector6 wrench_tolerance = Vector6::Ones() * dynamicsTolerance;
 
   // Get key for wrench at hip joint with id 0
@@ -781,34 +831,13 @@ gtsam::Values NewGraphOneLeg() {
       trunk_wrench_constraint, wrench_tolerance);
 
   // Get expression for chain on the leg
-  auto expression_chain =
-      composed_chains[0].ChainConstraint3(chain_joints[0], wrench_key_0_T, 0);
-
-  // Add constraint for chain
-  constraints.emplace_shared<VectorExpressionEquality<3>>(expression_chain,
-                                                          torque_tolerance);
-
-  // constraint on zero angles
-  for (int j = 0; j < 3; ++j) {
-    const int joint_id = chain_joints[0][j]->id();
-    gtsam::Double_ angle(JointAngleKey(joint_id, 0));
-    constraints.emplace_shared<DoubleExpressionEquality>(angle,
-                                                         angle_tolerance);
-  }
-
-  // For contact constraint, calculate the expression for the wrench of joint 2
-  // on the lower link
-  gtsam::Vector6_ wrench_0_H =
-      (-1) * chain_joints[0][0]->childAdjointWrench(wrench_0_T, 0);
-  gtsam::Vector6_ wrench_1_U =
-      (-1) * chain_joints[0][1]->childAdjointWrench(wrench_0_H, 0);
-  gtsam::Vector6_ wrench_2_L =
-      (-1) * chain_joints[0][2]->childAdjointWrench(wrench_1_U, 0);
+  gtsam::Vector6_ wrench_end_effector =
+      composed_chains[0].PoeConstraint3(chain_joints[0], wrench_key_0_T, 0);
 
   // Create contact constraint
   Point3 contact_in_com(0.0, 0.0, -0.07);
   gtsam::Vector3_ contact_constraint = ContactDynamicsMomentConstraint(
-      wrench_2_L, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
+      wrench_end_effector, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
   constraints.emplace_shared<VectorExpressionEquality<3>>(contact_constraint,
                                                           contact_tolerance);
 
@@ -817,7 +846,6 @@ gtsam::Values NewGraphOneLeg() {
   for (auto&& joint : robot.joints()) {
     if (joint->id() > 2) continue;
     InsertJointAngle(&init_values, joint->id(), 0, 0.0);
-    InsertTorque(&init_values, joint->id(), 0, 0.0);
   }
   gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
   init_values.insert(gtdynamics::WrenchKey(0, 0, 0), wrench_zero);
@@ -842,13 +870,10 @@ TEST(Chain, oneLegCompareGraphsA1) {
 
   // Get torque and angle results and compare
   for (int i = 0; i < 3; ++i) {
-    double new_torque = new_graph_results.at<double>(gtdynamics::TorqueKey(i));
-    double old_torque = old_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double new_angle =
         new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     double old_angle =
         old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
-    EXPECT(assert_equal(new_torque, old_torque, 1e-4));
     EXPECT(assert_equal(new_angle, old_angle, 1e-4));
   }
 
@@ -869,7 +894,7 @@ TEST(Chain, oneLegCompareGraphsA1) {
       new_graph_results.at<gtsam::Vector6>(wrench_key_0_T);
   gtsam::Vector6 wrench_old_0_T =
       old_graph_results.at<gtsam::Vector6>(wrench_key_0_T);
-  EXPECT(assert_equal(wrench_new_0_T, wrench_old_0_T, 1e-4));
+  EXPECT(assert_equal(wrench_new_0_T, wrench_old_0_T, 1e-10));
 
   // Get result wrench for lower link and compare
   Pose3 trunkThip = chain_joints[0][0]->parentTchild(new_angle0);
@@ -924,7 +949,7 @@ gtsam::Values OldGraphFourLegs() {
 
   gtsam::Vector3 gravity(0, 0, -10.0);
 
-  OptimizerSetting opt(1e-3, 1e-3, 1e-3, 1e-2);
+  OptimizerSetting opt(1e-4, 1e-4, 1e-5, 1e-4);
   DynamicsGraph graph_builder(opt, gravity);
 
   gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
@@ -937,8 +962,12 @@ gtsam::Values OldGraphFourLegs() {
   graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), bp_cost_model);
   graph.addPrior(TwistKey(0, 0), wrench_zero, bp_cost_model);
   graph.addPrior(TwistAccelKey(0, 0), wrench_zero, bp_cost_model);
+  graph.addPrior(WrenchKey(0,0,0), wrench_zero, bp_cost_model);
+   graph.addPrior(WrenchKey(0,3,0), wrench_zero, bp_cost_model);
+  graph.addPrior(WrenchKey(0,6,0), wrench_zero, bp_cost_model);
 
   // Build dynamics factors
+  //graph.add(graph_builder.qFactors(robot, 0));//, contact_points));
   graph.add(graph_builder.dynamicsFactors(robot, 0, contact_points, 1.0));
 
   // Initialize joint kinematics/dynamics to 0.
@@ -954,29 +983,19 @@ gtsam::Values OldGraphFourLegs() {
     InsertTwist(&init_vals, link->id(), 0, wrench_zero);
     InsertTwistAccel(&init_vals, link->id(), 0, wrench_zero);
     InsertPose(&init_vals, link->id(), 0, link->bMcom());
+    //graph.addPrior(PoseKey(link->id(), 0), link->bMcom(), bp_cost_model);
+    //graph.addPrior(TwistKey(link->id(), 0), wrench_zero, bp_cost_model);
+    //graph.addPrior(TwistAccelKey(link->id(), 0), wrench_zero, bp_cost_model);
   }
   init_vals.insert(ContactWrenchKey(3, 0, 0), wrench_zero);
   init_vals.insert(ContactWrenchKey(6, 0, 0), wrench_zero);
   init_vals.insert(ContactWrenchKey(9, 0, 0), wrench_zero);
   init_vals.insert(ContactWrenchKey(12, 0, 0), wrench_zero);
 
-  // Constraint angles to zero
+  /// Solve the constraint problem with LM optimizer.
   OptimizationParameters params;
   auto optimizer = Optimizer(params);
   EqualityConstraints constraints;
-  auto cost_model = gtsam::noiseModel::Unit::Create(1);
-  for (auto&& joint : robot.joints()) {
-    const int joint_id = joint->id();
-    gtsam::Double_ angle(JointAngleKey(joint_id, 0));
-    gtsam::Double_ tor(TorqueKey(joint_id, 0));
-    constraints.emplace_shared<DoubleExpressionEquality>(angle, 1e-2);
-    if ((joint_id == 2) || (joint_id == 5) || (joint_id == 8) ||
-        (joint_id == 11))
-      continue;
-    constraints.emplace_shared<DoubleExpressionEquality>(tor, 1e-1);
-  }
-
-  /// Solve the constraint problem with LM optimizer.
   gtsam::Values results = optimizer.optimize(graph, constraints, init_vals);
 
   return results;
@@ -1002,21 +1021,36 @@ gtsam::Values NewGraphFourLegs() {
   gtsam::Vector3 gravity(0, 0, -10.0);
 
   OptimizerSetting opt;
-  ChainDynamicsGraph chain_graph(robot, opt, 1e-2, 1e-1, 1e-3, gravity);
+  ChainDynamicsGraph chain_graph(robot, opt, 1*(1e-4),  6*(1e-5),  10.08*(1e-5), gravity);
+
+gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+
+    auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-30));
+  graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), bp_cost_model);
+  graph.addPrior(TwistKey(0, 0), wrench_zero, bp_cost_model);
+  graph.addPrior(TwistAccelKey(0, 0), wrench_zero, bp_cost_model);
+  graph.addPrior(WrenchKey(0,0,0), wrench_zero, bp_cost_model);
+   graph.addPrior(WrenchKey(0,3,0), wrench_zero, bp_cost_model);
+   graph.addPrior(WrenchKey(0,6,0), wrench_zero, bp_cost_model);
 
   // Build dynamics factors
+  //graph.add(chain_graph.qFactors(robot, 0));//, contact_points));
   graph.add(chain_graph.dynamicsFactors(robot, 0, contact_points, 1.0));
 
   // Create initial values.
   gtsam::Values init_values;
   for (auto&& joint : robot.joints()) {
     InsertJointAngle(&init_values, joint->id(), 0, 0.0);
-    InsertTorque(&init_values, joint->id(), 0, 0.0);
+    //InsertTorque(&init_values, joint->id(), 0, 0.0);
   }
-  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+
   for (int i = 0; i < 4; ++i) {
     init_values.insert(gtdynamics::WrenchKey(0, 3 * i, 0), wrench_zero);
   }
+
+  InsertPose(&init_values, 0, 0, robot.link("trunk")->bMcom());
+  InsertTwist(&init_values, 0, 0, wrench_zero);
+  InsertTwistAccel(&init_values, 0, 0, wrench_zero);
 
   /// Solve the constraint problem with LM optimizer.
   OptimizationParameters params;
@@ -1038,13 +1072,10 @@ TEST(Chain, fourLegsCompareGraphsA1) {
 
   // Get torque and angle results and compare
   for (int i = 0; i < 12; ++i) {
-    double new_torque = new_graph_results.at<double>(gtdynamics::TorqueKey(i));
-    double old_torque = old_graph_results.at<double>(gtdynamics::TorqueKey(i));
     double new_angle =
         new_graph_results.at<double>(gtdynamics::JointAngleKey(i));
     double old_angle =
         old_graph_results.at<double>(gtdynamics::JointAngleKey(i));
-    EXPECT(assert_equal(new_torque, old_torque, 1e-3));
     EXPECT(assert_equal(new_angle, old_angle, 1e-3));
   }
 
@@ -1080,7 +1111,7 @@ TEST(Chain, fourLegsCompareGraphsA1) {
         wrench_new_0_T.transpose() * trunkTlower.AdjointMap();
     gtsam::Vector6 wrench_old_3_L =
         old_graph_results.at<gtsam::Vector6>(contact_wrench_key);
-    EXPECT(assert_equal(wrench_new_3_L, wrench_old_3_L, 1e-3));
+    EXPECT(assert_equal(wrench_new_3_L, wrench_old_3_L, 5e-2));
 
     // calculate wrench on ground and compare
     Point3 contact_in_com(0.0, 0.0, -0.07);
@@ -1089,7 +1120,7 @@ TEST(Chain, fourLegsCompareGraphsA1) {
         wrench_new_3_L.transpose() * M_L_G.AdjointMap();
     gtsam::Vector6 wrench_old_3_G =
         wrench_old_3_L.transpose() * M_L_G.AdjointMap();
-    EXPECT(assert_equal(wrench_new_3_G, wrench_old_3_G, 1e-3));
+    EXPECT(assert_equal(wrench_new_3_G, wrench_old_3_G, 5e-2));
 
     // check torque zero on ground wrench
     gtsam::Matrix36 H_contact_wrench;
