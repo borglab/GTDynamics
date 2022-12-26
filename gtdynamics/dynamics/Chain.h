@@ -132,7 +132,36 @@ class Chain {
    */
   gtsam::Vector3_ ChainConstraint3(const std::vector<JointSharedPtr> &joints,
                                    const gtsam::Key wrench_key, size_t k) const;
-};
+
+  /**
+   * This function creates a gtsam expression of the End-Effector wrench using 
+   * a Chain under massless leg assumption and Product of Exponentials.
+   *
+   * @param joints ............... Vector of joints in the kinematic chain, FROM
+   * END-EFFECTOR TO BODY (first element in the vector is the joint whos child
+   * is the end-effector).
+   * @param wrench_key ........... Key of the wrench applied on the body by the
+   * joint closest to the body.
+   * @param k .................... Time slice.
+   * @return ..................... GTSAM expression of the chain constraint.
+   */
+  gtsam::Vector6_ PoeConstraint3(const std::vector<JointSharedPtr> &joints,
+                                     const gtsam::Key body_wrench_key,
+                                     size_t k) const ;
+
+/**
+ *  This function calculates the end-effector wrench using POE and chain.
+ * 
+ * @param angles .............. angles of the joints in the chain
+ * @param wrench_body ......... wrench applied by the first joint in the chain on the body link
+ * @return ...................  gtsam expression of the  end-effector wrench
+ */
+  gtsam::Vector6 PoeEquality3(
+    const gtsam::Vector3 &angles, const gtsam::Vector6 &wrench_body,
+    gtsam::OptionalJacobian<6, 3> H_angles = boost::none,
+    gtsam::OptionalJacobian<6, 6> H_wrench_body = boost::none) const ;
+  
+}; // Chain class
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.

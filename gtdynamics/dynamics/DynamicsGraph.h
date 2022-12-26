@@ -154,7 +154,7 @@ class DynamicsGraph {
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */
-  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+  virtual gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
       const boost::optional<PointOnLinks> &contact_points = boost::none,
       const boost::optional<double> &mu = boost::none) const;

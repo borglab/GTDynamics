@@ -115,64 +115,60 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     Vector3 chain_tolerance = Vector3::Ones() * dynamics_tolerance_;
     Vector6 wrench_tolerance = Vector6::Ones() * dynamics_tolerance_;
 
+     std::vector<DynamicsSymbol> wrench_keys;
+
     for (int i = 0 ; i < 4 ; ++i) {
+    
+    bool foot_in_contact = false;
     // Get key for wrench at hip joint with id 0
     const Key wrench_key_3i_T = WrenchKey(0, 3*i, t);
 
-    // create expression for the wrench
-    Vector6_ wrench_3i_T(wrench_key_3i_T);
+    // create expression for the wrench and initialize to zero
+    Vector6_ wrench_3i_T(Vector6::Zero());
 
-    // add wrench to trunk constraint
-    trunk_wrench_constraint += wrench_3i_T;
-
-    // Get expression for chain on the leg
-    Vector3_ expression_chain =
-        composed_chains_[i].ChainConstraint3(chain_joints_[i], wrench_key_3i_T, t);
-
-    // Add constraint for chain
-    auto chain_constraint = VectorExpressionEquality<3>(expression_chain,
-                                                            chain_tolerance);
-
-    graph.add(chain_constraint.createFactor(1));
-
-    // constraint on zero angles
-    for (int j = 0; j < 3; ++j) {
-      const int joint_id = chain_joints_[i][j]->id();
-      Double_ angle(JointAngleKey(joint_id, t));
-      auto angle_constraint = DoubleExpressionEquality(angle,
-                                                          angle_tolerance_);
-      graph.add(angle_constraint.createFactor(1));
-      if (j<2) {
-        Double_ tor(TorqueKey(joint_id, t));
-        auto torque_constraint = DoubleExpressionEquality(tor,
-                                                            torque_tolerance_);
-        graph.add(torque_constraint.createFactor(1));
+    // Set wrench expression on trunk by leg, according to contact 
+    for (auto&& cp : *contact_points) {
+      if (cp.link->id() == 3*(i+1)) {
+        wrench_3i_T = Vector6_(wrench_key_3i_T);
+        foot_in_contact = true;
       }
     }
 
-    // For contact constraint, calculate the expression for the wrench of joint 2
-    // on the lower link
-    Vector6_ wrench_0_H =
-        (-1) * chain_joints_[i][0]->childAdjointWrench(wrench_3i_T, t);
-    Vector6_ wrench_1_U =
-        (-1) * chain_joints_[i][1]->childAdjointWrench(wrench_0_H, t);
-    Vector6_ wrench_2_L =
-        (-1) * chain_joints_[i][2]->childAdjointWrench(wrench_1_U, t);
+    // add wrench to trunk constraint
+    wrench_keys.push_back(wrench_key_3i_T);
+    
+
+    // Get expression for end effector wrench using chain
+    Vector6_ wrench_end_effector =
+        composed_chains_[i].PoeConstraint3(chain_joints_[i], wrench_key_3i_T, t);
 
     // Create contact constraint
     Point3 contact_in_com(0.0, 0.0, -0.07);
     Vector3_ contact_constraint = ContactDynamicsMomentConstraint(
-        wrench_2_L, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
+        wrench_end_effector, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
     auto contact_expression = VectorExpressionEquality<3>(contact_constraint,
                                                            contact_tolerance);
+    if (foot_in_contact)
     graph.add(contact_expression.createFactor(1));
   }
-  // Add trunk wrench constraint to constraints
-  auto trunk_constraint = VectorExpressionEquality<6>(
-      trunk_wrench_constraint, wrench_tolerance);
 
-  graph.add(trunk_constraint.createFactor(1));
+  // Add wrench factor for trunk link
+  auto f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, dynamics_tolerance_));
+      graph.add(
+          WrenchFactor(f_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
 
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactorGraph(
+    const Robot &robot, const int t,
+    const boost::optional<PointOnLinks> &contact_points,
+    const boost::optional<double> &mu) const {
+  NonlinearFactorGraph graph;
+  graph.add(qFactors(robot, t, contact_points));
+  //graph.add(vFactors(robot, t, contact_points));
+  //graph.add(aFactors(robot, t, contact_points));
+  graph.add(dynamicsFactors(robot, t, contact_points, mu));
   return graph;
 }
 

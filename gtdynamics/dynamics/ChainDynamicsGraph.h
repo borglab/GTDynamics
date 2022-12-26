@@ -19,6 +19,7 @@
 #include "gtdynamics/dynamics/Chain.h"
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
+#include "gtdynamics/factors/WrenchFactor.h"
 
 namespace gtdynamics {
 
@@ -85,6 +86,19 @@ class ChainDynamicsGraph : public DynamicsGraph {
        const Robot &robot, const int t,
        const boost::optional<PointOnLinks> &contact_points = boost::none,
        const boost::optional<double> &mu = boost::none) const override;
+
+  /**
+   * Return nonlinear factor graph of all dynamics factors
+   * @param robot          the robot
+   * @param t              time step
+   * link and 0 denotes no contact.
+   * @param contact_points optional vector of contact points.
+   * @param mu             optional coefficient of static friction.
+   */
+  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+      const Robot &robot, const int t,
+      const boost::optional<PointOnLinks> &contact_points = boost::none,
+      const boost::optional<double> &mu = boost::none) const override;
 
   // Get a vector of legs, each leg is a vector of its joints
   static std::vector<std::vector<JointSharedPtr>> getChainJoints(

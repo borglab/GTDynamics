@@ -174,4 +174,50 @@ gtsam::Vector3_ Chain::ChainConstraint3(
   return torque_diff;
 }
 
+gtsam::Vector6_ Chain::PoeConstraint3(const std::vector<JointSharedPtr> &joints,
+                                     const gtsam::Key body_wrench_key,
+                                     size_t k) const {
+  // Get Expression for wrench
+  gtsam::Vector6_ wrench_0_T(body_wrench_key);
+
+  // Get expression for joint angles as a column vector of size 3.
+  gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
+      angle1(JointAngleKey(joints[1]->id(), k)),
+      angle2(JointAngleKey(joints[2]->id(), k));
+  gtsam::Vector3_ angles(MakeVector3, angle0, angle1, angle2);
+
+  // Get expression of the dynamical equality
+  gtsam::Vector6_ wrench_end_effector(
+      std::bind(&Chain::PoeEquality3, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4),
+      angles, wrench_0_T);
+
+  return wrench_end_effector;
+}
+
+gtsam::Vector6 Chain::PoeEquality3(
+    const gtsam::Vector3 &angles, const gtsam::Vector6 &wrench_body,
+    gtsam::OptionalJacobian<6, 3> H_angles,
+    gtsam::OptionalJacobian<6, 6> H_wrench_body) const {
+  Matrix J_theta, H_T, H_F_b;
+
+  // Get POE transformation from body to end-effector.
+  Pose3 T_theta = poe(angles, boost::none, J_theta);
+
+  // Get end-effector wrench by Adjoint. This is true for a massless leg.
+  gtsam::Vector6 transformed_wrench =
+      T_theta.AdjointTranspose(wrench_body, H_T, H_F_b);
+
+  if (H_angles) {
+  *H_angles =  H_T * J_theta;
+  }
+
+  if (H_wrench_body) {
+  *H_wrench_body =  H_F_b;
+  }
+
+  return transformed_wrench;
+}
+
 }  // namespace gtdynamics

@@ -25,30 +25,35 @@ gtsam::Values ChainInitializer::ZeroValues(const Robot& robot, const int t, doub
 
   // Initialize link dynamics to 0.
   for (auto&& link : robot.links()) {
-    int i = link->id();
+    const int i = link->id();
+    //if ((i==3 || i==6 || i==9 || i==12) && (t == 0))
     InsertPose(&values, i, t, AddGaussianNoiseToPose(link->bMcom(), sampler));
-    InsertTwist(&values, i, t, sampler.sample());
-    InsertTwistAccel(&values, i, t, sampler.sample());
+    //InsertTwist(&values, i, t, sampler.sample());
+    //InsertTwistAccel(&values, i, t, sampler.sample());
   }
+    InsertTwist(&values, 0, t, sampler.sample());
+    InsertTwistAccel(&values, 0, t, sampler.sample());
 
   // Initialize joint kinematics/dynamics to 0.
   for (auto&& joint : robot.joints()) {
-    int j = joint->id();
-    if (joint->parent()->name().find("trunk") < 100) {
+    const int j = joint->id();
+    if (joint->parent()->name().find("trunk") != std::string::npos) {
       InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
     }
-    std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
+    std::vector<DynamicsSymbol> keys = {JointAngleKey(j, t),
                                         JointVelKey(j, t), JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)
       values.insert(keys[i], sampler.sample()[0]);
   }
 
-  if (contact_points) {
-    for (auto&& cp : *contact_points) {
+  //if (contact_points) {
+    //for (auto&& cp : *contact_points) {
       // TODO(frank): allow multiple contact points on one link, id = 0,1,2...
-      values.insert(ContactWrenchKey(cp.link->id(), 0, t), sampler.sample());
-    }
-  }
+      //values.insert(ContactWrenchKey(cp.link->id(), 0, t), sampler.sample());
+      //std::cout<<t<<std::endl;
+      //InsertPose(&values, cp.link->id(), t, AddGaussianNoiseToPose(cp.link->bMcom(), sampler));
+    //}
+  //}
 
   return values;
 }
