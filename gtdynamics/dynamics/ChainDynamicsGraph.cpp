@@ -115,7 +115,7 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     Vector3 chain_tolerance = Vector3::Ones() * dynamics_tolerance_;
     Vector6 wrench_tolerance = Vector6::Ones() * dynamics_tolerance_;
 
-     std::vector<DynamicsSymbol> wrench_keys;
+     std::vector<Key> wrench_keys;
 
     for (int i = 0 ; i < 4 ; ++i) {
     
