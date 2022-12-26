@@ -108,17 +108,15 @@ class TestCdprPlanar(GtsamTestCase):
             cdpr.priors_fd([0], [gtd.TwistAccel(values, cdpr.ee_id(), 0)]))
         # redundancy resolution
         dfg.push_back(
-            gtd.PriorFactorDouble(
-                gtd.TorqueKey(1, 0).key(), 0.0,
-                gtsam.noiseModel.Unit.Create(1)))
+            gtd.PriorFactorDouble(gtd.TorqueKey(1, 0), 0.0,
+                                  gtsam.noiseModel.Unit.Create(1)))
         dfg.push_back(
-            gtd.PriorFactorDouble(
-                gtd.TorqueKey(2, 0).key(), 0.0,
-                gtsam.noiseModel.Unit.Create(1)))
+            gtd.PriorFactorDouble(gtd.TorqueKey(2, 0), 0.0,
+                                  gtsam.noiseModel.Unit.Create(1)))
         # initialize and solve
         init = gtsam.Values(values)
         for ji in range(4):
-            init.erase(gtd.TorqueKey(ji, 0).key())
+            init.erase(gtd.TorqueKey(ji, 0))
             gtd.InsertTorque(init, ji, 0, -1)
         results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
         self.gtsamAssertEquals(results, values)

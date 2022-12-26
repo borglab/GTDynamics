@@ -99,7 +99,7 @@ class TestFourBar(unittest.TestCase):
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
         result = optimizer.optimize()
 
-        a1_key = gtd.JointAccelKey(1, 0).key()
+        a1_key = gtd.JointAccelKey(1, 0)
         a1 = result.atDouble(a1_key)
         self.assertAlmostEqual(a1, 0.125, 5)  # regression. Show work!
 

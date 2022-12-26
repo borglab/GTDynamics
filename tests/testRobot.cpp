@@ -103,8 +103,8 @@ TEST(Robot, ForwardKinematics) {
   Values results = robot.forwardKinematics(values);
 
   // The CoM frames at rest are:
-  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 1));
-  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 3));
+  Pose3 T_wl1_rest(Rot3::Identity(), Point3(0, 0, 1));
+  Pose3 T_wl2_rest(Rot3::Identity(), Point3(0, 0, 3));
   // At rest, all the twists are 0:
   Vector6 V_l1_rest, V_l2_rest;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
@@ -122,7 +122,7 @@ TEST(Robot, ForwardKinematics) {
 
   Values results2 = robot.forwardKinematics(values2);
 
-  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));  // link1 stays put
+  Pose3 T_wl1_move(Rot3::Identity(), Point3(0, 0, 1));  // link1 stays put
   // link2 is rotated by 90 degrees and now points along -Y axis.
   Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
   Vector6 V_l1_move, V_l2_move;
@@ -163,10 +163,10 @@ TEST(Robot, ForwardKinematicsRPR) {
   robot = robot.fixLink("link_0");
   Values fk_results = robot.forwardKinematics(values);
 
-  Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
-  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 0.5));
-  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 1.1));
-  Pose3 T_wl3_rest(Rot3::identity(), Point3(0, 0, 1.7));
+  Pose3 T_wl0_rest(Rot3::Identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl1_rest(Rot3::Identity(), Point3(0, 0, 0.5));
+  Pose3 T_wl2_rest(Rot3::Identity(), Point3(0, 0, 1.1));
+  Pose3 T_wl3_rest(Rot3::Identity(), Point3(0, 0, 1.7));
   Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
   V_l0_rest << 0, 0, 0, 0, 0, 0;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
@@ -190,7 +190,7 @@ TEST(Robot, ForwardKinematicsRPR) {
 
   fk_results = robot.forwardKinematics(values2);
 
-  Pose3 T_wl0_move(Rot3::identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl0_move(Rot3::Identity(), Point3(0, 0, 0.1));
   Pose3 T_wl1_move(Rot3::Ry(M_PI_2), Point3(0.3, 0, 0.2));
   Pose3 T_wl2_move(Rot3::Ry(M_PI_2), Point3(1.4, 0, 0.2));
   Pose3 T_wl3_move(Rot3::Ry(M_PI_2), Point3(2.0, 0, 0.2));

@@ -45,15 +45,10 @@ jobs:
           brew install boost
           brew tap osrf/simulation
           brew install sdformat12
+          brew tap borglab/core
 
       - name: GTSAM
-        run: |
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
-          mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
-          make -j$(sysctl -n hw.physicalcpu) install
-          cd ../../ # go back to home directory
+        run: brew install --HEAD gtsam@latest
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -63,7 +58,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
         working-directory: ./build
 
       - name: Build

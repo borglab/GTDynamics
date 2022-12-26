@@ -261,7 +261,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
 
   /// Helper print function
   void print(const std::string &s = "") const {
-    std::cout << (s.empty() ? s : s + " ") << *this;
+    std::cout << (s.empty() ? s : s + " ") << *this << std::endl;
   }
 
   /// Helper function for overloading stream operator
@@ -417,6 +417,15 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * the joint angle.
    */
   gtsam::Vector6_ poseConstraint(uint64_t t = 0) const;
+
+  /**
+   * @brief Create expression that constraint the pose of two links imposed by
+   * the joint angle. Alternative version using custom keys.
+   * TODO(Varun) Need to do the same for all other constraints below
+   */
+  gtsam::Vector6_ poseConstraint(const DynamicsSymbol &wTp_key,
+                                 const DynamicsSymbol &wTc_key,
+                                 const DynamicsSymbol &q_key) const;
 
   /**
    * @brief Create expression that constraint the twist of two links imposed by
