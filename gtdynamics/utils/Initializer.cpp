@@ -37,15 +37,15 @@ using gtsam::Vector6;
 
 namespace gtdynamics {
 
-Pose3 Initializer::AddGaussianNoiseToPose(const Pose3& T, const Sampler& sampler) const {
+Pose3 Initializer::AddGaussianNoiseToPose(const Pose3& T,
+                                          const Sampler& sampler) const {
   Vector6 xi = sampler.sample();
   return T.expmap(xi);
 }
 
-std::vector<Pose3> Initializer::InterpolatePoses(const Pose3& wTl_i,
-                                    const std::vector<Pose3>& wTl_t, double t_i,
-                                    const std::vector<double>& timesteps,
-                                    double dt) {
+std::vector<Pose3> Initializer::InterpolatePoses(
+    const Pose3& wTl_i, const std::vector<Pose3>& wTl_t, double t_i,
+    const std::vector<double>& timesteps, double dt) {
   std::vector<Pose3> wTl_dt;
   Pose3 wTl = wTl_i;
 
@@ -68,12 +68,11 @@ std::vector<Pose3> Initializer::InterpolatePoses(const Pose3& wTl_i,
   return wTl_dt;
 }
 
-Values Initializer::InitializePosesAndJoints(const Robot& robot, const Pose3& wTl_i,
-                                const std::vector<Pose3>& wTl_t,
-                                const std::string& link_name, double t_i,
-                                const std::vector<double>& timesteps, double dt,
-                                const Sampler& sampler,
-                                std::vector<Pose3>* wTl_dt) {
+Values Initializer::InitializePosesAndJoints(
+    const Robot& robot, const Pose3& wTl_i, const std::vector<Pose3>& wTl_t,
+    const std::string& link_name, double t_i,
+    const std::vector<double>& timesteps, double dt, const Sampler& sampler,
+    std::vector<Pose3>* wTl_dt) {
   // Linearly interpolated pose for link at each discretized timestep.
   *wTl_dt = InterpolatePoses(wTl_i, wTl_t, t_i, timesteps, dt);
 
@@ -145,8 +144,11 @@ Values Initializer::InitializeSolutionInterpolation(
     InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
-    for (auto&& kvp : ZeroValues(robot, t, gaussian_noise, contact_points)) {
-      init_vals.tryInsert(kvp.key, kvp.value);
+    Values zero_values = ZeroValues(robot, t, gaussian_noise, contact_points);
+    for (auto&& key : zero_values.keys()) {
+      if (!init_vals.exists(key)) {
+        init_vals.insert(key, zero_values.at(key));
+      }
     }
 
     t_elapsed += dt;
@@ -168,8 +170,10 @@ Values Initializer::InitializeSolutionInterpolationMultiPhase(
         robot, link_name, pose, wTl_t[i], curr_t, ts[i], dt, gaussian_noise,
         contact_points);
 
-    for (auto&& key_value_pair : phase_vals) {
-      init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
+    for (auto&& key : phase_vals.keys()) {
+      if (!init_vals.exists(key)) {
+        init_vals.insert(key, phase_vals.at(key));
+      }
     }
     pose = wTl_t[i];
     curr_t = ts[i];
@@ -233,7 +237,8 @@ Values Initializer::MultiPhaseZeroValuesTrajectory(
     const Robot& robot, const std::vector<int>& phase_steps,
     std::vector<Values> transition_graph_init, double dt_i,
     double gaussian_noise,
-    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points) const {
+    const boost::optional<std::vector<PointOnLinks>>& phase_contact_points)
+    const {
   Values values;
   int num_phases = phase_steps.size();
 
@@ -330,15 +335,18 @@ Values Initializer::MultiPhaseInverseKinematicsTrajectory(
       MultiPhaseZeroValuesTrajectory(robot, phase_steps, transition_graph_init,
                                      dt, gaussian_noise, phase_contact_points);
 
-  for (auto&& key_value_pair : zero_values) {
-    init_vals.tryInsert(key_value_pair.key, key_value_pair.value);
+  for (auto&& key : zero_values.keys()) {
+    if (!init_vals.exists(key)) {
+      init_vals.insert(key, zero_values.at(key));
+    }
   }
 
   return init_vals;
 }
 
-Values Initializer::ZeroValues(const Robot& robot, const int t, double gaussian_noise,
-                  const boost::optional<PointOnLinks>& contact_points) const{
+Values Initializer::ZeroValues(
+    const Robot& robot, const int t, double gaussian_noise,
+    const boost::optional<PointOnLinks>& contact_points) const {
   Values values;
 
   auto sampler_noise_model =
