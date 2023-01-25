@@ -205,8 +205,8 @@ class TrapezoidalPoseCollocationFactor
 
 
 /**
- * TrapezoidalPoseCollocationFactor is a five-way nonlinear factor between link pose
- * of current and next time steps
+ * FixTimeTrapezoidalPoseCollocationFactor imposes collocation between link
+ * poses of current and next time steps with fixed dt.
  */
 class FixTimeTrapezoidalPoseCollocationFactor
     : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,

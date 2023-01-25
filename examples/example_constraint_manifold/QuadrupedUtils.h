@@ -39,10 +39,17 @@ inline gtdynamics::DynamicsSymbol ContactRedundancyKey(int t = 0) {
   return gtdynamics::DynamicsSymbol::SimpleSymbol("CR", t);
 }
 
+/** For a quadruped in standing phase, provided with the configuration, 
+ * velocity, and accelrations, there are 6 degress of freedom in dynamics.
+ * The Contact redundancy constraint imposes additional constraints to make
+ * the solution unique. */
 gtsam::Vector6_ ContactRedundancyConstraint(int t,
                                             const std::vector<int> &contact_ids,
                                             const double &a, const double &b);
-
+/** For a quadruped in standing phase, provided with the configuration, 
+ * velocity, and accelrations, there are 6 degress of freedom in dynamics.
+ * The Contact redundancy factor imposes additional costs to make the
+ * optimal solution unique. */
 NoiseModelFactor::shared_ptr
 ContactRedundancyFactor(int t, const std::vector<int> &contact_ids,
                         const double &a, const double &b,
