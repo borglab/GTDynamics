@@ -57,6 +57,9 @@ option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
 option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
 
+# Enable or disable serialization with GTDYNAMICSENABLE_BOOST_SERIALIZATION
+option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
+
 include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)

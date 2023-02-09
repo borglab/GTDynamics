@@ -57,12 +57,14 @@ class FixedJoint : public Joint {
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
     ar &BOOST_SERIALIZATION_BASE_OBJECT_NVP(Joint);
   }
+#endif
 
   /// @}
 };

@@ -63,6 +63,7 @@ struct JointScalarLimit {
 
   JointScalarLimit() {}
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -71,6 +72,7 @@ struct JointScalarLimit {
     ar &BOOST_SERIALIZATION_NVP(value_upper_limit);
     ar &BOOST_SERIALIZATION_NVP(value_limit_threshold);
   }
+#endif
 };
 
 /**
@@ -91,6 +93,7 @@ struct JointParams {
   /// Constructor
   JointParams() {}
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -106,6 +109,7 @@ struct JointParams {
     ar &BOOST_SERIALIZATION_NVP(damping_coefficient);
     ar &BOOST_SERIALIZATION_NVP(spring_coefficient);
   }
+#endif
 };
 
 /// Joint is the base class for a joint connecting two Link objects.
@@ -455,6 +459,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -469,6 +474,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
     ar &BOOST_SERIALIZATION_NVP(cScrewAxis_);
     ar &BOOST_SERIALIZATION_NVP(parameters_);
   }
+#endif
 
   /// @}
 };

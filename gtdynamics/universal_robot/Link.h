@@ -201,6 +201,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -215,6 +216,7 @@ class Link : public boost::enable_shared_from_this<Link> {
     ar &BOOST_SERIALIZATION_NVP(is_fixed_);
     ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
   }
+#endif
 
   /// @}
 };

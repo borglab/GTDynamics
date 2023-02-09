@@ -113,6 +113,8 @@ class DynamicsSymbol {
   operator std::string() const;
 
  private:
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -123,6 +125,7 @@ class DynamicsSymbol {
     ar& BOOST_SERIALIZATION_NVP(joint_idx_);
     ar& BOOST_SERIALIZATION_NVP(t_);
   }
+#endif
 
   /**
    * \defgroup Bitfield bit field constants

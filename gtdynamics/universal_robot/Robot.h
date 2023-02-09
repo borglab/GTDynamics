@@ -167,6 +167,7 @@ class Robot {
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -174,6 +175,7 @@ class Robot {
     ar &BOOST_SERIALIZATION_NVP(name_to_link_);
     ar &BOOST_SERIALIZATION_NVP(name_to_joint_);
   }
+#endif
 
   /// @}
 };
