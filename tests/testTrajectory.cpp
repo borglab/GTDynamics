@@ -107,7 +107,7 @@ TEST(Trajectory, error) {
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());
   // // regression
-  // auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
+  // auto last_factor = std::dynamic_pointer_cast<PointGoalFactor>(
   //     contact_link_objectives.back());
   // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151,
   // 0.000151302),

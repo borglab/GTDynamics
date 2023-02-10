@@ -27,8 +27,6 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/shared_ptr.hpp>
 #include <map>
 #include <memory>
 #include <string>
@@ -152,7 +150,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Rest transform to child link CoM frame from joint frame.
   Pose3 jMc_;
 
-  using LinkSharedPtr =  std::shared_ptr<Link>;
+  using LinkSharedPtr = std::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
   LinkSharedPtr child_link_;
 

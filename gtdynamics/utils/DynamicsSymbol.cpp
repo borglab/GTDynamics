@@ -13,8 +13,6 @@
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-#include <boost/format.hpp>
-#include <boost/lexical_cast.hpp>
 #include <iostream>
 
 using gtsam::Key;
@@ -54,14 +52,12 @@ DynamicsSymbol::DynamicsSymbol(const std::string& s, uint8_t link_idx,
 
 DynamicsSymbol DynamicsSymbol::LinkJointSymbol(const std::string& s,
                                                uint8_t link_idx,
-                                               uint8_t joint_idx,
-                                               uint64_t t) {
+                                               uint8_t joint_idx, uint64_t t) {
   return DynamicsSymbol(s, link_idx, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::JointSymbol(const std::string& s,
-                                           uint8_t joint_idx,
-                                           uint64_t t) {
+                                           uint8_t joint_idx, uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, joint_idx, t);
 }
 

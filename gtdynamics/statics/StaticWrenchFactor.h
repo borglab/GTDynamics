@@ -21,7 +21,9 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 #include <boost/serialization/base_object.hpp>
+#endif
 #include <optional>
 #include <string>
 #include <vector>
@@ -79,6 +81,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -86,6 +89,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

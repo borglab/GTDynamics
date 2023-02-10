@@ -18,7 +18,6 @@
 #include <gtsam/geometry/Point3.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
 #include <iostream>
 #include <map>
 #include <string>
