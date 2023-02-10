@@ -29,10 +29,8 @@
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,7 +39,7 @@ namespace gtdynamics {
 /**
  * @class Abstract base class for robot links.
  */
-class Link : public boost::enable_shared_from_this<Link> {
+class Link : public std::enable_shared_from_this<Link> {
  private:
   uint8_t id_;
   std::string name_;
@@ -153,9 +151,8 @@ class Link : public boost::enable_shared_from_this<Link> {
   gtsam::Matrix6 inertiaMatrix() const;
 
   /// Functional way to fix a link
-  static Link fix(
-      const Link &link,
-      const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+  static Link fix(const Link &link,
+                  const std::optional<gtsam::Pose3> fixed_pose = {}) {
     // Copy construct
     Link fixed_link(link);
     // Fix the link
@@ -186,11 +183,11 @@ class Link : public boost::enable_shared_from_this<Link> {
    */
   gtsam::Vector6_ wrenchConstraint(
       const std::vector<gtsam::Key> &wrench_keys, uint64_t t = 0,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
+      const std::optional<gtsam::Vector3> &gravity = {}) const;
 
  private:
   /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
-  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+  void fix(const std::optional<gtsam::Pose3> fixed_pose = {}) {
     is_fixed_ = true;
     fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
   }

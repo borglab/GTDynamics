@@ -162,7 +162,10 @@ void Trajectory::writeToFile(const Robot &robot, const std::string &name,
   for (auto &&joint : robot.joints()) {
     jnames.push_back(joint->name());
   }
-  string jnames_str = boost::algorithm::join(jnames, ",");
+  string jnames_str = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
+  }
 
   std::ofstream file(name);
 

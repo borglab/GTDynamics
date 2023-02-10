@@ -18,8 +18,8 @@
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtdynamics/universal_robot/RobotTypes.h>
 
-#include <boost/optional.hpp>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -156,13 +156,13 @@ class Robot {
    */
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
-      const boost::optional<std::string> &prior_link_name = boost::none) const;
+      const std::optional<std::string> &prior_link_name = {}) const;
 
  private:
   /// Find root link for forward kinematics
   LinkSharedPtr findRootLink(
       const gtsam::Values &values,
-      const boost::optional<std::string> &prior_link_name) const;
+      const std::optional<std::string> &prior_link_name) const;
 
   /// @name Advanced Interface
   /// @{

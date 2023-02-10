@@ -113,7 +113,7 @@ struct JointParams {
 };
 
 /// Joint is the base class for a joint connecting two Link objects.
-class Joint : public boost::enable_shared_from_this<Joint> {
+class Joint : public std::enable_shared_from_this<Joint> {
   /// Robot class should have access to the internals of its joints.
   friend class Robot;
 
@@ -152,7 +152,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
   /// Rest transform to child link CoM frame from joint frame.
   Pose3 jMc_;
 
-  using LinkSharedPtr = boost::shared_ptr<Link>;
+  using LinkSharedPtr =  std::shared_ptr<Link>;
   LinkSharedPtr parent_link_;
   LinkSharedPtr child_link_;
 
@@ -288,20 +288,20 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * Return transform of child link CoM frame w.r.t parent link CoM frame
    */
   Pose3 parentTchild(double q,
-                     gtsam::OptionalJacobian<6, 1> pMc_H_q = boost::none) const;
+                     gtsam::OptionalJacobian<6, 1> pMc_H_q = {}) const;
 
   /**
    * Return transform of parent link CoM frame w.r.t child link CoM frame
    */
   Pose3 childTparent(double q,
-                     gtsam::OptionalJacobian<6, 1> cMp_H_q = boost::none) const;
+                     gtsam::OptionalJacobian<6, 1> cMp_H_q = {}) const;
 
   /**
    * Return the relative pose of the specified link [link2] in the other link's
    * [link1] reference frame.
    */
   Pose3 relativePoseOf(const LinkSharedPtr &link2, double q,
-                       gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+                       gtsam::OptionalJacobian<6, 1> H_q = {}) const {
     return isChildLink(link2) ? parentTchild(q, H_q) : childTparent(q, H_q);
   }
 
@@ -310,8 +310,8 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    * the world pose of the other link [link1].
    */
   Pose3 poseOf(const LinkSharedPtr &link2, const Pose3 &wT1, double q,
-               gtsam::OptionalJacobian<6, 6> H_wT1 = boost::none,
-               gtsam::OptionalJacobian<6, 1> H_q = boost::none) const {
+               gtsam::OptionalJacobian<6, 6> H_wT1 = {},
+               gtsam::OptionalJacobian<6, 1> H_q = {}) const {
     auto T12 = relativePoseOf(link2, q, H_q);
     return wT1.compose(T12, H_wT1);  // H_wT2_T12 is identity
   }
@@ -321,10 +321,10 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   gtsam::Vector6 transformTwistTo(
       const LinkSharedPtr &link, double q, double q_dot,
-      boost::optional<gtsam::Vector6> other_twist = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 1> H_q_dot = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_other_twist = boost::none) const;
+      std::optional<gtsam::Vector6> other_twist = {},
+      gtsam::OptionalJacobian<6, 1> H_q = {},
+      gtsam::OptionalJacobian<6, 1> H_q_dot = {},
+      gtsam::OptionalJacobian<6, 6> H_other_twist = {}) const;
 
   /**
    * Express the same wrench in the coordinate frame of the other link. (This
@@ -332,14 +332,13 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   gtsam::Vector6 transformWrenchCoordinate(
       const LinkSharedPtr &link, double q, const gtsam::Vector6 &wrench,
-      gtsam::OptionalJacobian<6, 1> H_q = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_wrench = boost::none) const;
+      gtsam::OptionalJacobian<6, 1> H_q = {},
+      gtsam::OptionalJacobian<6, 6> H_wrench = {}) const;
 
   /// Return the torque on this joint given the wrench
   double transformWrenchToTorque(
-      const LinkSharedPtr &link,
-      boost::optional<gtsam::Vector6> wrench = boost::none,
-      gtsam::OptionalJacobian<1, 6> H_wrench = boost::none) const;
+      const LinkSharedPtr &link, std::optional<gtsam::Vector6> wrench = {},
+      gtsam::OptionalJacobian<1, 6> H_wrench = {}) const;
 
   /// Returns forward dynamics priors on torque
   gtsam::GaussianFactorGraph linearFDPriors(size_t t,
@@ -357,7 +356,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   gtsam::GaussianFactorGraph linearAFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const std::optional<gtsam::Vector3> &planar_axis = {}) const;
 
   /**
    * Returns linear dynamics factors in the dynamics graph.
@@ -372,7 +371,7 @@ class Joint : public boost::enable_shared_from_this<Joint> {
    */
   gtsam::GaussianFactorGraph linearDynamicsFactors(
       size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
-      const boost::optional<gtsam::Vector3> &planar_axis = boost::none) const;
+      const std::optional<gtsam::Vector3> &planar_axis = {}) const;
 
   /**
    * Return joint limit factors in the dynamics graph.

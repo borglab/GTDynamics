@@ -33,8 +33,7 @@ using gtsam::Vector2;
 using gtsam::Vector2_;
 
 /// Exponential function e^x.
-double exp_func(const double& x,
-                gtsam::OptionalJacobian<1, 1> H1 = boost::none) {
+double exp_func(const double& x, gtsam::OptionalJacobian<1, 1> H1 = {}) {
   double result = exp(x);
   if (H1) H1->setConstant(result);
   return result;
@@ -52,7 +51,7 @@ class PowFunctor {
   PowFunctor(const double& c) : c_(c) {}
 
   double operator()(const double& x,
-                    gtsam::OptionalJacobian<1, 1> H1 = boost::none) const {
+                    gtsam::OptionalJacobian<1, 1> H1 = {}) const {
     if (H1) H1->setConstant(c_ * pow(x, c_ - 1));
     return pow(x, c_);
   }

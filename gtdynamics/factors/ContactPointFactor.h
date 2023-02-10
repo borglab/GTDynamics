@@ -79,8 +79,8 @@ class ContactPointFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTl, const gtsam::Point3 &wPc,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none,
-      boost::optional<gtsam::Matrix &> H_point = boost::none) const override {
+      gtsam::OptionalMatrixType H_pose = nullptr,
+      gtsam::OptionalMatrixType H_point = nullptr) const override {
     gtsam::Vector error = wPc - wTl.transformFrom(contact_in_com_, H_pose);
     if (H_pose) *H_pose = -gtsam::Matrix3::Identity() * (*H_pose);
     if (H_point) *H_point = gtsam::Matrix3::Identity();
@@ -89,7 +89,7 @@ class ContactPointFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -103,6 +103,7 @@ class ContactPointFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -110,6 +111,7 @@ class ContactPointFactor
     ar &boost::serialization::make_nvp(
         "NonlinearEquality2", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /**
@@ -133,25 +135,29 @@ class ContactPoseFactor
    * Constructor.
    *
    * @param link_pose_key Key for the CoM pose of the link in contact.
-   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial
+   * frame.
    * @param cost_model Noise model associated with this factor.
    * @param contact_in_com Static transform from point of contact to link CoM.
    */
   ContactPoseFactor(gtsam::Key link_pose_key, gtsam::Key contact_pose_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     const gtsam::Pose3 &comTcontact)
-      : Base(cost_model, link_pose_key, contact_pose_key), comTcontact_(comTcontact) {}
+      : Base(cost_model, link_pose_key, contact_pose_key),
+        comTcontact_(comTcontact) {}
 
   /**
    * Convenience constructor which uses PointOnLink.
    *
    * @param point_on_link PointOnLink object which encapsulates the link and its
    * contact point.
-   * @param contact_pose_key Key for the contact point pose in the world/spatial frame.
+   * @param contact_pose_key Key for the contact point pose in the world/spatial
+   * frame.
    * @param cost_model Noise model associated with this factor.
    * @param t The time step at which to add the factor (default t=0).
    */
-  ContactPoseFactor(const PointOnLink &point_on_link, gtsam::Key contact_pose_key,
+  ContactPoseFactor(const PointOnLink &point_on_link,
+                    gtsam::Key contact_pose_key,
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     size_t t = 0)
       : ContactPoseFactor(
@@ -169,8 +175,8 @@ class ContactPoseFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTl, const gtsam::Pose3 &wTcontact,
-      boost::optional<gtsam::Matrix &> H_link = boost::none,
-      boost::optional<gtsam::Matrix &> H_contact = boost::none) const override {
+      gtsam::OptionalMatrixType H_link = nullptr,
+      gtsam::OptionalMatrixType H_contact = nullptr) const override {
     gtsam::Pose3 measured_wTcontact = wTl.compose(comTcontact_, H_link);
     gtsam::Matrix6 H1, H2;
     gtsam::Vector error =
@@ -182,7 +188,7 @@ class ContactPoseFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -195,6 +201,7 @@ class ContactPoseFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -202,6 +209,7 @@ class ContactPoseFactor
     ar &boost::serialization::make_nvp(
         "NonlinearEquality2", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

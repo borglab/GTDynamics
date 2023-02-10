@@ -22,13 +22,10 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/assign/list_of.hpp>
 #include <memory>
 #include <string>
 
 namespace gtdynamics {
-
-using boost::assign::cref_list_of;
 
 /**
  * Create single factor relating this link's pose (COM) with previous one.
@@ -48,7 +45,7 @@ using boost::assign::cref_list_of;
 inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     const gtsam::SharedNoiseModel &cost_model, const JointConstSharedPtr &joint,
     int time) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(), joint->poseConstraint(time));
 }
 
@@ -66,7 +63,7 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
     DynamicsSymbol wTp_key, DynamicsSymbol wTc_key, DynamicsSymbol q_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     JointConstSharedPtr joint) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
       joint->poseConstraint(wTp_key, wTc_key, q_key));
 }

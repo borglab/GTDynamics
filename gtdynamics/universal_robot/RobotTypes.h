@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
-#define LINK_TYPEDEF_CLASS_POINTER(Class)                       \
-  class Class;                                                  \
-  typedef boost::shared_ptr<Class> Class##SharedPtr;            \
-  typedef boost::shared_ptr<const Class> Class##ConstSharedPtr; \
-  typedef boost::weak_ptr<Class> Class##WeakPtr
+#define LINK_TYPEDEF_CLASS_POINTER(Class)                     \
+  class Class;                                                \
+  typedef std::shared_ptr<Class> Class##SharedPtr;            \
+  typedef std::shared_ptr<const Class> Class##ConstSharedPtr; \
+  typedef std::weak_ptr<Class> Class##WeakPtr

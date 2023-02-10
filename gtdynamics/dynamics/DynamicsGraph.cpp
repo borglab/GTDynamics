@@ -27,7 +27,6 @@
 #include <gtsam/slam/PriorFactor.h>
 
 #include <algorithm>
-#include <boost/format.hpp>
 #include <iostream>
 #include <map>
 #include <set>
@@ -93,8 +92,9 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
 
   OptimizerSetting opt_;
   for (auto &&joint : robot.joints()) {
-    graph += joint->linearAFactors(t, known_values, opt_, planar_axis_);
-    graph += joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_);
+    graph.push_back(joint->linearAFactors(t, known_values, opt_, planar_axis_));
+    graph.push_back(
+        joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_));
   }
 
   return graph;
@@ -105,7 +105,7 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(
   OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints())
-    graph += joint->linearFDPriors(t, torques, opt_);
+    graph.push_back(joint->linearFDPriors(t, torques, opt_));
   return graph;
 }
 
@@ -127,7 +127,7 @@ Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
-  graph += priors;
+  graph.push_back(priors);
   gtsam::VectorValues results = graph.optimize();
 
   // arrange values
@@ -160,7 +160,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearIDPriors(robot, t, known_values);
-  graph += priors;
+  graph.push_back(priors);
 
   gtsam::VectorValues results = graph.optimize();
 
@@ -193,7 +193,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
 
 gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int k,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -228,7 +228,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -253,7 +253,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -278,8 +278,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
 // TODO(frank): migrate to Dynamics::graph<Slice>
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int k,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
 
   // TODO(frank): whoever write this should clean up this mess.
@@ -346,8 +346,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   graph.add(qFactors(robot, t, contact_points));
   graph.add(vFactors(robot, t, contact_points));
@@ -359,8 +359,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
 gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const Robot &robot, const int num_steps, const double dt,
     const CollocationScheme collocation,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t < num_steps + 1; t++) {
     graph.add(dynamicsFactorGraph(robot, t, contact_points, mu));
@@ -375,16 +375,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
     const Robot &robot, const std::vector<int> &phase_steps,
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
-    const boost::optional<std::vector<PointOnLinks>> &phase_contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<std::vector<PointOnLinks>> &phase_contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   int num_phases = phase_steps.size();
 
   // Return either PointOnLinks or None if none specified for phase p
   auto contact_points =
-      [&phase_contact_points](int p) -> boost::optional<PointOnLinks> {
+      [&phase_contact_points](int p) -> std::optional<PointOnLinks> {
     if (phase_contact_points) return (*phase_contact_points)[p];
-    return boost::none;
+    return {};
   };
 
   // First slice, k==0
