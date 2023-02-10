@@ -53,9 +53,9 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # Dynamics library
 # ##############################################################################
 option(GTDYNAMICS_WITH_TBB                       "Use Intel Threaded Building Blocks (TBB) if available" OFF)
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
-option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
-option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
 
 # Enable or disable serialization with GTDYNAMICSENABLE_BOOST_SERIALIZATION
 option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
