@@ -18,7 +18,6 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -67,9 +66,8 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
    *
    * @param q joint value
    */
-  gtsam::Vector evaluateError(
-      const double &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+  gtsam::Vector evaluateError(const double &q,
+                              gtsam::OptionalMatrixType H_q) const override {
     if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;
       return gtsam::Vector1(low_ - q);
@@ -84,7 +82,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -97,6 +95,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -106,6 +105,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
     ar &low_;
     ar &high_;
   }
+#endif
 };
 
 }  // namespace gtdynamics

@@ -30,9 +30,9 @@ class ChainInitializer : Initializer {
      *      deviation of gaussian_noise.
      * @param[in] contact_points Contact points for timestep t.
      */
-    gtsam::Values ZeroValues(
-        const Robot& robot, const int t, double gaussian_noise = 0.0,
-        const boost::optional<PointOnLinks>& contact_points = boost::none) const override;
+   gtsam::Values ZeroValues(
+       const Robot& robot, const int t, double gaussian_noise = 0.0,
+       const std::optional<PointOnLinks>& contact_points = {}) const override;
 };
 
 } // namespace gtdynamics

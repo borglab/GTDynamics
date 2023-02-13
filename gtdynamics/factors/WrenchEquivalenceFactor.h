@@ -23,7 +23,7 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,7 +40,7 @@ namespace gtdynamics {
 inline gtsam::NoiseModelFactor::shared_ptr WrenchEquivalenceFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const JointConstSharedPtr &joint, size_t k = 0) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
       joint->wrenchEquivalenceConstraint(k));
 }

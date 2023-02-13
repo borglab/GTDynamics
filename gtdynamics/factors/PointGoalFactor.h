@@ -70,6 +70,7 @@ class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
   const gtsam::Point3 &goalPoint() const { return goal_point_; }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -77,6 +78,7 @@ class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /**
