@@ -13,8 +13,6 @@
 
 #include <gtdynamics/manifold/MultiJacobian.h>
 
-#include <boost/range/adaptor/reversed.hpp>
-
 namespace gtsam {
 
 /* ************************************************************************* */
@@ -105,8 +103,11 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
     jacobians.emplace(key, MultiJacobian::Identity(key, var_dim.at(key)));
   }
 
+  GaussianBayesNet reversed_bn = bn;
+  std::reverse(reversed_bn.begin(), reversed_bn.end());
+
   // iteratively set jacobian of other variables
-  for (auto cg : boost::adaptors::reverse(bn)) {
+  for (auto cg : reversed_bn) {
     const Matrix S_mat = -cg->R().triangularView<Eigen::Upper>().solve(cg->S());
     DenseIndex frontal_position = 0;
     for (auto frontal = cg->beginFrontals(); frontal != cg->endFrontals();
