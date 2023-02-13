@@ -54,8 +54,8 @@ void ConstVarFactor::setFixedValues(const Values& values) {
 }
 
 /* ************************************************************************* */
-Vector ConstVarFactor::unwhitenedError(
-    const Values& x, boost::optional<std::vector<Matrix>&> H) const {
+Vector ConstVarFactor::unwhitenedError(const Values& x,
+                                       gtsam::OptionalMatrixVecType H) const {
   // Construct values for base factor.
   Values base_x = x;
   base_x.insert(fixed_values_);
@@ -76,15 +76,14 @@ Vector ConstVarFactor::unwhitenedError(
   }
 }
 
-
-std::pair<NonlinearFactorGraph, ConstVarFactors> ConstVarGraph(const NonlinearFactorGraph& graph, const KeySet& fixed_keys) {
-
+std::pair<NonlinearFactorGraph, ConstVarFactors> ConstVarGraph(
+    const NonlinearFactorGraph& graph, const KeySet& fixed_keys) {
   ConstVarFactors const_var_factors;
   NonlinearFactorGraph new_graph;
-  for (const auto& factor: graph) {
+  for (const auto& factor : graph) {
     // check if the factor contains fixed keys
     bool contain_fixed_keys = false;
-    for (const Key& key: factor->keys()) {
+    for (const Key& key : factor->keys()) {
       if (fixed_keys.exists(key)) {
         contain_fixed_keys = true;
         break;
@@ -93,28 +92,29 @@ std::pair<NonlinearFactorGraph, ConstVarFactors> ConstVarGraph(const NonlinearFa
     // update the factor if it constains fixed keys
     if (contain_fixed_keys) {
       NoiseModelFactor::shared_ptr noise_factor =
-          boost::dynamic_pointer_cast<NoiseModelFactor>(factor);
-      auto const_var_factor = boost::make_shared<ConstVarFactor>(noise_factor, fixed_keys);
+          std::dynamic_pointer_cast<NoiseModelFactor>(factor);
+      auto const_var_factor =
+          std::make_shared<ConstVarFactor>(noise_factor, fixed_keys);
       if (const_var_factor->checkActive()) {
         new_graph.add(const_var_factor);
         const_var_factors.push_back(const_var_factor);
       }
-    }
-    else {
+    } else {
       new_graph.add(factor);
     }
   }
   return std::make_pair(new_graph, const_var_factors);
 }
 
-NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph& graph, const Values& fixed_values) {
+NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph& graph,
+                                   const Values& fixed_values) {
   ConstVarFactors const_var_factors;
   NonlinearFactorGraph new_graph;
   KeyVector key_vec = fixed_values.keys();
   KeySet key_set(key_vec.begin(), key_vec.end());
-  boost::tie(new_graph, const_var_factors) = ConstVarGraph(graph, key_set);
+  std::tie(new_graph, const_var_factors) = ConstVarGraph(graph, key_set);
 
-  for (auto& factor: const_var_factors) {
+  for (auto& factor : const_var_factors) {
     factor->setFixedValues(fixed_values);
   }
   return new_graph;

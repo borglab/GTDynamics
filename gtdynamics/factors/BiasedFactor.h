@@ -2,7 +2,6 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/assign/list_of.hpp>
 #include <boost/serialization/base_object.hpp>
 
 namespace gtsam {
@@ -14,7 +13,7 @@ namespace gtsam {
  * noisemodel of substitute factor. The noisemodel in the base factor will be
  * ignored. */
 class BiasedFactor : public NoiseModelFactor {
-protected:
+ protected:
   typedef NoiseModelFactor Base;
   typedef BiasedFactor This;
 
@@ -22,8 +21,8 @@ protected:
   Base::shared_ptr base_factor_;
   Vector bias_;
 
-public:
-  typedef boost::shared_ptr<This> shared_ptr;
+ public:
+  typedef std::shared_ptr<This> shared_ptr;
 
   /** Default constructor for I/O only */
   BiasedFactor() {}
@@ -38,11 +37,13 @@ public:
    */
   BiasedFactor(const Base::shared_ptr &base_factor, const Vector &bias)
       : Base(base_factor->noiseModel(), base_factor->keys()),
-        base_factor_(base_factor), bias_(bias) {}
+        base_factor_(base_factor),
+        bias_(bias) {}
 
   BiasedFactor(const Base::shared_ptr &base_factor, const Vector &bias,
-                  const SharedNoiseModel &noise_model)
-      : Base(noise_model, base_factor->keys()), base_factor_(base_factor),
+               const SharedNoiseModel &noise_model)
+      : Base(noise_model, base_factor->keys()),
+        base_factor_(base_factor),
         bias_(bias) {}
 
   /**
@@ -53,17 +54,18 @@ public:
    */
   virtual Vector unwhitenedError(
       const Values &x,
-      boost::optional<std::vector<Matrix> &> H = boost::none) const override {
+      gtsam::OptionalMatrixVecType H = nullptr) const override {
     return base_factor_->unwhitenedError(x, H) + bias_;
   }
 
   /** Return a deep copy of this factor. */
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+ private:
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -73,7 +75,8 @@ private:
     ar &BOOST_SERIALIZATION_NVP(base_factor_);
     ar &BOOST_SERIALIZATION_NVP(bias_);
   }
+#endif
 
-}; // \class BiasedFactor
+};  // \class BiasedFactor
 
-} // namespace gtsam
+}  // namespace gtsam
