@@ -41,7 +41,7 @@ protected:
   void initTime();
 
 public:
-  typedef boost::shared_ptr<MutableLMOptimizer> shared_ptr;
+  typedef std::shared_ptr<MutableLMOptimizer> shared_ptr;
   
   NonlinearFactorGraph& mutableGraph() {return graph_; }
 

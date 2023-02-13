@@ -46,10 +46,10 @@ gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
 
 /* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr FactorZeroErrorConstraint::createFactor(
-    const double mu, boost::optional<gtsam::Vector&> bias) const {
+    const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   if (bias) {
-    return boost::make_shared<gtsam::BiasedFactor>(factor_, *bias, noise);
+    return std::make_shared<gtsam::BiasedFactor>(factor_, *bias, noise);
   }
   return factor_->cloneWithNewNoiseModel(noise);
 }
@@ -87,7 +87,7 @@ EqualityConstraints ConstraintsFromGraph(
   EqualityConstraints constraints;
   for (const auto& factor : graph) {
     auto noise_factor =
-        boost::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
+        std::static_pointer_cast<gtsam::NoiseModelFactor>(factor);
     constraints.emplace_shared<FactorZeroErrorConstraint>(noise_factor);
   }
   return constraints;
