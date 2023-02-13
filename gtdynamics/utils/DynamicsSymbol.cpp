@@ -31,8 +31,10 @@ DynamicsSymbol::DynamicsSymbol(const DynamicsSymbol& key)
       t_(key.t_) {}
 
 /* ************************************************************************* */
-DynamicsSymbol::DynamicsSymbol(const std::string& s, uint8_t link_idx,
-                               uint8_t joint_idx, uint64_t t)
+DynamicsSymbol::DynamicsSymbol(const std::string& s,  //
+                               uint8_t link_idx,      //
+                               uint8_t joint_idx,     //
+                               uint64_t t)
     : link_idx_(link_idx), joint_idx_(joint_idx), t_(t) {
   if (s.length() > 2) {
     throw std::runtime_error(
@@ -52,17 +54,20 @@ DynamicsSymbol::DynamicsSymbol(const std::string& s, uint8_t link_idx,
 
 DynamicsSymbol DynamicsSymbol::LinkJointSymbol(const std::string& s,
                                                uint8_t link_idx,
-                                               uint8_t joint_idx, uint64_t t) {
+                                               uint8_t joint_idx,  //
+                                               uint64_t t) {
   return DynamicsSymbol(s, link_idx, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::JointSymbol(const std::string& s,
-                                           uint8_t joint_idx, uint64_t t) {
+                                           uint8_t joint_idx,  //
+                                           uint64_t t) {
   return DynamicsSymbol(s, kMax_uchar_, joint_idx, t);
 }
 
 DynamicsSymbol DynamicsSymbol::LinkSymbol(const std::string& s,
-                                          uint8_t link_idx, uint64_t t) {
+                                          uint8_t link_idx,  //
+                                          uint64_t t) {
   return DynamicsSymbol(s, link_idx, kMax_uchar_, t);
 }
 

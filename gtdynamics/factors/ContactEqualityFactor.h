@@ -72,10 +72,10 @@ class ContactEqualityFactor
 
   /// Generic method to compute difference between contact points and provide
   /// jacobians.
-  gtsam::Vector3 contactPointsDifference(const gtsam::Pose3 &wT1,
-                                         const gtsam::Pose3 &wT2,
-                                         gtsam::OptionalMatrixType H1,
-                                         gtsam::OptionalMatrixType H2) const {
+  gtsam::Vector3 contactPointsDifference(
+      const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
+      gtsam::OptionalMatrixType H1 = nullptr,
+      gtsam::OptionalMatrixType H2 = nullptr) const {
     gtsam::Point3 p1_w = wT1.transformFrom(point_on_link_.point, H1);
     gtsam::Point3 p2_w = wT2.transformFrom(point_on_link_.point, H2);
 
