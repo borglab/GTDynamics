@@ -11,7 +11,8 @@
 
 /**
  * @file    MutableLMOptimizer.cpp
- * @brief   A nonlinear optimizer that uses the Levenberg-Marquardt trust-region scheme
+ * @brief   A nonlinear optimizer that uses the Levenberg-Marquardt trust-region
+ * scheme
  * @author  Richard Roberts
  * @author  Frank Dellaert
  * @author  Luca Carlone
@@ -19,18 +20,14 @@
  */
 
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
-#include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/linearExceptions.h>
-#include <gtsam/inference/Ordering.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/base/timing.h>
-
-#include <boost/format.hpp>
-#include <boost/optional.hpp>
-#include <boost/range/adaptor/map.hpp>
+#include <gtsam/inference/Ordering.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
+#include <gtsam/linear/linearExceptions.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
 
 #include <cmath>
 #include <fstream>
@@ -42,30 +39,31 @@ using namespace std;
 
 namespace gtsam {
 
-using boost::adaptors::map_values;
 typedef internal::LevenbergMarquardtState State;
 
 /* ************************************************************************* */
 MutableLMOptimizer::MutableLMOptimizer(const NonlinearFactorGraph& graph,
-                                                         const Values& initialValues,
-                                                         const LevenbergMarquardtParams& params)
+                                       const Values& initialValues,
+                                       const LevenbergMarquardtParams& params)
     : NonlinearOptimizer(
-          graph, std::unique_ptr<State>(new State(initialValues, graph.error(initialValues),
-                                                  params.lambdaInitial, params.lambdaFactor))),
+          graph, std::unique_ptr<State>(
+                     new State(initialValues, graph.error(initialValues),
+                               params.lambdaInitial, params.lambdaFactor))),
       params_(LevenbergMarquardtParams::EnsureHasOrdering(params, graph)) {}
 
 MutableLMOptimizer::MutableLMOptimizer(const NonlinearFactorGraph& graph,
-                                                         const Values& initialValues,
-                                                         const Ordering& ordering,
-                                                         const LevenbergMarquardtParams& params)
+                                       const Values& initialValues,
+                                       const Ordering& ordering,
+                                       const LevenbergMarquardtParams& params)
     : NonlinearOptimizer(
-          graph, std::unique_ptr<State>(new State(initialValues, graph.error(initialValues),
-                                                  params.lambdaInitial, params.lambdaFactor))),
+          graph, std::unique_ptr<State>(
+                     new State(initialValues, graph.error(initialValues),
+                               params.lambdaInitial, params.lambdaFactor))),
       params_(LevenbergMarquardtParams::ReplaceOrdering(params, ordering)) {}
 
 /* ************************************************************************* */
 void MutableLMOptimizer::initTime() {
-  startTime_ = boost::posix_time::microsec_clock::universal_time();
+  startTime_ = std::chrono::high_resolution_clock::now();
 }
 
 /* ************************************************************************* */
@@ -87,12 +85,14 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::linearize() const {
 
 /* ************************************************************************* */
 GaussianFactorGraph MutableLMOptimizer::buildDampedSystem(
-    const GaussianFactorGraph& linear, const VectorValues& sqrtHessianDiagonal) const {
+    const GaussianFactorGraph& linear,
+    const VectorValues& sqrtHessianDiagonal) const {
   gttic(damp);
   auto currentState = static_cast<const State*>(state_.get());
 
   if (params_.verbosityLM >= LevenbergMarquardtParams::DAMPED)
-    std::cout << "building damped system with lambda " << currentState->lambda << std::endl;
+    std::cout << "building damped system with lambda " << currentState->lambda
+              << std::endl;
 
   if (params_.diagonalDamping)
     return currentState->buildDampedSystem(linear, sqrtHessianDiagonal);
@@ -102,41 +102,35 @@ GaussianFactorGraph MutableLMOptimizer::buildDampedSystem(
 
 /* ************************************************************************* */
 // Log current error/lambda to file
-inline void MutableLMOptimizer::writeLogFile(double currentError){
+inline void MutableLMOptimizer::writeLogFile(double currentError) {
   auto currentState = static_cast<const State*>(state_.get());
 
   if (!params_.logFile.empty()) {
     ofstream os(params_.logFile.c_str(), ios::app);
-    boost::posix_time::ptime currentTime = boost::posix_time::microsec_clock::universal_time();
+    // use chrono to measure time in microseconds
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    // Get the time spent in seconds and print it
+    double timeSpent = std::chrono::duration_cast<std::chrono::microseconds>(
+                           currentTime - startTime_)
+                           .count() /
+                       1e6;
     os << /*inner iterations*/ currentState->totalNumberInnerIterations << ","
-        << 1e-6 * (currentTime - startTime_).total_microseconds() << ","
-        << /*current error*/ currentError << "," << currentState->lambda << ","
-        << /*outer iterations*/ currentState->iterations << endl;
+       << timeSpent << "," << /*current error*/ currentError << ","
+       << currentState->lambda << ","
+       << /*outer iterations*/ currentState->iterations << endl;
   }
 }
 
 /* ************************************************************************* */
 bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
-                                            const VectorValues& sqrtHessianDiagonal) {
+                                   const VectorValues& sqrtHessianDiagonal) {
   auto currentState = static_cast<const State*>(state_.get());
   bool verbose = (params_.verbosityLM >= LevenbergMarquardtParams::TRYLAMBDA);
 
-// #ifdef GTSAM_USING_NEW_BOOST_TIMERS
-//   boost::timer::cpu_timer lamda_iteration_timer;
-//   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-//     lamda_iteration_timer.start();
-//   }
-// #else
-//   boost::timer lamda_iteration_timer;
-//   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-//     lamda_iteration_timer.restart();
-//   }
-// #endif
+  if (verbose) cout << "trying lambda = " << currentState->lambda << endl;
 
-  if (verbose)
-    cout << "trying lambda = " << currentState->lambda << endl;
-
-  // Build damped system for this lambda (adds prior factors that make it like gradient descent)
+  // Build damped system for this lambda (adds prior factors that make it like
+  // gradient descent)
   auto dampedSystem = buildDampedSystem(linear, sqrtHessianDiagonal);
 
   // Try solving
@@ -157,8 +151,7 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
   }
 
   if (systemSolvedSuccessfully) {
-    if (verbose)
-      cout << "linear delta norm = " << delta.norm() << endl;
+    if (verbose) cout << "linear delta norm = " << delta.norm() << endl;
     if (params_.verbosityLM >= LevenbergMarquardtParams::TRYDELTA)
       delta.print("delta");
 
@@ -183,82 +176,88 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
 
       // compute new error
       gttic(compute_error);
-      if (verbose)
-        cout << "calculating error:" << endl;
+      if (verbose) cout << "calculating error:" << endl;
       newError = graph_.error(newValues);
       gttoc(compute_error);
 
       if (verbose)
-        cout << "old error (" << currentState->error << ") new (tentative) error (" << newError
-             << ")" << endl;
+        cout << "old error (" << currentState->error
+             << ") new (tentative) error (" << newError << ")" << endl;
 
       // cost change in the original, nonlinear system (old - new)
       costChange = currentState->error - newError;
 
-      if (linearizedCostChange > std::numeric_limits<double>::epsilon() * oldLinearizedError) {
+      if (linearizedCostChange >
+          std::numeric_limits<double>::epsilon() * oldLinearizedError) {
         // the (linear) error has to decrease to satisfy this condition
         // fidelity of linearized model VS original system between
         modelFidelity = costChange / linearizedCostChange;
-        // if we decrease the error in the nonlinear system and modelFidelity is above threshold
+        // if we decrease the error in the nonlinear system and modelFidelity is
+        // above threshold
         step_is_successful = modelFidelity > params_.minModelFidelity;
-        if (verbose)
-          cout << "modelFidelity: " << modelFidelity << endl;
-      }  // else we consider the step non successful and we either increase lambda or stop if error
-         // change is small
+        if (verbose) cout << "modelFidelity: " << modelFidelity << endl;
+      }  // else we consider the step non successful and we either increase
+         // lambda or stop if error change is small
 
-      double minAbsoluteTolerance = params_.relativeErrorTol * currentState->error;
+      double minAbsoluteTolerance =
+          params_.relativeErrorTol * currentState->error;
       // if the change is small we terminate
       if (std::abs(costChange) < minAbsoluteTolerance) {
         if (verbose)
           cout << "abs(costChange)=" << std::abs(costChange)
                << "  minAbsoluteTolerance=" << minAbsoluteTolerance
-               << " (relativeErrorTol=" << params_.relativeErrorTol << ")" << endl;
+               << " (relativeErrorTol=" << params_.relativeErrorTol << ")"
+               << endl;
         stopSearchingLambda = true;
       }
     }
-  } // if (systemSolvedSuccessfully)
+  }  // if (systemSolvedSuccessfully)
 
   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-// do timing
-// #ifdef GTSAM_USING_NEW_BOOST_TIMERS
-//     double iterationTime = 1e-9 * lamda_iteration_timer.elapsed().wall;
-// #else
-//     double iterationTime = lamda_iteration_timer.elapsed();
-// #endif
     double iterationTime = 0;
     if (currentState->iterations == 0)
-      cout << "iter      cost      cost_change    lambda  success iter_time" << endl;
+      cout << "iter      cost      cost_change    lambda  success iter_time"
+           << endl;
 
-    cout << boost::format("% 4d % 8e   % 3.2e   % 3.2e  % 4d   % 3.2e") % currentState->iterations %
-                newError % costChange % currentState->lambda % systemSolvedSuccessfully %
-                iterationTime << endl;
+    cout << setw(4) << currentState->iterations << " " << setw(8) << newError
+         << " " << setw(3) << setprecision(2) << costChange << " " << setw(3)
+         << setprecision(2) << currentState->lambda << " " << setw(4)
+         << systemSolvedSuccessfully << " " << setw(3) << setprecision(2)
+         << iterationTime << endl;
   }
 
   if (step_is_successful) {
     // we have successfully decreased the cost and we have good modelFidelity
     // NOTE(frank): As we return immediately after this, we move the newValues
-    // TODO(frank): make Values actually support move. Does not seem to happen now.
-    state_ = currentState->decreaseLambda(params_, modelFidelity, std::move(newValues), newError);
+    // TODO(frank): make Values actually support move. Does not seem to happen
+    // now.
+    state_ = currentState->decreaseLambda(params_, modelFidelity,
+                                          std::move(newValues), newError);
     return true;
-  } else if (!stopSearchingLambda) {  // we failed to solved the system or had no decrease in cost
-    if (verbose)
-      cout << "increasing lambda" << endl;
+  } else if (!stopSearchingLambda) {  // we failed to solved the system or had
+                                      // no decrease in cost
+    if (verbose) cout << "increasing lambda" << endl;
     State* modifiedState = static_cast<State*>(state_.get());
-    modifiedState->increaseLambda(params_); // TODO(frank): make this functional with Values move
+    modifiedState->increaseLambda(
+        params_);  // TODO(frank): make this functional with Values move
 
     // check if lambda is too big
     if (modifiedState->lambda >= params_.lambdaUpperBound) {
       if (params_.verbosity >= NonlinearOptimizerParams::TERMINATION ||
           params_.verbosityLM == LevenbergMarquardtParams::SUMMARY)
         cout << "Warning:  Levenberg-Marquardt giving up because "
-                "cannot decrease error with maximum lambda" << endl;
+                "cannot decrease error with maximum lambda"
+             << endl;
       return true;
     } else {
       return false;  // only case where we will keep trying
     }
-  } else {  // the change in the cost is very small and it is not worth trying bigger lambdas
+  } else {  // the change in the cost is very small and it is not worth trying
+            // bigger lambdas
     if (verbose)
-      cout << "Levenberg-Marquardt: stopping as relative cost reduction is small" << endl;
+      cout
+          << "Levenberg-Marquardt: stopping as relative cost reduction is small"
+          << endl;
     return true;
   }
 }
@@ -274,7 +273,7 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::iterate() {
     cout << "linearizing = " << endl;
   GaussianFactorGraph::shared_ptr linear = linearize();
 
-  if(currentState->totalNumberInnerIterations==0) { // write initial error
+  if (currentState->totalNumberInnerIterations == 0) {  // write initial error
     writeLogFile(currentState->error);
 
     if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
@@ -283,12 +282,16 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::iterate() {
     }
   }
 
-  // Only calculate diagonal of Hessian (expensive) once per outer iteration, if we need it
+  // Only calculate diagonal of Hessian (expensive) once per outer iteration, if
+  // we need it
   VectorValues sqrtHessianDiagonal;
   if (params_.diagonalDamping) {
     sqrtHessianDiagonal = linear->hessianDiagonal();
-    for (Vector& v : sqrtHessianDiagonal | map_values) {
-      v = v.cwiseMax(params_.minDiagonal).cwiseMin(params_.maxDiagonal).cwiseSqrt();
+    for (auto& kvp : sqrtHessianDiagonal) {
+      Vector& v = kvp.second;
+      v = v.cwiseMax(params_.minDiagonal)
+              .cwiseMin(params_.maxDiagonal)
+              .cwiseSqrt();
     }
   }
 
@@ -304,13 +307,14 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::iterate() {
 /* ************************************************************************* */
 MutableLMOptimizer::MutableLMOptimizer(const LevenbergMarquardtParams& params)
     : NonlinearOptimizer(
-          NonlinearFactorGraph(), std::unique_ptr<State>(new State(
-                     Values(), 0., params.lambdaInitial, params.lambdaFactor))),
+          NonlinearFactorGraph(),
+          std::unique_ptr<State>(new State(Values(), 0., params.lambdaInitial,
+                                           params.lambdaFactor))),
       params_(params) {}
 
 /* ************************************************************************* */
 MutableLMOptimizer::MutableLMOptimizer(const NonlinearFactorGraph& graph,
-                   const LevenbergMarquardtParams& params)
+                                       const LevenbergMarquardtParams& params)
     : NonlinearOptimizer(
           graph, std::unique_ptr<State>(new State(
                      Values(), 0., params.lambdaInitial, params.lambdaFactor))),
@@ -338,10 +342,9 @@ void MutableLMOptimizer::setValues(const Values& values) {
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(Values&& values) {
-  state_ = std::unique_ptr<State>(new State(std::move(values), graph_.error(values),
-                                            params_.lambdaInitial,
-                                            params_.lambdaFactor));
+  state_ = std::unique_ptr<State>(
+      new State(std::move(values), graph_.error(values), params_.lambdaInitial,
+                params_.lambdaFactor));
 }
 
 } /* namespace gtsam */
-

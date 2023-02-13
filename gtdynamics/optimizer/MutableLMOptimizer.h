@@ -36,7 +36,8 @@ class GTSAM_EXPORT MutableLMOptimizer: public NonlinearOptimizer {
 
 protected:
   LevenbergMarquardtParams params_; ///< LM parameters
-  boost::posix_time::ptime startTime_;
+  // startTime_ is a chrono time point
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTime_; ///< time when optimization started
 
   void initTime();
 
