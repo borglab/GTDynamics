@@ -130,7 +130,7 @@ Values get_init_values() {
 /** Initial values of serial chain specifed by 0 for all joint angles. */
 Values get_init_values_sc() {
   Values init_values;
-  auto shared_robot = boost::make_shared<Robot>(robot);
+  auto shared_robot = std::make_shared<Robot>(robot);
   Values joint_angles;
   for (const auto& joint : robot.joints()) {
     gtdynamics::InsertJointAngle(&joint_angles, joint->id(), 0.0);

@@ -101,10 +101,10 @@ ContactRedundancyFactor(int t, const std::vector<int> &contact_ids,
     Vector6_ expected_redundancy =
         ContactRedundancyConstraint(t, contact_ids, a, b);
     Vector6_ redundancy(ContactRedundancyKey(t));
-    return boost::make_shared<ExpressionFactor<Vector6>>(
+    return std::make_shared<ExpressionFactor<Vector6>>(
         cost_model, Vector6::Zero(), expected_redundancy - redundancy);
   } else {
-    return boost::make_shared<ExpressionFactor<Vector6>>(
+    return std::make_shared<ExpressionFactor<Vector6>>(
         cost_model, Vector6::Zero(),
         ContactRedundancyConstraint(t, contact_ids, a, b));
   }
@@ -130,7 +130,7 @@ contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
 
 /* ************************************************************************* */
 NonlinearFactorGraph Vision60Robot::DynamicsFactors(
-    const int k, const boost::optional<PointOnLinks> &contact_points) const {
+    const int k, const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
 
   for (auto &&link : robot.links()) {

@@ -129,7 +129,7 @@ public:
   /// Dynamcis factors without friction cone factors (as they are moved to costs).
   NonlinearFactorGraph DynamicsFactors(
       const int k,
-      const boost::optional<gtdynamics::PointOnLinks> &contact_points) const;
+      const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /// Kinodynamic constraints at the specified time step.
   NonlinearFactorGraph getConstraintsGraphStep(const int t) const;
