@@ -19,8 +19,6 @@
 #include <gtsam/base/timing.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <utility>
