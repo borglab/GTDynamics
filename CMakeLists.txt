@@ -8,8 +8,8 @@ project(gtdynamics
 add_compile_options(-faligned-new)
 
 # Enforce c++17 standards
-add_compile_options(-std=c++11) # CMake 3.1 and earlier
-set(CMAKE_CXX_STANDARD 11)
+add_compile_options(-std=c++17) # CMake 3.1 and earlier
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake")

@@ -37,7 +37,7 @@ pybind_wrap(
   ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl
   ${PROJECT_NAME} # libs
   "${PROJECT_NAME}" # dependencies
-  ON # use boost
+  OFF # use boost
 )
 
 set_target_properties(
