@@ -12,9 +12,8 @@
  */
 
 #include "CartPoleUtils.h"
-#include <gtdynamics/factors/MinTorqueFactor.h>
 
-#include <boost/algorithm/string/join.hpp>
+#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 using namespace gtdynamics;
@@ -26,7 +25,7 @@ NonlinearFactorGraph CartPole::getDynamicsGraph(size_t num_steps) const {
   NonlinearFactorGraph graph;
   // kinodynamic constraints at each step
   for (size_t k = 0; k <= num_steps; k++) {
-      graph.add(graph_builder.dynamicsFactorGraph(robot, k));
+    graph.add(graph_builder.dynamicsFactorGraph(robot, k));
   }
   return graph;
 }
@@ -35,8 +34,8 @@ NonlinearFactorGraph CartPole::getDynamicsGraph(size_t num_steps) const {
 NonlinearFactorGraph CartPole::getUnactuatedGraph(size_t num_steps) const {
   NonlinearFactorGraph graph;
   for (int k = 0; k <= num_steps; k++)
-      graph.addPrior(TorqueKey(j1_id, k), 0.0,
-                  graph_builder.opt().prior_t_cost_model);
+    graph.addPrior(TorqueKey(j1_id, k), 0.0,
+                   graph_builder.opt().prior_t_cost_model);
   return graph;
 }
 
@@ -69,7 +68,7 @@ NonlinearFactorGraph CartPole::finalStateGraph(size_t num_steps) const {
 NonlinearFactorGraph CartPole::minTorqueCosts(size_t num_steps) const {
   NonlinearFactorGraph graph;
   for (int k = 0; k <= num_steps; k++)
-      graph.emplace_shared<MinTorqueFactor>(TorqueKey(j0_id, k), control_model);
+    graph.emplace_shared<MinTorqueFactor>(TorqueKey(j0_id, k), control_model);
   return graph;
 }
 
@@ -90,7 +89,7 @@ Values CartPole::getInitValuesZero(size_t num_steps) {
   Values known_values;
   for (const auto& joint : robot.joints()) {
     InsertJointAngle(&known_values, joint->id(),
-                    JointAngle(values0, joint->id()));
+                     JointAngle(values0, joint->id()));
     InsertJointVel(&known_values, joint->id(), JointVel(values0, joint->id()));
     InsertTorque(&known_values, joint->id(), 0.0);
   }
@@ -104,14 +103,14 @@ Values CartPole::getInitValuesZero(size_t num_steps) {
   for (size_t k = 0; k <= num_steps; k++) {
     for (const auto& joint : robot.joints()) {
       InsertJointAngle(&values, joint->id(), k,
-                      JointAngle(values0, joint->id()));
+                       JointAngle(values0, joint->id()));
       InsertJointVel(&values, joint->id(), k, JointVel(values0, joint->id()));
       InsertJointAccel(&values, joint->id(), k,
-                      JointAccel(values0, joint->id()));
+                       JointAccel(values0, joint->id()));
       InsertTorque(&values, joint->id(), k, Torque(values0, joint->id()));
       for (const auto& link : joint->links()) {
         InsertWrench(&values, link->id(), joint->id(), k,
-                    Wrench(values0, link->id(), joint->id()));
+                     Wrench(values0, link->id(), joint->id()));
       }
     }
     for (const auto& link : robot.links()) {
@@ -127,14 +126,11 @@ Values CartPole::getInitValuesZero(size_t num_steps) {
 Values CartPole::getInitValues(size_t num_steps, std::string option) {
   if (option == "zero") {
     return getInitValuesZero(num_steps);
-  }
-  else if (option == "interp") {
+  } else if (option == "interp") {
     return getInitValuesInterp(num_steps);
-  }
-  else if (option == "infeasible") {
+  } else if (option == "infeasible") {
     return getInitValuesInfeasible(num_steps);
-  }
-  else {
+  } else {
     return getInitValuesZero(num_steps);
   }
 }
@@ -149,9 +145,11 @@ Values CartPole::getInitValuesInterp(size_t num_steps) {
   double terminal_q1 = X_T(3);
 
   Values init_values;
-  for (size_t k=0; k<=num_steps; k++) {
-    double q0 = init_q0 + (terminal_q0 - init_q0) * (double)k / (double)num_steps;
-    double q1 = init_q1 + (terminal_q1 - init_q1) * (double)k / (double)num_steps;
+  for (size_t k = 0; k <= num_steps; k++) {
+    double q0 =
+        init_q0 + (terminal_q0 - init_q0) * (double)k / (double)num_steps;
+    double q1 =
+        init_q1 + (terminal_q1 - init_q1) * (double)k / (double)num_steps;
     Values known_values;
     InsertJointAngle(&known_values, j0_id, k, q0);
     InsertJointAngle(&known_values, j1_id, k, q1);
@@ -172,7 +170,7 @@ Values CartPole::getInitValuesInfeasible(size_t num_steps) {
   return init_values_infeasible;
 }
 /* ************************************************************************* */
-void CartPole::exprotTrajectory(const Values &results, size_t num_steps,
+void CartPole::exprotTrajectory(const Values& results, size_t num_steps,
                                 double dt, std::string file_name) const {
   std::ofstream traj_file;
   traj_file.open(file_name);
@@ -185,18 +183,23 @@ void CartPole::exprotTrajectory(const Values &results, size_t num_steps,
         JointAngleKey(j1_id, t), JointVelKey(j1_id, t),
         JointAccelKey(j1_id, t), TorqueKey(j1_id, t)};
     std::vector<std::string> vals = {std::to_string(t_elapsed)};
-    for (auto &&k : keys)
+    for (auto&& k : keys) {
       vals.push_back(std::to_string(results.atDouble(k)));
-    traj_file << boost::algorithm::join(vals, ",") << "\n";
+    }
+    std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
+    traj_file << vals_str << "\n";
   }
   traj_file.close();
 }
 
 /* ************************************************************************* */
-void CartPole::printJointAngles(const Values &values, size_t num_steps) const {
+void CartPole::printJointAngles(const Values& values, size_t num_steps) const {
   for (size_t k = 0; k <= num_steps; k++) {
     std::cout << "step " << k << ":";
-    for (const auto &joint : robot.joints()) {
+    for (const auto& joint : robot.joints()) {
       double angle = JointAngle(values, joint->id(), k);
       std::cout << "\t" << angle;
     }
@@ -231,22 +234,22 @@ OptimizerSetting CartPole::getOptSetting() const {
   //     gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   // opt.prior_t_cost_model =
   //     gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  // opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation);
-  // opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation);
-  // opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  // opt.pose_col_cost_model =
+  // opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1,
+  // sigma_collocation); opt.v_col_cost_model =
+  // gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation);
+  // opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1,
+  // sigma_dynamics); opt.pose_col_cost_model =
   //     gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   // opt.twist_col_cost_model =
   //     gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   return opt;
 }
 
-
 /* ************************************************************************* */
 BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
   if (unactuated_as_constraint) {
     BasisKeyFunc basis_key_func =
-        [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+        [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
       KeyVector basis_keys;
       for (const Key& key : cc->keys_) {
         auto symb = DynamicsSymbol(key);
@@ -263,10 +266,9 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
       return basis_keys;
     };
     return basis_key_func;
-  }
-  else {
+  } else {
     BasisKeyFunc basis_key_func =
-        [](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+        [](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
       KeyVector basis_keys;
       for (const Key& key : cc->keys_) {
         auto symb = DynamicsSymbol(key);
@@ -286,4 +288,4 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
   }
 }
 
-}
+}  // namespace gtsam
