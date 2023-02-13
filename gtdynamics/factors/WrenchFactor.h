@@ -23,8 +23,7 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <boost/optional.hpp>
-#include <boost/serialization/base_object.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,8 +43,8 @@ namespace gtdynamics {
 inline gtsam::NoiseModelFactor::shared_ptr WrenchFactor(
     const gtsam::SharedNoiseModel &cost_model, const LinkConstSharedPtr &link,
     const std::vector<gtsam::Key> &wrench_keys, int time,
-    const boost::optional<gtsam::Vector3> &gravity = boost::none) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
+    const std::optional<gtsam::Vector3> &gravity = {}) {
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector6>>(
       cost_model, gtsam::Vector6::Zero(),
       link->wrenchConstraint(wrench_keys, time, gravity));
 }

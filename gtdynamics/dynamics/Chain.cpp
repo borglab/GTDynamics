@@ -45,7 +45,7 @@ Chain Chain::compose(std::vector<Chain> &chains) {
   return total_chain;
 }
 
-Pose3 Chain::poe(const Vector &q, boost::optional<Pose3 &> fTe,
+Pose3 Chain::poe(const Vector &q, std::optional<Pose3> fTe,
                  gtsam::OptionalJacobian<-1, -1> J) {
   // Check that input has good size
   if (q.size() != length()) {
@@ -121,7 +121,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     gtsam::OptionalJacobian<3, 3> H_angles,
     gtsam::OptionalJacobian<3, 3> H_torques) {
   Matrix J;
-  poe(angles, boost::none, J);
+  poe(angles, {}, J);
   if (H_wrench) {
     // derivative of difference with respect to wrench
     *H_wrench = J.transpose();

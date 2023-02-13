@@ -21,8 +21,6 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -93,7 +91,11 @@ int main(int argc, char** argv) {
         TorqueKey(j1_id, t)};
     std::vector<std::string> vals = {std::to_string(t_elapsed)};
     for (auto&& k : keys) vals.push_back(std::to_string(results.atDouble(k)));
-    traj_file << boost::algorithm::join(vals, ",") << "\n";
+    std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
+    traj_file << vals_str << "\n";
   }
   traj_file.close();
 

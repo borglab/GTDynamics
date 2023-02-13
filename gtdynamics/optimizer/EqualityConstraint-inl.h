@@ -19,7 +19,7 @@ namespace gtdynamics {
 
 template <int P>
 gtsam::NoiseModelFactor::shared_ptr VectorExpressionEquality<P>::createFactor(
-    const double mu, boost::optional<gtsam::Vector&> bias) const {
+    const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   VectorP measure = VectorP::Zero();
   if (bias) {

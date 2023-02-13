@@ -19,25 +19,25 @@ jobs:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
         name:
-          [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10, macOS-10.15-xcode-11.3.1]
+          [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-10.15-xcode-11.3.1]
 
         build_type: [Debug, Release]
         python_version: [3]
         include:
-          - name: ubuntu-18.04-gcc-9
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-gcc-9
+            os: ubuntu-22.04
             compiler: gcc
             version: "9"
 
-          - name: ubuntu-18.04-clang-10
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-clang-12
+            os: ubuntu-22.04
             compiler: clang
-            version: "10"
+            version: "12"
 
-          - name: ubuntu-18.04-clang-10
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-clang-12
+            os: ubuntu-22.04
             compiler: clang
-            version: "10"
+            version: "12"
             build_type: Debug
             python_version: "3"
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
         working-directory: ./build
 
       - name: Build

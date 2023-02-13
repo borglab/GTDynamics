@@ -34,7 +34,7 @@ TEST(Phase, All) {
   Phase phase1(0, 2, phase_1);
 
   auto phase1_foot_constraint =
-      boost::static_pointer_cast<const FootContactConstraintSpec>(
+      std::static_pointer_cast<const FootContactConstraintSpec>(
           phase1.constraintSpec());
 
   Point3 cp = phase1_foot_constraint->contactPoint("tarsus_3_L3");

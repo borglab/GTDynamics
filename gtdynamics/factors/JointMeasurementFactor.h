@@ -34,7 +34,7 @@ class JointMeasurementFactor
 
  public:
   // shorthand for a smart pointer to a factor
-  using shared_ptr = boost::shared_ptr<JointMeasurementFactor>;
+  using shared_ptr = std::shared_ptr<JointMeasurementFactor>;
 
   /**
    * @brief Construct a new Link Pose Factor object
@@ -72,8 +72,8 @@ class JointMeasurementFactor
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3& wTp, const gtsam::Pose3& wTc,
-      boost::optional<gtsam::Matrix&> H_wTp = boost::none,
-      boost::optional<gtsam::Matrix&> H_wTc = boost::none) const override {
+      gtsam::OptionalMatrixType H_wTp = nullptr,
+      gtsam::OptionalMatrixType H_wTc = nullptr) const override {
     gtsam::Matrix6 H;
     gtsam::Pose3 wTc_hat =
         joint_->poseOf(joint_->child(), wTp, measured_joint_coordinate_, H_wTp);

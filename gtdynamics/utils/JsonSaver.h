@@ -26,11 +26,10 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/format.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -54,7 +53,7 @@ namespace gtdynamics {
 class JsonSaver {
  public:
   typedef std::pair<std::string, std::string> AttributeType;
-  typedef boost::shared_ptr<gtsam::Value> ValuePtr;
+  typedef std::shared_ptr<gtsam::Value> ValuePtr;
   typedef std::map<gtsam::Key, gtsam::Vector3> LocationType;
   typedef std::map<std::string, gtsam::Vector3> StrLocationType;
 
@@ -259,8 +258,9 @@ class JsonSaver {
                      dynamic_cast<const gtsam::noiseModel::Isotropic*>(
                          &(*noise_model))) {
         // isotropic
-        ss << boost::format("isotropic dim=%1% sigma=%2%") %
-                  true_noise_model->dim() % true_noise_model->sigma();
+        ss << "isotropic dim=" << true_noise_model->dim()
+           << " sigma=" << true_noise_model->sigma();
+
       } else if (const gtsam::noiseModel::Constrained* true_noise_model =
                      dynamic_cast<const gtsam::noiseModel::Constrained*>(
                          &(*noise_model))) {
@@ -362,7 +362,7 @@ class JsonSaver {
 
     if (values.exists(key)) {
       // value
-      boost::optional<gtsam::Vector3> location;
+      std::optional<gtsam::Vector3> location;
       attributes.emplace_back(Quoted("value"),
                               Quoted(GetValue(values.at(key))));
 
@@ -592,7 +592,7 @@ class JsonSaver {
 class StorageManager {
  private:
   typedef JsonSaver::AttributeType AttributeType;
-  typedef boost::shared_ptr<gtsam::Value> ValuePtr;
+  typedef std::shared_ptr<gtsam::Value> ValuePtr;
   typedef std::map<gtsam::Key, std::vector<ValuePtr>> StorageMap;
   typedef std::pair<gtsam::Key, std::vector<ValuePtr>> StorageEntry;
   StorageMap storage_;

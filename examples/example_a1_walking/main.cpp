@@ -19,8 +19,6 @@
 #include <gtsam/base/timing.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -47,9 +45,9 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   // Create three different FootContactConstraintSpecs, one for all the feet on the
   // ground, one with RL and FR, one with RR and FL
   const Point3 contact_in_com(0, 0, -0.07);
-  auto stationary = boost::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
-  auto RLFR = boost::make_shared<FootContactConstraintSpec>(rlfr, contact_in_com);
-  auto RRFL = boost::make_shared<FootContactConstraintSpec>(rrfl, contact_in_com);
+  auto stationary = std::make_shared<FootContactConstraintSpec>(all_feet, contact_in_com);
+  auto RLFR = std::make_shared<FootContactConstraintSpec>(rlfr, contact_in_com);
+  auto RRFL = std::make_shared<FootContactConstraintSpec>(rrfl, contact_in_com);
 
   //FootContactVector states = {noRL, noRR, noFR, noFL};
   FootContactVector states = {stationary, RRFL, stationary, RLFR};

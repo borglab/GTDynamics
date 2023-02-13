@@ -21,8 +21,8 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace gtdynamics {
@@ -44,7 +44,7 @@ namespace gtdynamics {
 inline gtsam::NoiseModelFactor::shared_ptr TorqueFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const JointConstSharedPtr &joint, size_t k = 0) {
-  return boost::make_shared<gtsam::ExpressionFactor<double>>(
+  return std::make_shared<gtsam::ExpressionFactor<double>>(
       cost_model, 0.0, joint->torqueConstraint(k));
 }
 
