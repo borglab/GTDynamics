@@ -189,18 +189,18 @@ void ManifoldOptimizerType1::constructMoptGraph(
 std::shared_ptr<NonlinearOptimizer>
 ManifoldOptimizerType1::constructNonlinearOptimizer(
     const ManifoldOptProblem& mopt_problem) const {
-  if (nopt_params_.type() == typeid(GaussNewtonParams)) {
+  if (std::holds_alternative<GaussNewtonParams>(nopt_params_)) {
     return std::make_shared<GaussNewtonOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
-        boost::get<GaussNewtonParams>(nopt_params_));
-  } else if (nopt_params_.type() == typeid(LevenbergMarquardtParams)) {
+        std::get<GaussNewtonParams>(nopt_params_));
+  } else if (std::holds_alternative<LevenbergMarquardtParams>(nopt_params_)) {
     return std::make_shared<LevenbergMarquardtOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
-        boost::get<LevenbergMarquardtParams>(nopt_params_));
-  } else if (nopt_params_.type() == typeid(DoglegParams)) {
+        std::get<LevenbergMarquardtParams>(nopt_params_));
+  } else if (std::holds_alternative<DoglegParams>(nopt_params_)) {
     return std::make_shared<DoglegOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
-        boost::get<DoglegParams>(nopt_params_));
+        std::get<DoglegParams>(nopt_params_));
   } else {
     return std::make_shared<LevenbergMarquardtOptimizer>(mopt_problem.graph_,
                                                          mopt_problem.values_);

@@ -20,8 +20,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
-#include <boost/variant.hpp>
-
 using gtdynamics::EqConsOptProblem;
 
 namespace gtsam {
@@ -51,8 +49,8 @@ struct ManifoldOptProblem {
 class ManifoldOptimizerType1 : public ManifoldOptimizer {
  public:
   using shared_ptr = std::shared_ptr<const ManifoldOptimizerType1>;
-  typedef boost::variant<GaussNewtonParams, LevenbergMarquardtParams,
-                         DoglegParams>
+  typedef std::variant<GaussNewtonParams, LevenbergMarquardtParams,
+                       DoglegParams>
       NonlinearOptParamsVariant;
 
  protected:
