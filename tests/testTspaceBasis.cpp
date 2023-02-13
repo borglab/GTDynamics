@@ -37,9 +37,9 @@ TEST(TspaceBasis, connected_poses) {
   // Constraints.
   gtdynamics::EqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(6);
-  auto factor12 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  auto factor23 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
@@ -51,35 +51,38 @@ TEST(TspaceBasis, connected_poses) {
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
   // Connected component.
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
-  
+  auto component = std::make_shared<ConnectedComponent>(constraints);
+
   // Construct basis.
-  KeyVector basis_keys {x3_key};
-  auto basis_params = boost::make_shared<TspaceBasisParams>();
-  auto basis_m = boost::make_shared<MatrixBasis>(basis_params, component, cm_base_values);
-  auto basis_e = boost::make_shared<FixedVarBasis>(basis_params, component, cm_base_values, basis_keys);
-  auto basis_sm = boost::make_shared<SparseMatrixBasis>(basis_params, component, cm_base_values);
+  KeyVector basis_keys{x3_key};
+  auto basis_params = std::make_shared<TspaceBasisParams>();
+  auto basis_m =
+      std::make_shared<MatrixBasis>(basis_params, component, cm_base_values);
+  auto basis_e = std::make_shared<FixedVarBasis>(basis_params, component,
+                                                 cm_base_values, basis_keys);
+  auto basis_sm = std::make_shared<SparseMatrixBasis>(basis_params, component,
+                                                      cm_base_values);
 
   auto linear_graph = component->merit_graph_.linearize(cm_base_values);
   std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
 
   // Check dimension.
-  for (const auto& basis: basis_vec) {
+  for (const auto& basis : basis_vec) {
     EXPECT_LONGS_EQUAL(6, basis->dim());
   }
 
   // Check tagent vector properties
-  for (int i=0; i<6; i++) {
+  for (int i = 0; i < 6; i++) {
     Vector xi1 = Vector::Zero(6);
     xi1(i) = 1;
     Vector xi10 = xi1 * 10;
-    for (const auto& basis: basis_vec) {
+    for (const auto& basis : basis_vec) {
       // check null space property
       auto delta1 = basis->computeTangentVector(xi1);
       EXPECT_DOUBLES_EQUAL(0.0, linear_graph->error(delta1), 1e-9);
       // check linear space property
       auto delta10 = basis->computeTangentVector(xi10);
-      EXPECT(assert_equal(delta10, 10*delta1));
+      EXPECT(assert_equal(delta10, 10 * delta1));
     }
   }
 
@@ -88,7 +91,7 @@ TEST(TspaceBasis, connected_poses) {
   Vector xi2 = Vector::Zero(6);
   xi1(1) = 1;
   xi2(2) = 1;
-  for (const auto& basis: basis_vec) {
+  for (const auto& basis : basis_vec) {
     // check null space property
     auto delta1 = basis->computeTangentVector(xi1);
     auto delta2 = basis->computeTangentVector(xi2);
@@ -106,9 +109,9 @@ TEST(TspaceBasis, connected_poses) {
   auto nwe_linear_graph = component->merit_graph_.linearize(new_cm_base_values);
 
   // Check createWithNewValues.
-  for (const auto& basis: basis_vec) {
+  for (const auto& basis : basis_vec) {
     auto new_basis = basis->createWithNewValues(component, new_cm_base_values);
-    for (int i=0; i<6; i++) {
+    for (int i = 0; i < 6; i++) {
       Vector xi1 = Vector::Zero(6);
       xi1(i) = 1;
       // check null space property
@@ -117,7 +120,6 @@ TEST(TspaceBasis, connected_poses) {
     }
   }
 }
-
 
 int main() {
   TestResult tr;

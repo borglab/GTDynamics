@@ -12,14 +12,13 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/BiasedFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
-
-#include <gtdynamics/factors/BiasedFactor.h>
 
 using namespace gtsam;
 
@@ -30,7 +29,7 @@ TEST(BiasedFactor, pose) {
 
   // Base Factor.
   auto noise = noiseModel::Unit::Create(3);
-  auto base_factor = boost::make_shared<BetweenFactor<Point3>>(
+  auto base_factor = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x2_key, Point3(0, 0, 1), noise);
 
   // Create manifold values for testing.

@@ -93,8 +93,8 @@ class Rot2Projection {
 
   /// retraction with optional derivatives.
   Rot2Projection retract(const gtsam::Vector1& v,  // TODO: use xi
-                         gtsam::OptionalJacobian<1, 1> H1 = boost::none,
-                         gtsam::OptionalJacobian<1, 1> H2 = boost::none) const {
+                         gtsam::OptionalJacobian<1, 1> H1 = nullptr,
+                         gtsam::OptionalJacobian<1, 1> H2 = nullptr) const {
     if (H1) H1->setZero();
     if (H2) H2->setZero();
 
@@ -105,8 +105,8 @@ class Rot2Projection {
 
   /// localCoordinates with optional derivatives.
   gtsam::Vector1 localCoordinates(
-      const Rot2Projection& g, gtsam::OptionalJacobian<1, 1> H1 = boost::none,
-      gtsam::OptionalJacobian<1, 1> H2 = boost::none) const {
+      const Rot2Projection& g, gtsam::OptionalJacobian<1, 1> H1 = nullptr,
+      gtsam::OptionalJacobian<1, 1> H2 = nullptr) const {
     if (H1) H1->setZero();
     if (H2) H2->setZero();
     return Vector1(0);
@@ -115,8 +115,8 @@ class Rot2Projection {
   /**
    * rotate point from rotated coordinate frame to world \f$ p^w = R_c^w p^c \f$
    */
-  Point2 rotate(const Point2& p, OptionalJacobian<2, 1> H1 = boost::none,
-                OptionalJacobian<2, 2> H2 = boost::none) const {
+  Point2 rotate(const Point2& p, OptionalJacobian<2, 1> H1 = nullptr,
+                OptionalJacobian<2, 2> H2 = nullptr) const {
     const Point2 q = Point2(c_ * p.x() + -s_ * p.y(), s_ * p.x() + c_ * p.y());
     if (H1) *H1 << -q.y(), q.x();
     if (H2) *H2 = matrix();
@@ -126,8 +126,8 @@ class Rot2Projection {
   /**
    * rotate point from world to rotated frame \f$ p^c = (R_c^w)^T p^w \f$
    */
-  Point2 unrotate(const Point2& p, OptionalJacobian<2, 1> H1 = boost::none,
-                  OptionalJacobian<2, 2> H2 = boost::none) const {
+  Point2 unrotate(const Point2& p, OptionalJacobian<2, 1> H1 = nullptr,
+                  OptionalJacobian<2, 2> H2 = nullptr) const {
     const Point2 q = Point2(c_ * p.x() + s_ * p.y(), -s_ * p.x() + c_ * p.y());
     if (H1) *H1 << q.y(), -q.x();
     if (H2) *H2 = transpose();
@@ -174,7 +174,8 @@ TEST(ManifoldOptProblem, SO2) {
   LevenbergMarquardtParams nopt_params;
   ManifoldOptimizerParameters mopt_params;
   ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
-  auto mopt_problem = optimizer.initializeMoptProblem(*costs, *constraints, init_values);
+  auto mopt_problem =
+      optimizer.initializeMoptProblem(*costs, *constraints, init_values);
 
   EXPECT_LONGS_EQUAL(1, mopt_problem.components_.size());
   EXPECT_LONGS_EQUAL(0, mopt_problem.unconstrained_keys_.size());
@@ -184,7 +185,6 @@ TEST(ManifoldOptProblem, SO2) {
   EXPECT_LONGS_EQUAL(2, mopt_problem.problemDimension().first);
   EXPECT_LONGS_EQUAL(1, mopt_problem.problemDimension().second);
 }
-
 
 /** Optimization using Rot2 manifold. */
 TEST(ManifoldOptimization, SO2) {
