@@ -25,19 +25,19 @@ TspaceBasis::shared_ptr
 TspaceBasis::create(const TspaceBasisParams::shared_ptr params,
                     const ConnectedComponent::shared_ptr cc,
                     const Values &values,
-                    boost::optional<const KeyVector &> basis_keys,
-                    boost::optional<size_t> manifold_dim) {
+                    std::optional<const KeyVector> basis_keys,
+                    std::optional<size_t> manifold_dim) {
   TspaceBasis::shared_ptr basis;
 
   if (manifold_dim && *manifold_dim == 0) {
-    return boost::make_shared<EmptyBasis>(params);
+    return std::make_shared<EmptyBasis>(params);
   } else if (params->basis_type == BasisType::MATRIX) {
-    basis = boost::make_shared<MatrixBasis>(params, cc, values);
+    basis = std::make_shared<MatrixBasis>(params, cc, values);
   } else if (params->basis_type == BasisType::SPARSE_MATRIX) {
-    basis = boost::make_shared<SparseMatrixBasis>(params, cc, values);
+    basis = std::make_shared<SparseMatrixBasis>(params, cc, values);
   } else if (params->basis_type == BasisType::SPECIFY_VARIABLES) {
     basis =
-        boost::make_shared<FixedVarBasis>(params, cc, values, basis_keys);
+        std::make_shared<FixedVarBasis>(params, cc, values, basis_keys);
   }
 
   // Check the total dimension of basis variables should be the same as the
@@ -220,7 +220,7 @@ void SparseMatrixBasis::setSparseEntries(
 FixedVarBasis::FixedVarBasis(
     const TspaceBasisParams::shared_ptr &params,
     const ConnectedComponent::shared_ptr &cc, const Values &values,
-    boost::optional<const KeyVector &> basis_keys)
+    std::optional<const KeyVector> basis_keys)
     : TspaceBasis(params), basis_keys_(*basis_keys) {
   // Set the location of each basis variable.
   size_t location = 0;

@@ -11,7 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include "manifold/Retractor.h"
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtsam/linear/GaussianEliminationTree.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -22,11 +21,14 @@
 
 #include <stack>
 
+#include "manifold/Retractor.h"
+
 namespace gtsam {
 
 /* ************************************************************************* */
 ManifoldOptimizerParameters::ManifoldOptimizerParameters()
-    : Base(), cc_params(boost::make_shared<ConstraintManifold::Params>()),
+    : Base(),
+      cc_params(std::make_shared<ConstraintManifold::Params>()),
       retract_init(true) {}
 
 /* ************************************************************************* */
@@ -60,7 +62,7 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
   for (const auto& constraint_index : constraint_indices) {
     cc_constraints.emplace_back(constraints.at(constraint_index));
   }
-  return boost::make_shared<ConnectedComponent>(cc_constraints);
+  return std::make_shared<ConnectedComponent>(cc_constraints);
 }
 
 /* ************************************************************************* */

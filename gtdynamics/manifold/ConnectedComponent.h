@@ -30,7 +30,7 @@ public:
   const gtsam::NonlinearFactorGraph
       merit_graph_; // factor graph representing merit function ||h(X)||^2
   const gtsam::KeySet keys_; // variables in CCC
-  using shared_ptr = boost::shared_ptr<ConnectedComponent>;
+  using shared_ptr = std::shared_ptr<ConnectedComponent>;
 
   /// Constructor from constraints.
   ConnectedComponent(const gtdynamics::EqualityConstraints &constraints)

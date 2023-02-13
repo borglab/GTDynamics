@@ -105,10 +105,9 @@ Retractor::shared_ptr ConstraintManifold::constructRetractor(
       throw std::runtime_error("Basis Key Function not provided for retractor");
     }
     KeyVector basis_keys = params->basis_key_func(cc);
-    return Retractor::create( params->retract_params, cc,
-                             basis_keys);
+    return Retractor::create(params->retract_params, cc, basis_keys);
   }
-  return Retractor::create( params->retract_params, cc);
+  return Retractor::create(params->retract_params, cc);
 }
 
 /* ************************************************************************* */
@@ -121,11 +120,11 @@ TspaceBasis::shared_ptr ConstraintManifold::constructTspaceBasis(
           "Basis Key Function not provided for tspace basis");
     }
     KeyVector basis_keys = params->basis_key_func(cc);
-    return TspaceBasis::create(params->basis_params, cc,
-                               values, basis_keys, manifold_dim);
+    return TspaceBasis::create(params->basis_params, cc, values, basis_keys,
+                               manifold_dim);
   }
-  return TspaceBasis::create(params->basis_params, cc,
-                             values, boost::none, manifold_dim);
+  return TspaceBasis::create(params->basis_params, cc, values, {},
+                             manifold_dim);
 }
 
 /* ************************************************************************* */
@@ -134,4 +133,4 @@ const Values ConstraintManifold::feasibleValues() const {
   return optimizer.optimize();
 }
 
-} // namespace gtsam
+}  // namespace gtsam

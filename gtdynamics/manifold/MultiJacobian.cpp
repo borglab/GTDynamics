@@ -13,6 +13,8 @@
 
 #include <gtdynamics/manifold/MultiJacobian.h>
 
+#include <boost/range/adaptor/reversed.hpp>
+
 namespace gtsam {
 
 /* ************************************************************************* */
@@ -125,8 +127,9 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
               "frontal: " + std::to_string(frontal_position) + ", " +
               std::to_string(frontal_dim) +
               "\tparent: " + std::to_string(parent_position) + ", " +
-              std::to_string(parent_dim) + "\tS_mat: " +
-              std::to_string(S_mat.rows()) + ", " + std::to_string(S_mat.cols()) +
+              std::to_string(parent_dim) +
+              "\tS_mat: " + std::to_string(S_mat.rows()) + ", " +
+              std::to_string(S_mat.cols()) +
               "\tR: " + std::to_string(cg->R().cols()) + ", " +
               std::to_string(cg->R().rows()) +
               "\tS: " + std::to_string(cg->S().cols()) + ", " +

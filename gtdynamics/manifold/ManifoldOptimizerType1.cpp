@@ -11,13 +11,13 @@
  * @author: Yetong Zhang
  */
 
-
-#include "manifold/Retractor.h"
-#include "manifold/TspaceBasis.h"
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/manifold/ManifoldOptimizerType1.h>
 #include <gtdynamics/manifold/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
+#include "manifold/Retractor.h"
+#include "manifold/TspaceBasis.h"
 
 namespace gtsam {
 
@@ -39,7 +39,7 @@ Values ManifoldOptimizerType1::optimize(
   auto nopt_values = nonlinear_optimizer->optimize();
   if (intermediate_result) {
     intermediate_result->num_iters.push_back(
-        boost::dynamic_pointer_cast<LevenbergMarquardtOptimizer>(
+        std::dynamic_pointer_cast<LevenbergMarquardtOptimizer>(
             nonlinear_optimizer)
             ->getInnerIterations());
   }
@@ -51,18 +51,20 @@ Values ManifoldOptimizerType1::baseValues(
     const ManifoldOptProblem& mopt_problem, const Values& nopt_values) const {
   Values base_values;
   for (const Key& key : mopt_problem.fixed_manifolds_.keys()) {
-    base_values.insert(
-        mopt_problem.fixed_manifolds_.at(key).cast<ConstraintManifold>().values());
+    base_values.insert(mopt_problem.fixed_manifolds_.at(key)
+                           .cast<ConstraintManifold>()
+                           .values());
   }
   for (const Key& key : mopt_problem.unconstrained_keys_) {
     base_values.insert(key, nopt_values.at(key));
   }
   for (const Key& key : mopt_problem.manifold_keys_) {
     if (p_.retract_final) {
-      base_values.insert(nopt_values.at(key).cast<ConstraintManifold>().feasibleValues());
-    }
-    else {
-      base_values.insert(nopt_values.at(key).cast<ConstraintManifold>().values());
+      base_values.insert(
+          nopt_values.at(key).cast<ConstraintManifold>().feasibleValues());
+    } else {
+      base_values.insert(
+          nopt_values.at(key).cast<ConstraintManifold>().values());
     }
   }
   return base_values;
@@ -109,8 +111,8 @@ void ManifoldOptimizerType1::constructManifoldValues(
       component_values.insert(key, ecopt_problem.values_.at(key));
     }
     // Construct manifold value
-    auto constraint_manifold =
-        ConstraintManifold(component, component_values, p_.cc_params, p_.retract_init);
+    auto constraint_manifold = ConstraintManifold(
+        component, component_values, p_.cc_params, p_.retract_init);
     // check if the manifold is fully constrained
     if (constraint_manifold.dim() > 0) {
       mopt_problem.values_.insert(component_key, constraint_manifold);
@@ -154,7 +156,8 @@ void ManifoldOptimizerType1::constructMoptGraph(
     }
   }
   for (const Key& cm_key : mopt_problem.fixed_manifolds_.keys()) {
-    const auto& cm = mopt_problem.fixed_manifolds_.at(cm_key).cast<ConstraintManifold>();
+    const auto& cm =
+        mopt_problem.fixed_manifolds_.at(cm_key).cast<ConstraintManifold>();
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
@@ -170,8 +173,8 @@ void ManifoldOptimizerType1::constructMoptGraph(
     }
     if (replacement_map.size() > 0) {
       NoiseModelFactor::shared_ptr noise_factor =
-          boost::dynamic_pointer_cast<NoiseModelFactor>(factor);
-      auto subs_factor = boost::make_shared<SubstituteFactor>(
+          std::dynamic_pointer_cast<NoiseModelFactor>(factor);
+      auto subs_factor = std::make_shared<SubstituteFactor>(
           noise_factor, replacement_map, mopt_problem.fixed_manifolds_);
       if (subs_factor->checkActive()) {
         mopt_problem.graph_.add(subs_factor);
@@ -183,24 +186,24 @@ void ManifoldOptimizerType1::constructMoptGraph(
 }
 
 /* ************************************************************************* */
-boost::shared_ptr<NonlinearOptimizer>
+std::shared_ptr<NonlinearOptimizer>
 ManifoldOptimizerType1::constructNonlinearOptimizer(
     const ManifoldOptProblem& mopt_problem) const {
   if (nopt_params_.type() == typeid(GaussNewtonParams)) {
-    return boost::make_shared<GaussNewtonOptimizer>(
+    return std::make_shared<GaussNewtonOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
         boost::get<GaussNewtonParams>(nopt_params_));
   } else if (nopt_params_.type() == typeid(LevenbergMarquardtParams)) {
-    return boost::make_shared<LevenbergMarquardtOptimizer>(
+    return std::make_shared<LevenbergMarquardtOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
         boost::get<LevenbergMarquardtParams>(nopt_params_));
   } else if (nopt_params_.type() == typeid(DoglegParams)) {
-    return boost::make_shared<DoglegOptimizer>(
+    return std::make_shared<DoglegOptimizer>(
         mopt_problem.graph_, mopt_problem.values_,
         boost::get<DoglegParams>(nopt_params_));
   } else {
-    return boost::make_shared<LevenbergMarquardtOptimizer>(
-        mopt_problem.graph_, mopt_problem.values_);
+    return std::make_shared<LevenbergMarquardtOptimizer>(mopt_problem.graph_,
+                                                         mopt_problem.values_);
   }
 }
 
