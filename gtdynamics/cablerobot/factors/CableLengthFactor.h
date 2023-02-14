@@ -8,13 +8,10 @@
 #pragma once
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <boost/optional.hpp>
 
 #include <iostream>
 #include <string>
@@ -57,8 +54,8 @@ class CableLengthFactor
    */
   gtsam::Vector evaluateError(
       const double &l, const gtsam::Pose3 &wTx,
-      boost::optional<gtsam::Matrix &> H_l = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const override {
+      gtsam::OptionalMatrixType H_l = nullptr,
+      gtsam::OptionalMatrixType H_wTx = nullptr) const override {
     gtsam::Matrix36 wPb_H_wTx;
     gtsam::Matrix13 H_wPb;
     auto wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
@@ -70,7 +67,7 @@ class CableLengthFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -83,6 +80,7 @@ class CableLengthFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -90,6 +88,7 @@ class CableLengthFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics
