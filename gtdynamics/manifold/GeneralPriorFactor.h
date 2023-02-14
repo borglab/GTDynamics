@@ -91,8 +91,8 @@ class GeneralPriorFactor : public NoiseModelFactor {
 
   const Value &prior() const { return prior_.at(keys_[0]); }
 
-#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>

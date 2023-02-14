@@ -46,8 +46,6 @@
 #include "gtdynamics/utils/values.h"
 #include "gtdynamics/optimizer/OptimizationBenchmark.h"
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>

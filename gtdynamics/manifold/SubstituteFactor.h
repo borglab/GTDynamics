@@ -17,8 +17,6 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/serialization/base_object.hpp>
-
 namespace gtsam {
 
 /** A factor that substitute certain variables of a base factor with constraint
@@ -114,8 +112,8 @@ class SubstituteFactor : public NoiseModelFactor {
    * factor are fully constrained, no updates can be made.*/
   inline bool checkActive() const { return size() > 0; }
 
-#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function.
   friend class boost::serialization::access;
   template <class ARCHIVE>

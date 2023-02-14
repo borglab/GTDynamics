@@ -3,8 +3,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <boost/serialization/base_object.hpp>
-
 namespace gtsam {
 
 /** A factor that substitute certain variables of a base factor with constraint

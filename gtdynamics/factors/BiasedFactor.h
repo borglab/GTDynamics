@@ -2,8 +2,6 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/serialization/base_object.hpp>
-
 namespace gtsam {
 
 /** A factor that adds a constant bias term to the original factor.
@@ -64,8 +62,8 @@ class BiasedFactor : public NoiseModelFactor {
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
-#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
