@@ -20,6 +20,8 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
+#include <variant>
+
 using gtdynamics::EqConsOptProblem;
 
 namespace gtsam {
