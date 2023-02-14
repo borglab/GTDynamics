@@ -20,7 +20,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
-#include <boost/variant.hpp>
+#include <variant>
 
 using gtdynamics::EqConsOptProblem;
 
@@ -40,7 +40,7 @@ struct ManifoldOptProblem {
   /** Dimension of the manifold optimization problem, as factor dimension x
    * variable dimension. */
   std::pair<size_t, size_t> problemDimension() const;
-  
+
   /// Customizable print function.
   void print(const std::string& s = "",
              const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;
@@ -50,21 +50,20 @@ struct ManifoldOptProblem {
  * constraint manifold variable */
 class ManifoldOptimizerType1 : public ManifoldOptimizer {
  public:
-  using shared_ptr = boost::shared_ptr<const ManifoldOptimizerType1>;
-  typedef boost::variant<GaussNewtonParams, LevenbergMarquardtParams,
-                         DoglegParams>
+  using shared_ptr = std::shared_ptr<const ManifoldOptimizerType1>;
+  typedef std::variant<GaussNewtonParams, LevenbergMarquardtParams,
+                       DoglegParams>
       NonlinearOptParamsVariant;
 
  protected:
   NonlinearOptParamsVariant nopt_params_;
+
  public:
   /// Construct from parameters.
-  ManifoldOptimizerType1(
-      const ManifoldOptimizerParameters& mopt_params,
-      const NonlinearOptParamsVariant& nopt_params,
-      boost::optional<BasisKeyFunc> basis_key_func = boost::none)
-      : ManifoldOptimizer(mopt_params),
-        nopt_params_(nopt_params) {}
+  ManifoldOptimizerType1(const ManifoldOptimizerParameters& mopt_params,
+                         const NonlinearOptParamsVariant& nopt_params,
+                         std::optional<BasisKeyFunc> basis_key_func = {})
+      : ManifoldOptimizer(mopt_params), nopt_params_(nopt_params) {}
 
   /// Virtual destructor.
   virtual ~ManifoldOptimizerType1() {}
@@ -79,9 +78,9 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
           nullptr) const override;
 
   /// Optimization given manifold optimization problem.
-  gtsam::Values
-  optimize(const ManifoldOptProblem &mopt_problem,
-           gtdynamics::ConstrainedOptResult *intermediate_result = nullptr) const;
+  gtsam::Values optimize(
+      const ManifoldOptProblem& mopt_problem,
+      gtdynamics::ConstrainedOptResult* intermediate_result = nullptr) const;
 
   /// Initialize the manifold optization problem.
   ManifoldOptProblem initializeMoptProblem(
@@ -90,7 +89,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
       const gtsam::Values& init_values) const;
 
   /// Create the underlying nonlinear optimizer for manifold optimization.
-  boost::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
+  std::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
       const ManifoldOptProblem& mopt_problem) const;
 
   /// Construct values of original variables.

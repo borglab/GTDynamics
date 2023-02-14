@@ -103,8 +103,11 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
     jacobians.emplace(key, MultiJacobian::Identity(key, var_dim.at(key)));
   }
 
+  GaussianBayesNet reversed_bn = bn;
+  std::reverse(reversed_bn.begin(), reversed_bn.end());
+
   // iteratively set jacobian of other variables
-  for (auto cg : boost::adaptors::reverse(bn)) {
+  for (auto cg : reversed_bn) {
     const Matrix S_mat = -cg->R().triangularView<Eigen::Upper>().solve(cg->S());
     DenseIndex frontal_position = 0;
     for (auto frontal = cg->beginFrontals(); frontal != cg->endFrontals();
@@ -125,8 +128,9 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
               "frontal: " + std::to_string(frontal_position) + ", " +
               std::to_string(frontal_dim) +
               "\tparent: " + std::to_string(parent_position) + ", " +
-              std::to_string(parent_dim) + "\tS_mat: " +
-              std::to_string(S_mat.rows()) + ", " + std::to_string(S_mat.cols()) +
+              std::to_string(parent_dim) +
+              "\tS_mat: " + std::to_string(S_mat.rows()) + ", " +
+              std::to_string(S_mat.cols()) +
               "\tR: " + std::to_string(cg->R().cols()) + ", " +
               std::to_string(cg->R().rows()) +
               "\tS: " + std::to_string(cg->S().cols()) + ", " +

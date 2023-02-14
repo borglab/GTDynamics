@@ -11,7 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/manifold/Retractor.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -25,7 +24,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <boost/format.hpp>
+#include "gtdynamics/manifold/Retractor.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -39,13 +38,13 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   // Constraints.
   gtdynamics::EqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(6);
-  auto factor12 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  auto factor23 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
+  auto component = std::make_shared<ConnectedComponent>(constraints);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -61,13 +60,13 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
                                          RetractType::FIX_VARS};
 
   BasisKeyFunc basis_key_func =
-      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+      [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
     return KeyVector{x3_key};
   };
 
-  for (const auto& basis_type: basis_types) {
-    for (const auto& retract_type: retract_types) {
-      auto params = boost::make_shared<ConstraintManifold::Params>();
+  for (const auto& basis_type : basis_types) {
+    for (const auto& retract_type : retract_types) {
+      auto params = std::make_shared<ConstraintManifold::Params>();
       params->basis_key_func = basis_key_func;
       params->basis_params->basis_type = basis_type;
       params->retract_params->retract_type = retract_type;
@@ -90,25 +89,24 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
       // Check recover jacobian
       std::function<Pose3(const ConstraintManifold&)> x2_recover_func =
           std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                    x2_key, boost::none);
+                    x2_key, nullptr);
       EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
                               x2_recover_func, manifold),
                           H_recover_x2));
 
       std::function<Pose3(const ConstraintManifold&)> x3_recover_func =
           std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                    x3_key, boost::none);
+                    x3_key, nullptr);
       EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
                               x3_recover_func, manifold),
                           H_recover_x3));
-  
+
       // check retract
-      Vector xi = (Vector(6)<<0,0,0,0,0,1).finished();
+      Vector xi = (Vector(6) << 0, 0, 0, 0, 0, 1).finished();
       auto new_cm = manifold.retract(xi);
     }
   }
 }
-
 
 /** Dynamics manifold for cart-pole robot. */
 TEST(ConstraintManifold_retract, cart_pole_dynamics) {
@@ -150,17 +148,17 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
   BasisKeyFunc basis_key_func =
-      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+      [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
     return basis_keys;
   };
 
   // constraint manifold
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto cc_params = boost::make_shared<ConstraintManifold::Params>();
+  auto cc_params = std::make_shared<ConstraintManifold::Params>();
   cc_params->retract_params->setFixVars();
   cc_params->basis_params->setFixVars();
   cc_params->basis_key_func = basis_key_func;
-  auto cc = boost::make_shared<ConnectedComponent>(constraints);
+  auto cc = std::make_shared<ConnectedComponent>(constraints);
   auto cm = ConstraintManifold(cc, init_values, cc_params, true);
 
   // retract

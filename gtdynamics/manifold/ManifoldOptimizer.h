@@ -13,12 +13,13 @@
 
 #pragma once
 
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
+
+#include "gtdynamics/manifold/TspaceBasis.h"
 
 namespace gtsam {
 
@@ -27,11 +28,11 @@ struct ManifoldOptimizerParameters
     : public gtdynamics::ConstrainedOptimizationParameters {
   using Base = gtdynamics::ConstrainedOptimizationParameters;
   ConstraintManifold::Params::shared_ptr
-      cc_params;             // Parameter for constraint-connected components
-  bool retract_init = true;  // Perform retraction on constructing values for
-                             // connected component.
-  bool retract_final = false; // Perform retraction on manifolds after
-                              // optimization, used for infeasible methods.
+      cc_params;               // Parameter for constraint-connected components
+  bool retract_init = true;    // Perform retraction on constructing values for
+                               // connected component.
+  bool retract_final = false;  // Perform retraction on manifolds after
+                               // optimization, used for infeasible methods.
   /// Default Constructor.
   ManifoldOptimizerParameters();
 };
@@ -39,7 +40,7 @@ struct ManifoldOptimizerParameters
 /// Base class for manifold optimizer.
 class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
  public:
-  using shared_ptr = boost::shared_ptr<const ManifoldOptimizer>;
+  using shared_ptr = std::shared_ptr<const ManifoldOptimizer>;
 
  protected:
   const ManifoldOptimizerParameters p_;

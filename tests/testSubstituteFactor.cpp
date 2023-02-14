@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/manifold/SubstituteFactor.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -19,10 +22,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
-
-#include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/manifold/SubstituteFactor.h>
 
 using namespace gtsam;
 
@@ -37,9 +36,9 @@ TEST(SubstituteFactor, pose) {
   // Constraints.
   gtdynamics::EqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(3);
-  auto factor12 = boost::make_shared<BetweenFactor<Point3>>(
+  auto factor12 = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x2_key, Point3(0, 0, 1), noise);
-  auto factor23 = boost::make_shared<BetweenFactor<Point3>>(
+  auto factor23 = std::make_shared<BetweenFactor<Point3>>(
       x2_key, x3_key, Point3(0, 1, 0), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
@@ -51,13 +50,13 @@ TEST(SubstituteFactor, pose) {
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
   // Construct manifold.
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
+  auto component = std::make_shared<ConnectedComponent>(constraints);
   ConstraintManifold manifold(component, cm_base_values);
 
   // Construct cost factor.
-  auto cost_factor1 = boost::make_shared<BetweenFactor<Point3>>(
+  auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(
       x3_key, x4_key, Point3(1, 0, 0), noise);
-  auto cost_factor2 = boost::make_shared<BetweenFactor<Point3>>(
+  auto cost_factor2 = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x3_key, Point3(1, 0, 0), noise);
 
   // Replacement map.
@@ -105,10 +104,10 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   gtdynamics::EqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(3);
   auto factor1 =
-      boost::make_shared<PriorFactor<Point3>>(x1_key, Point3(0, 0, 0), noise);
-  auto factor12 = boost::make_shared<BetweenFactor<Point3>>(
+      std::make_shared<PriorFactor<Point3>>(x1_key, Point3(0, 0, 0), noise);
+  auto factor12 = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x2_key, Point3(0, 0, 1), noise);
-  auto factor23 = boost::make_shared<BetweenFactor<Point3>>(
+  auto factor23 = std::make_shared<BetweenFactor<Point3>>(
       x2_key, x3_key, Point3(0, 1, 0), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor1);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
@@ -121,13 +120,13 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
   // Construct manifold.
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
+  auto component = std::make_shared<ConnectedComponent>(constraints);
   ConstraintManifold manifold(component, cm_base_values);
 
   // Construct cost factor.
-  auto cost_factor1 = boost::make_shared<BetweenFactor<Point3>>(
+  auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(
       x3_key, x4_key, Point3(1, 0, 0), noise);
-  auto cost_factor2 = boost::make_shared<BetweenFactor<Point3>>(
+  auto cost_factor2 = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x3_key, Point3(1, 0, 0), noise);
 
   // Replacement map.
@@ -155,8 +154,7 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(subs_factor1, values, 1e-7, 1e-5);
 }
 
-
-  int main() {
-    TestResult tr;
-    return TestRegistry::runAllTests(tr);
-  }
+int main() {
+  TestResult tr;
+  return TestRegistry::runAllTests(tr);
+}

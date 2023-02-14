@@ -80,7 +80,7 @@ void InsertSelected(const Values& values, const KeyVector& keys,
 
 /* ************************************************************************* */
 Vector SubstituteFactor::unwhitenedError(
-    const Values& x, boost::optional<std::vector<Matrix>&> H) const {
+    const Values& x, gtsam::OptionalMatrixVecType H) const {
   // Construct values for base factor.
   Values base_x = fc_values_;
   for (const Key& key : unconstrained_keys_) {

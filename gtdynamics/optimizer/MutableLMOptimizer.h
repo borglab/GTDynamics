@@ -11,7 +11,9 @@
 
 /**
  * @file    MutableLMOptimizer.h
- * @brief   A nonlinear optimizer that uses the Levenberg-Marquardt trust-region scheme
+ * @brief   A nonlinear optimizer that uses
+ * the Levenberg-Marquardt trust-region
+ * scheme
  * @author  Richard Roberts
  * @author  Frank Dellaert
  * @author  Luca Carlone
@@ -20,10 +22,12 @@
 
 #pragma once
 
-#include <gtsam/nonlinear/NonlinearOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
+#include <gtsam/nonlinear/NonlinearOptimizer.h>
+
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 
 class NonlinearOptimizerMoreOptimizationTest;
 
@@ -32,25 +36,30 @@ namespace gtsam {
 /**
  * This class performs Levenberg-Marquardt nonlinear optimization
  */
-class GTSAM_EXPORT MutableLMOptimizer: public NonlinearOptimizer {
+class GTSAM_EXPORT MutableLMOptimizer : public NonlinearOptimizer {
+ protected:
+  LevenbergMarquardtParams params_;  ///< LM parameters
 
-protected:
-  LevenbergMarquardtParams params_; ///< LM parameters
-  boost::posix_time::ptime startTime_;
+  // startTime_ is a chrono time point
+  std::chrono::time_point<std::chrono::high_resolution_clock>
+      startTime_;  ///< time when optimization started
 
   void initTime();
 
-public:
-  typedef boost::shared_ptr<MutableLMOptimizer> shared_ptr;
-  
-  NonlinearFactorGraph& mutableGraph() {return graph_; }
+ public:
+  typedef std::shared_ptr<MutableLMOptimizer> shared_ptr;
+
+  NonlinearFactorGraph& mutableGraph() { return graph_; }
 
   /// @name Constructors/Destructor
   /// @{
 
-  MutableLMOptimizer(const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
+  MutableLMOptimizer(
+      const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
 
-  MutableLMOptimizer(const NonlinearFactorGraph& graph, const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
+  MutableLMOptimizer(
+      const NonlinearFactorGraph& graph,
+      const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
 
   /** Standard constructor, requires a nonlinear factor graph, initial
    * variable assignments, and optimization parameters.  For convenience this
@@ -60,8 +69,9 @@ public:
    * @param initialValues The initial variable assignments
    * @param params The optimization parameters
    */
-  MutableLMOptimizer(const NonlinearFactorGraph& graph, const Values& initialValues,
-                              const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
+  MutableLMOptimizer(
+      const NonlinearFactorGraph& graph, const Values& initialValues,
+      const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
 
   /** Standard constructor, requires a nonlinear factor graph, initial
    * variable assignments, and optimization parameters.  For convenience this
@@ -70,13 +80,13 @@ public:
    * @param graph The nonlinear factor graph to optimize
    * @param initialValues The initial variable assignments
    */
-  MutableLMOptimizer(const NonlinearFactorGraph& graph, const Values& initialValues,
-                              const Ordering& ordering,
-                              const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
+  MutableLMOptimizer(
+      const NonlinearFactorGraph& graph, const Values& initialValues,
+      const Ordering& ordering,
+      const LevenbergMarquardtParams& params = LevenbergMarquardtParams());
 
   /** Virtual destructor */
-  ~MutableLMOptimizer() override {
-  }
+  ~MutableLMOptimizer() override {}
 
   /// @}
 
@@ -108,16 +118,14 @@ public:
   /// @name Advanced interface
   /// @{
 
-  /** 
-   * Perform a single iteration, returning GaussianFactorGraph corresponding to 
+  /**
+   * Perform a single iteration, returning GaussianFactorGraph corresponding to
    * the linearized factor graph.
    */
   GaussianFactorGraph::shared_ptr iterate() override;
 
   /** Read-only access the parameters */
-  const LevenbergMarquardtParams& params() const {
-    return params_;
-  }
+  const LevenbergMarquardtParams& params() const { return params_; }
 
   void writeLogFile(double currentError);
 
@@ -125,20 +133,19 @@ public:
   virtual GaussianFactorGraph::shared_ptr linearize() const;
 
   /** Build a damped system for a specific lambda -- for testing only */
-  GaussianFactorGraph buildDampedSystem(const GaussianFactorGraph& linear,
-                                        const VectorValues& sqrtHessianDiagonal) const;
+  GaussianFactorGraph buildDampedSystem(
+      const GaussianFactorGraph& linear,
+      const VectorValues& sqrtHessianDiagonal) const;
 
   /** Inner loop, changes state, returns true if successful or giving up */
-  bool tryLambda(const GaussianFactorGraph& linear, const VectorValues& sqrtHessianDiagonal);
+  bool tryLambda(const GaussianFactorGraph& linear,
+                 const VectorValues& sqrtHessianDiagonal);
 
   /// @}
 
-protected:
-
+ protected:
   /** Access the parameters (base class version) */
-  const NonlinearOptimizerParams& _params() const override {
-    return params_;
-  }
+  const NonlinearOptimizerParams& _params() const override { return params_; }
 };
 
-}
+}  // namespace gtsam

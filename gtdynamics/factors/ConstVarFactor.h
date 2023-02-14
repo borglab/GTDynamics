@@ -3,9 +3,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <boost/assign/list_of.hpp>
-#include <boost/serialization/base_object.hpp>
-
 namespace gtsam {
 
 /** A factor that substitute certain variables of a base factor with constraint
@@ -61,8 +58,8 @@ class ConstVarFactor : public NoiseModelFactor {
   static KeySet computeFixedKeys(const Base::shared_ptr& base_factor,
                                  const KeySet& fixed_keys);
 
-  static std::vector<size_t> computeBaseKeyIndex(const Base::shared_ptr& base_factor,
-                                 const KeySet& fixed_keys);
+  static std::vector<size_t> computeBaseKeyIndex(
+      const Base::shared_ptr& base_factor, const KeySet& fixed_keys);
 
  public:
   /**
@@ -72,12 +69,11 @@ class ConstVarFactor : public NoiseModelFactor {
    * both the function evaluation and its derivative(s) in H.
    */
   virtual Vector unwhitenedError(
-      const Values& x,
-      boost::optional<std::vector<Matrix>&> H = boost::none) const override;
+      const Values& x, gtsam::OptionalMatrixVecType H = nullptr) const override;
 
   /** Return a deep copy of this factor. */
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -88,16 +84,16 @@ class ConstVarFactor : public NoiseModelFactor {
    * factor are fully constrained, no updates can be made.*/
   inline bool checkActive() const { return size() > 0; }
 
-  const Values& fixedValues() const {return fixed_values_; }
+  const Values& fixedValues() const { return fixed_values_; }
 
 };  // \class ConstVarFactor
 
-typedef std::vector<boost::shared_ptr<ConstVarFactor>> ConstVarFactors;
+typedef std::vector<std::shared_ptr<ConstVarFactor>> ConstVarFactors;
 
-std::pair<NonlinearFactorGraph, ConstVarFactors>
-ConstVarGraph(const NonlinearFactorGraph &graph, const KeySet &fixed_keys);
+std::pair<NonlinearFactorGraph, ConstVarFactors> ConstVarGraph(
+    const NonlinearFactorGraph& graph, const KeySet& fixed_keys);
 
-NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph &graph,
-                                   const Values &fixed_values);
+NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph& graph,
+                                   const Values& fixed_values);
 
 }  // namespace gtsam

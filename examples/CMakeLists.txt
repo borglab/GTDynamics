@@ -11,7 +11,8 @@ set(EXAMPLE_SUBDIRS
     # example_jumping_robot  # Python based example
     example_quadruped_mp
     example_spider_walking
-    example_constraint_manifold)
+    # example_constraint_manifold  #TODO
+  )
 
 # Add each example subdirectory for compilation
 foreach(EXAMPLE ${EXAMPLE_SUBDIRS})

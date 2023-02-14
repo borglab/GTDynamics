@@ -31,7 +31,7 @@ TEST(ConstVarFactor, errorAndJacobian) {
 
   // Construct original factor.
   auto noise = noiseModel::Unit::Create(6);
-  auto base_factor = boost::make_shared<BetweenFactor<Pose3>>(
+  auto base_factor = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(1, 0, 0)), noise);
 
   // Fixed variables.
@@ -84,7 +84,7 @@ TEST(ConstVarGraph, error) {
   // Construct const var graph with fixed keys.
   NonlinearFactorGraph new_graph;
   ConstVarFactors const_var_factors;
-  boost::tie(new_graph, const_var_factors) = ConstVarGraph(graph, fixed_keys);
+  std::tie(new_graph, const_var_factors) = ConstVarGraph(graph, fixed_keys);
   EXPECT_LONGS_EQUAL(2, new_graph.size());
   EXPECT_LONGS_EQUAL(1, const_var_factors.size());
 

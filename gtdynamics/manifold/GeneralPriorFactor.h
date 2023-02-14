@@ -28,15 +28,14 @@ namespace gtsam {
  * A class for a soft prior on any Value type
  */
 class GeneralPriorFactor : public NoiseModelFactor {
-
-private:
+ private:
   typedef NoiseModelFactor Base;
   Values prior_; /** The measurement */
   size_t dim_;
 
-public:
+ public:
   /// shorthand for a smart pointer to a factor
-  typedef typename boost::shared_ptr<GeneralPriorFactor> shared_ptr;
+  typedef typename std::shared_ptr<GeneralPriorFactor> shared_ptr;
 
   /// Typedef to this class
   typedef GeneralPriorFactor This;
@@ -56,16 +55,15 @@ public:
 
   /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /** implement functions needed for Testable */
 
   /** print */
-  void
-  print(const std::string &s,
-        const KeyFormatter &keyFormatter = DefaultKeyFormatter) const override {
+  void print(const std::string &s, const KeyFormatter &keyFormatter =
+                                       DefaultKeyFormatter) const override {
     std::cout << s << "GeneralPriorFactor on " << keyFormatter(this->keys()[0])
               << "\n";
     if (this->noiseModel_)
@@ -85,17 +83,16 @@ public:
   /** implement functions needed to derive from Factor */
 
   /** vector of errors */
-  Vector unwhitenedError(
-      const Values &x,
-      boost::optional<std::vector<Matrix> &> H = boost::none) const override {
-    if (H)
-      (*H)[0] = Matrix::Identity(dim_, dim_);
+  Vector unwhitenedError(const Values &x, gtsam::OptionalMatrixVecType H =
+                                              nullptr) const override {
+    if (H) (*H)[0] = Matrix::Identity(dim_, dim_);
     return -x.at(keys_[0]).localCoordinates_(prior_.at(keys_[0]));
   }
 
   const Value &prior() const { return prior_.at(keys_[0]); }
 
-private:
+ private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -104,18 +101,22 @@ private:
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
     ar &BOOST_SERIALIZATION_NVP(prior_);
   }
+#endif
 };
 
 template <typename CONTAINER>
-inline void AddGeneralPriors(const Values& values, const CONTAINER& keys, double sigma, NonlinearFactorGraph& graph) {
-  for (const Key& key: keys) {
-    const Value& value = values.at(key);
-    graph.emplace_shared<GeneralPriorFactor>(key, value, noiseModel::Isotropic::Sigma(value.dim(), sigma));
+inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
+                             double sigma, NonlinearFactorGraph &graph) {
+  for (const Key &key : keys) {
+    const Value &value = values.at(key);
+    graph.emplace_shared<GeneralPriorFactor>(
+        key, value, noiseModel::Isotropic::Sigma(value.dim(), sigma));
   }
 }
 
-inline void AddGeneralPriors(const Values& values, double sigma, NonlinearFactorGraph& graph) {
+inline void AddGeneralPriors(const Values &values, double sigma,
+                             NonlinearFactorGraph &graph) {
   AddGeneralPriors(values, values.keys(), sigma, graph);
 }
 
-} // namespace gtsam
+}  // namespace gtsam

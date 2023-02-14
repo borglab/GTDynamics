@@ -163,17 +163,16 @@ class FactorZeroErrorConstraint : public EqualityConstraint {
    * @param tolerance   vector representing tolerance in each dimension.
    */
   FactorZeroErrorConstraint(const gtsam::NoiseModelFactor::shared_ptr& factor,
-                          const gtsam::Vector& tolerance)
+                            const gtsam::Vector& tolerance)
       : factor_(factor), tolerance_(tolerance) {}
 
-  /** Constructor from a NoiseModelFactor, and use the noise model as tolerance. */
+  /// Constructor from a NoiseModelFactor, and use the noise model as tolerance.
   FactorZeroErrorConstraint(const gtsam::NoiseModelFactor::shared_ptr& factor)
       : FactorZeroErrorConstraint(factor, factor->noiseModel()->sigmas()) {}
 
   /** Create a factor representing the component in the merit function. */
   gtsam::NoiseModelFactor::shared_ptr createFactor(
-      const double mu,
-      boost::optional<gtsam::Vector&> bias = boost::none) const override;
+      const double mu, std::optional<gtsam::Vector> bias = {}) const override;
 
   /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values& x) const override;

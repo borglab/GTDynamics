@@ -114,7 +114,6 @@ class ContactPointFactor
 #endif
 };
 
-
 /**
  * ContactPoseFactor is a two-way nonlinear factor which constrains a link pose
  * and a reference frame defined at a point of contact P in the world/spatial
@@ -213,11 +212,8 @@ class ContactPoseFactor
 #endif
 };
 
-
-
 /** Contact Point Factor with a static contact point. */
-class FixedContactPointFactor
-    : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class FixedContactPointFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  private:
   using This = FixedContactPointFactor;
   using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
@@ -236,11 +232,12 @@ class FixedContactPointFactor
    * @param contact_in_com Static transform from point of contact to link CoM.
    */
   FixedContactPointFactor(gtsam::Key link_pose_key,
-                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                     const gtsam::Point3 &contact_in_world,
-                     const gtsam::Point3 &contact_in_com)
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const gtsam::Point3 &contact_in_world,
+                          const gtsam::Point3 &contact_in_com)
       : Base(cost_model, link_pose_key),
-        contact_in_world_(contact_in_world), contact_in_com_(contact_in_com) {}
+        contact_in_world_(contact_in_world),
+        contact_in_com_(contact_in_com) {}
 
   virtual ~FixedContactPointFactor() {}
 
@@ -251,15 +248,16 @@ class FixedContactPointFactor
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTl,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none) const override {
-    gtsam::Vector error = contact_in_world_ - wTl.transformFrom(contact_in_com_, H_pose);
+      gtsam::OptionalMatrixType H_pose = nullptr) const override {
+    gtsam::Vector error =
+        contact_in_world_ - wTl.transformFrom(contact_in_com_, H_pose);
     if (H_pose) *H_pose = -gtsam::Matrix3::Identity() * (*H_pose);
     return error;
   }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -281,6 +279,5 @@ class FixedContactPointFactor
         "NonlinearEquality1", boost::serialization::base_object<Base>(*this));
   }
 };
-
 
 }  // namespace gtdynamics

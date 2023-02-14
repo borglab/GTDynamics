@@ -11,11 +11,8 @@
  * @author: Yetong Zhang
  */
 
-
 #include "QuadrupedUtils.h"
-#include <gtsam/base/Vector.h>
 
-#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
@@ -24,11 +21,11 @@
 #include <gtdynamics/factors/TorqueFactor.h>
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
+#include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
-#include <boost/algorithm/string/join.hpp>
 
 using namespace gtdynamics;
 
@@ -92,29 +89,28 @@ gtsam::Vector6_ ContactRedundancyConstraint(int t,
 }
 
 /* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-ContactRedundancyFactor(int t, const std::vector<int> &contact_ids,
-                        const double &a, const double &b,
-                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                        bool express_redundancy) {
+NoiseModelFactor::shared_ptr ContactRedundancyFactor(
+    int t, const std::vector<int> &contact_ids, const double &a,
+    const double &b, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    bool express_redundancy) {
   if (express_redundancy) {
     Vector6_ expected_redundancy =
         ContactRedundancyConstraint(t, contact_ids, a, b);
     Vector6_ redundancy(ContactRedundancyKey(t));
-    return boost::make_shared<ExpressionFactor<Vector6>>(
+    return std::make_shared<ExpressionFactor<Vector6>>(
         cost_model, Vector6::Zero(), expected_redundancy - redundancy);
   } else {
-    return boost::make_shared<ExpressionFactor<Vector6>>(
+    return std::make_shared<ExpressionFactor<Vector6>>(
         cost_model, Vector6::Zero(),
         ContactRedundancyConstraint(t, contact_ids, a, b));
   }
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
-                  const std::vector<Point3> &contact_in_world,
-                  const noiseModel::Base::shared_ptr &cost_model) {
+NonlinearFactorGraph contact_q_factors(
+    const int k, const gtdynamics::PointOnLinks &contact_points,
+    const std::vector<Point3> &contact_in_world,
+    const noiseModel::Base::shared_ptr &cost_model) {
   NonlinearFactorGraph graph;
   // Add contact factors.
   for (size_t contact_idx = 0; contact_idx < contact_points.size();
@@ -130,7 +126,7 @@ contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
 
 /* ************************************************************************* */
 NonlinearFactorGraph Vision60Robot::DynamicsFactors(
-    const int k, const boost::optional<PointOnLinks> &contact_points) const {
+    const int k, const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
 
   for (auto &&link : robot.links()) {
@@ -146,8 +142,7 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
       // Add wrench keys for contact points.
       if (contact_points) {
         for (auto &&cp : *contact_points) {
-          if (cp.link->id() != i)
-            continue;
+          if (cp.link->id() != i) continue;
           // TODO(frank): allow multiple contact points on one link, id = 0,1,..
           auto wrench_key = ContactWrenchKey(i, 0, k);
           wrench_keys.push_back(wrench_key);
@@ -245,8 +240,8 @@ gtdynamics::OptimizerSetting Vision60Robot::getOptSetting() const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::getConstraintsGraphStepQ(const int t) const {
+NonlinearFactorGraph Vision60Robot::getConstraintsGraphStepQ(
+    const int t) const {
   NonlinearFactorGraph graph = graph_builder.qFactors(robot, t);
   graph.add(contact_q_factors(t, contact_points, contact_in_world,
                               cpoint_cost_model));
@@ -254,14 +249,14 @@ Vision60Robot::getConstraintsGraphStepQ(const int t) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::getConstraintsGraphStepV(const int t) const {
+NonlinearFactorGraph Vision60Robot::getConstraintsGraphStepV(
+    const int t) const {
   return graph_builder.vFactors(robot, t, contact_points);
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::getConstraintsGraphStepAD(const int t) const {
+NonlinearFactorGraph Vision60Robot::getConstraintsGraphStepAD(
+    const int t) const {
   NonlinearFactorGraph graph = graph_builder.aFactors(robot, t, contact_points);
   graph.add(DynamicsFactors(t, contact_points));
   graph.add(ContactRedundancyFactor(t, contact_ids, a, b, redundancy_model,
@@ -279,8 +274,8 @@ NonlinearFactorGraph Vision60Robot::getConstraintsGraphStep(const int t) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::getConstraintsGraphTrajectory(const int num_steps) const {
+NonlinearFactorGraph Vision60Robot::getConstraintsGraphTrajectory(
+    const int num_steps) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t <= num_steps; t++) {
     graph.add(getConstraintsGraphStep(t));
@@ -383,7 +378,6 @@ Values Vision60Robot::getInitValuesTrajectory(
     const std::vector<gtsam::Pose3> &des_poses,
     std::vector<double> &des_poses_t,
     const std::string initialization_technique) const {
-
   // Initialize solution.
   gtsam::Values init_vals;
   Initializer initializer;
@@ -518,8 +512,8 @@ NonlinearFactorGraph Vision60Robot::minTorqueCosts(const int num_steps) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::frictionConeCosts(const int num_steps) const {
+NonlinearFactorGraph Vision60Robot::frictionConeCosts(
+    const int num_steps) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t <= num_steps; t++) {
     for (auto &&cp : contact_points) {
@@ -535,11 +529,10 @@ Vision60Robot::frictionConeCosts(const int num_steps) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-Vision60Robot::boundaryCosts(const Pose3 &init_pose, const Vector6 &init_twist,
-                             const std::vector<Pose3> &des_poses,
-                             const std::vector<double> &des_poses_t,
-                             double dt) const {
+NonlinearFactorGraph Vision60Robot::boundaryCosts(
+    const Pose3 &init_pose, const Vector6 &init_twist,
+    const std::vector<Pose3> &des_poses, const std::vector<double> &des_poses_t,
+    double dt) const {
   NonlinearFactorGraph graph;
 
   graph.addPrior<Pose3>(PoseKey(base_id, 0), init_pose,
@@ -570,9 +563,11 @@ void Vision60Robot::exportTrajectory(const Values &results,
                                      std::string file_path) {
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::vector<std::string> jnames;
-  for (auto &&joint : robot.joints())
-    jnames.push_back(joint->name());
-  std::string jnames_str = boost::algorithm::join(jnames, ",");
+  for (auto &&joint : robot.joints()) jnames.push_back(joint->name());
+  std::string jnames_str = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open(file_path);
   // angles, vels, accels, torques.
@@ -605,10 +600,13 @@ void Vision60Robot::exportTrajectory(const Values &results,
     vals.push_back(std::to_string(bp.rotation().toQuaternion().z()));
     vals.push_back(std::to_string(bp.rotation().toQuaternion().w()));
 
-    std::string vals_str = boost::algorithm::join(vals, ",");
+    std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
     traj_file << vals_str << "\n";
   }
   traj_file.close();
 }
 
-} // namespace gtsam
+}  // namespace gtsam

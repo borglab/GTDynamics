@@ -32,8 +32,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  DynamicsSymbol(const std::string& s, uint8_t link_idx,
-                 uint8_t joint_idx, uint64_t t);
+  DynamicsSymbol(const std::string& s, uint8_t link_idx, uint8_t joint_idx,
+                 uint64_t t);
 
  public:
   /** Default constructor */
@@ -46,8 +46,7 @@ class DynamicsSymbol {
    * Constructor for symbol related to both link and joint.
    *  See private constructor
    */
-  static DynamicsSymbol LinkJointSymbol(const std::string& s,
-                                        uint8_t link_idx,
+  static DynamicsSymbol LinkJointSymbol(const std::string& s, uint8_t link_idx,
                                         uint8_t joint_idx, uint64_t t);
 
   /**
@@ -57,8 +56,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  static DynamicsSymbol JointSymbol(const std::string& s,
-                                    uint8_t joint_idx, uint64_t t);
+  static DynamicsSymbol JointSymbol(const std::string& s, uint8_t joint_idx,
+                                    uint64_t t);
 
   /**
    * Constructor for symbol related to only link (e.g. link pose).
@@ -113,7 +112,6 @@ class DynamicsSymbol {
   operator std::string() const;
 
  private:
-
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
@@ -131,8 +129,7 @@ class DynamicsSymbol {
    * \defgroup Bitfield bit field constants
    * @{
    */
-  static constexpr size_t kMax_uchar_ =
-      std::numeric_limits<uint8_t>::max();
+  static constexpr size_t kMax_uchar_ = std::numeric_limits<uint8_t>::max();
   // bit counts
   static constexpr size_t key_bits = sizeof(gtsam::Key) * 8;
   static constexpr size_t ch1_bits = sizeof(uint8_t) * 8;

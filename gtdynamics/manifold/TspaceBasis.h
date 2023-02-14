@@ -14,12 +14,13 @@
 
 #pragma once
 
-#include <Eigen/Sparse>
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
+
+#include <Eigen/Sparse>
 
 namespace gtsam {
 
@@ -33,8 +34,8 @@ enum BasisType {
 
 /// Manifold-specific parameters for tangent space basis.
 struct TspaceBasisParams {
-public:
-  using shared_ptr = boost::shared_ptr<TspaceBasisParams>;
+ public:
+  using shared_ptr = std::shared_ptr<TspaceBasisParams>;
 
   /// Member variables.
   BasisType basis_type = BasisType::MATRIX;
@@ -68,31 +69,30 @@ public:
 
 /// Base class for tangent space basis of constraint manifold.
 class TspaceBasis {
-protected:
+ protected:
   TspaceBasisParams::shared_ptr params_;
   bool is_constructed_;
 
-public:
-  using shared_ptr = boost::shared_ptr<TspaceBasis>;
+ public:
+  using shared_ptr = std::shared_ptr<TspaceBasis>;
 
   /// Default constructor.
-  TspaceBasis(
-      TspaceBasisParams::shared_ptr params = boost::make_shared<TspaceBasisParams>())
+  TspaceBasis(TspaceBasisParams::shared_ptr params =
+                  std::make_shared<TspaceBasisParams>())
       : params_(params), is_constructed_(false) {}
 
   static shared_ptr create(const TspaceBasisParams::shared_ptr params,
                            const ConnectedComponent::shared_ptr cc,
                            const Values &values,
-                           boost::optional<const KeyVector&> basis_keys = boost::none,
-                           boost::optional<size_t> manifold_dim = boost::none);
+                           std::optional<const KeyVector> basis_keys = {},
+                           std::optional<size_t> manifold_dim = {});
 
   /// Default destructor.
   virtual ~TspaceBasis() {}
 
   /// Construct new basis by using new values
-  virtual shared_ptr
-  createWithNewValues(const ConnectedComponent::shared_ptr &cc,
-                      const Values &values) const = 0;
+  virtual shared_ptr createWithNewValues(
+      const ConnectedComponent::shared_ptr &cc, const Values &values) const = 0;
 
   /** Compute the tangent vector in the ambient space, given a vector xi
    * representing the magnitude of each basis component. */
@@ -116,8 +116,8 @@ public:
   /// Return if the basis is already constructed.
   bool isConstructed() const { return is_constructed_; }
 
-  virtual void
-  print(const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) = 0;
+  virtual void print(
+      const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) = 0;
 };
 
 class EmptyBasis : public TspaceBasis {
@@ -126,13 +126,14 @@ class EmptyBasis : public TspaceBasis {
    * @param cc constraint-connected component for the constraint manifold
    * @param values values of the variables in the connected component
    */
-  EmptyBasis(const TspaceBasisParams::shared_ptr &params) : TspaceBasis(params) {}
+  EmptyBasis(const TspaceBasisParams::shared_ptr &params)
+      : TspaceBasis(params) {}
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const ConnectedComponent::shared_ptr &cc,
-                      const Values &values) const override {
-    return boost::make_shared<EmptyBasis>(params_);
+  TspaceBasis::shared_ptr createWithNewValues(
+      const ConnectedComponent::shared_ptr &cc,
+      const Values &values) const override {
+    return std::make_shared<EmptyBasis>(params_);
   }
 
   /// Compute the tangent vector in the ambient space.
@@ -174,13 +175,13 @@ class EmptyBasis : public TspaceBasis {
 /** Tangent space basis implmented using a matrix, e.g., the kernel of Dh(X),
  * where h(X)=0 represents all the constraints. */
 class MatrixBasis : public TspaceBasis {
-protected:
-  std::map<Key, size_t> var_location_; // location of variables in Jacobian
-  std::map<Key, size_t> var_dim_;      // dimension of variables
+ protected:
+  std::map<Key, size_t> var_location_;  // location of variables in Jacobian
+  std::map<Key, size_t> var_dim_;       // dimension of variables
   size_t total_basis_dim_;
-  gtsam::Matrix basis_; // basis for the tangent space
+  gtsam::Matrix basis_;  // basis for the tangent space
 
-public:
+ public:
   /** Constructor
    * @param cc constraint-connected component for the constraint manifold
    * @param values values of the variables in the connected component
@@ -191,18 +192,20 @@ public:
   /// Constructor from other, avoids recomputation.
   MatrixBasis(const ConnectedComponent::shared_ptr &cc, const Values &values,
               const MatrixBasis &other)
-      : TspaceBasis(other.params_), var_location_(other.var_location_),
-        var_dim_(other.var_dim_), total_basis_dim_(other.total_basis_dim_) {
+      : TspaceBasis(other.params_),
+        var_location_(other.var_location_),
+        var_dim_(other.var_dim_),
+        total_basis_dim_(other.total_basis_dim_) {
     if (params_->always_construct_basis) {
       construct(cc, values);
     }
   }
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const ConnectedComponent::shared_ptr &cc,
-                      const Values &values) const override {
-    return boost::make_shared<MatrixBasis>(cc, values, *this);
+  TspaceBasis::shared_ptr createWithNewValues(
+      const ConnectedComponent::shared_ptr &cc,
+      const Values &values) const override {
+    return std::make_shared<MatrixBasis>(cc, values, *this);
   }
 
   /// Compute the tangent vector in the ambient space.
@@ -234,19 +237,19 @@ public:
 /** Tangent space basis implmented using a matrix, e.g., the kernel of Dh(X),
  * where h(X)=0 represents all the constraints. */
 class SparseMatrixBasis : public TspaceBasis {
-public:
+ public:
   typedef Eigen::SparseMatrix<double> SpMatrix;
   typedef Eigen::Triplet<double> Triplet;
 
-protected:
-  std::map<Key, size_t> var_location_; // location of variables in Jacobian
-  std::map<Key, size_t> var_dim_;      // dimension of variables
+ protected:
+  std::map<Key, size_t> var_location_;  // location of variables in Jacobian
+  std::map<Key, size_t> var_dim_;       // dimension of variables
   size_t total_variable_dim_;
   size_t total_constraint_dim_;
   size_t total_basis_dim_;
-  SpMatrix basis_; // basis for the tangent space
+  SpMatrix basis_;  // basis for the tangent space
 
-public:
+ public:
   /** Constructor
    * @param cc constraint-connected component for the constraint manifold
    * @param values values of the variables in the connected component
@@ -259,7 +262,8 @@ public:
   /// Constructor from other, avoids recomputation.
   SparseMatrixBasis(const ConnectedComponent::shared_ptr &cc,
                     const Values &values, const SparseMatrixBasis &other)
-      : TspaceBasis(other.params_), var_location_(other.var_location_),
+      : TspaceBasis(other.params_),
+        var_location_(other.var_location_),
         var_dim_(other.var_dim_),
         total_variable_dim_(other.total_variable_dim_),
         total_constraint_dim_(other.total_constraint_dim_),
@@ -270,10 +274,10 @@ public:
   }
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const ConnectedComponent::shared_ptr &cc,
-                      const Values &values) const override {
-    return boost::make_shared<SparseMatrixBasis>(cc, values, *this);
+  TspaceBasis::shared_ptr createWithNewValues(
+      const ConnectedComponent::shared_ptr &cc,
+      const Values &values) const override {
+    return std::make_shared<SparseMatrixBasis>(cc, values, *this);
   }
 
   /// Compute the tangent vector in the ambient space.
@@ -301,7 +305,7 @@ public:
     std::cout << "Matrix basis\n" << matrix() << "\n";
   }
 
-protected:
+ protected:
   void setMatrix(const Matrix &matrix, const size_t &row_offset,
                  const size_t &col_offset,
                  std::vector<Triplet> &triplet_list) const;
@@ -316,7 +320,7 @@ protected:
  * The basis matrix will be in the form of [B;I], which means the
  * corresponding rows to the basis variables form the identity matrix. */
 class FixedVarBasis : public TspaceBasis {
-protected:
+ protected:
   KeyVector basis_keys_;
   Ordering ordering_;
   size_t total_basis_dim_;
@@ -324,26 +328,25 @@ protected:
   std::map<Key, size_t> var_dim_;
   MultiJacobians jacobians_;
 
-public:
+ public:
   /** Constructor
    * @param cc constraint-connected component for the constraint manifold
    * @param values values of the variables in the connected component
    * @param basis_keys variables selected as basis variables
    */
   FixedVarBasis(const TspaceBasisParams::shared_ptr &params,
-                   const ConnectedComponent::shared_ptr &cc,
-                   const Values &values,
-                   boost::optional<const KeyVector&> basis_keys = boost::none);
+                const ConnectedComponent::shared_ptr &cc, const Values &values,
+                std::optional<const KeyVector> basis_keys = {});
 
   /// Constructor from other, avoids recomputation.
-  FixedVarBasis(const ConnectedComponent::shared_ptr &cc,
-                   const Values &values, const FixedVarBasis &other);
+  FixedVarBasis(const ConnectedComponent::shared_ptr &cc, const Values &values,
+                const FixedVarBasis &other);
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const ConnectedComponent::shared_ptr &cc,
-                      const Values &values) const override {
-    return boost::make_shared<FixedVarBasis>(cc, values, *this);
+  TspaceBasis::shared_ptr createWithNewValues(
+      const ConnectedComponent::shared_ptr &cc,
+      const Values &values) const override {
+    return std::make_shared<FixedVarBasis>(cc, values, *this);
   }
 
   /// Compute the tangent vector in the ambient space.
@@ -378,4 +381,4 @@ public:
   const MultiJacobians &jacobians() const { return jacobians_; }
 };
 
-} // namespace gtsam
+}  // namespace gtsam

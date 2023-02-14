@@ -25,9 +25,9 @@ template <int P>
    angles. */
 class SerialChain {
  protected:
-  boost::shared_ptr<gtdynamics::Robot> robot_;
+  std::shared_ptr<gtdynamics::Robot> robot_;
   std::string base_name_;  // name of base link
-  boost::shared_ptr<Values> values_;
+  std::shared_ptr<Values> values_;
 
  public:
   using VectorP = Eigen::Matrix<double, P, 1>;
@@ -39,13 +39,13 @@ class SerialChain {
    * @param base_pose pose of base link
    * @param joint_angles angles of all the joints.
    */
-  SerialChain(const boost::shared_ptr<gtdynamics::Robot>& robot,
+  SerialChain(const std::shared_ptr<gtdynamics::Robot>& robot,
               const std::string& base_name, const Pose3& base_pose,
               const Values& joint_angles)
       : robot_(robot),
         base_name_(base_name),
-        values_(boost::make_shared<Values>(joint_angles)) {
-    values_ = boost::make_shared<Values>(
+        values_(std::make_shared<Values>(joint_angles)) {
+    values_ = std::make_shared<Values>(
         robot_->forwardKinematics(*values_, 0, base_name_));
   }
 
@@ -58,8 +58,7 @@ class SerialChain {
   }
 
   /** return joint angle with Jacobian given joint id. */
-  double jointById(const size_t& id,
-                   OptionalJacobian<1, P> H = boost::none) const {
+  double jointById(const size_t& id, OptionalJacobian<1, P> H = {}) const {
     if (H) {
       H->setZero();
       (*H)(id - 1) = 1;
@@ -68,14 +67,12 @@ class SerialChain {
   }
 
   /** return joint angle with Jacobian given joint name. */
-  double joint(const std::string& name,
-               OptionalJacobian<1, P> H = boost::none) const {
+  double joint(const std::string& name, OptionalJacobian<1, P> H = {}) const {
     return jointById(robot_->joint(name)->id(), H);
   }
 
   /** return link pose with Jacobian given link name. */
-  Pose3 linkPose(const std::string& name,
-                 OptionalJacobian<6, P> H = boost::none) const {
+  Pose3 linkPose(const std::string& name, OptionalJacobian<6, P> H = {}) const {
     Pose3 wTe = gtdynamics::Pose(*values_, robot_->link(name)->id());
 
     if (H) {
@@ -89,7 +86,7 @@ class SerialChain {
 
         double q = gtdynamics::JointAngle(*values_, joint->id());
         Matrix J_wTc_q;
-        joint->poseOf(child_link, wTp, q, boost::none, J_wTc_q);
+        joint->poseOf(child_link, wTp, q, {}, J_wTc_q);
 
         if (child_link->name() == name) {
           (*H).col(joint->id() - 1) = J_wTc_q;
@@ -97,7 +94,7 @@ class SerialChain {
         } else {
           Pose3 cTe = wTc.inverse() * (wTe);
           Matrix H_wTc;
-          wTc.compose(cTe, H_wTc, boost::none);
+          wTc.compose(cTe, H_wTc, {});
           (*H).col(joint->id() - 1) = H_wTc * J_wTc_q;
         }
 
@@ -116,8 +113,8 @@ class SerialChain {
 
   /// retraction with optional derivatives.
   SerialChain retract(const VectorP& v,  // TODO: use xi
-                      OptionalJacobian<P, P> H1 = boost::none,
-                      OptionalJacobian<P, P> H2 = boost::none) const {
+                      OptionalJacobian<P, P> H1 = {},
+                      OptionalJacobian<P, P> H2 = {}) const {
     if (H1) {
       *H1 = Matrix::Identity(P, P);
     }
@@ -134,9 +131,8 @@ class SerialChain {
   }
 
   /// localCoordinates with optional derivatives.
-  VectorP localCoordinates(const SerialChain& g,
-                           OptionalJacobian<P, P> H1 = boost::none,
-                           OptionalJacobian<P, P> H2 = boost::none) const {
+  VectorP localCoordinates(const SerialChain& g, OptionalJacobian<P, P> H1 = {},
+                           OptionalJacobian<P, P> H2 = {}) const {
     if (H1) {
       *H1 = -Matrix::Identity(P, P);
     }

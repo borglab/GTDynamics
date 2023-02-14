@@ -11,7 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/manifold/TspaceBasis.h"
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
@@ -25,7 +24,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <boost/format.hpp>
+#include "gtdynamics/manifold/TspaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -39,9 +38,9 @@ TEST(TspaceBasis, connected_poses) {
   // Constraints.
   gtdynamics::EqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(6);
-  auto factor12 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  auto factor23 = boost::make_shared<BetweenFactor<Pose3>>(
+  auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
   constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
@@ -53,14 +52,14 @@ TEST(TspaceBasis, connected_poses) {
   base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 3)));
 
   // Connected component.
-  auto component = boost::make_shared<ConnectedComponent>(constraints);
-  
+  auto component = std::make_shared<ConnectedComponent>(constraints);
+
   // Construct retractor.
-  auto params_uopt = boost::make_shared<RetractParams>();
+  auto params_uopt = std::make_shared<RetractParams>();
   params_uopt->setUopt();
-  auto params_proj = boost::make_shared<RetractParams>();
+  auto params_proj = std::make_shared<RetractParams>();
   params_proj->setProjection();
-  auto params_fix_vars = boost::make_shared<RetractParams>();
+  auto params_fix_vars = std::make_shared<RetractParams>();
   params_fix_vars->setFixVars();
   KeyVector basis_keys{x3_key};
   UoptRetractor retractor_uopt(component, params_uopt);
@@ -81,14 +80,13 @@ TEST(TspaceBasis, connected_poses) {
   expected_proj.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 2)));
   EXPECT(assert_equal(expected_proj, values_proj, 1e-4));
 
-  Values values_basis = retractor_basis.retractConstraints(base_values); 
+  Values values_basis = retractor_basis.retractConstraints(base_values);
   Values expected_basis;
   expected_basis.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 1)));
   expected_basis.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 2)));
   expected_basis.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 3)));
   EXPECT(assert_equal(expected_basis, values_basis));
 }
-
 
 int main() {
   TestResult tr;
