@@ -84,7 +84,6 @@ jobs:
           brew install boost
           brew tap osrf/simulation
           brew install sdformat12
-          brew tap borglab/core
 
       - name: Python Dependencies
         run: |
@@ -105,7 +104,14 @@ jobs:
 
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
-        run: brew install --HEAD gtsam@latest
+        run: |
+          # Install gtsam
+          git clone https://github.com/borglab/gtsam.git
+          cd gtsam
+          mkdir build && cd $_
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
+          make -j$(sysctl -n hw.physicalcpu) install && make python-install
+          cd $GITHUB_WORKSPACE # go back to home directory
 
       - name: Checkout
         uses: actions/checkout@v2
