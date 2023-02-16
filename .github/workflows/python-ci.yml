@@ -18,8 +18,7 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name:
-          [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-12-xcode-14.2]
+        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-12-xcode-14.2]
 
         build_type: [Debug, Release]
         python_version: [3]
@@ -106,8 +105,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Install gtsam
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
+          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam
+          cd /Users/runner/work/gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
           make -j$(sysctl -n hw.physicalcpu) install && make python-install
@@ -119,9 +118,16 @@ jobs:
       - name: Build Directory
         run: mkdir build
 
-      - name: Configure
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON  ..
+        working-directory: ./build
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
         working-directory: ./build
 
       - name: Build
