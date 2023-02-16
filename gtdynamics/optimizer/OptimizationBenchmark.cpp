@@ -13,6 +13,8 @@
 
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 
+#include <iomanip>
+
 using gtsam::LevenbergMarquardtParams, gtsam::LevenbergMarquardtOptimizer;
 using gtsam::NonlinearFactorGraph, gtsam::Values;
 
