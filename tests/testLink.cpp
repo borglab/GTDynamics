@@ -77,25 +77,24 @@ TEST(Link, NumJoints) {
   EXPECT_LONGS_EQUAL(2, l1->numJoints());
 }
 
-// TODO(Varun) Fix!
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
-// // Declaration needed for serialization of derived class.
-// BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
-// TEST(Link, Serialization) {
-//   Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
-//             Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
-//   EXPECT(equalsObj(link));
-//   EXPECT(equalsXML(link));
-//   EXPECT(equalsBinary(link));
+TEST(Link, Serialization) {
+  Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+            Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+  EXPECT(equalsObj(link));
+  EXPECT(equalsXML(link));
+  EXPECT(equalsBinary(link));
 
-//   // Test link with joints
-//   auto robot = simple_urdf::getRobot();
-//   auto l1 = robot.link("l1");
-//   EXPECT(equalsDereferenced(l1));
-//   EXPECT(equalsDereferencedXML(l1));
-//   EXPECT(equalsDereferencedBinary(l1));
-// }
+  // Test link with joints
+  auto robot = simple_urdf::getRobot();
+  auto l1 = robot.link("l1");
+  EXPECT(equalsDereferenced(l1));
+  EXPECT(equalsDereferencedXML(l1));
+  EXPECT(equalsDereferencedBinary(l1));
+}
 #endif
 
 TEST(Link, Print) {

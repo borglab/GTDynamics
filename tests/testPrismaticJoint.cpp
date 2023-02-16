@@ -101,27 +101,26 @@ TEST(Joint, params_constructor_prismatic) {
                       j1->parameters().scalar_limits.value_limit_threshold));
 }
 
-// TODO(Varun) Fix!
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
-// BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
+BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
 
-// TEST(PrismaticJoint, Serialization) {
-//   auto robot = simple_urdf_prismatic::getRobot();
-//   auto l1 = robot.link("l1");
-//   auto l2 = robot.link("l2");
+TEST(PrismaticJoint, Serialization) {
+  auto robot = simple_urdf_prismatic::getRobot();
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
 
-//   JointParams parameters;
-//   const gtsam::Vector3 j1_axis(0, 0, 1);
+  JointParams parameters;
+  const gtsam::Vector3 j1_axis(0, 0, 1);
 
-//   auto j1 = std::make_shared<PrismaticJoint>(
-//       1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
-//       parameters);
+  auto j1 = std::make_shared<PrismaticJoint>(
+      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
+      parameters);
 
-//   using namespace gtsam::serializationTestHelpers;
-//   EXPECT(equalsDereferenced(j1));
-//   EXPECT(equalsDereferencedXML(j1));
-//   EXPECT(equalsDereferencedBinary(j1));
-// }
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsDereferenced(j1));
+  EXPECT(equalsDereferencedXML(j1));
+  EXPECT(equalsDereferencedBinary(j1));
+}
 #endif
 
 int main() {

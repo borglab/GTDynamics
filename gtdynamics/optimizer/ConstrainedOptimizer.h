@@ -66,4 +66,72 @@ class ConstrainedOptimizer {
       const gtsam::Values& initial_values,
       ConstrainedOptResult* intermediate_result = nullptr) const = 0;
 };
+
+/** Equality-constrained optimization problem, in the form of 
+ * argmin_x ||f(X)||^2
+ * s.t.     h(X) = 0
+ * where X represents the variables, ||f(X)||^2 represents the quadratic cost
+ * functions, h(X)=0 represents the constraints.
+*/
+struct EqConsOptProblem {
+  gtsam::NonlinearFactorGraph costs_;           // cost function, ||f(X)||^2
+  gtdynamics::EqualityConstraints constraints_; // equality constraints. h(X)=0
+  gtsam::Values values_;                        // values of all variables, X
+  /// Constructor.
+  EqConsOptProblem(const gtsam::NonlinearFactorGraph& costs,
+                   const gtdynamics::EqualityConstraints& constraints,
+                   const gtsam::Values& values)
+      : costs_(costs), constraints_(constraints), values_(values) {}
+
+  const gtsam::NonlinearFactorGraph& costs() const {return costs_; }
+  const gtdynamics::EqualityConstraints& constraints() const {return constraints_; }
+  const gtsam::Values& initValues() const {return values_; }
+
+  /// Evaluate the dimension of costs.
+  size_t costsDimension() const {
+    size_t costs_dim = 0;
+    for (const auto &factor : costs_) {
+      costs_dim += factor->dim();
+    }
+    return costs_dim;
+  }
+
+  /// Evaluate the dimension of constriants.
+  size_t constraintsDimension() const {
+    size_t constraints_dim = 0;
+    for (const auto &constraint : constraints_) {
+      constraints_dim += constraint->dim();
+    }
+    return constraints_dim;
+  }
+
+  /// Evaluate the dimension of variables.
+  size_t valuesDimension() const {
+    return values_.dim();
+  }
+
+  /// Evaluate the cost.
+  double evaluateCost(const gtsam::Values& values) const {
+    return costs_.error(values);
+  }
+
+  /// Evaluate the constraint violation (as L2 norm).
+  double evaluateConstraintViolationL2Norm(const gtsam::Values& values) const {
+    double violation = 0;
+    for (const auto& constraint: constraints_) {
+      violation += pow(constraint->toleranceScaledViolation(values).norm(), 2);
+    }
+    return sqrt(violation);
+  }
+
+  /// Return a graph of merit factors of constraints.
+  gtsam::NonlinearFactorGraph constraintsGraph(double mu=1.0) const {
+    gtsam::NonlinearFactorGraph constraints_graph;
+    for (const auto& constraint: constraints_) {
+      constraints_graph.add(constraint->createFactor(mu));
+    }
+    return constraints_graph;
+  }
+};
+
 }  // namespace gtdynamics

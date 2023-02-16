@@ -21,9 +21,6 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
-#include <boost/serialization/base_object.hpp>
-#endif
 #include <optional>
 #include <string>
 #include <vector>

@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics)
+set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics manifold)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
