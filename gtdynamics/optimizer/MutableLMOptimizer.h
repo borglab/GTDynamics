@@ -26,7 +26,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <chrono>
 
 class NonlinearOptimizerMoreOptimizationTest;

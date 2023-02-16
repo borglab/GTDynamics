@@ -23,8 +23,6 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <boost/format.hpp>
-
 using namespace gtsam;
 using namespace gtdynamics;
 
@@ -39,7 +37,7 @@ TEST(MutableLMOptimizer, optimize) {
   graph.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)), noise);
   graph.emplace_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  
+
   Values values;
   values.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
   values.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 0)));
@@ -53,7 +51,6 @@ TEST(MutableLMOptimizer, optimize) {
   expected_result.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   EXPECT(assert_equal(expected_result, result));
 }
-
 
 int main() {
   TestResult tr;
