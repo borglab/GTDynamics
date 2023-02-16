@@ -219,11 +219,12 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
       cout << "iter      cost      cost_change    lambda  success iter_time"
            << endl;
 
-    cout << setw(4) << currentState->iterations << " " << setw(8) << newError
-         << " " << setw(3) << setprecision(2) << costChange << " " << setw(3)
-         << setprecision(2) << currentState->lambda << " " << setw(4)
-         << systemSolvedSuccessfully << " " << setw(3) << setprecision(2)
-         << iterationTime << endl;
+    cout << std::setw(4) << currentState->iterations << " " << std::setw(8)
+         << newError << " " << std::setw(3) << std::setprecision(2)
+         << costChange << " " << std::setw(3) << std::setprecision(2)
+         << currentState->lambda << " " << std::setw(4)
+         << systemSolvedSuccessfully << " " << std::setw(3)
+         << std::setprecision(2) << iterationTime << endl;
   }
 
   if (step_is_successful) {
