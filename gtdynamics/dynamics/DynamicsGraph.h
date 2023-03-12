@@ -111,7 +111,7 @@ class DynamicsGraph {
                               const gtsam::Values &known_values);
 
   /// Return q-level nonlinear factor graph (pose related factors)
-  gtsam::NonlinearFactorGraph qFactors(
+  virtual gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
       const boost::optional<PointOnLinks> &contact_points = boost::none) const;
 

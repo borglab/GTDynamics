@@ -20,6 +20,7 @@
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
 #include "gtdynamics/factors/WrenchFactor.h"
+#include <gtdynamics/factors/ContactHeightFactor.h>
 
 namespace gtdynamics {
 
@@ -39,9 +40,6 @@ class ChainDynamicsGraph : public DynamicsGraph {
   private:
   std::vector<std::vector<JointSharedPtr>> chain_joints_;
   std::vector<Chain> composed_chains_;
-  double angle_tolerance_;
-  double torque_tolerance_;
-  double dynamics_tolerance_;
   double trunk_mass_;
 
   public:
@@ -59,20 +57,21 @@ class ChainDynamicsGraph : public DynamicsGraph {
    ChainDynamicsGraph(
        const Robot &robot,
        const OptimizerSetting &opt,
-       const double &angle_tolerance, const double &torque_tolerance,
-       const double &dynamics_tolerance,
        const boost::optional<Vector3> &gravity = boost::none,
        const boost::optional<Vector3> &planar_axis = boost::none)
        : DynamicsGraph(opt, gravity, planar_axis),
          chain_joints_(getChainJoints(robot)),
          composed_chains_(getComposedChains(chain_joints_)),
-         angle_tolerance_(angle_tolerance), 
-         torque_tolerance_(torque_tolerance),
-         dynamics_tolerance_(dynamics_tolerance),
          trunk_mass_(robot.link("trunk")->mass()) {}
 
     // Destructor
     ~ChainDynamicsGraph() {}
+
+
+  /// Return q-level nonlinear factor graph (pose related factors)
+    gtsam::NonlinearFactorGraph qFactors(
+        const Robot &robot, const int t,
+        const boost::optional<PointOnLinks> &contact_points = boost::none) const override;
 
    /**
     * Create dynamics factors of the chain graph

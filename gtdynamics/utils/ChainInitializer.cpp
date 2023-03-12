@@ -26,8 +26,8 @@ gtsam::Values ChainInitializer::ZeroValues(const Robot& robot, const int t, doub
   // Initialize link dynamics to 0.
   for (auto&& link : robot.links()) {
     const int i = link->id();
-    //if ((i==3 || i==6 || i==9 || i==12) && (t == 0))
-    InsertPose(&values, i, t, AddGaussianNoiseToPose(link->bMcom(), sampler));
+    if (i==0 || i==3 || i==6 || i==9 || i==12)
+      InsertPose(&values, i, t, AddGaussianNoiseToPose(link->bMcom(), sampler));
     //InsertTwist(&values, i, t, sampler.sample());
     //InsertTwistAccel(&values, i, t, sampler.sample());
   }

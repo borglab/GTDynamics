@@ -111,9 +111,10 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     Vector6_ trunk_wrench_constraint = gravity_wrench;
 
     // Set tolerances
-    Vector3 contact_tolerance = Vector3::Ones() * dynamics_tolerance_;
-    Vector3 chain_tolerance = Vector3::Ones() * dynamics_tolerance_;
-    Vector6 wrench_tolerance = Vector6::Ones() * dynamics_tolerance_;
+
+    // Get tolerance
+    Vector6 wrench_tolerance = opt().f_cost_model->sigmas();
+    Vector3 contact_tolerance = opt().cm_cost_model->sigmas();
 
      std::vector<Key> wrench_keys;
 
@@ -140,7 +141,7 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
 
     // Get expression for end effector wrench using chain
     Vector6_ wrench_end_effector =
-        composed_chains_[i].PoeConstraint3(chain_joints_[i], wrench_key_3i_T, t);
+        composed_chains_[i].AdjointWrenchConstraint3(chain_joints_[i], wrench_key_3i_T, t);
 
     // Create contact constraint
     Point3 contact_in_com(0.0, 0.0, -0.07);
@@ -150,12 +151,59 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
                                                            contact_tolerance);
     if (foot_in_contact)
     graph.add(contact_expression.createFactor(1));
+    else {
+      Vector6 wrench_zero = gtsam::Z_6x1;
+      graph.addPrior(wrench_key_3i_T, wrench_zero, opt().f_cost_model);
+    }
   }
 
   // Add wrench factor for trunk link
-  auto f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, dynamics_tolerance_));
-      graph.add(
-          WrenchFactor(f_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
+    graph.add(
+          WrenchFactor(opt().f_cost_model, robot.link("trunk"), wrench_keys, t, gravity()));
+
+  return graph;
+}
+
+gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
+    const Robot &robot, const int t,
+    const boost::optional<PointOnLinks> &contact_points) const {
+  NonlinearFactorGraph graph;
+
+  // Get Pose key for base link
+  const Key base_key = PoseKey(0, t);
+
+  // Get tolerance
+  Vector6 tolerance = opt().p_cost_model->sigmas();
+
+  for (int i = 0; i < 4; ++i) {
+    // Get end effector key
+    const Key end_effector_key = PoseKey(3*(i+1), t);
+
+    // Get expression for end effector pose
+    gtsam::Vector6_ chain_expression = composed_chains_[i].Poe3Factor(
+        chain_joints_[i], base_key, end_effector_key, t);
+
+    auto chain_constraint= VectorExpressionEquality<6>(chain_expression,
+                                                           tolerance);
+
+    graph.add(chain_constraint.createFactor(1.0));
+  }
+
+  gtsam::Vector3 gravity_used;
+  auto graph_gravity = gravity();
+  if (graph_gravity)
+    gravity_used = *graph_gravity;
+  else
+    gravity_used = gtsam::Vector3(0, 0, -9.8);
+
+  // Add contact factors.
+  if (contact_points) {
+    for (auto &&cp : *contact_points) {
+      ContactHeightFactor contact_pose_factor(
+          PoseKey(cp.link->id(), t), opt().cp_cost_model, cp.point, gravity_used);
+      graph.add(contact_pose_factor);
+    }
+  }
 
   return graph;
 }

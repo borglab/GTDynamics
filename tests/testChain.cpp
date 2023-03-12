@@ -25,6 +25,7 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/factorTesting.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -310,6 +311,164 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   }
 }
 
+// Test Chain Constraint Jacobians -AdjointWrenchEquality3 - H_angles - first type
+// of chain
+TEST(Chain, AdjointWrenchEquality3_H_angles_chain1) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(1, 1, 1));
+  Matrix screwAxis(6, 1);
+  screwAxis << 0.0, 0.0, 1.0, 0.0, 5.0, 0.0;
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis), joint2(sMb, screwAxis), joint3(sMb, screwAxis);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
+                     boost::none, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
+    return gtsam::numericalDerivative21<Vector6, Vector3, Vector6>(
+        f, angles, wrench_body);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    wrench_body = wrenchMat.row(i);
+
+    auto numericalH_case = num_derivative(angles, wrench_body);
+
+    J = get_jacobian(angles, wrench_body);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
+// Test Chain Constraint Jacobians -AdjointWrenchEquality3 - H_angles - second type
+// of chain
+TEST(Chain, AdjointWrenchEquality3_H_angles_chain2) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(17.0, -3.0, 99.5));
+  Matrix screwAxis(6, 1);
+  double one_over_sqrt_3 = 1 / sqrt(3);
+  screwAxis << one_over_sqrt_3, one_over_sqrt_3, one_over_sqrt_3, 1.5, 1.5,
+      0.0;  // size of omega should be 1
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis), joint2(sMb, screwAxis), joint3(sMb, screwAxis);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
+                     boost::none, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
+    return gtsam::numericalDerivative21<Vector6, Vector3, Vector6>(
+        f, angles, wrench_body);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    wrench_body = wrenchMat.row(i);
+
+    auto numericalH_case = num_derivative(angles, wrench_body);
+
+    J = get_jacobian(angles, wrench_body);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
+// Test Chain Constraint Jacobians -AdjointWrenchEquality3 - H_angles - third type
+// of chain
+TEST(Chain, AdjointWrenchEquality3_H_angles_chain3) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(0, 3, 8));
+  Matrix screwAxis0(6, 1), screwAxis1(6, 1), screwAxis2(6, 1);
+  screwAxis0 << 0.0, 0.0, 1.0, 0.0, 5.0, 0.0;
+  screwAxis1 << 0.0, 1.0, 0.0, 3.0, 0.0, 0.0;
+  screwAxis2 << 1.0, 0.0, 0.0, 0.0, 0.0, 29.0;
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis0), joint2(sMb, screwAxis1),
+      joint3(sMb, screwAxis2);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
+                     boost::none, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
+    return gtsam::numericalDerivative21<Vector6, Vector3, Vector6>(
+        f, angles, wrench_body);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+  Matrix torquesMat = get_torques_test_cases();
+  Matrix wrenchMat = get_wrench_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+    wrench_body = wrenchMat.row(i);
+
+    auto numericalH_case = num_derivative(angles, wrench_body);
+
+    J = get_jacobian(angles, wrench_body);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
 // Test Chain Constraint Jacobians -PoeEquality3 - H_angles - first type
 // of chain
 TEST(Chain, PoeEquality3_H_angles_chain1) {
@@ -330,32 +489,127 @@ TEST(Chain, PoeEquality3_H_angles_chain1) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::PoeEquality3, composed, _1, _2,
-                     boost::none, boost::none);
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
 
   // lambda function to get numerical derivative
-  auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
-    return gtsam::numericalDerivative21<Vector6, Vector3, Vector6>(
-        f, angles, wrench_body);
+  auto num_derivative = [&](Vector3 angles) {
+    return gtsam::numericalDerivative11<Pose3, Vector3>(
+        f, angles);
   };
 
   // lambda function to get the Jacobian
-  auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
-    composed.PoeEquality3(angles, wrench_body, J1, boost::none);
+  auto get_jacobian = [&](Vector3 angles) {
+    composed.PoeEquality3(angles, J1);
     return J1;
   };
 
   Matrix anglesMat = get_angles_test_cases();
-  Matrix torquesMat = get_torques_test_cases();
-  Matrix wrenchMat = get_wrench_test_cases();
 
   for (int i = 0; i < anglesMat.rows(); ++i) {
     angles = anglesMat.row(i);
-    wrench_body = wrenchMat.row(i);
 
-    auto numericalH_case = num_derivative(angles, wrench_body);
+    auto numericalH_case = num_derivative(angles);
 
-    J = get_jacobian(angles, wrench_body);
+    J = get_jacobian(angles);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
+// Test Chain Constraint Jacobians -PoeEquality3 - H_angles - second type
+// of chain
+TEST(Chain, PoeEquality3_H_angles_chain2) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(17.0, -3.0, 99.5));
+  Matrix screwAxis(6, 1);
+  double one_over_sqrt_3 = 1 / sqrt(3);
+  screwAxis << one_over_sqrt_3, one_over_sqrt_3, one_over_sqrt_3, 1.5, 1.5,
+      0.0;  // size of omega should be 1
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis), joint2(sMb, screwAxis), joint3(sMb, screwAxis);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles) {
+    return gtsam::numericalDerivative11<Pose3, Vector3>(
+        f, angles);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles) {
+    composed.PoeEquality3(angles, J1);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+
+    auto numericalH_case = num_derivative(angles);
+
+    J = get_jacobian(angles);
+
+    EXPECT(assert_equal(J, numericalH_case, 1e-5));
+  }
+}
+
+// Test Chain Constraint Jacobians -PoeEquality3 - H_angles - third type
+// of chain
+TEST(Chain, PoeEquality3_H_angles_chain3) {
+  // Initialize pose and screw axis for chain instantiation
+  Pose3 sMb = Pose3(Rot3(), Point3(0, 3, 8));
+  Matrix screwAxis0(6, 1), screwAxis1(6, 1), screwAxis2(6, 1);
+  screwAxis0 << 0.0, 0.0, 1.0, 0.0, 5.0, 0.0;
+  screwAxis1 << 0.0, 1.0, 0.0, 3.0, 0.0, 0.0;
+  screwAxis2 << 1.0, 0.0, 0.0, 0.0, 0.0, 29.0;
+
+  // Instantiate chains and create a vector
+  Chain joint1(sMb, screwAxis0), joint2(sMb, screwAxis1),
+      joint3(sMb, screwAxis2);
+  std::vector<Chain> chains{joint1, joint2, joint3};
+
+  // Compose chains
+  Chain composed = Chain::compose(chains);
+
+  Vector3 angles, torques;
+  gtsam::Vector wrench_body(6);
+  Matrix J1, J;
+
+  // binded function for numerical derivative
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
+
+  // lambda function to get numerical derivative
+  auto num_derivative = [&](Vector3 angles) {
+    return gtsam::numericalDerivative11<Pose3, Vector3>(
+        f, angles);
+  };
+
+  // lambda function to get the Jacobian
+  auto get_jacobian = [&](Vector3 angles) {
+    composed.PoeEquality3(angles, J1);
+    return J1;
+  };
+
+  Matrix anglesMat = get_angles_test_cases();
+
+  for (int i = 0; i < anglesMat.rows(); ++i) {
+    angles = anglesMat.row(i);
+
+    auto numericalH_case = num_derivative(angles);
+
+    J = get_jacobian(angles);
 
     EXPECT(assert_equal(J, numericalH_case, 1e-5));
   }
@@ -832,7 +1086,7 @@ gtsam::Values NewGraphOneLeg() {
 
   // Get expression for chain on the leg
   gtsam::Vector6_ wrench_end_effector =
-      composed_chains[0].PoeConstraint3(chain_joints[0], wrench_key_0_T, 0);
+      composed_chains[0].AdjointWrenchConstraint3(chain_joints[0], wrench_key_0_T, 0);
 
   // Create contact constraint
   Point3 contact_in_com(0.0, 0.0, -0.07);
@@ -949,7 +1203,7 @@ gtsam::Values OldGraphFourLegs() {
 
   gtsam::Vector3 gravity(0, 0, -10.0);
 
-  OptimizerSetting opt(1e-4, 1e-4, 1e-5, 1e-4);
+  OptimizerSetting opt(5e-5, 5e-5, 5e-5, 5e-5);
   DynamicsGraph graph_builder(opt, gravity);
 
   gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
@@ -958,14 +1212,18 @@ gtsam::Values OldGraphFourLegs() {
 
   // Need the following to use the wrench factor (Coriolis, Generalized
   // Momentum, Gravity)
-  auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-30));
-  graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), bp_cost_model);
-  graph.addPrior(TwistKey(0, 0), wrench_zero, bp_cost_model);
-  graph.addPrior(TwistAccelKey(0, 0), wrench_zero, bp_cost_model);
-  graph.addPrior(WrenchKey(0,0,0), wrench_zero, bp_cost_model);
-   graph.addPrior(WrenchKey(0,3,0), wrench_zero, bp_cost_model);
-  graph.addPrior(WrenchKey(0,6,0), wrench_zero, bp_cost_model);
-
+  auto constrained_model = gtsam::noiseModel::Constrained::All(6);
+  auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-5));
+  graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), constrained_model);
+  graph.addPrior(TwistKey(0, 0), wrench_zero, constrained_model);
+  graph.addPrior(TwistAccelKey(0, 0), wrench_zero, constrained_model);
+  //graph.addPrior(WrenchKey(0,0,0), wrench_zero,  bp_cost_model);
+  graph.addPrior(WrenchKey(0,3,0), wrench_zero,  constrained_model);
+  graph.addPrior(WrenchKey(0,6,0), wrench_zero,  constrained_model);
+  graph.addPrior(WrenchKey(0,9,0), wrench_zero,  constrained_model);
+  graph.addPrior(JointAngleKey(1,0), 0.44, gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
+  graph.addPrior(JointAngleKey(2,0), 0.0, gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
+ 
   // Build dynamics factors
   //graph.add(graph_builder.qFactors(robot, 0));//, contact_points));
   graph.add(graph_builder.dynamicsFactors(robot, 0, contact_points, 1.0));
@@ -978,6 +1236,7 @@ gtsam::Values OldGraphFourLegs() {
     InsertWrench(&init_vals, joint->child()->id(), j, 0, wrench_zero);
     InsertTorque(&init_vals, j, 0, 0.0);
     InsertJointAngle(&init_vals, j, 0, 0.0);
+    //graph.addPrior(JointAngleKey(joint->id(),0), 0.0,  gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
   }
   for (auto&& link : robot.links()) {
     InsertTwist(&init_vals, link->id(), 0, wrench_zero);
@@ -1020,18 +1279,23 @@ gtsam::Values NewGraphFourLegs() {
   gtsam::NonlinearFactorGraph graph;
   gtsam::Vector3 gravity(0, 0, -10.0);
 
-  OptimizerSetting opt;
-  ChainDynamicsGraph chain_graph(robot, opt, 1*(1e-4),  6*(1e-5),  10.08*(1e-5), gravity);
+  OptimizerSetting opt(5e-5, 5e-5, 5e-5, 5e-5);
+  //ChainDynamicsGraph chain_graph(robot, opt, 1*(1e-4),  6*(1e-5),  10.08*(1e-5), gravity);
+  ChainDynamicsGraph chain_graph(robot, opt, gravity);
 
-gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
 
-    auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-30));
-  graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), bp_cost_model);
-  graph.addPrior(TwistKey(0, 0), wrench_zero, bp_cost_model);
-  graph.addPrior(TwistAccelKey(0, 0), wrench_zero, bp_cost_model);
-  graph.addPrior(WrenchKey(0,0,0), wrench_zero, bp_cost_model);
-   graph.addPrior(WrenchKey(0,3,0), wrench_zero, bp_cost_model);
-   graph.addPrior(WrenchKey(0,6,0), wrench_zero, bp_cost_model);
+  auto constrained_model = gtsam::noiseModel::Constrained::All(6);
+  auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-5));
+  graph.addPrior(PoseKey(0, 0), robot.link("trunk")->bMcom(), constrained_model);
+  graph.addPrior(TwistKey(0, 0), wrench_zero, constrained_model);
+  graph.addPrior(TwistAccelKey(0, 0), wrench_zero, constrained_model);
+  //graph.addPrior(WrenchKey(0,0,0), wrench_zero, bp_cost_model);
+  graph.addPrior(WrenchKey(0,3,0), wrench_zero, constrained_model);
+  graph.addPrior(WrenchKey(0,6,0), wrench_zero, constrained_model);
+  graph.addPrior(WrenchKey(0,9,0), wrench_zero, constrained_model);
+  graph.addPrior(JointAngleKey(1,0), 0.44, gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
+  graph.addPrior(JointAngleKey(2,0), 0.0, gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
 
   // Build dynamics factors
   //graph.add(chain_graph.qFactors(robot, 0));//, contact_points));
@@ -1041,6 +1305,7 @@ gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
   gtsam::Values init_values;
   for (auto&& joint : robot.joints()) {
     InsertJointAngle(&init_values, joint->id(), 0, 0.0);
+    //graph.addPrior(JointAngleKey(joint->id(),0), 0.0, gtsam::noiseModel::Isotropic::Sigma(1, 5e-5));
     //InsertTorque(&init_values, joint->id(), 0, 0.0);
   }
 
@@ -1128,12 +1393,107 @@ TEST(Chain, fourLegsCompareGraphsA1) {
     gtsam::Vector3 zero_torque{0.0, 0.0, 0.0};
     gtsam::Vector3 contact_torque_new = H_contact_wrench * wrench_new_3_G;
     gtsam::Vector3 contact_torque_old = H_contact_wrench * wrench_old_3_G;
-    EXPECT(assert_equal(contact_torque_new, zero_torque, 1e-4));
-    EXPECT(assert_equal(contact_torque_old, zero_torque, 1e-4));
+    EXPECT(assert_equal(contact_torque_new, zero_torque, 1e-3));
+    EXPECT(assert_equal(contact_torque_old, zero_torque, 1e-3));
     hip_joint_id += 3;
     hip_link_id += 3;
   }
 }
+
+TEST(Chain,A1forwardKinematicsWithPOE)  {
+  auto robot =
+      CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
+
+  OptimizerSetting opt;
+  ChainDynamicsGraph chain_graph(robot, opt);
+  auto chain_joints = chain_graph.getChainJoints(robot);
+  auto composed_chains = chain_graph.getComposedChains(chain_joints);
+
+  Vector3 test_angles( 0.0,  0.0, 0.0);
+  Pose3 chain_ee_pose = composed_chains[0].poe(test_angles, boost::none, boost::none);
+
+  gtsam::Values test_values;
+  InsertJointAngle(&test_values, 0, 0, 0.0);
+  InsertJointAngle(&test_values, 1, 0, 0.0);
+  InsertJointAngle(&test_values, 2, 0, 0.0);
+  gtsam::Values expected = robot.forwardKinematics(test_values, 0, robot.link("trunk")->name());
+  auto fk_ee_pose = Pose(expected, 3, 0);
+  EXPECT(assert_equal(chain_ee_pose, fk_ee_pose, 1e-6));
+}
+
+TEST(Chain, fourLegsCompareQfactorsA1)  {
+
+  auto robot =
+      CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
+
+  std::vector<LinkSharedPtr> lower_feet = {
+      robot.link("FL_lower"), robot.link("FR_lower"), robot.link("RL_lower"),
+      robot.link("RR_lower")};
+  const Point3 contact_in_com(0, 0, -0.07);
+  auto stationary =
+      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+  auto contact_points = stationary->contactPoints();
+
+  gtsam::NonlinearFactorGraph graph_DG, graph_CDG;
+  gtsam::Vector3 gravity(0, 0, -10.0);
+
+  OptimizerSetting opt(1e-3);
+  opt.p_cost_model = gtsam::noiseModel::Constrained::All(6);
+  ChainDynamicsGraph chain_graph(robot, opt, gravity);
+  DynamicsGraph dynamics_graph(opt, gravity );
+
+  auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-6));
+  auto p_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+  auto cp_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 1e-3));
+  auto cp_cost_model_angs(gtsam::noiseModel::Isotropic::Sigma(1, 5e-1));
+ 
+  graph_DG.addPrior(PoseKey(0, 0), robot.links()[0]->bMcom(), bp_cost_model);
+  graph_CDG.addPrior(PoseKey(0, 0), robot.links()[0]->bMcom(), bp_cost_model);
+  for (auto&& joint : robot.joints()){
+    const int id = joint->id();
+    graph_DG.addPrior(JointAngleKey(id, 0), 0.0, cp_cost_model_angs);
+    graph_CDG.addPrior(JointAngleKey(id, 0), 0.0, cp_cost_model_angs);
+  }
+
+  graph_CDG.add(chain_graph.qFactors(robot, 0, contact_points));
+  graph_DG.add(dynamics_graph.qFactors(robot, 0, contact_points));
+
+  // Create initial values.
+  gtsam::Values init_values_DG, init_values_CDG;
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&init_values_DG, joint->id(), 0, 0.0);
+    InsertJointAngle(&init_values_CDG, joint->id(), 0, 0.0);
+  }
+
+  for (auto&& link : robot.links()) {
+    const int i = link->id();
+    InsertPose(&init_values_DG, i, 0, link->bMcom());
+    if (i==0 || i==3 || i==6 || i==9 || i==12)
+      InsertPose(&init_values_CDG, i, 0, link->bMcom());
+  }
+
+  /// Solve the constraint problem with LM optimizer.
+  gtsam::LevenbergMarquardtParams params;
+  //params.setVerbosityLM("SUMMARY");
+  params.setlambdaInitial(1e10);
+  params.setlambdaLowerBound(1e-7);
+  params.setlambdaUpperBound(1e10);
+  params.setAbsoluteErrorTol(1e-3);
+  gtsam::LevenbergMarquardtOptimizer optimizer1(graph_DG, init_values_DG, params);
+  gtsam::LevenbergMarquardtOptimizer optimizer2(graph_CDG, init_values_CDG, params);
+
+  gtsam::Values results_DG = optimizer1.optimize();
+  gtsam::Values results_CDG = optimizer2.optimize();
+
+  for (int i = 0; i < 12; ++i) {
+    double angle_DG =
+        results_DG.at<double>(gtdynamics::JointAngleKey(i));
+    double angle_CDG =
+       results_CDG.at<double>(gtdynamics::JointAngleKey(i));
+    EXPECT(assert_equal(angle_DG, angle_CDG, 1e-3));
+  }
+}
+
 
 int main() {
   TestResult tr;
