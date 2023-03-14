@@ -17,8 +17,6 @@
 
 {boost_class_export}
 
-{holder_type}
-
 // Preamble for STL classes
 #include "python/gtdynamics/preamble/{module_name}.h"
 
