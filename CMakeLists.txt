@@ -57,7 +57,7 @@ option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
 option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
 
-# Enable or disable serialization with GTDYNAMICSENABLE_BOOST_SERIALIZATION
+# Enable or disable serialization with GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
 if(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION)
   add_compile_definitions(GTSAM_ENABLE_BOOST_SERIALIZATION)

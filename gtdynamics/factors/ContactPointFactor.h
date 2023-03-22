@@ -271,6 +271,7 @@ class FixedContactPointFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -278,6 +279,7 @@ class FixedContactPointFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
     ar &boost::serialization::make_nvp(
         "NonlinearEquality1", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics
