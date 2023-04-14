@@ -38,9 +38,9 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
   MinTorqueFactor(gtsam::Key torque_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, torque_key) {}
+
   virtual ~MinTorqueFactor() {}
 
- public:
   /**
    * Evaluate wrench balance errors
    * @param wrench wrench on this link

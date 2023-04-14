@@ -53,7 +53,6 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
                      double mass,
                      const std::optional<gtsam::Vector3> &gravity = {});
 
- public:
   /**
    * Evaluate ResultantWrench, which should be zero and is factor error.
    * @param values contains the pose and wrenches acting on the link.
