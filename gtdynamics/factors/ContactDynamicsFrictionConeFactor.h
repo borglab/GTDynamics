@@ -51,7 +51,7 @@ class ContactDynamicsFrictionConeFactor
  public:
   /**
    * Contact dynamics factor for zero moment at contact.
-
+   *
    * @param pose_key Key corresponding to the link's CoM pose.
    * @param contact_wrench_key Key corresponding to this link's contact wrench.
    * @param cost_model Noise model for this factor.
@@ -69,9 +69,9 @@ class ContactDynamicsFrictionConeFactor
     else
       up_axis_ = 2;  // z.
   }
+
   virtual ~ContactDynamicsFrictionConeFactor() {}
 
- public:
   /**
    * Evaluate contact point moment errors.
    * @param contact_wrench Contact wrench on this link.

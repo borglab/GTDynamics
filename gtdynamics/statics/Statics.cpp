@@ -11,6 +11,7 @@
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -22,7 +23,7 @@ using gtsam::Vector6;
 
 Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
                       const gtsam::Pose3 &wTcom,
-                      gtsam::OptionalJacobian<6, 6> H_wTcom = {}) {
+                      gtsam::OptionalJacobian<6, 6> H_wTcom) {
   // Transform gravity from base frame to link COM frame.
   gtsam::Matrix33 H_unrotate;
   const gtsam::Rot3 wRcom = wTcom.rotation();
