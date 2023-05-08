@@ -62,7 +62,7 @@ Trajectory getTrajectory(const Robot& robot, size_t repeat) {
   return Trajectory(walk_cycle, repeat);
 }
 
-int CombinedRun(){
+int CombinedRun(bool add_mass_to_body){
 
 
   //gttic_(start1); //need to build gtsam with timing for this
@@ -76,12 +76,17 @@ int CombinedRun(){
       CreateRobotFromFile(kUrdfPath + std::string("/a1/a1.urdf"), "a1");
 
     // set masses and inertias
+  double total_mass = 0.0;
   for (auto&& link : robot_massless.links()) {
     if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
       link->setInertia(gtsam::Matrix3::Zero());
-      //std::cout<<std::endl;
     }
+  }
+  
+  if (add_mass_to_body) {
+    robot_massless.link("trunk")->setMass(12.458);
+    std::cout << "robot body mass set to " << robot_massless.link("trunk")->mass() << std::endl;
   }
 
   double sigma_dynamics =5e-5;    // std of dynamics constraints.
@@ -111,7 +116,7 @@ int CombinedRun(){
   ChainDynamicsGraph chain_graph_massless_builder(robot_massless, opt, gravity);
 
   // Create the trajectory, 1 walk cycle.
-  auto trajectory = getTrajectory(robot, 2);
+  auto trajectory = getTrajectory(robot, 3);
 
   // Create multi-phase trajectory factor graph
   auto collocation = CollocationScheme::Euler;
@@ -126,10 +131,10 @@ int CombinedRun(){
       trajectory.multiPhaseFactorGraph(robot_massless, chain_graph_massless_builder, collocation, mu);
 
   // Build the objective factors.
-  double ground_height = 1.0;
-  const Point3 step(0.25, 0.0, 0);
+  double ground_height = -0.4;
+  const Point3 step(0.18, 0.0, 0);
   gtsam::NonlinearFactorGraph objectives =
-      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3, 5e-5), step, ground_height);
+      trajectory.contactPointObjectives(robot, Isotropic::Sigma(3,8e-6), step, ground_height);
 
     // Get final time step.
   int K = trajectory.getEndTimeStep(trajectory.numPhases() - 1);
@@ -288,7 +293,20 @@ int CombinedRun(){
   gtsam::tictoc_print_(); 
 
   std::ofstream FileLocations("locations.txt");
-  std::ofstream FileWrenches("wrenches.txt");
+  std::ofstream FileTorques;
+  std::ofstream FileWrenchesBody;
+  std::ofstream FileWrenchesGround;
+  if (add_mass_to_body){
+    FileWrenchesBody.open("body_wrenches_body_full_mass.txt");
+    FileWrenchesGround.open("ground_wrenches_body_full_mass.txt");
+    FileTorques.open("torques_body_full_mass.txt");
+  }
+  else {
+    FileWrenchesBody.open("body_wrenches_body_only_mass.txt");
+    FileWrenchesGround.open("ground_wrenches_body_only_mass.txt");
+    FileTorques.open("torques_body_only_mass.txt");
+  }
+
   const int link_to_test = 0;
   const int joint_to_test = 0;
   for (int i = 0; i < K;++i){
@@ -303,16 +321,55 @@ int CombinedRun(){
     gtsam::Vector6 wrench1 = results_DG_mass.at<gtsam::Vector6>(WrenchKey(0,joint_to_test,i));
     gtsam::Vector6 wrench2 = results_DG_massless.at<gtsam::Vector6>(WrenchKey(0,joint_to_test,i));
     gtsam::Vector6 wrench3= results_CDG_massless.at<gtsam::Vector6>(WrenchKey(0,joint_to_test,i));
-    FileWrenches << wrench1[0] << "," << wrench1[1]  <<","<< wrench1[2]  <<","<< wrench1[3]<<","<< wrench1[4]<<","<< wrench1[5]<<","<<
+    FileWrenchesBody << wrench1[0] << "," << wrench1[1]  <<","<< wrench1[2]  <<","<< wrench1[3]<<","<< wrench1[4]<<","<< wrench1[5]<<","<<
                                       wrench2[0] << "," << wrench2[1]  <<","<< wrench2[2]  <<","<< wrench2[3]<<","<< wrench2[4]<<","<< wrench2[5]<<","<<
                                        wrench3[0] << "," << wrench3[1]  <<","<< wrench3[2]  <<","<< wrench3[3]<<","<< wrench3[4]<<","<< wrench3[5]<<"\n";
+
+    double angle0 = results_CDG_massless.at<double>(JointAngleKey(0,i));
+    double angle1 = results_CDG_massless.at<double>(JointAngleKey(1,i));
+    double angle2 = results_CDG_massless.at<double>(JointAngleKey(2,i));
+    Pose3 T0 = robot.joint("FL_hip_joint")->parentTchild(angle0);
+    Pose3 T1 = robot.joint("FL_upper_joint")->parentTchild(angle1);
+    Pose3 T2 = robot.joint("FL_lower_joint")->parentTchild(angle2);
+    Pose3 T3 = Pose3(Rot3(),Point3(0.0, 0.0, -0.07));
+    Pose3 T_body_contact = T0 * T1 * T2 * T3;
+
+    double torque0_dg_mass = results_DG_mass.at<double>(TorqueKey(0,i));
+    double torque1_dg_mass = results_DG_mass.at<double>(TorqueKey(1,i));
+    double torque2_dg_mass = results_DG_mass.at<double>(TorqueKey(2,i));
+    
+    double torque0_dg_massless = results_DG_mass.at<double>(TorqueKey(0,i));
+    double torque1_dg_massless = results_DG_mass.at<double>(TorqueKey(1,i));
+    double torque2_dg_massless = results_DG_mass.at<double>(TorqueKey(2,i));
+
+    gtsam::Vector6 wrench6= results_CDG_massless.at<gtsam::Vector6>(WrenchKey(0,0,i));
+
+    double torque0_cdg_massless = (-1) * wrench6.transpose() * T0.AdjointMap() * robot.joint("FL_hip_joint")->cScrewAxis();
+    double torque1_cdg_massless = (-1) * wrench6.transpose() * (T0*T1).AdjointMap()* robot.joint("FL_upper_joint")->cScrewAxis();
+    double torque2_cdg_massless = (-1) * wrench6.transpose() * (T0*T1*T2).AdjointMap()* robot.joint("FL_lower_joint")->cScrewAxis();
+    
+    FileTorques<<  torque0_dg_mass <<',' << torque1_dg_mass << ',' << torque2_dg_mass << ','<<
+                                    torque0_dg_massless <<',' << torque1_dg_massless << ',' << torque2_dg_massless << ','<<
+                                    torque0_cdg_massless <<',' << torque1_cdg_massless << ',' << torque2_cdg_massless << '\n';
+
+    
+    if (i <13 || i >25) continue;
+
+    gtsam::Vector6 wrench4 = results_DG_mass.at<gtsam::Vector6>(ContactWrenchKey(3,0,i)).transpose() * T3.AdjointMap();
+    gtsam::Vector6 wrench5 = results_DG_massless.at<gtsam::Vector6>(ContactWrenchKey(3,0,i)).transpose() * T3.AdjointMap();
+    gtsam::Vector6 wrench7 = wrench6.transpose() * T_body_contact.AdjointMap();
+    FileWrenchesGround << wrench4[0] << "," << wrench4[1]  <<","<<wrench4[2]  <<","<< wrench4[3]<<","<< wrench4[4]<<","<< wrench4[5]<<","<<
+                                      wrench5[0] << "," << wrench5[1]  <<","<<wrench5[2]  <<","<< wrench5[3]<<","<< wrench5[4]<<","<< wrench5[5]<<","<<
+                                       wrench7[0] << "," << wrench7[1]  <<","<< wrench7[2]  <<","<< wrench7[3]<<","<< wrench7[4]<<","<< wrench7[5]<<"\n";
   }
   FileLocations.close();
-  FileWrenches.close();
+  FileWrenchesBody.close();
+  FileWrenchesGround.close();
   return 0;
 }
 
 int main(int argc, char** argv) {
-  int a = CombinedRun();
+  int a = CombinedRun(false);
+  int b = CombinedRun(true);
   return 0;
 }
