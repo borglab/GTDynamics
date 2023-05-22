@@ -41,7 +41,7 @@ class ContactEqualityFactor
 
  public:
   // shorthand for a smart pointer to a factor
-  using shared_ptr = boost::shared_ptr<ContactEqualityFactor>;
+  using shared_ptr = std::shared_ptr<ContactEqualityFactor>;
 
   /** default constructor - only use for serialization */
   ContactEqualityFactor(){};
@@ -66,7 +66,7 @@ class ContactEqualityFactor
 
   /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -74,8 +74,8 @@ class ContactEqualityFactor
   /// jacobians.
   gtsam::Vector3 contactPointsDifference(
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
-      boost::optional<gtsam::Matrix &> H1 = boost::none,
-      boost::optional<gtsam::Matrix &> H2 = boost::none) const {
+      gtsam::OptionalMatrixType H1 = nullptr,
+      gtsam::OptionalMatrixType H2 = nullptr) const {
     gtsam::Point3 p1_w = wT1.transformFrom(point_on_link_.point, H1);
     gtsam::Point3 p2_w = wT2.transformFrom(point_on_link_.point, H2);
 
@@ -85,8 +85,8 @@ class ContactEqualityFactor
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wT1, const gtsam::Pose3 &wT2,
-      boost::optional<gtsam::Matrix &> H1 = boost::none,
-      boost::optional<gtsam::Matrix &> H2 = boost::none) const override {
+      gtsam::OptionalMatrixType H1 = nullptr,
+      gtsam::OptionalMatrixType H2 = nullptr) const override {
     return contactPointsDifference(wT1, wT2, H1, H2);
   }
 

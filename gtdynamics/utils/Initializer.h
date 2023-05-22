@@ -21,7 +21,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -98,7 +98,7 @@ class Initializer {
         const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
         const gtsam::Pose3& wTl_f, double T_s, double T_f, double dt,
         double gaussian_noise = 0.0,
-        const boost::optional<PointOnLinks>& contact_points = boost::none);
+        const std::optional<PointOnLinks>& contact_points = {});
 
     /**
      * @fn Initialize interpolated solution for multiple phases.
@@ -119,7 +119,7 @@ class Initializer {
         const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
         const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
         double dt, double gaussian_noise = 0.0,
-        const boost::optional<PointOnLinks>& contact_points = boost::none);
+        const std::optional<PointOnLinks>& contact_points = {});
 
     /**
      * @fn Iteratively solve for the robot kinematics with contacts.
@@ -140,7 +140,7 @@ class Initializer {
         const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
         const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
         double dt, double gaussian_noise = 1e-8,
-        const boost::optional<PointOnLinks>& contact_points = boost::none);
+        const std::optional<PointOnLinks>& contact_points = {});
 
     /**
      * @fn Initialize solution for multi-phase trajectory to nominal pose.
@@ -156,8 +156,8 @@ class Initializer {
         const Robot& robot, const std::vector<int>& phase_steps,
         std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
         const double gaussian_noise = 1e-8,
-        const boost::optional<std::vector<PointOnLinks>>& phase_contact_points =
-            boost::none) const;
+        const std::optional<std::vector<PointOnLinks>>& phase_contact_points =
+            {}) const;
 
     /**
      * @fn Multi-phase initialize solution inverse kinematics.
@@ -184,8 +184,8 @@ class Initializer {
         const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
         std::vector<gtsam::Values> transition_graph_init, double dt_i = 1. / 240,
         double gaussian_noise = 1e-8,
-        const boost::optional<std::vector<PointOnLinks>>& phase_contact_points =
-            boost::none);
+        const std::optional<std::vector<PointOnLinks>>& phase_contact_points =
+            {});
 
     /**
      * @fn Return zero values for all variables for initial value of optimization.
@@ -199,7 +199,7 @@ class Initializer {
      */
     virtual gtsam::Values ZeroValues(
         const Robot& robot, const int t, double gaussian_noise = 0.0,
-        const boost::optional<PointOnLinks>& contact_points = boost::none) const;
+        const std::optional<PointOnLinks>& contact_points = {}) const;
 
     /**
      * @fn Return zero values of the trajectory for initial value of optimization.
@@ -216,7 +216,7 @@ class Initializer {
     gtsam::Values ZeroValuesTrajectory(
         const Robot& robot, const int num_steps, const int num_phases = -1,
         double gaussian_noise = 0.0,
-        const boost::optional<PointOnLinks>& contact_points = boost::none);
+        const std::optional<PointOnLinks>& contact_points = {});
 
 };
 

@@ -24,7 +24,7 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <string>
 
 namespace gtdynamics {
@@ -63,7 +63,7 @@ inline gtsam::NoiseModelFactor::shared_ptr WrenchPlanarFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     gtsam::Vector3 planar_axis, const JointConstSharedPtr &joint,
     size_t k = 0) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
       cost_model, gtsam::Vector3::Zero(),
       WrenchPlanarConstraint(planar_axis, joint, k));
 }

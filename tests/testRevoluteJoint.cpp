@@ -211,6 +211,7 @@ TEST(RevoluteJoint, ParentTchild) {
   EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
 TEST(RevoluteJoint, Serialization) {
@@ -221,6 +222,7 @@ TEST(RevoluteJoint, Serialization) {
   EXPECT(equalsXML(j1));
   EXPECT(equalsBinary(j1));
 }
+#endif
 
 int main() {
   TestResult tr;

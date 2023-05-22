@@ -12,7 +12,6 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 
@@ -21,8 +20,8 @@ using namespace gtsam;
 namespace gtdynamics {
 
 double CableVelocityFactor::computeLdot(const Pose3 &wTx, const Vector6 &Vx,
-                                        boost::optional<Matrix &> H_wTx,
-                                        boost::optional<Matrix &> H_Vx) const {
+                                        gtsam::OptionalMatrixType H_wTx,
+                                        gtsam::OptionalMatrixType H_Vx) const {
   // Jacobians: cable direction
   Matrix13 H_dir;
   Matrix33 dir_H_wPb;

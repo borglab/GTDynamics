@@ -12,19 +12,19 @@
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
-#include <gtdynamics/utils/WalkCycle.h> 
+#include <gtdynamics/utils/WalkCycle.h>
 
 namespace gtdynamics {
 
-using gtsam::Point3;
 using gtsam::NonlinearFactorGraph;
+using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 
 /// cast ConstraintSpec to FootContactConstraintSpec
-const boost::shared_ptr<const FootContactConstraintSpec>
+const std::shared_ptr<const FootContactConstraintSpec>
 castFootContactConstraintSpec(
-    const boost::shared_ptr<const ConstraintSpec> &constraint_spec) {
-  return boost::dynamic_pointer_cast<const FootContactConstraintSpec>(
+    const std::shared_ptr<const ConstraintSpec> &constraint_spec) {
+  return std::dynamic_pointer_cast<const FootContactConstraintSpec>(
       constraint_spec);
 }
 
@@ -38,7 +38,7 @@ void WalkCycle::addPhaseContactPoints(const Phase &phase) {
           std::count_if(contact_points_.begin(), contact_points_.end(),
                         [&](const PointOnLink &contact_point) {
                           return contact_point.point == kv.point &&
-                                  contact_point.link == kv.link;
+                                 contact_point.link == kv.link;
                         });
       if (link_count == 0) contact_points_.push_back(kv);
     }
@@ -136,7 +136,7 @@ std::vector<std::string> WalkCycle::getPhaseSwingLinks(size_t p) const {
 const PointOnLinks WalkCycle::getPhaseContactPoints(size_t p) const {
   PointOnLinks cp;
   auto foot_contact_spec =
-    castFootContactConstraintSpec(phases_[p].constraintSpec());
+      castFootContactConstraintSpec(phases_[p].constraintSpec());
   if (foot_contact_spec) {
     cp = foot_contact_spec->contactPoints();
   }
@@ -166,7 +166,7 @@ std::vector<PointOnLinks> WalkCycle::transitionContactPoints() const {
         castFootContactConstraintSpec(phases_[p].constraintSpec());
     auto foot_contact_spec2 =
         castFootContactConstraintSpec(phases_[p + 1].constraintSpec());
-        
+
     if (foot_contact_spec1) {
       phase_1_cps = foot_contact_spec1->contactPoints();
     }

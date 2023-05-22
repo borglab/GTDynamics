@@ -24,8 +24,6 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -317,7 +315,10 @@ int main(int argc, char** argv) {
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   vector<string> jnames;
   for (auto&& joint : robot.joints()) jnames.push_back(joint->name());
-  string jnames_str = boost::algorithm::join(jnames, ",");
+  std::string jnames_str = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques, time.
@@ -340,7 +341,10 @@ int main(int argc, char** argv) {
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
 
       t++;
-      string vals_str = boost::algorithm::join(vals, ",");
+      std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
       traj_file << vals_str << "\n";
     }
   }

@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics)
+set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics manifold)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -60,10 +60,17 @@ add_library(gtdynamics SHARED ${sources} ${headers})
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Link all dependencies
-target_link_libraries(gtdynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+
+target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
 
 
 ## Include headers needed
+
+# Add TBB headers
+if(GTDYNAMICS_WITH_TBB)
+  target_include_directories(gtdynamics PUBLIC ${TBB_INCLUDE_DIRS})
+endif()
 
 # Add includes for source directories 'BEFORE' any other include
 # paths so that the compiler uses GTDynamics headers in our source directory instead

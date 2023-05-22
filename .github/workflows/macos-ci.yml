@@ -17,15 +17,15 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [macOS-10.15-xcode-11.3.1]
+        name: [macOS-12-xcode-14.2]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
         include:
-          - name: macOS-10.15-xcode-11.3.1
-            os: macOS-10.15
+          - name: macOS-12-xcode-14.2
+            os: macOS-12
             compiler: xcode
-            version: "11.3.1"
+            version: "14.2"
 
     steps:
       - name: Setup Compiler
@@ -58,7 +58,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..
         working-directory: ./build
 
       - name: Build

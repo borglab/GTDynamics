@@ -7,10 +7,12 @@ project(gtdynamics
 
 add_compile_options(-faligned-new)
 
-# Enforce c++11 standards
-add_compile_options(-std=c++11) # CMake 3.1 and earlier
-set(CMAKE_CXX_STANDARD 11)
+# Enforce c++17 standards
+add_compile_options(-std=c++17) # CMake 3.1 and earlier
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # ##############################################################################
 # Find Dependencies #
@@ -50,9 +52,19 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" ON)
-option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" ON)
-option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" ON)
+option(GTDYNAMICS_WITH_TBB                       "Use Intel Threaded Building Blocks (TBB) if available" OFF)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
+
+# Enable or disable serialization with GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
+if(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION)
+  add_compile_definitions(GTSAM_ENABLE_BOOST_SERIALIZATION)
+  add_compile_definitions(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION)
+endif()
+
+include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)
 
@@ -85,6 +97,13 @@ message(STATUS "CMAKE_CXX_COMPILER_VERSION                  : ${CMAKE_CXX_COMPIL
 message(STATUS "GTSAM Version                               : ${GTSAM_VERSION}")
 message(STATUS "Boost Version                               : ${Boost_VERSION}")
 message(STATUS "SDFormat Version                            : ${sdformat${SDFormat_VERSION}_VERSION}")
+
+if(TBB_FOUND)
+  message(STATUS "Use Intel TBB                               : Yes (${TBB_VERSION})")
+else()
+message(STATUS "Use Intel TBB                               : NO")
+endif(TBB_FOUND)
+
 message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD_PYTHON}")
 if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")

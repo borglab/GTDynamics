@@ -7,7 +7,8 @@
 
 /**
  * @file  ChainInitializer.h
- * @brief Utility methods for initializing trajectory optimization solutions for chain graph.
+ * @brief Utility methods for initializing trajectory optimization solutions for
+ * chain graph.
  * @author: Dan Barladeanu
  */
 
@@ -15,8 +16,9 @@
 
 namespace gtdynamics {
 
-gtsam::Values ChainInitializer::ZeroValues(const Robot& robot, const int t, double gaussian_noise,
-                  const boost::optional<PointOnLinks>& contact_points) const {
+gtsam::Values ChainInitializer::ZeroValues(
+    const Robot& robot, const int t, double gaussian_noise,
+    const std::optional<PointOnLinks>& contact_points) const {
   gtsam::Values values;
 
   auto sampler_noise_model =
@@ -58,4 +60,4 @@ gtsam::Values ChainInitializer::ZeroValues(const Robot& robot, const int t, doub
   return values;
 }
 
-} //namespace gtdynamics
+}  // namespace gtdynamics

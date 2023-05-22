@@ -89,7 +89,7 @@ TEST(Chain, ThreeLinksPoeRest) {
 
   // Check poe for FK at rest (with jacobian)
   Matrix J0;
-  POE = composed.poe(joint_angles, boost::none, J0);
+  POE = composed.poe(joint_angles, {}, J0);
   EXPECT(assert_equal(POE, expected, 1e-6));
   EXPECT(assert_equal(J0, expected_J, 1e-6));
 }
@@ -118,7 +118,7 @@ TEST(Chain, ThreeLinksPoeNotRest) {
   Vector joint_angles1(3);
   joint_angles1 << 0, 0, M_PI / 2;
   Matrix J1;
-  Pose3 POE1 = composed.poe(joint_angles1, boost::none, J1);
+  Pose3 POE1 = composed.poe(joint_angles1, {}, J1);
   EXPECT(assert_equal(POE1, expected_not_rest, 1e-6));
   EXPECT(assert_equal(J1, expected_J1, 1e-6));
 }
@@ -206,13 +206,12 @@ TEST(Chain, ChainConstraint) {
 // Test Chain Constraint Jacobians - MakeVector3
 TEST(Chain, MakeVector3Jacobians) {
   Matrix J0, J1, J2;
-  MakeVector3(17.0, 18.0, 19.0, J0, boost::none, boost::none);
-  MakeVector3(0.0, 0.0, 207.34567, boost::none, J1, boost::none);
-  MakeVector3(-9.0, -18.0, -1.0, boost::none, boost::none, J2);
+  MakeVector3(17.0, 18.0, 19.0, J0, {}, {});
+  MakeVector3(0.0, 0.0, 207.34567, {}, J1, {});
+  MakeVector3(-9.0, -18.0, -1.0, {}, {}, J2);
 
   // binded function for numerical derivative
-  auto f =
-      std::bind(MakeVector3, _1, _2, _3, boost::none, boost::none, boost::none);
+  auto f = std::bind(MakeVector3, _1, _2, _3, nullptr, nullptr, nullptr);
 
   auto numericalH0 =
       gtsam::numericalDerivative31<Vector3, double, double, double>(f, 17.0,
@@ -278,8 +277,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
-                     boost::none, boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3, nullptr,
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -289,8 +288,7 @@ TEST(Chain, DynamicalEquality3_H_angles_chain1) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
-    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                                boost::none);
+    composed.DynamicalEquality3(wrench, angles, torques, {}, J1, {});
     return J1;
   };
 
@@ -637,8 +635,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain2) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
-                     boost::none, boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3, nullptr,
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -648,8 +646,7 @@ TEST(Chain, DynamicalEquality3_H_angles_chain2) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
-    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                                boost::none);
+    composed.DynamicalEquality3(wrench, angles, torques, {}, J1, {});
     return J1;
   };
 
@@ -693,8 +690,8 @@ TEST(Chain, DynamicalEquality3_H_angles_chain3) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
-                     boost::none, boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3, nullptr,
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -704,8 +701,7 @@ TEST(Chain, DynamicalEquality3_H_angles_chain3) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
-    composed.DynamicalEquality3(wrench, angles, torques, boost::none, J1,
-                                boost::none);
+    composed.DynamicalEquality3(wrench, angles, torques, {}, J1, {});
     return J1;
   };
 
@@ -748,8 +744,8 @@ TEST(Chain, DynamicalEquality3_H_wrench) {
   Matrix J0, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
-                     boost::none, boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3, nullptr,
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -759,8 +755,7 @@ TEST(Chain, DynamicalEquality3_H_wrench) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
-    composed.DynamicalEquality3(wrench, angles, torques, J0, boost::none,
-                                boost::none);
+    composed.DynamicalEquality3(wrench, angles, torques, J0, {}, {});
     return J0;
   };
 
@@ -803,8 +798,8 @@ TEST(Chain, DynamicalEquality3_H_torques) {
   Matrix J2, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3,
-                     boost::none, boost::none, boost::none);
+  auto f = std::bind(&Chain::DynamicalEquality3, composed, _1, _2, _3, nullptr,
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
@@ -814,8 +809,7 @@ TEST(Chain, DynamicalEquality3_H_torques) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector6 wrench, Vector3 angles, Vector3 torques) {
-    composed.DynamicalEquality3(wrench, angles, torques, boost::none,
-                                boost::none, J2);
+    composed.DynamicalEquality3(wrench, angles, torques, {}, {}, J2);
     return J2;
   };
 

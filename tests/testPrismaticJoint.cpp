@@ -44,7 +44,7 @@ TEST(Joint, params_constructor_prismatic) {
 
   const gtsam::Vector3 j1_axis(0, 0, 1);
 
-  auto j1 = boost::make_shared<PrismaticJoint>(
+  auto j1 = std::make_shared<PrismaticJoint>(
       1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
       parameters);
 
@@ -101,6 +101,7 @@ TEST(Joint, params_constructor_prismatic) {
                       j1->parameters().scalar_limits.value_limit_threshold));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 BOOST_CLASS_EXPORT(gtdynamics::PrismaticJoint)
 
 TEST(PrismaticJoint, Serialization) {
@@ -111,7 +112,7 @@ TEST(PrismaticJoint, Serialization) {
   JointParams parameters;
   const gtsam::Vector3 j1_axis(0, 0, 1);
 
-  auto j1 = boost::make_shared<PrismaticJoint>(
+  auto j1 = std::make_shared<PrismaticJoint>(
       1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
       parameters);
 
@@ -120,6 +121,7 @@ TEST(PrismaticJoint, Serialization) {
   EXPECT(equalsDereferencedXML(j1));
   EXPECT(equalsDereferencedBinary(j1));
 }
+#endif
 
 int main() {
   TestResult tr;

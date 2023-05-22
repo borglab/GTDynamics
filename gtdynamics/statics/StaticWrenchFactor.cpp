@@ -19,7 +19,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <vector>
 
 using gtsam::Matrix;
@@ -33,13 +33,13 @@ namespace gtdynamics {
 StaticWrenchFactor::StaticWrenchFactor(
     const std::vector<gtsam::Key> &wrench_keys, gtsam::Key pose_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model, double mass,
-    const boost::optional<gtsam::Vector3> &gravity)
+    const std::optional<gtsam::Vector3> &gravity)
     : Base(cost_model, wrench_keys), mass_(mass), gravity_(gravity) {
   keys_.push_back(pose_key);
 }
 
 Vector StaticWrenchFactor::unwhitenedError(
-    const Values &x, boost::optional<std::vector<Matrix> &> H) const {
+    const Values &x, gtsam::OptionalMatrixVecType H) const {
   if (!this->active(x)) {
     return Vector::Zero(this->dim());
   }

@@ -26,8 +26,6 @@
 #include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
 
-#include <boost/serialization/export.hpp>
-
 using namespace gtdynamics;
 using gtsam::assert_equal;
 using gtsam::Point3;
@@ -302,6 +300,8 @@ TEST(Robot, Equality) {
   EXPECT(!robot1.equals(robot2));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+
 // Declaration needed for serialization of derived class.
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
@@ -316,6 +316,7 @@ TEST(Robot, Serialization) {
   EXPECT(equalsXML(robot));
   EXPECT(equalsBinary(robot));
 }
+#endif
 
 int main() {
   TestResult tr;

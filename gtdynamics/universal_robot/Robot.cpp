@@ -148,7 +148,7 @@ void Robot::print(const std::string &s) const {
 
 LinkSharedPtr Robot::findRootLink(
     const gtsam::Values &values,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
@@ -222,7 +222,7 @@ static bool InsertWithCheck(size_t i, size_t t,
 
 gtsam::Values Robot::forwardKinematics(
     const gtsam::Values &known_values, size_t t,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   gtsam::Values values = known_values;
 
   // Set root link.

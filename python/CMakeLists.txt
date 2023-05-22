@@ -37,7 +37,7 @@ pybind_wrap(
   ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl
   ${PROJECT_NAME} # libs
   "${PROJECT_NAME}" # dependencies
-  ON # use boost
+  ${GTDYNAMICS_ENABLE_BOOST_SERIALIZATION} # use_boost_serialization
 )
 
 set_target_properties(

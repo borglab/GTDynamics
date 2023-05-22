@@ -81,7 +81,7 @@ Pose3 Joint::childTparent(double q,
 /* ************************************************************************* */
 Vector6 Joint::transformTwistTo(
     const LinkSharedPtr &link, double q, double q_dot,
-    boost::optional<Vector6> other_twist, gtsam::OptionalJacobian<6, 1> H_q,
+    std::optional<Vector6> other_twist, gtsam::OptionalJacobian<6, 1> H_q,
     gtsam::OptionalJacobian<6, 1> H_q_dot,
     gtsam::OptionalJacobian<6, 6> H_other_twist) const {
   Vector6 other_twist_ = other_twist ? *other_twist : Vector6::Zero();
@@ -129,7 +129,7 @@ Vector6 Joint::transformWrenchCoordinate(
 
 /* ************************************************************************* */
 double Joint::transformWrenchToTorque(
-    const LinkSharedPtr &link, boost::optional<Vector6> wrench,
+    const LinkSharedPtr &link, std::optional<Vector6> wrench,
     gtsam::OptionalJacobian<1, 6> H_wrench) const {
   auto screw_axis_ = screwAxis(link);
   if (H_wrench) {
@@ -153,7 +153,7 @@ gtsam::GaussianFactorGraph Joint::linearFDPriors(
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph Joint::linearAFactors(
     size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
+    const std::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::GaussianFactorGraph graph;
 
   const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
@@ -177,7 +177,7 @@ gtsam::GaussianFactorGraph Joint::linearAFactors(
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph Joint::linearDynamicsFactors(
     size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
-    const boost::optional<gtsam::Vector3> &planar_axis) const {
+    const std::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::GaussianFactorGraph graph;
 
   const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);

@@ -35,7 +35,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   sdf::SDFPtr sdf = sdf::readFile(sdf_file_path, config, errors);
   if (sdf == nullptr || errors.size() > 0) {
     for (auto &&error : errors) {
-      std::cout << error << std::endl;
+      std::cout << "ERROR: " << error << std::endl;
     }
 
     throw std::runtime_error("SDF library could not parse " + sdf_file_path);
@@ -45,7 +45,7 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   errors = root.Load(sdf, config);
   if (errors.size() > 0) {
     for (auto &&error : errors) {
-      std::cout << error.Message() << std::endl;
+      std::cout << "ERROR: " << error.Message() << std::endl;
     }
     throw std::runtime_error("Error loading SDF file " + sdf_file_path);
   }
@@ -178,7 +178,7 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   const Pose3 lMcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   const Pose3 bMcom = bMl * lMcom;
 
-  return boost::make_shared<Link>(id, sdf_link.Name(),
+  return std::make_shared<Link>(id, sdf_link.Name(),
                                   sdf_link.Inertial().MassMatrix().Mass(),
                                   inertia, bMcom, bMl);
 }
@@ -213,20 +213,20 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
 
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
+      joint = std::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
                                                  child_link, axis, parameters);
       break;
     case sdf::JointType::REVOLUTE:
-      joint = boost::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
+      joint = std::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
                                                 child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<HelicalJoint>(
+      joint = std::make_shared<HelicalJoint>(
           id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
       break;
     case sdf::JointType::FIXED:
-      joint = boost::make_shared<FixedJoint>(id, name, bMj, parent_link,
+      joint = std::make_shared<FixedJoint>(id, name, bMj, parent_link,
                                              child_link);
       break;
     default:
@@ -262,7 +262,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
       // This joint fixes the child link in the world frame.
       LinkSharedPtr child_link = name_to_link[child_link_name];
       Pose3 fixed_pose = child_link->bMcom();
-      child_link = boost::make_shared<Link>(Link::fix(*child_link, fixed_pose));
+      child_link = std::make_shared<Link>(Link::fix(*child_link, fixed_pose));
       continue;
     }
     LinkSharedPtr parent_link = name_to_link[parent_link_name];

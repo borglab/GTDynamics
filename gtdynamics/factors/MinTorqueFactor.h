@@ -17,7 +17,7 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <string>
 
 namespace gtdynamics {
@@ -38,9 +38,9 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
   MinTorqueFactor(gtsam::Key torque_key,
                   const gtsam::noiseModel::Base::shared_ptr &cost_model)
       : Base(cost_model, torque_key) {}
+
   virtual ~MinTorqueFactor() {}
 
- public:
   /**
    * Evaluate wrench balance errors
    * @param wrench wrench on this link
@@ -48,7 +48,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
    */
   gtsam::Vector evaluateError(
       const double &torque,
-      boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
+      gtsam::OptionalMatrixType H_torque = nullptr) const override {
     gtsam::Vector error = (gtsam::Vector(1) << torque).finished();
 
     if (H_torque) *H_torque = gtsam::I_1x1;
@@ -58,7 +58,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -71,6 +71,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -78,6 +79,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

@@ -24,8 +24,6 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -144,8 +142,8 @@ int main(int argc, char** argv) {
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
 
-// Set initializer.
-gtdynamics::Initializer initializer;
+  // Set initializer.
+  gtdynamics::Initializer initializer;
 
   // Graphs for transition between phases + their initial values.
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
@@ -299,7 +297,10 @@ gtdynamics::Initializer initializer;
   for (auto&& joint : robot.joints()) {
     joint_names.push_back(joint->name());
   }
-  string joint_names_str = boost::algorithm::join(joint_names, ",");
+  std::string joint_names_str = "";
+  for (size_t j = 0; j < joint_names.size(); j++) {
+    joint_names_str += joint_names[j] + (j != joint_names.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques, time.
@@ -326,7 +327,10 @@ gtdynamics::Initializer initializer;
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
 
       t++;
-      string vals_str = boost::algorithm::join(vals, ",");
+      std::string vals_str = "";
+      for (size_t j = 0; j < vals.size(); j++) {
+        vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+      }
       traj_file << vals_str << "\n";
     }
   }

@@ -19,7 +19,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/expressions.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 
 #include "gtdynamics/universal_robot/Joint.h"
 #include "gtdynamics/utils/utils.h"
@@ -96,8 +96,8 @@ class Chain {
    * @return ............ Pose of the end-effector calculated using Product of
    * Exponentials
    */
-  Pose3 poe(const Vector &q, boost::optional<Pose3 &> fTe = boost::none,
-            gtsam::OptionalJacobian<-1, -1> J = boost::none) const;
+  Pose3 poe(const Vector &q, std::optional<Pose3> fTe = {},
+            gtsam::OptionalJacobian<-1, -1> J = {}) const;
 
   /**
    * This function implements the dynamic dependency between the
@@ -115,9 +115,9 @@ class Chain {
   gtsam::Vector3 DynamicalEquality3(
       const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
       const gtsam::Vector3 &torques,
-      gtsam::OptionalJacobian<3, 6> H_wrench = boost::none,
-      gtsam::OptionalJacobian<3, 3> H_angles = boost::none,
-      gtsam::OptionalJacobian<3, 3> H_torques = boost::none) const;
+      gtsam::OptionalJacobian<3, 6> H_wrench = {},
+      gtsam::OptionalJacobian<3, 3> H_angles = {},
+      gtsam::OptionalJacobian<3, 3> H_torques = {}) const;
 
   /**
    * This function creates a gtsam expression of the Chain constraint FOR A
@@ -196,11 +196,11 @@ class Chain {
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
-inline gtsam::Vector3 MakeVector3(
-    const double &value0, const double &value1, const double &value2,
-    gtsam::OptionalJacobian<3, 1> J0 = boost::none,
-    gtsam::OptionalJacobian<3, 1> J1 = boost::none,
-    gtsam::OptionalJacobian<3, 1> J2 = boost::none) {
+gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+                           const double &value2,
+                           gtsam::OptionalJacobian<3, 1> J0 = {},
+                           gtsam::OptionalJacobian<3, 1> J1 = {},
+                           gtsam::OptionalJacobian<3, 1> J2 = {}) {
   gtsam::Vector3 q;
   q << value0, value1, value2;
   if (J0) {
