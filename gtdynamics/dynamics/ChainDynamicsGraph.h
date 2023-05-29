@@ -57,8 +57,8 @@ class ChainDynamicsGraph : public DynamicsGraph {
    ChainDynamicsGraph(
        const Robot &robot,
        const OptimizerSetting &opt,
-       const boost::optional<Vector3> &gravity = boost::none,
-       const boost::optional<Vector3> &planar_axis = boost::none)
+       const std::optional<Vector3> &gravity = {},
+       const std::optional<Vector3> &planar_axis = {})
        : DynamicsGraph(opt, gravity, planar_axis),
          chain_joints_(getChainJoints(robot)),
          composed_chains_(getComposedChains(chain_joints_)),
@@ -71,7 +71,7 @@ class ChainDynamicsGraph : public DynamicsGraph {
   /// Return q-level nonlinear factor graph (pose related factors)
     gtsam::NonlinearFactorGraph qFactors(
         const Robot &robot, const int t,
-        const boost::optional<PointOnLinks> &contact_points = boost::none) const override;
+        const std::optional<PointOnLinks> &contact_points = {}) const override;
 
    /**
     * Create dynamics factors of the chain graph
@@ -83,8 +83,8 @@ class ChainDynamicsGraph : public DynamicsGraph {
     */
    NonlinearFactorGraph dynamicsFactors(
        const Robot &robot, const int t,
-       const boost::optional<PointOnLinks> &contact_points = boost::none,
-       const boost::optional<double> &mu = boost::none) const override;
+       const std::optional<PointOnLinks> &contact_points = {},
+       const std::optional<double> &mu = {}) const override;
 
   /**
    * Return nonlinear factor graph of all dynamics factors
@@ -96,8 +96,8 @@ class ChainDynamicsGraph : public DynamicsGraph {
    */
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
-      const boost::optional<PointOnLinks> &contact_points = boost::none,
-      const boost::optional<double> &mu = boost::none) const override;
+      const std::optional<PointOnLinks> &contact_points = {},
+      const std::optional<double> &mu = {}) const override;
 
   // Get a vector of legs, each leg is a vector of its joints
   static std::vector<std::vector<JointSharedPtr>> getChainJoints(

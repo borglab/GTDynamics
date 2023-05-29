@@ -92,8 +92,8 @@ std::vector<Chain> ChainDynamicsGraph::getComposedChains(
 
 NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     const Robot &robot,const int t,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
 
     // Initialize graph
     NonlinearFactorGraph graph;
@@ -166,7 +166,7 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
 
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
 
   // Get Pose key for base link
@@ -210,8 +210,8 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
 
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   graph.add(qFactors(robot, t, contact_points));
   //graph.add(vFactors(robot, t, contact_points));

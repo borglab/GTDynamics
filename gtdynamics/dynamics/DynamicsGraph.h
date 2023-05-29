@@ -289,7 +289,7 @@ class DynamicsGraph {
       const Robot &robot, const int t, const std::string &link_name,
       const gtsam::Pose3 &target_pose) const;
 
-  inline boost::optional<gtsam::Vector3> gravity() const { return gravity_; }
+  inline std::optional<gtsam::Vector3> gravity() const { return gravity_; }
 
   /**
    * Return the joint accelerations

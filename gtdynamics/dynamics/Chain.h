@@ -161,8 +161,8 @@ class Chain {
    */
   gtsam::Vector6 AdjointWrenchEquality3(
       const gtsam::Vector3 &angles, const gtsam::Vector6 &wrench_body,
-      gtsam::OptionalJacobian<6, 3> H_angles = boost::none,
-      gtsam::OptionalJacobian<6, 6> H_wrench_body = boost::none) const;
+      gtsam::OptionalJacobian<6, 3> H_angles = {},
+      gtsam::OptionalJacobian<6, 6> H_wrench_body = {}) const;
 
   /**
    * This function creates a gtsam expression factor of the End-Effector pose
@@ -190,13 +190,13 @@ class Chain {
    */
   gtsam::Pose3 PoeEquality3(
       const gtsam::Vector3 &angles,
-      gtsam::OptionalJacobian<6, 3> H_angles = boost::none) const;
+      gtsam::OptionalJacobian<6, 3> H_angles = {}) const;
 
 };  // Chain class
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
-gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+inline gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
                            const double &value2,
                            gtsam::OptionalJacobian<3, 1> J0 = {},
                            gtsam::OptionalJacobian<3, 1> J1 = {},

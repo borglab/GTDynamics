@@ -234,7 +234,7 @@ gtsam::Vector6 Chain::AdjointWrenchEquality3(
   gtsam::Matrix6 H_T;
 
   // Get POE transformation from body to end-effector.
-  Pose3 T_theta = poe(angles, boost::none, H_angles ? &J_theta : nullptr);
+  Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
 
   // Get end-effector wrench by Adjoint. This is true for a massless leg.
   gtsam::Vector6 transformed_wrench =
@@ -280,7 +280,7 @@ gtsam::Pose3 Chain::PoeEquality3(const gtsam::Vector3 &angles,
   Matrix J_theta;
 
   // Get POE transformation from body to end-effector.
-  Pose3 T_theta = poe(angles, boost::none, H_angles ? &J_theta : nullptr);
+  Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
 
   if (H_angles) {
     *H_angles =J_theta;

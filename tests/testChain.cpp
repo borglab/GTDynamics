@@ -11,7 +11,6 @@
  * @author: Dan Barladeanu, Frank Dellaert
  */
 
-#define BOOST_BIND_NO_PLACEHOLDERS
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
@@ -330,7 +329,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain1) {
 
   // binded function for numerical derivative
   auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
-                     boost::none, boost::none);
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
@@ -340,7 +339,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain1) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
-    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, nullptr);
     return J1;
   };
 
@@ -383,7 +382,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain2) {
 
   // binded function for numerical derivative
   auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
-                     boost::none, boost::none);
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
@@ -393,7 +392,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain2) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
-    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, nullptr);
     return J1;
   };
 
@@ -437,7 +436,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain3) {
 
   // binded function for numerical derivative
   auto f = std::bind(&Chain::AdjointWrenchEquality3, composed, _1, _2,
-                     boost::none, boost::none);
+                     nullptr, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles, Vector6 wrench_body) {
@@ -447,7 +446,7 @@ TEST(Chain, AdjointWrenchEquality3_H_angles_chain3) {
 
   // lambda function to get the Jacobian
   auto get_jacobian = [&](Vector3 angles, Vector6 wrench_body) {
-    composed.AdjointWrenchEquality3(angles, wrench_body, J1, boost::none);
+    composed.AdjointWrenchEquality3(angles, wrench_body, J1, nullptr);
     return J1;
   };
 
@@ -487,7 +486,7 @@ TEST(Chain, PoeEquality3_H_angles_chain1) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles) {
@@ -536,7 +535,7 @@ TEST(Chain, PoeEquality3_H_angles_chain2) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles) {
@@ -586,7 +585,7 @@ TEST(Chain, PoeEquality3_H_angles_chain3) {
   Matrix J1, J;
 
   // binded function for numerical derivative
-  auto f = std::bind(&Chain::PoeEquality3, composed, _1, boost::none);
+  auto f = std::bind(&Chain::PoeEquality3, composed, _1, nullptr);
 
   // lambda function to get numerical derivative
   auto num_derivative = [&](Vector3 angles) {
@@ -981,7 +980,7 @@ gtsam::Values OldGraphOneLeg() {
   std::vector<LinkSharedPtr> lower_feet = {robot.link("FL_lower")};
   const Point3 contact_in_com(0, 0, -0.07);
   auto stationary =
-      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+      std::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
   auto contact_points = stationary->contactPoints();
 
   gtsam::Vector3 gravity(0, 0, -10.0);
@@ -1192,7 +1191,7 @@ gtsam::Values OldGraphFourLegs() {
       robot.link("RR_lower")};
   const Point3 contact_in_com(0, 0, -0.07);
   auto stationary =
-      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+      std::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
   auto contact_points = stationary->contactPoints();
 
   gtsam::Vector3 gravity(0, 0, -10.0);
@@ -1267,7 +1266,7 @@ gtsam::Values NewGraphFourLegs() {
       robot.link("RR_lower")};
   const Point3 contact_in_com(0, 0, -0.07);
   auto stationary =
-      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+      std::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
   auto contact_points = stationary->contactPoints();
 
   gtsam::NonlinearFactorGraph graph;
@@ -1404,7 +1403,7 @@ TEST(Chain,A1forwardKinematicsWithPOE)  {
   auto composed_chains = chain_graph.getComposedChains(chain_joints);
 
   Vector3 test_angles( 0.0,  0.0, 0.0);
-  Pose3 chain_ee_pose = composed_chains[0].poe(test_angles, boost::none, boost::none);
+  Pose3 chain_ee_pose = composed_chains[0].poe(test_angles, {}, nullptr);
 
   gtsam::Values test_values;
   InsertJointAngle(&test_values, 0, 0, 0.0);
@@ -1425,7 +1424,7 @@ TEST(Chain, fourLegsCompareQfactorsA1)  {
       robot.link("RR_lower")};
   const Point3 contact_in_com(0, 0, -0.07);
   auto stationary =
-      boost::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
+      std::make_shared<FootContactConstraintSpec>(lower_feet, contact_in_com);
   auto contact_points = stationary->contactPoints();
 
   gtsam::NonlinearFactorGraph graph_DG, graph_CDG;
