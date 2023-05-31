@@ -94,9 +94,9 @@ class ContactEqualityFactor
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "ContactEqualityFactor(" << keyFormatter(this->key1())
-              << "," << keyFormatter(this->key2()) << ")\n";
-    this->noiseModel_->print("  noise model: ");
+    std::cout << (s.empty() ? "" : s + " ") << "ContactEqualityFactor"
+              << std::endl;
+    Base::print("", keyFormatter);
   }
 
   bool equals(const gtsam::NonlinearFactor &other,
