@@ -27,8 +27,6 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 
-using namespace gtsam::serializationTestHelpers;
-
 // Construct the same link via Params and ensure all values are as expected.
 TEST(Link, params_constructor) {
   Link l1(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
@@ -78,6 +76,9 @@ TEST(Link, NumJoints) {
 }
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+
+using namespace gtsam::serializationTestHelpers;
+
 // Declaration needed for serialization of derived class.
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
