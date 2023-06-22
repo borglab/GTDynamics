@@ -16,6 +16,8 @@
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <limits>
+
 namespace gtdynamics {
 
 class DynamicsSymbol {
