@@ -46,10 +46,8 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
     // find all constraints connected to key
     for (const auto& constraint_index : var_index[key]) {
       constraint_indices.insert(constraint_index);
-      // TODO: use keys() in constraint
-      auto constraint_factor =
-          constraints.at(constraint_index)->createFactor(1.0);
-      for (const auto& neighbor_key : constraint_factor->keys()) {
+      for (const auto &neighbor_key :
+           constraints.at(constraint_index)->keys()) {
         if (keys.find(neighbor_key) != keys.end()) {
           keys.erase(neighbor_key);
           key_stack.push(neighbor_key);
