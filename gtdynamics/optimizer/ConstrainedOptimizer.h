@@ -38,6 +38,7 @@ struct ConstrainedOptimizationParameters {
 struct ConstrainedOptResult {
   std::vector<gtsam::Values>
       intermediate_values;        // values after each inner loop
+  std::vector<gtsam::VectorValues> tangent_vectors;
   std::vector<int> num_iters;     // number of LM iterations for each inner loop
   std::vector<double> mu_values;  // penalty parameter for each inner loop
 };

@@ -53,18 +53,25 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
   ManifoldOptimizer(const ManifoldOptimizerParameters& parameters)
       : p_(parameters) {}
 
- protected:
+ public:
   /** Perform dfs to find the connected component that contains start_key. Will
    * also erase all the keys in the connected component from keys.
    */
-  ConnectedComponent::shared_ptr findConnectedComponent(
+  static ConnectedComponent::shared_ptr IdentifyConnectedComponent(
       const gtdynamics::EqualityConstraints& constraints,
       const gtsam::Key start_key, gtsam::KeySet& keys,
-      const gtsam::VariableIndex& var_index) const;
+      const gtsam::VariableIndex& var_index);
 
   /// Identify the connected components by constraints.
-  std::vector<ConnectedComponent::shared_ptr> identifyConnectedComponents(
-      const gtdynamics::EqualityConstraints& constraints) const;
+  static std::vector<ConnectedComponent::shared_ptr> IdentifyConnectedComponents(
+      const gtdynamics::EqualityConstraints& constraints);
+
+  /// Create equivalent factor graph on manifold variables.
+  static NonlinearFactorGraph ManifoldGraph(const NonlinearFactorGraph &graph,
+                                            const std::map<Key, Key> &var2man_keymap,
+                                            const Values& fc_manifolds = Values());
+
+  
 };
 
 }  // namespace gtsam

@@ -71,7 +71,8 @@ class ConstraintManifold {
   ConstraintManifold(
       const ConnectedComponent::shared_ptr &cc, const gtsam::Values &values,
       const Params::shared_ptr &params = std::make_shared<Params>(),
-      bool retract_init = true)
+      bool retract_init = true,
+      std::optional<TspaceBasis::shared_ptr> basis = {})
       : params_(params),
         cc_(cc),
         retractor_(constructRetractor(params, cc)),
@@ -80,7 +81,7 @@ class ConstraintManifold {
         constraint_dim_(cc->constraints_.dim()),
         dim_(embedding_dim_ > constraint_dim_ ? embedding_dim_ - constraint_dim_
                                               : 0),
-        basis_(constructTspaceBasis(params, cc, values_, dim_)) {}
+        basis_(basis ? *basis : constructTspaceBasis(params, cc, values_, dim_)) {}
 
   /** constructor from other manifold but update the values. */
   ConstraintManifold(const ConstraintManifold &other, const Values &values)
@@ -163,6 +164,7 @@ class ConstraintManifold {
       const Params::shared_ptr &params,
       const ConnectedComponent::shared_ptr &cc);
 
+public:
   /// Construct the basis for tangent space.
   static TspaceBasis::shared_ptr constructTspaceBasis(
       const Params::shared_ptr &params,

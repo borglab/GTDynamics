@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
+#include <gtdynamics/manifold/SubstituteFactor.h>
 #include <gtsam/linear/GaussianEliminationTree.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/PCGSolver.h>
@@ -32,10 +33,10 @@ ManifoldOptimizerParameters::ManifoldOptimizerParameters()
       retract_init(true) {}
 
 /* ************************************************************************* */
-ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
+ConnectedComponent::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
     const gtdynamics::EqualityConstraints& constraints,
     const gtsam::Key start_key, gtsam::KeySet& keys,
-    const gtsam::VariableIndex& var_index) const {
+    const gtsam::VariableIndex& var_index) {
   std::set<size_t> constraint_indices;
 
   std::stack<gtsam::Key> key_stack;
@@ -65,8 +66,8 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
 
 /* ************************************************************************* */
 std::vector<ConnectedComponent::shared_ptr>
-ManifoldOptimizer::identifyConnectedComponents(
-    const gtdynamics::EqualityConstraints& constraints) const {
+ManifoldOptimizer::IdentifyConnectedComponents(
+    const gtdynamics::EqualityConstraints& constraints) {
   // Get all the keys in constraints.
   // TODO(yetong): create VariableIndex from EqualityConstraints
   gtsam::NonlinearFactorGraph constraint_graph;
@@ -85,10 +86,37 @@ ManifoldOptimizer::identifyConnectedComponents(
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
     constraint_keys.erase(key);
-    components.emplace_back(findConnectedComponent(
+    components.emplace_back(IdentifyConnectedComponent(
         constraints, key, constraint_keys, constraint_var_index));
   }
   return components;
+}
+
+NonlinearFactorGraph
+ManifoldOptimizer::ManifoldGraph(const NonlinearFactorGraph &graph,
+                                 const std::map<Key, Key> &var2man_keymap,
+                                 const Values& fc_manifolds) {
+  NonlinearFactorGraph manifold_graph;
+  for (const auto &factor : graph) {
+    std::map<Key, Key> replacement_map;
+    for (const Key &key : factor->keys()) {
+      if (var2man_keymap.find(key) != var2man_keymap.end()) {
+        replacement_map[key] = var2man_keymap.at(key);
+      }
+    }
+    if (replacement_map.size() > 0) {
+      NoiseModelFactor::shared_ptr noise_factor =
+          std::dynamic_pointer_cast<NoiseModelFactor>(factor);
+      auto subs_factor = std::make_shared<SubstituteFactor>(
+          noise_factor, replacement_map, fc_manifolds);
+      if (subs_factor->checkActive()) {
+        manifold_graph.add(subs_factor);
+      }
+    } else {
+      manifold_graph.add(factor);
+    }
+  }
+  return manifold_graph;
 }
 
 }  // namespace gtsam

@@ -84,7 +84,7 @@ ManifoldOptProblem ManifoldOptimizerType1::problemTransform(
     const EqConsOptProblem& ecopt_problem) const {
   ManifoldOptProblem mopt_problem;
   mopt_problem.components_ =
-      identifyConnectedComponents(ecopt_problem.constraints_);
+      IdentifyConnectedComponents(ecopt_problem.constraints_);
   constructMoptValues(ecopt_problem, mopt_problem);
   constructMoptGraph(ecopt_problem, mopt_problem);
   return mopt_problem;

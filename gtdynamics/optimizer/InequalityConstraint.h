@@ -15,9 +15,12 @@
 
 #include <gtdynamics/factors/BarrierFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/linear/VectorValues.h>
 
 namespace gtdynamics {
 
@@ -51,6 +54,8 @@ public:
    */
   virtual double operator()(const gtsam::Values &x) const = 0;
 
+  virtual bool isActive(const gtsam::Values &x) const = 0;
+
   virtual double toleranceScaledViolation(const gtsam::Values &x) const = 0;
 
   /** @brief return the dimension of the constraint. */
@@ -66,12 +71,17 @@ public:
 
   virtual gtsam::NoiseModelFactor::shared_ptr
   createBarrierFactor(const double mu) const = 0;
+
+  virtual gtsam::MultiJacobian jacobians(const gtsam::Values &x) const = 0;
 };
 
 /** Equality constraint that force g(x) = 0, where g(x) is a scalar-valued
  * function. */
 class DoubleExpressionInequality : public InequalityConstraint {
 public:
+  typedef DoubleExpressionInequality This;
+  typedef std::shared_ptr<This> shared_ptr;
+
 protected:
   gtsam::Expression<double> expression_;
   double tolerance_;
@@ -86,6 +96,18 @@ public:
   DoubleExpressionInequality(const gtsam::Expression<double> &expression,
                              const double &tolerance)
       : expression_(expression), tolerance_(tolerance) {}
+
+  static DoubleExpressionInequality::shared_ptr
+  geq(const gtsam::Expression<double> &expression, const double &tolerance) {
+    return std::make_shared<DoubleExpressionInequality>(expression, tolerance);
+  }
+
+  static DoubleExpressionInequality::shared_ptr
+  leq(const gtsam::Expression<double> &expression, const double &tolerance) {
+    gtsam::Expression<double> neg_expr =
+        gtsam::Expression<double>(0.0) - expression;
+    return std::make_shared<DoubleExpressionInequality>(neg_expr, tolerance);
+  }
 
   /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values &x) const override {
@@ -106,6 +128,11 @@ public:
     }
   }
 
+  bool isActive(const gtsam::Values &x) const override {
+    double error = expression_.value(x);
+    return abs(error / tolerance_) < 1e-5;
+  }
+
   std::set<gtsam::Key> keys() const override { return expression_.keys(); }
 
   EqualityConstraint::shared_ptr createEqualityConstraint() const override {
@@ -120,10 +147,22 @@ public:
   gtsam::NoiseModelFactor::shared_ptr
   createL2Factor(const double mu) const override {
     auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
-    return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0, expression_);
-    // return gtsam::NoiseModelFactor::shared_ptr(
-    //     new gtsam::ExpressionFactor<double>(noise, measure, expression_));
+    return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0,
+                                                             expression_);
   }
+
+  gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override {
+    auto keyset = keys();
+    gtsam::KeyVector keyvector(keyset.begin(), keyset.end());
+    std::vector<gtsam::Matrix> H(keys().size());
+    expression_.value(x, H);
+    gtsam::MultiJacobian jac;
+    for (size_t i=0; i<keyvector.size(); i++) {
+      jac.addJacobian(keyvector.at(i), H.at(i)); // TODO: divide by tolerance?
+    }
+    return jac;
+  }
+
 };
 
 /// Container of InequalityConstraint.
@@ -137,6 +176,9 @@ private:
       std::is_base_of<InequalityConstraint, DERIVEDCONSTRAINT>::value>::type;
 
 public:
+  typedef InequalityConstraints This;
+  typedef std::shared_ptr<This> shared_ptr;
+
   InequalityConstraints() : Base() {}
 
   /// Add a set of equality constraints.
@@ -162,7 +204,7 @@ public:
 
   gtsam::KeySet keys() const {
     gtsam::KeySet keys;
-    for (const auto& constraint : *this) {
+    for (const auto &constraint : *this) {
       keys.merge(constraint->keys());
     }
     return keys;
@@ -173,20 +215,20 @@ public:
 };
 
 /// Evaluate the constraint violation (as L2 norm).
-inline double EvaluateConstraintViolationL2Norm(const InequalityConstraints& constraints, const gtsam::Values& values) {
+inline double
+EvaluateConstraintViolationL2Norm(const InequalityConstraints &constraints,
+                                  const gtsam::Values &values) {
   double violation = 0;
-  for (const auto& constraint: constraints) {
+  for (const auto &constraint : constraints) {
     violation += pow(constraint->toleranceScaledViolation(values), 2);
   }
   return sqrt(violation);
 }
 
-
 } // namespace gtdynamics
 
-
 namespace gtsam {
-  
+
 class IndexSet : public std::set<size_t> {
 public:
   void print(const std::string &s = "") const {
