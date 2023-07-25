@@ -70,7 +70,7 @@ public:
 
   static Values EManifolds(const IEManifoldValues &manifolds);
 
-  static Values EManifolds(const IEManifoldValues &manifolds,
+  static std::pair<Values, Values> EManifolds(const IEManifoldValues &manifolds,
                            const std::map<Key, IndexSet> &active_indices);
 };
 

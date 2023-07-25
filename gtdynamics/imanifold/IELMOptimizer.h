@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include "gtdynamics/manifold/ConstraintManifold.h"
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEManifoldOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
+#include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -32,11 +32,37 @@
 
 namespace gtsam {
 
+struct IELMNonlinearIterDetails {
+  IEManifoldValues manifolds;
+  std::map<Key, IndexSet> blocking_indices_map;
+  std::map<Key, IndexSet> forced_indices_map;
+  VectorValues delta;
+  IEManifoldValues new_manifolds;
+  double lambda;
+  double cost;
+  double new_error;
+  double linear_cost_change;
+  double nonlinear_cost_change;
+  double model_fidelity;
+  bool solve_successful;
+  bool step_is_successful;
+  bool stop_searching_lambda;
+};
+
+struct IELMIterDetails {
+  IELMNonlinearIterDetails initial;
+  std::vector<IELMNonlinearIterDetails> trials;
+
+  IELMIterDetails(const IELMNonlinearIterDetails &_initial)
+      : initial(_initial), trials() {}
+};
+
 struct IELMOptimizerState {
 public:
   IEManifoldValues manifolds;
+  std::map<Key, IndexSet> blocking_indices_map;
   Values e_manifolds;
-  Values values;
+  Values const_e_manifolds;
   double error;
   size_t iterations;
   double lambda;
@@ -45,25 +71,34 @@ public:
 
   IELMOptimizerState(const IEManifoldValues &_manifolds,
                      const NonlinearFactorGraph &graph,
-                     const NonlinearFactorGraph &manifold_graph,
                      size_t _iterations = 0)
       : manifolds(_manifolds),
-        values(IEOptimizer::CollectManifoldValues(manifolds)),
-        error(graph.error(values)), iterations(_iterations) {
-    ConstructEManifolds(manifold_graph);
+        error(graph.error(IEOptimizer::CollectManifoldValues(manifolds))), iterations(_iterations) {
+    ConstructEManifolds(graph);
   }
 
-  void ConstructEManifolds(const NonlinearFactorGraph &manifold_graph) {
+  void updateManifolds(const IEManifoldValues &_manifolds,
+                       const NonlinearFactorGraph &graph) {
+    manifolds = _manifolds;
+    error = graph.error(IEOptimizer::CollectManifoldValues(manifolds));
+    ConstructEManifolds(graph);
+  }
+
+  std::map<Key, IndexSet> identifyBlockingIndices(const NonlinearFactorGraph &manifold_graph) const {
     Values e_bare_manifolds = IEOptimizer::EManifolds(manifolds);
     auto linear_graph = manifold_graph.linearize(e_bare_manifolds);
     VectorValues descent_dir = -1 * linear_graph->gradientAtZero();
 
     // identify blocking constraints
-    std::map<Key, IndexSet> active_indices =
-        IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
+    return IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
+  }
 
+  void ConstructEManifolds(const NonlinearFactorGraph &graph) {
+    std::map<Key, Key> keymap_var2manifold = IEOptimizer::Var2ManifoldKeyMap(manifolds);
+    NonlinearFactorGraph manifold_graph = ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
+    blocking_indices_map = identifyBlockingIndices(manifold_graph);
     // setting blocking constraints as equalities, create e-manifolds
-    e_manifolds = IEOptimizer::EManifolds(manifolds, active_indices);
+    std::tie(e_manifolds, const_e_manifolds) = IEOptimizer::EManifolds(manifolds, blocking_indices_map);
   }
 
   void increaseLambda(const LevenbergMarquardtParams &params) {
@@ -155,24 +190,40 @@ public:
 
   VectorValues computeTangentVector(const VectorValues &delta) const {
     VectorValues tangent_vector;
-    for (const auto &it : manifolds) {
-      const Key &key = it.first;
+    for (const Key &key : e_manifolds.keys()) {
       const Vector &xi = delta.at(key);
       ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
       VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
       tangent_vector.insert(tv);
     }
+    for (const Key &key : const_e_manifolds.keys()) {
+      ConstraintManifold e_manifold = const_e_manifolds.at<ConstraintManifold>(key);
+      VectorValues tv = e_manifold.values().zeroVectors();
+      tangent_vector.insert(tv);
+    }
     return tangent_vector;
   }
 
-  IEManifoldValues retractManifolds(const VectorValues &delta) const {
+  IEManifoldValues retractManifolds(const VectorValues &delta,
+                                    const std::optional<std::map<Key, IndexSet>>
+                                        &blocking_indices_map = {}) const {
     IEManifoldValues new_manifolds;
     for (const auto &it : manifolds) {
       const Key &key = it.first;
-      const Vector &xi = delta.at(key);
-      ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
-      VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
-      new_manifolds.emplace(key, it.second.retract(tv));
+      if (const_e_manifolds.exists(key)) {
+        new_manifolds.emplace(key, it.second);
+      }
+      else {
+        const Vector &xi = delta.at(key);
+        ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
+        VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
+        if (blocking_indices_map) {
+          const auto &blocking_indices = blocking_indices_map->at(key);
+          new_manifolds.emplace(key, it.second.retract(tv, blocking_indices));
+        } else {
+          new_manifolds.emplace(key, it.second.retract(tv));
+        }
+      }
     }
     return new_manifolds;
   }
@@ -185,14 +236,17 @@ class IELMOptimizer : public IEOptimizer {
 
 protected:
   const LevenbergMarquardtParams params_; ///< LM parameters
+  std::shared_ptr<std::vector<IELMIterDetails>> details_;
 
 public:
   typedef std::shared_ptr<IELMOptimizer> shared_ptr;
 
+  const std::vector<IELMIterDetails>& details() const {return *details_; }
+
   /** Constructor */
   IELMOptimizer(
       const LevenbergMarquardtParams &params = LevenbergMarquardtParams())
-      : IEOptimizer(), params_(params) {}
+      : IEOptimizer(), params_(params), details_(std::make_shared<std::vector<IELMIterDetails>>()) {}
 
   /** Virtual destructor */
   ~IELMOptimizer() {}
@@ -210,7 +264,6 @@ public:
                         double currentError, double newError) const;
 
   IELMOptimizerState iterate(const NonlinearFactorGraph &graph,
-                             const NonlinearFactorGraph &manifold_graph,
                              const IELMOptimizerState &state,
                              gtdynamics::ConstrainedOptResult
                                *intermediate_result = nullptr) const;
@@ -221,13 +274,10 @@ public:
             const IELMOptimizerState &state) const;
 
   /** Inner loop, changes state, returns true if successful or giving up */
-  bool tryLambda(const NonlinearFactorGraph &graph,
-                 const NonlinearFactorGraph &manifold_graph,
+  IELMNonlinearIterDetails tryLambda(const NonlinearFactorGraph &graph,
                  const GaussianFactorGraph &linear,
                  const VectorValues &sqrtHessianDiagonal,
-                 IELMOptimizerState &state,
-                 gtdynamics::ConstrainedOptResult
-                               *intermediate_result = nullptr) const;
+                 const IELMOptimizerState &state) const;
 
   /** Build a damped system for a specific lambda -- for testing only */
   GaussianFactorGraph
@@ -237,6 +287,9 @@ public:
 
   virtual VectorValues solve(const GaussianFactorGraph &gfg,
                              const NonlinearOptimizerParams &params) const;
+
+  bool checkModeChange(IELMOptimizerState& state, const NonlinearFactorGraph& graph, IELMNonlinearIterDetails& iter_details) const;
+
 };
 
 } // namespace gtsam

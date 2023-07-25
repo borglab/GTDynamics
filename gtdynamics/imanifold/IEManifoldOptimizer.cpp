@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include "imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IEManifoldOptimizer.h>
 
 namespace gtsam {
@@ -148,15 +149,22 @@ Values IEOptimizer::EManifolds(const IEManifoldValues &manifolds) {
 }
 
 /* ************************************************************************* */
-Values IEOptimizer::EManifolds(const IEManifoldValues &manifolds,
+std::pair<Values, Values> IEOptimizer::EManifolds(const IEManifoldValues &manifolds,
                                const std::map<Key, IndexSet> &active_indices) {
   Values e_manifolds;
+  Values const_e_manifolds;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
-    e_manifolds.insert(key,
-                       it.second.eConstraintManifold(active_indices.at(key)));
+    ConstraintManifold e_manifold =  it.second.eConstraintManifold(active_indices.at(key));
+    if (e_manifold.dim() > 0) {
+      e_manifolds.insert(key, e_manifold);
+    }
+    else {
+      const_e_manifolds.insert(key, e_manifold);
+    }
+
   }
-  return e_manifolds;
+  return std::make_pair(e_manifolds, const_e_manifolds);
 }
 
 } // namespace gtsam

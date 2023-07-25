@@ -38,7 +38,6 @@ TEST(IEConstraintManifold, HalfSphere) {
   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->ecm_params = nullptr;
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
 
   {

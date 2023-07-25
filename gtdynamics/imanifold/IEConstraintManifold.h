@@ -35,7 +35,8 @@ public:
     using shared_ptr = std::shared_ptr<Params>;
     ConstraintManifold::Params::shared_ptr ecm_params =
         std::make_shared<ConstraintManifold::Params>();
-    IERetractType ie_retract_type = IERetractType::Barrier;
+    // IERetractType ie_retract_type = IERetractType::Barrier;
+    IERetractor::shared_ptr retractor;
 
     /** Default constructor. */
     Params() = default;
@@ -52,7 +53,6 @@ protected:
   size_t dim_;
   TspaceBasis::shared_ptr e_basis_;
   TangentCone::shared_ptr i_cone_;
-  IERetractor::shared_ptr retractor_;
 
 public:
   IEConstraintManifold(
@@ -71,8 +71,7 @@ public:
         e_basis_(ConstraintManifold::constructTspaceBasis(params->ecm_params,
                                                           e_cc, values, dim_)),
         i_cone_(ConstructTangentCone(*i_constraints, values, active_indices_,
-                                     e_basis_)),
-        retractor_(IERetractor::create(params->ie_retract_type)) {}
+                                     e_basis_)) {}
 
   IEConstraintManifold createWithNewValues(
       const Values &values,
@@ -102,22 +101,23 @@ public:
     return i_cone_->project(xi);
   }
 
-  /** retract that forces the set of tight constraints as equality constraints.
+  /** retract that forces the set of blocking constraints as equality constraints.
    * Will also enforce satisfying other inequality constraints. */
   virtual IEConstraintManifold
   retract(const Vector &xi,
-          const std::optional<IndexSet> &tight_indices = {}) const {
+          const std::optional<IndexSet> &blocking_indices = {}) const {
     auto tangent_vector = e_basis_->computeTangentVector(xi);
-    return retract(tangent_vector, tight_indices);
-    // Values new_values = retractor_->retract(values_, tangent_vector);
-    // std::cout << "retract finish\n";
-    // return IEConstraintManifold(e_cc_, i_constraints_, new_values, params_);
+    return retract(tangent_vector, blocking_indices);
   }
 
   virtual IEConstraintManifold
   retract(const VectorValues &delta,
-          const std::optional<IndexSet> &tight_indices = {}) const {
-    return retractor_->retract(this, delta);
+          const std::optional<IndexSet> &blocking_indices = {}) const {
+    return params_->retractor->retract(this, delta, blocking_indices);
+  }
+
+  IEConstraintManifold moveToBoundary(const IndexSet& active_indices) const {
+    return params_->retractor->moveToBoundary(this, active_indices);
   }
 
   /// Construct an e-constraint manifold that only includes equalily

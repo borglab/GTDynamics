@@ -31,6 +31,32 @@ inline Key FxKey(const int k) { return Symbol('x', k); }
 
 inline Key FyKey(const int k) { return Symbol('y', k); }
 
+inline void PrintValues(const Values& values, const size_t num_steps) {
+  std::cout << std::setw(10) << "q" << std::setw(10)  << "v" << std::setw(10) << "a" << std::setw(10) << "tau" << std::setw(10) << "fx" << std::setw(10) << "fy" << "\n";
+  for (size_t k=0; k<=num_steps; k++) {
+    double q = values.atDouble(QKey(k));
+    double v = values.atDouble(VKey(k));
+    double a = values.atDouble(AKey(k));
+    double tau = values.atDouble(TauKey(k));
+    double fx = values.atDouble(FxKey(k));
+    double fy = values.atDouble(FyKey(k));
+    std::cout << std::setprecision(3)<< std::setw(10) << q << std::setw(10)  << v << std::setw(10) << a << std::setw(10) << tau << std::setw(10) << fx << std::setw(10) << fy << "\n";
+  }
+}
+
+inline void PrintDelta(const VectorValues& values, const size_t num_steps) {
+  std::cout << std::setw(10) << "q" << std::setw(10)  << "v" << std::setw(10) << "a" << std::setw(10) << "tau" << std::setw(10) << "fx" << std::setw(10) << "fy" << "\n";
+  for (size_t k=0; k<=num_steps; k++) {
+    double q = values.at(QKey(k))(0);
+    double v = values.at(VKey(k))(0);
+    double a = values.at(AKey(k))(0);
+    double tau = values.at(TauKey(k))(0);
+    double fx = values.at(FxKey(k))(0);
+    double fy = values.at(FyKey(k))(0);
+    std::cout <<std::setw(10) << q << std::setw(10)  << v << std::setw(10) << a << std::setw(10) << tau << std::setw(10) << fx << std::setw(10) << fy << "\n";
+  }
+}
+
 class IECartPoleWithFriction {
 public:
   double m = 1;
@@ -139,6 +165,21 @@ public:
     constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
         frictionConeExpr2(fx_expr, fy_expr), 1.0);
     return constraints;
+  }
+
+  Values computeValues(const size_t &k, const double &q, const double &v,
+                       const double &a) const {
+    Values values;
+    double tau = computeTau(a);
+    double fx = computeFx(q, v, a);
+    double fy = computeFy(q, v, a);
+    values.insertDouble(QKey(k), q);
+    values.insertDouble(VKey(k), v);
+    values.insertDouble(AKey(k), a);
+    values.insertDouble(TauKey(k), tau);
+    values.insertDouble(FxKey(k), fx);
+    values.insertDouble(FyKey(k), fy);
+    return values;
   }
 };
 

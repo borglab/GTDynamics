@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/factors/ConstVarFactor.h>
+#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
@@ -26,7 +27,7 @@ namespace gtsam {
 
 class IEConstraintManifold;
 
-enum IERetractType { Barrier = 0, HalfSphere = 1 };
+// enum IERetractType { Barrier = 0, HalfSphere = 1, CP=2 };
 
 /** Base class that implements the retraction operation for the constraint
  * manifold. */
@@ -38,19 +39,25 @@ public:
   /// Default constructor.
   IERetractor() {}
 
-  static shared_ptr create(const IERetractType retract_type);
+  virtual ~IERetractor() {}
 
   /// Retract the base variables that compose the constraint manifold.
-  virtual IEConstraintManifold retract(const IEConstraintManifold *manifold,
-                                       const VectorValues &delta) const = 0;
+  virtual IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {}) const = 0;
+
+  virtual IEConstraintManifold
+  moveToBoundary(const IEConstraintManifold *manifold,
+                 const IndexSet &blocking_indices) const;
 };
 
 class HalfSphereRetractor : public IERetractor {
 public:
   HalfSphereRetractor() : IERetractor() {}
 
-  IEConstraintManifold retract(const IEConstraintManifold *manifold,
-                               const VectorValues &delta) const override;
+  IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {}) const override;
 };
 
 /** Retraction by performing barrier optimization. */
@@ -58,8 +65,38 @@ class BarrierRetractor : public IERetractor {
 public:
   BarrierRetractor() : IERetractor() {}
 
-  IEConstraintManifold retract(const IEConstraintManifold *manifold,
-                               const VectorValues &delta) const override;
+  IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {}) const override;
+};
+
+class CartPoleWithFrictionRetractor : public IERetractor {
+protected:
+  const IECartPoleWithFriction &cp_;
+
+public:
+  CartPoleWithFrictionRetractor(const IECartPoleWithFriction &cp)
+      : IERetractor(), cp_(cp) {}
+
+  IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {}) const override;
+
+  IEConstraintManifold retract1(const IEConstraintManifold *manifold,
+                                const VectorValues &delta) const;
+};
+
+class CPBarrierRetractor : public IERetractor {
+protected:
+  const IECartPoleWithFriction &cp_;
+
+public:
+  CPBarrierRetractor(const IECartPoleWithFriction &cp)
+      : IERetractor(), cp_(cp) {}
+
+  IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {}) const override;
 };
 
 } // namespace gtsam

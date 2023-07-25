@@ -16,6 +16,23 @@ gtsam::Key PointKey(int k) {
   return Symbol('p', k);
 }
 
+
+void SaveResult(const Values& result, const size_t& num_steps, const std::string &folder) {
+  std::filesystem::create_directory(folder);
+  {
+    std::ofstream file;
+    file.open(folder + "result.txt");
+
+    for (int k=0; k<=num_steps; k++) {
+      Key point_key = gtsam::Symbol('p', k);
+      Point3 point = result.at<Point3>(point_key);
+      file << point.x() << " " << point.y() << " " << point.z() << "\n";
+    }
+    // file << "\n";
+    file.close();
+  }
+}
+
 int main(int argc, char **argv) {
   int num_steps = 5;
   double radius = 1;
@@ -84,6 +101,8 @@ int main(int argc, char **argv) {
     manopt_lm_vio = EvaluateConstraintViolationL2Norm(constraints, iclm_result);
     manopt_lm_duration = optimization_time_ms.count() * 1e-3;
     manopt_lm_num_iters = intermediate_result.num_iters[0];
+    // iclm_result.print();
+    SaveResult(iclm_result, num_steps, "../../results/dome_lm/");
   }
   {
   // Call barrier optimizer
