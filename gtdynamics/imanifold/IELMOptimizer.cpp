@@ -19,6 +19,7 @@
  * @date    Feb 26, 2012
  */
 
+#include "imanifold/IELMOptimizerState.h"
 #include "imanifold/IEManifoldOptimizer.h"
 #include "imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IELMOptimizer.h>
@@ -57,108 +58,66 @@ Values IELMOptimizer::optimizeManifolds(
     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
     gtdynamics::ConstrainedOptResult *intermediate_result) const {
 
-  IELMOptimizerState state(manifolds, graph, 0);
+  // Construct initial state
+  IELMState state(manifolds, graph, 0);
   state.lambda = params_.lambdaInitial;
-  state.currentFactor = params_.lambdaFactor;
+  state.lambda_factor = params_.lambdaFactor;
   double currentError = state.error;
-
-  IELMNonlinearIterDetails initial_details;
-  initial_details.cost = currentError;
-  initial_details.manifolds = manifolds;
-  initial_details.new_manifolds = manifolds;
-  initial_details.lambda =state.lambda;
-  details_->emplace_back(initial_details);
 
   // check if we're already close enough
   if (currentError <= params_.errorTol) {
-    if (params_.verbosity >= NonlinearOptimizerParams::ERROR)
-      cout << "Exiting, as error = " << currentError << " < "
-           << params_.errorTol << endl;
     return IEOptimizer::CollectManifoldValues(state.manifolds);
   }
 
   // Iterative loop
   double newError;
-  size_t num_iters = 0;
   do {
-    // std::cout << "iterate\n";
-    // Do next iteration
     currentError = state.error;
-    state = iterate(graph, state, intermediate_result);
-    // std::cout << "iterate finished\n";
+    IELMIterDetails iter_details = iterate(graph, state);
+    state = IELMState::FromLastIteration(iter_details, graph, params_);
+    details_->push_back(iter_details);
     newError = state.error;
-    num_iters++;
-
   } while (state.iterations < params_.maxIterations &&
            !checkConvergence(params_.relativeErrorTol, params_.absoluteErrorTol,
                              params_.errorTol, currentError, newError) &&
+           state.lambda <= params_.lambdaUpperBound &&
+           state.lambda >= params_.lambdaLowerBound &&
            std::isfinite(currentError));
-  if (intermediate_result) {
-    intermediate_result->num_iters.push_back(num_iters);
-  }
+  details_->emplace_back(state);
   return IEOptimizer::CollectManifoldValues(state.manifolds);
 }
 
 /* ************************************************************************* */
-IELMOptimizerState
-IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
-                       const IELMOptimizerState &currentState,
-                       gtdynamics::ConstrainedOptResult *intermediate_result) const {
+IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
+                                       const IELMState &state) const {
 
-  // Linearize graph
-  GaussianFactorGraph::shared_ptr linear = linearize(graph, currentState);
-
-  // if(currentState.iterations==0) { // write initial error
-  //   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-  //     cout << "Initial error: " << currentState.error
-  //          << ", values: " << currentState.values.size() << std::endl;
-  //   }
-  // }
-
-  // Only calculate diagonal of Hessian (expensive) once per outer iteration, if
-  // we need it
-  VectorValues sqrtHessianDiagonal;
-  if (params_.diagonalDamping) {
-    sqrtHessianDiagonal = linear->hessianDiagonal();
-    for (auto &[key, value] : sqrtHessianDiagonal) {
-      value = value.cwiseMax(params_.minDiagonal)
-                  .cwiseMin(params_.maxDiagonal)
-                  .cwiseSqrt();
-    }
+  IELMIterDetails iter_details(state);
+  if (checkModeChange(graph, iter_details)) {
+    return iter_details;
   }
 
-  // Keep increasing lambda until we make make progress
-  IELMOptimizerState state = currentState;
-  
-  IELMNonlinearIterDetails iter_details;
-  if (checkModeChange(state, graph, iter_details)) {
-    iter_details.cost = currentState.error;
-    iter_details.lambda = currentState.lambda;
-    iter_details.manifolds = currentState.manifolds;
-    details_->emplace_back(iter_details);
-    return state;
-  }
+  IELMTrial trial;
+  trial.setLambda(state);
 
   while (true) {
-    auto iter_details = tryLambda(graph, *linear, sqrtHessianDiagonal, state);
-    if (iter_details.step_is_successful) {
-      details_->emplace_back(iter_details);
-      state.decreaseLambda(params_, iter_details.model_fidelity);
-      state.updateManifolds(iter_details.new_manifolds, graph);
+    if (trial.lambda > params_.lambdaUpperBound) {
       break;
     }
-    else {
-      details_->back().trials.emplace_back(iter_details);
-      if (iter_details.stop_searching_lambda) {
-        break;
-      }
-      state.increaseLambda(params_);
-      if (state.lambda >= params_.lambdaUpperBound) {
-        break;
-      }
+    if (trial.lambda < params_.lambdaLowerBound) {
+      break;
     }
+    tryLambda(graph, state, trial);
+    iter_details.trials.emplace_back(trial);
+
+    IELMTrial next_trial;
+    if (trial.step_is_successful) {
+      break;
+    } else {
+      trial.setNextLambda(next_trial.lambda, next_trial.lambda_factor, params_);
+    }
+    trial = next_trial;
   }
-  return state;
+  return iter_details;
 }
 
 bool IsSameMode(const IEManifoldValues &manifolds1,
@@ -176,15 +135,15 @@ bool IsSameMode(const IEManifoldValues &manifolds1,
   return true;
 }
 
-std::map<Key, IndexSet> IdentifyChangeIndices(const IEManifoldValues &manifolds,
-                const IEManifoldValues &new_manifolds) {
-  std::map<Key, IndexSet> change_indices_map;
+IndexSetMap IdentifyChangeIndices(const IEManifoldValues &manifolds,
+                                  const IEManifoldValues &new_manifolds) {
+  IndexSetMap change_indices_map;
   for (const auto &it : manifolds) {
-    const Key& key = it.first;
+    const Key &key = it.first;
     const IndexSet &indices = it.second.activeIndices();
     const IndexSet &new_indices = new_manifolds.at(key).activeIndices();
     IndexSet change_indices;
-    for (const auto& idx: new_indices) {
+    for (const auto &idx : new_indices) {
       if (indices.find(idx) == indices.end()) {
         change_indices.insert(idx);
       }
@@ -196,19 +155,20 @@ std::map<Key, IndexSet> IdentifyChangeIndices(const IEManifoldValues &manifolds,
   return change_indices_map;
 }
 
-
-std::map<Key, IndexSet> IdentifyApproachingIndices(const IEManifoldValues& manifolds, const IEManifoldValues& new_manifolds, const std::map<Key, IndexSet>& change_indices_map) {
-  std::map<Key, IndexSet> approach_indices_map;
-  for (const auto& it : change_indices_map) {
-    const Key& key = it.first;
+IndexSetMap IdentifyApproachingIndices(const IEManifoldValues &manifolds,
+                                       const IEManifoldValues &new_manifolds,
+                                       const IndexSetMap &change_indices_map) {
+  IndexSetMap approach_indices_map;
+  for (const auto &it : change_indices_map) {
+    const Key &key = it.first;
     const IndexSet &change_indices = it.second;
-    const IEConstraintManifold& manifold = manifolds.at(key);
-    const IEConstraintManifold& new_manifold = new_manifolds.at(key);
+    const IEConstraintManifold &manifold = manifolds.at(key);
+    const IEConstraintManifold &new_manifold = new_manifolds.at(key);
     auto i_constraints = manifolds.at(key).iConstraints();
     IndexSet approach_indices;
-    
-    for (const auto& idx: change_indices) {
-      const auto& constraint = i_constraints->at(idx);
+
+    for (const auto &idx : change_indices) {
+      const auto &constraint = i_constraints->at(idx);
       double eval = (*constraint)(manifold.values());
       double new_eval = (*constraint)(new_manifold.values());
       double approach_rate = eval / new_eval;
@@ -226,9 +186,8 @@ std::map<Key, IndexSet> IdentifyApproachingIndices(const IEManifoldValues& manif
   return approach_indices_map;
 }
 
-IEManifoldValues
-MoveToBoundaries(const IEManifoldValues &manifolds,
-                 const std::map<Key, IndexSet> &approach_indices_map) {
+IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
+                                  const IndexSetMap &approach_indices_map) {
   IEManifoldValues new_manifolds;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
@@ -244,250 +203,98 @@ MoveToBoundaries(const IEManifoldValues &manifolds,
 }
 
 /* ************************************************************************* */
-bool IELMOptimizer::checkModeChange(IELMOptimizerState &state,
-                                    const NonlinearFactorGraph &graph,
-                                    IELMNonlinearIterDetails& iter_details) const {
-  // std::cout << "checkModeChange\n";
+bool IELMOptimizer::checkModeChange(
+    const NonlinearFactorGraph &graph,
+    IELMIterDetails &current_iter_details) const {
   if (details_->size() < 2) {
     return false;
   }
-  const auto &last_iter_details = details_->back();
-  if (last_iter_details.trials.size() > 0) {
-    return false;
-  }
+
+  // find the furthest state that have the same mode
   int n = details_->size();
-  int i = n - 2;
-  while (i >= 0 && IsSameMode(last_iter_details.initial.new_manifolds,
-                              details_->at(i).initial.new_manifolds)) {
+  int i = n - 1;
+  while (i >= 0 && IsSameMode(current_iter_details.state.manifolds,
+                              details_->at(i).state.manifolds)) {
     i--;
   }
   i++;
-  // std::cout << i << " " << n << "\n";
-  // std::cout << "checkModeChange1\n";
-  if (i<n) {
+
+  // Condition1: mode remain unchanged in consecutive states
+  if (i <= n - 1) {
     const auto &init_iter_dertails = details_->at(i);
-    const auto &prev_iter_details = details_->at(n - 2);
-    if (IsSameMode(last_iter_details.initial.new_manifolds,
-                   init_iter_dertails.initial.new_manifolds) &&
-        prev_iter_details.trials.size() == 1) {
-      std::map<Key, IndexSet> change_indices_map =
-          IdentifyChangeIndices(last_iter_details.initial.new_manifolds,
+    const auto &prev_iter_details = details_->back();
+    if (prev_iter_details.trials.size() == 2) {
+
+      // Condition2: trial uses other mode and fails
+      IndexSetMap change_indices_map =
+          IdentifyChangeIndices(current_iter_details.state.manifolds,
                                 prev_iter_details.trials.at(0).new_manifolds);
       if (change_indices_map.size() > 0) {
+
+        // Condition3: approaching boundary with decent rate
         auto approach_indices_map = IdentifyApproachingIndices(
-            init_iter_dertails.initial.new_manifolds,
-            last_iter_details.initial.new_manifolds, change_indices_map);
+            init_iter_dertails.state.manifolds,
+            current_iter_details.state.manifolds, change_indices_map);
+
         if (approach_indices_map.size() > 0) {
           // Enforce approaching indices;
-          state.updateManifolds(
-              MoveToBoundaries(state.manifolds, approach_indices_map), graph);
-          iter_details.forced_indices_map = approach_indices_map;
-          iter_details.new_manifolds = state.manifolds;
-          iter_details.new_error = state.error;
+          IELMTrial trial;
+          trial.setLambda(current_iter_details.state);
+          trial.forced_indices_map = approach_indices_map;
+          trial.new_manifolds = MoveToBoundaries(
+              current_iter_details.state.manifolds, approach_indices_map);
+          trial.new_error =
+              graph.error(CollectManifoldValues(trial.new_manifolds));
+          current_iter_details.trials.emplace_back(trial);
           return true;
         }
       }
     }
   }
   return false;
-
 }
 
 /* ************************************************************************* */
-GaussianFactorGraph::shared_ptr
-IELMOptimizer::linearize(const NonlinearFactorGraph &graph,
-                         const IELMOptimizerState &state) const {
+void IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
+                              const IELMState &currentState,
+                              IELMTrial &trial) const {
 
-  // linearize on e-manifolds
-  std::map<Key, Key> keymap_var2manifold = Var2ManifoldKeyMap(state.manifolds);
-  NonlinearFactorGraph manifold_graph = ManifoldOptimizer::ManifoldGraph(
-      graph, keymap_var2manifold, state.const_e_manifolds);
-  auto active_linear_graph = manifold_graph.linearize(state.e_manifolds);
-  return active_linear_graph;
-}
+  // auto start = std::chrono::high_resolution_clock::now();
 
-/* ************************************************************************* */
-IELMNonlinearIterDetails IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
-                              const GaussianFactorGraph &linear,
-                              const VectorValues &sqrtHessianDiagonal,
-                              const IELMOptimizerState &currentState) const {
-
-
-  auto start = std::chrono::high_resolution_clock::now();
-
-
-  // Build damped system for this lambda (adds prior factors that make it like
-  // gradient descent)
-  auto dampedSystem =
-      buildDampedSystem(currentState, linear, sqrtHessianDiagonal);
-
-  // Try solving
-  IELMNonlinearIterDetails iter_details;
-  iter_details.step_is_successful = false;
-  iter_details.stop_searching_lambda = false;
-  double costChange = 0.0;
-  Values newValues;
-  VectorValues delta;
-
-  iter_details.lambda = currentState.lambda;
-  iter_details.manifolds = currentState.manifolds;
-  iter_details.blocking_indices_map = currentState.blocking_indices_map;
-  iter_details.cost = currentState.error;
-
-  try {
-    delta = solve(dampedSystem, params_);
-
-    // TODO: project delta into t-space
-
-    iter_details.solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
-    iter_details.solve_successful = false;
+  // compute linear update
+  // std::cout << "compute Delta\n";
+  trial.solve_successful = trial.computeDelta(graph, currentState, params_);
+  if (!trial.solve_successful) {
+    trial.step_is_successful = false;
+    return;
   }
 
-  if (iter_details.solve_successful) {
-    double oldLinearizedError = linear.error(VectorValues::Zero(delta));
-    double newlinearizedError = linear.error(delta);
-    double linearizedCostChange = oldLinearizedError - newlinearizedError;
+  // retract and perform nonlinear update
+  // std::cout << "compute new manifolds\n";
+  trial.computeNewManifolds(currentState);
 
-    iter_details.linear_cost_change = linearizedCostChange;
-      
-
-    if (linearizedCostChange >= 0) { // step is valid
-      // std::cout << "step is valid\n";
-      iter_details.new_manifolds = currentState.retractManifolds(delta, currentState.blocking_indices_map);
-      // std::cout << "retract done\n";
-      newValues = CollectManifoldValues(iter_details.new_manifolds);
-      iter_details.new_error = graph.error(newValues);
-      costChange = currentState.error - iter_details.new_error ;
-      // std::cout << "newError: " << newError << "\n";
-
-      if (linearizedCostChange >
-          std::numeric_limits<double>::epsilon() * oldLinearizedError) {
-        iter_details.model_fidelity = costChange / linearizedCostChange;
-        iter_details.step_is_successful = iter_details.model_fidelity > params_.minModelFidelity;
-      } // else we consider the step non successful and we either increase
-        // lambda or stop if error change is small
-
-      iter_details.nonlinear_cost_change = costChange;
-      iter_details.delta = currentState.computeTangentVector(delta);
-
-      double minAbsoluteTolerance =
-          params_.relativeErrorTol * currentState.error;
-      // if the change is small we terminate
-      if (std::abs(costChange) < minAbsoluteTolerance) {
-        iter_details.stop_searching_lambda = true;
-      }
-    }
-  } // if (iter_details.solve_successful)
+  // decide if accept or reject trial
+  // std::cout << "decide if accept or reject trial\n";
+  Values newValues = CollectManifoldValues(trial.new_manifolds);
+  trial.new_error = graph.error(newValues);
+  trial.nonlinear_cost_change = currentState.error - trial.new_error;
+  trial.model_fidelity = trial.nonlinear_cost_change / trial.linear_cost_change;
+  if (trial.linear_cost_change <=
+      std::numeric_limits<double>::epsilon() * trial.old_linear_error) {
+    trial.step_is_successful = false;
+  } else {
+    trial.step_is_successful = trial.model_fidelity > params_.minModelFidelity;
+  }
 
   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-    auto end = std::chrono::high_resolution_clock::now();
-    double iterationTime =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count() /
-        1e6;
-    cout << setw(4) << currentState.iterations << " " << setw(10)
-         << setprecision(4) << iter_details.new_error << " " << setw(10)
-         << setprecision(4) << costChange << " " << setw(5) << setprecision(2)
-         << currentState.lambda << " " << setw(4)
-         << iter_details.solve_successful << " " << setw(3) << setprecision(2)
-         << iterationTime << endl;
+    trial.print(currentState);
+    // auto end = std::chrono::high_resolution_clock::now();
+    // double iterationTime =
+    //     std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+    //         .count() /
+    //     1e6;
   }
 
-  return iter_details;
-
-  // if (step_is_successful) {
-  //   // we have successfully decreased the cost and we have good modelFidelity
-  //   // NOTE(frank): As we return immediately after this, we move the newValues
-  //   // TODO(frank): make Values actually support move. Does not seem to happen
-  //   // now.
-  //   currentState.decreaseLambda(params_, modelFidelity);
-  //   currentState.manifolds = newManifolds;
-  //   currentState.values = newValues;
-  //   currentState.error = newError;
-  //   currentState.ConstructEManifolds(graph);
-  //   return true;
-  // } else if (!stopSearchingLambda) { // we failed to solved the system or had no
-  //                                    // decrease in cost
-  //   currentState.increaseLambda(params_);
-
-  //   // check if lambda is too big
-  //   if (currentState.lambda >= params_.lambdaUpperBound) {
-  //     return true;
-  //   } else {
-  //     return false; // only case where we will keep trying
-  //   }
-  // } else { // the change in the cost is very small and it is not worth trying
-  //          // bigger lambdas
-  //   return true;
-  // }
-}
-
-/* ************************************************************************* */
-GaussianFactorGraph IELMOptimizer::buildDampedSystem(
-    const IELMOptimizerState &state, const GaussianFactorGraph &linear,
-    const VectorValues &sqrtHessianDiagonal) const {
-
-  if (params_.verbosityLM >= LevenbergMarquardtParams::DAMPED)
-    std::cout << "building damped system with lambda " << state.lambda
-              << std::endl;
-
-  if (params_.diagonalDamping)
-    return state.buildDampedSystem(linear, sqrtHessianDiagonal);
-  else
-    return state.buildDampedSystem(linear);
-}
-
-/* ************************************************************************* */
-VectorValues
-IELMOptimizer::solve(const GaussianFactorGraph &gfg,
-                     const NonlinearOptimizerParams &params) const {
-  // solution of linear solver is an update to the linearization point
-  VectorValues delta;
-
-  // Check which solver we are using
-  if (params.isMultifrontal()) {
-    // Multifrontal QR or Cholesky (decided by params.getEliminationFunction())
-    if (params.ordering)
-      delta = gfg.optimize(*params.ordering, params.getEliminationFunction());
-    else
-      delta = gfg.optimize(params.getEliminationFunction());
-  } else if (params.isSequential()) {
-    // Sequential QR or Cholesky (decided by params.getEliminationFunction())
-    if (params.ordering)
-      delta = gfg.eliminateSequential(*params.ordering,
-                                      params.getEliminationFunction())
-                  ->optimize();
-    else
-      delta = gfg.eliminateSequential(params.orderingType,
-                                      params.getEliminationFunction())
-                  ->optimize();
-  } else if (params.isIterative()) {
-    // Conjugate Gradient -> needs params.iterativeParams
-    if (!params.iterativeParams)
-      throw std::runtime_error(
-          "NonlinearOptimizer::solve: cg parameter has to be assigned ...");
-
-    if (auto pcg = std::dynamic_pointer_cast<PCGSolverParameters>(
-            params.iterativeParams)) {
-      delta = PCGSolver(*pcg).optimize(gfg);
-    } else if (auto spcg = std::dynamic_pointer_cast<SubgraphSolverParameters>(
-                   params.iterativeParams)) {
-      if (!params.ordering)
-        throw std::runtime_error("SubgraphSolver needs an ordering");
-      delta = SubgraphSolver(gfg, *spcg, *params.ordering).optimize();
-    } else {
-      throw std::runtime_error(
-          "NonlinearOptimizer::solve: special cg parameter type is not handled "
-          "in LM solver ...");
-    }
-  } else {
-    throw std::runtime_error(
-        "NonlinearOptimizer::solve: Optimization parameter is invalid");
-  }
-
-  // return update
-  return delta;
 }
 
 /* ************************************************************************* */
@@ -502,7 +309,9 @@ bool IELMOptimizer::checkConvergence(double relativeErrorTreshold,
   // check if diverges
   double absoluteDecrease = currentError - newError;
 
-  if (newError > currentError) {return false;}
+  if (newError > currentError) {
+    return false;
+  }
 
   // calculate relative error decrease and update currentError
   double relativeDecrease = absoluteDecrease / currentError;

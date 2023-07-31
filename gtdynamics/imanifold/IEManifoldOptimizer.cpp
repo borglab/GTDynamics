@@ -107,11 +107,11 @@ IEOptimizer::ComputeTangentVector(const IEManifoldValues &manifolds,
 }
 
 /* ************************************************************************* */
-std::pair<std::map<Key, IndexSet>, VectorValues>
+std::pair<IndexSetMap, VectorValues>
 IEOptimizer::ProjectTangentCone(const IEManifoldValues &manifolds,
                                 const VectorValues &v) {
   VectorValues proj_v;
-  std::map<Key, IndexSet> active_indices_all;
+  IndexSetMap active_indices_all;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     const Vector &xi = v.at(key);
@@ -120,8 +120,6 @@ IEOptimizer::ProjectTangentCone(const IEManifoldValues &manifolds,
     std::tie(active_indices, proj_xi) = it.second.projectTangentCone(xi);
     proj_v.insert(key, proj_xi);
     active_indices_all.emplace(key, active_indices);
-    // TODO: record blocking constraints to avoid zig-zag behavior in
-    // optimization
   }
   return std::make_pair(active_indices_all, proj_v);
 }
@@ -149,20 +147,20 @@ Values IEOptimizer::EManifolds(const IEManifoldValues &manifolds) {
 }
 
 /* ************************************************************************* */
-std::pair<Values, Values> IEOptimizer::EManifolds(const IEManifoldValues &manifolds,
-                               const std::map<Key, IndexSet> &active_indices) {
+std::pair<Values, Values>
+IEOptimizer::EManifolds(const IEManifoldValues &manifolds,
+                        const IndexSetMap &active_indices) {
   Values e_manifolds;
   Values const_e_manifolds;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
-    ConstraintManifold e_manifold =  it.second.eConstraintManifold(active_indices.at(key));
+    ConstraintManifold e_manifold =
+        it.second.eConstraintManifold(active_indices.at(key));
     if (e_manifold.dim() > 0) {
       e_manifolds.insert(key, e_manifold);
-    }
-    else {
+    } else {
       const_e_manifolds.insert(key, e_manifold);
     }
-
   }
   return std::make_pair(e_manifolds, const_e_manifolds);
 }

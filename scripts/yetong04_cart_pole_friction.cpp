@@ -24,6 +24,7 @@
 
 using namespace gtsam;
 using namespace gtdynamics;
+using std::cout, std::setw, std::setprecision, std::endl;
 
 void SaveResult(const ConstrainedOptResult &result,
                 const Values &initial_values, const size_t &num_steps,
@@ -89,16 +90,15 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
   return values;
 }
 
-std::string IndicesStr(const std::map<Key, IndexSet>& indices_map) {
+std::string IndicesStr(const IndexSetMap& indices_map) {
   std::string str;
   for (const auto &it : indices_map) {
     if (it.second.size() > 0) {
       str += "(" + _defaultKeyFormatter(it.first) + ":";
-      str += ")";
       for (const auto &idx : it.second) {
         str += " " + std::to_string((idx));
       }
-      str += "\t";
+      str += ")\t";
     }
   }
   return str;
@@ -109,67 +109,84 @@ std::string IndicesStr(const IEManifoldValues& manifolds) {
   for (const auto &it : manifolds) {
     if (it.second.activeIndices().size() > 0) {
       str += "(" + _defaultKeyFormatter(it.first) + ":";
-      str += ")";
       for (const auto &idx : it.second.activeIndices()) {
         str += " " + std::to_string((idx));
       }
-      str += "\t";
+      str += ")\t";
     }
   }
   return str;
 }
 
+void PrintIterDetails(const IELMIterDetails &iter_details,
+                      const size_t num_steps,
+                      bool print_values = false) {
+  std::string red = "1;31";
+  std::string green = "1;32";
+  std::string blue = "1;34";
 
-void PrintIterDetails(const IELMNonlinearIterDetails& iter_detail, const size_t num_steps, bool is_successful) {
-  std::string color = is_successful ? "1;31" : "1;34";
-  std::cout << "\033["+color+"mlambda: " << iter_detail.lambda
-            << "\terror: " << iter_detail.cost << " -> " << iter_detail.new_error
-            << "\tfidelity: " << iter_detail.model_fidelity
-            << "\tlinear: " << iter_detail.linear_cost_change
-            << "\tnonlinear: " << iter_detail.nonlinear_cost_change
+  const auto& state = iter_details.state;
+  std::cout << "<======================= Iter " << iter_details.state.iterations << " =======================>\n";
+
+  /// Print state
+  std::cout << "\033[" + green + "merror: " << setprecision(4) << state.error
             << "\033[0m\n";
-  
-  auto current_str = IndicesStr(iter_detail.manifolds);
-  auto blocking_str = IndicesStr(iter_detail.blocking_indices_map);
-  auto new_str = IndicesStr(iter_detail.new_manifolds);
-  auto forced_str = IndicesStr(iter_detail.forced_indices_map);
-
-  if (current_str.size() > 0) {
-    std::cout << "current: " << current_str << "\n";
+  auto state_current_str = IndicesStr(state.manifolds);
+  auto state_grad_blocking_str = IndicesStr(state.grad_blocking_indices_map);
+  if (state_current_str.size() > 0) {
+    std::cout << "current: " << state_current_str << "\n";
   }
-  if (blocking_str.size() > 0) {
-    std::cout << "blocking: " << blocking_str << "\n";
-  }
-  if (forced_str.size() > 0) {
-    std::cout << "forced: " << forced_str << "\n";
-  }
-  if (new_str.size() > 0) {
-    std::cout << "new: " << new_str << "\n";
+  if (state_grad_blocking_str.size() > 0) {
+    std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
   }
 
-  
-  std::cout << "current values: \n";
-  PrintValues(IEOptimizer::CollectManifoldValues(iter_detail.manifolds),
-  num_steps);
-
-  if (iter_detail.delta.size() > 0) {
-    std::cout << "tangent vector: \n";
-    PrintDelta(iter_detail.delta, num_steps);
+  if (print_values) {
+    std::cout << "values: \n";
+    PrintValues(IEOptimizer::CollectManifoldValues(state.manifolds),
+                num_steps);
   }
 
 
-  std::cout << "new values: \n";
-  PrintValues(IEOptimizer::CollectManifoldValues(iter_detail.new_manifolds),
-  num_steps);
+  /// Print trials
+  for (const auto &trial : iter_details.trials) {
+    std::string color = trial.step_is_successful ? red : blue;
+    std::cout << "\033[" + color + "mlambda: " << trial.lambda
+              << "\terror: " << state.error << " -> " << trial.new_error
+              << "\tfidelity: " << trial.model_fidelity
+              << "\tlinear: " << trial.linear_cost_change
+              << "\tnonlinear: " << trial.nonlinear_cost_change << "\033[0m\n";
 
+    auto blocking_str = IndicesStr(trial.blocking_indices_map);
+    auto new_str = IndicesStr(trial.new_manifolds);
+    auto forced_str = IndicesStr(trial.forced_indices_map);
+
+    if (blocking_str.size() > 0) {
+      std::cout << "blocking: " << blocking_str << "\n";
+    }
+    if (forced_str.size() > 0) {
+      std::cout << "forced: " << forced_str << "\n";
+    }
+    if (new_str.size() > 0) {
+      std::cout << "new: " << new_str << "\n";
+    }
+
+    if (print_values) {
+      if (trial.tangent_vector.size() > 0) {
+        std::cout << "tangent vector: \n";
+        PrintDelta(trial.tangent_vector, num_steps);
+      }
+
+      std::cout << "new values: \n";
+      PrintValues(IEOptimizer::CollectManifoldValues(trial.new_manifolds),
+                  num_steps);
+    }
+  }
 }
-
-
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
-  size_t num_steps = 4;
-  double dt = 0.2;
+  size_t num_steps = 10;
+  double dt = 0.1;
 
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
@@ -275,38 +292,7 @@ int main(int argc, char **argv) {
     const auto &details = lm_optimizer.details();
 
     for (const auto& iter_details : details) {
-      PrintIterDetails(iter_details.initial, num_steps, true);
-      for (const auto& trial : iter_details.trials) {
-        PrintIterDetails(trial, num_steps, false);
-      }
-
-
-
-    // for (int iter_id = 0; iter_id < 6; iter_id ++ ) {
-    //   const auto& iter_detail = details.at(iter_id);
-    // }
-
-
-      // std::cout << "current values: \n";
-      // PrintValues(IEOptimizer::CollectManifoldValues(iter_detail.manifolds),
-      // num_steps);
-
-      // std::cout << "tangent vector: \n";
-      // PrintDelta(iter_detail.delta, num_steps);
-
-      // std::cout << "new values: \n";
-      // PrintValues(IEOptimizer::CollectManifoldValues(iter_detail.new_manifolds),
-      // num_steps);
-
-      // Values new_values =
-      // IEOptimizer::CollectManifoldValues(iter_detail.new_manifolds); for
-      // (const auto& factor: graph) {
-      //   double error = factor->error(new_values);
-      //   if (error > 1e-1) {
-      //     factor->print();
-      //     std::cout << "error: " << error << "\n";
-      //   }
-      // }
+      PrintIterDetails(iter_details, num_steps);
     }
   }
 

@@ -43,10 +43,10 @@ public:
     return optimizeManifolds(graph, manifolds, intermediate_result);
   }
 
-  virtual Values
-  optimizeManifolds(const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
-           gtdynamics::ConstrainedOptResult *intermediate_result =
-               nullptr) const = 0;
+  virtual Values optimizeManifolds(const NonlinearFactorGraph &graph,
+                                   const IEManifoldValues &manifolds,
+                                   gtdynamics::ConstrainedOptResult *
+                                       intermediate_result = nullptr) const = 0;
 
 public:
   static std::map<Key, Key>
@@ -60,9 +60,12 @@ public:
 
   static Values CollectManifoldValues(const IEManifoldValues &manifolds);
 
-  static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds, const VectorValues &delta);
+  static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds,
+                                           const VectorValues &delta);
 
-  static std::pair<std::map<Key, IndexSet>, VectorValues>
+  /// Note: xi is given with the e_basis that only consider equality
+  /// constraints.
+  static std::pair<IndexSetMap, VectorValues>
   ProjectTangentCone(const IEManifoldValues &manifolds, const VectorValues &v);
 
   static IEManifoldValues RetractManifolds(const IEManifoldValues &manifolds,
@@ -70,8 +73,9 @@ public:
 
   static Values EManifolds(const IEManifoldValues &manifolds);
 
-  static std::pair<Values, Values> EManifolds(const IEManifoldValues &manifolds,
-                           const std::map<Key, IndexSet> &active_indices);
+  static std::pair<Values, Values>
+  EManifolds(const IEManifoldValues &manifolds,
+             const IndexSetMap &active_indices);
 };
 
 } // namespace gtsam

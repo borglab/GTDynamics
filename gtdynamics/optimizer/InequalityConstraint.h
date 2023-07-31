@@ -244,4 +244,17 @@ public:
   }
 };
 
+struct IndexSetMap : public std::map<Key, IndexSet> {
+public:
+  void addIndices(const Key& key, const IndexSet& index_set) {
+    if (find(key) == end()) {
+      insert({key, index_set});
+    }
+    else {
+      IndexSet& current_indices = at(key);
+      current_indices.insert(index_set.begin(), index_set.end());
+    }
+  }
+};
+
 } // namespace gtsam

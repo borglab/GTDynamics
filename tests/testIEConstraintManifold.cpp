@@ -74,6 +74,15 @@ TEST(IEConstraintManifold, HalfSphere) {
     EXPECT(assert_equal(expected_proj_xi3, projected_xi));
     EXPECT(blocking_indices.size() == 1);
 
+    // Test blocking constraints
+    VectorValues delta1, delta2, delta3;
+    delta1.insert(point_key, Vector3(8, -6, 1));
+    delta2.insert(point_key, Vector3(8, -6, 0));
+    delta3.insert(point_key, Vector3(8, -6, -1));
+    EXPECT(manifold.blockingIndices(delta1).size() == 0);
+    EXPECT(manifold.blockingIndices(delta2).size() == 0);
+    EXPECT(manifold.blockingIndices(delta3).size() == 1);
+
     // Test construct emanifold
     auto e_manifold = manifold.eConstraintManifold();
     EXPECT(e_manifold.dim() == 2);

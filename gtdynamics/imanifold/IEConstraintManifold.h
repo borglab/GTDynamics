@@ -98,8 +98,24 @@ public:
   /// blocking constraint indices, and the projected vector
   virtual std::pair<IndexSet, Vector>
   projectTangentCone(const Vector &xi) const {
-    return i_cone_->project(xi);
+    auto result = i_cone_->project(xi);
+
+    IndexSet blocking_indices;
+    std::vector<size_t> active_indices_vector(active_indices_.begin(), active_indices_.end());
+    for (const auto& index: result.first) {
+      blocking_indices.insert(active_indices_vector.at(index));
+    }
+    return std::make_pair(blocking_indices, result.second);
   }
+
+  // TODO: enable this function
+  // virtual std::pair<IndexSet, VectorValues>
+  // projectTangentCone(const VectorValues &tangent_vector) const {
+  //   Vector xi = e_basis_->computeXi(tangent_vector);
+  //   auto result = projectTangentCone(xi);
+  //   VectorValues projected_tangent_vector = e_basis_->computeTangentVector(result.second);
+  //   return std::make_pair(result.first, projected_tangent_vector);
+  // }
 
   /** retract that forces the set of blocking constraints as equality constraints.
    * Will also enforce satisfying other inequality constraints. */
@@ -114,6 +130,26 @@ public:
   retract(const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {}) const {
     return params_->retractor->retract(this, delta, blocking_indices);
+  }
+
+  IndexSet blockingIndices(const VectorValues& tangent_vector) const {
+    IndexSet blocking_indices;
+
+    for (const auto& idx: active_indices_) {
+      // TODO: store the jacobians to avoid recomputation
+      const auto &i_constraint = i_constraints_->at(idx);
+      auto jacobians = i_constraint->jacobians(values_);
+      double error = 0;
+      for (const auto& it: jacobians) {
+        const Key& key  = it.first;
+        const Matrix& jac = it.second;
+        error += (jac * tangent_vector.at(key))(0);
+      }
+      if (error < -1e-5) {
+        blocking_indices.insert(idx);
+      }
+    }
+    return blocking_indices;
   }
 
   IEConstraintManifold moveToBoundary(const IndexSet& active_indices) const {
