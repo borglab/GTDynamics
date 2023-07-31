@@ -10,13 +10,9 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file    IELMOptimizer.h
- * @brief   A nonlinear optimizer that uses the Levenberg-Marquardt trust-region
- * scheme
- * @author  Richard Roberts
- * @author  Frank Dellaert
- * @author  Luca Carlone
- * @date    Feb 26, 2012
+ * @file    IELMOptimizerState.h
+ * @brief   State and Trial for IELMOptimizer
+ * @author  Yetong Zhang
  */
 
 #pragma once
@@ -36,6 +32,7 @@ struct IELMState;
 struct IELMTrial;
 struct IELMIterDetails;
 
+/** State corresponding to each LM iteration. */
 struct IELMState {
 public:
   IEManifoldValues manifolds;
@@ -73,8 +70,7 @@ public:
   void ConstructEManifolds(const NonlinearFactorGraph &graph);
 };
 
-
-/// Trial in iteration with certain lambda setting.
+/** Trial for LM inner iteration with certain lambda setting. */
 struct IELMTrial {
   IndexSetMap forced_indices_map;
   IndexSetMap blocking_indices_map;
@@ -103,11 +99,11 @@ struct IELMTrial {
   /// Update lambda for the next trial/state.
   void setNextLambda(double &new_lambda, double &new_lambda_factor,
                      const LevenbergMarquardtParams &params) const;
-  
+
   /// Set lambda as increased values for next trial/state.
   void setIncreasedNextLambda(double &new_lambda, double &new_lambda_factor,
                               const LevenbergMarquardtParams &params) const;
-  
+
   /// Set lambda as decreased values for next trial/state.
   void setDecreasedNextLambda(double &new_lambda, double &new_lambda_factor,
                               const LevenbergMarquardtParams &params) const;
@@ -117,23 +113,31 @@ struct IELMTrial {
   linearize(const NonlinearFactorGraph &graph,
             const std::map<Key, Key> &keymap_var2manifold) const;
 
-  
+  /// Solve gaussian factor graph using specified parameters.
   static VectorValues solve(const GaussianFactorGraph &gfg,
-                     const NonlinearOptimizerParams &params);
+                            const NonlinearOptimizerParams &params);
 
-  bool computeDelta(const NonlinearFactorGraph &graph, const IELMState &state, const LevenbergMarquardtParams &params);
+  /** The function computes:
+   * 1) linear update as (approx) solution the i-constrained qp problem
+   * 2) blocking constraints as of solving the IQP problem
+   * 3) e-manifolds corresponding to the e-constraints and blocking constraints
+   * 4) corresponding linear cost change
+   * 5) solve_successful indicating if solving the linear system is successful
+   */
+  bool computeDelta(const NonlinearFactorGraph &graph, const IELMState &state,
+                    const LevenbergMarquardtParams &params);
 
+  /** Compute the new manifolds using the linear update delta and blocking
+   * indices. */
   void computeNewManifolds(const IELMState &state);
 
+  /** Compute tangent vector from delta. */
   void computeTangentVector();
 
-  // IEManifoldValues retractManifolds(const IEManifoldValues &manifolds,
-  //                                   const VectorValues &delta,
-  //                                   const std::optional<IndexSetMap>
-  //                                       &blocking_indices_map = {}) const;
+  /** Print summary info of the trial. */
+  void print(const IELMState &state) const;
 
-  void print(const IELMState& state) const;
-
+  /** Following functions are adapted from LMOptimizerState. */
   struct CachedModel {
     CachedModel() {} // default int makes zero-size matrices
     CachedModel(int dim, double sigma)
@@ -158,11 +162,10 @@ struct IELMTrial {
   buildDampedSystem(GaussianFactorGraph damped, // gets copied
                     const VectorValues &sqrtHessianDiagonal) const;
 
-  GaussianFactorGraph buildDampedSystem(
-      const GaussianFactorGraph &linear,
-      const VectorValues &sqrtHessianDiagonal,
-      const LevenbergMarquardtParams &params) const;
-
+  GaussianFactorGraph
+  buildDampedSystem(const GaussianFactorGraph &linear,
+                    const VectorValues &sqrtHessianDiagonal,
+                    const LevenbergMarquardtParams &params) const;
 };
 
 struct IELMIterDetails {

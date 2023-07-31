@@ -19,9 +19,6 @@
  * @date    Feb 26, 2012
  */
 
-#include "imanifold/IELMOptimizerState.h"
-#include "imanifold/IEManifoldOptimizer.h"
-#include "imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Ordering.h>
@@ -35,10 +32,6 @@
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
-
-#ifdef GTSAM_USE_BOOST_FEATURES
-#include <gtsam/base/timing.h>
-#endif
 
 #include <cmath>
 #include <fstream>
@@ -62,27 +55,22 @@ Values IELMOptimizer::optimizeManifolds(
   IELMState state(manifolds, graph, 0);
   state.lambda = params_.lambdaInitial;
   state.lambda_factor = params_.lambdaFactor;
-  double currentError = state.error;
 
   // check if we're already close enough
-  if (currentError <= params_.errorTol) {
+  if (state.error <= params_.errorTol) {
     return IEOptimizer::CollectManifoldValues(state.manifolds);
   }
 
   // Iterative loop
-  double newError;
+  IELMState prev_state;
   do {
-    currentError = state.error;
+    prev_state = state;
     IELMIterDetails iter_details = iterate(graph, state);
     state = IELMState::FromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);
-    newError = state.error;
   } while (state.iterations < params_.maxIterations &&
-           !checkConvergence(params_.relativeErrorTol, params_.absoluteErrorTol,
-                             params_.errorTol, currentError, newError) &&
-           state.lambda <= params_.lambdaUpperBound &&
-           state.lambda >= params_.lambdaLowerBound &&
-           std::isfinite(currentError));
+           !checkConvergence(prev_state, state) &&
+           checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
   return IEOptimizer::CollectManifoldValues(state.manifolds);
 }
@@ -96,30 +84,49 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
     return iter_details;
   }
 
+  // Set lambda for first trial.
   IELMTrial trial;
   trial.setLambda(state);
 
+  // Perform trials until any of follwing conditions is met
+  // * 1) trial is successful
+  // * 2) update is too small
+  // * 3) lambda goes beyond limits
   while (true) {
-    if (trial.lambda > params_.lambdaUpperBound) {
-      break;
-    }
-    if (trial.lambda < params_.lambdaLowerBound) {
-      break;
-    }
+    // Perform the trial.
     tryLambda(graph, state, trial);
     iter_details.trials.emplace_back(trial);
 
-    IELMTrial next_trial;
+    // Check condition 1.
     if (trial.step_is_successful) {
       break;
-    } else {
-      trial.setNextLambda(next_trial.lambda, next_trial.lambda_factor, params_);
     }
+
+    // Check condition 2.
+    if (trial.solve_successful) {
+      double abs_change_tol = std::max(params_.absoluteErrorTol,
+                                       params_.relativeErrorTol * state.error);
+      if (trial.linear_cost_change < abs_change_tol) {
+        if (trial.nonlinear_cost_change < abs_change_tol) {
+          break;
+        }
+      }
+    }
+
+    // Set lambda for next trial.
+    IELMTrial next_trial;
+    trial.setNextLambda(next_trial.lambda, next_trial.lambda_factor, params_);
     trial = next_trial;
+
+    // Check condition 3.
+    if (!checkLambdaWithinLimits(trial.lambda)) {
+      break;
+    }
   }
   return iter_details;
 }
 
+/* ************************************************************************* */
 bool IsSameMode(const IEManifoldValues &manifolds1,
                 const IEManifoldValues &manifolds2) {
   for (const auto &it : manifolds1) {
@@ -135,6 +142,7 @@ bool IsSameMode(const IEManifoldValues &manifolds1,
   return true;
 }
 
+/* ************************************************************************* */
 IndexSetMap IdentifyChangeIndices(const IEManifoldValues &manifolds,
                                   const IEManifoldValues &new_manifolds) {
   IndexSetMap change_indices_map;
@@ -155,6 +163,7 @@ IndexSetMap IdentifyChangeIndices(const IEManifoldValues &manifolds,
   return change_indices_map;
 }
 
+/* ************************************************************************* */
 IndexSetMap IdentifyApproachingIndices(const IEManifoldValues &manifolds,
                                        const IEManifoldValues &new_manifolds,
                                        const IndexSetMap &change_indices_map) {
@@ -186,6 +195,7 @@ IndexSetMap IdentifyApproachingIndices(const IEManifoldValues &manifolds,
   return approach_indices_map;
 }
 
+/* ************************************************************************* */
 IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
                                   const IndexSetMap &approach_indices_map) {
   IEManifoldValues new_manifolds;
@@ -206,52 +216,79 @@ IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
 bool IELMOptimizer::checkModeChange(
     const NonlinearFactorGraph &graph,
     IELMIterDetails &current_iter_details) const {
-  if (details_->size() < 2) {
+  if (details_->size() == 0) {
     return false;
   }
 
-  // find the furthest state that have the same mode
+  // Find the first state in the sequence of states that have the same mode.
   int n = details_->size();
-  int i = n - 1;
-  while (i >= 0 && IsSameMode(current_iter_details.state.manifolds,
-                              details_->at(i).state.manifolds)) {
-    i--;
+  int first_i = n - 1;
+  while (first_i >= 0 && IsSameMode(current_iter_details.state.manifolds,
+                                    details_->at(first_i).state.manifolds)) {
+    first_i--;
   }
-  i++;
+  first_i++;
 
   // Condition1: mode remain unchanged in consecutive states
-  if (i <= n - 1) {
-    const auto &init_iter_dertails = details_->at(i);
-    const auto &prev_iter_details = details_->back();
-    if (prev_iter_details.trials.size() == 2) {
+  if (first_i >= n) {
+    return false;
+  }
 
-      // Condition2: trial uses other mode and fails
-      IndexSetMap change_indices_map =
-          IdentifyChangeIndices(current_iter_details.state.manifolds,
-                                prev_iter_details.trials.at(0).new_manifolds);
-      if (change_indices_map.size() > 0) {
+  const auto &init_iter_dertails = details_->at(first_i);
+  const auto &prev_iter_details = details_->back();
 
-        // Condition3: approaching boundary with decent rate
-        auto approach_indices_map = IdentifyApproachingIndices(
-            init_iter_dertails.state.manifolds,
-            current_iter_details.state.manifolds, change_indices_map);
-
-        if (approach_indices_map.size() > 0) {
-          // Enforce approaching indices;
-          IELMTrial trial;
-          trial.setLambda(current_iter_details.state);
-          trial.forced_indices_map = approach_indices_map;
-          trial.new_manifolds = MoveToBoundaries(
-              current_iter_details.state.manifolds, approach_indices_map);
-          trial.new_error =
-              graph.error(CollectManifoldValues(trial.new_manifolds));
-          current_iter_details.trials.emplace_back(trial);
-          return true;
-        }
+  // Find the last failed trial.
+  size_t iter_idx = details_->size() - 1;
+  size_t trial_idx = details_->back().trials.size() - 1;
+  bool failed_trial_exists = false;
+  while (true) {
+    if (!details_->at(iter_idx).trials.at(trial_idx).step_is_successful) {
+      failed_trial_exists = true;
+      break;
+    }
+    if (trial_idx == 0) {
+      if (iter_idx == first_i) {
+        break;
       }
+      iter_idx--;
+      trial_idx = details_->at(iter_idx).trials.size() - 1;
+    } else {
+      trial_idx--;
     }
   }
-  return false;
+
+  // Condition2(1): exists failed trial
+  if (!failed_trial_exists) {
+    return false;
+  }
+
+  IndexSetMap change_indices_map = IdentifyChangeIndices(
+      current_iter_details.state.manifolds,
+      details_->at(iter_idx).trials.at(trial_idx).new_manifolds);
+
+  // Condition2(2): most recent failed trial results in other mode
+  if (change_indices_map.size() == 0) {
+    return false;
+  }
+
+  auto approach_indices_map = IdentifyApproachingIndices(
+      init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
+      change_indices_map);
+
+  // Condition3: approaching boundary with decent rate
+  if (approach_indices_map.size() == 0) {
+    return false;
+  }
+
+  // Enforce approaching indices;
+  IELMTrial trial;
+  trial.setLambda(current_iter_details.state);
+  trial.forced_indices_map = approach_indices_map;
+  trial.new_manifolds = MoveToBoundaries(current_iter_details.state.manifolds,
+                                         approach_indices_map);
+  trial.new_error = graph.error(CollectManifoldValues(trial.new_manifolds));
+  current_iter_details.trials.emplace_back(trial);
+  return true;
 }
 
 /* ************************************************************************* */
@@ -259,21 +296,19 @@ void IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
                               const IELMState &currentState,
                               IELMTrial &trial) const {
 
-  // auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
 
-  // compute linear update
   // std::cout << "compute Delta\n";
   trial.solve_successful = trial.computeDelta(graph, currentState, params_);
   if (!trial.solve_successful) {
     trial.step_is_successful = false;
+    // std::cout << "solve not successful\n";
     return;
   }
 
-  // retract and perform nonlinear update
   // std::cout << "compute new manifolds\n";
   trial.computeNewManifolds(currentState);
 
-  // decide if accept or reject trial
   // std::cout << "decide if accept or reject trial\n";
   Values newValues = CollectManifoldValues(trial.new_manifolds);
   trial.new_error = graph.error(newValues);
@@ -286,38 +321,45 @@ void IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
     trial.step_is_successful = trial.model_fidelity > params_.minModelFidelity;
   }
 
+  auto end = std::chrono::high_resolution_clock::now();
+  trial.trial_time =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count() /
+      1e6;
+
   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
     trial.print(currentState);
-    // auto end = std::chrono::high_resolution_clock::now();
-    // double iterationTime =
-    //     std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-    //         .count() /
-    //     1e6;
   }
-
 }
 
 /* ************************************************************************* */
-bool IELMOptimizer::checkConvergence(double relativeErrorTreshold,
-                                     double absoluteErrorTreshold,
-                                     double errorThreshold, double currentError,
-                                     double newError) const {
+bool IELMOptimizer::checkLambdaWithinLimits(const double &lambda) const {
+  return lambda <= params_.lambdaUpperBound &&
+         lambda >= params_.lambdaLowerBound;
+}
 
-  if (newError <= errorThreshold)
+/* ************************************************************************* */
+bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
+                                     const IELMState &state) const {
+
+  if (state.error <= params_.errorTol)
     return true;
 
-  // check if diverges
-  double absoluteDecrease = currentError - newError;
-
-  if (newError > currentError) {
+  // check if mode changes
+  std::cout << "check is Same Mode\n";
+  if (!IsSameMode(prev_state.manifolds, state.manifolds)) {
+    std::cout << "check is Same Mode done\n";
     return false;
   }
+  std::cout << "check is Same Mode done\n";
+  // check if diverges
+  double absoluteDecrease = prev_state.error - state.error;
 
   // calculate relative error decrease and update currentError
-  double relativeDecrease = absoluteDecrease / currentError;
-  bool converged =
-      (relativeErrorTreshold && (relativeDecrease <= relativeErrorTreshold)) ||
-      (absoluteDecrease <= absoluteErrorTreshold);
+  double relativeDecrease = absoluteDecrease / prev_state.error;
+  bool converged = (params_.relativeErrorTol &&
+                    (relativeDecrease <= params_.relativeErrorTol)) ||
+                   (absoluteDecrease <= params_.absoluteErrorTol);
   return converged;
 }
 

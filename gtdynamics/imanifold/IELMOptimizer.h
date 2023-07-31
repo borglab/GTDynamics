@@ -11,12 +11,9 @@
 
 /**
  * @file    IELMOptimizer.h
- * @brief   A nonlinear optimizer that uses the Levenberg-Marquardt trust-region
- * scheme
- * @author  Richard Roberts
- * @author  Frank Dellaert
- * @author  Luca Carlone
- * @date    Feb 26, 2012
+ * @brief   A nonlinear manifold optimizer that uses the Levenberg-Marquardt
+ * trust-region scheme
+ * @author  Yetong Zhang
  */
 
 #pragma once
@@ -60,23 +57,40 @@ public:
   /** Read-only access the parameters */
   const LevenbergMarquardtParams &params() const { return params_; }
 
+  /** Perform optimization on manifolds. */
   Values optimizeManifolds(const NonlinearFactorGraph &graph,
                            const IEManifoldValues &manifolds,
                            gtdynamics::ConstrainedOptResult
                                *intermediate_result = nullptr) const override;
 
-  bool checkConvergence(double relativeErrorTreshold,
-                        double absoluteErrorTreshold, double errorThreshold,
-                        double currentError, double newError) const;
+  /** Convergence check including
+   * 1) mode change
+   * 2) error tol
+   * 3) absolute error tol
+   * 4) relative error tol
+   */
+  bool checkConvergence(const IELMState &prev_state,
+                        const IELMState &state) const;
 
+  /** Check if lambda is within limits. */
+  bool checkLambdaWithinLimits(const double &lambda) const;
+
+  /** Perform one iterate, may need to make several trials. */
   IELMIterDetails iterate(const NonlinearFactorGraph &graph,
                           const IELMState &state) const;
 
-  /** Inner loop, changes state, returns true if successful or giving up */
+  /** Inner loop, perform a trial with specified lambda parameters, changes
+   * trial. */
   void tryLambda(const NonlinearFactorGraph &graph,
-                              const IELMState &currentState,
-                              IELMTrial &trial) const;
+                 const IELMState &currentState, IELMTrial &trial) const;
 
+  /** Check if a mode change is required. The following conditions need to be
+   * met to enforce a mode change:
+   * 1) the mode has stayed constant for consecutive states.
+   * 2) the most recent failed trial has resulted in different modes.
+   * 3) certain boundaries (corresponding to the different mode) are approached
+   * with large enough rate.
+   */
   bool checkModeChange(const NonlinearFactorGraph &graph,
                        IELMIterDetails &current_iter_details) const;
 };

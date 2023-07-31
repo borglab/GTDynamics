@@ -24,10 +24,22 @@ IELMState IELMState::FromLastIteration(const IELMIterDetails &iter_details,
                                        const NonlinearFactorGraph &graph,
                                        const LevenbergMarquardtParams &params) {
   double lambda;
-  const auto &trial = iter_details.trials.back();
+  const auto &last_trial = iter_details.trials.back();
   const auto &prev_state = iter_details.state;
-  IELMState state(trial.new_manifolds, graph, trial.lambda);
-  trial.setNextLambda(state.lambda, state.lambda_factor, params);
+  IELMState state;
+  if (last_trial.step_is_successful) {
+    state = IELMState(last_trial.new_manifolds, graph);
+  } else {
+    // pick the trials with smallest error
+    state = IELMState(iter_details.state.manifolds, graph);
+    for (const auto &trial : iter_details.trials) {
+      if (trial.solve_successful && trial.new_error < state.error) {
+        state = IELMState(trial.new_manifolds, graph);
+      }
+    }
+  }
+
+  last_trial.setNextLambda(state.lambda, state.lambda_factor, params);
   state.iterations = prev_state.iterations + 1;
   state.totalNumberInnerIterations =
       prev_state.totalNumberInnerIterations + iter_details.trials.size();
@@ -69,8 +81,7 @@ void IELMTrial::setNextLambda(double &new_lambda, double &new_lambda_factor,
   if (forced_indices_map.size() > 0) {
     new_lambda = lambda;
     new_lambda_factor = lambda_factor;
-  }
-  else {
+  } else {
     if (step_is_successful) {
       setDecreasedNextLambda(new_lambda, new_lambda_factor, params);
     } else {
@@ -335,14 +346,12 @@ void IELMTrial::computeNewManifolds(const IELMState &state) {
   }
 }
 
-void IELMTrial::print(const IELMState& state) const {
-      cout << setw(4) << state.iterations << " " << setw(10)
-         << setprecision(4) << new_error << " " << setw(10)
-         << setprecision(4) << nonlinear_cost_change << " " << setw(5) << setprecision(2)
-         << lambda << " " << setw(4)
-         << solve_successful << " " << setw(3) << setprecision(2)
-         << trial_time << endl;
+void IELMTrial::print(const IELMState &state) const {
+  cout << setw(4) << state.iterations << " " << setw(10) << setprecision(4)
+       << new_error << " " << setw(10) << setprecision(4)
+       << nonlinear_cost_change << " " << setw(5) << setprecision(2) << lambda
+       << " " << setw(4) << solve_successful << " " << setw(3)
+       << setprecision(2) << trial_time << endl;
 }
-
 
 } // namespace gtsam
