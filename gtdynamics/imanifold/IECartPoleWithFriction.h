@@ -31,32 +31,6 @@ inline Key FxKey(const int k) { return Symbol('x', k); }
 
 inline Key FyKey(const int k) { return Symbol('y', k); }
 
-inline void PrintValues(const Values& values, const size_t num_steps) {
-  std::cout << std::setw(10) << "q" << std::setw(10)  << "v" << std::setw(10) << "a" << std::setw(10) << "tau" << std::setw(10) << "fx" << std::setw(10) << "fy" << "\n";
-  for (size_t k=0; k<=num_steps; k++) {
-    double q = values.atDouble(QKey(k));
-    double v = values.atDouble(VKey(k));
-    double a = values.atDouble(AKey(k));
-    double tau = values.atDouble(TauKey(k));
-    double fx = values.atDouble(FxKey(k));
-    double fy = values.atDouble(FyKey(k));
-    std::cout << std::setprecision(3)<< std::setw(10) << q << std::setw(10)  << v << std::setw(10) << a << std::setw(10) << tau << std::setw(10) << fx << std::setw(10) << fy << "\n";
-  }
-}
-
-inline void PrintDelta(const VectorValues& values, const size_t num_steps) {
-  std::cout << std::setw(10) << "q" << std::setw(10)  << "v" << std::setw(10) << "a" << std::setw(10) << "tau" << std::setw(10) << "fx" << std::setw(10) << "fy" << "\n";
-  for (size_t k=0; k<=num_steps; k++) {
-    double q = values.at(QKey(k))(0);
-    double v = values.at(VKey(k))(0);
-    double a = values.at(AKey(k))(0);
-    double tau = values.at(TauKey(k))(0);
-    double fx = values.at(FxKey(k))(0);
-    double fy = values.at(FyKey(k))(0);
-    std::cout <<std::setw(10) << q << std::setw(10)  << v << std::setw(10) << a << std::setw(10) << tau << std::setw(10) << fx << std::setw(10) << fy << "\n";
-  }
-}
-
 class IECartPoleWithFriction {
 public:
   double m = 1;
@@ -97,9 +71,7 @@ public:
     return (M + m) * g - m * v * v * r * s + m * a * r * c;
   }
 
-  double computeTau(const double a) const {
-    return m * r * r * a;
-  }
+  double computeTau(const double a) const { return m * r * r * a; }
 
   Double_ balanceFxExpr(const Double_ &q_expr, const Double_ &v_expr,
                         const Double_ &a_expr, const Double_ &fx_expr) const {
@@ -107,7 +79,7 @@ public:
         [&](const double q, const double v, const double a,
             OptionalJacobian<1, 1> H_q = {}, OptionalJacobian<1, 1> H_v = {},
             OptionalJacobian<1, 1> H_a = {}) {
-              return computeFx(q, v, a, H_q, H_v, H_a);
+          return computeFx(q, v, a, H_q, H_v, H_a);
         };
     Double_ compute_fx_expr(compute_fx_function, q_expr, v_expr, a_expr);
     return fx_expr - compute_fx_expr;
@@ -180,6 +152,42 @@ public:
     values.insertDouble(FxKey(k), fx);
     values.insertDouble(FyKey(k), fy);
     return values;
+  }
+
+  static void PrintValues(const Values &values, const size_t num_steps) {
+    std::cout << std::setw(10) << "q" << std::setw(10) << "v" << std::setw(10)
+              << "a" << std::setw(10) << "tau" << std::setw(10) << "fx"
+              << std::setw(10) << "fy"
+              << "\n";
+    for (size_t k = 0; k <= num_steps; k++) {
+      double q = values.atDouble(QKey(k));
+      double v = values.atDouble(VKey(k));
+      double a = values.atDouble(AKey(k));
+      double tau = values.atDouble(TauKey(k));
+      double fx = values.atDouble(FxKey(k));
+      double fy = values.atDouble(FyKey(k));
+      std::cout << std::setprecision(3) << std::setw(10) << q << std::setw(10)
+                << v << std::setw(10) << a << std::setw(10) << tau
+                << std::setw(10) << fx << std::setw(10) << fy << "\n";
+    }
+  }
+
+  static void PrintDelta(const VectorValues &values, const size_t num_steps) {
+    std::cout << std::setw(10) << "q" << std::setw(10) << "v" << std::setw(10)
+              << "a" << std::setw(10) << "tau" << std::setw(10) << "fx"
+              << std::setw(10) << "fy"
+              << "\n";
+    for (size_t k = 0; k <= num_steps; k++) {
+      double q = values.at(QKey(k))(0);
+      double v = values.at(VKey(k))(0);
+      double a = values.at(AKey(k))(0);
+      double tau = values.at(TauKey(k))(0);
+      double fx = values.at(FxKey(k))(0);
+      double fy = values.at(FyKey(k))(0);
+      std::cout << std::setw(10) << q << std::setw(10) << v << std::setw(10)
+                << a << std::setw(10) << tau << std::setw(10) << fx
+                << std::setw(10) << fy << "\n";
+    }
   }
 };
 

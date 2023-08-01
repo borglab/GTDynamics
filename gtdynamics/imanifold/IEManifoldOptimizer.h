@@ -93,6 +93,89 @@ public:
   MoveToBoundaries(const IEManifoldValues &manifolds,
                    const IndexSetMap &approach_indices_map);
 
+  static std::string IndicesStr(const IndexSetMap &indices_map);
+
+  static std::string IndicesStr(const IEManifoldValues &manifolds);
+
+  typedef std::function<void(const Values &values, const size_t num_steps)>
+      PrintValuesFunc;
+  typedef std::function<void(const VectorValues &values,
+                             const size_t num_steps)>
+      PrintDeltaFunc;
+
+  template <typename IterDetails>
+  static void PrintIterDetails(const IterDetails &iter_details,
+                               const size_t num_steps,
+                               bool print_values = false,
+                               PrintValuesFunc print_values_func = NULL,
+                               PrintDeltaFunc print_delta_func = NULL) {
+    std::string red = "1;31";
+    std::string green = "1;32";
+    std::string blue = "1;34";
+
+    const auto &state = iter_details.state;
+    std::cout << "<======================= Iter "
+              << iter_details.state.iterations << " =======================>\n";
+
+    /// Print state
+    std::cout << "\033[" + green + "merror: " << std::setprecision(4)
+              << state.error << "\033[0m\n";
+    auto state_current_str = IEOptimizer::IndicesStr(state.manifolds);
+    if (state_current_str.size() > 0) {
+      std::cout << "current: " << state_current_str << "\n";
+    }
+    auto state_grad_blocking_str =
+        IEOptimizer::IndicesStr(state.blocking_indices_map);
+    if (state_grad_blocking_str.size() > 0) {
+      std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
+    }
+
+    if (print_values) {
+      std::cout << "values: \n";
+      print_values_func(IEOptimizer::CollectManifoldValues(state.manifolds),
+                        num_steps);
+
+      std::cout << "gradient: \n";
+      print_delta_func(
+          IEOptimizer::ComputeTangentVector(state.manifolds, state.gradient),
+          num_steps);
+    }
+
+    /// Print trials
+    for (const auto &trial : iter_details.trials) {
+      std::string color = trial.step_is_successful ? red : blue;
+      std::cout << "\033[" + color + "mlambda: " << trial.lambda
+                << "\terror: " << state.error << " -> " << trial.new_error
+                << "\tfidelity: " << trial.model_fidelity
+                << "\tlinear: " << trial.linear_cost_change
+                << "\tnonlinear: " << trial.nonlinear_cost_change
+                << "\033[0m\n";
+
+      auto blocking_str = IEOptimizer::IndicesStr(trial.blocking_indices_map);
+      if (blocking_str.size() > 0) {
+        std::cout << "blocking: " << blocking_str << "\n";
+      }
+      auto forced_str = IEOptimizer::IndicesStr(trial.forced_indices_map);
+      if (forced_str.size() > 0) {
+        std::cout << "forced: " << forced_str << "\n";
+      }
+      auto new_str = IEOptimizer::IndicesStr(trial.new_manifolds);
+      if (new_str.size() > 0) {
+        std::cout << "new: " << new_str << "\n";
+      }
+
+      if (print_values) {
+        if (trial.tangent_vector.size() > 0) {
+          std::cout << "tangent vector: \n";
+          print_delta_func(trial.tangent_vector, num_steps);
+        }
+
+        std::cout << "new values: \n";
+        print_values_func(
+            IEOptimizer::CollectManifoldValues(trial.new_manifolds), num_steps);
+      }
+    }
+  }
 };
 
 } // namespace gtsam

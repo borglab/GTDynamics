@@ -63,8 +63,7 @@ public:
                                      const LevenbergMarquardtParams &params);
 
   /// Identify the blocking constraints using gradient.
-  IndexSetMap
-  identifyGradBlockingIndices(const NonlinearFactorGraph &manifold_graph) const;
+  void identifyGradBlockingIndices(const NonlinearFactorGraph &manifold_graph);
 
   /// Construct e-manifolds using grad blocking constraints.
   void ConstructEManifolds(const NonlinearFactorGraph &graph);

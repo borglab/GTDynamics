@@ -47,14 +47,17 @@ IELMState IELMState::FromLastIteration(const IELMIterDetails &iter_details,
 }
 
 /* ************************************************************************* */
-IndexSetMap IELMState::identifyGradBlockingIndices(
-    const NonlinearFactorGraph &manifold_graph) const {
+void IELMState::identifyGradBlockingIndices(
+    const NonlinearFactorGraph &manifold_graph) {
   Values e_bare_manifolds = IEOptimizer::EManifolds(manifolds);
   auto linear_graph = manifold_graph.linearize(e_bare_manifolds);
-  VectorValues descent_dir = -1 * linear_graph->gradientAtZero();
+
+  gradient = linear_graph->gradientAtZero();
+  VectorValues descent_dir = -1 * gradient;
 
   // identify blocking constraints
-  return IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
+  blocking_indices_map =
+      IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
 }
 
 /* ************************************************************************* */
@@ -63,7 +66,7 @@ void IELMState::ConstructEManifolds(const NonlinearFactorGraph &graph) {
       IEOptimizer::Var2ManifoldKeyMap(manifolds);
   NonlinearFactorGraph manifold_graph =
       ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
-  blocking_indices_map = identifyGradBlockingIndices(manifold_graph);
+  identifyGradBlockingIndices(manifold_graph);
   // setting blocking constraints as equalities, create e-manifolds
   std::tie(e_manifolds, const_e_manifolds) =
       IEOptimizer::EManifolds(manifolds, blocking_indices_map);

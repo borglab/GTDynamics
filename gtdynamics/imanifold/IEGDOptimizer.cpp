@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include "imanifold/IEManifoldOptimizer.h"
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 
 using std::cout, std::setw, std::setprecision, std::endl;
@@ -80,6 +81,7 @@ void IEGDTrial::computeDelta(const IEGDState &state) {
 
 /* ************************************************************************* */
 void IEGDTrial::computeNewManifolds(const IEGDState &state) {
+  new_manifolds = IEManifoldValues();
   for (const auto &it : state.manifolds) {
     const Key &key = it.first;
     const Vector &xi = delta.at(key);

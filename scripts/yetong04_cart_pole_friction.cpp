@@ -1,7 +1,3 @@
-#include "gtdynamics/imanifold/IEManifoldOptimizer.h"
-#include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/IneqConstraintManifold.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
@@ -24,50 +20,6 @@
 
 using namespace gtsam;
 using namespace gtdynamics;
-using std::cout, std::setw, std::setprecision, std::endl;
-
-void SaveResult(const ConstrainedOptResult &result,
-                const Values &initial_values, const size_t &num_steps,
-                const std::string &folder) {
-  std::filesystem::create_directory(folder);
-  {
-    std::ofstream file;
-    file.open(folder + "intermediate_values.txt");
-    for (int i = 0; i < result.intermediate_values.size(); i++) {
-      for (int k = 0; k <= num_steps; k++) {
-        Key point_key = gtsam::Symbol('p', k);
-        Point3 point = result.intermediate_values.at(i).at<Point3>(point_key);
-        file << point.x() << " " << point.y() << " " << point.z() << " ";
-      }
-      file << "\n";
-    }
-    file.close();
-  }
-  {
-    std::ofstream file;
-    file.open(folder + "initial_values.txt");
-    for (int k = 0; k <= num_steps; k++) {
-      Key point_key = gtsam::Symbol('p', k);
-      Point3 point = initial_values.at<Point3>(point_key);
-      file << point.x() << " " << point.y() << " " << point.z() << " ";
-    }
-    file << "\n";
-    file.close();
-  }
-  {
-    std::ofstream file;
-    file.open(folder + "tangent_vectors.txt");
-    for (int i = 0; i < result.tangent_vectors.size(); i++) {
-      for (int k = 0; k <= num_steps; k++) {
-        Key point_key = gtsam::Symbol('p', k);
-        Vector tv = result.tangent_vectors.at(i).at(point_key);
-        file << tv(0) << " " << tv(1) << " " << tv(2) << " ";
-      }
-      file << "\n";
-    }
-    file.close();
-  }
-}
 
 Values ComputeInitialValues(const IECartPoleWithFriction &cp,
                             const size_t num_steps, const double dt) {
@@ -90,103 +42,11 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
   return values;
 }
 
-std::string IndicesStr(const IndexSetMap& indices_map) {
-  std::string str;
-  for (const auto &it : indices_map) {
-    if (it.second.size() > 0) {
-      str += "(" + _defaultKeyFormatter(it.first) + ":";
-      for (const auto &idx : it.second) {
-        str += " " + std::to_string((idx));
-      }
-      str += ")\t";
-    }
-  }
-  return str;
-}
-
-std::string IndicesStr(const IEManifoldValues& manifolds) {
-  std::string str;
-  for (const auto &it : manifolds) {
-    if (it.second.activeIndices().size() > 0) {
-      str += "(" + _defaultKeyFormatter(it.first) + ":";
-      for (const auto &idx : it.second.activeIndices()) {
-        str += " " + std::to_string((idx));
-      }
-      str += ")\t";
-    }
-  }
-  return str;
-}
-
-void PrintIterDetails(const IELMIterDetails &iter_details,
-                      const size_t num_steps,
-                      bool print_values = false) {
-  std::string red = "1;31";
-  std::string green = "1;32";
-  std::string blue = "1;34";
-
-  const auto& state = iter_details.state;
-  std::cout << "<======================= Iter " << iter_details.state.iterations << " =======================>\n";
-
-  /// Print state
-  std::cout << "\033[" + green + "merror: " << setprecision(4) << state.error
-            << "\033[0m\n";
-  auto state_current_str = IndicesStr(state.manifolds);
-  auto state_grad_blocking_str = IndicesStr(state.grad_blocking_indices_map);
-  if (state_current_str.size() > 0) {
-    std::cout << "current: " << state_current_str << "\n";
-  }
-  if (state_grad_blocking_str.size() > 0) {
-    std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
-  }
-
-  if (print_values) {
-    std::cout << "values: \n";
-    PrintValues(IEOptimizer::CollectManifoldValues(state.manifolds),
-                num_steps);
-  }
-
-
-  /// Print trials
-  for (const auto &trial : iter_details.trials) {
-    std::string color = trial.step_is_successful ? red : blue;
-    std::cout << "\033[" + color + "mlambda: " << trial.lambda
-              << "\terror: " << state.error << " -> " << trial.new_error
-              << "\tfidelity: " << trial.model_fidelity
-              << "\tlinear: " << trial.linear_cost_change
-              << "\tnonlinear: " << trial.nonlinear_cost_change << "\033[0m\n";
-
-    auto blocking_str = IndicesStr(trial.blocking_indices_map);
-    auto new_str = IndicesStr(trial.new_manifolds);
-    auto forced_str = IndicesStr(trial.forced_indices_map);
-
-    if (blocking_str.size() > 0) {
-      std::cout << "blocking: " << blocking_str << "\n";
-    }
-    if (forced_str.size() > 0) {
-      std::cout << "forced: " << forced_str << "\n";
-    }
-    if (new_str.size() > 0) {
-      std::cout << "new: " << new_str << "\n";
-    }
-
-    if (print_values) {
-      if (trial.tangent_vector.size() > 0) {
-        std::cout << "tangent vector: \n";
-        PrintDelta(trial.tangent_vector, num_steps);
-      }
-
-      std::cout << "new values: \n";
-      PrintValues(IEOptimizer::CollectManifoldValues(trial.new_manifolds),
-                  num_steps);
-    }
-  }
-}
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
-  size_t num_steps = 10;
-  double dt = 0.1;
+  size_t num_steps = 20;
+  double dt = 0.05;
 
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
@@ -196,10 +56,13 @@ int main(int argc, char **argv) {
     e_constraints.add(e_constraints_k);
     i_constraints.add(i_constraints_k);
   }
-  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(QKey(0)) - Double_(M_PI_2), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(QKey(0)) - Double_(M_PI_2), 1.0);
   e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(VKey(0)), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(QKey(num_steps)), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(VKey(num_steps)), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(QKey(num_steps)), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(VKey(num_steps)), 1.0);
   NonlinearFactorGraph graph;
   auto collo_model = noiseModel::Isotropic::Sigma(1, 1e-1);
   auto prior_model = noiseModel::Isotropic::Sigma(1, 1e-2);
@@ -266,7 +129,7 @@ int main(int argc, char **argv) {
   //   }
   // }
 
-  PrintValues(initial_values, num_steps);
+  IECartPoleWithFriction::PrintValues(initial_values, num_steps);
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->retractor = std::make_shared<CPBarrierRetractor>(cp);
@@ -282,7 +145,6 @@ int main(int argc, char **argv) {
     auto lm_result =
         lm_optimizer.optimize(graph, e_constraints, i_constraints,
                               initial_values, iecm_params, &lm_inter_result);
-    PrintValues(lm_result, num_steps);
     // lm_result.print();
     // std::string folder_path = "../../results/half_sphere_traj_lm/";
     // SaveResult(lm_inter_result, initial_values, num_steps, folder_path);
@@ -292,32 +154,42 @@ int main(int argc, char **argv) {
     const auto &details = lm_optimizer.details();
 
     for (const auto& iter_details : details) {
-      PrintIterDetails(iter_details, num_steps);
+      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+                                    IECartPoleWithFriction::PrintValues,
+                                    IECartPoleWithFriction::PrintDelta);
     }
+    IECartPoleWithFriction::PrintValues(lm_result, num_steps);
   }
 
   // // Run GD optimization
   // {
-  //   IEGDOptimizer gd_optimizer;
-  //   ConstrainedOptResult gd_inter_result;
-  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
-  //   i_constraints, initial_values, iecm_params, &gd_inter_result); std::cout
-  //   << "error: " << graph.error(gd_result) << "\n";
-  //   // std::string folder_path = "../../results/half_sphere_traj_gd/";
-  //   // SaveResult(gd_inter_result, initial_values, num_steps, folder_path);
+  //   GDParams params;
+  //   params.maxIterations = 5;
+  //   params.init_lambda = 100;
+  //   IEGDOptimizer gd_optimizer(params);
+  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints, i_constraints,
+  //                                          initial_values, iecm_params);
+  //   std::cout << "error: " << graph.error(gd_result) << "\n";
+
+  //   const auto &details = gd_optimizer.details();
+
+  //   for (const auto &iter_details : details) {
+  //     PrintIterDetails(iter_details, num_steps, true);
+  //   }
+  //   IECartPoleWithFriction::PrintValues(gd_result, num_steps);
   // }
 
   // Run Barrier optimization
   {
     BarrierParameters barrier_params;
-    barrier_params.initial_mu = 1e3;
-    // barrier_params.num_iterations = 15;
+    barrier_params.initial_mu = 1e1;
+    barrier_params.num_iterations = 15;
     // barrier_params.mu_increase_rate = 2.0;
     // barrier_params.lm_parameters.setVerbosityLM("SUMMARY");
     BarrierOptimizer barrier_optimizer(barrier_params);
     auto barrier_result = barrier_optimizer.optimize(
         graph, e_constraints, i_constraints, initial_values);
-    PrintValues(barrier_result.intermediate_values.back(), num_steps);
+    IECartPoleWithFriction::PrintValues(barrier_result.intermediate_values.back(), num_steps);
     std::cout << "error: " << std::setprecision(4)
               << graph.error(barrier_result.intermediate_values.back()) << "\n";
   }

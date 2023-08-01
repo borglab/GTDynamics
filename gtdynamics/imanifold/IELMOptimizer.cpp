@@ -261,12 +261,9 @@ bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
     return true;
 
   // check if mode changes
-  std::cout << "check is Same Mode\n";
   if (!IsSameMode(prev_state.manifolds, state.manifolds)) {
-    std::cout << "check is Same Mode done\n";
     return false;
   }
-  std::cout << "check is Same Mode done\n";
   // check if diverges
   double absoluteDecrease = prev_state.error - state.error;
 

@@ -254,4 +254,34 @@ IEOptimizer::MoveToBoundaries(const IEManifoldValues &manifolds,
   return new_manifolds;
 }
 
+/* ************************************************************************* */
+std::string IEOptimizer::IndicesStr(const IndexSetMap& indices_map) {
+  std::string str;
+  for (const auto &it : indices_map) {
+    if (it.second.size() > 0) {
+      str += "(" + _defaultKeyFormatter(it.first) + ":";
+      for (const auto &idx : it.second) {
+        str += " " + std::to_string((idx));
+      }
+      str += ")\t";
+    }
+  }
+  return str;
+}
+
+/* ************************************************************************* */
+std::string IEOptimizer::IndicesStr(const IEManifoldValues& manifolds) {
+  std::string str;
+  for (const auto &it : manifolds) {
+    if (it.second.activeIndices().size() > 0) {
+      str += "(" + _defaultKeyFormatter(it.first) + ":";
+      for (const auto &idx : it.second.activeIndices()) {
+        str += " " + std::to_string((idx));
+      }
+      str += ")\t";
+    }
+  }
+  return str;
+}
+
 } // namespace gtsam
