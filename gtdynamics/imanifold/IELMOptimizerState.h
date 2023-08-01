@@ -38,7 +38,7 @@ public:
   IEManifoldValues manifolds;
   double error = 0;
   VectorValues gradient;
-  IndexSetMap grad_blocking_indices_map;
+  IndexSetMap blocking_indices_map; // blocking indices map by neg grad
   Values e_manifolds;
   Values const_e_manifolds;
   double lambda = 0;

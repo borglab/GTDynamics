@@ -63,10 +63,10 @@ void IELMState::ConstructEManifolds(const NonlinearFactorGraph &graph) {
       IEOptimizer::Var2ManifoldKeyMap(manifolds);
   NonlinearFactorGraph manifold_graph =
       ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
-  grad_blocking_indices_map = identifyGradBlockingIndices(manifold_graph);
+  blocking_indices_map = identifyGradBlockingIndices(manifold_graph);
   // setting blocking constraints as equalities, create e-manifolds
   std::tie(e_manifolds, const_e_manifolds) =
-      IEOptimizer::EManifolds(manifolds, grad_blocking_indices_map);
+      IEOptimizer::EManifolds(manifolds, blocking_indices_map);
 }
 
 /* ************************************************************************* */
@@ -200,7 +200,7 @@ bool IELMTrial::computeDelta(const NonlinearFactorGraph &graph,
   // initialize blocking constraints and e_manifolds
   std::map<Key, Key> keymap_var2manifold =
       IEOptimizer::Var2ManifoldKeyMap(state.manifolds);
-  blocking_indices_map = state.grad_blocking_indices_map;
+  blocking_indices_map = state.blocking_indices_map;
   e_manifolds = state.e_manifolds;
   const_e_manifolds = state.const_e_manifolds;
 
@@ -346,6 +346,7 @@ void IELMTrial::computeNewManifolds(const IELMState &state) {
   }
 }
 
+/* ************************************************************************* */
 void IELMTrial::print(const IELMState &state) const {
   cout << setw(4) << state.iterations << " " << setw(10) << setprecision(4)
        << new_error << " " << setw(10) << setprecision(4)

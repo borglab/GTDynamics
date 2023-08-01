@@ -76,6 +76,23 @@ public:
   static std::pair<Values, Values>
   EManifolds(const IEManifoldValues &manifolds,
              const IndexSetMap &active_indices);
+
+  static bool IsSameMode(const IEManifoldValues &manifolds1,
+                         const IEManifoldValues &manifolds2);
+
+  static IndexSetMap
+  IdentifyChangeIndices(const IEManifoldValues &manifolds,
+                        const IEManifoldValues &new_manifolds);
+
+  static IndexSetMap
+  IdentifyApproachingIndices(const IEManifoldValues &manifolds,
+                             const IEManifoldValues &new_manifolds,
+                             const IndexSetMap &change_indices_map);
+
+  static IEManifoldValues
+  MoveToBoundaries(const IEManifoldValues &manifolds,
+                   const IndexSetMap &approach_indices_map);
+
 };
 
 } // namespace gtsam

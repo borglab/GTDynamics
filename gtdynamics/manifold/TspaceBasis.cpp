@@ -99,6 +99,18 @@ VectorValues MatrixBasis::computeTangentVector(const Vector &xi) const {
 }
 
 /* ************************************************************************* */
+Vector MatrixBasis::computeXi(const VectorValues &delta) const {
+  Vector x_xi = Vector::Zero(basis_.rows());
+  for (const auto &it : var_location_) {
+    const Key &key = it.first;
+    x_xi.middleRows(it.second, var_dim_.at(key)) = delta.at(key);
+  }
+  // Vector xi = basis_.colPivHouseholderQr().solve(x_xi);
+  Vector xi = basis_.completeOrthogonalDecomposition().pseudoInverse() * x_xi;
+  return xi;
+}
+
+/* ************************************************************************* */
 Matrix MatrixBasis::recoverJacobian(const Key &key) const {
   return basis_.middleRows(var_location_.at(key), var_dim_.at(key));
 }
@@ -175,6 +187,19 @@ VectorValues SparseMatrixBasis::computeTangentVector(const Vector &xi) const {
     delta.insert(key, x_xi.middleRows(it.second, var_dim_.at(key)));
   }
   return delta;
+}
+
+/* ************************************************************************* */
+Vector SparseMatrixBasis::computeXi(const VectorValues &delta) const {
+  Vector x_xi = Vector::Zero(basis_.rows());
+  for (const auto &it : var_location_) {
+    const Key &key = it.first;
+    x_xi.middleRows(it.second, var_dim_.at(key)) = delta.at(key);
+  }
+
+  auto qr = Eigen::SparseQR<SpMatrix, Eigen::COLAMDOrdering<int>>(basis_);
+  Vector xi = qr.solve(x_xi);
+  return xi;
 }
 
 /* ************************************************************************* */
@@ -295,6 +320,15 @@ VectorValues FixedVarBasis::computeTangentVector(const Vector &xi) const {
     delta.insert(var_key, v);
   }
   return delta;
+}
+
+/* ************************************************************************* */
+Vector FixedVarBasis::computeXi(const VectorValues &delta) const {
+  Vector xi = Vector::Zero(total_basis_dim_);
+  for (const Key &key : basis_keys_) {
+    xi.segment(basis_location_.at(key), var_dim_.at(key)) = delta.at(key);
+  }
+  return xi;
 }
 
 /* ************************************************************************* */

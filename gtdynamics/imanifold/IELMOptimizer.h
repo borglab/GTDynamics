@@ -43,8 +43,6 @@ public:
 
   const std::vector<IELMIterDetails> &details() const { return *details_; }
 
-  void exportDetails(const std::string &folder_path) const;
-
   /** Constructor */
   IELMOptimizer(
       const LevenbergMarquardtParams &params = LevenbergMarquardtParams())

@@ -58,6 +58,7 @@ Values IELMOptimizer::optimizeManifolds(
 
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
+    details_->emplace_back(state);
     return IEOptimizer::CollectManifoldValues(state.manifolds);
   }
 
@@ -124,92 +125,6 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
     }
   }
   return iter_details;
-}
-
-/* ************************************************************************* */
-bool IsSameMode(const IEManifoldValues &manifolds1,
-                const IEManifoldValues &manifolds2) {
-  for (const auto &it : manifolds1) {
-    const IndexSet &indices1 = it.second.activeIndices();
-    const IndexSet &indices2 = manifolds2.at(it.first).activeIndices();
-    if (indices1.size() != indices2.size()) {
-      return false;
-    }
-    if (!std::equal(indices1.begin(), indices1.end(), indices2.begin())) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/* ************************************************************************* */
-IndexSetMap IdentifyChangeIndices(const IEManifoldValues &manifolds,
-                                  const IEManifoldValues &new_manifolds) {
-  IndexSetMap change_indices_map;
-  for (const auto &it : manifolds) {
-    const Key &key = it.first;
-    const IndexSet &indices = it.second.activeIndices();
-    const IndexSet &new_indices = new_manifolds.at(key).activeIndices();
-    IndexSet change_indices;
-    for (const auto &idx : new_indices) {
-      if (indices.find(idx) == indices.end()) {
-        change_indices.insert(idx);
-      }
-    }
-    if (change_indices.size() > 0) {
-      change_indices_map.insert({key, change_indices});
-    }
-  }
-  return change_indices_map;
-}
-
-/* ************************************************************************* */
-IndexSetMap IdentifyApproachingIndices(const IEManifoldValues &manifolds,
-                                       const IEManifoldValues &new_manifolds,
-                                       const IndexSetMap &change_indices_map) {
-  IndexSetMap approach_indices_map;
-  for (const auto &it : change_indices_map) {
-    const Key &key = it.first;
-    const IndexSet &change_indices = it.second;
-    const IEConstraintManifold &manifold = manifolds.at(key);
-    const IEConstraintManifold &new_manifold = new_manifolds.at(key);
-    auto i_constraints = manifolds.at(key).iConstraints();
-    IndexSet approach_indices;
-
-    for (const auto &idx : change_indices) {
-      const auto &constraint = i_constraints->at(idx);
-      double eval = (*constraint)(manifold.values());
-      double new_eval = (*constraint)(new_manifold.values());
-      double approach_rate = eval / new_eval;
-      std::cout << "eval: " << eval << "\n";
-      std::cout << "new_eval: " << new_eval << "\n";
-      std::cout << "approach_rate: " << approach_rate << "\n";
-      if (approach_rate > 3) {
-        approach_indices.insert(idx);
-      }
-    }
-    if (approach_indices.size() > 0) {
-      approach_indices_map.insert({key, change_indices});
-    }
-  }
-  return approach_indices_map;
-}
-
-/* ************************************************************************* */
-IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
-                                  const IndexSetMap &approach_indices_map) {
-  IEManifoldValues new_manifolds;
-  for (const auto &it : manifolds) {
-    const Key &key = it.first;
-    const auto &manifold = it.second;
-    if (approach_indices_map.find(key) == approach_indices_map.end()) {
-      new_manifolds.insert({key, manifold});
-    } else {
-      new_manifolds.insert(
-          {key, manifold.moveToBoundary(approach_indices_map.at(key))});
-    }
-  }
-  return new_manifolds;
 }
 
 /* ************************************************************************* */

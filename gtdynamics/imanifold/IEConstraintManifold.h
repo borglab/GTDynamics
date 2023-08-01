@@ -7,15 +7,13 @@
 
 /**
  * @file  IEConstraintManifold.h
- * @brief Manifold with boundary/corners formulated by only inequality
+ * @brief Manifold with boundary/corners formulated by equality and inequality
  * constraints
  * @author: Yetong Zhang
  */
 
 #pragma once
 
-#include "gtdynamics/manifold/ConnectedComponent.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/imanifold/TangentCone.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
@@ -56,7 +54,7 @@ protected:
 
 public:
   IEConstraintManifold(
-     const Params::shared_ptr &params,
+      const Params::shared_ptr &params,
       const ConnectedComponent::shared_ptr &e_cc,
       const gtdynamics::InequalityConstraints::shared_ptr &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {})
@@ -76,7 +74,8 @@ public:
   IEConstraintManifold createWithNewValues(
       const Values &values,
       const std::optional<IndexSet> &active_indices = {}) const {
-    return IEConstraintManifold(params_, e_cc_, i_constraints_, values, active_indices);
+    return IEConstraintManifold(params_, e_cc_, i_constraints_, values,
+                                active_indices);
   }
 
   virtual ~IEConstraintManifold() {}
@@ -97,123 +96,48 @@ public:
   /// Set of blocking constraints when going in the direction g, return set of
   /// blocking constraint indices, and the projected vector
   virtual std::pair<IndexSet, Vector>
-  projectTangentCone(const Vector &xi) const {
-    auto result = i_cone_->project(xi);
+  projectTangentCone(const Vector &xi) const;
 
-    IndexSet blocking_indices;
-    std::vector<size_t> active_indices_vector(active_indices_.begin(), active_indices_.end());
-    for (const auto& index: result.first) {
-      blocking_indices.insert(active_indices_vector.at(index));
-    }
-    return std::make_pair(blocking_indices, result.second);
-  }
+  virtual std::pair<IndexSet, VectorValues>
+  projectTangentCone(const VectorValues &tangent_vector) const;
 
-  // TODO: enable this function
-  // virtual std::pair<IndexSet, VectorValues>
-  // projectTangentCone(const VectorValues &tangent_vector) const {
-  //   Vector xi = e_basis_->computeXi(tangent_vector);
-  //   auto result = projectTangentCone(xi);
-  //   VectorValues projected_tangent_vector = e_basis_->computeTangentVector(result.second);
-  //   return std::make_pair(result.first, projected_tangent_vector);
-  // }
-
-  /** retract that forces the set of blocking constraints as equality constraints.
-   * Will also enforce satisfying other inequality constraints. */
+  /** retract that forces the set of blocking constraints as equality
+   * constraints. Will also enforce satisfying other inequality constraints. */
   virtual IEConstraintManifold
   retract(const Vector &xi,
-          const std::optional<IndexSet> &blocking_indices = {}) const {
-    auto tangent_vector = e_basis_->computeTangentVector(xi);
-    return retract(tangent_vector, blocking_indices);
-  }
+          const std::optional<IndexSet> &blocking_indices = {}) const;
 
   virtual IEConstraintManifold
   retract(const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const {
-    return params_->retractor->retract(this, delta, blocking_indices);
-  }
+          const std::optional<IndexSet> &blocking_indices = {}) const;
 
-  IndexSet blockingIndices(const VectorValues& tangent_vector) const {
-    IndexSet blocking_indices;
+  IndexSet blockingIndices(const VectorValues &tangent_vector) const;
 
-    for (const auto& idx: active_indices_) {
-      // TODO: store the jacobians to avoid recomputation
-      const auto &i_constraint = i_constraints_->at(idx);
-      auto jacobians = i_constraint->jacobians(values_);
-      double error = 0;
-      for (const auto& it: jacobians) {
-        const Key& key  = it.first;
-        const Matrix& jac = it.second;
-        error += (jac * tangent_vector.at(key))(0);
-      }
-      if (error < -1e-5) {
-        blocking_indices.insert(idx);
-      }
-    }
-    return blocking_indices;
-  }
-
-  IEConstraintManifold moveToBoundary(const IndexSet& active_indices) const {
-    return params_->retractor->moveToBoundary(this, active_indices);
-  }
+  IEConstraintManifold moveToBoundary(const IndexSet &active_indices) const;
 
   /// Construct an e-constraint manifold that only includes equalily
   /// constraints.
-  ConstraintManifold eConstraintManifold() const {
-    return ConstraintManifold(e_cc_, values_, params_->ecm_params, false,
-                              e_basis_);
-  }
+  ConstraintManifold eConstraintManifold() const;
 
   /// Construct an equality-constraint-manifold by treating tight constraints as
   /// equality constraints. Used for EQP-based methods.,
-  ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const {
-    // TODO: construct e-basis using createWithAdditionalConstraints
-    gtdynamics::EqualityConstraints active_constraints = e_cc_->constraints_;
-    for (const auto &idx : active_indices) {
-      active_constraints.emplace_back(
-          i_constraints_->at(idx)->createEqualityConstraint());
-    }
-    auto new_cc =
-        std::make_shared<gtsam::ConnectedComponent>(active_constraints);
-    return ConstraintManifold(new_cc, values_, params_->ecm_params, false);
-    // auto new_basis =
-    // e_basis_->createWithAdditionalConstraints(active_constraints); return
-    // ConstraintManifold(e_cc_, values_, params_->ecm_params, false,
-    // new_basis);
-  }
+  ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const;
 
 protected:
+  /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(
       const gtdynamics::InequalityConstraints &i_constraints,
-      const Values &values) {
-    IndexSet active_set;
-    for (size_t i = 0; i < i_constraints.size(); i++) {
-      if (i_constraints.at(i)->isActive(values)) {
-        active_set.insert(i);
-      }
-    }
-    return active_set;
-  }
+      const Values &values);
 
+  /** Construct the tangent cone with the following steps:
+   * 1) linearize active i-constraints
+   * 2) compute jacobians on t-space basis
+   * 3) use jacobian matrix to construct tangent cone
+   */
   static TangentCone::shared_ptr
   ConstructTangentCone(const gtdynamics::InequalityConstraints &i_constraints,
                        const Values &values, const IndexSet &active_indices,
-                       const TspaceBasis::shared_ptr &t_basis) {
-    Matrix A = Matrix::Zero(active_indices.size(), t_basis->dim());
-    std::vector<size_t> active_indices_vec(active_indices.begin(),
-                                           active_indices.end());
-
-    for (size_t i = 0; i < active_indices_vec.size(); i++) {
-      const auto &i_constraint = i_constraints.at(active_indices_vec[i]);
-      auto jacobians = i_constraint->jacobians(values);
-
-      for (const Key &key : jacobians.keys()) {
-        A.row(i) += jacobians.at(key) * t_basis->recoverJacobian(key);
-      }
-    }
-
-    auto cone = std::make_shared<TangentCone>(A);
-    return cone;
-  }
+                       const TspaceBasis::shared_ptr &t_basis);
 };
 
 } // namespace gtsam

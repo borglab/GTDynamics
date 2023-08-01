@@ -98,6 +98,10 @@ class TspaceBasis {
    * representing the magnitude of each basis component. */
   virtual VectorValues computeTangentVector(const Vector &xi) const = 0;
 
+  /** Given a tangent vector, compute a vector xi representing the magnitude of
+   * basis components. */
+  virtual Vector computeXi(const VectorValues &tangent_vector) const = 0;
+
   /** Compute the jacobian of recover function. i.e., function that recovers an
    * original variable from the constraint manifold. */
   virtual Matrix recoverJacobian(const Key &key) const = 0;
@@ -140,6 +144,11 @@ class EmptyBasis : public TspaceBasis {
   VectorValues computeTangentVector(const Vector &xi) const override {
     throwError();
     return VectorValues();
+  }
+
+  Vector computeXi(const VectorValues &tangent_vector) const override {
+    throwError();
+    return Vector();
   }
 
   /// Jacobian of recover function.
@@ -210,6 +219,9 @@ class MatrixBasis : public TspaceBasis {
 
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
+
+  /// Compute xi of basis components.
+  Vector computeXi(const VectorValues &tangent_vector) const override;
 
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
@@ -283,6 +295,9 @@ class SparseMatrixBasis : public TspaceBasis {
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
 
+  /// Compute xi of basis components.
+  Vector computeXi(const VectorValues &tangent_vector) const override;
+
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
 
@@ -351,6 +366,9 @@ class FixedVarBasis : public TspaceBasis {
 
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
+
+  /// Compute xi of basis components.
+  Vector computeXi(const VectorValues &tangent_vector) const override;
 
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
