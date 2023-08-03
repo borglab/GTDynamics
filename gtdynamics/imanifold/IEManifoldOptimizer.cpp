@@ -299,9 +299,9 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
       double eval = (*constraint)(manifold.values());
       double new_eval = (*constraint)(new_manifold.values());
       double approach_rate = eval / new_eval;
-      std::cout << "eval: " << eval << "\n";
-      std::cout << "new_eval: " << new_eval << "\n";
-      std::cout << "approach_rate: " << approach_rate << "\n";
+      // std::cout << "eval: " << eval << "\n";
+      // std::cout << "new_eval: " << new_eval << "\n";
+      // std::cout << "approach_rate: " << approach_rate << "\n";
       if (approach_rate > approach_rate_threshold) {
         approach_indices.insert(idx);
       }

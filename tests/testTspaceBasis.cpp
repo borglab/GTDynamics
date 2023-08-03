@@ -83,6 +83,9 @@ TEST(TspaceBasis, connected_poses) {
       // check linear space property
       auto delta10 = basis->computeTangentVector(xi10);
       EXPECT(assert_equal(delta10, 10 * delta1));
+      // check construct xi from tangent vector
+      auto recvoer_xi1 = basis->computeXi(delta1);
+      EXPECT(assert_equal(xi1, recvoer_xi1));
     }
   }
 

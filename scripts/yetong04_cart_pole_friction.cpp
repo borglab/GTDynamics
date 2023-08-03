@@ -1,4 +1,5 @@
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -45,8 +46,8 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
-  size_t num_steps = 20;
-  double dt = 0.05;
+  size_t num_steps = 10;
+  double dt = 0.1;
 
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
@@ -133,33 +134,55 @@ int main(int argc, char **argv) {
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->retractor = std::make_shared<CPBarrierRetractor>(cp);
-  // Run LM optimization
-  {
-    LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    params.setLinearSolverType("SEQUENTIAL_QR");
-    // params.minModelFidelity = 0.5;
-    IELMOptimizer lm_optimizer(params);
-    ConstrainedOptResult lm_inter_result;
-    std::cout << "initial error: " << graph.error(initial_values) << "\n";
-    auto lm_result =
-        lm_optimizer.optimize(graph, e_constraints, i_constraints,
-                              initial_values, iecm_params, &lm_inter_result);
-    // lm_result.print();
-    // std::string folder_path = "../../results/half_sphere_traj_lm/";
-    // SaveResult(lm_inter_result, initial_values, num_steps, folder_path);
-    // initial_values = lm_result;
-    std::cout << "error: " << graph.error(lm_result) << "\n";
 
-    const auto &details = lm_optimizer.details();
 
-    for (const auto& iter_details : details) {
-      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
-                                    IECartPoleWithFriction::PrintValues,
-                                    IECartPoleWithFriction::PrintDelta);
-    }
-    IECartPoleWithFriction::PrintValues(lm_result, num_steps);
-  }
+  IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
+
+  LevenbergMarquardtParams lm_params;
+  auto soft_summary = OptimizeSoftConstraints(problem, lm_params, 100);
+
+  BarrierParameters barrier_params;
+  barrier_params.num_iterations = 15;
+  auto barrier_summary = OptimizeBarrierMethod(problem, barrier_params);
+
+  GDParams gd_params;
+  auto gd_summary = OptimizeIEGD(problem, gd_params, iecm_params);
+
+  IELMParams ie_params;
+  auto lm_summary = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+
+  soft_summary.printLatex(std::cout);
+  barrier_summary.printLatex(std::cout);
+  gd_summary.printLatex(std::cout);
+  lm_summary.printLatex(std::cout);
+
+  // // Run LM optimization
+  // {
+  //   LevenbergMarquardtParams params;
+  //   params.setVerbosityLM("SUMMARY");
+  //   params.setLinearSolverType("SEQUENTIAL_QR");
+  //   // params.minModelFidelity = 0.5;
+  //   IELMOptimizer lm_optimizer(params);
+  //   ConstrainedOptResult lm_inter_result;
+  //   std::cout << "initial error: " << graph.error(initial_values) << "\n";
+  //   auto lm_result =
+  //       lm_optimizer.optimize(graph, e_constraints, i_constraints,
+  //                             initial_values, iecm_params, &lm_inter_result);
+  //   // lm_result.print();
+  //   // std::string folder_path = "../../results/half_sphere_traj_lm/";
+  //   // SaveResult(lm_inter_result, initial_values, num_steps, folder_path);
+  //   // initial_values = lm_result;
+  //   std::cout << "error: " << graph.error(lm_result) << "\n";
+
+  //   const auto &details = lm_optimizer.details();
+
+  //   for (const auto& iter_details : details) {
+  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+  //                                   IECartPoleWithFriction::PrintValues,
+  //                                   IECartPoleWithFriction::PrintDelta);
+  //   }
+  //   IECartPoleWithFriction::PrintValues(lm_result, num_steps);
+  // }
 
   // // Run GD optimization
   // {
@@ -179,20 +202,20 @@ int main(int argc, char **argv) {
   //   IECartPoleWithFriction::PrintValues(gd_result, num_steps);
   // }
 
-  // Run Barrier optimization
-  {
-    BarrierParameters barrier_params;
-    barrier_params.initial_mu = 1e1;
-    barrier_params.num_iterations = 15;
-    // barrier_params.mu_increase_rate = 2.0;
-    // barrier_params.lm_parameters.setVerbosityLM("SUMMARY");
-    BarrierOptimizer barrier_optimizer(barrier_params);
-    auto barrier_result = barrier_optimizer.optimize(
-        graph, e_constraints, i_constraints, initial_values);
-    IECartPoleWithFriction::PrintValues(barrier_result.intermediate_values.back(), num_steps);
-    std::cout << "error: " << std::setprecision(4)
-              << graph.error(barrier_result.intermediate_values.back()) << "\n";
-  }
+  // // Run Barrier optimization
+  // {
+  //   BarrierParameters barrier_params;
+  //   barrier_params.initial_mu = 1e1;
+  //   barrier_params.num_iterations = 15;
+  //   // barrier_params.mu_increase_rate = 2.0;
+  //   // barrier_params.lm_parameters.setVerbosityLM("SUMMARY");
+  //   BarrierOptimizer barrier_optimizer(barrier_params);
+  //   auto barrier_result = barrier_optimizer.optimize(
+  //       graph, e_constraints, i_constraints, initial_values);
+  //   IECartPoleWithFriction::PrintValues(barrier_result.intermediate_values.back(), num_steps);
+  //   std::cout << "error: " << std::setprecision(4)
+  //             << graph.error(barrier_result.intermediate_values.back()) << "\n";
+  // }
 
   return 0;
 }

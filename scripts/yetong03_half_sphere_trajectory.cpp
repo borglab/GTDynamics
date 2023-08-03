@@ -1,4 +1,5 @@
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -102,40 +103,63 @@ int main(int argc, char **argv) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<HalfSphereRetractor>();
+  iecm_params->retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
 
-  // Run LM optimization
-  {
-    LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    params.minModelFidelity = 0.5;
-    IELMOptimizer lm_optimizer(params);
-    auto lm_result = lm_optimizer.optimize(graph, e_constraints, i_constraints,
-                                           initial_values, iecm_params);
+  IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
-    const auto &details = lm_optimizer.details();
-    for (const auto &iter_details : details) {
-      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
-                                    IEHalfSphere::PrintValues,
-                                    IEHalfSphere::PrintDelta);
-    }
-  }
+  LevenbergMarquardtParams lm_params;
+  auto soft_summary = OptimizeSoftConstraints(problem, lm_params, 100);
 
-  // Run GD optimization
-  {
-    GDParams params;
-    params.maxIterations = 30;
-    IEGDOptimizer gd_optimizer(params);
-    auto gd_result = gd_optimizer.optimize(graph, e_constraints, i_constraints,
-                                           initial_values, iecm_params);
+  BarrierParameters barrier_params;
+  barrier_params.num_iterations = 15;
+  auto barrier_summary = OptimizeBarrierMethod(problem, barrier_params);
 
-    const auto &details = gd_optimizer.details();
-    for (const auto &iter_details : details) {
-      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
-                                    IEHalfSphere::PrintValues,
-                                    IEHalfSphere::PrintDelta);
-    }
-  }
+  GDParams gd_params;
+  auto gd_summary = OptimizeIEGD(problem, gd_params, iecm_params);
+
+  IELMParams ie_params;
+  lm_params.minModelFidelity = 0.5;
+  auto lm_summary = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+
+  soft_summary.printLatex(std::cout);
+  barrier_summary.printLatex(std::cout);
+  gd_summary.printLatex(std::cout);
+  lm_summary.printLatex(std::cout);
+
+
+
+  // // Run LM optimization
+  // {
+  //   LevenbergMarquardtParams params;
+  //   params.setVerbosityLM("SUMMARY");
+  //   params.minModelFidelity = 0.5;
+  //   IELMOptimizer lm_optimizer(params);
+  //   auto lm_result = lm_optimizer.optimize(graph, e_constraints, i_constraints,
+  //                                          initial_values, iecm_params);
+
+  //   const auto &details = lm_optimizer.details();
+  //   for (const auto &iter_details : details) {
+  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+  //                                   IEHalfSphere::PrintValues,
+  //                                   IEHalfSphere::PrintDelta);
+  //   }
+  // }
+
+  // // Run GD optimization
+  // {
+  //   GDParams params;
+  //   params.maxIterations = 30;
+  //   IEGDOptimizer gd_optimizer(params);
+  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints, i_constraints,
+  //                                          initial_values, iecm_params);
+
+  //   const auto &details = gd_optimizer.details();
+  //   for (const auto &iter_details : details) {
+  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+  //                                   IEHalfSphere::PrintValues,
+  //                                   IEHalfSphere::PrintDelta);
+  //   }
+  // }
 
   return 0;
 }

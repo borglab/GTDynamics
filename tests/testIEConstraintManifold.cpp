@@ -53,17 +53,24 @@ TEST(IEConstraintManifold, HalfSphere) {
     EXPECT(active_indices.size() == 1);
 
     // Test project tangent cone.
-    manifold.eBasis()->print();
+    // manifold.eBasis()->print();
     Vector2 xi1(1, 1);
     Vector2 xi2(1, 0);
     Vector2 xi3(1, -1);
 
     IndexSet blocking_indices;
     Vector projected_xi;
+    VectorValues projected_tv;
     std::tie(blocking_indices, projected_xi) = manifold.projectTangentCone(xi1);
     Vector2 expected_proj_xi1(1, 1);
     EXPECT(assert_equal(expected_proj_xi1, projected_xi));
     EXPECT(blocking_indices.size() == 0);
+    VectorValues tv1;
+    tv1.insert(point_key, Vector3(1, -0.75, 1));
+    std::tie(blocking_indices, projected_tv) = manifold.projectTangentCone(tv1);
+    VectorValues expected_proj_tv1;
+    expected_proj_tv1.insert(point_key, Vector3(1, -0.75, 1));
+    EXPECT(assert_equal(expected_proj_tv1, projected_tv));
 
     std::tie(blocking_indices, projected_xi) = manifold.projectTangentCone(xi2);
     Vector2 expected_proj_xi2(1, 0);
@@ -73,6 +80,12 @@ TEST(IEConstraintManifold, HalfSphere) {
     Vector2 expected_proj_xi3(1, 0);
     EXPECT(assert_equal(expected_proj_xi3, projected_xi));
     EXPECT(blocking_indices.size() == 1);
+    VectorValues tv3;
+    tv3.insert(point_key, Vector3(1, -0.75, -1));
+    std::tie(blocking_indices, projected_tv) = manifold.projectTangentCone(tv3);
+    VectorValues expected_proj_tv3;
+    expected_proj_tv3.insert(point_key, Vector3(1, -0.75, 0));
+    EXPECT(assert_equal(expected_proj_tv3, projected_tv));
 
     // Test blocking constraints
     VectorValues delta1, delta2, delta3;

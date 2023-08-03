@@ -66,8 +66,8 @@ int main(int argc, char **argv) {
   }
 
   double manopt_gd_cost, manopt_gd_vio, manopt_gd_duration, manopt_gd_num_iters;
-  double manopt_lm_cost, manopt_lm_vio, manopt_lm_duration, manopt_lm_num_iters;
-  double barrier_cost, barrier_vio, barrier_duration, barrier_num_iters;
+  // double manopt_lm_cost, manopt_lm_vio, manopt_lm_duration, manopt_lm_num_iters;
+  // double barrier_cost, barrier_vio, barrier_duration, barrier_num_iters;
   {
     // Call IC gradient descent optimizer
     ICGradientDescentOptimizer icgd_optimizer;
@@ -84,50 +84,50 @@ int main(int argc, char **argv) {
     manopt_gd_duration = optimization_time_ms.count() * 1e-3;
     manopt_gd_num_iters = icgd_result.values_vec.size();
   }
-  {
-    // Call ICLM optimizer
-    LevenbergMarquardtParams lm_params;
-    lm_params.setVerbosityLM("SUMMARY");
-    ICLMOptimizer iclm_optimizer(lm_params);
-    gtdynamics::ConstrainedOptResult intermediate_result;
+  // {
+  //   // Call ICLM optimizer
+  //   LevenbergMarquardtParams lm_params;
+  //   lm_params.setVerbosityLM("SUMMARY");
+  //   ICLMOptimizer iclm_optimizer(lm_params);
+  //   gtdynamics::ConstrainedOptResult intermediate_result;
 
-    auto optimization_start = std::chrono::system_clock::now();
-    auto iclm_result = iclm_optimizer.optimize(graph, manifolds, &intermediate_result);
-    auto optimization_end = std::chrono::system_clock::now();
-    auto optimization_time_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
-                                                              optimization_start);
-    manopt_lm_cost = graph.error(iclm_result);
-    manopt_lm_vio = EvaluateConstraintViolationL2Norm(constraints, iclm_result);
-    manopt_lm_duration = optimization_time_ms.count() * 1e-3;
-    manopt_lm_num_iters = intermediate_result.num_iters[0];
-    // iclm_result.print();
-    SaveResult(iclm_result, num_steps, "../../results/dome_lm/");
-  }
-  {
-  // Call barrier optimizer
-    BarrierParameters barrier_params;
-    barrier_params.num_iterations = 15;
-    barrier_params.mu_increase_rate = 2.0;
-    // barrier_params.lm_parameters.setVerbosityLM("SUMMARY");
-    BarrierOptimizer barrier_optimizer(barrier_params);
-    auto optimization_start = std::chrono::system_clock::now();
-    auto barrier_result = barrier_optimizer.optimize(graph, constraints, init_values);
-    auto optimization_end = std::chrono::system_clock::now();
-    auto optimization_time_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
-                                                              optimization_start);
-    const Values& barrier_values = barrier_result.intermediate_values.back();
+  //   auto optimization_start = std::chrono::system_clock::now();
+  //   auto iclm_result = iclm_optimizer.optimize(graph, manifolds, &intermediate_result);
+  //   auto optimization_end = std::chrono::system_clock::now();
+  //   auto optimization_time_ms =
+  //       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
+  //                                                             optimization_start);
+  //   manopt_lm_cost = graph.error(iclm_result);
+  //   manopt_lm_vio = EvaluateConstraintViolationL2Norm(constraints, iclm_result);
+  //   manopt_lm_duration = optimization_time_ms.count() * 1e-3;
+  //   manopt_lm_num_iters = intermediate_result.num_iters[0];
+  //   // iclm_result.print();
+  //   SaveResult(iclm_result, num_steps, "../../results/dome_lm/");
+  // }
+  // {
+  // // Call barrier optimizer
+  //   BarrierParameters barrier_params;
+  //   barrier_params.num_iterations = 15;
+  //   barrier_params.mu_increase_rate = 2.0;
+  //   // barrier_params.lm_parameters.setVerbosityLM("SUMMARY");
+  //   BarrierOptimizer barrier_optimizer(barrier_params);
+  //   auto optimization_start = std::chrono::system_clock::now();
+  //   auto barrier_result = barrier_optimizer.optimize(graph, constraints, init_values);
+  //   auto optimization_end = std::chrono::system_clock::now();
+  //   auto optimization_time_ms =
+  //       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
+  //                                                             optimization_start);
+  //   const Values& barrier_values = barrier_result.intermediate_values.back();
 
-    barrier_cost = graph.error(barrier_values);
-    barrier_vio = EvaluateConstraintViolationL2Norm(constraints, barrier_values);
-    barrier_duration = optimization_time_ms.count() * 1e-3;
-    barrier_num_iters = std::accumulate(barrier_result.num_iters.begin(),
-                        barrier_result.num_iters.end(), 0);
-  }
-  std::cout << "barrier & " << std::setprecision(2) << barrier_duration << " & " << barrier_num_iters << " & " << barrier_cost << " & " << barrier_vio << "\n";
+  //   barrier_cost = graph.error(barrier_values);
+  //   barrier_vio = EvaluateConstraintViolationL2Norm(constraints, barrier_values);
+  //   barrier_duration = optimization_time_ms.count() * 1e-3;
+  //   barrier_num_iters = std::accumulate(barrier_result.num_iters.begin(),
+  //                       barrier_result.num_iters.end(), 0);
+  // }
+  // std::cout << "barrier & " << std::setprecision(2) << barrier_duration << " & " << barrier_num_iters << " & " << barrier_cost << " & " << barrier_vio << "\n";
   std::cout << "manopt (1st order) & " << std::setprecision(2) << manopt_gd_duration << " & " << manopt_gd_num_iters << " & " << manopt_gd_cost << " & " << manopt_gd_vio << "\n";
-  std::cout << "manopt (2nd order EQP) & " << std::setprecision(2) << manopt_lm_duration << " & " << manopt_lm_num_iters << " & " << manopt_lm_cost << " & " << manopt_lm_vio << "\n";
+  // std::cout << "manopt (2nd order EQP) & " << std::setprecision(2) << manopt_lm_duration << " & " << manopt_lm_num_iters << " & " << manopt_lm_cost << " & " << manopt_lm_vio << "\n";
 
   return 0;
 }

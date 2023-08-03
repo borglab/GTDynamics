@@ -40,6 +40,7 @@ struct ConstrainedOptResult {
       intermediate_values;        // values after each inner loop
   std::vector<gtsam::VectorValues> tangent_vectors;
   std::vector<int> num_iters;     // number of LM iterations for each inner loop
+  std::vector<int> num_inner_iters;
   std::vector<double> mu_values;  // penalty parameter for each inner loop
 };
 
@@ -126,7 +127,7 @@ struct EqConsOptProblem {
   }
 
   /// Return a graph of merit factors of constraints.
-  gtsam::NonlinearFactorGraph constraintsGraph(double mu=1.0) const {
+  virtual gtsam::NonlinearFactorGraph constraintsGraph(double mu=1.0) const {
     gtsam::NonlinearFactorGraph constraints_graph;
     for (const auto& constraint: constraints_) {
       constraints_graph.add(constraint->createFactor(mu));

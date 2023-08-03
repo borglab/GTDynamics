@@ -49,37 +49,12 @@ protected:
 public:
   BarrierOptimizer(const BarrierParameters &parameters) : p_(parameters) {}
 
-  ConstrainedOptResult
-  optimize(const gtsam::NonlinearFactorGraph &graph,
-           const gtdynamics::InequalityConstraints &constraints,
-           const gtsam::Values &init_values) const {
-    ConstrainedOptResult result;
-
-    double mu = p_.initial_mu;
-    gtsam::Values values = init_values;
-    for (size_t i = 0; i < p_.num_iterations; i++) {
-      gtsam::NonlinearFactorGraph merit_graph = graph;
-      for (const auto &constraint : constraints) {
-        merit_graph.add(constraint->createBarrierFactor(mu));
-      }
-      gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
-                                                   p_.lm_parameters);
-      values = optimizer.optimize();
-      result.intermediate_values.push_back(values);
-      result.num_iters.push_back(optimizer.getInnerIterations());
-      result.mu_values.push_back(mu);
-      mu *= p_.mu_increase_rate;
-    }
-
-    return result;
-  }
-
-  ConstrainedOptResult
+  gtsam::Values
   optimize(const gtsam::NonlinearFactorGraph &graph,
            const gtdynamics::EqualityConstraints &e_constraints,
            const gtdynamics::InequalityConstraints &i_constraints,
-           const gtsam::Values &init_values) const {
-    ConstrainedOptResult result;
+           const gtsam::Values &init_values,
+           ConstrainedOptResult *intermediate_result = nullptr) const {
 
     double mu = p_.initial_mu;
     gtsam::Values values = init_values;
@@ -94,13 +69,18 @@ public:
       gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
                                                    p_.lm_parameters);
       values = optimizer.optimize();
-      result.intermediate_values.push_back(values);
-      result.num_iters.push_back(optimizer.getInnerIterations());
-      result.mu_values.push_back(mu);
+      if (intermediate_result != nullptr) {
+        intermediate_result->intermediate_values.push_back(values);
+        intermediate_result->num_iters.push_back(
+            optimizer.iterations());
+        intermediate_result->num_inner_iters.push_back(
+            optimizer.getInnerIterations());
+        intermediate_result->mu_values.push_back(mu);
+      }
       mu *= p_.mu_increase_rate;
     }
 
-    return result;
+    return values;
   }
 };
 
