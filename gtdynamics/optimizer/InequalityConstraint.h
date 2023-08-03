@@ -14,13 +14,13 @@
 #pragma once
 
 #include <gtdynamics/factors/BarrierFactor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/linear/VectorValues.h>
 
 namespace gtdynamics {
 
@@ -28,15 +28,20 @@ namespace gtdynamics {
  * Equality constraint base class.
  */
 class InequalityConstraint {
+protected:
+  std::string name_;
+
 public:
   typedef InequalityConstraint This;
   typedef std::shared_ptr<This> shared_ptr;
 
   /** Default constructor. */
-  InequalityConstraint() {}
+  InequalityConstraint(const std::string &name = "") : name_(name) {}
 
   /** Destructor. */
   virtual ~InequalityConstraint() {}
+
+  const std::string &name() { return name_; }
 
   /**
    * @brief Check if constraint violation is within tolerance.
@@ -94,8 +99,10 @@ public:
    * @param tolerance   scalar representing tolerance.
    */
   DoubleExpressionInequality(const gtsam::Expression<double> &expression,
-                             const double &tolerance)
-      : expression_(expression), tolerance_(tolerance) {}
+                             const double &tolerance,
+                             const std::string &name = "")
+      : InequalityConstraint(name), expression_(expression),
+        tolerance_(tolerance) {}
 
   static DoubleExpressionInequality::shared_ptr
   geq(const gtsam::Expression<double> &expression, const double &tolerance) {
@@ -157,12 +164,11 @@ public:
     std::vector<gtsam::Matrix> H(keys().size());
     expression_.value(x, H);
     gtsam::MultiJacobian jac;
-    for (size_t i=0; i<keyvector.size(); i++) {
+    for (size_t i = 0; i < keyvector.size(); i++) {
       jac.addJacobian(keyvector.at(i), H.at(i)); // TODO: divide by tolerance?
     }
     return jac;
   }
-
 };
 
 /// Container of InequalityConstraint.
@@ -210,6 +216,15 @@ public:
     return keys;
   }
 
+  gtsam::VariableIndex varIndex() const {
+    gtsam::VariableIndex var_index;
+    for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
+      const auto &constraint = at(constraint_idx);
+      var_index.augmentExistingFactor(constraint_idx, constraint->keys());
+    }
+    return var_index;
+  }
+
   /// Return the total dimension of constraints.
   size_t dim() const;
 };
@@ -231,9 +246,7 @@ namespace gtsam {
 
 class IndexSet : public std::set<size_t> {
 public:
-  bool exists(const size_t idx) const {
-    return find(idx) != end();
-  }
+  bool exists(const size_t idx) const { return find(idx) != end(); }
 
   void print(const std::string &s = "") const {
     std::cout << s;
@@ -246,12 +259,11 @@ public:
 
 struct IndexSetMap : public std::map<Key, IndexSet> {
 public:
-  void addIndices(const Key& key, const IndexSet& index_set) {
+  void addIndices(const Key &key, const IndexSet &index_set) {
     if (find(key) == end()) {
       insert({key, index_set});
-    }
-    else {
-      IndexSet& current_indices = at(key);
+    } else {
+      IndexSet &current_indices = at(key);
       current_indices.insert(index_set.begin(), index_set.end());
     }
   }

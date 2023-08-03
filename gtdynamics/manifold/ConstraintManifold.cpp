@@ -26,6 +26,9 @@ Values ConstraintManifold::constructValues(
   for (const gtsam::Key &key : cc->keys_) {
     cm_values.insert(key, values.at(key));
   }
+  for (const gtsam::Key &key : cc->unconstrained_keys_) {
+    cm_values.insert(key, values.at(key));
+  }
   if (retract_init) {
     return retractor->retractConstraints(std::move(cm_values));
   } else {

@@ -188,6 +188,8 @@ class MatrixBasis : public TspaceBasis {
   std::map<Key, size_t> var_location_;  // location of variables in Jacobian
   std::map<Key, size_t> var_dim_;       // dimension of variables
   size_t total_basis_dim_;
+  gtsam::KeySet unconstrained_keys_;
+  std::map<Key, size_t> unconstrained_xi_location_;
   gtsam::Matrix basis_;  // basis for the tangent space
 
  public:
@@ -204,7 +206,9 @@ class MatrixBasis : public TspaceBasis {
       : TspaceBasis(other.params_),
         var_location_(other.var_location_),
         var_dim_(other.var_dim_),
-        total_basis_dim_(other.total_basis_dim_) {
+        total_basis_dim_(other.total_basis_dim_),
+        unconstrained_keys_(other.unconstrained_keys_),
+        unconstrained_xi_location_(other.unconstrained_xi_location_) {
     if (params_->always_construct_basis) {
       construct(cc, values);
     }

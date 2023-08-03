@@ -37,6 +37,7 @@ struct GDParams {
   double errorTol = 1e-9;
   size_t maxIterations = 100;
   double muLowerBound = 1e-5;
+  double boundary_approach_rate_threshold = 5;
 };
 
 struct IEGDState {

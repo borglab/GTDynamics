@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
@@ -18,6 +19,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/inference/VariableIndex.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -158,8 +160,6 @@ TEST(EqualityConstraint, Container) {
 
   double tolerance1 = 0.1;
   auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-  ;
-
   Vector2_ x1_vec_expr(x1_key);
   Vector2_ x2_vec_expr(x2_key);
   auto g2 = x1_vec_expr + x2_vec_expr;
@@ -168,7 +168,24 @@ TEST(EqualityConstraint, Container) {
   constraints.emplace_shared<DoubleExpressionEquality>(g1, tolerance1);
   constraints.emplace_shared<VectorExpressionEquality<2>>(g2, tolerance2);
 
+  // Check size.
   EXPECT_LONGS_EQUAL(2, constraints.size());
+
+  // Check dimension.
+  EXPECT_LONGS_EQUAL(3, constraints.dim());
+
+  // Check keys.
+  KeySet expected_keys;
+  expected_keys.insert(x1_key);
+  expected_keys.insert(x2_key);
+  EXPECT(assert_container_equality(expected_keys, constraints.keys()));
+
+  // Check VariableIndex.
+  VariableIndex vi = constraints.varIndex();
+  FactorIndices expected_vi_x1{0, 1};
+  FactorIndices expected_vi_x2{0, 1};
+  EXPECT(assert_container_equality(expected_vi_x1, vi[x1_key]));
+  EXPECT(assert_container_equality(expected_vi_x2, vi[x2_key]));
 }
 
 // Test methods of FactorZeroErrorConstraint.

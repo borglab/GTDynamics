@@ -11,7 +11,9 @@
  * @author: Yetong Zhang
  */
 
-#include "imanifold/IERetractor.h"
+#include "manifold/ConnectedComponent.h"
+#include "optimizer/EqualityConstraint.h"
+#include "optimizer/InequalityConstraint.h"
 #include <gtdynamics/imanifold/IEManifoldOptimizer.h>
 
 namespace gtsam {
@@ -28,6 +30,104 @@ IEOptimizer::Var2ManifoldKeyMap(const IEManifoldValues &manifolds) {
   return keymap_var2manifold;
 }
 
+struct ComponentInfo {
+  IndexSet e_indices;
+  IndexSet i_indices;
+  KeySet keys;
+};
+
+/* ************************************************************************* */
+ComponentInfo IdentifyConnectedComponent(
+    const gtdynamics::EqualityConstraints &e_constraints,
+    const gtdynamics::InequalityConstraints &i_constraints,
+    const gtsam::VariableIndex &e_var_index,
+    const gtsam::VariableIndex &i_var_index, const gtsam::Key start_key) {
+  ComponentInfo component_info;
+
+  std::stack<gtsam::Key> key_stack;
+  key_stack.push(start_key);
+  while (!key_stack.empty()) {
+    gtsam::Key key = key_stack.top();
+    key_stack.pop();
+    // find all constraints connected to key
+    if (e_var_index.find(key) != e_var_index.end()) {
+      for (const auto &constraint_index : e_var_index[key]) {
+        component_info.e_indices.insert(constraint_index);
+        for (const auto &neighbor_key :
+            e_constraints.at(constraint_index)->keys()) {
+          if (!component_info.keys.exists(neighbor_key)) {
+            component_info.keys.insert(neighbor_key);
+            key_stack.push(neighbor_key);
+          }
+        }
+      }
+    }
+    if (i_var_index.find(key) != i_var_index.end()) {
+      for (const auto &constraint_index : i_var_index[key]) {
+        component_info.i_indices.insert(constraint_index);
+        for (const auto &neighbor_key :
+            i_constraints.at(constraint_index)->keys()) {
+          if (!component_info.keys.exists(neighbor_key)) {
+            component_info.keys.insert(neighbor_key);
+            key_stack.push(neighbor_key);
+          }
+        }
+      }
+    }
+  }
+  return component_info;
+}
+
+/* ************************************************************************* */
+std::vector<std::pair<ConnectedComponent::shared_ptr,
+                      gtdynamics::InequalityConstraints::shared_ptr>>
+IdentifyConnectedComponents(
+    const gtdynamics::EqualityConstraints &e_constraints,
+    const gtdynamics::InequalityConstraints &i_constraints) {
+  
+  gtsam::VariableIndex e_var_index = e_constraints.varIndex();
+  gtsam::VariableIndex i_var_index = i_constraints.varIndex();
+
+  // Get all the keys in constraints.
+  KeySet keys = e_constraints.keys();
+  keys.merge(i_constraints.keys());
+
+  std::vector<std::pair<ConnectedComponent::shared_ptr,
+                        gtdynamics::InequalityConstraints::shared_ptr>>
+      components;
+  while (!keys.empty()) {
+    Key key = *keys.begin();
+    keys.erase(key);
+    auto component_info = IdentifyConnectedComponent(
+        e_constraints, i_constraints, e_var_index, i_var_index, key);
+
+    // e_constraints
+    gtdynamics::EqualityConstraints component_e_constraints;
+    for (const auto &idx : component_info.e_indices) {
+      component_e_constraints.emplace_back(e_constraints.at(idx));
+    }
+    // i_constraints
+    auto component_i_constraints =
+        std::make_shared<gtdynamics::InequalityConstraints>();
+    for (const auto &idx : component_info.i_indices) {
+      component_i_constraints->emplace_back(i_constraints.at(idx));
+    }
+    // cc
+    KeySet unconstrained_keys;
+    KeySet component_i_keys = component_i_constraints->keys();
+    KeySet component_e_keys = component_e_constraints.keys();
+    std::set_difference(
+        component_i_keys.begin(), component_i_keys.end(),
+        component_e_keys.begin(), component_e_keys.end(),
+        std::inserter(unconstrained_keys, unconstrained_keys.begin()));
+    auto cc = std::make_shared<ConnectedComponent>(component_e_constraints,
+                                                   unconstrained_keys);
+
+    components.emplace_back(cc, component_i_constraints);
+  }
+  return components;
+}
+
 /* ************************************************************************* */
 IEManifoldValues IEOptimizer::IdentifyManifolds(
     const gtdynamics::EqualityConstraints &e_constraints,
@@ -35,49 +135,25 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
     const gtsam::Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
   // find connected components by equality constraints
-  auto components =
-      ManifoldOptimizer::IdentifyConnectedComponents(e_constraints);
+  auto components = IdentifyConnectedComponents(e_constraints, i_constraints);
 
-  // construct variable key to manifold key map
-  std::map<Key, Key> var2manifold_keymap;
-  for (const auto &component : components) {
-    Key component_key = *component->keys_.begin();
-    for (const Key &key : component->keys_) {
-      var2manifold_keymap.emplace(key, component_key);
-    }
-  }
-
-  // assign inequality constraints to components
-  std::map<Key, gtdynamics::InequalityConstraints::shared_ptr> cc_i_constraints;
-  for (const auto &component : components) {
-    Key component_key = *component->keys_.begin();
-    cc_i_constraints.emplace(
-        component_key, std::make_shared<gtdynamics::InequalityConstraints>());
-  }
-  for (const auto &constraint : i_constraints) {
-    KeySet component_keys;
-    for (const Key &key : constraint->keys()) {
-      component_keys.emplace(var2manifold_keymap.at(key));
-    }
-    if (component_keys.size() > 1) {
-      throw std::runtime_error(
-          "i_constraint connect to more than 1 component.\n");
-    }
-    Key component_key = *component_keys.begin();
-    cc_i_constraints.at(component_key)->emplace_back(constraint);
-  }
-
-  // create ie_manifolds
   IEManifoldValues ie_manifolds;
-  for (const auto &component : components) {
-    Key component_key = *component->keys_.begin();
+  for (const auto &it : components) {
+    const auto& cc = it.first;
+    const auto& component_i_constraints = it.second;
+
+    KeySet keys;
+    std::set_union(cc->keys_.begin(), cc->keys_.end(),
+                   cc->unconstrained_keys_.begin(),
+                   cc->unconstrained_keys_.end(), std::inserter(keys, keys.begin()));
+    Key component_key = *keys.begin();
     Values component_values;
-    for (const Key &key : component->keys_) {
+    for (const Key &key : keys) {
       component_values.insert(key, values.at(key));
     }
     ie_manifolds.emplace(
-        component_key, IEConstraintManifold(iecm_params, component,
-                                            cc_i_constraints.at(component_key),
+        component_key, IEConstraintManifold(iecm_params, cc,
+                                            component_i_constraints,
                                             component_values));
   }
   return ie_manifolds;
@@ -207,7 +283,8 @@ IEOptimizer::IdentifyChangeIndices(const IEManifoldValues &manifolds,
 IndexSetMap
 IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
                                         const IEManifoldValues &new_manifolds,
-                                        const IndexSetMap &change_indices_map) {
+                                        const IndexSetMap &change_indices_map,
+                                        const double& approach_rate_threshold) {
   IndexSetMap approach_indices_map;
   for (const auto &it : change_indices_map) {
     const Key &key = it.first;
@@ -225,7 +302,7 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
       std::cout << "eval: " << eval << "\n";
       std::cout << "new_eval: " << new_eval << "\n";
       std::cout << "approach_rate: " << approach_rate << "\n";
-      if (approach_rate > 3) {
+      if (approach_rate > approach_rate_threshold) {
         approach_indices.insert(idx);
       }
     }

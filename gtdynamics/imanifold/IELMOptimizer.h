@@ -29,6 +29,11 @@
 
 namespace gtsam {
 
+struct IELMParams {
+  IELMParams() {}
+  double boundary_approach_rate_threshold = 3;
+};
+
 /**
  * This class performs Levenberg-Marquardt nonlinear optimization
  */
@@ -36,6 +41,7 @@ class IELMOptimizer : public IEOptimizer {
 
 protected:
   const LevenbergMarquardtParams params_; ///< LM parameters
+  const IELMParams ie_params_;
   std::shared_ptr<std::vector<IELMIterDetails>> details_;
 
 public:
@@ -45,8 +51,9 @@ public:
 
   /** Constructor */
   IELMOptimizer(
-      const LevenbergMarquardtParams &params = LevenbergMarquardtParams())
-      : IEOptimizer(), params_(params),
+      const LevenbergMarquardtParams &params = LevenbergMarquardtParams(),
+      const IELMParams& ie_params = IELMParams())
+      : IEOptimizer(), params_(params), ie_params_(ie_params),
         details_(std::make_shared<std::vector<IELMIterDetails>>()) {}
 
   /** Virtual destructor */

@@ -188,7 +188,7 @@ bool IELMOptimizer::checkModeChange(
 
   auto approach_indices_map = IdentifyApproachingIndices(
       init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
-      change_indices_map);
+      change_indices_map, ie_params_.boundary_approach_rate_threshold);
 
   // Condition3: approaching boundary with decent rate
   if (approach_indices_map.size() == 0) {
@@ -202,6 +202,7 @@ bool IELMOptimizer::checkModeChange(
   trial.new_manifolds = MoveToBoundaries(current_iter_details.state.manifolds,
                                          approach_indices_map);
   trial.new_error = graph.error(CollectManifoldValues(trial.new_manifolds));
+  trial.step_is_successful = true;
   current_iter_details.trials.emplace_back(trial);
   return true;
 }

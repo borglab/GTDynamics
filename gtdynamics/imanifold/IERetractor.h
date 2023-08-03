@@ -14,10 +14,9 @@
 #pragma once
 
 #include <gtdynamics/factors/ConstVarFactor.h>
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
-#include <gtdynamics/optimizer/MutableLMOptimizer.h>
+#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -26,8 +25,6 @@
 namespace gtsam {
 
 class IEConstraintManifold;
-
-// enum IERetractType { Barrier = 0, HalfSphere = 1, CP=2 };
 
 /** Base class that implements the retraction operation for the constraint
  * manifold. */
@@ -51,48 +48,10 @@ public:
                  const IndexSet &blocking_indices) const;
 };
 
-class HalfSphereRetractor : public IERetractor {
-public:
-  HalfSphereRetractor() : IERetractor() {}
-
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
-};
-
 /** Retraction by performing barrier optimization. */
 class BarrierRetractor : public IERetractor {
 public:
   BarrierRetractor() : IERetractor() {}
-
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
-};
-
-class CartPoleWithFrictionRetractor : public IERetractor {
-protected:
-  const IECartPoleWithFriction &cp_;
-
-public:
-  CartPoleWithFrictionRetractor(const IECartPoleWithFriction &cp)
-      : IERetractor(), cp_(cp) {}
-
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
-
-  IEConstraintManifold retract1(const IEConstraintManifold *manifold,
-                                const VectorValues &delta) const;
-};
-
-class CPBarrierRetractor : public IERetractor {
-protected:
-  const IECartPoleWithFriction &cp_;
-
-public:
-  CPBarrierRetractor(const IECartPoleWithFriction &cp)
-      : IERetractor(), cp_(cp) {}
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,

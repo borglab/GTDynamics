@@ -73,6 +73,7 @@ public:
 
   static Values EManifolds(const IEManifoldValues &manifolds);
 
+  /// Return e_manifolds and constant_e_manifolds.
   static std::pair<Values, Values>
   EManifolds(const IEManifoldValues &manifolds,
              const IndexSetMap &active_indices);
@@ -87,7 +88,8 @@ public:
   static IndexSetMap
   IdentifyApproachingIndices(const IEManifoldValues &manifolds,
                              const IEManifoldValues &new_manifolds,
-                             const IndexSetMap &change_indices_map);
+                             const IndexSetMap &change_indices_map,
+                             const double& approach_rate_threshold);
 
   static IEManifoldValues
   MoveToBoundaries(const IEManifoldValues &manifolds,

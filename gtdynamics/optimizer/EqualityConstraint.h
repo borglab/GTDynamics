@@ -16,6 +16,7 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/inference/VariableIndex.h>
 
 namespace gtdynamics {
 
@@ -214,6 +215,24 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
 
   /// Return the total dimension of constraints.
   size_t dim() const;
+
+  /// Return keys involved in constraints.
+  gtsam::KeySet keys() const {
+    gtsam::KeySet keys;
+    for (const auto &constraint : *this) {
+      keys.merge(constraint->keys());
+    }
+    return keys;
+  }
+
+  gtsam::VariableIndex varIndex() const {
+    gtsam::VariableIndex var_index;
+    for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
+      const auto &constraint = at(constraint_idx);
+      var_index.augmentExistingFactor(constraint_idx, constraint->keys());
+    }
+    return var_index;
+  }
 };
 
 /// Create FactorZeroErrorConstraintConstraints from the factors of a graph.

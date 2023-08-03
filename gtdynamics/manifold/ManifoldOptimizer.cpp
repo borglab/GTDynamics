@@ -69,17 +69,8 @@ std::vector<ConnectedComponent::shared_ptr>
 ManifoldOptimizer::IdentifyConnectedComponents(
     const gtdynamics::EqualityConstraints& constraints) {
   // Get all the keys in constraints.
-  // TODO(yetong): create VariableIndex from EqualityConstraints
-  gtsam::NonlinearFactorGraph constraint_graph;
-  for (const auto& constraint : constraints) {
-    constraint_graph.add(constraint->createFactor(1.0));
-  }
-  gtsam::VariableIndex constraint_var_index =
-      gtsam::VariableIndex(constraint_graph);
-  gtsam::KeySet constraint_keys;
-  for (const auto& it : constraint_var_index) {
-    constraint_keys.insert(it.first);
-  }
+  auto constraint_var_index = constraints.varIndex();
+  gtsam::KeySet constraint_keys = constraints.keys();
 
   // Find connected component using DFS algorithm.
   std::vector<ConnectedComponent::shared_ptr> components;
@@ -92,6 +83,7 @@ ManifoldOptimizer::IdentifyConnectedComponents(
   return components;
 }
 
+/* ************************************************************************* */
 NonlinearFactorGraph
 ManifoldOptimizer::ManifoldGraph(const NonlinearFactorGraph &graph,
                                  const std::map<Key, Key> &var2man_keymap,

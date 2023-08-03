@@ -30,13 +30,23 @@ public:
   const gtsam::NonlinearFactorGraph
       merit_graph_; // factor graph representing merit function ||h(X)||^2
   const gtsam::KeySet keys_; // variables in CCC
+  const gtsam::KeySet unconstrained_keys_; // only used for IE cases
   using shared_ptr = std::shared_ptr<ConnectedComponent>;
 
   /// Constructor from constraints.
   ConnectedComponent(const gtdynamics::EqualityConstraints &constraints)
       : constraints_(constraints),
         merit_graph_(constructMeritGraph(constraints)),
-        keys_(merit_graph_.keys()) {}
+        keys_(merit_graph_.keys()),
+        unconstrained_keys_() {}
+
+  /// Constructor from constraints.
+  ConnectedComponent(const gtdynamics::EqualityConstraints &constraints,
+                     const gtsam::KeySet unconstrained_keys)
+      : constraints_(constraints),
+        merit_graph_(constructMeritGraph(constraints)),
+        keys_(merit_graph_.keys()),
+        unconstrained_keys_(unconstrained_keys) {}
 
 protected:
   /// Create factor graph that represents merit function ||h(X)||^2.

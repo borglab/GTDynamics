@@ -79,11 +79,18 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
     const IndexSet &active_indices) const {
   // TODO: construct e-basis using createWithAdditionalConstraints
   gtdynamics::EqualityConstraints active_constraints = e_cc_->constraints_;
+  KeySet unconstrained_keys = e_cc_->unconstrained_keys_;
   for (const auto &idx : active_indices) {
+    for (const Key &key : i_constraints_->at(idx)->keys()) {
+      if (unconstrained_keys.exists(key)) {
+        unconstrained_keys.erase(key);
+      }
+    }
     active_constraints.emplace_back(
         i_constraints_->at(idx)->createEqualityConstraint());
   }
-  auto new_cc = std::make_shared<gtsam::ConnectedComponent>(active_constraints);
+  auto new_cc = std::make_shared<gtsam::ConnectedComponent>(active_constraints,
+                                                            unconstrained_keys);
   return ConstraintManifold(new_cc, values_, params_->ecm_params, false);
   // auto new_basis =
   // e_basis_->createWithAdditionalConstraints(active_constraints); return

@@ -58,61 +58,116 @@ MatrixBasis::MatrixBasis(const TspaceBasisParams::shared_ptr &params,
                          const ConnectedComponent::shared_ptr &cc,
                          const Values &values)
     : TspaceBasis(params) {
-  auto linear_graph = cc->merit_graph_.linearize(values);
-  JacobianFactor combined(*linear_graph);
-  auto augmented = combined.augmentedJacobian();
-  Matrix A = augmented.leftCols(augmented.cols() - 1); // m x n
-  Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-  basis_ = lu.kernel(); // n x n-m
-  size_t position = 0;
-  for (const Key &key : combined.keys()) {
+  if (cc->constraints_.size() == 0) {
+    basis_ = Matrix::Zero(0, 0);
+    total_basis_dim_ = 0;
+  }
+  else {
+    auto linear_graph = cc->merit_graph_.linearize(values);
+    JacobianFactor combined(*linear_graph);
+    auto augmented = combined.augmentedJacobian();
+    Matrix A = augmented.leftCols(augmented.cols() - 1); // m x n
+    Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+    basis_ = lu.kernel(); // n x n-m
+    size_t position = 0;
+    for (const Key &key : combined.keys()) {
+      size_t var_dim = values.at(key).dim();
+      var_dim_[key] = var_dim;
+      var_location_[key] = position;
+      position += var_dim;
+    }
+    total_basis_dim_ = basis_.cols();
+  }
+
+  unconstrained_keys_ = cc->unconstrained_keys_;
+  for (const Key& key: unconstrained_keys_) {
     size_t var_dim = values.at(key).dim();
     var_dim_[key] = var_dim;
-    var_location_[key] = position;
-    position += var_dim;
+    unconstrained_xi_location_[key] = total_basis_dim_;
+    total_basis_dim_ += var_dim;
   }
-  total_basis_dim_ = basis_.cols();
   is_constructed_ = true;
 }
 
 /* ************************************************************************* */
 void MatrixBasis::construct(const ConnectedComponent::shared_ptr &cc,
                             const Values &values) {
-  auto linear_graph = cc->merit_graph_.linearize(values);
-  JacobianFactor combined(*linear_graph);
-  auto augmented = combined.augmentedJacobian();
-  Matrix A = augmented.leftCols(augmented.cols() - 1); // m x n
-  Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-  basis_ = lu.kernel(); // n x n-m
+  if (cc->constraints_.size() == 0) {
+    basis_ = Matrix::Zero(0, 0);
+  }
+  else {
+    auto linear_graph = cc->merit_graph_.linearize(values);
+    JacobianFactor combined(*linear_graph);
+    auto augmented = combined.augmentedJacobian();
+    Matrix A = augmented.leftCols(augmented.cols() - 1); // m x n
+    Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+    basis_ = lu.kernel(); // n x n-m
+  }
+
   is_constructed_ = true;
 }
 
 /* ************************************************************************* */
 VectorValues MatrixBasis::computeTangentVector(const Vector &xi) const {
-  Vector x_xi = basis_ * xi;
   VectorValues delta;
-  for (const auto &it : var_location_) {
-    const Key &key = it.first;
-    delta.insert(key, x_xi.middleRows(it.second, var_dim_.at(key)));
+
+  if (var_location_.size() > 0) {
+    Vector x_xi = basis_ * xi;
+    for (const auto &it : var_location_) {
+      const Key &key = it.first;
+      delta.insert(key, x_xi.middleRows(it.second, var_dim_.at(key)));
+    }
+  }
+
+  for (const Key& key: unconstrained_keys_) {
+    const size_t& var_dim = var_dim_.at(key);
+    const size_t& position = unconstrained_xi_location_.at(key);
+    delta.insert(key, xi.middleRows(position, var_dim));
   }
   return delta;
 }
 
 /* ************************************************************************* */
 Vector MatrixBasis::computeXi(const VectorValues &delta) const {
-  Vector x_xi = Vector::Zero(basis_.rows());
-  for (const auto &it : var_location_) {
-    const Key &key = it.first;
-    x_xi.middleRows(it.second, var_dim_.at(key)) = delta.at(key);
+  Vector xi;
+  if (var_location_.size() > 0) {
+    Vector x_xi = Vector::Zero(basis_.rows());
+    for (const auto &it : var_location_) {
+      const Key &key = it.first;
+      x_xi.middleRows(it.second, var_dim_.at(key)) = delta.at(key);
+    }
+    // Vector xi = basis_.colPivHouseholderQr().solve(x_xi);
+    xi = basis_.completeOrthogonalDecomposition().pseudoInverse() * x_xi;
   }
-  // Vector xi = basis_.colPivHouseholderQr().solve(x_xi);
-  Vector xi = basis_.completeOrthogonalDecomposition().pseudoInverse() * x_xi;
+  else {
+    xi = Vector::Zero(0);
+  }
+
+  if (unconstrained_keys_.size() > 0) {
+    Vector full_xi = Vector::Zero(total_basis_dim_);
+    full_xi.topRows(basis_.cols()) = xi;
+    for (const Key& key: unconstrained_keys_) {
+      const size_t& var_dim = var_dim_.at(key);
+      const size_t& position = unconstrained_xi_location_.at(key);
+      full_xi.middleRows(position, var_dim) = delta.at(key);
+    }
+    return full_xi;
+  }
   return xi;
 }
 
 /* ************************************************************************* */
 Matrix MatrixBasis::recoverJacobian(const Key &key) const {
-  return basis_.middleRows(var_location_.at(key), var_dim_.at(key));
+  if (unconstrained_keys_.exists(key)) {
+    const size_t& var_dim = var_dim_.at(key);
+    const size_t& position = unconstrained_xi_location_.at(key);
+    Matrix jacobian = Matrix::Zero(var_dim, total_basis_dim_);
+    jacobian.middleCols(position, var_dim) = Matrix::Identity(var_dim, var_dim);
+    return jacobian;
+  }
+  else {
+    return basis_.middleRows(var_location_.at(key), var_dim_.at(key));
+  }
 }
 
 /* ************************************************************************* */
@@ -127,6 +182,16 @@ Vector MatrixBasis::localCoordinates(const Values &values,
     xi_base.middleRows(var_location_.at(key), var_dim_.at(key)) = it.second;
   }
   Vector xi = basis_pinv * xi_base;
+  if (unconstrained_keys_.size() > 0) {
+    Vector full_xi = Vector::Zero(total_basis_dim_);
+    full_xi.topRows(basis_.cols()) = xi;
+    for (const Key& key: unconstrained_keys_) {
+      const size_t& var_dim = var_dim_.at(key);
+      const size_t& position = unconstrained_xi_location_.at(key);
+      full_xi.middleRows(position, var_dim) = delta.at(key);
+    }
+    return full_xi;
+  }
   return xi;
 }
 
