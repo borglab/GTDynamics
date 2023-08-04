@@ -13,14 +13,10 @@
 
 #pragma once
 
-#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include <gtdynamics/manifold/IneqConstraintManifold.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearOptimizerParams.h>
-#include <gtsam/nonlinear/Values.h>
 
 namespace gtdynamics {
 
@@ -57,6 +53,8 @@ public:
            ConstrainedOptResult *intermediate_result = nullptr) const {
 
     double mu = p_.initial_mu;
+    size_t total_iters = 0;
+    size_t total_inner_iters = 0;
     gtsam::Values values = init_values;
     for (size_t i = 0; i < p_.num_iterations; i++) {
       gtsam::NonlinearFactorGraph merit_graph = graph;
@@ -66,16 +64,21 @@ public:
       for (const auto &constraint : i_constraints) {
         merit_graph.add(constraint->createBarrierFactor(mu));
       }
-      gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph, values,
-                                                   p_.lm_parameters);
+      gtsam::HistoryLMOptimizer optimizer(merit_graph, values,
+                                          p_.lm_parameters);
       values = optimizer.optimize();
       if (intermediate_result != nullptr) {
-        intermediate_result->intermediate_values.push_back(values);
-        intermediate_result->num_iters.push_back(
-            optimizer.iterations());
-        intermediate_result->num_inner_iters.push_back(
-            optimizer.getInnerIterations());
-        intermediate_result->mu_values.push_back(mu);
+        const auto &history_states = optimizer.states();
+        for (const auto &state : history_states) {
+          intermediate_result->intermediate_values.push_back(state.values);
+          intermediate_result->num_iters.push_back(total_iters +
+                                                   state.iterations);
+          intermediate_result->num_inner_iters.push_back(
+              total_inner_iters + state.totalNumberInnerIterations);
+          intermediate_result->mu_values.push_back(mu);
+        }
+        total_iters += optimizer.iterations();
+        total_inner_iters += optimizer.getInnerIterations();
       }
       mu *= p_.mu_increase_rate;
     }

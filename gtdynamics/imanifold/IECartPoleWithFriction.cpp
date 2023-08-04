@@ -174,7 +174,44 @@ void IECartPoleWithFriction::PrintDelta(const VectorValues &values,
   }
 }
 
+/* ************************************************************************* */
+void IECartPoleWithFriction::ExportValues(const Values &values,
+                                          const size_t num_steps,
+                                          const std::string &file_path) {
+  std::ofstream file;
+  file.open(file_path);
+  for (int k = 0; k <= num_steps; k++) {
+    double q = values.atDouble(QKey(k));
+    double v = values.atDouble(VKey(k));
+    double a = values.atDouble(AKey(k));
+    double tau = values.atDouble(TauKey(k));
+    double fx = values.atDouble(FxKey(k));
+    double fy = values.atDouble(FyKey(k));
+    file << q << " " << v << " " << a << " " << tau << " " << fx << " " << fy
+         << "\n";
+  }
+  file.close();
+}
 
+/* ************************************************************************* */
+void IECartPoleWithFriction::ExportVector(const VectorValues &values,
+                                          const size_t num_steps,
+                                          const std::string &file_path) {
+  std::ofstream file;
+  file.open(file_path);
+  for (int k = 0; k <= num_steps; k++) {
+    double q = values.at(QKey(k))(0);
+    double v = values.at(VKey(k))(0);
+    double a = values.at(AKey(k))(0);
+    double tau = values.at(TauKey(k))(0);
+    double fx = values.at(FxKey(k))(0);
+    double fy = values.at(FyKey(k))(0);
+    file << q << " " << v << " " << a << " " << tau << " " << fx << " " << fy
+         << "\n";
+  }
+  file << "\n";
+  file.close();
+}
 
 /* ************************************************************************* */
 void UpdateBoundary(const double &a, const double &b, const size_t &index,
@@ -228,12 +265,10 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract(
   if (blocking_indices) {
     if (blocking_indices->exists(0)) {
       a = b1 / a1;
-    }
-    else if (blocking_indices->exists(1)) {
+    } else if (blocking_indices->exists(1)) {
       a = b2 / a2;
     }
   }
-
 
   if (is_ub && !is_lb) {
     if (a > ub) {
@@ -257,7 +292,7 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract(
     }
   }
 
-  if (blocking_indices && active_indices.size()==0) {
+  if (blocking_indices && active_indices.size() == 0) {
     active_indices.insert(blocking_indices->begin(), blocking_indices->end());
   }
   new_values = cp_.computeValues(k, q, v, a);
@@ -358,8 +393,6 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
   return manifold->createWithNewValues(result, active_indices);
 }
 
-
-
 /* ************************************************************************* */
 IEConstraintManifold CPBarrierRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
@@ -385,16 +418,14 @@ IEConstraintManifold CPBarrierRetractor::retract(
   for (const auto &constraint : e_constraints) {
     graph.add(constraint->createFactor(mu));
   }
-  for (size_t idx=0; idx<i_constraints.size(); idx++) {
-    const auto& constraint = i_constraints.at(idx);
+  for (size_t idx = 0; idx < i_constraints.size(); idx++) {
+    const auto &constraint = i_constraints.at(idx);
     if (blocking_indices && blocking_indices->exists(idx)) {
       graph.add(constraint->createL2Factor(mu));
-    }
-    else {
+    } else {
       graph.add(constraint->createBarrierFactor(mu));
     }
   }
-
 
   LevenbergMarquardtParams params;
   // params.setVerbosityLM("SUMMARY");
@@ -428,7 +459,5 @@ IEConstraintManifold CPBarrierRetractor::retract(
 
   return manifold->createWithNewValues(result, active_indices);
 }
-
-
 
 } // namespace gtsam

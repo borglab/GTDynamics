@@ -55,22 +55,22 @@ int main(int argc, char **argv) {
   iecm_params->retractor = std::make_shared<DomeRetractor>(half_sphere);
 
   LevenbergMarquardtParams lm_params;
-  auto soft_summary = OptimizeSoftConstraints(problem, lm_params, 100);
+  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
 
   BarrierParameters barrier_params;
   barrier_params.num_iterations = 15;
-  auto barrier_summary = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
 
   GDParams gd_params;
-  auto gd_summary = OptimizeIEGD(problem, gd_params, iecm_params);
+  auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
-  auto lm_summary = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
 
-  soft_summary.printLatex(std::cout);
-  barrier_summary.printLatex(std::cout);
-  gd_summary.printLatex(std::cout);
-  lm_summary.printLatex(std::cout);
+  soft_result.first.printLatex(std::cout);
+  barrier_result.first.printLatex(std::cout);
+  gd_result.first.printLatex(std::cout);
+  lm_result.first.printLatex(std::cout);
 
   // // Run LM optimization
   // {

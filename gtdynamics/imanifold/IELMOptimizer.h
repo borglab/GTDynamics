@@ -42,19 +42,19 @@ class IELMOptimizer : public IEOptimizer {
 protected:
   const LevenbergMarquardtParams params_; ///< LM parameters
   const IELMParams ie_params_;
-  std::shared_ptr<std::vector<IELMIterDetails>> details_;
+  std::shared_ptr<IELMItersDetails> details_;
 
 public:
   typedef std::shared_ptr<IELMOptimizer> shared_ptr;
 
-  const std::vector<IELMIterDetails> &details() const { return *details_; }
+  const IELMItersDetails &details() const { return *details_; }
 
   /** Constructor */
   IELMOptimizer(
       const LevenbergMarquardtParams &params = LevenbergMarquardtParams(),
-      const IELMParams& ie_params = IELMParams())
+      const IELMParams &ie_params = IELMParams())
       : IEOptimizer(), params_(params), ie_params_(ie_params),
-        details_(std::make_shared<std::vector<IELMIterDetails>>()) {}
+        details_(std::make_shared<IELMItersDetails>()) {}
 
   /** Virtual destructor */
   ~IELMOptimizer() {}

@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "gtdynamics/imanifold/IELMOptimizerState.h"
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
@@ -22,6 +23,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
+#include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
 #include <iostream>
 #include <ostream>
 
@@ -103,28 +105,41 @@ struct IEResultSummary {
   std::vector<IEIterSummary> iters_summary;
 
   void printLatex(std::ostream &latex_os) const;
+
+  void exportFile(const std::string &file_path) const;
 };
+
+typedef std::vector<internal::LevenbergMarquardtState> LMItersDetail;
+
+struct BarrierIterDetail {
+  double mu;
+  Values values;
+  BarrierIterDetail(const double &_mu, const Values &_values)
+      : mu(_mu), values(_values) {}
+};
+
+typedef std::vector<BarrierIterDetail> BarrierItersDetail;
 
 /** Run optimization using soft constraints, e.g., treating constraints as
  * costs.
  */
-IEResultSummary OptimizeSoftConstraints(
+std::pair<IEResultSummary, LMItersDetail> OptimizeSoftConstraints(
     const IEConsOptProblem &problem,
     LevenbergMarquardtParams lm_params = LevenbergMarquardtParams(),
     double mu = 100);
 
 /** Run constrained optimization using the penalty method. */
-IEResultSummary
+std::pair<IEResultSummary, BarrierItersDetail>
 OptimizeBarrierMethod(const IEConsOptProblem &problem,
                       const gtdynamics::BarrierParameters &params);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
-IEResultSummary
+std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
-IEResultSummary
+std::pair<IEResultSummary, IELMItersDetails>
 OptimizeIELM(const IEConsOptProblem &problem,
              const gtsam::LevenbergMarquardtParams &params,
              const gtsam::IELMParams &ie_params,

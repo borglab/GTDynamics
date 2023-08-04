@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from yetong02_half_sphere_plot import load_data, draw_half_sphere
+from yetong00_utils import load_data, draw_half_sphere
 
 def main():
     folder = "results/half_sphere_traj_lm/"
@@ -19,7 +19,7 @@ def main():
     draw_half_sphere(ax)
     colors = ['r', 'orange', 'g', 'b', 'purple']
     for i in range(len(points)):
-        ax.scatter(points[i, :, 0], points[i, :, 1], points[i, :, 2], color=colors[i])
+        ax.scatter(points[i, :, 0], points[i, :, 1], points[i, :, 2], color=colors[i], s=1)
 
     # ax.scatter(points[:, 0], points[:, 1], points[:, 2], color="black")
     # for i in range(len(vectors)):
@@ -27,12 +27,14 @@ def main():
     #     end_pt = points[i] + vectors[i]
     #     ax.plot3D([start_pt[0], end_pt[0]], [start_pt[1], end_pt[1]], [start_pt[2], end_pt[2]], color="blue")
 
-    ax.set_xlim3d([-1.5, 1.5])
-    ax.set_ylim3d([-1.5, 1.5])
-    ax.set_zlim3d([-1.5, 1.5])
+    ax.set_xlim3d([-1.2, 1.2])
+    ax.set_ylim3d([-1.2, 1.2])
+    ax.set_zlim3d([-1.2, 1.2])
     ax.set_box_aspect([1,1,1])
     ax.legend()
-    plt.show()
+    
+    ax.view_init(elev=30, azim=45)
+    plt.savefig(folder + "halfsphere_traj.pdf")
 
     plt.show()
 

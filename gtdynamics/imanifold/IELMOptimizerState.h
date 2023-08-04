@@ -174,4 +174,6 @@ struct IELMIterDetails {
   IELMIterDetails(const IELMState &_state) : state(_state), trials() {}
 };
 
+typedef std::vector<IELMIterDetails> IELMItersDetails;
+
 } // namespace gtsam

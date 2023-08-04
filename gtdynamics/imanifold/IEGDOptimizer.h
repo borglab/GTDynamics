@@ -114,18 +114,21 @@ struct IEGDIterDetails {
   IEGDIterDetails(const IEGDState &_state) : state(_state), trials() {}
 };
 
+typedef std::vector<IEGDIterDetails> IEGDItersDetails;
+
 class IEGDOptimizer : public IEOptimizer {
+
 protected:
   const GDParams params_; ///< LM parameters
-  std::shared_ptr<std::vector<IEGDIterDetails>> details_;
+  std::shared_ptr<IEGDItersDetails> details_;
 
 public:
   /** Constructor */
   IEGDOptimizer(const GDParams &params = GDParams())
       : IEOptimizer(), params_(params),
-        details_(std::make_shared<std::vector<IEGDIterDetails>>()) {}
+        details_(std::make_shared<IEGDItersDetails>()) {}
 
-  const std::vector<IEGDIterDetails> &details() const { return *details_; }
+  const IEGDItersDetails &details() const { return *details_; }
 
   // IEManifoldValues lineSearch(const NonlinearFactorGraph &graph,
   //                             const IEManifoldValues &manifolds,

@@ -82,6 +82,12 @@ public:
   static void PrintValues(const Values &values, const size_t num_steps);
 
   static void PrintDelta(const VectorValues &values, const size_t num_steps);
+
+  static void ExportValues(const Values &values, const size_t num_steps,
+                           const std::string &file_path);
+
+  static void ExportVector(const VectorValues &values, const size_t num_steps,
+                           const std::string &file_path);
 };
 
 class CartPoleWithFrictionRetractor : public IERetractor {

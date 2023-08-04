@@ -1,5 +1,5 @@
-#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -42,7 +42,6 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
   }
   return values;
 }
-
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
@@ -135,26 +134,35 @@ int main(int argc, char **argv) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->retractor = std::make_shared<CPBarrierRetractor>(cp);
 
-
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
   LevenbergMarquardtParams lm_params;
-  auto soft_summary = OptimizeSoftConstraints(problem, lm_params, 100);
+  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
 
   BarrierParameters barrier_params;
   barrier_params.num_iterations = 15;
-  auto barrier_summary = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
 
   GDParams gd_params;
-  auto gd_summary = OptimizeIEGD(problem, gd_params, iecm_params);
+  auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
-  auto lm_summary = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
 
-  soft_summary.printLatex(std::cout);
-  barrier_summary.printLatex(std::cout);
-  gd_summary.printLatex(std::cout);
-  lm_summary.printLatex(std::cout);
+  soft_result.first.printLatex(std::cout);
+  barrier_result.first.printLatex(std::cout);
+  gd_result.first.printLatex(std::cout);
+  lm_result.first.printLatex(std::cout);
+
+  soft_result.first.exportFile("../../results/pole_soft/summary.txt");
+  barrier_result.first.exportFile("../../results/pole_barrier/summary.txt");
+  gd_result.first.exportFile("../../results/pole_gd/summary.txt");
+  lm_result.first.exportFile("../../results/pole_lm/summary.txt");
+
+  IECartPoleWithFriction::ExportValues(
+      IEOptimizer::CollectManifoldValues(
+          lm_result.second.back().state.manifolds),
+      num_steps, "../../results/pole_lm/values_final.txt");
 
   // // Run LM optimization
   // {
@@ -190,7 +198,8 @@ int main(int argc, char **argv) {
   //   params.maxIterations = 5;
   //   params.init_lambda = 100;
   //   IEGDOptimizer gd_optimizer(params);
-  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints, i_constraints,
+  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
+  //   i_constraints,
   //                                          initial_values, iecm_params);
   //   std::cout << "error: " << graph.error(gd_result) << "\n";
 
@@ -212,9 +221,10 @@ int main(int argc, char **argv) {
   //   BarrierOptimizer barrier_optimizer(barrier_params);
   //   auto barrier_result = barrier_optimizer.optimize(
   //       graph, e_constraints, i_constraints, initial_values);
-  //   IECartPoleWithFriction::PrintValues(barrier_result.intermediate_values.back(), num_steps);
-  //   std::cout << "error: " << std::setprecision(4)
-  //             << graph.error(barrier_result.intermediate_values.back()) << "\n";
+  //   IECartPoleWithFriction::PrintValues(barrier_result.intermediate_values.back(),
+  //   num_steps); std::cout << "error: " << std::setprecision(4)
+  //             << graph.error(barrier_result.intermediate_values.back()) <<
+  //             "\n";
   // }
 
   return 0;
