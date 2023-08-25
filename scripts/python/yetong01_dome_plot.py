@@ -8,9 +8,9 @@ def main():
     ax = plt.axes(projection='3d')
     draw_half_sphere(ax)
 
-    folder = "results/dome_lm/"
+    folder = "results/dome_estimation_simple/lm/"
 
-    points = load_data(folder + "result.txt")
+    points = load_data(folder + "values_final.txt")
 
 
     ax.scatter(points[:, 0], points[:, 1], points[:, 2], color="blue")

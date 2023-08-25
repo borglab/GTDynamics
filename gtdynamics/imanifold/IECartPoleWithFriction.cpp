@@ -35,6 +35,16 @@ double IECartPoleWithFriction::computeFy(const double q, const double v,
   return (M + m) * g - m * v * v * r * s + m * a * r * c;
 }
 
+double IECartPoleWithFriction::computeTau(const double q, const double a,
+                                          OptionalJacobian<1, 1> H_q,
+                                          OptionalJacobian<1, 1> H_a) const {
+  if (H_q)
+    H_q->setConstant(-m * g * r * sin(q));
+  if (H_a)
+    H_a->setConstant(m * r * r);
+  return m * r * r * a + m * g * r * cos(q);
+}
+
 /* ************************************************************************* */
 Double_ IECartPoleWithFriction::balanceFxExpr(const Double_ &q_expr,
                                               const Double_ &v_expr,
@@ -66,9 +76,17 @@ Double_ IECartPoleWithFriction::balanceFyExpr(const Double_ &q_expr,
 }
 
 /* ************************************************************************* */
-Double_ IECartPoleWithFriction::balanceRotExpr(const Double_ &a_expr,
+Double_ IECartPoleWithFriction::balanceRotExpr(const Double_ &q_expr,
+                                               const Double_ &a_expr,
                                                const Double_ &tau_expr) const {
-  return tau_expr - m * r * r * a_expr;
+  auto compute_tau_function = [&](const double q, const double a,
+                                 OptionalJacobian<1, 1> H_q = {},
+                                 OptionalJacobian<1, 1> H_a = {}) {
+    return computeTau(q, a, H_q, H_a);
+  };
+  Double_ compute_tau_expr(compute_tau_function, q_expr, a_expr);
+  
+  return tau_expr - compute_tau_expr;
 }
 
 /* ************************************************************************* */
@@ -100,7 +118,7 @@ IECartPoleWithFriction::eConstraints(const int k) const {
   constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
       balanceFyExpr(q_expr, v_expr, a_expr, fy_expr), 1.0);
   constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
-      balanceRotExpr(a_expr, tau_expr), 1.0);
+      balanceRotExpr(q_expr, a_expr, tau_expr), 1.0);
   return constraints;
 }
 
@@ -114,6 +132,15 @@ IECartPoleWithFriction::iConstraints(const int k) const {
       frictionConeExpr1(fx_expr, fy_expr), 1.0);
   constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
       frictionConeExpr2(fx_expr, fy_expr), 1.0);
+  if (include_torque_limits) {
+    Double_ torque_expr(TauKey(k));
+    Double_ lower_limit_expr = torque_expr - Double_(tau_min);
+    Double_ upper_limit_expr = Double_(tau_max) - torque_expr;
+    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+        lower_limit_expr, 1.0);
+    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+        upper_limit_expr, 1.0);
+  }
   return constraints;
 }
 
@@ -122,7 +149,7 @@ Values IECartPoleWithFriction::computeValues(const size_t &k, const double &q,
                                              const double &v,
                                              const double &a) const {
   Values values;
-  double tau = computeTau(a);
+  double tau = computeTau(q, a);
   double fx = computeFx(q, v, a);
   double fy = computeFy(q, v, a);
   values.insertDouble(QKey(k), q);
@@ -137,9 +164,9 @@ Values IECartPoleWithFriction::computeValues(const size_t &k, const double &q,
 /* ************************************************************************* */
 void IECartPoleWithFriction::PrintValues(const Values &values,
                                          const size_t num_steps) {
-  std::cout << std::setw(10) << "q" << std::setw(10) << "v" << std::setw(10)
-            << "a" << std::setw(10) << "tau" << std::setw(10) << "fx"
-            << std::setw(10) << "fy"
+  std::cout << std::setw(12) << "q" << std::setw(12) << "v" << std::setw(12)
+            << "a" << std::setw(12) << "tau" << std::setw(12) << "fx"
+            << std::setw(12) << "fy"
             << "\n";
   for (size_t k = 0; k <= num_steps; k++) {
     double q = values.atDouble(QKey(k));
@@ -148,18 +175,18 @@ void IECartPoleWithFriction::PrintValues(const Values &values,
     double tau = values.atDouble(TauKey(k));
     double fx = values.atDouble(FxKey(k));
     double fy = values.atDouble(FyKey(k));
-    std::cout << std::setprecision(3) << std::setw(10) << q << std::setw(10)
-              << v << std::setw(10) << a << std::setw(10) << tau
-              << std::setw(10) << fx << std::setw(10) << fy << "\n";
+    std::cout << std::setprecision(5) << std::setw(12) << q << std::setw(12)
+              << v << std::setw(12) << a << std::setw(12) << tau
+              << std::setw(12) << fx << std::setw(12) << fy << "\n";
   }
 }
 
 /* ************************************************************************* */
 void IECartPoleWithFriction::PrintDelta(const VectorValues &values,
                                         const size_t num_steps) {
-  std::cout << std::setw(10) << "q" << std::setw(10) << "v" << std::setw(10)
-            << "a" << std::setw(10) << "tau" << std::setw(10) << "fx"
-            << std::setw(10) << "fy"
+  std::cout << std::setw(12) << "q" << std::setw(12) << "v" << std::setw(12)
+            << "a" << std::setw(12) << "tau" << std::setw(12) << "fx"
+            << std::setw(12) << "fy"
             << "\n";
   for (size_t k = 0; k <= num_steps; k++) {
     double q = values.at(QKey(k))(0);
@@ -168,8 +195,8 @@ void IECartPoleWithFriction::PrintDelta(const VectorValues &values,
     double tau = values.at(TauKey(k))(0);
     double fx = values.at(FxKey(k))(0);
     double fy = values.at(FyKey(k))(0);
-    std::cout << std::setw(10) << q << std::setw(10) << v << std::setw(10) << a
-              << std::setw(10) << tau << std::setw(10) << fx << std::setw(10)
+    std::cout << std::setw(12) << q << std::setw(12) << v << std::setw(12) << a
+              << std::setw(12) << tau << std::setw(12) << fx << std::setw(12)
               << fy << "\n";
   }
 }

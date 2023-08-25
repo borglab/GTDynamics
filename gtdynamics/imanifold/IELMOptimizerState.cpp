@@ -29,6 +29,11 @@ IELMState IELMState::FromLastIteration(const IELMIterDetails &iter_details,
   IELMState state;
   if (last_trial.step_is_successful) {
     state = IELMState(last_trial.new_manifolds, graph);
+    // TODO: will this cause early ending? (converged in this mode, but not for
+    // the overall problem)
+    if (last_trial.forced_indices_map.size() > 0) {
+      state.blocking_indices_map.mergeWith(last_trial.forced_indices_map);
+    }
   } else {
     // pick the trials with smallest error
     state = IELMState(iter_details.state.manifolds, graph);

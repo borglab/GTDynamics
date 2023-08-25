@@ -7,7 +7,7 @@
 
 /**
  * @file  IERetractor.cpp
- * @brief Tagent space basis implementations.
+ * @brief Retraction operation implementations for manifold with boundaries.
  * @author: Yetong Zhang
  */
 

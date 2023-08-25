@@ -123,6 +123,14 @@ public:
   /// equality constraints. Used for EQP-based methods.,
   ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const;
 
+  double evalIViolation() const {
+    return i_constraints_->evaluateViolationL2Norm(values_);
+  }
+
+  double evalEViolation() const {
+    return e_cc_->constraints_.evaluateViolationL2Norm(values_); 
+  }
+
 protected:
   /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(

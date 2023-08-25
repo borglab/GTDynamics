@@ -158,17 +158,7 @@ public:
                                                              expression_);
   }
 
-  gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override {
-    auto keyset = keys();
-    gtsam::KeyVector keyvector(keyset.begin(), keyset.end());
-    std::vector<gtsam::Matrix> H(keys().size());
-    expression_.value(x, H);
-    gtsam::MultiJacobian jac;
-    for (size_t i = 0; i < keyvector.size(); i++) {
-      jac.addJacobian(keyvector.at(i), H.at(i)); // TODO: divide by tolerance?
-    }
-    return jac;
-  }
+  gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override;
 };
 
 /// Container of InequalityConstraint.
@@ -200,45 +190,19 @@ public:
         std::forward<Args>(args)...));
   }
 
-  bool feasible(const gtsam::Values &x) const {
-    for (const auto &constraint : *this) {
-      if (!constraint->feasible(x))
-        return false;
-    }
-    return true;
-  }
+  bool feasible(const gtsam::Values &x) const;
 
-  gtsam::KeySet keys() const {
-    gtsam::KeySet keys;
-    for (const auto &constraint : *this) {
-      keys.merge(constraint->keys());
-    }
-    return keys;
-  }
+  /// Return keys involved in constraints.
+  gtsam::KeySet keys() const;
 
-  gtsam::VariableIndex varIndex() const {
-    gtsam::VariableIndex var_index;
-    for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
-      const auto &constraint = at(constraint_idx);
-      var_index.augmentExistingFactor(constraint_idx, constraint->keys());
-    }
-    return var_index;
-  }
+  gtsam::VariableIndex varIndex() const;
 
   /// Return the total dimension of constraints.
   size_t dim() const;
-};
 
-/// Evaluate the constraint violation (as L2 norm).
-inline double
-EvaluateConstraintViolationL2Norm(const InequalityConstraints &constraints,
-                                  const gtsam::Values &values) {
-  double violation = 0;
-  for (const auto &constraint : constraints) {
-    violation += pow(constraint->toleranceScaledViolation(values), 2);
-  }
-  return sqrt(violation);
-}
+  /// Evaluate the constraint violation (as L2 norm).
+  double evaluateViolationL2Norm(const gtsam::Values &values) const;
+};
 
 } // namespace gtdynamics
 
@@ -259,12 +223,22 @@ public:
 
 struct IndexSetMap : public std::map<Key, IndexSet> {
 public:
+  bool exists(const Key& key) const {
+    return find(key) != end();
+  }
+
   void addIndices(const Key &key, const IndexSet &index_set) {
-    if (find(key) == end()) {
+    if (!exists(key)) {
       insert({key, index_set});
     } else {
       IndexSet &current_indices = at(key);
       current_indices.insert(index_set.begin(), index_set.end());
+    }
+  }
+
+  void mergeWith(const IndexSetMap& new_map) {
+    for (const auto& it: new_map) {
+      addIndices(it.first, it.second);
     }
   }
 };

@@ -40,7 +40,7 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
   IEResultSummary summary;
   summary.exp_name = "soft";
   summary.variable_dim = result.dim();
-  summary.factor_dim = problem.costsDimension();
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() + problem.iConstraints().dim();
   summary.total_inner_iters = optimizer.getInnerIterations();
   summary.total_iters = optimizer.iterations();
   summary.cost = problem.evaluateCost(result);
@@ -77,13 +77,7 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
   BarrierItersDetail iters_details;
   summary.exp_name = "barrier";
   summary.variable_dim = result.dim();
-  summary.factor_dim = problem.costsDimension();
-  summary.total_inner_iters =
-      std::accumulate(intermediate_result.num_inner_iters.begin(),
-                      intermediate_result.num_inner_iters.end(), 0.0);
-  summary.total_iters =
-      std::accumulate(intermediate_result.num_iters.begin(),
-                      intermediate_result.num_iters.end(), 0.0);
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() + problem.iConstraints().dim();
   summary.cost = problem.evaluateCost(result);
   summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
   summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
@@ -103,6 +97,14 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
     iters_details.emplace_back(intermediate_result.mu_values[i],
                                intermediate_result.intermediate_values[i]);
   }
+  summary.total_inner_iters = summary.iters_summary.back().num_inner_iters;
+  // summary.total_iters = summary.iters_summary.back().num_iters; 
+
+  //     std::accumulate(intermediate_result.num_inner_iters.begin(),
+  //                     intermediate_result.num_inner_iters.end(), 0.0);
+  // summary.total_iters =
+  //     std::accumulate(intermediate_result.num_iters.begin(),
+  //                     intermediate_result.num_iters.end(), 0.0);
 
   return std::make_pair(summary, iters_details);
 }
@@ -121,7 +123,7 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   IEResultSummary summary;
   summary.exp_name = "mopt(1st order)";
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
-  summary.factor_dim = problem.costsDimension() - problem.eConstraints().dim();
+  summary.factor_dim = problem.costsDimension();
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.size();
@@ -158,7 +160,7 @@ OptimizeIELM(const IEConsOptProblem &problem,
   IEResultSummary summary;
   summary.exp_name = "mopt(2nd order)";
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
-  summary.factor_dim = problem.costsDimension() - problem.eConstraints().dim();
+  summary.factor_dim = problem.costsDimension();
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.size();

@@ -85,11 +85,14 @@ public:
   IdentifyChangeIndices(const IEManifoldValues &manifolds,
                         const IEManifoldValues &new_manifolds);
 
+  /// From manifolds to new manifolds, check which boundaries are approached
+  /// with rate larger than the threshold. If multiple boundaries are approached
+  /// for a manifold, pick the boundary with max approach rate.
   static IndexSetMap
   IdentifyApproachingIndices(const IEManifoldValues &manifolds,
                              const IEManifoldValues &new_manifolds,
                              const IndexSetMap &change_indices_map,
-                             const double& approach_rate_threshold);
+                             const double &approach_rate_threshold);
 
   static IEManifoldValues
   MoveToBoundaries(const IEManifoldValues &manifolds,
@@ -130,6 +133,19 @@ public:
         IEOptimizer::IndicesStr(state.blocking_indices_map);
     if (state_grad_blocking_str.size() > 0) {
       std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
+    }
+
+    for (const auto &it : state.manifolds) {
+      double i_error = it.second.evalIViolation();
+      double e_error = it.second.evalEViolation();
+      if (e_error > 1e-5) {
+        std::cout << "violating e: " << _defaultKeyFormatter(it.first) << " "
+                  << e_error << "\n";
+      }
+      if (i_error > 1e-5) {
+        std::cout << "violating i: " << _defaultKeyFormatter(it.first) << " "
+                  << i_error << "\n";
+      }
     }
 
     if (print_values) {

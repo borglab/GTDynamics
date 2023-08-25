@@ -30,7 +30,7 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
     double q = M_PI_2 - M_PI_2 * k / num_steps;
     double v = 0;
     double a = 0;
-    double tau = cp.computeTau(a);
+    double tau = cp.computeTau(q, a);
     double fx = cp.computeFx(q, v, a);
     double fy = cp.computeFy(q, v, a);
     values.insert(QKey(k), q);
@@ -45,8 +45,9 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
-  size_t num_steps = 10;
-  double dt = 0.1;
+  cp.include_torque_limits = true;
+  size_t num_steps = 20;
+  double dt = 0.05;
 
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
@@ -164,6 +165,10 @@ int main(int argc, char **argv) {
           lm_result.second.back().state.manifolds),
       num_steps, "../../results/pole_lm/values_final.txt");
 
+
+  IECartPoleWithFriction::PrintValues(IEOptimizer::CollectManifoldValues(
+          lm_result.second.back().state.manifolds), num_steps);
+
   // // Run LM optimization
   // {
   //   LevenbergMarquardtParams params;
@@ -184,11 +189,11 @@ int main(int argc, char **argv) {
 
   //   const auto &details = lm_optimizer.details();
 
-  //   for (const auto& iter_details : details) {
-  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
-  //                                   IECartPoleWithFriction::PrintValues,
-  //                                   IECartPoleWithFriction::PrintDelta);
-  //   }
+    for (const auto& iter_details : lm_result.second) {
+      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+                                    IECartPoleWithFriction::PrintValues,
+                                    IECartPoleWithFriction::PrintDelta);
+    }
   //   IECartPoleWithFriction::PrintValues(lm_result, num_steps);
   // }
 

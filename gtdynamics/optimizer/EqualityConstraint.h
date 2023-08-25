@@ -217,22 +217,12 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   size_t dim() const;
 
   /// Return keys involved in constraints.
-  gtsam::KeySet keys() const {
-    gtsam::KeySet keys;
-    for (const auto &constraint : *this) {
-      keys.merge(constraint->keys());
-    }
-    return keys;
-  }
+  gtsam::KeySet keys() const;
 
-  gtsam::VariableIndex varIndex() const {
-    gtsam::VariableIndex var_index;
-    for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
-      const auto &constraint = at(constraint_idx);
-      var_index.augmentExistingFactor(constraint_idx, constraint->keys());
-    }
-    return var_index;
-  }
+  /// Evaluate the constraint violation (as L2 norm).
+  double evaluateViolationL2Norm(const gtsam::Values &values) const;
+
+  gtsam::VariableIndex varIndex() const;
 };
 
 /// Create FactorZeroErrorConstraintConstraints from the factors of a graph.

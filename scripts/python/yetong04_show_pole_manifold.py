@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator
 import numpy as np
+from yetong00_utils import load_data
 
 class KinoDynamicPendulum:
   def __init__(self):
@@ -10,8 +11,8 @@ class KinoDynamicPendulum:
     self.r = 1
     self.g = 10
     self.mu = 0.8
-    self.tau_min = -100
-    self.tau_max = 100
+    self.tau_min = -25
+    self.tau_max = 25
 
   def torqueConstraint1(self, theta, w):
     return self.tau_min / (self.m * self.r ** 2) - self.g/self.r * np.cos(theta)
@@ -97,17 +98,6 @@ surf3 = ax.plot_surface(theta, w, fc2, color = color_fc2,
 surf4 = ax.plot_surface(theta, w, upper_bound, color = color_tl1,
                        linewidth=0)
 
-def load_data(filename):
-    data = []
-    with open(filename) as data_file:
-        lines = data_file.readlines()
-        for line in lines:
-            line = line.split()
-            line = [float(data) for data in line]
-            data.append(line)
-
-    return np.array(data)
-
 # data = load_data("data/gd.txt")
 
 # ax.scatter([0], [0], [0], c='k')
@@ -142,6 +132,12 @@ def load_data(filename):
 # plt.grid(False)
 ax.set_xlabel("q")
 ax.set_ylabel("v")
+
+
+filename = "results/pole_lm/values_final.txt"
+values = load_data(filename)
+ax.plot(values[:,0], values[:,1], values[:,2])
+
 
 plt.savefig("results/cp_manifold.pdf")
 plt.show()

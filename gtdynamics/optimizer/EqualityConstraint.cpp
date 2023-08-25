@@ -94,6 +94,35 @@ EqualityConstraints ConstraintsFromGraph(
 }
 
 /* ************************************************************************* */
+gtsam::KeySet EqualityConstraints::keys() const {
+  gtsam::KeySet keys;
+  for (const auto &constraint : *this) {
+    keys.merge(constraint->keys());
+  }
+  return keys;
+}
+
+/* ************************************************************************* */
+double EqualityConstraints::evaluateViolationL2Norm(
+    const gtsam::Values &values) const {
+  double violation = 0;
+  for (const auto &constraint : *this) {
+    violation += pow(constraint->toleranceScaledViolation(values).norm(), 2);
+  }
+  return sqrt(violation);
+}
+
+/* ************************************************************************* */
+gtsam::VariableIndex EqualityConstraints::varIndex() const {
+  gtsam::VariableIndex var_index;
+  for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
+    const auto &constraint = at(constraint_idx);
+    var_index.augmentExistingFactor(constraint_idx, constraint->keys());
+  }
+  return var_index;
+}
+
+/* ************************************************************************* */
 size_t EqualityConstraints::dim() const {
   size_t dimension = 0;
   for (const auto& constraint : *this) {

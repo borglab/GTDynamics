@@ -11,7 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include "imanifold/IEManifoldOptimizer.h"
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 
 using std::cout, std::setw, std::setprecision, std::endl;

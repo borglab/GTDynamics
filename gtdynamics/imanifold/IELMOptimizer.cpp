@@ -157,10 +157,12 @@ bool IELMOptimizer::checkModeChange(
   size_t trial_idx = details_->back().trials.size() - 1;
   bool failed_trial_exists = false;
   while (true) {
-    if (!details_->at(iter_idx).trials.at(trial_idx).step_is_successful) {
+    const auto& trial = details_->at(iter_idx).trials.at(trial_idx);
+    if (!trial.step_is_successful && trial.solve_successful) {
       failed_trial_exists = true;
       break;
     }
+    // change to previous trial
     if (trial_idx == 0) {
       if (iter_idx == first_i) {
         break;
@@ -211,7 +213,6 @@ bool IELMOptimizer::checkModeChange(
 void IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
                               const IELMState &currentState,
                               IELMTrial &trial) const {
-
   auto start = std::chrono::high_resolution_clock::now();
 
   // std::cout << "compute Delta\n";

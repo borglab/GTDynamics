@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include "gtdynamics/imanifold/IELMOptimizerState.h"
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
@@ -69,11 +68,7 @@ struct IEConsOptProblem : public gtdynamics::EqConsOptProblem {
 
   /// Return a graph of merit factors of constraints.
   double evaluateIConstraintViolationL2Norm(const gtsam::Values &values) const {
-    double violation = 0;
-    for (const auto &constraint : i_constraints_) {
-      violation += pow(constraint->toleranceScaledViolation(values), 2);
-    }
-    return sqrt(violation);
+    return i_constraints_.evaluateViolationL2Norm(values);
   }
 
   virtual gtsam::NonlinearFactorGraph

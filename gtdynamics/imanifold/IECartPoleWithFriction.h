@@ -40,8 +40,9 @@ public:
   double r = 1;
   double g = 10;
   double mu = 0.8;
-  double tau_min = -20;
-  double tau_max = 20;
+  double tau_min = -25;
+  double tau_max = 25;
+  bool include_torque_limits = false;
 
   IECartPoleWithFriction() {}
 
@@ -55,7 +56,9 @@ public:
                    OptionalJacobian<1, 1> H_v = {},
                    OptionalJacobian<1, 1> H_a = {}) const;
 
-  double computeTau(const double a) const { return m * r * r * a; }
+  double computeTau(const double q, const double a,
+                    OptionalJacobian<1, 1> H_q = {},
+                    OptionalJacobian<1, 1> H_a = {}) const;
 
   Double_ balanceFxExpr(const Double_ &q_expr, const Double_ &v_expr,
                         const Double_ &a_expr, const Double_ &fx_expr) const;
@@ -63,7 +66,8 @@ public:
   Double_ balanceFyExpr(const Double_ &q_expr, const Double_ &v_expr,
                         const Double_ &a_expr, const Double_ &fy_expr) const;
 
-  Double_ balanceRotExpr(const Double_ &a_expr, const Double_ &tau_expr) const;
+  Double_ balanceRotExpr(const Double_ &q_expr, const Double_ &a_expr,
+                         const Double_ &tau_expr) const;
 
   Double_ frictionConeExpr1(const Double_ &fx_expr,
                             const Double_ &fy_expr) const;
@@ -77,7 +81,9 @@ public:
   Values computeValues(const size_t &k, const double &q, const double &v,
                        const double &a) const;
 
-  Values defaultValues(const size_t &k) const {return computeValues(k, 0, 0, 0); }
+  Values defaultValues(const size_t &k) const {
+    return computeValues(k, 0, 0, 0);
+  }
 
   static void PrintValues(const Values &values, const size_t num_steps);
 

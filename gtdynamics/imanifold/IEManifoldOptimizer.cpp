@@ -11,9 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include "manifold/ConnectedComponent.h"
-#include "optimizer/EqualityConstraint.h"
-#include "optimizer/InequalityConstraint.h"
 #include <gtdynamics/imanifold/IEManifoldOptimizer.h>
 
 namespace gtsam {
@@ -292,8 +289,9 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
     const IEConstraintManifold &manifold = manifolds.at(key);
     const IEConstraintManifold &new_manifold = new_manifolds.at(key);
     auto i_constraints = manifolds.at(key).iConstraints();
-    IndexSet approach_indices;
 
+    double max_approach_rate = -1;
+    size_t max_approach_idx;
     for (const auto &idx : change_indices) {
       const auto &constraint = i_constraints->at(idx);
       double eval = (*constraint)(manifold.values());
@@ -302,14 +300,18 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
       // std::cout << "eval: " << eval << "\n";
       // std::cout << "new_eval: " << new_eval << "\n";
       // std::cout << "approach_rate: " << approach_rate << "\n";
-      if (approach_rate > approach_rate_threshold) {
-        approach_indices.insert(idx);
+      if (approach_rate > approach_rate_threshold && approach_rate > max_approach_rate) {
+        max_approach_idx = idx;
+        max_approach_rate = approach_rate;
       }
     }
-    if (approach_indices.size() > 0) {
-      approach_indices_map.insert({key, change_indices});
+    if (max_approach_rate > 0) {
+      IndexSet approach_indices;
+      approach_indices.insert(max_approach_idx);
+      approach_indices_map.insert({key, approach_indices});
     }
   }
+
   return approach_indices_map;
 }
 
