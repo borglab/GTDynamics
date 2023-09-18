@@ -67,11 +67,6 @@ target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
 
 ## Include headers needed
 
-# Add TBB headers
-if(GTDYNAMICS_WITH_TBB)
-  target_include_directories(gtdynamics PUBLIC ${TBB_INCLUDE_DIRS})
-endif()
-
 # Add includes for source directories 'BEFORE' any other include
 # paths so that the compiler uses GTDynamics headers in our source directory instead
 # of any previously installed GTDynamics headers.
