@@ -32,7 +32,8 @@ TEST(Slice, InverseKinematics) {
   const Slice slice(k);
 
   // Instantiate kinematics algorithms
-  auto parameters = boost::make_shared<KinematicsParameters>();
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
   Kinematics kinematics(parameters);
 
   // Create initial values
@@ -47,7 +48,7 @@ TEST(Slice, InverseKinematics) {
   // Do forward kinematics
   const std::string root_link_name("body");
   const auto root_link_id = robot.link(root_link_name)->id();
-  EXPECT(values.exists(internal::PoseKey(root_link_id, k)));
+  EXPECT(values.exists(PoseKey(root_link_id, k)));
   auto fk = robot.forwardKinematics(values, k, std::string(root_link_name));
 
   // Check goals with FK solution
@@ -74,7 +75,7 @@ TEST(Slice, InverseKinematics) {
   // GTD_PRINT(*factor);
 
   // Check that goals are achieved
-  constexpr double tol = 0.01;
+  constexpr double tol = 1e-5;
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));
   }

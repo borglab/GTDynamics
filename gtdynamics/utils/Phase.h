@@ -16,8 +16,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/ConstraintSpec.h>
-#include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/FootContactConstraintSpec.h>
+#include <gtdynamics/utils/Interval.h>
 
 #include <iosfwd>
 
@@ -25,20 +25,23 @@ namespace gtdynamics {
 /**
  * @class Phase class stores information about a robot stance
  * and its duration.
+ *
+ * For example, a walking robot's leg can be in stance phase or swing phase
+ * depending on whether the foot is in contact (stance), or not (swing).
  */
 
 class Phase : public Interval {
  protected:
-  boost::shared_ptr<ConstraintSpec> constraint_spec_;
+  std::shared_ptr<ConstraintSpec> constraint_spec_;
 
  public:
   /// Constructor
   Phase(size_t k_start, size_t k_end,
-        const boost::shared_ptr<ConstraintSpec> &constraint_spec)
+        const std::shared_ptr<ConstraintSpec> &constraint_spec)
       : Interval(k_start, k_end), constraint_spec_(constraint_spec) {}
 
-  ///Return Constraint Spec pointer
-  const boost::shared_ptr<const ConstraintSpec> constraintSpec() const {
+  /// Return Constraint Spec pointer
+  const std::shared_ptr<const ConstraintSpec> constraintSpec() const {
     return constraint_spec_;
   }
 
@@ -50,7 +53,6 @@ class Phase : public Interval {
 
   /// Parse results into a matrix, in order: qs, qdots, qddots, taus, dt
   gtsam::Matrix jointMatrix(const Robot &robot, const gtsam::Values &results,
-                            size_t k = 0,
-                            boost::optional<double> dt = boost::none) const;
+                            size_t k = 0, std::optional<double> dt = {}) const;
 };
 }  // namespace gtdynamics

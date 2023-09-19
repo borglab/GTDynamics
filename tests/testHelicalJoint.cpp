@@ -12,18 +12,21 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/HelicalJoint.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
+#include <gtsam/base/serializationTestHelpers.h>
 
 using namespace gtdynamics;
-
-using gtsam::assert_equal, gtsam::Pose3, gtsam::Point3, gtsam::Rot3;
+using gtsam::assert_equal;
+using gtsam::Point3;
+using gtsam::Pose3;
+using gtsam::Rot3;
 
 /**
  * Construct a Screw joint via Parameters and ensure all values are as
@@ -40,7 +43,7 @@ TEST(Joint, params_constructor) {
   parameters.scalar_limits.value_upper_limit = 1.57;
   parameters.scalar_limits.value_limit_threshold = 0;
 
-  auto j1 = boost::make_shared<HelicalJoint>(
+  auto j1 = std::make_shared<HelicalJoint>(
       123, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
       gtsam::Vector3(1, 0, 0), 0.5, parameters);
 
@@ -93,6 +96,27 @@ TEST(Joint, params_constructor) {
   EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold,
                       j1->parameters().scalar_limits.value_limit_threshold));
 }
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
+
+TEST(HelicalJoint, Serialization) {
+  auto robot = simple_urdf::getRobot();
+  auto l1 = robot.link("l1");
+  auto l2 = robot.link("l2");
+
+  JointParams parameters;
+
+  auto j1 = std::make_shared<HelicalJoint>(
+      123, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2,
+      gtsam::Vector3(1, 0, 0), 0.5, parameters);
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsDereferenced(j1));
+  EXPECT(equalsDereferencedXML(j1));
+  EXPECT(equalsDereferencedBinary(j1));
+}
+#endif
 
 int main() {
   TestResult tr;

@@ -12,14 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -67,12 +67,46 @@ TEST(Link, NumJoints) {
 
   EXPECT_LONGS_EQUAL(1, l1->numJoints());
 
-  auto j2 = boost::make_shared<RevoluteJoint>(
+  auto j2 = std::make_shared<RevoluteJoint>(
       123, "j2", Pose3(Rot3(), Point3(0, 0.5, 2)), l1, l2,
       gtsam::Vector3(1, 0, 0), JointParams());
 
   l1->addJoint(j2);
   EXPECT_LONGS_EQUAL(2, l1->numJoints());
+}
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+
+using namespace gtsam::serializationTestHelpers;
+
+// Declaration needed for serialization of derived class.
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+
+TEST(Link, Serialization) {
+  Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+            Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+  EXPECT(equalsObj(link));
+  EXPECT(equalsXML(link));
+  EXPECT(equalsBinary(link));
+
+  // Test link with joints
+  auto robot = simple_urdf::getRobot();
+  auto l1 = robot.link("l1");
+  EXPECT(equalsDereferenced(l1));
+  EXPECT(equalsDereferencedXML(l1));
+  EXPECT(equalsDereferencedBinary(l1));
+}
+#endif
+
+TEST(Link, Print) {
+  Link link(1, "l1", 100.0, gtsam::Vector3(3, 2, 1).asDiagonal(),
+            Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+
+  std::string expected =
+      "l1, id=1:\n"
+      "	com pose:   0 -0  0, 0 0 1\n"
+      "	link pose:  0 -0  0, 0 0 0\n";
+  EXPECT(gtsam::assert_print_equal(expected, link));
 }
 
 int main() {

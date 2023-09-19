@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
@@ -26,6 +27,9 @@ namespace gtdynamics {
 
 /// Optimization parameters shared between all solvers
 struct OptimizationParameters {
+  enum Method { SOFT_CONSTRAINTS = 0, PENALTY = 1, AUGMENTED_LAGRANGIAN = 2 };
+
+  Method method = Method::SOFT_CONSTRAINTS;       // optimization method
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
   OptimizationParameters() {
     lm_parameters.setlambdaInitial(1e7);
@@ -36,13 +40,13 @@ struct OptimizationParameters {
 /// Base class for GTDynamics optimizer hierarchy.
 class Optimizer {
  protected:
-  boost::shared_ptr<const OptimizationParameters> p_;
+  const OptimizationParameters p_;
 
  public:
   /**
    * @fn Constructor.
    */
-  Optimizer(const boost::shared_ptr<const OptimizationParameters>& parameters)
+  Optimizer(const OptimizationParameters& parameters = OptimizationParameters())
       : p_(parameters) {}
 
   /**
@@ -52,7 +56,19 @@ class Optimizer {
    * @param initial_values Initial values for all variables.
    * @return Values The result of the optimization.
    */
+  // TODO(yetong): remove after discussing with team
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
+                         const gtsam::Values& initial_values) const;
+
+  /**
+   * @brief optimize with constraints using optimizer settings.
+   *
+   * @param graph a Nonlinear factor graph built by derived class
+   * @param initial_values Initial values for all variables.
+   * @return Values The result of the optimization.
+   */
+  gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
+                         const EqualityConstraints& constraints,
                          const gtsam::Values& initial_values) const;
 };
 }  // namespace gtdynamics

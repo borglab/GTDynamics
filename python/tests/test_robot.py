@@ -13,22 +13,31 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
 
-import gtdynamics as gtd
-
 
 class TestRobot(GtsamTestCase):
     """Tests for the Robot class."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot
-        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1.urdf")
+        self.ROBOT_MODEL = osp.join(gtd.URDF_PATH, "a1", "a1.urdf")
+
+    def test_fixed_joint(self):
+        """Test if the fixed joint is parsed correctly."""
+        robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL, "", True)
+        # Try to get the fixed links
+        self.assertIsNotNone(robot.link("FR_toe"))
+        self.assertIsNotNone(robot.link("FL_toe"))
+        self.assertIsNotNone(robot.link("RR_toe"))
+        self.assertIsNotNone(robot.link("RL_toe"))
 
     def test_forward_kinematics(self):
-        """Test if forward kinematics are correct via comparison to a 3rd party library."""
+        """Test if FK is correct via comparison to a 3rd party library."""
         robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL)
 
         th = {}
@@ -47,45 +56,40 @@ class TestRobot(GtsamTestCase):
         for idx, joint in enumerate(joints):
             th[joint] = joint_angles[idx]
             gtd.InsertJointAngle(joint_angles_values,
-                                       robot.joint(joint).id(),
-                                       joint_angles[idx])
+                                 robot.joint(joint).id(), joint_angles[idx])
 
         # Forward kinematics via GTDynamics.
         fk = robot.forwardKinematics(joint_angles_values, 0, "trunk")
 
-        # Transform from lower link CoM frame to CoM of combined lower+toe link.
-        # Lower and toe links are combined since they are connected by a fixed joint.
+        # Transform from lower link CoM to CoM of combined lower+toe link.
+        # Lower + toe links are combined as they are connected by fixed joint.
         lowerTcom = Pose3(Rot3(), Point3(-0.00170571, 4.63725e-07, -0.0245871))
 
         # Dict of link-transforms where the transform is
         # from the link frame to the link CoM frame.
         lTcom_adjustments = {
-            "FL_hip":
-            Pose3(Rot3(), Point3(-0.003311, 0.000635, 3.1e-05)),
-            "FL_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "FL_upper":
-            Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
-            "FR_hip":
-            Pose3(Rot3(), Point3(-0.003311, -0.000635, 3.1e-05)),
-            "FR_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "FR_upper":
-            Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
-            "RL_hip":
-            Pose3(Rot3(), Point3(0.003311, 0.000635, 3.1e-05)),
-            "RL_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "RL_upper":
-            Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
-            "RR_hip":
-            Pose3(Rot3(), Point3(0.003311, -0.000635, 3.1e-05)),
-            "RR_lower":
-            Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)).compose(lowerTcom),
-            "RR_upper":
-            Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
-            "trunk":
-            Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515)),
+            "FL_hip": Pose3(Rot3(), Point3(-0.003311, 0.000635, 3.1e-05)),
+            "FL_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "FL_upper": Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
+            "FL_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FL_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FR_hip": Pose3(Rot3(), Point3(-0.003311, -0.000635, 3.1e-05)),
+            "FR_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "FR_upper": Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
+            "FR_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "FR_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RL_hip": Pose3(Rot3(), Point3(0.003311, 0.000635, 3.1e-05)),
+            "RL_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "RL_upper": Pose3(Rot3(), Point3(-0.003237, -0.022327, -0.027326)),
+            "RL_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RL_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RR_hip": Pose3(Rot3(), Point3(0.003311, -0.000635, 3.1e-05)),
+            "RR_lower": Pose3(Rot3(), Point3(0.006435, 0.0, -0.107388)),
+            "RR_upper": Pose3(Rot3(), Point3(-0.003237, 0.022327, -0.027326)),
+            "RR_toe": Pose3(Rot3(), Point3(0, 0, 0)),
+            "RR_upper_shoulder": Pose3(Rot3(), Point3(0, 0, 0)),
+            "trunk": Pose3(Rot3(), Point3(0.012731, 0.002186, 0.000515)),
+            "imu_link": Pose3()
         }
 
         # True FK poses computed using kinpy
@@ -99,6 +103,12 @@ class TestRobot(GtsamTestCase):
             "FL_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (0.170269, 0.129864, -0.000515)),
+            "FL_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.129864, -0.400515)),
+            "FL_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, 0.125814, -0.000515)),
             "FR_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (0.170269, -0.049186, -0.000515)),
@@ -108,6 +118,13 @@ class TestRobot(GtsamTestCase):
             "FR_upper":
             Pose3(Rot3.Quaternion(0.99875026, 0.0, 0.04997917, 0.),
                   (0.170269, -0.134236, -0.000515)),
+            "FR_toe":
+            Pose3(
+                Rot3.Quaternion(0.9987502603949663, 0., 0.049979169270678324,
+                                0.), (0.130336, -0.134236, -0.398517)),
+            "FR_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (0.170269, -0.130186, -0.000515)),
             "RL_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, 0.044814, -0.000515)),
@@ -117,6 +134,12 @@ class TestRobot(GtsamTestCase):
             "RL_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, 0.129864, -0.000515)),
+            "RL_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.129864, -0.400515)),
+            "RL_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, 0.125814, -0.000515)),
             "RR_hip":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, -0.049186, -0.000515)),
@@ -126,18 +149,41 @@ class TestRobot(GtsamTestCase):
             "RR_upper":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.195731, -0.134236, -0.000515)),
+            "RR_toe":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.134236, -0.400515)),
+            "RR_upper_shoulder":
+            Pose3(Rot3.Quaternion(1., 0., 0., 0.),
+                  (-0.195731, -0.130186, -0.000515)),
             "trunk":
             Pose3(Rot3.Quaternion(1., 0., 0., 0.),
                   (-0.012731, -0.002186, -0.000515)),
+            "imu_link":
+            Pose3(Rot3(), Point3(-0.012731, -0.002186, -0.000515))
         }
         # Test all the links
         for link in robot.links():
             lTcom = lTcom_adjustments[link.name()]
+            if "_lower" in link.name():
+                lTcom = lTcom.compose(lowerTcom)
+
             bTl = bTl_poses[link.name()]
             expected_bTcom = bTl.compose(lTcom)
 
             actual_bTcom = gtd.Pose(fk, link.id(), 0)
             self.gtsamAssertEquals(actual_bTcom, expected_bTcom, tol=1e-3)
+
+    def test_joint_type(self):
+        """Test if joint.type() works"""
+        robot = gtd.CreateRobotFromFile(self.ROBOT_MODEL, "", True)
+
+        # Test Revolute joint
+        joint = robot.joint("FL_hip_joint")
+        self.assertEqual(joint.type(), gtd.Joint.Type.Revolute)
+
+        # Test Fixed joint
+        imu_joint = robot.joint("imu_joint")
+        self.assertEqual(imu_joint.type(), gtd.Joint.Type.Fixed)
 
 
 if __name__ == "__main__":

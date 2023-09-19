@@ -13,11 +13,10 @@
 
 import unittest
 
+import gtdynamics as gtd
 import gtsam
 import numpy as np
 from gtsam import Pose3, Rot3
-
-import gtdynamics as gtd
 
 
 class TestFourBar(unittest.TestCase):
@@ -33,10 +32,10 @@ class TestFourBar(unittest.TestCase):
         l4_pose = Pose3(Rot3.Rz(np.pi * 3 / 2), (0, 2, 0))
         com = Pose3(Rot3(), (1, 0, 0))
 
-        link1 = gtd.Link(1, "l1", 1, inertia, l1_pose*com, l1_pose)
-        link2 = gtd.Link(2, "l2", 1, inertia, l2_pose*com, l2_pose)
-        link3 = gtd.Link(3, "l3", 1, inertia, l3_pose*com, l3_pose)
-        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose*com, l4_pose, True)
+        link1 = gtd.Link(1, "l1", 1, inertia, l1_pose * com, l1_pose)
+        link2 = gtd.Link(2, "l2", 1, inertia, l2_pose * com, l2_pose)
+        link3 = gtd.Link(3, "l3", 1, inertia, l3_pose * com, l3_pose)
+        link4 = gtd.Link(4, "l4", 1, inertia, l4_pose * com, l4_pose, True)
 
         links = {"l1": link1, "l2": link2, "l3": link3, "l4": link4}
 
@@ -86,9 +85,8 @@ class TestFourBar(unittest.TestCase):
         torques = np.array([1, 0, 0, 0])
         for idx, joint in enumerate(robot.joints()):
             gtd.InsertJointAngle(known_values, joint.id(), 0,
-                                       joint_angles[idx])
-            gtd.InsertJointVel(known_values, joint.id(), 0,
-                                     joint_vels[idx])
+                                 joint_angles[idx])
+            gtd.InsertJointVel(known_values, joint.id(), 0, joint_vels[idx])
             gtd.InsertTorque(known_values, joint.id(), 0, torques[idx])
 
         prior_graph = graph_builder.forwardDynamicsPriors(
@@ -96,11 +94,12 @@ class TestFourBar(unittest.TestCase):
         graph.push_back(prior_graph)
 
         # construct init values and solve
-        init_values = gtd.ZeroValues(robot, 0, 0)
+        initializer = gtd.Initializer()
+        init_values = initializer.ZeroValues(robot, 0, 0)
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
         result = optimizer.optimize()
 
-        a1_key = gtd.internal.JointAccelKey(1, 0).key()
+        a1_key = gtd.JointAccelKey(1, 0)
         a1 = result.atDouble(a1_key)
         self.assertAlmostEqual(a1, 0.125, 5)  # regression. Show work!
 

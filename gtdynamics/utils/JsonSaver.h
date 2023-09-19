@@ -9,6 +9,15 @@
 
 #pragma once
 
+#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/factors/TwistAccelFactor.h>
+#include <gtdynamics/factors/TwistFactor.h>
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
+#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/factors/WrenchPlanarFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -17,25 +26,15 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <typeinfo>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/factors/WrenchFactor.h"
-#include "gtdynamics/factors/WrenchPlanarFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/utils.h"
 
 #define kQuote_ "\""
 
@@ -54,7 +53,7 @@ namespace gtdynamics {
 class JsonSaver {
  public:
   typedef std::pair<std::string, std::string> AttributeType;
-  typedef boost::shared_ptr<gtsam::Value> ValuePtr;
+  typedef std::shared_ptr<gtsam::Value> ValuePtr;
   typedef std::map<gtsam::Key, gtsam::Vector3> LocationType;
   typedef std::map<std::string, gtsam::Vector3> StrLocationType;
 
@@ -199,12 +198,12 @@ class JsonSaver {
   static inline std::string GetMeasurement(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
     std::stringstream ss;
-    if (const TorqueFactor* f = dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      auto joint = f->getJoint();
-      ss << GetVector(joint->screwAxis(joint->child()).transpose());
-    } else if (const gtsam::PriorFactor<gtsam::Vector3>* f =
-                   dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
-                       &(*factor))) {
+    // if (const TorqueFactor* f = dynamic_cast<const
+    // TorqueFactor*>(&(*factor))) { auto joint = f->getJoint(); ss <<
+    // GetVector(joint->screwAxis(joint->child()).transpose());
+    if (const gtsam::PriorFactor<gtsam::Vector3>* f =
+            dynamic_cast<const gtsam::PriorFactor<gtsam::Vector3>*>(
+                &(*factor))) {
       ss << GetVector(f->prior().transpose());
     } else if (const gtsam::PriorFactor<gtsam::Vector6>* f =
                    dynamic_cast<const gtsam::PriorFactor<gtsam::Vector6>*>(
@@ -225,21 +224,8 @@ class JsonSaver {
    */
   static inline std::string GetType(
       const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (dynamic_cast<const WrenchFactor*>(&(*factor))) {
-      return "Wrench";
-    } else if (dynamic_cast<const PoseFactor*>(&(*factor))) {
-      return "Pose";
-    } else if (dynamic_cast<const TwistFactor*>(&(*factor))) {
-      return "Twist";
-    } else if (dynamic_cast<const TwistAccelFactor*>(&(*factor))) {
-      return "TwistAccel";
-    } else if (dynamic_cast<const TorqueFactor*>(&(*factor))) {
-      return "Torque";
-    } else if (dynamic_cast<const WrenchPlanarFactor*>(&(*factor))) {
-      return "WrenchPlanar";
-    } else if (dynamic_cast<const WrenchEquivalenceFactor*>(&(*factor))) {
-      return "WrenchEq";
-    } else if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
+    // TODO(yetong): use RTTI to detect run-time factor type.
+    if (dynamic_cast<const gtsam::PriorFactor<double>*>(&(*factor))) {
       return "Prior";
     } else if (dynamic_cast<const gtsam::PriorFactor<gtsam::Vector>*>(
                    &(*factor))) {
@@ -272,8 +258,9 @@ class JsonSaver {
                      dynamic_cast<const gtsam::noiseModel::Isotropic*>(
                          &(*noise_model))) {
         // isotropic
-        ss << boost::format("isotropic dim=%1% sigma=%2%") %
-                  true_noise_model->dim() % true_noise_model->sigma();
+        ss << "isotropic dim=" << true_noise_model->dim()
+           << " sigma=" << true_noise_model->sigma();
+
       } else if (const gtsam::noiseModel::Constrained* true_noise_model =
                      dynamic_cast<const gtsam::noiseModel::Constrained*>(
                          &(*noise_model))) {
@@ -375,7 +362,7 @@ class JsonSaver {
 
     if (values.exists(key)) {
       // value
-      boost::optional<gtsam::Vector3> location;
+      std::optional<gtsam::Vector3> location;
       attributes.emplace_back(Quoted("value"),
                               Quoted(GetValue(values.at(key))));
 
@@ -605,7 +592,7 @@ class JsonSaver {
 class StorageManager {
  private:
   typedef JsonSaver::AttributeType AttributeType;
-  typedef boost::shared_ptr<gtsam::Value> ValuePtr;
+  typedef std::shared_ptr<gtsam::Value> ValuePtr;
   typedef std::map<gtsam::Key, std::vector<ValuePtr>> StorageMap;
   typedef std::pair<gtsam::Key, std::vector<ValuePtr>> StorageEntry;
   StorageMap storage_;

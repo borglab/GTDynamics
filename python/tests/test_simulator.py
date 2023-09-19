@@ -14,18 +14,17 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import numpy as np
 from gtsam import Values
 from gtsam.utils.test_case import GtsamTestCase
-
-import gtdynamics as gtd
 
 
 class TestLink(GtsamTestCase):
     """Test Simulator Class"""
 
     URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                         "urdfs")
+                         "models", "urdfs")
 
     def test_simulator(self):
         """Test simulating two steps on a simple one-link robot."""

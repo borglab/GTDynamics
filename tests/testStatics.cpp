@@ -12,13 +12,11 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/numericalDerivative.h>
 
-#include <boost/bind.hpp>
 #include <cmath>
-
-#include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -39,7 +37,8 @@ TEST(Statics, GravityWrench1) {
   EXPECT(assert_equal((Vector(6) << 0, 0, 0, 0, 0, -100 * g).finished(),
                       GravityWrench(gravity, mass, wTcom, actualH), kTol));
   Matrix6 numericalH = numericalDerivative11<Vector6, Pose3>(
-      boost::bind(&GravityWrench, gravity, mass, _1, boost::none), wTcom);
+      std::bind(&GravityWrench, gravity, mass, std::placeholders::_1, nullptr),
+      wTcom);
   EXPECT(assert_equal(numericalH, actualH, kTol));
 }
 
@@ -51,7 +50,8 @@ TEST(Statics, GravityWrench2) {
   EXPECT(assert_equal((Vector(6) << 0, 0, 0, 0, -15 * g, 0).finished(),
                       GravityWrench(gravity, mass, wTcom, actualH), kTol));
   Matrix6 numericalH = numericalDerivative11<Vector6, Pose3>(
-      boost::bind(&GravityWrench, gravity, mass, _1, boost::none), wTcom);
+      std::bind(&GravityWrench, gravity, mass, std::placeholders::_1, nullptr),
+      wTcom);
   EXPECT(assert_equal(numericalH, actualH, kTol));
 }
 
@@ -61,7 +61,7 @@ TEST(Statics, ResultantWrench) {
   wrenches[1] << 6, 5, 4, 3, 2, 1;
   std::vector<Matrix> actualH(2);
   EXPECT(assert_equal((Vector(6) << 7, 7, 7, 7, 7, 7).finished(),
-                      ResultantWrench(wrenches, actualH), kTol));
+                      ResultantWrench(wrenches, &actualH), kTol));
   Matrix expected(6, 6);
   expected.setIdentity();
   EXPECT(assert_equal(expected, actualH[0], kTol));

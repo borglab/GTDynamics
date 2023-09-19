@@ -12,10 +12,9 @@
 import os.path as osp
 import unittest
 
+import gtdynamics as gtd
 import gtsam
 import numpy as np
-
-import gtdynamics as gtd
 
 
 class TestDynamicsGraph(unittest.TestCase):
@@ -25,7 +24,7 @@ class TestDynamicsGraph(unittest.TestCase):
 
         # load example robot
         SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                            "sdfs")
+                            "models", "sdfs")
         simple_rr = gtd.CreateRobotFromFile(
             osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
 

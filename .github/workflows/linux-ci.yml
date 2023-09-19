@@ -11,26 +11,25 @@ jobs:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      GTSAM_BUILD_UNSTABLE: ${{ matrix.build_unstable }}
+
     strategy:
       fail-fast: false
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10]
+        name: [ubuntu-20.04-gcc-9, ubuntu-20.04-clang-10]
 
         build_type: [Debug, Release]
-        build_unstable: [ON]
         include:
-          - name: ubuntu-18.04-gcc-9
-            os: ubuntu-18.04
+          - name: ubuntu-20.04-gcc-9
+            os: ubuntu-20.04
             compiler: gcc
             version: "9"
 
-         - name: ubuntu-18.04-clang-10
-           os: ubuntu-18.04
-           compiler: clang
-           version: "10"
+          - name: ubuntu-20.04-clang-10
+            os: ubuntu-20.04
+            compiler: clang
+            version: "10"
 
     steps:
       - name: Setup Compiler
@@ -41,9 +40,10 @@ jobs:
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
 
           else
+            sudo apt-get -y clean && sudo apt-get -y update
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
-            echo "CC=clang" >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
+            echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
           fi
 
       - name: Install Dependencies
@@ -53,17 +53,19 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libsdformat10-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
+
+          # Install CppUnitLite.
+          git clone https://github.com/borglab/CppUnitLite.git
+          cd CppUnitLite && mkdir build && cd $_
+          cmake .. && sudo make -j4 install
+          cd ../../
 
       - name: GTSAM
         run: |
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
-          mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
-          sudo make -j$(nproc) install
-          sudo ldconfig
-          cd ../../ # go back to home directory
+          sudo add-apt-repository -y ppa:borglab/gtsam-develop
+          sudo apt-get -y update
+          sudo apt-get -y install libgtsam-no-tbb-dev libgtsam-no-tbb-unstable-dev
 
       - name: Checkout
         uses: actions/checkout@master
@@ -73,7 +75,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..
         working-directory: ./build
 
       - name: Build
@@ -82,4 +84,8 @@ jobs:
 
       - name: Test
         run: make -j$(nproc) check
+        working-directory: ./build
+
+      - name: Install
+        run: sudo make -j$(nproc) install
         working-directory: ./build

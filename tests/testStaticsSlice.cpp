@@ -12,10 +12,10 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
 
 #include "contactGoalsExample.h"
-#include "gtdynamics/statics/Statics.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -44,8 +44,8 @@ TEST(Statics, OneMovingLink) {
   const Pose3 bMcom(Rot3(), Point3(L / 2, 0, 0));
   const auto I3 = Matrix3::Identity();  // inertia
   auto base =
-      boost::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3(), true);
-  auto link = boost::make_shared<Link>(1, "link", 1.0, I3, bMcom, Pose3());
+      std::make_shared<Link>(0, "base", 1e10, I3, Pose3(), Pose3(), true);
+  auto link = std::make_shared<Link>(1, "link", 1.0, I3, bMcom, Pose3());
 
   // Create joint
   constexpr unsigned char id = 22;
@@ -53,7 +53,7 @@ TEST(Statics, OneMovingLink) {
   const Pose3 bMj;
   const Vector3 axis(0, 0, 1);
   auto joint =
-      boost::make_shared<RevoluteJoint>(id, "joint1", bMj, base, link, axis);
+      std::make_shared<RevoluteJoint>(id, "joint1", bMj, base, link, axis);
 
   // Create mechanism.
   // TODO(frank): specifying name is redundant and failure prone!
@@ -70,8 +70,7 @@ TEST(Statics, OneMovingLink) {
   EXPECT_DOUBLES_EQUAL(expected_tau, tau, kTol);
 
   // Now do statics using GTD.
-  auto parameters2D =
-      boost::make_shared<StaticsParameters>(kSigmaDynamics, gravity2D);
+  StaticsParameters parameters2D(kSigmaDynamics, gravity2D);
   Statics statics(parameters2D);
   const size_t k = 777;
   const Slice slice(k);
@@ -105,8 +104,7 @@ TEST(Statics, Quadruped) {
 
   // Instantiate statics algorithms
   const Vector3 kGravity(0, 0, -10);
-  auto parameters3D =
-      boost::make_shared<StaticsParameters>(kSigmaDynamics, kGravity);
+  StaticsParameters parameters3D(kSigmaDynamics, kGravity);
   Statics statics(parameters3D);
 
   // Get an inverse kinematics solution

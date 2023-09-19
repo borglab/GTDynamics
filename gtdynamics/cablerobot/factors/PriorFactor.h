@@ -8,10 +8,8 @@
 
 #pragma once
 
-#include <gtdynamics/utils/DynamicsSymbol.h>
-
-#include <gtsam/nonlinear/PriorFactor.h>
 #include <gtsam/base/Testable.h>
+#include <gtsam/nonlinear/PriorFactor.h>
 
 #include <string>
 

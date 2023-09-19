@@ -18,7 +18,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 
@@ -71,9 +70,9 @@ class ForceBalanceFactor
   */
   gtsam::Vector evaluateError(
       const double &delta_x, const double &q, const double &f,
-      boost::optional<gtsam::Matrix &> H_delta_x = boost::none,
-      boost::optional<gtsam::Matrix &> H_q = boost::none,
-      boost::optional<gtsam::Matrix &> H_f = boost::none) const override {
+      gtsam::OptionalMatrixType H_delta_x = nullptr,
+      gtsam::OptionalMatrixType H_q = nullptr,
+      gtsam::OptionalMatrixType H_f = nullptr) const override {
     if (H_delta_x) *H_delta_x = H_delta_x_;
     if (H_q) *H_q = H_q_;
     if (H_f) *H_f = H_f_;
@@ -82,7 +81,7 @@ class ForceBalanceFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -95,6 +94,7 @@ class ForceBalanceFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -102,6 +102,7 @@ class ForceBalanceFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /** JointTorqueFactor is a three-way nonlinear factor which characterize
@@ -155,10 +156,10 @@ class JointTorqueFactor
   */
   gtsam::Vector evaluateError(
       const double &q, const double &v, const double &f, const double &torque,
-      boost::optional<gtsam::Matrix &> H_q = boost::none,
-      boost::optional<gtsam::Matrix &> H_v = boost::none,
-      boost::optional<gtsam::Matrix &> H_f = boost::none,
-      boost::optional<gtsam::Matrix &> H_torque = boost::none) const override {
+      gtsam::OptionalMatrixType H_q = nullptr,
+      gtsam::OptionalMatrixType H_v = nullptr,
+      gtsam::OptionalMatrixType H_f = nullptr,
+      gtsam::OptionalMatrixType H_torque = nullptr) const override {
     bool antagonistic_active =
         (positive_ && q > q_limit_) || (!positive_ && q < q_limit_);
     double delta_q = antagonistic_active ? q - q_limit_ : 0;
@@ -179,7 +180,7 @@ class JointTorqueFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -192,6 +193,7 @@ class JointTorqueFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -199,6 +201,7 @@ class JointTorqueFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /** SmoothActuatorFactor fits a smooth relationship between pressure,
@@ -235,9 +238,9 @@ class SmoothActuatorFactor
   */
   gtsam::Vector evaluateError(
       const double &delta_x, const double &p, const double &f,
-      boost::optional<gtsam::Matrix &> H_delta_x = boost::none,
-      boost::optional<gtsam::Matrix &> H_p = boost::none,
-      boost::optional<gtsam::Matrix &> H_f = boost::none) const override {
+      gtsam::OptionalMatrixType H_delta_x = nullptr,
+      gtsam::OptionalMatrixType H_p = nullptr,
+      gtsam::OptionalMatrixType H_f = nullptr) const override {
     double gauge_p = p - 101.325;
 
     if (H_f) {
@@ -264,14 +267,10 @@ class SmoothActuatorFactor
 
     double k = k_coeffs_.dot(gauge_p_powers2);
     double f0 = f0_coeffs_.dot(gauge_p_powers2);
-    double j_k_p, j_f0_p;
+    double j_k_p = 0, j_f0_p = 0;
     if (H_p) {
-      j_k_p = 0;
       for (size_t i = 1; i < 2; i++) {
         j_k_p += i * k_coeffs_(i) * gauge_p_powers2(i - 1);
-      }
-      j_f0_p = 0;
-      for (size_t i = 1; i < 2; i++) {
         j_f0_p += i * f0_coeffs_(i) * gauge_p_powers2(i - 1);
       }
     }
@@ -312,7 +311,7 @@ class SmoothActuatorFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -325,6 +324,7 @@ class SmoothActuatorFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -332,6 +332,7 @@ class SmoothActuatorFactor
     ar &boost::serialization::make_nvp(
         "SmoothActuatorFactor", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /** ClippingActuatorFactor (deprecated) fits a non-smooth relationship between
@@ -374,9 +375,9 @@ class ClippingActuatorFactor
   */
   gtsam::Vector evaluateError(
       const double &delta_x, const double &p, const double &f,
-      boost::optional<gtsam::Matrix &> H_delta_x = boost::none,
-      boost::optional<gtsam::Matrix &> H_p = boost::none,
-      boost::optional<gtsam::Matrix &> H_f = boost::none) const override {
+      gtsam::OptionalMatrixType H_delta_x = nullptr,
+      gtsam::OptionalMatrixType H_p = nullptr,
+      gtsam::OptionalMatrixType H_f = nullptr) const override {
     std::vector<double> p_powers(4, 1);
     std::vector<double> delta_x_powers(4, 1);
     for (size_t i = 1; i < 4; i++) {
@@ -464,7 +465,7 @@ class ClippingActuatorFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -477,6 +478,7 @@ class ClippingActuatorFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -484,6 +486,7 @@ class ClippingActuatorFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /** ActuatorVolumeFactor characterize the relationship between actuator volume
@@ -503,9 +506,9 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
   virtual ~ActuatorVolumeFactor() {}
 
  public:
-  double computeVolume(const double &l, boost::optional<gtsam::Matrix &> H_l =
-                                            boost::none) const {
-    gtsam::Vector4 l_powers(1, l, l*l, l*l*l);
+  double computeVolume(const double &l,
+                       gtsam::OptionalMatrixType H_l = nullptr) const {
+    gtsam::Vector4 l_powers(1, l, l * l, l * l * l);
     double expected_v = L_ * M_PI * pow(D_ / 2, 2);
     expected_v += c_.dot(l_powers);
 
@@ -520,9 +523,8 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
   }
 
   gtsam::Vector evaluateError(
-      const double &v, const double &l,
-      boost::optional<gtsam::Matrix &> H_v = boost::none,
-      boost::optional<gtsam::Matrix &> H_l = boost::none) const override {
+      const double &v, const double &l, gtsam::OptionalMatrixType H_v = nullptr,
+      gtsam::OptionalMatrixType H_l = nullptr) const override {
     double expected_v = computeVolume(l, H_l);
     if (H_v) {
       *H_v = -gtsam::I_1x1;
@@ -532,7 +534,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -545,6 +547,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -552,6 +555,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

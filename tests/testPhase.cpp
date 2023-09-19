@@ -12,14 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/Trajectory.h>
 
 #include <sstream>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/Phase.h"
-#include "gtdynamics/utils/Trajectory.h"
 #include "walkCycleExample.h"
 
 using namespace gtdynamics;
@@ -32,8 +32,10 @@ TEST(Phase, All) {
 
   using namespace walk_cycle_example;
   Phase phase1(0, 2, phase_1);
-  
-  auto phase1_foot_constraint = boost::static_pointer_cast<const FootContactConstraintSpec>(phase1.constraintSpec());
+
+  auto phase1_foot_constraint =
+      std::static_pointer_cast<const FootContactConstraintSpec>(
+          phase1.constraintSpec());
 
   Point3 cp = phase1_foot_constraint->contactPoint("tarsus_3_L3");
   EXPECT(assert_equal(contact_in_com, cp));
@@ -58,17 +60,19 @@ TEST(Phase, All) {
 
   // contactPointObjectives
   const Point3 step(0, 0.4, 0);
-  const gtsam::SharedNoiseModel cost_model = nullptr;
+  const gtsam::SharedNoiseModel cost_model = gtsam::noiseModel::Unit::Create(3);
   Point3 goal(1, 2, 3);
   const size_t k_start = 777;
   ContactPointGoals cp_goals = {{"tarsus_2_L2", goal},
-                                       {"tarsus_1_L1", goal},
-                                       {"tarsus_3_L3", goal},
-                                       {"tarsus_4_L4", goal},
-                                       {"tarsus_5_R4", goal}};
-  gtsam::NonlinearFactorGraph factors = phase1_foot_constraint->contactPointObjectives(
-      walk_cycle.contactPoints(), step, cost_model, k_start, cp_goals, 2);
-  auto new_goals = phase1_foot_constraint->updateContactPointGoals(walk_cycle.contactPoints(), step, cp_goals);
+                                {"tarsus_1_L1", goal},
+                                {"tarsus_3_L3", goal},
+                                {"tarsus_4_L4", goal},
+                                {"tarsus_5_R4", goal}};
+  gtsam::NonlinearFactorGraph factors =
+      phase1_foot_constraint->contactPointObjectives(
+          walk_cycle.contactPoints(), step, cost_model, k_start, cp_goals, 2);
+  auto new_goals = phase1_foot_constraint->updateContactPointGoals(
+      walk_cycle.contactPoints(), step, cp_goals);
 
   EXPECT_LONGS_EQUAL(num_time_steps * 5, factors.size());
   EXPECT(assert_equal(goal, new_goals["tarsus_2_L2"]));
