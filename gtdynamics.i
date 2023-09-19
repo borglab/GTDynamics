@@ -16,7 +16,7 @@ const gtsam::KeyFormatter GTDKeyFormatter;
 
 /********************** factors **********************/
 #include <gtdynamics/factors/JointMeasurementFactor.h>
-class JointMeasurementFactor : gtsam::NonlinearFactor {
+class JointMeasurementFactor : gtsam::NoiseModelFactor {
   JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
                          const gtsam::noiseModel::Base *cost_model,
                          const gtdynamics::Joint *joint,
@@ -78,7 +78,7 @@ class ContactPointFactor : gtsam::NoiseModelFactor {
 };
 
 #include <gtdynamics/factors/MinTorqueFactor.h>
-class MinTorqueFactor : gtsam::NonlinearFactor {
+class MinTorqueFactor : gtsam::NoiseModelFactor {
   MinTorqueFactor(gtsam::Key torque_key,
                const gtsam::noiseModel::Base *cost_model);
 
@@ -89,19 +89,19 @@ class MinTorqueFactor : gtsam::NonlinearFactor {
 /// TODO(yetong): remove the wrapper for WrenchFactor once EqualityConstraint is
 /// wrapped (Issue #319).
 #include <gtdynamics/factors/WrenchFactor.h>
-gtsam::NonlinearFactor* WrenchFactor(
+gtsam::NoiseModelFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtsam::Key> wrench_keys, int t = 0,
     const std::optional<gtsam::Vector3> &gravity);
 
 #include <gtdynamics/factors/CollocationFactors.h>
-class EulerPoseCollocationFactor : gtsam::NonlinearFactor {
+class EulerPoseCollocationFactor : gtsam::NoiseModelFactor {
   EulerPoseCollocationFactor(gtsam::Key pose_t0_key, gtsam::Key pose_t1_key,
                              gtsam::Key twist_key, gtsam::Key dt_key,
                              const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalPoseCollocationFactor : gtsam::NonlinearFactor {
+class TrapezoidalPoseCollocationFactor : gtsam::NoiseModelFactor {
   TrapezoidalPoseCollocationFactor(gtsam::Key pose_t0_key,
                                    gtsam::Key pose_t1_key,
                                    gtsam::Key twist_t0_key,
@@ -109,13 +109,13 @@ class TrapezoidalPoseCollocationFactor : gtsam::NonlinearFactor {
                                    const gtsam::noiseModel::Base *cost_model);
 };
 
-class EulerTwistCollocationFactor : gtsam::NonlinearFactor {
+class EulerTwistCollocationFactor : gtsam::NoiseModelFactor {
   EulerTwistCollocationFactor(gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
                               gtsam::Key accel_key, gtsam::Key dt_key,
                               const gtsam::noiseModel::Base *cost_model);
 };
 
-class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
+class TrapezoidalTwistCollocationFactor : gtsam::NoiseModelFactor {
   TrapezoidalTwistCollocationFactor(gtsam::Key twist_t0_key,
                                     gtsam::Key twist_t1_key,
                                     gtsam::Key accel_t0_key,
@@ -124,7 +124,7 @@ class TrapezoidalTwistCollocationFactor : gtsam::NonlinearFactor {
 };
 
 #include <gtdynamics/factors/ContactHeightFactor.h>
-class ContactHeightFactor : gtsam::NonlinearFactor {
+class ContactHeightFactor : gtsam::NoiseModelFactor {
   ContactHeightFactor(gtsam::Key pose_key, gtsam::noiseModel::Base *cost_model,
                       const gtsam::Point3 &cTcom, const gtsam::Vector3 &gravity,
                       double ground_plane_height = 0.0);
@@ -603,7 +603,7 @@ gtsam::NonlinearFactorGraph JointsAtRestObjectives(
     const gtsam::SharedNoiseModel &joint_velocity_model,
     const gtsam::SharedNoiseModel &joint_acceleration_model, int k = 0);
 
-class PointGoalFactor : gtsam::NonlinearFactor {
+class PointGoalFactor : gtsam::NoiseModelFactor {
   PointGoalFactor(gtsam::Key pose_key,                 //
                   gtsam::SharedNoiseModel cost_model,  //
                   gtsam::Point3 point_com,             //
@@ -837,7 +837,7 @@ class Trajectory {
   const Phase &phase(size_t p) const;
   size_t getStartTimeStep(size_t p) const;
   size_t getEndTimeStep(size_t p) const;
-  gtsam::NonlinearFactor pointGoalFactor(const gtdynamics::Robot &robot,
+  gtsam::NoiseModelFactor pointGoalFactor(const gtdynamics::Robot &robot,
                                   const string &link_name,
                                   const gtdynamics::PointOnLink &cp, size_t k,
                                   const gtsam::SharedNoiseModel &cost_model,
