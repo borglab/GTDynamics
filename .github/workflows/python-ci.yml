@@ -106,9 +106,11 @@ jobs:
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Install gtsam
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
+          # Clone gtsam
+          git clone https://github.com/borglab/gtsam.git $GITHUB_WORKSPACE/gtsam
+          cd $GITHUB_WORKSPACE/gtsam
+
+          # Build & Install gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
           sudo make -j$(nproc) install && sudo make python-install
