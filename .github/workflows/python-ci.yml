@@ -118,6 +118,9 @@ jobs:
 
           cd $GITHUB_WORKSPACE # go back to home directory
 
+          # Clean up after ourselves since we used `sudo`.
+          sudo rm -rf $GITHUB_WORKSPACE/gtsam
+
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
         run: |
