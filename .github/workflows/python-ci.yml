@@ -85,23 +85,10 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat12
 
-          # # Install CppUnitLite.
-          # git clone https://github.com/borglab/CppUnitLite.git
-          # cd CppUnitLite && mkdir build && cd $_
-          # cmake .. && sudo make -j4 install
-          # cd ../../
-
       - name: Python Dependencies
         run: |
           # Install dependencies for gtwrap
           pip3 install -U pip setuptools numpy pyparsing pyyaml
-
-      # - name: GTwrap
-      #   run: |
-      #     git clone https://github.com/borglab/wrap.git
-      #     cd wrap && mkdir build && cd $_
-      #     cmake .. && sudo make -j4 install
-      #     cd ../../
 
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
