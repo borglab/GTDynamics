@@ -115,6 +115,9 @@ jobs:
           sudo make -j$(nproc) install && sudo make python-install
           sudo ldconfig
 
+          cd ../
+          sudo rm -rf build
+
           cd $GITHUB_WORKSPACE # go back to home directory
 
       - name: GTSAM (macOS)
