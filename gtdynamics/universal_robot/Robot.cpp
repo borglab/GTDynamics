@@ -11,18 +11,17 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/universal_robot/Robot.h"
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 
 #include <algorithm>
 #include <memory>
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;
@@ -121,16 +120,13 @@ void Robot::print(const std::string &s) const {
 
   // Print links in sorted id order.
   cout << "LINKS:" << endl;
-  for (const auto &link : sorted_links) {
-    std::string fixed = link->isFixed() ? " (fixed)" : "";
-    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
-    cout << "\tcom pose: " << link->bMcom().rotation().rpy().transpose() << ", "
-         << link->bMcom().translation().transpose() << "\n";
+  for (auto &&link : sorted_links) {
+    cout << *link;
     cout << "\tjoints: ";
-    for (const auto &joint : link->joints()) {
+    for (auto &&joint : link->joints()) {
       cout << joint->name() << " ";
     }
-    cout << "\n";
+    cout << std::endl;
   }
 
   // Sort joints by id.
@@ -141,7 +137,7 @@ void Robot::print(const std::string &s) const {
 
   // Print joints in sorted id order.
   cout << "JOINTS:" << endl;
-  for (const auto &joint : sorted_joints) {
+  for (auto &&joint : sorted_joints) {
     cout << joint << endl;
 
     auto pTc = joint->parentTchild(0.0);
@@ -152,7 +148,7 @@ void Robot::print(const std::string &s) const {
 
 LinkSharedPtr Robot::findRootLink(
     const gtsam::Values &values,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
@@ -226,7 +222,7 @@ static bool InsertWithCheck(size_t i, size_t t,
 
 gtsam::Values Robot::forwardKinematics(
     const gtsam::Values &known_values, size_t t,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   gtsam::Values values = known_values;
 
   // Set root link.

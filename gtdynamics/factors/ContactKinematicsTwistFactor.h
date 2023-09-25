@@ -13,26 +13,24 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
 /**
- * ContactKinematicsTwistConstraint is a 3-dimensional constraint which enforces zero
- * linear velocity at the contact point for a link.
+ * ContactKinematicsTwistConstraint is a 3-dimensional constraint which enforces
+ * zero linear velocity at the contact point for a link.
  */
 inline gtsam::Vector3_ ContactKinematicsTwistConstraint(
     gtsam::Key twist_key, const gtsam::Pose3 &cTcom) {
@@ -74,7 +72,7 @@ class ContactKinematicsTwistFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -87,6 +85,7 @@ class ContactKinematicsTwistFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -94,6 +93,7 @@ class ContactKinematicsTwistFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

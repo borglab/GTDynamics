@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -20,26 +21,24 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
 
-
 /**
- * ContactDynamicsMomentConstraint is a 3-dimensional constraint which enforces zero
- * moment at the contact point for the link.
+ * ContactDynamicsMomentConstraint is a 3-dimensional constraint which enforces
+ * zero moment at the contact point for the link.
  */
 inline gtsam::Vector3_ ContactDynamicsMomentConstraint(
     gtsam::Key contact_wrench_key, const gtsam::Pose3 &cTcom) {
   gtsam::Matrix36 H_contact_wrench;
   H_contact_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0;
 
-  gtsam::Matrix36 H = H_contact_wrench * cTcom.inverse().AdjointMap().transpose();
+  gtsam::Matrix36 H =
+      H_contact_wrench * cTcom.inverse().AdjointMap().transpose();
   gtsam::Vector6_ contact_wrench(contact_wrench_key);
   const std::function<gtsam::Vector3(gtsam::Vector6)> f =
       [H](const gtsam::Vector6 &F) { return H * F; };
@@ -79,7 +78,7 @@ class ContactDynamicsMomentFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -92,6 +91,7 @@ class ContactDynamicsMomentFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -99,6 +99,7 @@ class ContactDynamicsMomentFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

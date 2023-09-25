@@ -13,16 +13,16 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
+#include <gtdynamics/config.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/config.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
 
 namespace gtdynamics {
 
@@ -156,17 +156,18 @@ class Robot {
    */
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
-      const boost::optional<std::string> &prior_link_name = boost::none) const;
+      const std::optional<std::string> &prior_link_name = {}) const;
 
  private:
   /// Find root link for forward kinematics
   LinkSharedPtr findRootLink(
       const gtsam::Values &values,
-      const boost::optional<std::string> &prior_link_name) const;
+      const std::optional<std::string> &prior_link_name) const;
 
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -174,6 +175,7 @@ class Robot {
     ar &BOOST_SERIALIZATION_NVP(name_to_link_);
     ar &BOOST_SERIALIZATION_NVP(name_to_joint_);
   }
+#endif
 
   /// @}
 };

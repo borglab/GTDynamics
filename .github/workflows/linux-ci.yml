@@ -17,12 +17,12 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-18.04-gcc-9, ubuntu-20.04-clang-10]
+        name: [ubuntu-20.04-gcc-9, ubuntu-20.04-clang-10]
 
         build_type: [Debug, Release]
         include:
-          - name: ubuntu-18.04-gcc-9
-            os: ubuntu-18.04
+          - name: ubuntu-20.04-gcc-9
+            os: ubuntu-20.04
             compiler: gcc
             version: "9"
 
@@ -40,6 +40,7 @@ jobs:
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
 
           else
+            sudo apt-get -y clean && sudo apt-get -y update
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
@@ -52,7 +53,7 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
 
           # Install CppUnitLite.
           git clone https://github.com/borglab/CppUnitLite.git
@@ -84,7 +85,7 @@ jobs:
       - name: Test
         run: make -j$(nproc) check
         working-directory: ./build
-      
+
       - name: Install
         run: sudo make -j$(nproc) install
         working-directory: ./build

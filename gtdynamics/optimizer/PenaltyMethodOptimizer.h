@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "gtdynamics/optimizer/ConstrainedOptimizer.h"
+#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 
 namespace gtdynamics {
 

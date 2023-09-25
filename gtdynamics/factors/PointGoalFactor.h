@@ -13,19 +13,17 @@
 
 #pragma once
 
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/expressions.h>
 
 #include <string>
-
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -34,9 +32,9 @@ namespace gtdynamics {
  * reaches a desired goal point.
  */
 inline gtsam::Vector3_ PointGoalConstraint(gtsam::Key pose_key,
-                  const gtsam::Point3 &point_com,
-                  const gtsam::Point3 &goal_point) {
-  gtsam::Vector3_ point_com_expr(point_com); 
+                                           const gtsam::Point3 &point_com,
+                                           const gtsam::Point3 &goal_point) {
+  gtsam::Vector3_ point_com_expr(point_com);
   gtsam::Pose3_ wTcom_expr(pose_key);
   gtsam::Vector3_ point_world_expr(wTcom_expr, &gtsam::Pose3::transformFrom,
                                    point_com_expr);
@@ -72,6 +70,7 @@ class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
   const gtsam::Point3 &goalPoint() const { return goal_point_; }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -79,6 +78,7 @@ class PointGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector3> {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /**
@@ -99,7 +99,8 @@ inline gtsam::NonlinearFactorGraph PointGoalFactors(
     const std::vector<gtsam::Point3> &goal_trajectory) {
   gtsam::NonlinearFactorGraph factors;
   for (auto &&goal_point : goal_trajectory) {
-    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com, goal_point);
+    factors.emplace_shared<PointGoalFactor>(first_key, cost_model, point_com,
+                                            goal_point);
     first_key += 1;
   }
   return factors;

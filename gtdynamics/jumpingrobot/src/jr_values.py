@@ -60,8 +60,8 @@ class JRValues:
         for joint in jr.robot.joints():
             j = joint.id()
             name = joint.name()
-            q_key = gtd.JointAngleKey(j, 0).key()
-            v_key = gtd.JointVelKey(j, 0).key()
+            q_key = gtd.JointAngleKey(j, 0)
+            v_key = gtd.JointVelKey(j, 0)
             q = float(jr.init_config["qs"][name])
             v = float(jr.init_config["vs"][name])
             values.insert(q_key, q)
@@ -82,14 +82,14 @@ class JRValues:
             values.insert(Tc_key, float(controls["Tcs"][name]))
 
         # time for the first step
-        values.insert(gtd.TimeKey(0).key(), 0)
+        values.insert(gtd.TimeKey(0), 0)
         return values
 
     @staticmethod
     def get_known_values_actuator(j, k, values):
         """ Construct known values for actuator dynamics graph. """
-        q_key = gtd.JointAngleKey(j, k).key()
-        v_key = gtd.JointVelKey(j, k).key()
+        q_key = gtd.JointAngleKey(j, k)
+        v_key = gtd.JointVelKey(j, k)
         m_a_key = Actuator.MassKey(j, k)
 
         init_values = gtsam.Values()
@@ -110,7 +110,7 @@ class JRValues:
         V_a_key = Actuator.VolumeKey(j, k)
         delta_x_key = Actuator.ContractionKey(j, k)
         f_a_key = Actuator.ForceKey(j, k)
-        torque_key = gtd.TorqueKey(j, k).key()
+        torque_key = gtd.TorqueKey(j, k)
 
         init_values.insert(P_s_key,
                            values.atDouble(Actuator.SourcePressureKey(k - 1)))
@@ -120,8 +120,8 @@ class JRValues:
                            values.atDouble(Actuator.ContractionKey(j, k - 1)))
         init_values.insert(f_a_key,
                            values.atDouble(Actuator.ForceKey(j, k - 1)))
-        init_values.insert(torque_key,
-                           values.atDouble(gtd.TorqueKey(j, k - 1).key()))
+        init_values.insert(torque_key, values.atDouble(gtd.TorqueKey(j,
+                                                                     k - 1)))
         init_values.insert(V_a_key,
                            values.atDouble(Actuator.VolumeKey(j, k - 1)))
         return init_values
@@ -185,11 +185,11 @@ class JRValues:
 
         To_a_key = Actuator.ValveOpenTimeKey(j)
         Tc_a_key = Actuator.ValveCloseTimeKey(j)
-        t_key = gtd.TimeKey(k).key()
+        t_key = gtd.TimeKey(k)
         mdot_sigma_key = Actuator.MassRateActualKey(j, k)
         To = values.atDouble(To_a_key)
         Tc = values.atDouble(Tc_a_key)
-        curr_time = values.atDouble(gtd.TimeKey(k).key())
+        curr_time = values.atDouble(gtd.TimeKey(k))
         valve_control_factor = gtd.ValveControlFactor(t_key, To_a_key,
                                                       Tc_a_key, mdot_key,
                                                       mdot_sigma_key,
@@ -210,7 +210,7 @@ class JRValues:
         V_a_key = Actuator.VolumeKey(j, k)
         delta_x_key = Actuator.ContractionKey(j, k)
         f_a_key = Actuator.ForceKey(j, k)
-        torque_key = gtd.TorqueKey(j, k).key()
+        torque_key = gtd.TorqueKey(j, k)
 
         init_values.insert(P_s_key, values.atDouble(P_s_key))
         init_values.insert(P_a_key, 101.325)
@@ -231,8 +231,8 @@ class JRValues:
         init_values = gtsam.Values()
         for joint in robot.joints():
             j = joint.id()
-            q_key = gtd.JointAngleKey(j, k).key()
-            v_key = gtd.JointVelKey(j, k).key()
+            q_key = gtd.JointAngleKey(j, k)
+            v_key = gtd.JointVelKey(j, k)
             JRValues.copy_value(values, init_values, q_key)
             JRValues.copy_value(values, init_values, v_key)
             gtd.InsertJointAccel(init_values, j, k,
@@ -243,16 +243,16 @@ class JRValues:
                              gtd.Wrench(values, i1, j, k - 1))
             gtd.InsertWrench(init_values, i2, j, k,
                              gtd.Wrench(values, i2, j, k - 1))
-            torque_key = gtd.TorqueKey(j, k).key()
+            torque_key = gtd.TorqueKey(j, k)
             JRValues.copy_value(values, init_values, torque_key)
 
         for link in robot.links():
             i = link.id()
-            if values.exists(gtd.PoseKey(i, k).key()):
+            if values.exists(gtd.PoseKey(i, k)):
                 gtd.InsertPose(init_values, i, k, gtd.Pose(values, i, k))
             else:
                 gtd.InsertPose(init_values, i, k, gtd.Pose(values, i, k - 1))
-            if values.exists(gtd.TwistKey(i, k).key()):
+            if values.exists(gtd.TwistKey(i, k)):
                 gtd.InsertTwist(init_values, i, k, gtd.Twist(values, i, k))
             else:
                 gtd.InsertTwist(init_values, i, k, gtd.Twist(values, i, k - 1))
@@ -278,8 +278,8 @@ class JRValues:
         init_values = gtsam.Values()
         for link in jr.robot.links():
             i = link.id()
-            pose_key = gtd.PoseKey(i, k).key()
-            twist_key = gtd.TwistKey(i, k).key()
+            pose_key = gtd.PoseKey(i, k)
+            twist_key = gtd.TwistKey(i, k)
             pose = fk_results.atPose3(pose_key)
             if values.exists(pose_key):
                 pose = gtd.Pose(values, i, k)
@@ -293,8 +293,8 @@ class JRValues:
         # assign zeros to unknown values
         for joint in jr.robot.joints():
             j = joint.id()
-            q_key = gtd.JointAngleKey(j, k).key()
-            v_key = gtd.JointVelKey(j, k).key()
+            q_key = gtd.JointAngleKey(j, k)
+            v_key = gtd.JointVelKey(j, k)
             q = 0.0
             v = 0.0
             if values.exists(q_key):
@@ -308,7 +308,7 @@ class JRValues:
             i2 = joint.child().id()
             gtd.InsertWrench(init_values, i1, j, k, np.zeros(6))
             gtd.InsertWrench(init_values, i2, j, k, np.zeros(6))
-            torque_key = gtd.TorqueKey(j, k).key()
+            torque_key = gtd.TorqueKey(j, k)
             if values.exists(torque_key):
                 gtd.InsertTorque(init_values, j, k,
                                  values.atDouble(torque_key))

@@ -18,38 +18,38 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name:
-          [ubuntu-18.04-gcc-9, ubuntu-18.04-clang-10, macOS-10.15-xcode-11.3.1]
+        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-12-xcode-14.2]
 
         build_type: [Debug, Release]
         python_version: [3]
         include:
-          - name: ubuntu-18.04-gcc-9
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-gcc-9
+            os: ubuntu-22.04
             compiler: gcc
             version: "9"
 
-          - name: ubuntu-18.04-clang-10
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-clang-12
+            os: ubuntu-22.04
             compiler: clang
-            version: "10"
+            version: "12"
 
-          - name: ubuntu-18.04-clang-10
-            os: ubuntu-18.04
+          - name: ubuntu-22.04-clang-12
+            os: ubuntu-22.04
             compiler: clang
-            version: "10"
+            version: "12"
             build_type: Debug
             python_version: "3"
 
-          - name: macOS-10.15-xcode-11.3.1
-            os: macOS-10.15
+          - name: macOS-12-xcode-14.2
+            os: macOS-12
             compiler: xcode
-            version: "11.3.1"
+            version: "14.2"
 
     steps:
       - name: Install Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
+          sudo apt-get -y update
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
@@ -66,7 +66,7 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat10-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
 
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
@@ -83,7 +83,7 @@ jobs:
 
           brew install boost
           brew tap osrf/simulation
-          brew install sdformat10
+          brew install sdformat12
 
           # Install CppUnitLite.
           git clone https://github.com/borglab/CppUnitLite.git
@@ -121,10 +121,10 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Install gtsam
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
+          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam
+          cd /Users/runner/work/gtsam
           mkdir build && cd $_
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_BUILD_PYTHON=ON ..
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
           make -j$(sysctl -n hw.physicalcpu) install && make python-install
 
           cd $GITHUB_WORKSPACE # go back to home directory
@@ -135,9 +135,16 @@ jobs:
       - name: Build Directory
         run: mkdir build
 
-      - name: Configure
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON  ..
+        working-directory: ./build
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
         working-directory: ./build
 
       - name: Build

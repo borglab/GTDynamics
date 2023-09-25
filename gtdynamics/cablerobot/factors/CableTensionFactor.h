@@ -9,13 +9,10 @@
 #pragma once
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <boost/optional.hpp>
 
 #include <iostream>
 #include <string>
@@ -64,18 +61,16 @@ class CableTensionFactor
    * @param wTx the pose of the end effector
    * @return Vector6: calculated wrench
    */
-  Vector6 computeWrench(
-      double tension, const Pose3 &wTx,
-      boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const;
+  Vector6 computeWrench(double tension, const Pose3 &wTx,
+                        gtsam::OptionalMatrixType H_t = nullptr,
+                        gtsam::OptionalMatrixType H_wTx = nullptr) const;
 
   // an alternate version of the above function that uses adjoint; will upgrade
   // to this version once I figure out how to get the jacobian from an Adjoint
   // operation
   Vector6 computeWrenchUsingAdjoint(
-      double tension, const Pose3 &wTx,
-      boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const;
+      double tension, const Pose3 &wTx, gtsam::OptionalMatrixType H_t = nullptr,
+      gtsam::OptionalMatrixType H_wTx = nullptr) const;
 
  public:
   /** Cable wrench factor
@@ -86,9 +81,9 @@ class CableTensionFactor
    */
   gtsam::Vector evaluateError(
       const double &t, const Pose3 &wTx, const Vector6 &Fx,
-      boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none,
-      boost::optional<gtsam::Matrix &> H_Fx = boost::none) const override {
+      gtsam::OptionalMatrixType H_t = nullptr,
+      gtsam::OptionalMatrixType H_wTx = nullptr,
+      gtsam::OptionalMatrixType H_Fx = nullptr) const override {
     Vector6 error =
         (Vector6() << Fx - computeWrench(t, wTx, H_t, H_wTx)).finished();
     if (H_t) *H_t = -(*H_t);
@@ -99,7 +94,7 @@ class CableTensionFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -112,6 +107,7 @@ class CableTensionFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -119,6 +115,7 @@ class CableTensionFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

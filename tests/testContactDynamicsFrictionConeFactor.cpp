@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +25,6 @@
 #include <math.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
 
 using gtsam::LabeledSymbol;
 using gtsam::Point3;
@@ -76,8 +75,8 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
                        (gtsam::Vector(6) << 0, 0, 0, 1, 0, 0).finished());
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_simple,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3); // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 
   // Link angled with contact wrench angled relative to ground.
   EXPECT(assert_equal(
@@ -97,8 +96,8 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
                   (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished());
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_b,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3); // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 
   gtsam::Values values_c;
   values_c.insert(pose_key,
@@ -108,8 +107,8 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
                   (gtsam::Vector(6) << 0, 0, 0, 0, 0, 1).finished());
   EXPECT_CORRECT_FACTOR_JACOBIANS(
       factor, values_c,
-      1e-7,  // Step used when computing numerical derivative jacobians.
-      1e-3); // Tolerance.
+      1e-7,   // Step used when computing numerical derivative jacobians.
+      1e-3);  // Tolerance.
 }
 
 /**

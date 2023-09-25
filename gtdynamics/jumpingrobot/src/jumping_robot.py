@@ -9,18 +9,16 @@
  * @author Yetong Zhang
 """
 
-
-import yaml
-import numpy as np
-import gtsam
-from gtsam import Pose2, Pose3, Point3, Rot3, Values
-from gtsam import NonlinearFactorGraph, RangeFactorPose2, PriorFactorPose2
 import gtdynamics as gtd
+import gtsam
+import numpy as np
+import yaml
+from gtsam import (NonlinearFactorGraph, Point3, Pose2, Pose3,
+                   PriorFactorPose2, RangeFactorPose2, Rot3, Values)
 
 
 class Actuator:
     """ Class that stores all parameters for an actuator. """
-
     def __init__(self, name, robot, actuator_config, positive):
         self.name = name
         self.j = robot.joint(name).id()
@@ -30,6 +28,7 @@ class Actuator:
     """ actuator specific keys: 
             all keys use the same naming convention as paper
     """
+
     @staticmethod
     def PressureKey(j, t):
         return gtd.DynamicsSymbol.JointSymbol("Pa", j, t).key()
@@ -82,7 +81,6 @@ class Actuator:
 class JumpingRobot:
     """ Class that stores a GTDynamics robot class and all parameters for 
         a jumping robot. """
-
     def __init__(self, yaml_file_path, init_config, phase=0):
         """ Constructor
 
@@ -98,10 +96,12 @@ class JumpingRobot:
         self.params = self.load_file(yaml_file_path)
         self.init_config = init_config
         self.robot = self.create_robot(self.params, phase)
-        self.actuators = [Actuator("knee_r", self.robot, self.params["knee"], False),
-                          Actuator("hip_r", self.robot, self.params["hip"], True),
-                          Actuator("hip_l", self.robot, self.params["hip"], True),
-                          Actuator("knee_l", self.robot, self.params["knee"], False)]
+        self.actuators = [
+            Actuator("knee_r", self.robot, self.params["knee"], False),
+            Actuator("hip_r", self.robot, self.params["hip"], True),
+            Actuator("hip_l", self.robot, self.params["hip"], True),
+            Actuator("knee_l", self.robot, self.params["knee"], False)
+        ]
 
         Rs = self.params["pneumatic"]["Rs"]
         temperature = self.params["pneumatic"]["T"]
@@ -115,8 +115,9 @@ class JumpingRobot:
             return params
 
     @staticmethod
-    def create_init_config(torso_pose=gtsam.Pose3(gtsam.Rot3(), gtsam.Point3(0, 0, 1.1)),
-                           torso_twist = np.zeros(6),
+    def create_init_config(torso_pose=gtsam.Pose3(gtsam.Rot3(),
+                                                  gtsam.Point3(0, 0, 1.1)),
+                           torso_twist=np.zeros(6),
                            rest_angles=[0, 0, 0, 0, 0, 0],
                            init_angles=[0, 0, 0, 0, 0, 0],
                            init_vels=[0, 0, 0, 0, 0, 0]):
@@ -132,8 +133,9 @@ class JumpingRobot:
         Returns:
             Dict: specifiction of initial configuration
         """
-        joint_names = ["foot_r", "knee_r",
-                       "hip_r", "hip_l", "knee_l", "foot_l"]
+        joint_names = [
+            "foot_r", "knee_r", "hip_r", "hip_l", "knee_l", "foot_l"
+        ]
         init_config = {}
         init_config["torso_pose"] = torso_pose
         init_config["torso_twist"] = torso_twist
@@ -181,36 +183,42 @@ class JumpingRobot:
         foot_distance = params["morphology"]["foot_dist"]
 
         # compute link, joint poses
-        link_poses, joint_poses = JumpingRobot.compute_poses(length_list, foot_distance)
-        
+        link_poses, joint_poses = JumpingRobot.compute_poses(
+            length_list, foot_distance)
+
         # cosntruct links
         ground = gtd.Link(0, "ground", 1, np.eye(3), Pose3(), Pose3(), True)
-        shank_r = JumpingRobot.construct_link(
-            1, "shank_r", mass_list[4], length_list[4], link_radius, link_poses["shank_r"])
-        thigh_r = JumpingRobot.construct_link(
-            2, "thigh_r", mass_list[3], length_list[3], link_radius, link_poses["thigh_r"])
-        torso = JumpingRobot.construct_link(
-            3, "torso", mass_list[2], length_list[2], link_radius, link_poses["torso"])
-        thigh_l = JumpingRobot.construct_link(
-            4, "thigh_l", mass_list[1], length_list[1], link_radius, link_poses["thigh_l"])
-        shank_l = JumpingRobot.construct_link(
-            5, "shank_l", mass_list[0], length_list[0], link_radius, link_poses["shank_l"])
+        shank_r = JumpingRobot.construct_link(1, "shank_r", mass_list[4],
+                                              length_list[4], link_radius,
+                                              link_poses["shank_r"])
+        thigh_r = JumpingRobot.construct_link(2, "thigh_r", mass_list[3],
+                                              length_list[3], link_radius,
+                                              link_poses["thigh_r"])
+        torso = JumpingRobot.construct_link(3, "torso", mass_list[2],
+                                            length_list[2], link_radius,
+                                            link_poses["torso"])
+        thigh_l = JumpingRobot.construct_link(4, "thigh_l", mass_list[1],
+                                              length_list[1], link_radius,
+                                              link_poses["thigh_l"])
+        shank_l = JumpingRobot.construct_link(5, "shank_l", mass_list[0],
+                                              length_list[0], link_radius,
+                                              link_poses["shank_l"])
 
         # construct joints
         axis_r = np.array([1, 0, 0])
         axis_l = np.array([-1, 0, 0])
-        foot_r = gtd.RevoluteJoint(
-            0, "foot_r", joint_poses["foot_r"], ground, shank_r, axis_r, gtd.JointParams())
-        knee_r = gtd.RevoluteJoint(
-            1, "knee_r", joint_poses["knee_r"], shank_r, thigh_r, axis_r, gtd.JointParams())
-        hip_r = gtd.RevoluteJoint(
-            2, "hip_r", joint_poses["hip_r"], thigh_r, torso, axis_r, gtd.JointParams())
-        hip_l = gtd.RevoluteJoint(
-            3, "hip_l", joint_poses["hip_l"], thigh_l, torso, axis_l, gtd.JointParams())
-        knee_l = gtd.RevoluteJoint(
-            4, "knee_l", joint_poses["knee_l"], shank_l, thigh_l, axis_l, gtd.JointParams())
-        foot_l = gtd.RevoluteJoint(
-            5, "foot_l", joint_poses["foot_l"], ground, shank_l, axis_l, gtd.JointParams())
+        foot_r = gtd.RevoluteJoint(0, "foot_r", joint_poses["foot_r"], ground,
+                                   shank_r, axis_r, gtd.JointParams())
+        knee_r = gtd.RevoluteJoint(1, "knee_r", joint_poses["knee_r"], shank_r,
+                                   thigh_r, axis_r, gtd.JointParams())
+        hip_r = gtd.RevoluteJoint(2, "hip_r", joint_poses["hip_r"], thigh_r,
+                                  torso, axis_r, gtd.JointParams())
+        hip_l = gtd.RevoluteJoint(3, "hip_l", joint_poses["hip_l"], thigh_l,
+                                  torso, axis_l, gtd.JointParams())
+        knee_l = gtd.RevoluteJoint(4, "knee_l", joint_poses["knee_l"], shank_l,
+                                   thigh_l, axis_l, gtd.JointParams())
+        foot_l = gtd.RevoluteJoint(5, "foot_l", joint_poses["foot_l"], ground,
+                                   shank_l, axis_l, gtd.JointParams())
 
         # use links, joints to create robot
         if phase == 0:
@@ -269,22 +277,27 @@ class JumpingRobot:
         # of links and joints
         link_poses = {}
         link_poses["shank_r"] = Pose3(rot_r, Point3(0, p0.x(), p0.y()))
-        link_poses["thigh_r"] = Pose3(rot_r, Point3(0, (p0.x() + p1.x())/2, (p0.y() + p1.y())/2))
+        link_poses["thigh_r"] = Pose3(
+            rot_r, Point3(0, (p0.x() + p1.x()) / 2, (p0.y() + p1.y()) / 2))
         link_poses["torso"] = Pose3(rot_m, Point3(0, p2.x(), p2.y()))
-        link_poses["thigh_l"] = Pose3(rot_l, Point3(0, (p2.x() + p3.x())/2, (p2.y()+p3.y())/2))
+        link_poses["thigh_l"] = Pose3(
+            rot_l, Point3(0, (p2.x() + p3.x()) / 2, (p2.y() + p3.y()) / 2))
         link_poses["shank_l"] = Pose3(rot_l, Point3(0, p3.x(), p3.y()))
 
         joint_poses = {}
         joint_poses["foot_r"] = Pose3(Rot3(), Point3(0, p0.x(), p0.y()))
-        joint_poses["knee_r"] = Pose3(Rot3(), Point3(0, (p0.x() + p1.x())/2, (p0.y() + p1.y())/2))
+        joint_poses["knee_r"] = Pose3(
+            Rot3(), Point3(0, (p0.x() + p1.x()) / 2, (p0.y() + p1.y()) / 2))
         joint_poses["hip_r"] = Pose3(Rot3(), Point3(0, p1.x(), p1.y()))
         joint_poses["hip_l"] = Pose3(Rot3(), Point3(0, p2.x(), p2.y()))
-        joint_poses["knee_l"] = Pose3(Rot3(), Point3(0, (p2.x() + p3.x())/2, (p2.y()+p3.y())/2))
+        joint_poses["knee_l"] = Pose3(
+            Rot3(), Point3(0, (p2.x() + p3.x()) / 2, (p2.y() + p3.y()) / 2))
         joint_poses["foot_l"] = Pose3(Rot3(), Point3(0, p3.x(), p3.y()))
         return link_poses, joint_poses
 
     @staticmethod
-    def compute_poses_helper(length_list: list, foot_distance: float) -> Values:
+    def compute_poses_helper(length_list: list,
+                             foot_distance: float) -> Values:
         """ compute the configuration by solving a simple factor graph:
             - under the constraint that thigh and shank are in the same line,
                 the robot can be simplied as 3 links
@@ -298,10 +311,10 @@ class JumpingRobot:
         length_mid = length_list[2]
 
         init_values = Values()
-        init_values.insert(0, Pose2(foot_distance/2, 0, 0))
-        init_values.insert(1, Pose2(foot_distance/2, length_right, 0))
-        init_values.insert(2, Pose2(-foot_distance/2, length_left, 0))
-        init_values.insert(3, Pose2(-foot_distance/2, 0, 0))
+        init_values.insert(0, Pose2(foot_distance / 2, 0, 0))
+        init_values.insert(1, Pose2(foot_distance / 2, length_right, 0))
+        init_values.insert(2, Pose2(-foot_distance / 2, length_left, 0))
+        init_values.insert(3, Pose2(-foot_distance / 2, 0, 0))
 
         range_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1]))
         prior_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([1, 1, 1]))
@@ -309,15 +322,18 @@ class JumpingRobot:
         graph.add(RangeFactorPose2(0, 1, length_right, range_noise))
         graph.add(RangeFactorPose2(1, 2, length_mid, range_noise))
         graph.add(RangeFactorPose2(2, 3, length_left, range_noise))
-        graph.add(PriorFactorPose2(0, Pose2(foot_distance/2, 0, 0), prior_noise))
-        graph.add(PriorFactorPose2(3, Pose2(-foot_distance/2, 0, 0), prior_noise))
+        graph.add(
+            PriorFactorPose2(0, Pose2(foot_distance / 2, 0, 0), prior_noise))
+        graph.add(
+            PriorFactorPose2(3, Pose2(-foot_distance / 2, 0, 0), prior_noise))
 
         return gtsam.LevenbergMarquardtOptimizer(graph, init_values).optimize()
 
     @staticmethod
-    def construct_link(link_id: int, link_name: str, mass: float, length: float, radius: float, pose: Pose3):
+    def construct_link(link_id: int, link_name: str, mass: float,
+                       length: float, radius: float, pose: Pose3):
         """ Construct a link. """
-        lTcom = Pose3(Rot3(), Point3(0, length/2, 0))
+        lTcom = Pose3(Rot3(), Point3(0, length / 2, 0))
         bMcom = pose.compose(lTcom)
         inertia = JumpingRobot.compute_link_inertia(mass, length, radius)
         return gtd.Link(link_id, link_name, mass, inertia, bMcom, pose, False)
@@ -325,8 +341,8 @@ class JumpingRobot:
     @staticmethod
     def compute_link_inertia(mass: float, length: float, radius: float):
         """ Compute inertia matrix for a link. """
-        Ixx = 1/12 * mass * (3*radius**2 + length**2)
-        Iyy = 1/2 * mass * radius**2
+        Ixx = 1 / 12 * mass * (3 * radius**2 + length**2)
+        Iyy = 1 / 2 * mass * radius**2
         Izz = Ixx
         inertia = np.diag([Ixx, Iyy, Izz])
         return inertia

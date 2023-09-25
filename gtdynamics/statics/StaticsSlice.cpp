@@ -11,16 +11,15 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/TorqueFactor.h>             // TODO: move
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>  // TODO: move
+#include <gtdynamics/factors/WrenchPlanarFactor.h>       // TODO: move
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
-
-#include "gtdynamics/factors/TorqueFactor.h"             // TODO: move
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"  // TODO: move
-#include "gtdynamics/factors/WrenchPlanarFactor.h"       // TODO: move
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 using gtsam::assert_equal;
@@ -68,7 +67,7 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice,
     int i = link->id();
     if (link->isFixed()) continue;
     const auto& connected_joints = link->joints();
-    std::vector<DynamicsSymbol> wrench_keys;
+    std::vector<gtsam::Key> wrench_keys;
 
     // Add wrench keys for joints.
     for (auto&& joint : connected_joints)

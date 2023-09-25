@@ -13,20 +13,18 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -75,7 +73,7 @@ class ContactKinematicsAccelFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -88,6 +86,7 @@ class ContactKinematicsAccelFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -95,6 +94,7 @@ class ContactKinematicsAccelFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

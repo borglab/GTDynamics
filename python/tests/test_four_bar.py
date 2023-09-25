@@ -94,11 +94,12 @@ class TestFourBar(unittest.TestCase):
         graph.push_back(prior_graph)
 
         # construct init values and solve
-        init_values = gtd.ZeroValues(robot, 0, 0)
+        initializer = gtd.Initializer()
+        init_values = initializer.ZeroValues(robot, 0, 0)
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, init_values)
         result = optimizer.optimize()
 
-        a1_key = gtd.JointAccelKey(1, 0).key()
+        a1_key = gtd.JointAccelKey(1, 0)
         a1 = result.atDouble(a1_key)
         self.assertAlmostEqual(a1, 0.125, 5)  # regression. Show work!
 
