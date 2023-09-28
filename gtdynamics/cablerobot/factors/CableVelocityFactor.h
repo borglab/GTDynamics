@@ -23,14 +23,14 @@ namespace gtdynamics {
  * amongst cable velocity, end-effector pose, and end-effector twist
  */
 class CableVelocityFactor
-    : public gtsam::NoiseModelFactor3<double, gtsam::Pose3, gtsam::Vector6> {
+    : public gtsam::NoiseModelFactorN<double, gtsam::Pose3, gtsam::Vector6> {
  private:
   using Point3 = gtsam::Point3;
   using Vector3 = gtsam::Vector3;
   using Pose3 = gtsam::Pose3;
   using Vector6 = gtsam::Vector6;
   using This = CableVelocityFactor;
-  using Base = gtsam::NoiseModelFactor3<double, Pose3, Vector6>;
+  using Base = gtsam::NoiseModelFactorN<double, Pose3, Vector6>;
 
   Point3 wPa_, xPb_;
 
@@ -101,7 +101,7 @@ class CableVelocityFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

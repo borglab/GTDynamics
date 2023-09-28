@@ -23,10 +23,10 @@
 namespace gtdynamics {
 
 /// MinTorqueFactor is a unary factor which minimizes torque.
-class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
+class MinTorqueFactor : public gtsam::NoiseModelFactorN<double> {
  private:
   using This = MinTorqueFactor;
-  using Base = gtsam::NoiseModelFactor1<double>;
+  using Base = gtsam::NoiseModelFactorN<double>;
 
  public:
   /**
@@ -77,7 +77,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactor1<double> {
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

@@ -31,10 +31,10 @@ namespace gtdynamics {
  * between contact points on the same link at two different time steps.
  */
 class ContactEqualityFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3> {
  private:
   using This = ContactEqualityFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>;
 
   /// The point on the link at which to enforce equality.
   PointOnLink point_on_link_;

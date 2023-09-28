@@ -26,10 +26,10 @@ namespace gtdynamics {
 /** ForceBalanceFactor is a three-way nonlinear factor which characterize
  * the relationship between pressure, contraction length and force */
 class ForceBalanceFactor
-    : public gtsam::NoiseModelFactor3<double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef ForceBalanceFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   double k_, r_, q_rest_;
   bool positive_;
   gtsam::Matrix H_delta_x_, H_q_, H_f_;
@@ -100,7 +100,7 @@ class ForceBalanceFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -108,10 +108,10 @@ class ForceBalanceFactor
 /** JointTorqueFactor is a three-way nonlinear factor which characterize
  * the relationship between pressure, contraction length and force */
 class JointTorqueFactor
-    : public gtsam::NoiseModelFactor4<double, double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double, double> {
  private:
   typedef JointTorqueFactor This;
-  typedef gtsam::NoiseModelFactor4<double, double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double, double> Base;
   double q_limit_, ka_, r_, b_;
   bool positive_;
   gtsam::Matrix H_v_, H_f_, H_torque_;
@@ -199,7 +199,7 @@ class JointTorqueFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -207,10 +207,10 @@ class JointTorqueFactor
 /** SmoothActuatorFactor fits a smooth relationship between pressure,
  * contraction length and force */
 class SmoothActuatorFactor
-    : public gtsam::NoiseModelFactor3<double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef SmoothActuatorFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   const gtsam::Vector5 x0_coeffs_ =
       (gtsam::Vector(5) << 3.05583930e+00, 7.58361626e-02, -4.91579771e-04,
        1.42792618e-06, -1.54817477e-09)
@@ -338,10 +338,10 @@ class SmoothActuatorFactor
 /** ClippingActuatorFactor (deprecated) fits a non-smooth relationship between
  * pressure, contraction length and force, and use clipping for force < 0 */
 class ClippingActuatorFactor
-    : public gtsam::NoiseModelFactor3<double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef ClippingActuatorFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   std::vector<double> coeffs_{-17.39,    1.11,       2.22,   -0.9486,
                               -0.4481,   -0.0003159, 0.1745, 0.01601,
                               0.0001081, -7.703e-07};
@@ -484,17 +484,17 @@ class ClippingActuatorFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
 
 /** ActuatorVolumeFactor characterize the relationship between actuator volume
  * and contraction length */
-class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
+class ActuatorVolumeFactor : public gtsam::NoiseModelFactorN<double, double> {
  private:
   typedef ActuatorVolumeFactor This;
-  typedef gtsam::NoiseModelFactor2<double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double> Base;
   gtsam::Vector4 c_ = gtsam::Vector4(4.243e-5, 3.141e-5, -3.251e-6, 1.28e-7);
   double D_, L_;
 
@@ -553,7 +553,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactor2<double, double> {
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

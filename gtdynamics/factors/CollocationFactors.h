@@ -51,11 +51,11 @@ gtsam::Pose3 predictPose(const gtsam::Pose3 &pose_t0,
  * of current and next time steps
  */
 class EulerPoseCollocationFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, double> {
  private:
   using This = EulerPoseCollocationFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, double>;
 
  public:
@@ -117,7 +117,7 @@ class EulerPoseCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -127,11 +127,11 @@ class EulerPoseCollocationFactor
  * pose of current and next time steps
  */
 class TrapezoidalPoseCollocationFactor
-    : public gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
   using This = TrapezoidalPoseCollocationFactor;
-  using Base = gtsam::NoiseModelFactor5<gtsam::Pose3, gtsam::Pose3,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
@@ -201,7 +201,7 @@ class TrapezoidalPoseCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -211,11 +211,11 @@ class TrapezoidalPoseCollocationFactor
  * poses of current and next time steps with fixed dt.
  */
 class FixTimeTrapezoidalPoseCollocationFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Vector6, gtsam::Vector6> {
  private:
   using This = FixTimeTrapezoidalPoseCollocationFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Vector6, gtsam::Vector6>;
   double dt_;
 
@@ -282,7 +282,7 @@ class FixTimeTrapezoidalPoseCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -292,11 +292,11 @@ class FixTimeTrapezoidalPoseCollocationFactor
  * of current and next time steps
  */
 class EulerTwistCollocationFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+    : public gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, double> {
  private:
   using This = EulerTwistCollocationFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, double>;
 
  public:
@@ -359,7 +359,7 @@ class EulerTwistCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -369,11 +369,11 @@ class EulerTwistCollocationFactor
  * twist of current and next time steps
  */
 class TrapezoidalTwistCollocationFactor
-    : public gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
+    : public gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6, double> {
  private:
   using This = TrapezoidalTwistCollocationFactor;
-  using Base = gtsam::NoiseModelFactor5<gtsam::Vector6, gtsam::Vector6,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, gtsam::Vector6, double>;
 
  public:
@@ -444,7 +444,7 @@ class TrapezoidalTwistCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -454,11 +454,11 @@ class TrapezoidalTwistCollocationFactor
  * between link twist of current and next time steps
  */
 class FixTimeTrapezoidalTwistCollocationFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+    : public gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                       gtsam::Vector6, gtsam::Vector6> {
  private:
   using This = FixTimeTrapezoidalTwistCollocationFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Vector6, gtsam::Vector6,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Vector6, gtsam::Vector6,
                                         gtsam::Vector6, gtsam::Vector6>;
   double dt_;
 
@@ -526,7 +526,7 @@ class FixTimeTrapezoidalTwistCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
