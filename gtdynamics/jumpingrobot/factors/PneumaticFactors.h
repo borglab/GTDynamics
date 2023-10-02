@@ -26,10 +26,10 @@
 namespace gtdynamics {
 
 /** GasLawFactor: P*V=Rs*T */
-class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
+class GasLawFactor : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef GasLawFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   double c_;
 
  public:
@@ -77,17 +77,17 @@ class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
 
 /** MassFlowRateFactor: compute mdot from pressures*/
 class MassFlowRateFactor
-    : public gtsam::NoiseModelFactor3<double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef MassFlowRateFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   double D_, L_, mu_, epsilon_, k_;
   double term1_, term2_, c1_, coeff_;
 
@@ -175,7 +175,7 @@ class MassFlowRateFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -192,10 +192,10 @@ double sigmoid(double x, gtsam::OptionalMatrixType H_x = nullptr) {
 
 /** ValveControlFactor: compute true mdot based on valve open/close time. */
 class ValveControlFactor
-    : public gtsam::NoiseModelFactor5<double, double, double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double, double, double> {
  private:
   typedef ValveControlFactor This;
-  typedef gtsam::NoiseModelFactor5<double, double, double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double, double, double> Base;
   double ct_inv_;
 
  public:
@@ -273,7 +273,7 @@ class ValveControlFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

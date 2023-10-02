@@ -97,7 +97,7 @@ class ContactDynamicsMomentFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

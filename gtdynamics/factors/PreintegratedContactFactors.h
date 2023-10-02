@@ -88,11 +88,11 @@ class PreintegratedPointContactMeasurements {
  * Hartley18icra.
  */
 class PreintegratedPointContactFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Pose3> {
  private:
   using This = PreintegratedPointContactFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Pose3, gtsam::Pose3>;
 
  public:
@@ -192,7 +192,7 @@ class PreintegratedPointContactFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
