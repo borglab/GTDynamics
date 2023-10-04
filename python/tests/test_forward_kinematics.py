@@ -13,11 +13,12 @@ import unittest
 # pylint: disable=no-name-in-module, import-error, no-member
 from pathlib import Path
 
-import gtdynamics as gtd
 import gtsam
 import numpy as np
 from gtsam.symbol_shorthand import X
 from gtsam.utils.test_case import GtsamTestCase
+
+import gtdynamics as gtd
 
 
 class TestRobot(GtsamTestCase):
