@@ -13,10 +13,11 @@
 
 import unittest
 
-import gtdynamics as gtd
 import gtsam
 import numpy as np
 from gtsam import Pose3, Rot3
+
+import gtdynamics as gtd
 
 
 class TestFourBar(unittest.TestCase):
