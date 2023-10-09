@@ -42,7 +42,16 @@ int main(int argc, char** argv) {
       graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Inverse dynamics priors. We care about the torques.
+  gtsam::Vector joint_angles = gtsam::Vector::Zero(robot.numJoints());
+  gtsam::Vector joint_vels = gtsam::Vector::Zero(robot.numJoints());
   gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
+
+  for (size_t j = 0; j < robot.numJoints(); ++j) {
+    InsertJointAngle(&joint_angles_vels_accels, j, 0, joint_angles[j]);
+    InsertJointVel(&joint_angles_vels_accels, j, 0, joint_vels[j]);
+    InsertJointAccel(&joint_angles_vels_accels, j, 0, joint_accels[j]);
+  }
+
   gtsam::NonlinearFactorGraph prior_factors =
       graph_builder.inverseDynamicsPriors(robot, 0, joint_angles_vels_accels);
 
@@ -52,8 +61,7 @@ int main(int argc, char** argv) {
     prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
-        TwistKey(i, 0), gtsam::Z_6x1,
-        gtsam::noiseModel::Constrained::All(6));
+        TwistKey(i, 0), gtsam::Z_6x1, gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);
 
