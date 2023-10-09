@@ -1,2 +1,2 @@
-gtsamAddExamplesGlob("*.cpp" "" "gtdynamics")
+gtsamAddExamplesGlob("*.cpp" "" "gtdynamics" ON)
 
