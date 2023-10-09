@@ -2,6 +2,7 @@
 
 # Variable to hold all the example directories
 set(EXAMPLE_SUBDIRS
+    scripts
     example_a1_walking
     example_cart_pole_trajectory_optimization
     example_forward_dynamics
