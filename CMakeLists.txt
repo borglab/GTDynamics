@@ -129,7 +129,7 @@ endif()
 
 # Configure the config file that is includes the exports
 configure_package_config_file(
-  ${CMAKE_SOURCE_DIR}/Config.cmake.in
+  ${CMAKE_SOURCE_DIR}/cmake/Config.cmake.in
   "${CMAKE_BINARY_DIR}/gtdynamicsConfig.cmake"
   INSTALL_DESTINATION "${INSTALL_CMAKE_DIR}"
   INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
