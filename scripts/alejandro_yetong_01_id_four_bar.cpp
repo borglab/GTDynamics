@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
   using four_bar_linkage_pure::planar_axis;
   auto robot = four_bar_linkage_pure::getRobot();
 
-  gtsam::Values joint_angles_vels_accels;
+  Initializer initializer;
 
   gtsam::Vector3 gravity(0, -10, 0);
   robot = robot.fixLink("l1");
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
       graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Inverse dynamics priors. We care about the torques.
-  gtsam::Vector joint_accels = gtsam::Vector::Zero(robot.numJoints());
+  gtsam::Values joint_angles_vels_accels = initializer.ZeroValues(robot, 0);
   gtsam::NonlinearFactorGraph prior_factors =
       graph_builder.inverseDynamicsPriors(robot, 0, joint_angles_vels_accels);
 
@@ -52,8 +52,7 @@ int main(int argc, char** argv) {
     prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
-        TwistKey(i, 0), gtsam::Z_6x1,
-        gtsam::noiseModel::Constrained::All(6));
+        TwistKey(i, 0), gtsam::Z_6x1, gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);
 
@@ -64,7 +63,6 @@ int main(int argc, char** argv) {
                         gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  Initializer initializer;
   gtsam::Values init_values = initializer.ZeroValues(robot, 0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;

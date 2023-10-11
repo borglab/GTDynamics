@@ -365,6 +365,8 @@ Values Initializer::ZeroValues(
     int j = joint->id();
     InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
     InsertWrench(&values, joint->child()->id(), j, t, sampler.sample());
+  
+    // Joint angles, velocities, accelerations, and torques.
     std::vector<DynamicsSymbol> keys = {TorqueKey(j, t), JointAngleKey(j, t),
                                         JointVelKey(j, t), JointAccelKey(j, t)};
     for (size_t i = 0; i < keys.size(); i++)

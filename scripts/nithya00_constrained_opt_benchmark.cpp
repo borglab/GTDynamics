@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
   };
 
   /// Write results to files for plotting.
+  std::cout << "Writing resutls to penalty_data.txt and augl_data.txt for plotting" << std::endl;
   std::ofstream penalty_file;
   penalty_file.open("penalty_data.txt");
   for (size_t i = 0; i < penalty_info.num_iters.size(); i++) {

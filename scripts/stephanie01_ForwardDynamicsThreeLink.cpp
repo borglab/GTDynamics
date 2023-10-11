@@ -23,6 +23,8 @@ int main(int argc, char **argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
   auto robot = simple_rr::getRobot();
 
+  Initializer initializer;
+
   // Build the factor graph for the robot.
   robot = robot.fixLink("link_0");
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -32,13 +34,11 @@ int main(int argc, char **argv) {
   auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Add forward dynamics priors to factor graph.
-  gtsam::Values values;
-
+  gtsam::Values values = initializer.ZeroValues(robot, 0);
   auto priorFactors = graph_builder.forwardDynamicsPriors(robot, 0, values);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  Initializer initializer;
   auto init_values = initializer.ZeroValues(robot, 0);
 
   // Compute forward dynamics.
