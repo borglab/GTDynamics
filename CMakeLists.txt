@@ -78,11 +78,6 @@ endif()
 # Process subdirectories.
 add_subdirectory(tests)
 
-option(GTDYNAMICS_BUILD_SCRIPTS "Build all scripts" ON)
-if(GTDYNAMICS_BUILD_SCRIPTS)
-  add_subdirectory(scripts)
-endif()
-
 option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 if(GTDYNAMICS_BUILD_EXAMPLES)
   add_subdirectory(examples)
@@ -109,7 +104,6 @@ if(GTDYNAMICS_BUILD_PYTHON)
   message(STATUS "Python Version                              : ${WRAP_PYTHON_VERSION}")
 endif()
 message(STATUS "Build march=native                          : ${GTSAM_BUILD_WITH_MARCH_NATIVE}")
-message(STATUS "Build Scripts                               : ${GTDYNAMICS_BUILD_SCRIPTS}")
 message(STATUS "Build Examples                              : ${GTDYNAMICS_BUILD_EXAMPLES}")
 message(STATUS "Build Robots")
 message(STATUS "  Cable Robot                               : ${GTDYNAMICS_BUILD_CABLE_ROBOT}")
@@ -135,7 +129,7 @@ endif()
 
 # Configure the config file that is includes the exports
 configure_package_config_file(
-  ${CMAKE_SOURCE_DIR}/Config.cmake.in
+  ${CMAKE_SOURCE_DIR}/cmake/Config.cmake.in
   "${CMAKE_BINARY_DIR}/gtdynamicsConfig.cmake"
   INSTALL_DESTINATION "${INSTALL_CMAKE_DIR}"
   INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})

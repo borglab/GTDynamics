@@ -1,2 +1,0 @@
-gtsamAddExamplesGlob("*.cpp" "" "gtdynamics")
-
