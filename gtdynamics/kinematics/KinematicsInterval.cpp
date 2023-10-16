@@ -45,6 +45,17 @@ EqualityConstraints Kinematics::constraints<Interval>(
 }
 
 template <>
+NonlinearFactorGraph Kinematics::poseGoalObjectives<Interval>(
+    const Interval& interval, 
+    const PoseGoals& pose_goals) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    graph.add(poseGoalObjectives(Slice(k), pose_goals));
+  }
+  return graph;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
@@ -66,21 +77,31 @@ EqualityConstraints Kinematics::pointGoalConstraints<Interval>(
 
 template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
-    const Interval& interval, const Robot& robot) const {
+    const Interval& interval, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(jointAngleObjectives(Slice(k), robot));
+    graph.add(jointAngleObjectives(Slice(k), robot, mean));
   }
   return graph;
 }
 
 template <>
-Values Kinematics::initialValues<Interval>(const Interval& interval,
-                                           const Robot& robot,
-                                           double gaussian_noise) const {
+NonlinearFactorGraph Kinematics::jointAngleLimits<Interval>(
+    const Interval& interval, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    graph.add(jointAngleLimits(Slice(k), robot));
+  }
+  return graph;
+}
+
+template <>
+Values Kinematics::initialValues<Interval>(
+    const Interval& interval, const Robot& robot, double gaussian_noise,
+    const gtsam::Values& joint_priors, bool use_fk) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(initialValues(Slice(k), robot, gaussian_noise));
+    values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors, use_fk));
   }
   return values;
 }

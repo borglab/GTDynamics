@@ -48,7 +48,7 @@
     <parent link="link0"/>
     <child link="link1"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="15" lower="-2.9671" effort="87" upper="2.9671" velocity="2.5"/>
+    <limit acceleration="15" lower="-2.8973" effort="87" upper="2.8973" velocity="2.5"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -78,7 +78,7 @@
     <parent link="link1"/>
     <child link="link2"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="7.5" lower="-1.8326" effort="87" upper="1.8326" velocity="2.5"/>
+    <limit acceleration="7.5" lower="-1.7628" effort="87" upper="1.7628" velocity="2.5"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -108,7 +108,7 @@
     <parent link="link2"/>
     <child link="link3"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="12.5" lower="-2.9671" effort="87" upper="2.9671" velocity="2.5"/>
+    <limit acceleration="12.5" lower="-2.8973" effort="87" upper="2.8973" velocity="2.5"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -138,7 +138,7 @@
     <parent link="link3"/>
     <child link="link4"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="12.5" lower="-3.1416" effort="87" upper="-0.4" velocity="2.5"/>
+    <limit acceleration="12.5" lower="-3.0718" effort="87" upper="-0.0698" velocity="2.5"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -168,7 +168,7 @@
     <parent link="link4"/>
     <child link="link5"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="15" lower="-2.9671" effort="12" upper="2.9671" velocity="3"/>
+    <limit acceleration="15" lower="-2.8973" effort="12" upper="2.8973" velocity="3"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -198,7 +198,7 @@
     <parent link="link5"/>
     <child link="link6"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="20" lower="-0.0873" effort="12" upper="3.8223" velocity="3"/>
+    <limit acceleration="20" lower="-0.0175" effort="12" upper="3.7525" velocity="3"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 
@@ -228,7 +228,7 @@
     <parent link="link6"/>
     <child link="link7"/>
     <axis xyz="0 0 1"/>
-    <limit acceleration="20" lower="-2.9671" effort="12" upper="2.9671" velocity="3"/>
+    <limit acceleration="20" lower="-2.8973" effort="12" upper="2.8973" velocity="3"/>
     <dynamics D="1" K="7000" mu_coulomb="0" mu_viscous="16" damping="0.003" friction="0.0"/>
   </joint>
 

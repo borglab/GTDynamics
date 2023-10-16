@@ -76,7 +76,7 @@ LinkSharedPtr Robot::link(const std::string &name) const {
   return name_to_link_.at(name);
 }
 
-Robot Robot::fixLink(const std::string &name) {
+Robot Robot::fixLink(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
@@ -86,7 +86,7 @@ Robot Robot::fixLink(const std::string &name) {
   return fixed_robot;
 }
 
-Robot Robot::unfixLink(const std::string &name) {
+Robot Robot::unfixLink(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }

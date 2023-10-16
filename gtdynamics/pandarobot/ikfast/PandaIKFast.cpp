@@ -10,7 +10,6 @@
 //----------------------------------------------------------------------------//
 
 #define IKFAST_HAS_LIBRARY  // Build IKFast with API functions
-#define IKFAST_NO_MAIN      // Don't include main() from IKFast
 #define IKFAST_NAMESPACE panda_internal
 
 #define IK_VERSION 61
@@ -64,7 +63,7 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
                                            &theta7, solutions);
 
   if (!success) {
-    fprintf(stderr, "Error: (inverse PandaIKFast) failed to get ik solution\n");
+    //fprintf(stderr, "Error: (inverse PandaIKFast) failed to get ik solution\n");
     return std::vector<Vector7>();
   }
 
