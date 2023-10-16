@@ -17,15 +17,13 @@
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -151,10 +149,11 @@ int main(int argc, char** argv) {
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
   vector<Values> transition_graph_init;
   double gaussian_noise = 1e-5;  // Add gaussian noise to initial values.
+  Initializer initializer;
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
-    transition_graph_init.push_back(ZeroValues(
+    transition_graph_init.push_back(initializer.ZeroValues(
         robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
@@ -222,9 +221,9 @@ int main(int argc, char** argv) {
                                                 std::sin(prev_theta[pcl]),
                              GROUND_HEIGHT - 0.03);
 
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[pcl]->id(), t), objectives_model_3,
-            c0.point, new_cp));
+        objective_factors.add(
+            gtdynamics::PointGoalFactor(PoseKey(link_map[pcl]->id(), t),
+                                        objectives_model_3, c0.point, new_cp));
       }
 
       double h = GROUND_HEIGHT +
@@ -237,9 +236,9 @@ int main(int argc, char** argv) {
                                                 std::sin(prev_theta[psl]),
                              h);
 
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            internal::PoseKey(link_map[psl]->id(), t), objectives_model_3,
-            c0.point, new_cp));
+        objective_factors.add(
+            gtdynamics::PointGoalFactor(PoseKey(link_map[psl]->id(), t),
+                                        objectives_model_3, c0.point, new_cp));
       }
     }
   }
@@ -252,35 +251,34 @@ int main(int argc, char** argv) {
        sigma_objectives * 100, 10000, sigma_objectives, sigma_objectives)
           .finished());
   for (int t = 0; t <= t_f; t++)
-    objective_factors.addPrior(internal::PoseKey(base_link->id(), t),
-                               base_pose_goal, base_pose_model);
+    objective_factors.addPrior(PoseKey(base_link->id(), t), base_pose_goal,
+                               base_pose_model);
 
   // Add link boundary conditions to FG.
   for (auto&& link : robot.links()) {
     // Initial link pose, twists.
-    objective_factors.addPrior(internal::PoseKey(link->id(), 0), link->bMcom(),
+    objective_factors.addPrior(PoseKey(link->id(), 0), link->bMcom(),
                                dynamics_model_6);
-    objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), 0),
+    objective_factors.addPrior<Vector6>(TwistKey(link->id(), 0),
                                         Vector6::Zero(), dynamics_model_6);
 
     // Final link twists, accelerations.
-    objective_factors.addPrior<Vector6>(internal::TwistKey(link->id(), t_f),
+    objective_factors.addPrior<Vector6>(TwistKey(link->id(), t_f),
                                         Vector6::Zero(), objectives_model_6);
-    objective_factors.addPrior<Vector6>(
-        internal::TwistAccelKey(link->id(), t_f), Vector6::Zero(),
-        objectives_model_6);
+    objective_factors.addPrior<Vector6>(TwistAccelKey(link->id(), t_f),
+                                        Vector6::Zero(), objectives_model_6);
   }
 
   // Add joint boundary conditions to FG.
   for (auto&& joint : robot.joints()) {
-    objective_factors.addPrior(internal::JointAngleKey(joint->id(), 0), 0.0,
+    objective_factors.addPrior(JointAngleKey(joint->id(), 0), 0.0,
                                dynamics_model_1);
-    objective_factors.addPrior(internal::JointVelKey(joint->id(), 0), 0.0,
+    objective_factors.addPrior(JointVelKey(joint->id(), 0), 0.0,
                                dynamics_model_1);
 
-    objective_factors.addPrior(internal::JointVelKey(joint->id(), t_f), 0.0,
+    objective_factors.addPrior(JointVelKey(joint->id(), t_f), 0.0,
                                objectives_model_1);
-    objective_factors.addPrior(internal::JointAccelKey(joint->id(), t_f), 0.0,
+    objective_factors.addPrior(JointAccelKey(joint->id(), t_f), 0.0,
                                objectives_model_1);
   }
 
@@ -294,14 +292,14 @@ int main(int argc, char** argv) {
   for (int t = 0; t <= t_f; t++) {
     for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
-          internal::TorqueKey(joint->id(), t),
+          TorqueKey(joint->id(), t),
           gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
 
   // Initialize solution.
   gtsam::Values init_vals;
-  init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+  init_vals = initializer.MultiPhaseZeroValuesTrajectory(
       robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
@@ -317,7 +315,10 @@ int main(int argc, char** argv) {
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   vector<string> jnames;
   for (auto&& joint : robot.joints()) jnames.push_back(joint->name());
-  string jnames_str = boost::algorithm::join(jnames, ",");
+  std::string jnames_str = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques, time.
@@ -340,7 +341,10 @@ int main(int argc, char** argv) {
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
 
       t++;
-      string vals_str = boost::algorithm::join(vals, ",");
+      std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
       traj_file << vals_str << "\n";
     }
   }

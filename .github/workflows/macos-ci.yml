@@ -17,15 +17,15 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [macOS-10.15-xcode-11.3.1]
+        name: [macOS-12-xcode-14.2]
 
         build_type: [Debug, Release]
         build_unstable: [ON]
         include:
-          - name: macOS-10.15-xcode-11.3.1
-            os: macOS-10.15
+          - name: macOS-12-xcode-14.2
+            os: macOS-12
             compiler: xcode
-            version: "11.3.1"
+            version: "14.2"
 
     steps:
       - name: Setup Compiler
@@ -44,16 +44,11 @@ jobs:
         run: |
           brew install boost
           brew tap osrf/simulation
-          brew install sdformat10
+          brew install sdformat12
+          brew tap borglab/core
 
       - name: GTSAM
-        run: |
-          git clone https://github.com/borglab/gtsam.git
-          cd gtsam
-          mkdir build && cd build
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF ..
-          make -j$(sysctl -n hw.physicalcpu) install
-          cd ../../ # go back to home directory
+        run: brew install --HEAD gtsam@latest
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -63,7 +58,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTDYNAMICS_BUILD_CABLE_ROBOT=ON -DGTDYNAMICS_BUILD_JUMPING_ROBOT=ON ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..
         working-directory: ./build
 
       - name: Build
@@ -72,4 +67,8 @@ jobs:
 
       - name: Test
         run: make -j$(sysctl -n hw.physicalcpu) check
+        working-directory: ./build
+
+      - name: Install
+        run: make -j$(sysctl -n hw.physicalcpu) install
         working-directory: ./build

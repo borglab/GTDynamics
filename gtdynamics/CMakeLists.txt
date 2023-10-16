@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics)
+set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics manifold)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -32,6 +32,7 @@ link_directories(${SDFormat_LIBRARY_DIRS})
 file(GLOB headers "*.h")
 file(GLOB sources "*.cpp")
 
+include(GNUInstallDirs)
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp)
@@ -39,7 +40,7 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
   list(APPEND headers ${GLOB_RESULT})
-  # Install header file to INSTALL_INCUDEDIR/gtdynamics/subdirectory.
+  # Install header file to INSTALL_INCLUDEDIR/gtdynamics/subdirectory.
   install(FILES ${GLOB_RESULT} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/${SOURCE_SUBDIR})
 
   # Process subdirectory.
@@ -59,7 +60,9 @@ add_library(gtdynamics SHARED ${sources} ${headers})
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Link all dependencies
-target_link_libraries(gtdynamics ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+
+target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
 
 
 ## Include headers needed
@@ -81,6 +84,7 @@ target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
 ## Install library and headers.
 install(
   TARGETS gtdynamics
+  EXPORT "${PROJECT_NAME}-exports"
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin)

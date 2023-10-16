@@ -13,12 +13,11 @@
 
 #pragma once
 
+#include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-
-#include "gtdynamics/kinematics/Kinematics.h"
-#include "gtdynamics/utils/Slice.h"
 
 namespace gtdynamics {
 
@@ -30,9 +29,9 @@ namespace gtdynamics {
  * @param H_wTcom optional 6x6 Jacobian of wrench wrt COM pose
  * @returns 6x1 gravity wrench in CoM frame
  */
-gtsam::Vector6 GravityWrench(
-    const gtsam::Vector3& gravity, double mass, const gtsam::Pose3& wTcom,
-    gtsam::OptionalJacobian<6, 6> H_wTcom = boost::none);
+gtsam::Vector6 GravityWrench(const gtsam::Vector3& gravity, double mass,
+                             const gtsam::Pose3& wTcom,
+                             gtsam::OptionalJacobian<6, 6> H_wTcom = {});
 
 /**
  * @fn Calculate sum of wrenches with optional Jacobians (all identity!).
@@ -40,9 +39,8 @@ gtsam::Vector6 GravityWrench(
  * @param H optional Jacobians, if given needs to be same size as wrenches.
  */
 ///
-gtsam::Vector6 ResultantWrench(
-    const std::vector<gtsam::Vector6>& wrenches,
-    boost::optional<std::vector<gtsam::Matrix>&> H = boost::none);
+gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
+                               gtsam::OptionalMatrixVecType H = nullptr);
 
 /**
  * @fn Calculate sum of external wrenches and gravity wrench on a body.
@@ -54,12 +52,12 @@ gtsam::Vector6 ResultantWrench(
  */
 gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
                                double mass, const gtsam::Pose3& wTcom,
-                               boost::optional<gtsam::Vector3> gravity,
-                               boost::optional<std::vector<gtsam::Matrix>&> H);
+                               std::optional<gtsam::Vector3> gravity,
+                               gtsam::OptionalMatrixVecType H = nullptr);
 
 /// Noise models etc specific to Statics class
 struct StaticsParameters : public KinematicsParameters {
-  boost::optional<gtsam::Vector3> gravity, planar_axis;
+  std::optional<gtsam::Vector3> gravity, planar_axis;
 
   using Isotropic = gtsam::noiseModel::Isotropic;
   const gtsam::SharedNoiseModel fs_cost_model,  // statics cost model
@@ -68,10 +66,9 @@ struct StaticsParameters : public KinematicsParameters {
       planar_cost_model;                        // planar factor
 
   /// Constructor with default arguments
-  StaticsParameters(
-      double sigma_dynamics = 1e-5,
-      const boost::optional<gtsam::Vector3>& gravity = boost::none,
-      const boost::optional<gtsam::Vector3>& planar_axis = boost::none)
+  StaticsParameters(double sigma_dynamics = 1e-5,
+                    const std::optional<gtsam::Vector3>& gravity = {},
+                    const std::optional<gtsam::Vector3>& planar_axis = {})
       : gravity(gravity),
         planar_axis(planar_axis),
         fs_cost_model(Isotropic::Sigma(6, 1e-4)),

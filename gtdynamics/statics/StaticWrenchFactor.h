@@ -13,19 +13,17 @@
 
 #pragma once
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <boost/optional.hpp>
-#include <boost/serialization/base_object.hpp>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -38,7 +36,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   using This = StaticWrenchFactor;
   using Base = gtsam::NoiseModelFactor;
   double mass_;
-  boost::optional<gtsam::Vector3> gravity_;
+  std::optional<gtsam::Vector3> gravity_;
 
  public:
   /**
@@ -49,24 +47,24 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
    * @param mass Mass for this link.
    * @param gravity (optional) Gravity vector in world frame.
    */
-  StaticWrenchFactor(
-      const std::vector<DynamicsSymbol> &wrench_keys, gtsam::Key pose_key,
-      const gtsam::noiseModel::Base::shared_ptr &cost_model, double mass,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none);
+  StaticWrenchFactor(const std::vector<gtsam::Key> &wrench_keys,
+                     gtsam::Key pose_key,
+                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                     double mass,
+                     const std::optional<gtsam::Vector3> &gravity = {});
 
- public:
   /**
    * Evaluate ResultantWrench, which should be zero and is factor error.
    * @param values contains the pose and wrenches acting on the link.
    * @param H Jacobians, in the order: *wrenches, pose
    */
-  gtsam::Vector unwhitenedError(const gtsam::Values &x,
-                                boost::optional<std::vector<gtsam::Matrix> &>
-                                    H = boost::none) const override;
+  gtsam::Vector unwhitenedError(
+      const gtsam::Values &x,
+      gtsam::OptionalMatrixVecType H = nullptr) const override;
 
   /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -79,6 +77,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -86,6 +85,7 @@ class StaticWrenchFactor : public gtsam::NoiseModelFactor {
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

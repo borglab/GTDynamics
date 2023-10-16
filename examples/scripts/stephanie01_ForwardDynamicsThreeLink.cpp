@@ -12,17 +12,18 @@
  * @author: Stephanie McCormick
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/initialize_solution_utils.h"
 
 using namespace gtdynamics;
 
 int main(int argc, char **argv) {
   // Load the three-link robot using the relevant namespace from RobotModels.
   auto robot = simple_rr::getRobot();
+
+  Initializer initializer;
 
   // Build the factor graph for the robot.
   robot = robot.fixLink("link_0");
@@ -33,13 +34,12 @@ int main(int argc, char **argv) {
   auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Add forward dynamics priors to factor graph.
-  gtsam::Values values;
-
+  gtsam::Values values = initializer.ZeroValues(robot, 0);
   auto priorFactors = graph_builder.forwardDynamicsPriors(robot, 0, values);
   graph.add(priorFactors);
 
   // Generate initial values to be passed in to the optimization function.
-  auto init_values = ZeroValues(robot, 0);
+  auto init_values = initializer.ZeroValues(robot, 0);
 
   // Compute forward dynamics.
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

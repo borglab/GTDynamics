@@ -13,15 +13,14 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 /**
@@ -29,17 +28,17 @@ namespace gtdynamics {
  * dynamics.
  */
 class Simulator {
-private:
+ private:
   Robot robot_;
   int t_;
   DynamicsGraph graph_builder_;
   gtsam::Values initial_values_;
-  boost::optional<gtsam::Vector3> gravity_;
-  boost::optional<gtsam::Vector3> planar_axis_;
+  std::optional<gtsam::Vector3> gravity_;
+  std::optional<gtsam::Vector3> planar_axis_;
   gtsam::Values current_values_;
   gtsam::Values new_kinematics_;
 
-public:
+ public:
   /**
    * Constructor
    *
@@ -50,9 +49,10 @@ public:
    * @param planar_axis    planar axis vector
    */
   Simulator(const Robot &robot, const gtsam::Values &initial_values,
-            const boost::optional<gtsam::Vector3> &gravity = boost::none,
-            const boost::optional<gtsam::Vector3> &planar_axis = boost::none)
-      : robot_(robot), t_(0),
+            const std::optional<gtsam::Vector3> &gravity = {},
+            const std::optional<gtsam::Vector3> &planar_axis = {})
+      : robot_(robot),
+        t_(0),
         graph_builder_(DynamicsGraph(gravity, planar_axis)),
         initial_values_(initial_values) {
     reset();
@@ -129,4 +129,4 @@ public:
   const gtsam::Values &getValues() const { return current_values_; }
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

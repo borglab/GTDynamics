@@ -12,17 +12,16 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/base/serializationTestHelpers.h>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::assert_equal;
 using gtsam::Matrix;
@@ -212,6 +211,7 @@ TEST(RevoluteJoint, ParentTchild) {
   EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
 TEST(RevoluteJoint, Serialization) {
@@ -222,6 +222,7 @@ TEST(RevoluteJoint, Serialization) {
   EXPECT(equalsXML(j1));
   EXPECT(equalsBinary(j1));
 }
+#endif
 
 int main() {
   TestResult tr;

@@ -14,20 +14,17 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/PrismaticJoint.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/serializationTestHelpers.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include <boost/serialization/export.hpp>
-
-#include "gtdynamics/universal_robot/HelicalJoint.h"
-#include "gtdynamics/universal_robot/PrismaticJoint.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -104,8 +101,8 @@ TEST(Robot, ForwardKinematics) {
   Values results = robot.forwardKinematics(values);
 
   // The CoM frames at rest are:
-  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 1));
-  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 3));
+  Pose3 T_wl1_rest(Rot3::Identity(), Point3(0, 0, 1));
+  Pose3 T_wl2_rest(Rot3::Identity(), Point3(0, 0, 3));
   // At rest, all the twists are 0:
   Vector6 V_l1_rest, V_l2_rest;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
@@ -123,7 +120,7 @@ TEST(Robot, ForwardKinematics) {
 
   Values results2 = robot.forwardKinematics(values2);
 
-  Pose3 T_wl1_move(Rot3::identity(), Point3(0, 0, 1));  // link1 stays put
+  Pose3 T_wl1_move(Rot3::Identity(), Point3(0, 0, 1));  // link1 stays put
   // link2 is rotated by 90 degrees and now points along -Y axis.
   Pose3 T_wl2_move(Rot3::Rx(M_PI_2), Point3(0, -1, 2));
   Vector6 V_l1_move, V_l2_move;
@@ -164,10 +161,10 @@ TEST(Robot, ForwardKinematicsRPR) {
   robot = robot.fixLink("link_0");
   Values fk_results = robot.forwardKinematics(values);
 
-  Pose3 T_wl0_rest(Rot3::identity(), Point3(0, 0, 0.1));
-  Pose3 T_wl1_rest(Rot3::identity(), Point3(0, 0, 0.5));
-  Pose3 T_wl2_rest(Rot3::identity(), Point3(0, 0, 1.1));
-  Pose3 T_wl3_rest(Rot3::identity(), Point3(0, 0, 1.7));
+  Pose3 T_wl0_rest(Rot3::Identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl1_rest(Rot3::Identity(), Point3(0, 0, 0.5));
+  Pose3 T_wl2_rest(Rot3::Identity(), Point3(0, 0, 1.1));
+  Pose3 T_wl3_rest(Rot3::Identity(), Point3(0, 0, 1.7));
   Vector6 V_l0_rest, V_l1_rest, V_l2_rest, V_l3_rest;
   V_l0_rest << 0, 0, 0, 0, 0, 0;
   V_l1_rest << 0, 0, 0, 0, 0, 0;
@@ -191,7 +188,7 @@ TEST(Robot, ForwardKinematicsRPR) {
 
   fk_results = robot.forwardKinematics(values2);
 
-  Pose3 T_wl0_move(Rot3::identity(), Point3(0, 0, 0.1));
+  Pose3 T_wl0_move(Rot3::Identity(), Point3(0, 0, 0.1));
   Pose3 T_wl1_move(Rot3::Ry(M_PI_2), Point3(0.3, 0, 0.2));
   Pose3 T_wl2_move(Rot3::Ry(M_PI_2), Point3(1.4, 0, 0.2));
   Pose3 T_wl3_move(Rot3::Ry(M_PI_2), Point3(2.0, 0, 0.2));
@@ -237,6 +234,54 @@ TEST(ForwardKinematics, FourBar) {
   THROWS_EXCEPTION(robot.forwardKinematics(wrong_vels));
 }
 
+TEST(ForwardKinematics, A1) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("a1/a1.urdf"), "", true);
+  robot = robot.fixLink("trunk");
+
+  Values values;
+  Values fk_results = robot.forwardKinematics(values);
+  // 21 joint angles, 21, joint velocities, 22 link poses, 22 link twists
+  EXPECT_LONGS_EQUAL(86, fk_results.size());
+
+  Values joint_angles;
+  // Sanity check that 0 joint angles gives us the same pose as from the URDF
+  std::vector<double> angles = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  size_t jidx = 0;
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&joint_angles, joint->id(), 0, angles[jidx]);
+    jidx += 1;
+  }
+
+  // This is the toe joint we wish to test.
+  size_t joint_id = 20;
+
+  fk_results = robot.forwardKinematics(joint_angles, 0, std::string("trunk"));
+  EXPECT(assert_equal(Pose3(Rot3(), Point3(-0.183, -0.13205, -0.4)),
+                      Pose(fk_results, joint_id, 0)));
+
+  // Joint angles from A1 simulation.
+  angles = {
+      0.000174304, 0,        0.923033, -1.83381,    0,           0.000172539,
+      0,           0.924125, -1.83302, 0,           0.000137167, 0,
+      0.878277,    -1.85284, 0,        0.000140037, 0,           0.877832,
+      -1.852,      0,        0};
+
+  jidx = 0;
+  joint_angles.clear();
+  for (auto&& joint : robot.joints()) {
+    InsertJointAngle(&joint_angles, joint->id(), 0, angles[jidx]);
+    jidx += 1;
+  }
+  fk_results = robot.forwardKinematics(joint_angles, 0, std::string("trunk"));
+  // regression
+  EXPECT(assert_equal(
+      Pose3(Rot3(0.638821, 0, 0.769356, 0, 1, 0, -0.769356, 0, 0.638821),
+            Point3(-0.336871, -0.13205, -0.327764)),
+      Pose(fk_results, 20, 0), 1e-6));
+}
+
 TEST(Robot, Equality) {
   Robot robot1 = CreateRobotFromFile(
       kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
@@ -255,6 +300,8 @@ TEST(Robot, Equality) {
   EXPECT(!robot1.equals(robot2));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+
 // Declaration needed for serialization of derived class.
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 BOOST_CLASS_EXPORT(gtdynamics::HelicalJoint)
@@ -269,6 +316,7 @@ TEST(Robot, Serialization) {
   EXPECT(equalsXML(robot));
   EXPECT(equalsBinary(robot));
 }
+#endif
 
 int main() {
   TestResult tr;

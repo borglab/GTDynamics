@@ -9,13 +9,11 @@
 #include "CableTensionFactor.h"
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 
@@ -25,8 +23,8 @@ namespace gtdynamics {
 
 /******************************************************************************/
 Vector6 CableTensionFactor::computeWrench(
-    double t, const Pose3 &wTx, boost::optional<Matrix &> H_t,
-    boost::optional<Matrix &> H_wTx) const {
+    double t, const Pose3 &wTx, gtsam::OptionalMatrixType H_t,
+    gtsam::OptionalMatrixType H_wTx) const {
   // Jacobians: cable direction
   Matrix33 dir_H_wPb;
   Matrix36 wPb_H_wTx;
@@ -48,8 +46,8 @@ Vector6 CableTensionFactor::computeWrench(
   Vector3 xf = wTx.rotation().unrotate(wf,  // force in the EE frame
                                        H_wTx ? &xf_H_wRx : 0,
                                        (H_t || H_wTx) ? &xf_H_wf : 0);
-  Vector3 xm = cross(xPb_, xf,     // moment in the EE frame
-                     boost::none,  //
+  Vector3 xm = cross(xPb_, xf,  // moment in the EE frame
+                     nullptr,   //
                      (H_t || H_wTx) ? &xm_H_xf : 0);
 
   Vector6 F = (Vector6() << xm, xf).finished();
@@ -64,8 +62,8 @@ Vector6 CableTensionFactor::computeWrench(
 
 /******************************************************************************/
 Vector6 CableTensionFactor::computeWrenchUsingAdjoint(
-    double t, const Pose3 &wTx, boost::optional<Matrix &> H_t,
-    boost::optional<Matrix &> H_wTx) const {
+    double t, const Pose3 &wTx, gtsam::OptionalMatrixType H_t,
+    gtsam::OptionalMatrixType H_wTx) const {
   // Jacobians: cable direction
   Matrix33 dir_H_wPb;
   Matrix36 wPb_H_wTx;

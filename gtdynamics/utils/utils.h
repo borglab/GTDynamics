@@ -20,7 +20,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
 #include <string>
@@ -42,15 +41,6 @@ double radians(double degree);
 
 /// Convert a vector of angles to radians
 gtsam::Vector radians(const gtsam::Vector &degree);
-
-/**
- * Calculate AdjointMap jacobian w.r.t. joint coordinate q
- * @param q joint angle
- * @param jMi this COM frame, expressed in next link's COM frame at rest
- * @param screw_axis screw axis expressed in kth link's COM frame
- */
-gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
-                                   const gtsam::Vector6 &screw_axis);
 
 /**
  * Calculate Gaussian Process system transition matrix

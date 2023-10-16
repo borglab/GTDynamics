@@ -13,17 +13,16 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -32,10 +31,10 @@ namespace gtdynamics {
  * that the linear contact force lies within a friction cone.
  */
 class ContactDynamicsFrictionConeFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6> {
  private:
   using This = ContactDynamicsFrictionConeFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6>;
 
   int up_axis_;  // Which axis is up (assuming flat ground)? {0: x, 1: y, 2: z}.
   double mu_prime_;  // static friction coefficient squared.
@@ -52,7 +51,7 @@ class ContactDynamicsFrictionConeFactor
  public:
   /**
    * Contact dynamics factor for zero moment at contact.
-
+   *
    * @param pose_key Key corresponding to the link's CoM pose.
    * @param contact_wrench_key Key corresponding to this link's contact wrench.
    * @param cost_model Noise model for this factor.
@@ -70,18 +69,17 @@ class ContactDynamicsFrictionConeFactor
     else
       up_axis_ = 2;  // z.
   }
+
   virtual ~ContactDynamicsFrictionConeFactor() {}
 
- public:
   /**
    * Evaluate contact point moment errors.
    * @param contact_wrench Contact wrench on this link.
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose, const gtsam::Vector6 &contact_wrench,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none,
-      boost::optional<gtsam::Matrix &> H_contact_wrench =
-          boost::none) const override {
+      gtsam::OptionalMatrixType H_pose = nullptr,
+      gtsam::OptionalMatrixType H_contact_wrench = nullptr) const override {
     // Linear component of the contact wrench.
     gtsam::Vector3 f_c = H_wrench_ * contact_wrench;
 
@@ -144,7 +142,7 @@ class ContactDynamicsFrictionConeFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -157,13 +155,15 @@ class ContactDynamicsFrictionConeFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

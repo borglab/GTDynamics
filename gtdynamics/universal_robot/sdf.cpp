@@ -11,43 +11,68 @@
  * @author Frank Dellaert, Alejandro Escontrela, Stephanie McCormick
  */
 
-#include "gtdynamics/universal_robot/sdf.h"
+#include <gtdynamics/universal_robot/FixedJoint.h>
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/PrismaticJoint.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/universal_robot/sdf_internal.h>
 
 #include <fstream>
 #include <sdf/parser.hh>
 #include <sdf/sdf.hh>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/PrismaticJoint.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/HelicalJoint.h"
-#include "gtdynamics/universal_robot/sdf_internal.h"
 
 namespace gtdynamics {
 
 using gtsam::Pose3;
 
 sdf::Model GetSdf(const std::string &sdf_file_path,
-                  const std::string &model_name) {
-  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path);
-  if (sdf==nullptr)
-    throw std::runtime_error("SDF library could not parse " + sdf_file_path);
+                  const std::string &model_name,
+                  const sdf::ParserConfig &config) {
+  sdf::Errors errors;
 
-  sdf::Model model = sdf::Model();
-  model.Load(sdf->Root()->GetElement("model"));
+  sdf::SDFPtr sdf = sdf::readFile(sdf_file_path, config, errors);
+  if (sdf == nullptr || errors.size() > 0) {
+    for (auto &&error : errors) {
+      std::cout << "ERROR: " << error << std::endl;
+    }
+
+    throw std::runtime_error("SDF library could not parse " + sdf_file_path);
+  }
+
+  sdf::Root root;
+  errors = root.Load(sdf, config);
+  if (errors.size() > 0) {
+    for (auto &&error : errors) {
+      std::cout << "ERROR: " << error.Message() << std::endl;
+    }
+    throw std::runtime_error("Error loading SDF file " + sdf_file_path);
+  }
 
   // Check whether this is a world file, in which case we have to first
   // access the world element then check whether one of its child models
   // corresponds to model_name.
-  if (model.Name() != "__default__") return model;
+  if (root.WorldCount() > 0) {
+    // Iterate through all the worlds and all the models in each world to find
+    // the desired model.
+    for (size_t widx = 0; widx < root.WorldCount(); widx++) {
+      const sdf::World *world = root.WorldByIndex(widx);
 
-  // Load the world element.
-  sdf::World world = sdf::World();
-  world.Load(sdf->Root()->GetElement("world"));
+      for (uint midx = 0; midx < world->ModelCount(); midx++) {
+        const sdf::Model *curr_model = world->ModelByIndex(midx);
+        if (curr_model->Name() == model_name) {
+          return *curr_model;
+        }
+      }
+    }
 
-  for (uint i = 0; i < world.ModelCount(); i++) {
-    sdf::Model curr_model = *world.ModelByIndex(i);
-    if (curr_model.Name() == model_name) return curr_model;
+  } else {
+    // There is no world element so we directly access the model element.
+    const sdf::Model *model = root.Model();
+    if (model->Name() != "__default__") {
+      return *model;
+    }
   }
 
   throw std::runtime_error("Model not found in: " + sdf_file_path);
@@ -75,29 +100,28 @@ JointParams ParametersFromSdfJoint(const sdf::Joint &sdf_joint) {
 
 // Get Link pose in base frame from sdf::Link object
 Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
-// Call SemanticPose::Resolve so the pose is resolved to the correct frame
-  /// http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
   // Get non-const pose of link in the frame of the joint it is connect to
   // (http://wiki.ros.org/urdf/XML/link).
   auto raw_pose = sdf_link->RawPose();
 
   // Update from joint frame to base frame in-place.
-  // Base frame is denoted by "".
-  auto errors = sdf_link->SemanticPose().Resolve(raw_pose, "");
+  // Call SemanticPose::Resolve so the pose is resolved to the correct frame.
+  // Default base frame is "".
+  // http://sdformat.org/tutorials?tut=pose_frame_semantics&ver=1.7&cat=specification&
+  auto errors = sdf_link->SemanticPose().Resolve(raw_pose);
   // If any errors in the resolution, throw an exception.
   if (errors.size() > 0) {
     throw std::runtime_error(errors[0].Message());
   }
-  // Pose is updated from joint frame to base frame.
-  const auto bMl = Pose3FromIgnition(raw_pose);
 
+  // Pose is updated from joint frame to base frame.
+  const Pose3 bMl = Pose3FromIgnition(raw_pose);
   return bMl;
 }
 
 Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
                     const sdf::Link *parent_sdf_link,
                     const sdf::Link *child_sdf_link) {
-
   // Name of the coordinate frame the joint's pose is relative to.
   // Specified by `relative_to` in the SDF file.
   std::string frame_name = sdf_joint.PoseRelativeTo();
@@ -111,11 +135,12 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
     // the joint frame is relative to the child link. So to get the joint pose
     // in the base frame, we pre-multiply by the child link's frame.
 
-    // The child link frame here is not COM of the link, 
+    // The child link frame here is not COM of the link,
     // it is the pose of the link as described in the sdf file.
     // This is done here once in order to avoid saving the bTl transform
     // as part of the Link class.
-    // We need the bTl here because the joint is defined in the link frame in the sdf.
+    // We need the bTl here because the joint is defined in the link frame in
+    // the sdf.
     const Pose3 bTcl = GetSdfLinkFrame(child_sdf_link);
     return bTcl * lTj;
 
@@ -153,7 +178,7 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   const Pose3 lMcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
   const Pose3 bMcom = bMl * lMcom;
 
-  return boost::make_shared<Link>(id, sdf_link.Name(),
+  return std::make_shared<Link>(id, sdf_link.Name(),
                                   sdf_link.Inertial().MassMatrix().Mass(),
                                   inertia, bMcom, bMl);
 }
@@ -172,26 +197,37 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const sdf::Joint &sdf_joint) {
   JointSharedPtr joint;
 
-  // Generate a joint parameters struct with values from the SDF.
-  JointParams parameters = ParametersFromSdfJoint(sdf_joint);
-
   std::string name(sdf_joint.Name());
+
   Pose3 bMj = GetJointFrame(sdf_joint, parent_sdf_link, child_sdf_link);
 
-  const gtsam::Vector3 axis = GetSdfAxis(sdf_joint);
+  JointParams parameters;
+  gtsam::Vector3 axis;
+  // Fixed joints don't have parameters or an axis.
+  if (sdf_joint.Type() != sdf::JointType::FIXED) {
+    // Generate a joint parameters struct with values from the SDF.
+    parameters = ParametersFromSdfJoint(sdf_joint);
+    // Get the joint axis.
+    axis = GetSdfAxis(sdf_joint);
+  }
+
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
-      joint = boost::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
+      joint = std::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
                                                  child_link, axis, parameters);
       break;
     case sdf::JointType::REVOLUTE:
-      joint = boost::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
+      joint = std::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
                                                 child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
-      joint = boost::make_shared<HelicalJoint>(
+      joint = std::make_shared<HelicalJoint>(
           id, name, bMj, parent_link, child_link, axis, sdf_joint.ThreadPitch(),
           parameters);
+      break;
+    case sdf::JointType::FIXED:
+      joint = std::make_shared<FixedJoint>(id, name, bMj, parent_link,
+                                             child_link);
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
@@ -226,7 +262,7 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
       // This joint fixes the child link in the world frame.
       LinkSharedPtr child_link = name_to_link[child_link_name];
       Pose3 fixed_pose = child_link->bMcom();
-      child_link = boost::make_shared<Link>(Link::fix(*child_link, fixed_pose));
+      child_link = std::make_shared<Link>(Link::fix(*child_link, fixed_pose));
       continue;
     }
     LinkSharedPtr parent_link = name_to_link[parent_link_name];
@@ -235,7 +271,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     const sdf::Link *child_sdf_link = sdf.LinkByName(child_link_name);
 
     // Construct Joint and insert into name_to_joint.
-    JointSharedPtr joint = JointFromSdf(j, parent_link, parent_sdf_link, child_link, child_sdf_link, sdf_joint);
+    JointSharedPtr joint = JointFromSdf(j, parent_link, parent_sdf_link,
+                                        child_link, child_sdf_link, sdf_joint);
     name_to_joint.emplace(joint->name(), joint);
 
     // Update list of parent and child links/joints for each Link.
@@ -252,10 +289,13 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
  * robot description.
  * @param[in] model_name name of the robot we care about. Must be specified in
  * case sdf_file_path points to a world file.
+ * @param[in] preserve_fixed_joint Flag indicating if the fixed joints in the
+ * URDF file should be preserved and not merged.
  * @return LinkMap and JointMap as a pair
  */
 static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
-                                          const std::string &model_name) {
+                                          const std::string &model_name,
+                                          bool preserve_fixed_joint) {
   std::ifstream is(file_path);
   if (!is.good())
     throw std::runtime_error("ExtractRobotFromFile: no file found at " +
@@ -265,17 +305,23 @@ static LinkJointPair ExtractRobotFromFile(const std::string &file_path,
   std::string file_ext = file_path.substr(file_path.find_last_of(".") + 1);
   std::transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
 
-  if (file_ext == "urdf")
-    return ExtractRobotFromSdf(GetSdf(file_path));
-  else if (file_ext == "sdf")
-    return ExtractRobotFromSdf(GetSdf(file_path, model_name));
+  sdf::ParserConfig _config = sdf::ParserConfig::GlobalConfig();
+  _config.URDFSetPreserveFixedJoint(preserve_fixed_joint);
+
+  if (file_ext == "urdf") {
+    return ExtractRobotFromSdf(GetSdf(file_path, "", _config));
+  } else if (file_ext == "sdf") {
+    return ExtractRobotFromSdf(GetSdf(file_path, model_name, _config));
+  }
 
   throw std::runtime_error("Invalid file extension.");
 }
 
 Robot CreateRobotFromFile(const std::string &file_path,
-                          const std::string &model_name) {
-  auto links_joints_pair = ExtractRobotFromFile(file_path, model_name);
+                          const std::string &model_name,
+                          bool preserve_fixed_joint) {
+  auto links_joints_pair =
+      ExtractRobotFromFile(file_path, model_name, preserve_fixed_joint);
   return Robot(links_joints_pair.first, links_joints_pair.second);
 }
 

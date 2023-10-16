@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/HelicalJoint.h"
+#include <gtdynamics/universal_robot/HelicalJoint.h>
+#include <gtdynamics/universal_robot/Link.h>
 
 namespace gtdynamics {
 /// Create a joint with given rest transform cMp and screw-axis in child frame.
@@ -26,9 +26,9 @@ JointConstSharedPtr make_joint(gtsam::Pose3 cMp, gtsam::Vector6 cScrewAxis) {
   gtsam::Pose3 bMcom;
   gtsam::Pose3 bMl;
 
-  auto l1 = boost::make_shared<Link>(Link(1, name, mass, inertia, bMcom, bMl));
-  auto l2 = boost::make_shared<Link>(
-      Link(2, name, mass, inertia, cMp.inverse(), bMl));
+  auto l1 = std::make_shared<Link>(Link(1, name, mass, inertia, bMcom, bMl));
+  auto l2 =
+      std::make_shared<Link>(Link(2, name, mass, inertia, cMp.inverse(), bMl));
 
   // create joint
   JointParams joint_params;
@@ -40,7 +40,7 @@ JointConstSharedPtr make_joint(gtsam::Pose3 cMp, gtsam::Vector6 cScrewAxis) {
   gtsam::Pose3 jMc = bMj.inverse() * l2->bMcom();
   gtsam::Vector6 jScrewAxis = jMc.AdjointMap() * cScrewAxis;
 
-  return boost::make_shared<const HelicalJoint>(
-      1, "j1", bMj, l1, l2, jScrewAxis, joint_params);
+  return std::make_shared<const HelicalJoint>(1, "j1", bMj, l1, l2, jScrewAxis,
+                                              joint_params);
 }
 }  // namespace gtdynamics

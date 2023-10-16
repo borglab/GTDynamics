@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TwistAccelFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +26,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "gtdynamics/factors/TwistAccelFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -37,10 +37,10 @@ namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 
-gtsam::Key qKey = internal::JointAngleKey(1), qVelKey = internal::JointVelKey(1),
-           qAccelKey = internal::JointAccelKey(1), twistKey = internal::TwistKey(2),
-           twistAccel_p_key = internal::TwistAccelKey(1),
-           twistAccel_c_key = internal::TwistAccelKey(2);
+gtsam::Key qKey = JointAngleKey(1), qVelKey = JointVelKey(1),
+           qAccelKey = JointAccelKey(1), twistKey = TwistKey(2),
+           twistAccel_p_key = TwistAccelKey(1),
+           twistAccel_c_key = TwistAccelKey(2);
 }  // namespace example
 
 // Test twistAccel factor for stationary case

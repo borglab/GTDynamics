@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -54,16 +54,19 @@ int main(int argc, char** argv) {
   InsertJointVel(&theta_and_theta_dot, j2, 0, 0.1);
   InsertJointVel(&theta_and_theta_dot, j3, 0, 0.0);
 
-  std::vector<gtsam::Vector> taus;
+  // Insert torque values for all timesteps
   for (int t = 0; t <= T; t++) {
-    taus.push_back(gtsam::Vector::Zero(3));
+    InsertTorque(&theta_and_theta_dot, j1, t, 0.0);
+    InsertTorque(&theta_and_theta_dot, j2, t, 0.0);
+    InsertTorque(&theta_and_theta_dot, j3, t, 0.0);
   }
   auto fd_priors =
       graph_builder.trajectoryFDPriors(simple_rpr, T, theta_and_theta_dot);
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  auto init_values = ZeroValuesTrajectory(simple_rpr, T, 0);
+  Initializer initializer;
+  auto init_values = initializer.ZeroValuesTrajectory(simple_rpr, T, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

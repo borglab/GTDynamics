@@ -13,20 +13,19 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <string>
-
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -45,7 +44,7 @@ inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
     H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
   }
 
-  auto wrench_key = internal::WrenchKey(joint->child()->id(), joint->id(), k);
+  auto wrench_key = WrenchKey(joint->child()->id(), joint->id(), k);
   gtsam::Vector6_ wrench(wrench_key);
   // TODO(yetong): maybe can be done easily with a functor, and/or
   // linearexpression (re-written with functor), and maybe this same pattern
@@ -64,7 +63,7 @@ inline gtsam::NoiseModelFactor::shared_ptr WrenchPlanarFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     gtsam::Vector3 planar_axis, const JointConstSharedPtr &joint,
     size_t k = 0) {
-  return boost::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
       cost_model, gtsam::Vector3::Zero(),
       WrenchPlanarConstraint(planar_axis, joint, k));
 }
