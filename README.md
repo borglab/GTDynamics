@@ -84,7 +84,12 @@ $ make check
 ```
 
 ## Running Examples
-The `examples` directory contains various example projects where the entire project is contained inside the gtdynamics repo.  Use these as templates when your project is relatively simple and can live inside your gtdynamics directory.
+
+The `examples` directory contains various full example projects demonstrating the use of GTDynamics for various robotic applications.
+
+We recommend going through the examples to get a better understanding of how to use GTDynamics for your own use cases.
+
+*NOTE* The examples are made to run within the GTDynamics source folder and are not standalone projects.
 
 Run these examples with
 ```sh
@@ -92,8 +97,13 @@ $ make example_XXX.run
 ```
 where `XXX` corresponds to a folder name in `examples`.  For example, `make example_forward_dynamics.run`.
 
-## Using GTDynamics in an external project with cmake
-The `/examples/cmake_project_example` directory contains an example cmake project that demonstrates how to include GTDynamics in your application.  Use this as a template when you want your project to be not inside the gtdynamics directory (e.g. separate git repo, ROS, personal libraries, etc).  To test building the project:
+## Including GTDynamics With CMake
+
+The `examples/cmake_project_example` directory contains an example CMake-based project that demonstrates how to include GTDynamics in your application.
+
+Use this as a template when you want to set up your own project that uses GTDynamics (e.g. separate git repo, ROS, personal libraries, etc).
+
+To build the project:
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
     ```sh
