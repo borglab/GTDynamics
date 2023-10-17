@@ -86,6 +86,7 @@ struct IEIterSummary {
   double cost;
   double e_violation;
   double i_violation;
+  double mu;
 };
 
 struct IEResultSummary {
@@ -102,6 +103,8 @@ struct IEResultSummary {
   void printLatex(std::ostream &latex_os) const;
 
   void exportFile(const std::string &file_path) const;
+
+  void exportFileWithMu(const std::string &file_path) const;
 };
 
 typedef std::vector<internal::LevenbergMarquardtState> LMItersDetail;

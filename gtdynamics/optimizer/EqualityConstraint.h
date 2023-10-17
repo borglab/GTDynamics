@@ -186,6 +186,15 @@ class FactorZeroErrorConstraint : public EqualityConstraint {
 
   /** Return the dimension of the constraint. */
   size_t dim() const override { return factor_->dim(); }
+
+  /// Return keys involved in constraint.
+  std::set<gtsam::Key> keys() const override {
+    std::set<gtsam::Key> keyset;
+    for (const gtsam::Key& key: factor_->keys()) {
+        keyset.insert(key);
+    }
+    return keyset;
+    }
 };
 
 /// Container of EqualityConstraint.

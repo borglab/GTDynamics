@@ -19,9 +19,32 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
-#include "gtdynamics/manifold/TspaceBasis.h"
+using gtdynamics::EqConsOptProblem;
 
 namespace gtsam {
+
+
+/// Manifold optimization problem.
+struct ManifoldOptProblem {
+  NonlinearFactorGraph graph_;  // cost function on constraint manifolds
+  std::vector<ConnectedComponent::shared_ptr>
+      components_;  // All the constraint-connected components
+  Values
+      values_;  // values for constraint manifolds and unconstrained variables
+  Values fixed_manifolds_;     // fully constrained variables
+  KeySet unconstrained_keys_;  // keys for unconstrained variables
+  KeySet manifold_keys_;       // keys for constraint manifold variables
+
+  /** Dimension of the manifold optimization problem, as factor dimension x
+   * variable dimension. */
+  std::pair<size_t, size_t> problemDimension() const;
+
+  /// Customizable print function.
+  void print(const std::string& s = "",
+             const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;
+};
+
+
 
 /// Parameters for manifold optimizer.
 struct ManifoldOptimizerParameters
@@ -71,7 +94,53 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
                                             const std::map<Key, Key> &var2man_keymap,
                                             const Values& fc_manifolds = Values());
 
-  
+  /** Create values for the manifold optimization probelm by (1) create
+   * constraint manifolds for constraint-connected components; (2) identify if
+   * the cosntraint manifold is fully constrained; (3) collect unconstrained
+   * variables.
+   */
+  void constructMoptValues(const EqConsOptProblem &ecopt_problem,
+                           ManifoldOptProblem &mopt_problem) const;
+
+  /// Create initial values for the constraint manifold variables.
+  void constructManifoldValues(const EqConsOptProblem &ecopt_problem,
+                               ManifoldOptProblem &mopt_problem) const;
+
+  /// Collect values for unconstrained variables.
+  static void
+  constructUnconstrainedValues(const EqConsOptProblem &ecopt_problem,
+                               ManifoldOptProblem &mopt_problem);
+
+  /** Create a factor graph of cost function with the constraint manifold
+   * variables. */
+  static void constructMoptGraph(const EqConsOptProblem &ecopt_problem,
+                                 ManifoldOptProblem &mopt_problem);
+
+  /** Transform an equality-constrained optimization problem into a manifold
+   * optimization problem by creating constraint manifolds. */
+  ManifoldOptProblem
+  problemTransform(const EqConsOptProblem &ecopt_problem) const;
+
+  /// Initialize the manifold optization problem.
+  ManifoldOptProblem initializeMoptProblem(
+      const gtsam::NonlinearFactorGraph& costs,
+      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::Values& init_values) const;
+
+  /// Construct values of original variables.
+  Values baseValues(const ManifoldOptProblem &mopt_problem,
+                    const Values &nopt_values) const;
+
+  VectorValues baseTangentVector(const ManifoldOptProblem &mopt_problem,
+                                 const Values &values,
+                                 const VectorValues &delta) const;
+
+  //   /// Optimization given manifold optimization problem.
+  //   virtual gtsam::Values optimize(
+  //       const ManifoldOptProblem& mopt_problem,
+  //       gtdynamics::ConstrainedOptResult* intermediate_result = nullptr)
+  //       const = 0;
+
 };
 
 }  // namespace gtsam

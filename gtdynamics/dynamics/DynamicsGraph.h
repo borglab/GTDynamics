@@ -74,7 +74,7 @@ class DynamicsGraph {
    * @param known_values Values with kinematics, must include poses and twists
    */
   gtsam::GaussianFactorGraph linearDynamicsGraph(
-      const Robot &robot, const int t, const gtsam::Values &known_values);
+      const Robot &robot, const int t, const gtsam::Values &known_values) const;
 
   /// Return linear factor graph with priors on torques.
   static gtsam::GaussianFactorGraph linearFDPriors(
@@ -95,7 +95,7 @@ class DynamicsGraph {
    * joint torques, and link twist accelerations
    */
   gtsam::Values linearSolveFD(const Robot &robot, const int t,
-                              const gtsam::Values &known_values);
+                              const gtsam::Values &known_values) const;
 
   /**
    * Solve inverse kinodynamics using linear factor graph, Values version.

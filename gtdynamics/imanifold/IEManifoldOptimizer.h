@@ -98,9 +98,13 @@ public:
   MoveToBoundaries(const IEManifoldValues &manifolds,
                    const IndexSetMap &approach_indices_map);
 
-  static std::string IndicesStr(const IndexSetMap &indices_map);
+  static std::string
+  IndicesStr(const IndexSetMap &indices_map,
+             const KeyFormatter &keyFormatter = DefaultKeyFormatter);
 
-  static std::string IndicesStr(const IEManifoldValues &manifolds);
+  static std::string
+  IndicesStr(const IEManifoldValues &manifolds,
+             const KeyFormatter &keyFormatter = DefaultKeyFormatter);
 
   typedef std::function<void(const Values &values, const size_t num_steps)>
       PrintValuesFunc;
@@ -113,7 +117,8 @@ public:
                                const size_t num_steps,
                                bool print_values = false,
                                PrintValuesFunc print_values_func = NULL,
-                               PrintDeltaFunc print_delta_func = NULL) {
+                               PrintDeltaFunc print_delta_func = NULL,
+                               const KeyFormatter& keyFormatter = DefaultKeyFormatter) {
     std::string red = "1;31";
     std::string green = "1;32";
     std::string blue = "1;34";
@@ -125,12 +130,12 @@ public:
     /// Print state
     std::cout << "\033[" + green + "merror: " << std::setprecision(4)
               << state.error << "\033[0m\n";
-    auto state_current_str = IEOptimizer::IndicesStr(state.manifolds);
+    auto state_current_str = IEOptimizer::IndicesStr(state.manifolds, keyFormatter);
     if (state_current_str.size() > 0) {
       std::cout << "current: " << state_current_str << "\n";
     }
     auto state_grad_blocking_str =
-        IEOptimizer::IndicesStr(state.blocking_indices_map);
+        IEOptimizer::IndicesStr(state.blocking_indices_map, keyFormatter);
     if (state_grad_blocking_str.size() > 0) {
       std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
     }
@@ -139,11 +144,11 @@ public:
       double i_error = it.second.evalIViolation();
       double e_error = it.second.evalEViolation();
       if (e_error > 1e-5) {
-        std::cout << "violating e: " << _defaultKeyFormatter(it.first) << " "
+        std::cout << "violating e: " << keyFormatter(it.first) << " "
                   << e_error << "\n";
       }
       if (i_error > 1e-5) {
-        std::cout << "violating i: " << _defaultKeyFormatter(it.first) << " "
+        std::cout << "violating i: " << keyFormatter(it.first) << " "
                   << i_error << "\n";
       }
     }
@@ -169,15 +174,17 @@ public:
                 << "\tnonlinear: " << trial.nonlinear_cost_change
                 << "\033[0m\n";
 
-      auto blocking_str = IEOptimizer::IndicesStr(trial.blocking_indices_map);
+      auto blocking_str =
+          IEOptimizer::IndicesStr(trial.blocking_indices_map, keyFormatter);
       if (blocking_str.size() > 0) {
         std::cout << "blocking: " << blocking_str << "\n";
       }
-      auto forced_str = IEOptimizer::IndicesStr(trial.forced_indices_map);
+      auto forced_str =
+          IEOptimizer::IndicesStr(trial.forced_indices_map, keyFormatter);
       if (forced_str.size() > 0) {
         std::cout << "forced: " << forced_str << "\n";
       }
-      auto new_str = IEOptimizer::IndicesStr(trial.new_manifolds);
+      auto new_str = IEOptimizer::IndicesStr(trial.new_manifolds, keyFormatter);
       if (new_str.size() > 0) {
         std::cout << "new: " << new_str << "\n";
       }

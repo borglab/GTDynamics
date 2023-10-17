@@ -50,7 +50,7 @@ using gtsam::Z_6x1;
 namespace gtdynamics {
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
-    const Robot &robot, const int t, const gtsam::Values &known_values) {
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
   GaussianFactorGraph graph;
   auto all_constrained = gtsam::noiseModel::Constrained::All(6);
   for (auto &&link : robot.links()) {
@@ -123,7 +123,7 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
 }
 
 Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
-                                    const gtsam::Values &known_values) {
+                                    const gtsam::Values &known_values) const {
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);

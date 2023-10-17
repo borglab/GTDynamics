@@ -28,6 +28,22 @@ void IEResultSummary::exportFile(const std::string &file_path) const {
 }
 
 /* ************************************************************************* */
+void IEResultSummary::exportFileWithMu(const std::string &file_path) const {
+  std::ofstream file;
+  file.open(file_path);
+  for (int i = 0; i < iters_summary.size(); i++) {
+    if (i == iters_summary.size() - 1 ||
+        (i > 0 && iters_summary[i].mu != iters_summary[i + 1].mu)) {
+      const auto &iter_summary = iters_summary.at(i);
+      file << iter_summary.num_inner_iters << " " << iter_summary.mu << " "
+           << iter_summary.cost << " " << iter_summary.e_violation << " "
+           << iter_summary.i_violation << "\n";
+    }
+  }
+  file.close();
+}
+
+/* ************************************************************************* */
 std::pair<IEResultSummary, LMItersDetail>
 OptimizeSoftConstraints(const IEConsOptProblem &problem,
                         LevenbergMarquardtParams lm_params, double mu) {
@@ -93,6 +109,7 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
         problem.evaluateEConstraintViolationL2Norm(iter_values);
     iter_summary.i_violation =
         problem.evaluateIConstraintViolationL2Norm(iter_values);
+    iter_summary.mu = intermediate_result.mu_values[i];
     summary.iters_summary.emplace_back(iter_summary);
     iters_details.emplace_back(intermediate_result.mu_values[i],
                                intermediate_result.intermediate_values[i]);
