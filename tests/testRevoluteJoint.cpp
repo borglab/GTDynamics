@@ -12,16 +12,16 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
+#include <gtsam/base/serializationTestHelpers.h>
 
 using gtsam::assert_equal;
 using gtsam::Matrix;
@@ -53,17 +53,23 @@ JointParams getJointParams() {
   return parameters;
 }
 
+RevoluteJoint getRevoluteJoint() {
+  JointParams parameters = getJointParams();
+
+  const Vector3 axis(1, 0, 0);
+
+  RevoluteJoint joint(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
+                      parameters);
+
+  return joint;
+}
+
 /**
  * Construct a Revolute joint via Parameters and ensure all values are as
  * expected.
  */
 TEST(Joint, Constructor) {
-  JointParams parameters = getJointParams();
-
-  const Vector3 axis(1, 0, 0);
-
-  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
-                   parameters);
+  RevoluteJoint j1 = getRevoluteJoint();
 
   // name
   EXPECT(assert_equal(j1.name(), "j1"));
@@ -89,11 +95,7 @@ TEST(Joint, Constructor) {
 
 // Test relativePoseOf and it derivatives
 TEST(Joint, RelativePoseOfDerivatives) {
-  const Vector3 axis(1, 0, 0);
-  JointParams parameters = getJointParams();
-
-  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
-                   parameters);
+  RevoluteJoint j1 = getRevoluteJoint();
 
   // Rotating joint by -M_PI / 2
   double q = -M_PI / 2;
@@ -116,11 +118,8 @@ TEST(Joint, RelativePoseOfDerivatives) {
 
 // Test poseOf and it derivatives
 TEST(Joint, PoseOfDerivatives) {
-  const Vector3 axis(1, 0, 0);
-  JointParams parameters = getJointParams();
+  RevoluteJoint j1 = getRevoluteJoint();
 
-  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
-                   parameters);
   Pose3 wT1(Rot3::Rx(4), Point3(1, 2, 3));
   Pose3 wT2(Rot3::Rx(5), Point3(6, 7, 8));
 
@@ -154,19 +153,13 @@ TEST(Joint, PoseOfDerivatives) {
 
 // Check values-based relativePoseOf, with derivatives.
 TEST(Joint, ValuesRelativePoseOf) {
-  const Vector3 axis(1, 0, 0);
   JointParams parameters = getJointParams();
+  RevoluteJoint j1 = getRevoluteJoint();
 
-  RevoluteJoint j1(1, "j1", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, axis,
-                   parameters);
-  Values values;
-  const size_t t = 777;
   // Rotating joint by -M_PI / 2
   double q = -M_PI / 2;
   Pose3 T12(Rot3::Rx(q), Point3(0, 1, 1));
   Pose3 T21(Rot3::Rx(-q), Point3(0, 1, -1));
-
-  InsertJointAngle(&values, 1, t, q);
 
   // Calculate numerical derivatives of relativePoseOf with respect to other
   // link pose.
@@ -176,8 +169,8 @@ TEST(Joint, ValuesRelativePoseOf) {
   Matrix61 numericalH2 = numericalDerivative11<Pose3, double>(f2, q);
 
   Matrix H1v, H2v;
-  EXPECT(assert_equal(T21, j1.relativePoseOf(l1, values, t, H1v)));
-  EXPECT(assert_equal(T12, j1.relativePoseOf(l2, values, t, H2v)));
+  EXPECT(assert_equal(T21, j1.relativePoseOf(l1, q, H1v)));
+  EXPECT(assert_equal(T12, j1.relativePoseOf(l2, q, H2v)));
   EXPECT(assert_equal(numericalH1, H1v));
   EXPECT(assert_equal(numericalH2, H2v));
 
@@ -211,15 +204,25 @@ TEST(RevoluteJoint, ParentTchild) {
   auto robot = simple_urdf::getRobot();
   auto j1 = robot.joint("j1");
 
-  Values joint_angles;
-  InsertJointAngle(&joint_angles, j1->id(), M_PI_2);
-
-  Pose3 pTc = j1->parentTchild(joint_angles);
+  Pose3 pTc = j1->parentTchild(M_PI_2);
   // Rotate around the x axis for arm point up.
   // This means the second link bends to the right.
   Pose3 expected_pTc(Rot3::Rx(M_PI_2), Point3(0, -1, 1));
   EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
+
+TEST(RevoluteJoint, Serialization) {
+  RevoluteJoint j1 = getRevoluteJoint();
+
+  using namespace gtsam::serializationTestHelpers;
+  EXPECT(equalsObj(j1));
+  EXPECT(equalsXML(j1));
+  EXPECT(equalsBinary(j1));
+}
+#endif
 
 int main() {
   TestResult tr;

@@ -13,31 +13,47 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/utils/utils.h"
-
 namespace gtdynamics {
+
+/**
+ * ContactKinematicsTwistConstraint is a 3-dimensional constraint which enforces
+ * zero linear velocity at the contact point for a link.
+ */
+inline gtsam::Vector3_ ContactKinematicsTwistConstraint(
+    gtsam::Key twist_key, const gtsam::Pose3 &cTcom) {
+  gtsam::Matrix36 H_vel;
+  H_vel << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1;
+
+  gtsam::Matrix36 H = H_vel * cTcom.AdjointMap();
+  gtsam::Vector6_ twist(twist_key);
+  const std::function<gtsam::Vector3(gtsam::Vector6)> f =
+      [H](const gtsam::Vector6 &V) { return H * V; };
+  gtsam::Vector3_ error = gtsam::linearExpression(f, twist, H);
+  return error;
+}
 
 /**
  * ContactKinematicsTwistFactor is unary nonlinear factor which enforces zero
  * linear velocity at the contact point for a link.
  */
 class ContactKinematicsTwistFactor
-    : public gtsam::NoiseModelFactor1<gtsam::Vector6> {
+    : public gtsam::ExpressionFactor<gtsam::Vector3> {
  private:
   using This = ContactKinematicsTwistFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Vector6>;
-
-  gtsam::Pose3 cTcom_;
+  using Base = gtsam::ExpressionFactor<gtsam::Vector3>;
 
  public:
   /**
@@ -50,31 +66,13 @@ class ContactKinematicsTwistFactor
       gtsam::Key twist_key,
       const gtsam::noiseModel::Base::shared_ptr &cost_model,
       const gtsam::Pose3 &cTcom)
-      : Base(cost_model, twist_key), cTcom_(cTcom) {}
+      : Base(cost_model, gtsam::Vector3::Zero(),
+             ContactKinematicsTwistConstraint(twist_key, cTcom)) {}
   virtual ~ContactKinematicsTwistFactor() {}
-
- public:
-  /**
-   * Evaluate contact point linear velocity errors.
-   * @param twist twist on this link
-   */
-  gtsam::Vector evaluateError(
-      const gtsam::Vector6 &twist,
-      boost::optional<gtsam::Matrix &> H_twist = boost::none) const override {
-    gtsam::Matrix36 H_vel;
-    H_vel << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1;
-
-    // Transform the twist from the link COM frame to the contact frame.
-    gtsam::Vector3 error = H_vel * cTcom_.AdjointMap() * twist;
-
-    if (H_twist) *H_twist = H_vel * cTcom_.AdjointMap();
-
-    return error;
-  }
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -87,13 +85,15 @@ class ContactKinematicsTwistFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

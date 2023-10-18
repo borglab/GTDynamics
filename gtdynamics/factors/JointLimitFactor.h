@@ -13,32 +13,28 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/JointTyped.h"
-
 namespace gtdynamics {
 
 /**
- * JointLimitFactor is a class which enforces joint angle, velocity,
- * acceleration and torque value to be within limi
+ * JointLimitFactor is a class which enforces joint angle value
+ * to be within specified limits.
  */
-class JointLimitFactor
-    : public gtsam::NoiseModelFactor1<JointTyped::JointCoordinateType> {
+class JointLimitFactor : public gtsam::NoiseModelFactorN<double> {
  private:
-  using JointCoordinateType = JointTyped::JointCoordinateType;
   using This = JointLimitFactor;
-  using Base = gtsam::NoiseModelFactor1<JointCoordinateType>;
-  JointCoordinateType low_, high_;
+  using Base = gtsam::NoiseModelFactorN<double>;
+  double low_, high_;
 
  public:
   /**
@@ -51,16 +47,14 @@ class JointLimitFactor
    */
   JointLimitFactor(gtsam::Key q_key,
                    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                   JointCoordinateType lower_limit,
-                   JointCoordinateType upper_limit,
-                   JointCoordinateType limit_threshold)
+                   double lower_limit, double upper_limit,
+                   double limit_threshold)
       : Base(cost_model, q_key),
         low_(lower_limit + limit_threshold),
         high_(upper_limit - limit_threshold) {}
 
   virtual ~JointLimitFactor() {}
 
- public:
   /**
    * Evaluate joint limit errors
    *
@@ -71,9 +65,8 @@ class JointLimitFactor
    *
    * @param q joint value
    */
-  gtsam::Vector evaluateError(
-      const JointCoordinateType &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+  gtsam::Vector evaluateError(const double &q,
+                              gtsam::OptionalMatrixType H_q) const override {
     if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;
       return gtsam::Vector1(low_ - q);
@@ -88,7 +81,7 @@ class JointLimitFactor
 
   //// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -101,15 +94,17 @@ class JointLimitFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
     ar &low_;
     ar &high_;
   }
+#endif
 };
 
 }  // namespace gtdynamics

@@ -1,7 +1,5 @@
 // Minimal template file for wrapping C++ code.
 
-{include_boost}
-
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -9,8 +7,6 @@
 #include <pybind11/operators.h>
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
-
-#include <boost/optional.hpp>
 
 #include "gtsam/config.h"
 #include "gtsam/base/serialization.h"
@@ -21,10 +17,8 @@
 
 {boost_class_export}
 
-{holder_type}
-
 // Preamble for STL classes
-#include "python/preamble/{module_name}.h"
+#include "python/gtdynamics/preamble/{module_name}.h"
 
 using namespace std;
 
@@ -39,6 +33,6 @@ namespace py = pybind11;
 
     {wrapped_namespace}
 // Specializations for STL classes
-#include "python/specializations/{module_name}.h"
+#include "python/gtdynamics/specializations/{module_name}.h"
 
 }}

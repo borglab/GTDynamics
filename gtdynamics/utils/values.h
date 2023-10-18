@@ -38,45 +38,59 @@ class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {
 /* *************************************************************************
   Key definitions.
  ************************************************************************* */
-namespace internal {
 /// Shorthand for q_j_t, for j-th joint angle at time t.
-inline DynamicsSymbol JointAngleKey(int j, int t = 0) {
+inline gtsam::Key JointAngleKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("q", j, t);
 }
 
 /// Shorthand for v_j_t, for j-th joint velocity at time t.
-inline DynamicsSymbol JointVelKey(int j, int t = 0) {
+inline gtsam::Key JointVelKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("v", j, t);
 }
 
 /// Shorthand for a_j_t, for j-th joint acceleration at time t.
-inline DynamicsSymbol JointAccelKey(int j, int t = 0) {
+inline gtsam::Key JointAccelKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("a", j, t);
 }
 
 /// Shorthand for T_j_t, for torque on the j-th joint at time t.
-inline DynamicsSymbol TorqueKey(int j, int t = 0) {
+inline gtsam::Key TorqueKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("T", j, t);
 }
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t = 0) {
+inline gtsam::Key PoseKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("p", i, t);
 }
 
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t = 0) {
+inline gtsam::Key TwistKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("V", i, t);
 }
 
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t = 0) {
+inline gtsam::Key TwistAccelKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("A", i, t);
 }
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline DynamicsSymbol WrenchKey(int i, int j, int t = 0) {
+inline gtsam::Key WrenchKey(int i, int j, int t = 0) {
   return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
+}
+
+/// Shorthand for C_i_c_k, for contact wrench c on i-th link at time step k.
+inline gtsam::Key ContactWrenchKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
+}
+
+/* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
+inline gtsam::Key PhaseKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("dt", k);
+}
+
+/* Shorthand for t_k, time at time step k. */
+inline gtsam::Key TimeKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("t", k);
 }
 
 /// Custom retrieval that throws KeyDoesNotExist
@@ -89,8 +103,6 @@ T at(const gtsam::Values &values, size_t key) {
   }
 }
 
-}  // namespace internal
-
 /* *************************************************************************
   Functions for Joint Angles.
  ************************************************************************* */
@@ -98,29 +110,21 @@ T at(const gtsam::Values &values, size_t key) {
 /**
  * @brief Insert j-th joint angle at time t.
  *
- * @tparam T Joint angle type (default `double`).
  * @param values Values pointer to insert joint angle into.
  * @param j The joint id.
  * @param t Time step.
  * @param value The joint angle value.
  */
-template <typename T = double>
-void InsertJointAngle(gtsam::Values *values, int j, int t, T value) {
-  values->insert(internal::JointAngleKey(j, t), value);
-}
+void InsertJointAngle(gtsam::Values *values, int j, int t, double value);
 
 /**
  * @brief Insert j-th joint angle at time 0.
  *
- * @tparam T Joint angle type (default `double`).
  * @param values Values pointer to insert joint angle into.
  * @param j The joint id.
  * @param value The joint angle value.
  */
-template <typename T = double>
-void InsertJointAngle(gtsam::Values *values, int j, T value) {
-  values->insert(internal::JointAngleKey(j), value);
-}
+void InsertJointAngle(gtsam::Values *values, int j, double value);
 
 /**
  * @brief Retrieve j-th joint angle at time t as a Vector.
@@ -136,16 +140,12 @@ gtsam::Vector JointAngle(const gtsam::VectorValues &values, int j, int t = 0);
 /**
  * @brief Retrieve j-th joint angle at time t.
  *
- * @tparam T Joint angle type (default is `double`).
  * @param values Values dictionary containing the joint angle.
  * @param j The joint id.
  * @param t Time step.
- * @return T
+ * @return The joint angle
  */
-template <typename T = double>
-T JointAngle(const gtsam::Values &values, int j, int t = 0) {
-  return internal::at<T>(values, internal::JointAngleKey(j, t));
-}
+double JointAngle(const gtsam::Values &values, int j, int t = 0);
 
 /* *************************************************************************
   Functions for Joint Velocities.
@@ -154,29 +154,21 @@ T JointAngle(const gtsam::Values &values, int j, int t = 0) {
 /**
  * @brief Insert j-th joint velocity at time t.
  *
- * @tparam T Joint velocity type (default `double`).
  * @param values Values dictionary pointer to insert joint velocity into.
  * @param j The joint id.
  * @param t Time step.
  * @param value The joint velocity value.
  */
-template <typename T = double>
-void InsertJointVel(gtsam::Values *values, int j, int t, T value) {
-  values->insert(internal::JointVelKey(j, t), value);
-}
+void InsertJointVel(gtsam::Values *values, int j, int t, double value);
 
 /**
  * @brief Insert j-th joint velocity at time 0.
  *
- * @tparam T Joint velocity type (default `double`).
  * @param values Values pointer to insert joint velocity into.
  * @param j The joint id.
  * @param value The joint velocity value.
  */
-template <typename T = double>
-void InsertJointVel(gtsam::Values *values, int j, T value) {
-  values->insert(internal::JointVelKey(j), value);
-}
+void InsertJointVel(gtsam::Values *values, int j, double value);
 
 /**
  * @brief Retrieve j-th joint velocity at time t.
@@ -192,16 +184,12 @@ gtsam::Vector JointVel(const gtsam::VectorValues &values, int j, int t = 0);
 /**
  * @brief Retrieve j-th joint velocity at time t.
  *
- * @tparam T Joint velocity type (default is `double`).
  * @param values Values dictionary containing the joint velocity.
  * @param j The joint id.
  * @param t Time step.
- * @return T
+ * @return The joint velocity
  */
-template <typename T = double>
-T JointVel(const gtsam::Values &values, int j, int t = 0) {
-  return internal::at<T>(values, internal::JointVelKey(j, t));
-}
+double JointVel(const gtsam::Values &values, int j, int t = 0);
 
 /* *************************************************************************
   Functions for Joint Accelerations.
@@ -210,29 +198,21 @@ T JointVel(const gtsam::Values &values, int j, int t = 0) {
 /**
  * @brief Insert j-th joint acceleration at time t.
  *
- * @tparam T Joint acceleration type (default `double`).
  * @param values Values dictionary pointer to insert joint acceleration into.
  * @param j The joint id.
  * @param t Time step.
  * @param value The joint acceleration value.
  */
-template <typename T = double>
-void InsertJointAccel(gtsam::Values *values, int j, int t, T value) {
-  values->insert(internal::JointAccelKey(j, t), value);
-}
+void InsertJointAccel(gtsam::Values *values, int j, int t, double value);
 
 /**
  * @brief Insert j-th joint acceleration at time 0.
  *
- * @tparam T Joint acceleration type (default `double`).
  * @param values Values pointer to insert joint acceleration into.
  * @param j The joint id.
  * @param value The joint acceleration value.
  */
-template <typename T = double>
-void InsertJointAccel(gtsam::Values *values, int j, T value) {
-  values->insert(internal::JointAccelKey(j), value);
-}
+void InsertJointAccel(gtsam::Values *values, int j, double value);
 
 /**
  * @brief Retrieve j-th joint acceleration at time t.
@@ -244,20 +224,16 @@ void InsertJointAccel(gtsam::Values *values, int j, T value) {
  * @return gtsam::Vector
  */
 gtsam::Vector JointAccel(const gtsam::VectorValues &values, int j, int t = 0);
- 
+
 /**
  * @brief Retrieve j-th joint acceleration at time t.
  *
- * @tparam T Joint acceleration type (default is `double`).
  * @param values Values dictionary containing the joint acceleration.
  * @param j The joint id.
  * @param t Time step.
- * @return T
+ * @return The joint acceleration
  */
-template <typename T = double>
-T JointAccel(const gtsam::Values &values, int j, int t = 0) {
-  return internal::at<T>(values, internal::JointAccelKey(j, t));
-}
+double JointAccel(const gtsam::Values &values, int j, int t = 0);
 
 /* *************************************************************************
   Functions for Torques.
@@ -266,29 +242,21 @@ T JointAccel(const gtsam::Values &values, int j, int t = 0) {
 /**
  * @brief Insert torque on the j-th joint at time t.
  *
- * @tparam T Torque type (default `double`).
  * @param values Values dictionary pointer to insert torque into.
  * @param j The joint id.
  * @param t Time step.
  * @param value The torque value.
  */
-template <typename T = double>
-void InsertTorque(gtsam::Values *values, int j, int t, T value) {
-  values->insert(internal::TorqueKey(j, t), value);
-}
+void InsertTorque(gtsam::Values *values, int j, int t, double value);
 
 /**
  * @brief Insert torque on the j-th joint at time 0.
  *
- * @tparam T Torque type (default `double`).
  * @param values Values pointer to insert torque into.
  * @param j The joint id.
  * @param value The torque value.
  */
-template <typename T = double>
-void InsertTorque(gtsam::Values *values, int j, T value) {
-  values->insert(internal::TorqueKey(j), value);
-}
+void InsertTorque(gtsam::Values *values, int j, double value);
 
 /**
  * @brief Retrieve torque on the j-th joint at time t.
@@ -304,16 +272,12 @@ gtsam::Vector Torque(const gtsam::VectorValues &values, int j, int t = 0);
 /**
  * @brief Retrieve torque on the j-th joint at time t.
  *
- * @tparam T Joint torque type (default is `double`).
  * @param values Values dictionary containing the joint torque.
  * @param j The joint id.
  * @param t Time step.
- * @return T
+ * @return The joint torque
  */
-template <typename T = double>
-T Torque(const gtsam::Values &values, int j, int t = 0) {
-  return internal::at<T>(values, internal::TorqueKey(j, t));
-};
+double Torque(const gtsam::Values &values, int j, int t = 0);
 
 /* *************************************************************************
   Functions for Poses.

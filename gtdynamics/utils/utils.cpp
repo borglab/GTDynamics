@@ -11,7 +11,7 @@
  * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/utils.h"
+#include <gtdynamics/utils/utils.h>
 
 #include <stdexcept>
 
@@ -31,27 +31,6 @@ gtsam::Vector radians(const gtsam::Vector &degree) {
     radian(i) = radians(degree(i));
   }
   return radian;
-}
-
-gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
-                                   const gtsam::Vector6 &screw_axis) {
-  // taking opposite value of screw_axis_ is because
-  // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
-  gtsam::Vector3 w = -screw_axis.head<3>();
-  gtsam::Vector3 v = -screw_axis.tail<3>();
-  gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis * q) * jMi;
-  auto w_skew = gtsam::skewSymmetric(w);
-  gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
-  gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  gtsam::Vector3 H_T =
-      H_expo * (jMi.translation() - w_skew * v) + w * w.transpose() * v;
-  gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
-                        gtsam::skewSymmetric(kTj.translation()) * H_R;
-  gtsam::Matrix6 H = gtsam::Z_6x6;
-  gtsam::insertSub(H, H_R, 0, 0);
-  gtsam::insertSub(H, H_TR, 3, 0);
-  gtsam::insertSub(H, H_R, 3, 3);
-  return H;
 }
 
 gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model) {

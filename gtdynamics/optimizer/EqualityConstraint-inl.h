@@ -13,41 +13,13 @@
 
 #pragma once
 
+#include <gtdynamics/optimizer/EqualityConstraint.h>
+
 namespace gtdynamics {
-
-gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
-    const double mu, boost::optional<gtsam::Vector&> bias) const {
-  auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
-  double measure = 0.0;
-  if (bias) {
-    measure = -(*bias)(0);
-  }
-  return gtsam::NoiseModelFactor::shared_ptr(
-      new gtsam::ExpressionFactor<double>(noise, measure, expression_));
-}
-
-bool DoubleExpressionEquality::feasible(const gtsam::Values& x) const {
-  double result = expression_.value(x);
-  return abs(result) <= tolerance_;
-}
-
-gtsam::Vector DoubleExpressionEquality::operator()(
-    const gtsam::Values& x) const {
-  double result = expression_.value(x);
-  return (gtsam::Vector(1) << result).finished();
-}
-
-gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
-    const gtsam::Values& x) const {
-  double result = expression_.value(x);
-  return (gtsam::Vector(1) << result / tolerance_).finished();
-}
-
-size_t DoubleExpressionEquality::dim() const { return 1; }
 
 template <int P>
 gtsam::NoiseModelFactor::shared_ptr VectorExpressionEquality<P>::createFactor(
-    const double mu, boost::optional<gtsam::Vector&> bias) const {
+    const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Diagonal::Sigmas(tolerance_ / sqrt(mu));
   VectorP measure = VectorP::Zero();
   if (bias) {

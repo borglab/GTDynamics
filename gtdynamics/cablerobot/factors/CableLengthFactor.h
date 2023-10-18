@@ -8,13 +8,10 @@
 #pragma once
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <boost/optional.hpp>
 
 #include <iostream>
 #include <string>
@@ -25,12 +22,12 @@ namespace gtdynamics {
  * end effector pose and cable length
  */
 class CableLengthFactor
-    : public gtsam::NoiseModelFactor2<double, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<double, gtsam::Pose3> {
  private:
   using Pose3 = gtsam::Pose3;
   using Point3 = gtsam::Point3;
   using This = CableLengthFactor;
-  using Base = gtsam::NoiseModelFactor2<double, Pose3>;
+  using Base = gtsam::NoiseModelFactorN<double, Pose3>;
 
   Point3 wPa_, xPb_;
 
@@ -57,8 +54,8 @@ class CableLengthFactor
    */
   gtsam::Vector evaluateError(
       const double &l, const gtsam::Pose3 &wTx,
-      boost::optional<gtsam::Matrix &> H_l = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none) const override {
+      gtsam::OptionalMatrixType H_l = nullptr,
+      gtsam::OptionalMatrixType H_wTx = nullptr) const override {
     gtsam::Matrix36 wPb_H_wTx;
     gtsam::Matrix13 H_wPb;
     auto wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
@@ -70,7 +67,7 @@ class CableLengthFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -83,13 +80,15 @@ class CableLengthFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

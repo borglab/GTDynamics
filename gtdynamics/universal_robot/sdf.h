@@ -13,10 +13,9 @@
 
 #pragma once
 
-#include <string>
+#include <gtdynamics/universal_robot/Robot.h>
 
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/ScrewJointBase.h"
+#include <string>
 
 namespace gtdynamics {
 
@@ -25,8 +24,11 @@ namespace gtdynamics {
  * @param[in] file_path path to the file.
  * @param[in] model_name name of the robot we care about. Must be specified in
  *    case sdf_file_path points to a world file.
+ * @param[in] preserve_fixed_joint Flag indicating if the fixed joints in the
+ * URDF file should be preserved and not merged.
  */
 Robot CreateRobotFromFile(const std::string &file_path,
-                          const std::string &model_name = "");
+                          const std::string &model_name = "",
+                          bool preserve_fixed_joint = false);
 
 }  // namespace gtdynamics

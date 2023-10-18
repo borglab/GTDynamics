@@ -11,9 +11,9 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
-#include "make_joint.h"
-
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TwistFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -25,8 +25,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
+#include "make_joint.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -34,6 +33,8 @@ using gtsam::assert_equal;
 namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+gtsam::Key twist_p_key = TwistKey(1), twist_c_key = TwistKey(2),
+           qKey = JointAngleKey(1), qVelKey = JointVelKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -45,25 +46,26 @@ TEST(TwistFactor, error) {
 
   auto joint = make_joint(cMp, screw_axis);
 
-  TwistFactor factor(example::cost_model, joint, 777);
+  auto factor = TwistFactor(example::cost_model, joint, 0);
   double q = M_PI / 4, qVel = 10;
   gtsam::Vector twist_p, twist_c;
   twist_p = (gtsam::Vector(6) << 0, 0, 10, 0, 10, 0).finished();
   twist_c =
       (gtsam::Vector(6) << 0, 0, 20, 7.07106781, 27.0710678, 0).finished();
-  gtsam::Vector6 actual_errors, expected_errors;
+  gtsam::Values values;
+  values.insert(example::qKey, q);
+  values.insert(example::qVelKey, qVel);
+  values.insert(example::twist_p_key, twist_p);
+  values.insert(example::twist_c_key, twist_c);
 
-  actual_errors = factor.evaluateError(twist_p, twist_c, q, qVel);
+  gtsam::Vector6 actual_errors, expected_errors;
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
-  gtsam::Values values;
-  InsertJointAngle(&values, joint->id(), 777, q);
-  InsertJointVel(&values, joint->id(), 777, qVel);
-  InsertTwist(&values, joint->parent()->id(), 777, twist_p);
-  InsertTwist(&values, joint->child()->id(), 777, twist_c);
+
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

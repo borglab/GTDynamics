@@ -5,16 +5,13 @@
  * @author Gerry Chen
  */
 
-#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
-
-#include <gtdynamics/utils/values.h>
-
-#include <gtsam/base/Vector.h>
-#include <gtsam/inference/Symbol.h>
-
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
@@ -22,7 +19,6 @@
 using namespace std;
 using namespace gtsam;
 using namespace gtdynamics;
-using namespace gtdynamics::internal;
 
 /**
  * Test cable factor
@@ -60,8 +56,7 @@ TEST(CableVelocityFactor, error) {
   // jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);
 
-  values.update(PoseKey(lid),
-                Pose3(Rot3::Rz(0.4), Point3(0.2, 0.3, 0.4)));
+  values.update(PoseKey(lid), Pose3(Rot3::Rz(0.4), Point3(0.2, 0.3, 0.4)));
   values.update(TwistKey(lid),
                 (Vector6() << 0.12, 0.13, 0.14, 0.18, 0.19, 0.21).finished());
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-3);

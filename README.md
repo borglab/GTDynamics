@@ -13,7 +13,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat10](https://github.com/osrf/sdformat)
+* [sdformat12](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -26,9 +26,9 @@ Using Homebrew is the easiest way to get SDFormat installed and it also makes sw
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-$ # Set up the tap ind install sdformat10
+$ # Set up the tap ind install sdformat12
 $ brew tap osrf/simulation
-$ brew install sdformat10
+$ brew install sdformat12
 ```
 
 ### Source
@@ -85,27 +85,45 @@ $ make check
 
 ## Running Examples
 
-The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
+The `examples` directory contains various full example projects demonstrating the use of GTDynamics for various robotic applications.
+
+We recommend going through the examples to get a better understanding of how to use GTDynamics for your own use cases.
+
+*NOTE* The examples are made to run within the GTDynamics source folder and are not standalone projects.
+
+Run these examples with
+```sh
+$ make example_XXX.run
+```
+where `XXX` corresponds to a folder name in `examples`.  For example, `make example_forward_dynamics.run`.
+
+## Including GTDynamics With CMake
+
+The `examples/cmake_project_example` directory contains an example CMake-based project that demonstrates how to include GTDynamics in your application.
+
+Use this as a template when you want to set up your own project that uses GTDynamics (e.g. separate git repo, ROS, personal libraries, etc).
+
+To build the project:
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
-```sh
-cd GTDynamics/examples/example_forward_dynamics
-mkdir build; cd build
-```
+    ```sh
+    cd GTDynamics/examples/cmake_project_example
+    mkdir build; cd build
+    ```
 
 2. Make the example.
 
-If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
+    If GTDynamics was installed to `~/JohnDoe/GTDynamics/install`, then run the cmake command with:
 
-```sh
-cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
-make
-```
+    ```sh
+    cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/GTDynamics/install ..
+    make
+    ```
 
 3. Run the example!
-```sh
-./exec
-```
+    ```sh
+    ./example
+    ```
 
 ## Python Wrapper (Recommended use case)
 

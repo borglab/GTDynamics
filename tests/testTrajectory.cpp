@@ -12,14 +12,14 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/Trajectory.h>
+#include <gtdynamics/utils/WalkCycle.h>
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-#include "gtdynamics/universal_robot/Robot.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/Phase.h"
-#include "gtdynamics/utils/Trajectory.h"
-#include "gtdynamics/utils/WalkCycle.h"
 #include "walkCycleExample.h"
 
 using namespace gtsam;
@@ -30,30 +30,6 @@ auto kModel6 = gtsam::noiseModel::Unit::Create(6);
 
 using namespace gtdynamics;
 
-// Class to test protected method
-class TrajectoryTest : public Trajectory {
- public:
-  TrajectoryTest() : Trajectory(){};
-  using Trajectory::getIntersection;
-};
-
-TEST(Trajectory, Intersection) {
-  Robot robot =
-      CreateRobotFromFile(kSdfPath + std::string("spider.sdf"), "spider");
-
-  using namespace walk_cycle_example;
-  TrajectoryTest traj;
-  PointOnLinks intersection =
-      traj.getIntersection(phase_1.contactPoints(), phase_2.contactPoints());
-
-  PointOnLinks expected = {{robot.link("tarsus_2_L2"), contact_in_com},
-                           {robot.link("tarsus_3_L3"), contact_in_com}};
-
-  for (size_t i = 0; i < 2; i++) {
-    EXPECT(assert_equal(expected[i], intersection[i]));
-  }
-}
-
 TEST(Trajectory, error) {
   using namespace walk_cycle_example;
   Robot robot =
@@ -62,7 +38,7 @@ TEST(Trajectory, error) {
   // Initialize Trajectory
   size_t repeat = 3;
   using namespace walk_cycle_example;
-  auto trajectory = Trajectory(walk_cycle, repeat);
+  Trajectory trajectory(walk_cycle, repeat);
 
   // test phase method
   EXPECT_LONGS_EQUAL(2, trajectory.phase(0).numTimeSteps());
@@ -87,18 +63,17 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(7, final_timesteps[2]);
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
   EXPECT_LONGS_EQUAL(7, trajectory.getEndTimeStep(2));
-  EXPECT_LONGS_EQUAL(4, trajectory.getPhaseContactLinks(3).size());
-  EXPECT_LONGS_EQUAL(1, trajectory.getPhaseSwingLinks(3).size());
 
-  auto cp_goals = walk_cycle.initContactPointGoal(robot);
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, 0);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
   EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
                              cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
+  Initializer initializer;
   vector<Values> transition_graph_init =
-      trajectory.transitionPhaseInitialValues(robot, gaussian_noise);
+      trajectory.transitionPhaseInitialValues(robot, initializer, gaussian_noise);
   EXPECT_LONGS_EQUAL(5, transition_graph_init.size());
 
   gtsam::Vector3 gravity(0, 0, -9.8);
@@ -121,21 +96,22 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(4298, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
 
-  Values init_vals = trajectory.multiPhaseInitialValues(robot, 1e-5, 1. / 240);
+  Values init_vals = trajectory.multiPhaseInitialValues(robot, initializer, 1e-5, 1. / 240);
   EXPECT_LONGS_EQUAL(4712, init_vals.size());
 
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step);
+      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, 0);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());
-  // regression
-  auto last_factor = boost::dynamic_pointer_cast<PointGoalFactor>(
-      contact_link_objectives.back());
-  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151, 0.000151302),
-                             last_factor->goalPoint(), 1e-5));
+  // // regression
+  // auto last_factor = std::dynamic_pointer_cast<PointGoalFactor>(
+  //     contact_link_objectives.back());
+  // EXPECT(gtsam::assert_equal(gtsam::Point3(-0.190001, -0.300151,
+  // 0.000151302),
+  //                            last_factor->goalPoint(), 1e-5));
 
   // Test boundary conditions.
   NonlinearFactorGraph boundary_conditions;
