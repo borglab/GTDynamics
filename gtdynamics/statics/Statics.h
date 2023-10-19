@@ -124,9 +124,11 @@ class Statics : public Kinematics {
    * @param slice Slice instance.
    * @param robot Robot specification from URDF/SDF.
    * @param configuration A known kinematics configuration.
+   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
    */
   gtsam::Values solve(const Slice& slice, const Robot& robot,
-                      const gtsam::Values& configuration) const;
+                      const gtsam::Values& configuration,
+                      double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches and kinematics configuration.
