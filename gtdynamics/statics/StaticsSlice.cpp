@@ -103,8 +103,8 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
   // Initialize wrenches and torques to 0.
   for (auto&& joint : robot.joints()) {
     int j = joint->id();
-    InsertWrench(&values, joint->parent()->id(), j, k, gtsam::Z_6x1);
-    InsertWrench(&values, joint->child()->id(), j, k, gtsam::Z_6x1);
+    InsertWrench(&values, joint->parent()->id(), j, k, sampler.sample());
+    InsertWrench(&values, joint->child()->id(), j, k, sampler.sample());
     InsertTorque(&values, j, k, 0.0);
   }
 
