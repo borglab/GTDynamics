@@ -148,12 +148,12 @@ class Kinematics : public Optimizer {
    *
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
-   * @param gaussian_noise time step to check (default 0.1).
+   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
   gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
-                              double gaussian_noise = 0.1) const;
+                              double gaussian_noise = 0.0) const;
 
   /**
    * @fn Inverse kinematics given a set of contact goals.

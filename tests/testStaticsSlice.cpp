@@ -123,7 +123,7 @@ TEST(Statics, Quadruped) {
   // Solve for wrenches, with known kinematics
   auto result = statics.solve(slice, robot, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
-  EXPECT_DOUBLES_EQUAL(0.151803, Torque(result, 0, k), 1e-5);
+  EXPECT_DOUBLES_EQUAL(0.054764, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
   auto minimal = statics.minimizeTorques(slice, robot);
