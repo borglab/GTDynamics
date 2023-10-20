@@ -33,8 +33,6 @@ class Simulator {
   int t_;
   DynamicsGraph graph_builder_;
   gtsam::Values initial_values_;
-  std::optional<gtsam::Vector3> gravity_;
-  std::optional<gtsam::Vector3> planar_axis_;
   gtsam::Values current_values_;
   gtsam::Values new_kinematics_;
 
@@ -49,7 +47,7 @@ class Simulator {
    * @param planar_axis    planar axis vector
    */
   Simulator(const Robot &robot, const gtsam::Values &initial_values,
-            const std::optional<gtsam::Vector3> &gravity = {},
+            const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
             const std::optional<gtsam::Vector3> &planar_axis = {})
       : robot_(robot),
         t_(0),

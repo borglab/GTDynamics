@@ -62,7 +62,7 @@ Vector6 ResultantWrench(const std::vector<Vector6> &wrenches, double mass,
   // Calculate resultant wrench, fills up H with identity matrices if asked.
   const Vector6 external_wrench = ResultantWrench(wrenches, H);
 
-  // Potentiall add gravity wrench.
+  // Potentially add gravity wrench.
   if (gravity) {
     gtsam::Matrix6 H_wTcom;
     auto gravity_wrench =

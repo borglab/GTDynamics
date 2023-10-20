@@ -40,7 +40,8 @@ enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 class DynamicsGraph {
  private:
   OptimizerSetting opt_;
-  std::optional<gtsam::Vector3> gravity_, planar_axis_;
+  const gtsam::Vector3 gravity_;
+  std::optional<gtsam::Vector3> planar_axis_;
 
  public:
   /**
@@ -48,7 +49,7 @@ class DynamicsGraph {
    * @param  gravity      gravity in world frame
    * @param  planar_axis  axis of the plane, used only for planar robot
    */
-  DynamicsGraph(const std::optional<gtsam::Vector3> &gravity = {},
+  DynamicsGraph(const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, -9.81),
                 const std::optional<gtsam::Vector3> &planar_axis = {})
       : opt_(OptimizerSetting()),
         gravity_(gravity),
@@ -61,7 +62,7 @@ class DynamicsGraph {
    * @param  planar_axis  axis of the plane, used only for planar robot
    */
   DynamicsGraph(const OptimizerSetting &opt,
-                const std::optional<gtsam::Vector3> &gravity = {},
+                const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, -9.8),
                 const std::optional<gtsam::Vector3> &planar_axis = {})
       : opt_(opt), gravity_(gravity), planar_axis_(planar_axis) {}
 

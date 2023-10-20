@@ -69,13 +69,13 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       const Pose3 T_wi = Pose(known_values, i, t);
       const Vector6 V_i = Twist(known_values, i, t);
       Vector6 rhs = Pose3::adjointMap(V_i).transpose() * G_i * V_i;
-      if (gravity_) {
-        Vector gravitational_force =
-            T_wi.rotation().transpose() * (*gravity_) * m_i;
-        for (int i = 3; i < 6; ++i) {
-          rhs[i] += gravitational_force[i - 3];
-        }
+
+      // Compute gravitational forces. If gravity=(0, 0, 0), this will be zeros.
+      Vector gravitational_force = T_wi.rotation().transpose() * gravity_ * m_i;
+      for (int i = 3; i < 6; ++i) {
+        rhs[i] += gravitational_force[i - 3];
       }
+
       auto accel_key = TwistAccelKey(i, t);
       if (connected_joints.size() == 0) {
         graph.add(accel_key, G_i, rhs, all_constrained);
@@ -207,18 +207,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         JointAngleKey(joint->id(), k), opt_.p_cost_model, joint));
   }
 
-  // TODO(frank): whoever write this should clean up this mess.
-  gtsam::Vector3 gravity;
-  if (gravity_)
-    gravity = *gravity_;
-  else
-    gravity = gtsam::Vector3(0, 0, -9.8);
-
   // Add contact factors.
   if (contact_points) {
     for (auto &&cp : *contact_points) {
       ContactHeightFactor contact_pose_factor(
-          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity);
+          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity_);
       graph.add(contact_pose_factor);
     }
   }
@@ -282,13 +275,6 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
 
-  // TODO(frank): whoever write this should clean up this mess.
-  gtsam::Vector3 gravity;
-  if (gravity_)
-    gravity = *gravity_;
-  else
-    gravity = gtsam::Vector3(0, 0, -9.8);
-
   double mu_;  // Static friction coefficient.
   if (mu)
     mu_ = *mu;
@@ -316,7 +302,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           // Add contact dynamics constraints.
           graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
               PoseKey(i, k), wrench_key, opt_.cfriction_cost_model, mu_,
-              gravity);
+              gravity_);
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt_.cm_cost_model,
@@ -326,7 +312,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
       // add wrench factor for link
       graph.add(
-          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity));
+          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity_));
     }
   }
 
@@ -337,9 +323,10 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     auto const_joint = joint;
     graph.add(WrenchEquivalenceFactor(opt_.f_cost_model, const_joint, k));
     graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
-    if (planar_axis_)
+    if (planar_axis_) {
       graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
                                    const_joint, k));
+    }
   }
   return graph;
 }

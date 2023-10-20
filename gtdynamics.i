@@ -390,11 +390,11 @@ enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 
 class DynamicsGraph {
   DynamicsGraph();
-  DynamicsGraph(const std::optional<gtsam::Vector3> &gravity,
+  DynamicsGraph(const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
                 const std::optional<gtsam::Vector3> &planar_axis);
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt);
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt,
-                const std::optional<gtsam::Vector3> &gravity,
+                const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
                 const std::optional<gtsam::Vector3> &planar_axis);
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
@@ -745,12 +745,9 @@ gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t=0);
 #include <gtdynamics/dynamics/Simulator.h>
 
 class Simulator {
-  Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values);
   Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values,
-            const std::optional<gtsam::Vector3> &gravity);
-  Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values,
-            const gtsam::Vector3 &gravity,
-            const gtsam::Vector3 &planar_axis);
+            const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
+            const std::optional<gtsam::Vector3> &planar_axis);
 
   void reset(const double t);
   void forwardDynamics(const gtsam::Values &torques);
