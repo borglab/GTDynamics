@@ -48,6 +48,17 @@ public:
                  const IndexSet &blocking_indices) const;
 };
 
+/** Factory class used to create Retractors. */
+class IERetractorCreator {
+
+public:
+  using shared_ptr = std::shared_ptr<IERetractorCreator>;
+  IERetractorCreator() {}
+
+  virtual IERetractor::shared_ptr
+  create(const IEConstraintManifold &manifold) const = 0;
+};
+
 /** Retraction by performing barrier optimization. */
 class BarrierRetractor : public IERetractor {
 public:
@@ -56,6 +67,32 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {}) const override;
+};
+
+/** Creates the same retractor for all manifolds */
+class UniversalIERetractorCreator : public IERetractorCreator {
+protected:
+  IERetractor::shared_ptr retractor_;
+
+public:
+  UniversalIERetractorCreator(const IERetractor::shared_ptr &retractor)
+      : IERetractorCreator(), retractor_(retractor) {}
+
+  virtual ~UniversalIERetractorCreator() {}
+
+  IERetractor::shared_ptr
+  create(const IEConstraintManifold &manifold) const override {
+    return retractor_;
+  }
+};
+
+class BarrierRetractorCreator : public UniversalIERetractorCreator {
+
+public:
+  BarrierRetractorCreator()
+      : UniversalIERetractorCreator(std::make_shared<BarrierRetractor>()) {}
+
+  virtual ~BarrierRetractorCreator() {}
 };
 
 } // namespace gtsam

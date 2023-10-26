@@ -1,5 +1,6 @@
 
 
+#include "gtdynamics/imanifold/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
@@ -39,6 +40,7 @@ TEST(IEConstraintManifold, HalfSphere) {
   
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
+  params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
 
   {
     Values values;

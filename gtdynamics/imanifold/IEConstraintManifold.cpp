@@ -37,7 +37,7 @@ IEConstraintManifold IEConstraintManifold::retract(
 IEConstraintManifold IEConstraintManifold::retract(
     const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices) const {
-  return params_->retractor->retract(this, delta, blocking_indices);
+  return retractor_->retract(this, delta, blocking_indices);
 }
 
 /* ************************************************************************* */
@@ -65,7 +65,7 @@ IndexSet IEConstraintManifold::blockingIndices(
 /* ************************************************************************* */
 IEConstraintManifold
 IEConstraintManifold::moveToBoundary(const IndexSet &active_indices) const {
-  return params_->retractor->moveToBoundary(this, active_indices);
+  return retractor_->moveToBoundary(this, active_indices);
 }
 
 /* ************************************************************************* */

@@ -19,6 +19,7 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/linear/VectorValues.h>
 
 #include <string>
 
@@ -117,6 +118,17 @@ inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
 inline void AddGeneralPriors(const Values &values, double sigma,
                              NonlinearFactorGraph &graph) {
   AddGeneralPriors(values, values.keys(), sigma, graph);
+}
+
+inline void AddGeneralPriors(const Values &values,
+                             const VectorValues &all_sigmas,
+                             NonlinearFactorGraph &graph) {
+  for (const auto &it : all_sigmas) {
+    const Key &key = it.first;
+    const Vector &sigmas = it.second;
+    graph.emplace_shared<GeneralPriorFactor>(
+        key, values.at(key), noiseModel::Diagonal::Sigmas(sigmas));
+  }
 }
 
 }  // namespace gtsam

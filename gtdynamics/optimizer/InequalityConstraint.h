@@ -80,7 +80,7 @@ public:
   virtual gtsam::MultiJacobian jacobians(const gtsam::Values &x) const = 0;
 };
 
-/** Equality constraint that force g(x) = 0, where g(x) is a scalar-valued
+/** Inequality constraint that force g(x) >= 0, where g(x) is a scalar-valued
  * function. */
 class DoubleExpressionInequality : public InequalityConstraint {
 public:
@@ -104,11 +104,13 @@ public:
       : InequalityConstraint(name), expression_(expression),
         tolerance_(tolerance) {}
 
+  // Inequality constraint g(x)>=0.
   static DoubleExpressionInequality::shared_ptr
   geq(const gtsam::Expression<double> &expression, const double &tolerance) {
     return std::make_shared<DoubleExpressionInequality>(expression, tolerance);
   }
 
+  // Inequality constraint g(x)<=0.
   static DoubleExpressionInequality::shared_ptr
   leq(const gtsam::Expression<double> &expression, const double &tolerance) {
     gtsam::Expression<double> neg_expr =
@@ -121,7 +123,7 @@ public:
     return expression_.value(x) >= 0;
   }
 
-  /** Evaluate the constraint violation, g(x). */
+  /** Evaluate the constraint function, g(x). */
   double operator()(const gtsam::Values &x) const override {
     return expression_.value(x);
   }

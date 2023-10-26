@@ -1,4 +1,5 @@
 
+#include "gtdynamics/imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
@@ -231,7 +232,7 @@ int main(int argc, char **argv) {
   problem.initValues().print();
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<DomeRetractor>(half_sphere);
+  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<DomeRetractor>(half_sphere));
 
   LevenbergMarquardtParams lm_params;
   std::cout << "run soft...\n";

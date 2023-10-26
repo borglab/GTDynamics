@@ -156,4 +156,22 @@ std::string _GTDKeyFormatter(gtsam::Key key);
 
 static const gtsam::KeyFormatter GTDKeyFormatter = &_GTDKeyFormatter;
 
+bool IsQLevel(const gtsam::Key &key);
+
+bool IsVLevel(const gtsam::Key &key);
+
+template <typename CONTAINER> int IdentifyLevel(const CONTAINER &keys) {
+  int lvl = 0;
+  for (const auto &key : keys) {
+    if (IsQLevel(key)) {
+      lvl = std::max(lvl, 0);
+    } else if (IsVLevel(key)) {
+      lvl = std::max(lvl, 1);
+    } else {
+      lvl = std::max(lvl, 2);
+    }
+  }
+  return lvl;
+}
+
 }  // namespace gtdynamics

@@ -34,7 +34,7 @@ public:
     ConstraintManifold::Params::shared_ptr ecm_params =
         std::make_shared<ConstraintManifold::Params>();
     // IERetractType ie_retract_type = IERetractType::Barrier;
-    IERetractor::shared_ptr retractor;
+    IERetractorCreator::shared_ptr retractor_creator;
 
     /** Default constructor. */
     Params() = default;
@@ -51,6 +51,7 @@ protected:
   size_t dim_;
   TspaceBasis::shared_ptr e_basis_;
   TangentCone::shared_ptr i_cone_;
+  IERetractor::shared_ptr retractor_;
 
 public:
   IEConstraintManifold(
@@ -69,13 +70,29 @@ public:
         e_basis_(ConstraintManifold::constructTspaceBasis(params->ecm_params,
                                                           e_cc, values, dim_)),
         i_cone_(ConstructTangentCone(*i_constraints, values, active_indices_,
-                                     e_basis_)) {}
+                                     e_basis_)) {
+    retractor_ = params->retractor_creator->create(*this);
+  }
+
+  /** constructor from other manifold but update the values. */
+  IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
+                       const std::optional<IndexSet> &active_indices = {})
+      : params_(other.params_), e_cc_(other.e_cc_),
+        i_constraints_(other.i_constraints_), values_(values),
+        active_indices_(active_indices ? *active_indices
+                                       : IdentifyActiveConstraints(
+                                             *i_constraints_, values)),
+        embedding_dim_(other.embedding_dim_),
+        e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
+        e_basis_(other.e_basis_->createWithNewValues(e_cc_, values_)),
+        i_cone_(ConstructTangentCone(*i_constraints_, values_, active_indices_,
+                                     e_basis_)),
+        retractor_(other.retractor_) {}
 
   IEConstraintManifold createWithNewValues(
       const Values &values,
       const std::optional<IndexSet> &active_indices = {}) const {
-    return IEConstraintManifold(params_, e_cc_, i_constraints_, values,
-                                active_indices);
+    return IEConstraintManifold(*this, values, active_indices);
   }
 
   virtual ~IEConstraintManifold() {}
@@ -87,11 +104,17 @@ public:
 
   const TspaceBasis::shared_ptr eBasis() const { return e_basis_; }
 
+  const TangentCone::shared_ptr &tangentCone() const {return i_cone_; }
+
+  const IERetractor::shared_ptr &retractor() const {return retractor_; }
+
   const gtdynamics::InequalityConstraints::shared_ptr &iConstraints() const {
     return i_constraints_;
   }
 
   const ConnectedComponent::shared_ptr &eCC() const { return e_cc_; }
+
+  const size_t &dim() const  {return dim_; }
 
   /// Set of blocking constraints when going in the direction g, return set of
   /// blocking constraint indices, and the projected vector

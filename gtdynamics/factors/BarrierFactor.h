@@ -80,6 +80,14 @@ class BarrierFactor : public NoiseModelFactor {
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
+  /** Print function. */
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "barrier factor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
  private:
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */

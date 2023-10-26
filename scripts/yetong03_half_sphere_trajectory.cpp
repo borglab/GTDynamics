@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
+  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<HalfSphereRetractor>(half_sphere));
 
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 

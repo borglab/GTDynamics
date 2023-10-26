@@ -53,7 +53,7 @@ TEST(HalfSphereRetractor, retract) {
   auto i_constraints =
       std::make_shared<InequalityConstraints>(half_sphere.iConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->retractor = retractor;
+  params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(retractor);
   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
@@ -88,7 +88,7 @@ TEST(HalfSphere, Dome) {
   auto i_constraints =
       std::make_shared<InequalityConstraints>(half_sphere.iDomeConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->retractor = retractor;
+  params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(retractor);
   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints,
                                                    i_constraints->keys());
 

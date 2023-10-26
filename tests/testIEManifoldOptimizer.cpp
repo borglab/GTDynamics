@@ -1,4 +1,5 @@
 
+#include "gtdynamics/imanifold/IERetractor.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
@@ -37,7 +38,7 @@ TEST(IdentifyManifolds, HalfSphere) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
+  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<HalfSphereRetractor>(half_sphere));
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -68,7 +69,7 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<CartPoleWithFrictionRetractor>(cp);
+  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<CartPoleWithFrictionRetractor>(cp));
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -93,7 +94,7 @@ TEST(IdentifyManifolds, Dome) {
   }
   
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor = std::make_shared<DomeRetractor>(half_sphere);
+  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<DomeRetractor>(half_sphere));
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {
