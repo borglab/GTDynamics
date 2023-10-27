@@ -114,18 +114,21 @@ class Statics : public Kinematics {
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
    * @param robot Robot specification from URDF/SDF.
+   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
    */
   gtsam::Values initialValues(const Slice& slice, const Robot& robot,
-                              double gaussian_noise = 1e-6) const;
+                              double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches given kinematics configuration.
    * @param slice Slice instance.
    * @param robot Robot specification from URDF/SDF.
    * @param configuration A known kinematics configuration.
+   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
    */
   gtsam::Values solve(const Slice& slice, const Robot& robot,
-                      const gtsam::Values& configuration) const;
+                      const gtsam::Values& configuration,
+                      double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches and kinematics configuration.

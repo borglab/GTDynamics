@@ -103,8 +103,8 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
   // Initialize wrenches and torques to 0.
   for (auto&& joint : robot.joints()) {
     int j = joint->id();
-    InsertWrench(&values, joint->parent()->id(), j, k, gtsam::Z_6x1);
-    InsertWrench(&values, joint->child()->id(), j, k, gtsam::Z_6x1);
+    InsertWrench(&values, joint->parent()->id(), j, k, sampler.sample());
+    InsertWrench(&values, joint->child()->id(), j, k, sampler.sample());
     InsertTorque(&values, j, k, 0.0);
   }
 
@@ -112,10 +112,11 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
 }
 
 gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
-                             const gtsam::Values& configuration) const {
+                             const gtsam::Values& configuration,
+                             double gaussian_noise) const {
   auto graph = this->graph(slice, robot);
   gtsam::Values initial_values;
-  initial_values.insert(initialValues(slice, robot));
+  initial_values.insert(initialValues(slice, robot, gaussian_noise));
 
   // In this function we assume the kinematics is given, and we add priors to
   // the graph to enforce this. Would be much nicer with constant expressions.
