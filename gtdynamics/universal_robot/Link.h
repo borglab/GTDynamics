@@ -141,6 +141,12 @@ class Link : public std::enable_shared_from_this<Link> {
   /// Return link mass.
   double mass() const { return mass_; }
 
+  // Set Mass
+  inline void setMass(const double mass) { mass_ = mass; }
+
+  // Set Inertia
+  inline void setInertia(const gtsam::Matrix3 &inertia) { inertia_ = inertia; }
+
   /// Return center of mass (gtsam::Pose3)
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 

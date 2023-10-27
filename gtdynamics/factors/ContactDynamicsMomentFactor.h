@@ -47,6 +47,24 @@ inline gtsam::Vector3_ ContactDynamicsMomentConstraint(
 }
 
 /**
+ * ContactDynamicsMomentConstraint is a 3-dimensional constraint which enforces
+ * zero moment at the contact point for the link. This is an alternative
+ * interface for expressions as inputs
+ */
+inline gtsam::Vector3_ ContactDynamicsMomentConstraint(
+    gtsam::Vector6_ contact_wrench, const gtsam::Pose3 &cTcom) {
+  gtsam::Matrix36 H_contact_wrench;
+  H_contact_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0;
+
+  gtsam::Matrix36 H =
+      H_contact_wrench * cTcom.inverse().AdjointMap().transpose();
+  const std::function<gtsam::Vector3(gtsam::Vector6)> f =
+      [H](const gtsam::Vector6 &F) { return H * F; };
+  gtsam::Vector3_ error = gtsam::linearExpression(f, contact_wrench, H);
+  return error;
+}
+
+/**
  * ContactDynamicsMomentFactor is unary nonlinear factor which enforces zero
  * moment at the contact point for the link.
  */
