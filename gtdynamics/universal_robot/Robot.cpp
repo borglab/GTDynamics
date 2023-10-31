@@ -265,4 +265,56 @@ gtsam::Values Robot::forwardKinematics(
   return values;
 }
 
+
+void Robot::renameLinks(const std::map<std::string, std::string>& name_map) {
+  LinkMap new_links;
+  for (const auto& it : name_to_link_) {
+    const std::string& old_name = it.first;
+    const std::string& new_name = name_map.at(old_name);
+    it.second->rename(new_name);
+    new_links.insert({new_name, it.second});
+  }
+  name_to_link_ = new_links;
+}
+
+void Robot::renameJoints(const std::map<std::string, std::string>& name_map) {
+  JointMap new_joints;
+  for (const auto& it : name_to_joint_) {
+    const std::string& old_name = it.first;
+    const std::string& new_name = name_map.at(old_name);
+    it.second->rename(new_name);
+    new_joints.insert({new_name, it.second});
+  }
+  name_to_joint_ = new_joints;
+}
+
+void Robot::reassignLinks(const std::vector<std::string> &ordered_link_names) {
+  for (size_t i = 0; i < ordered_link_names.size(); i++) {
+    name_to_link_.at(ordered_link_names[i])->reassign(i);
+  }
+}
+
+void Robot::reassignJoints(
+    const std::vector<std::string> &ordered_joint_names) {
+  for (size_t i = 0; i < ordered_joint_names.size(); i++) {
+    name_to_joint_.at(ordered_joint_names[i])->reassign(i);
+  }
+}
+
+std::vector<LinkSharedPtr> Robot::orderedLinks() const {
+  std::map<uint8_t, LinkSharedPtr> ordered_links;
+  for (const auto& it: name_to_link_) {
+    ordered_links.insert({it.second->id(), it.second});
+  }
+  return getValues<uint8_t, LinkSharedPtr>(ordered_links);
+}
+
+std::vector<JointSharedPtr> Robot::orderedJoints() const {
+  std::map<uint8_t, JointSharedPtr> ordered_joints;
+  for (const auto& it: name_to_joint_) {
+    ordered_joints.insert({it.second->id(), it.second});
+  }
+  return getValues<uint8_t, JointSharedPtr>(ordered_joints);
+}
+
 }  // namespace gtdynamics.

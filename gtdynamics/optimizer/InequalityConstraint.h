@@ -212,6 +212,9 @@ namespace gtsam {
 
 class IndexSet : public std::set<size_t> {
 public:
+  using base = std::set<size_t>;
+  using base::base;
+
   bool exists(const size_t idx) const { return find(idx) != end(); }
 
   void print(const std::string &s = "") const {

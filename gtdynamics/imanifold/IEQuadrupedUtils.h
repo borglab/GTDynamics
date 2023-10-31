@@ -13,30 +13,20 @@
 
 #pragma once
 
-// #include <examples/example_constraint_manifold/QuadrupedUtils.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/dynamics/OptimizerSetting.h>
-#include <gtdynamics/factors/ConstVarFactor.h>
+#include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
-#include <gtdynamics/optimizer/MutableLMOptimizer.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
-
-#include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
-#include <gtsam/linear/NoiseModel.h>
+
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/expressions.h>
-
-#include <gtdynamics/imanifold/IERetractor.h>
 
 namespace gtsam {
 
@@ -45,13 +35,31 @@ inline gtdynamics::DynamicsSymbol ContactRedundancyKey(int t = 0) {
   return gtdynamics::DynamicsSymbol::SimpleSymbol("CR", t);
 }
 
-/// Class of utilitis for Vision60 robot.
+/**
+ * Class of utilitis for Vision60 robot.
+ */
 class IEVision60Robot {
 public:
+  struct Leg {
+    gtdynamics::JointSharedPtr hip_joint, upper_joint, lower_joint;
+    gtdynamics::LinkSharedPtr hip_link, upper_link, lower_link;
+    size_t hip_joint_id, upper_joint_id, lower_joint_id;
+    size_t hip_link_id, upper_link_id, lower_link_id;
+    std::vector<gtdynamics::JointSharedPtr> joints;
+    std::vector<gtdynamics::LinkSharedPtr> links;
+
+    Leg(const gtdynamics::Robot &robot, const std::string &hip_joint_name,
+        const std::string &upper_joint_name,
+        const std::string &lower_joint_name, const std::string &hip_link_name,
+        const std::string &upper_link_name, const std::string &lower_link_name);
+  };
+
   struct Params {
     // environment
     gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
     double mu = 2.0;
+    gtdynamics::CollocationScheme collocation =
+        gtdynamics::CollocationScheme::Trapezoidal;
 
     /// Noise sigma for costs
     double sigma_des_pose = 1e-2;
@@ -86,62 +94,57 @@ public:
     std::map<std::string, double> torque_lower_limits;
     std::map<std::string, double> torque_upper_limits;
 
+    // phase info
+    IndexSet contact_indices;
+    IndexSet leaving_indices;
+    IndexSet landing_indices;
+
     Params() = default;
+
+    void set4C();
+
+    void setBackOnGround();
+
+    void setFrontOnGround();
+
+    void setInAir();
+
+    void setBoundaryLeave(const Params &phase0_params,
+                          const Params &phase1_params);
+
+    void setBoundaryLand(const Params &phase0_params,
+                         const Params &phase1_params);
   };
 
   /// Robot
-  inline static gtdynamics::Robot robot = gtdynamics::CreateRobotFromFile(
-      gtdynamics::kUrdfPath + std::string("vision60.urdf"));
+  static gtdynamics::Robot getVision60Robot();
+
+  static std::vector<Leg> getLegs(const gtdynamics::Robot &robot);
+
+  inline static gtdynamics::Robot robot = getVision60Robot();
+  inline static std::vector<Leg> legs = getLegs(robot);
   inline static gtsam::Point3 contact_in_com = Point3(0.14, 0, 0);
 
   /// Link ids
   inline static gtdynamics::LinkSharedPtr base_link = robot.link("body");
   inline static int base_id = base_link->id();
-  inline static int lower0_id = robot.link("lower0")->id();
-  inline static int lower1_id = robot.link("lower1")->id();
-  inline static int lower2_id = robot.link("lower2")->id();
-  inline static int lower3_id = robot.link("lower3")->id();
-  inline static std::vector<std::string> hip_joint_names{"8", "9", "10", "11"};
-  inline static std::vector<std::string> upper_joint_names{"0", "2", "4", "6"};
-  inline static std::vector<std::string> lower_joint_names{"1", "3", "5", "7"};
-  inline static std::vector<std::string> hip_link_names{"hip0", "hip1", "hip2",
-                                                        "hip3"};
-  inline static std::vector<std::string> upper_link_names{"upper0", "upper1",
-                                                          "upper2", "upper3"};
-  inline static std::vector<std::string> lower_link_names{"lower0", "lower1",
-                                                          "lower2", "lower3"};
+
+  std::vector<Point3> contact_in_world;
 
   /// Contact point info
-  inline static gtdynamics::PointOnLinks contact_points{
-      gtdynamics::PointOnLink(robot.link("lower0"), contact_in_com),
-      gtdynamics::PointOnLink(robot.link("lower1"), contact_in_com),
-      gtdynamics::PointOnLink(robot.link("lower2"), contact_in_com),
-      gtdynamics::PointOnLink(robot.link("lower3"), contact_in_com)};
-  inline static std::vector<int> contact_ids{lower0_id, lower1_id, lower2_id,
-                                             lower3_id};
+  gtdynamics::PointOnLinks contact_points;
+  std::vector<int> contact_ids;
+  IndexSet leaving_link_indices;
+  IndexSet landing_link_indices;
 
   /// Nominal configuration
-  double nominal_height =
-      gtdynamics::Pose(getNominalConfiguration(), lower0_id, 0)
-          .transformFrom(contact_in_com)
-          .z() *
-      -1;
-  Values nominal_values = getNominalConfiguration(nominal_height);
-  std::vector<Point3> nominal_contact_in_world{
-      gtdynamics::Pose(nominal_values, lower0_id, 0)
-          .transformFrom(contact_in_com),
-      gtdynamics::Pose(nominal_values, lower1_id, 0)
-          .transformFrom(contact_in_com),
-      gtdynamics::Pose(nominal_values, lower2_id, 0)
-          .transformFrom(contact_in_com),
-      gtdynamics::Pose(nominal_values, lower3_id, 0)
-          .transformFrom(contact_in_com)};
-  double nominal_a = 0.5 * (nominal_contact_in_world.at(0).x() -
-                            nominal_contact_in_world.at(1).x());
-  double nominal_b = 0.5 * (nominal_contact_in_world.at(0).y() -
-                            nominal_contact_in_world.at(2).y());
+  double nominal_height;
+  Values nominal_values;
+  std::vector<Point3> nominal_contact_in_world;
+  double nominal_a;
+  double nominal_b;
 
-  Params params_;
+  Params params;
   gtdynamics::DynamicsGraph graph_builder;
   SharedNoiseModel des_pose_nm;
   SharedNoiseModel des_twist_nm;
@@ -150,7 +153,7 @@ public:
   SharedNoiseModel redundancy_model;
 
 protected:
-  static gtdynamics::OptimizerSetting getOptSetting(const Params &params);
+  static gtdynamics::OptimizerSetting getOptSetting(const Params &_params);
 
   Values getNominalConfiguration(const double height = 0) const;
 
@@ -176,16 +179,8 @@ protected:
   NonlinearFactorGraph DynamicsFactors(const size_t k) const;
 
 public:
-  IEVision60Robot(const Params &params)
-      : params_(params), graph_builder(gtdynamics::DynamicsGraph(
-                             getOptSetting(params), params_.gravity)) {
-    des_pose_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_pose);
-    des_twist_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_twist);
-    min_torque_nm = noiseModel::Isotropic::Sigma(1, params.sigma_actuation);
-    cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_q);
-    redundancy_model =
-        gtsam::noiseModel::Isotropic::Sigma(6, params.tol_dynamics);
-  }
+  /// Constructor.
+  IEVision60Robot(const Params &_params);
 
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
@@ -199,6 +194,11 @@ public:
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
                                         double dt) const;
+
+  /// Cost for collocation that parameterize phase duration
+  NonlinearFactorGraph multiPhaseCollocationCosts(const size_t start_step,
+                                                  const size_t end_step,
+                                                  const size_t phase_id) const;
 
   /// Costs for min torque objectives.
   NonlinearFactorGraph minTorqueCosts(const size_t num_steps) const;
@@ -244,7 +244,29 @@ public:
   BasisKeyFunc getBasisKeyFunc() const;
 };
 
-/** Retractor for quadruped manifold. */
+/**
+ * Class of utilitis for Vision60 robot.
+ */
+class IEVision60RobotMultiPhase {
+protected:
+  std::vector<IEVision60Robot> phase_robots_;
+  std::vector<IEVision60Robot> boundary_robots_;
+  std::vector<size_t> phase_num_steps_;
+  std::vector<size_t> boundary_ks_;
+
+public:
+  IEVision60RobotMultiPhase(const std::vector<IEVision60Robot> &phase_robots,
+                            const std::vector<IEVision60Robot> &boundary_robots,
+                            const std::vector<size_t> &phase_num_steps);
+
+  const IEVision60Robot &robotAtStep(const size_t k) const;
+
+  NonlinearFactorGraph collocationCosts() const;
+};
+
+/**
+ * Retractor for quadruped manifold.
+ */
 class Vision60Retractor : public IERetractor {
 
 public:
@@ -284,6 +306,9 @@ protected:
                      const Values &values) const;
 };
 
+/**
+ * Class of utilitis for Vision60 robot.
+ */
 class Vision60RetractorCreator : public IERetractorCreator {
 protected:
   const IEVision60Robot &robot_;
@@ -295,6 +320,29 @@ public:
       : robot_(robot), params_(params) {}
 
   virtual ~Vision60RetractorCreator() {}
+
+  IERetractor::shared_ptr
+  create(const IEConstraintManifold &manifold) const override;
+};
+
+/**
+ * Class of utilitis for Vision60 robot.
+ */
+class Vision60RetractorMultiPhaseCreator : public IERetractorCreator {
+protected:
+  const IEVision60RobotMultiPhase vision60_multi_phase_;
+  const Vision60Retractor::Params &params_;
+
+public:
+  Vision60RetractorMultiPhaseCreator(
+      const std::vector<IEVision60Robot> &phase_robots,
+      const std::vector<IEVision60Robot> &boundary_robots,
+      const std::vector<size_t> &boundary_ks,
+      const Vision60Retractor::Params &params)
+      : vision60_multi_phase_(phase_robots, boundary_robots, boundary_ks),
+        params_(params) {}
+
+  virtual ~Vision60RetractorMultiPhaseCreator() {}
 
   IERetractor::shared_ptr
   create(const IEConstraintManifold &manifold) const override;

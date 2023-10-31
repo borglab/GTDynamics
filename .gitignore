@@ -111,6 +111,7 @@ venv.bak/
 # test-data
 v-rep/test_data/
 data/
+figures/
 visualization/*.json
 
 # gerry00 visualization data

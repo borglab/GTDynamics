@@ -160,7 +160,8 @@ bool IsQLevel(const gtsam::Key &key);
 
 bool IsVLevel(const gtsam::Key &key);
 
-template <typename CONTAINER> int IdentifyLevel(const CONTAINER &keys) {
+template <typename CONTAINER>
+inline int IdentifyLevel(const CONTAINER &keys) {
   int lvl = 0;
   for (const auto &key : keys) {
     if (IsQLevel(key)) {
@@ -172,6 +173,20 @@ template <typename CONTAINER> int IdentifyLevel(const CONTAINER &keys) {
     }
   }
   return lvl;
+}
+
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeySet &q_keys,
+                         gtsam::KeySet &v_keys, gtsam::KeySet &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.insert(key);
+    } else if (IsVLevel(key)) {
+      v_keys.insert(key);
+    } else {
+      ad_keys.insert(key);
+    }
+  }
 }
 
 }  // namespace gtdynamics

@@ -13,16 +13,10 @@
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
-#include <gtdynamics/manifold/GeneralPriorFactor.h>
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/CollocationFactors.h>
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/universal_robot/sdf.h>
+
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
@@ -31,143 +25,107 @@
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <gtdynamics/utils/DebugUtils.h>
+
 using namespace gtdynamics;
 
 namespace gtsam {
 
 /* ************************************************************************* */
-Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
-                          OptionalJacobian<3, 6> H_pose,
-                          OptionalJacobian<3, 6> H_wrench) {
-  Vector3 force_l(wrench(3), wrench(4), wrench(5));
-  if (H_pose || H_wrench) {
-    gtsam::Matrix36 J_fl_wrench;
-    J_fl_wrench << Z_3x3, I_3x3;
+IEVision60Robot::IEVision60Robot(const Params &_params)
+    : params(_params), graph_builder(gtdynamics::DynamicsGraph(
+                           getOptSetting(_params), _params.gravity)) {
+  des_pose_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_pose);
+  des_twist_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_twist);
+  min_torque_nm = noiseModel::Isotropic::Sigma(1, params.sigma_actuation);
+  cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_q);
+  redundancy_model =
+      gtsam::noiseModel::Isotropic::Sigma(6, params.tol_dynamics);
 
-    Matrix36 J_rot_pose;
-    Rot3 rot = pose.rotation(J_rot_pose);
+  /// Nominal configuration
+  int lower0_id = legs[0].lower_link_id;
+  int lower1_id = legs[1].lower_link_id;
+  int lower2_id = legs[2].lower_link_id;
+  int lower3_id = legs[3].lower_link_id;
+  nominal_height = gtdynamics::Pose(getNominalConfiguration(), lower0_id, 0)
+                       .transformFrom(contact_in_com)
+                       .z() *
+                   -1;
+  nominal_values = getNominalConfiguration(nominal_height);
+  nominal_contact_in_world =
+      std::vector<Point3>{gtdynamics::Pose(nominal_values, lower0_id, 0)
+                              .transformFrom(contact_in_com),
+                          gtdynamics::Pose(nominal_values, lower1_id, 0)
+                              .transformFrom(contact_in_com),
+                          gtdynamics::Pose(nominal_values, lower2_id, 0)
+                              .transformFrom(contact_in_com),
+                          gtdynamics::Pose(nominal_values, lower3_id, 0)
+                              .transformFrom(contact_in_com)};
+  nominal_a = 0.5 * (nominal_contact_in_world.at(0).x() -
+                     nominal_contact_in_world.at(2).x());
+  nominal_b = 0.5 * (nominal_contact_in_world.at(0).y() -
+                     nominal_contact_in_world.at(1).y());
 
-    Matrix33 H_rot, H_fl;
-    Vector3 force_w = rot.rotate(force_l, H_rot, H_fl);
-
-    if (H_pose) {
-      *H_pose = H_rot * J_rot_pose;
-    }
-    if (H_wrench) {
-      *H_wrench = H_fl * J_fl_wrench;
-    }
-
-    return force_w;
-  } else {
-    return pose.rotation().rotate(force_l);
+  // Phase configuration
+  for (const auto &idx : params.leaving_indices) {
+    leaving_link_indices.insert(legs.at(idx).lower_link_id);
+  }
+  for (const auto &idx : params.landing_indices) {
+    landing_link_indices.insert(legs.at(idx).lower_link_id);
+  }
+  for (const auto &idx : params.contact_indices) {
+    contact_points.emplace_back(
+        gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
+    contact_ids.emplace_back(legs.at(idx).lower_link_id);
+    contact_in_world.emplace_back(nominal_contact_in_world.at(idx));
   }
 }
 
 /* ************************************************************************* */
-gtsam::Vector6_ ContactRedundancyConstraint(int t,
-                                            const std::vector<int> &contact_ids,
-                                            const double &a, const double &b) {
-  std::vector<gtsam::Vector6_> error;
-  for (size_t i = 0; i < 4; i++) {
-    auto link_id = contact_ids.at(i);
-    Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, t));
-    Pose3_ pose(gtdynamics::PoseKey(link_id, t));
-    Vector3_ c_force(get_contact_force, pose, c_wrench);
-    gtsam::Matrix63 H;
-    if (i == 0) {
-      H << 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, a, b, 0;
-    } else if (i == 1) {
-      H << 0, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, a, b, 0;
-    } else if (i == 2) {
-      H << 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0, 0, -a, -b, 0;
-    } else if (i == 3) {
-      H << 0, 0, 1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -1, 0, -a, -b, 0;
-    }
-    const std::function<gtsam::Vector6(Vector3)> f = [H](const Vector3 &F) {
-      return H * F;
-    };
-    error.emplace_back(gtsam::linearExpression(f, c_force, H));
+gtdynamics::Robot IEVision60Robot::getVision60Robot() {
+  auto vision60_robot = gtdynamics::CreateRobotFromFile(
+      gtdynamics::kUrdfPath + std::string("vision60.urdf"));
+  std::vector<std::pair<std::string, std::string>> ordered_link_name_pair{
+      {"body", "body"},       {"hip0", "fl_hip"},     {"hip2", "fr_hip"},
+      {"hip1", "rl_hip"},     {"hip3", "rr_hip"},     {"upper0", "fl_upper"},
+      {"upper2", "fr_upper"}, {"upper1", "rl_upper"}, {"upper3", "rr_upper"},
+      {"lower0", "fl_lower"}, {"lower2", "fr_lower"}, {"lower1", "rl_lower"},
+      {"lower3", "rr_lower"}};
+  std::vector<std::pair<std::string, std::string>> ordered_joint_name_pair{
+      {"8", "fl_hip"},   {"10", "fr_hip"},  {"9", "rl_hip"},
+      {"11", "rr_hip"},  {"0", "fl_upper"}, {"4", "fr_upper"},
+      {"2", "rl_upper"}, {"6", "rr_upper"}, {"1", "fl_lower"},
+      {"5", "fr_lower"}, {"3", "rl_lower"}, {"7", "rr_lower"}};
+  std::map<std::string, std::string> link_name_map;
+  std::map<std::string, std::string> joint_name_map;
+  std::vector<std::string> ordered_link_names;
+  std::vector<std::string> ordered_joint_names;
+  for (const auto &it : ordered_link_name_pair) {
+    link_name_map.insert({it.first, it.second});
+    ordered_link_names.push_back(it.second);
   }
-
-  return error[0] + error[1] + error[2] + error[3];
+  for (const auto &it : ordered_joint_name_pair) {
+    joint_name_map.insert({it.first, it.second});
+    ordered_joint_names.push_back(it.second);
+  }
+  vision60_robot.renameLinks(link_name_map);
+  vision60_robot.renameJoints(joint_name_map);
+  vision60_robot.reassignLinks(ordered_link_names);
+  vision60_robot.reassignJoints(ordered_joint_names);
+  return vision60_robot;
 }
 
 /* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-ContactRedundancyFactor(int t, const std::vector<int> &contact_ids,
-                        const double &a, const double &b,
-                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                        bool express_redundancy) {
-  if (express_redundancy) {
-    Vector6_ expected_redundancy =
-        ContactRedundancyConstraint(t, contact_ids, a, b);
-    Vector6_ redundancy(ContactRedundancyKey(t));
-    return std::make_shared<ExpressionFactor<Vector6>>(
-        cost_model, Vector6::Zero(), expected_redundancy - redundancy);
-  } else {
-    return std::make_shared<ExpressionFactor<Vector6>>(
-        cost_model, Vector6::Zero(),
-        ContactRedundancyConstraint(t, contact_ids, a, b));
+std::vector<IEVision60Robot::Leg>
+IEVision60Robot::getLegs(const gtdynamics::Robot &robot) {
+  std::vector<Leg> legs_;
+  std::vector<std::string> leg_names{"fl", "fr", "rl", "rr"};
+  for (const auto &leg_name : leg_names) {
+    legs_.emplace_back(robot, leg_name + "_hip", leg_name + "_upper",
+                       leg_name + "_lower", leg_name + "_hip",
+                       leg_name + "_upper", leg_name + "_lower");
   }
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
-                  const std::vector<Point3> &contact_in_world,
-                  const noiseModel::Base::shared_ptr &cost_model) {
-  NonlinearFactorGraph graph;
-  // Add contact factors.
-  for (size_t contact_idx = 0; contact_idx < contact_points.size();
-       contact_idx++) {
-    const auto &cp = contact_points.at(contact_idx);
-    gtdynamics::FixedContactPointFactor contact_pose_factor(
-        gtdynamics::PoseKey(cp.link->id(), k), cost_model,
-        contact_in_world.at(contact_idx), cp.point);
-    graph.add(contact_pose_factor);
-  }
-  return graph;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
-  NonlinearFactorGraph graph;
-
-  for (auto &&link : robot.links()) {
-    int i = link->id();
-    if (!link->isFixed()) {
-      const auto &connected_joints = link->joints();
-      std::vector<gtsam::Key> wrench_keys;
-
-      // Add wrench keys for joints.
-      for (auto &&joint : connected_joints)
-        wrench_keys.push_back(WrenchKey(i, joint->id(), k));
-
-      // Add wrench keys for contact points.
-      for (auto &&cp : contact_points) {
-        if (cp.link->id() != i)
-          continue;
-        auto wrench_key = ContactWrenchKey(i, 0, k);
-        wrench_keys.push_back(wrench_key);
-
-        graph.emplace_shared<ContactDynamicsMomentFactor>(
-            wrench_key, opt().cm_cost_model,
-            gtsam::Pose3(gtsam::Rot3(), -cp.point));
-      }
-
-      // add wrench factor for link
-      graph.add(WrenchFactor(opt().fa_cost_model, link, wrench_keys, k,
-                             params_.gravity));
-    }
-  }
-
-  for (auto &&joint : robot.joints()) {
-    auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = joint;
-    graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, k));
-    graph.add(TorqueFactor(opt().t_cost_model, const_joint, k));
-  }
-  return graph;
+  return legs_;
 }
 
 /* ************************************************************************* */
@@ -212,151 +170,6 @@ IEVision60Robot::getOptSetting(const Params &params) {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::getConstraintsGraphStepQ(const int t) const {
-  NonlinearFactorGraph graph = graph_builder.qFactors(robot, t);
-  graph.add(contact_q_factors(t, contact_points, nominal_contact_in_world,
-                              cpoint_cost_model));
-  return graph;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::getConstraintsGraphStepV(const int t) const {
-  return graph_builder.vFactors(robot, t, contact_points);
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
-  NonlinearFactorGraph graph = graph_builder.aFactors(robot, t, contact_points);
-  graph.add(DynamicsFactors(t));
-  graph.add(ContactRedundancyFactor(t, contact_ids, nominal_a, nominal_b,
-                                    redundancy_model,
-                                    params_.express_redundancy));
-  return graph;
-}
-
-/* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60Robot::frictionConeConstraints(const size_t k) const {
-  // NonlinearFactorGraph graph;
-  // for (int t = 0; t <= num_steps; t++) {
-  //   for (auto &&cp : contact_points) {
-  //     int i = cp.link->id();
-  //     auto wrench_key = ContactWrenchKey(i, 0, t);
-
-  //     // Add contact dynamics constraints.
-  //     graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-  //         PoseKey(i, t), wrench_key, opt().cfriction_cost_model, mu,
-  //         gravity);
-  //   }
-  // }
-  // return graph;
-  InequalityConstraints constraints;
-  return constraints;
-}
-
-/* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60Robot::jointLimitConstraints(const size_t k) const {
-  InequalityConstraints constraints;
-  for (const auto &it : params_.joint_lower_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key joint_key = JointAngleKey(joint_id, k);
-    Double_ q_expr(joint_key);
-    Double_ q_min_expr = q_expr - Double_(it.second);
-    constraints.emplace_shared<DoubleExpressionInequality>(q_min_expr,
-                                                           params_.tol_jl);
-  }
-  for (const auto &it : params_.joint_upper_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key joint_key = JointAngleKey(joint_id, k);
-    Double_ q_expr(joint_key);
-    Double_ q_max_expr = Double_(it.second) - q_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(q_max_expr,
-                                                           params_.tol_jl);
-  }
-  return constraints;
-}
-
-/* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60Robot::torqueLimitConstraints(const size_t k) const {
-  InequalityConstraints constraints;
-  for (const auto &it : params_.torque_lower_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key torque_key = TorqueKey(joint_id, k);
-    Double_ tau_expr(torque_key);
-    Double_ tau_min_expr = tau_expr - Double_(it.second);
-    constraints.emplace_shared<DoubleExpressionInequality>(tau_min_expr,
-                                                           params_.tol_tl);
-  }
-  for (const auto &it : params_.torque_upper_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key torque_key = TorqueKey(joint_id, k);
-    Double_ tau_expr(torque_key);
-    Double_ tau_max_expr = Double_(it.second) - tau_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(tau_max_expr,
-                                                           params_.tol_tl);
-  }
-  return constraints;
-}
-
-/* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60Robot::collisionAvoidanceConstraints(const size_t k) const {
-  InequalityConstraints constraints;
-  return constraints;
-}
-
-/* ************************************************************************* */
-EqualityConstraints IEVision60Robot::eConstraints(const size_t k) const {
-  NonlinearFactorGraph graph;
-  graph.add(getConstraintsGraphStepQ(k));
-  graph.add(getConstraintsGraphStepV(k));
-  graph.add(getConstraintsGraphStepAD(k));
-  return ConstraintsFromGraph(graph);
-}
-
-/* ************************************************************************* */
-gtdynamics::EqualityConstraints
-IEVision60Robot::initStateConstraints(const Pose3 &init_pose,
-                                      const Vector6 &init_twist) const {
-  NonlinearFactorGraph graph;
-  graph.addPrior<Pose3>(PoseKey(base_id, 0), init_pose, des_pose_nm);
-  graph.addPrior<Vector6>(TwistKey(base_id, 0), init_twist, des_twist_nm);
-  return ConstraintsFromGraph(graph);
-}
-
-/* ************************************************************************* */
-InequalityConstraints IEVision60Robot::iConstraints(const size_t k) const {
-  InequalityConstraints constraints;
-  if (params_.include_friction_cone) {
-    constraints.add(frictionConeConstraints(k));
-  }
-  if (params_.include_joint_limits) {
-    constraints.add(jointLimitConstraints(k));
-  }
-  if (params_.include_torque_limits) {
-    constraints.add(torqueLimitConstraints(k));
-  }
-  if (params_.include_collision_avoidance) {
-    constraints.add(collisionAvoidanceConstraints(k));
-  }
-  return constraints;
-}
-
-template <typename CONTAINER>
-Values SubValues(const Values &values, const CONTAINER &keys) {
-  Values sub_values;
-  for (const Key &key : keys) {
-    sub_values.insert(key, values.at(key));
-  }
-  return sub_values;
-}
-
-/* ************************************************************************* */
 Values IEVision60Robot::getInitValuesStep(const size_t k,
                                           const Pose3 &base_pose,
                                           const Vector6 &base_twist,
@@ -383,7 +196,7 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
       InsertTwist(&init_values_t, i, k, Twist(nominal_values, i));
       InsertTwistAccel(&init_values_t, i, k, zero_vec6);
     }
-    if (params_.express_redundancy) {
+    if (params.express_redundancy) {
       init_values_t.insert(ContactRedundancyKey(k), zero_vec6);
     }
   }
@@ -391,18 +204,35 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
   Values known_values;
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
-  lm_params.setlambdaUpperBound(1e20);
 
   // solve q level
   NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
   graph_q.addPrior<Pose3>(PoseKey(base_id, k), base_pose,
                           graph_builder.opt().p_cost_model);
+  for (size_t i = 0; i < 4; i++) {
+    if (!params.contact_indices.exists(i)) {
+      Key hip_joint_key = JointAngleKey(legs[i].hip_joint_id, k);
+      Key upper_joint_key = JointAngleKey(legs[i].upper_joint_id, k);
+      Key lower_joint_key = JointAngleKey(legs[i].lower_joint_id, k);
+      graph_q.addPrior<double>(hip_joint_key,
+                               init_values_t.atDouble(hip_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+      graph_q.addPrior<double>(upper_joint_key,
+                               init_values_t.atDouble(upper_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+      graph_q.addPrior<double>(lower_joint_key,
+                               init_values_t.atDouble(lower_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+    }
+  }
 
   Values init_values_q = SubValues(init_values_t, graph_q.keys());
   LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
   auto results_q = optimizer_q.optimize();
   if (graph_q.error(results_q) > 1e-5) {
     std::cout << "solving q fails! error: " << graph_q.error(results_q) << "\n";
+    PrintGraphWithError(graph_q, init_values_q);
+    PrintGraphWithError(graph_q, results_q);
   }
   known_values.insert(results_q);
 
@@ -416,15 +246,21 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
   auto results_v = optimizer_v.optimize();
   if (graph_v.error(results_v) > 1e-5) {
     std::cout << "solving v fails! error: " << graph_v.error(results_v) << "\n";
+    PrintGraphWithError(graph_v, init_values_v);
+    PrintGraphWithError(graph_v, results_v);
   }
   known_values.insert(results_v);
 
   // solve a and dynamics level
   NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
-  graph_ad.addPrior<Vector6>(TwistAccelKey(base_id, k), base_accel,
-                             graph_builder.opt().a_cost_model);
+  // TODO: handle for boundary phases
+  if (params.leaving_indices.size()<4) {
+    graph_ad.addPrior<Vector6>(TwistAccelKey(base_id, k), base_accel,
+                              graph_builder.opt().a_cost_model);
+  }
+
   Vector6 zero_vec6 = Vector6::Zero();
-  if (params_.express_redundancy) {
+  if (params.express_redundancy) {
     graph_ad.addPrior<Vector6>(ContactRedundancyKey(k), zero_vec6,
                                redundancy_model);
   }
@@ -435,6 +271,8 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
   if (graph_ad.error(results_ad) > 1e-5) {
     std::cout << "solving ad fails! error: " << graph_ad.error(results_ad)
               << "\n";
+    PrintGraphWithError(graph_ad, init_values_ad);
+    PrintGraphWithError(graph_ad, results_ad);
   }
   known_values.insert(results_ad);
 
@@ -521,68 +359,45 @@ Values IEVision60Robot::getInitValuesTrajectory(
 }
 
 /* ************************************************************************* */
-KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc) {
-  KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
-    auto symb = gtdynamics::DynamicsSymbol(key);
-    if (symb.label() == "p" && symb.linkIdx() == 0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "V" && symb.linkIdx() == 0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "A" && symb.linkIdx() == 0) {
-      basis_keys.push_back(key);
-    }
-  }
-  return basis_keys;
-}
-
-/* ************************************************************************* */
-KeyVector FindBasisKeysReduancy(const ConnectedComponent::shared_ptr &cc) {
-  KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
-    auto symb = gtdynamics::DynamicsSymbol(key);
-    if (symb.label() == "p" && symb.linkIdx() == 0 && symb.time()>0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "V" && symb.linkIdx() == 0 && symb.time()>0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "A" && symb.linkIdx() == 0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "CR") {
-      basis_keys.push_back(key);
-    }
-  }
-  return basis_keys;
-}
-
-
-/* ************************************************************************* */
-KeyVector FindBasisKeysTorquesReduancy(const ConnectedComponent::shared_ptr &cc) {
-  KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
-    auto symb = gtdynamics::DynamicsSymbol(key);
-    if (symb.label() == "p" && symb.linkIdx() == 0 && symb.time()>0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "V" && symb.linkIdx() == 0 && symb.time()>0) {
-      basis_keys.push_back(key);
-    } else if (symb.label() == "T") {
-      basis_keys.push_back(key);
-    } 
-  }
-  return basis_keys;
-}
-
-/* ************************************************************************* */
 BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
-  if (params_.express_redundancy) {
-    if (params_.basis_using_torques) {
-      return &FindBasisKeysTorquesReduancy;
+  BasisKeyFunc basis_key_func =
+      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+    KeyVector basis_keys;
+    size_t k = gtdynamics::DynamicsSymbol(*cc->keys_.begin()).time();
+    if (k > 0) {
+      basis_keys.emplace_back(PoseKey(base_id, k));
+      basis_keys.emplace_back(TwistKey(base_id, k));
+      for (size_t i = 0; i < 4; i++) {
+        if (!params.contact_indices.exists(i)) {
+          basis_keys.emplace_back(JointAngleKey(legs[i].hip_joint_id, k));
+          basis_keys.emplace_back(JointAngleKey(legs[i].upper_joint_id, k));
+          basis_keys.emplace_back(JointAngleKey(legs[i].lower_joint_id, k));
+        }
+      }
+      for (size_t i = 0; i < 4; i++) {
+        if (!params.contact_indices.exists(i)) {
+          basis_keys.emplace_back(JointVelKey(legs[i].hip_joint_id, k));
+          basis_keys.emplace_back(JointVelKey(legs[i].upper_joint_id, k));
+          basis_keys.emplace_back(JointVelKey(legs[i].lower_joint_id, k));
+        }
+      }
     }
-    else {
-      return &FindBasisKeysReduancy;
+    if (params.basis_using_torques) {
+      // TODO: for boundary steps
+      if (params.leaving_indices.size() == 0) {
+        for (size_t j = 0; j < robot.numJoints(); j++) {
+          basis_keys.emplace_back(TorqueKey(j, k));
+        }
+      }
+    } else {
+      basis_keys.emplace_back(TwistAccelKey(base_id, k));
+      if (params.express_redundancy) {
+        basis_keys.emplace_back(ContactRedundancyKey(k));
+      }
     }
-  } else {
-    return &FindBasisKeys4C;
-  }
+    return basis_keys;
+  };
+  return basis_key_func;
 }
 
 /* ************************************************************************* */
@@ -596,46 +411,6 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
   std::string base_name = "body";
   Values fk_values = robot.forwardKinematics(qd_values, 0, base_name);
   return fk_values;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph IEVision60Robot::collocationCosts(const size_t num_steps,
-                                                       double dt) const {
-  NonlinearFactorGraph graph;
-  for (int t = 0; t < num_steps; t++) {
-    graph.add(gtdynamics::FixTimeTrapezoidalPoseCollocationFactor(
-        PoseKey(base_id, t), PoseKey(base_id, t + 1), TwistKey(base_id, t),
-        TwistKey(base_id, t + 1), dt, graph_builder.opt().pose_col_cost_model));
-    graph.add(gtdynamics::FixTimeTrapezoidalTwistCollocationFactor(
-        TwistKey(base_id, t), TwistKey(base_id, t + 1),
-        TwistAccelKey(base_id, t), TwistAccelKey(base_id, t + 1), dt,
-        graph_builder.opt().twist_col_cost_model));
-  }
-  return graph;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::minTorqueCosts(const size_t num_steps) const {
-  NonlinearFactorGraph graph;
-  for (int t = 0; t <= num_steps; t++) {
-    for (auto &&joint : robot.joints())
-      graph.add(gtdynamics::MinTorqueFactor(TorqueKey(joint->id(), t),
-                                            min_torque_nm));
-  }
-  return graph;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::finalStateCosts(const Pose3 &des_pose,
-                                 const Vector6 &des_twist,
-                                 const size_t num_steps) const {
-  NonlinearFactorGraph graph;
-  graph.addPrior<Pose3>(PoseKey(base_id, num_steps), des_pose, des_pose_nm);
-  graph.addPrior<Vector6>(TwistKey(base_id, num_steps), des_twist,
-                          des_twist_nm);
-  return graph;
 }
 
 /* ************************************************************************* */
@@ -725,222 +500,5 @@ void IEVision60Robot::ExportValues(const Values &values, const size_t num_steps,
 void IEVision60Robot::ExportVector(const VectorValues &values,
                                    const size_t num_steps,
                                    const std::string &file_path) {}
-
-/* ************************************************************************* */
-template <typename CONTAINER>
-void AddLinearPriors(NonlinearFactorGraph &graph, const CONTAINER &keys,
-                     const Values &values = Values()) {
-  for (const Key &key : keys) {
-    gtdynamics::DynamicsSymbol symb(key);
-    if (symb.label() == "p") {
-      graph.addPrior<Pose3>(
-          key, values.exists(key) ? values.at<Pose3>(key) : Pose3(),
-          noiseModel::Isotropic::Sigma(6, 1e-2));
-    } else if (symb.label() == "q" || symb.label() == "v" ||
-               symb.label() == "a" || symb.label() == "T") {
-      graph.addPrior<double>(key,
-                             values.exists(key) ? values.atDouble(key) : 0.0,
-                             noiseModel::Isotropic::Sigma(1, 1e-2));
-    } else {
-      Vector6 value =
-          values.exists(key) ? values.at<Vector6>(key) : Vector6::Zero();
-      graph.addPrior<Vector6>(key, value,
-                              noiseModel::Isotropic::Sigma(6, 1e-2));
-    }
-  }
-}
-
-/* ************************************************************************* */
-template <typename CONTAINER>
-void Vision60Retractor::classifyKeys(const CONTAINER &keys, KeySet &q_keys,
-                                     KeySet &v_keys, KeySet &ad_keys) {
-  for (const Key &key : keys) {
-    if (IsQLevel(key)) {
-      q_keys.insert(key);
-    } else if (IsVLevel(key)) {
-      v_keys.insert(key);
-    } else {
-      ad_keys.insert(key);
-    }
-  }
-}
-
-/* ************************************************************************* */
-Vision60Retractor::Vision60Retractor(const IEVision60Robot &robot,
-                                     const IEConstraintManifold &manifold,
-                                     const Params &params)
-    : IERetractor(), robot_(robot), params_(params), graph_q_(), graph_v_(),
-      graph_ad_() {
-
-  /// Create merit graph for e-constriants and i-constraints
-  merit_graph_ = manifold.eCC()->merit_graph_;
-  const InequalityConstraints &i_constraints = *manifold.iConstraints();
-  for (const auto &i_constraint : i_constraints) {
-    merit_graph_.add(i_constraint->createBarrierFactor(1.0));
-  }
-
-  /// Split keys into 3 levels
-  KeySet q_keys, v_keys, ad_keys, qv_keys;
-  classifyKeys(merit_graph_.keys(), q_keys, v_keys, ad_keys);
-  qv_keys = q_keys;
-  qv_keys.merge(v_keys);
-
-  /// Split basis keys into 3 levels
-  if (params_.use_basis_keys) {
-    KeyVector basis_keys = robot_.getBasisKeyFunc()(manifold.eCC());
-    classifyKeys(basis_keys, basis_q_keys_, basis_v_keys_, basis_ad_keys_);
-  } else {
-    basis_q_keys_ = q_keys;
-    basis_v_keys_ = v_keys;
-    basis_ad_keys_ = ad_keys;
-  }
-
-  /// Split merit graph into 3 levels
-  for (const auto &factor : merit_graph_) {
-    int lvl = IdentifyLevel(factor->keys());
-    if (lvl == 0) {
-      graph_q_.add(factor);
-    } else if (lvl == 1) {
-      graph_v_.add(factor);
-    } else {
-      graph_ad_.add(factor);
-    }
-  }
-
-  /// Split i-constraints into 3 levels
-  for (size_t i = 0; i < i_constraints.size(); i++) {
-    const auto &i_constraint = i_constraints.at(i);
-    int lvl = IdentifyLevel(i_constraint->keys());
-    if (lvl == 0) {
-      i_indices_q_.insert(i);
-    } else if (lvl == 1) {
-      i_indices_v_.insert(i);
-    } else {
-      i_indices_ad_.insert(i);
-    }
-  }
-
-  /// Update factors in v, ad levels as ConstVarFactors
-  std::tie(graph_v_, const_var_factors_v_) = ConstVarGraph(graph_v_, q_keys);
-  std::tie(graph_ad_, const_var_factors_ad_) =
-      ConstVarGraph(graph_ad_, qv_keys);
-}
-
-/* ************************************************************************* */
-IEConstraintManifold Vision60Retractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
-
-  Values known_values;
-  IndexSet active_indices;
-  const Values &values = manifold->values();
-  Values new_values = values.retract(delta);
-  // Pose3 new_base_pose = Pose(new_values, robot_.base_id, 0);
-  // std::cout << "new base pose: \n" << new_base_pose << "\n";
-  const InequalityConstraints &i_constraints = *manifold->iConstraints();
-
-  // solve q level with priors
-  NonlinearFactorGraph graph_np_q = graph_q_;
-  NonlinearFactorGraph graph_wp_q = graph_np_q;
-  AddGeneralPriors(new_values, basis_q_keys_, params_.prior_sigma, graph_wp_q);
-  Values init_values_q = SubValues(values, graph_wp_q.keys());
-  // init_values_q.print("init values:\n", GTDKeyFormatter);
-  // for (const auto& factor: graph_wp_q) {
-  //   factor->print("", GTDKeyFormatter);
-  //   std::cout << "error: " << factor->error(init_values_q) << "\n\n";
-  // }
-  // graph_wp_q.print("graph q:\n", GTDKeyFormatter);
-  LevenbergMarquardtOptimizer optimizer_wp_q(graph_wp_q, init_values_q,
-                                             params_.lm_params);
-  Values results_q = optimizer_wp_q.optimize();
-  // Pose3 results_base_pose = Pose(results_q, robot_.base_id, 0);
-  // std::cout << "results base pose: \n" << results_base_pose << "\n";
-
-  // solve q level without priors
-  for (const auto &i : i_indices_q_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_q)) {
-      active_indices.insert(i);
-      graph_np_q.add(i_constraints.at(i)->createL2Factor(1.0));
-    }
-  }
-  LevenbergMarquardtOptimizer optimizer_np_q(graph_np_q, results_q,
-                                             params_.lm_params);
-  results_q = optimizer_np_q.optimize();
-  known_values.insert(results_q);
-
-  // solve v level with priors
-  NonlinearFactorGraph graph_np_v = graph_v_;
-  for (auto &factor : const_var_factors_v_) {
-    factor->setFixedValues(known_values);
-    graph_np_v.add(factor);
-  }
-  NonlinearFactorGraph graph_wp_v = graph_np_v;
-  AddGeneralPriors(new_values, basis_v_keys_, params_.prior_sigma, graph_wp_v);
-  Values init_values_v = SubValues(values, graph_wp_v.keys());
-  LevenbergMarquardtOptimizer optimizer_wp_v(graph_wp_v, init_values_v,
-                                             params_.lm_params);
-  Values results_v = optimizer_wp_v.optimize();
-
-  // solve v level without priors
-  for (const auto &i : i_indices_v_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_v)) {
-      active_indices.insert(i);
-      graph_np_v.add(i_constraints.at(i)->createL2Factor(1.0));
-    }
-  }
-  LevenbergMarquardtOptimizer optimizer_np_v(graph_np_v, results_v,
-                                             params_.lm_params);
-  results_v = optimizer_np_v.optimize();
-  known_values.insert(results_v);
-
-  // solve a and dynamics level with priors
-  NonlinearFactorGraph graph_np_ad = graph_ad_;
-  for (auto &factor : const_var_factors_ad_) {
-    factor->setFixedValues(known_values);
-    graph_np_ad.add(factor);
-  }
-  NonlinearFactorGraph graph_wp_ad = graph_np_ad;
-  AddGeneralPriors(new_values, basis_ad_keys_, params_.prior_sigma,
-                   graph_wp_ad);
-  Values init_values_ad = SubValues(values, graph_wp_ad.keys());
-  LevenbergMarquardtOptimizer optimizer_wp_ad(graph_wp_ad, init_values_ad,
-                                              params_.lm_params);
-  Values results_ad = optimizer_wp_ad.optimize();
-
-  // solve a and dynamics level without priors
-  for (const auto &i : i_indices_ad_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_ad)) {
-      active_indices.insert(i);
-      graph_np_ad.add(i_constraints.at(i)->createL2Factor(1.0));
-    }
-  }
-  LevenbergMarquardtOptimizer optimizer_np_ad(graph_np_ad, results_ad,
-                                              params_.lm_params);
-  results_ad = optimizer_np_ad.optimize();
-  known_values.insert(results_ad);
-
-  checkFeasible(merit_graph_, known_values);
-
-  return manifold->createWithNewValues(known_values, active_indices);
-}
-
-/* ************************************************************************* */
-void Vision60Retractor::checkFeasible(const NonlinearFactorGraph &graph,
-                                      const Values &values) const {
-  if (params_.check_feasible) {
-    if (graph.error(values) > params_.feasible_threshold) {
-      std::cout << "fail: " << graph.error(values) << "\n";
-    }
-  }
-}
-
-/* ************************************************************************* */
-IERetractor::shared_ptr
-Vision60RetractorCreator::create(const IEConstraintManifold &manifold) const {
-  return std::make_shared<Vision60Retractor>(robot_, manifold, params_);
-}
 
 } // namespace gtsam
